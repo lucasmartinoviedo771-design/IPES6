@@ -1,0 +1,24 @@
+/* place for custom styles */
+
+/* 216 x 340 mm ≈ 8.5 x 13.39 in; a ~96dpi ≈ 816 x 1286 px */
+.pdf-oficio {
+  width: 816px;
+  min-height: 1286px;
+  margin: 0 auto;
+  background: #fff;
+  color: #000;
+  padding: 24px;          /* margen interno si querés */
+  box-sizing: border-box;
+}
+
+.pdf-oficio, .pdf-oficio * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.timetable__cell--recreo{
+  background:#f3f4f6;
+  color:#6b7280;
+  font-style:italic;
+  pointer-events:none;
+}

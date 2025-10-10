@@ -1,0 +1,33 @@
+{
+  "folders": [
+    {
+      "path": "backend"
+    },
+    {
+      "path": "frontend"
+    }
+  ],
+  "settings": {
+    // Oculta carpetas generadas automáticamente para un explorador más limpio
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.venv": true,
+      "**/venv": true,
+      "**/node_modules": true,
+      "**/.vscode": true
+    },
+    // Activa el auto-formateo al guardar un archivo
+    "editor.formatOnSave": true,
+    // Define el formateador por defecto para Python
+    "[python]": {
+      "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    // Define el formateador por defecto para JavaScript/React
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
+  }
+}

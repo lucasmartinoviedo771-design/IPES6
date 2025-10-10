@@ -1,0 +1,16 @@
+/* 216 x 340 mm ≈ 8.5 x 13.39 in; a 96dpi ≈ 816 x 1286 px */
+.pdf-oficio {
+  width: 816px;
+  min-height: 1286px;
+  background: #fff;
+  color: #000;
+  padding: 24px;       /* si querés margen interno */
+  box-sizing: border-box;
+}
+
+/* Evitar cortes raros si en algún momento imprimís */
+.pdf-oficio, .pdf-oficio * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  page-break-inside: avoid;
+}
