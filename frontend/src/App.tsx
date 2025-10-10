@@ -3,7 +3,6 @@ import { useAuth } from "@/context/AuthContext";
 import PreinscripcionWizard from "@/components/preinscripcion/PreinscripcionWizard";
 import ComprobanteScreen from "@/components/preinscripcion/ComprobanteScreen";
 import { Box, CircularProgress, AppBar, Toolbar, Typography } from "@mui/material";
-import logoUrl from "/ipes-logo.jpg";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ConfirmarInscripcionPage from "@/pages/ConfirmarInscripcionPage";
@@ -39,7 +38,7 @@ function AppLayout() {
             <AppBar position="static" elevation={0} sx={{ backgroundColor: "#9aa04a" }}>
                 <Toolbar sx={{ minHeight: 56 }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <img src={logoUrl} alt="IPES" width={28} height={28} style={{ display: "block" }} />
+                        <img src="/ipes-logo.jpg" alt="IPES" width={28} height={28} style={{ display: "block" }} />
                         <Typography variant="h6" sx={{ color: "#000", fontWeight: 700, letterSpacing: 0.2 }}>
                             IPES Paulo Freire
                         </Typography>
