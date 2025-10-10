@@ -1,0 +1,6 @@
+from ninja import NinjaAPI
+
+api = NinjaAPI(title="IPES6 API")
+
+from apps.carreras.api import carreras_router
+api.add_router("/", carreras_router)  # expone GET /api/carreras

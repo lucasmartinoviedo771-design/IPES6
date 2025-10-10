@@ -1,0 +1,1 @@
+export default function CarrerasPage(){ return <>Gestión de carreras</>; }
