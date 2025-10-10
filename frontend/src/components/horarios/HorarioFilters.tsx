@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { client as axios } from '@/api/client';
+import { Grid, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 
 interface Profesorado {
   id: number;
@@ -62,55 +64,110 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
     onChange(newFilters);
   };
 
+  const onSel = (field: keyof HorarioFiltersProps, ev: SelectChangeEvent<string>) => {
+    const raw = ev.target.value;
+    const v = raw === '' ? null : Number(raw);
+    handleChange(field as string, Number.isNaN(v) ? null : v);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Profesorado</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={profesoradoId ?? ''} onChange={(e) => handleChange('profesoradoId', Number(e.target.value) || null)}>
-          <option value="">Seleccione</option>
-          {profesorados.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Plan de Estudio</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={planId ?? ''} onChange={(e) => handleChange('planId', Number(e.target.value) || null)} disabled={!profesoradoId}>
-          <option value="">Seleccione</option>
-          {planes.map(p => <option key={p.id} value={p.id}>{p.resolucion}</option>)}
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Año Lectivo</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={anioLectivo ?? ''} onChange={(e) => handleChange('anioLectivo', Number(e.target.value) || null)}>
-          <option value="">Seleccione</option>
-          {aniosLectivos.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Año (carrera)</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={anioCarrera ?? ''} onChange={(e) => handleChange('anioCarrera', e.target.value ? Number(e.target.value) : null)}>
-          <option value="">Seleccione año</option>
-          <option value="1">1.º año</option>
-          <option value="2">2.º año</option>
-          <option value="3">3.º año</option>
-          <option value="4">4.º año</option>
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Cuatrimestre</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={cuatrimestre ?? ''} onChange={(e) => handleChange('cuatrimestre', e.target.value ? Number(e.target.value) as 1 | 2 : null)}>
-          <option value="">Seleccione</option>
-          <option value="1">1.º cuatrimestre</option>
-          <option value="2">2.º cuatrimestre</option>
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Turno</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={turnoId ?? ''} onChange={(e) => handleChange('turnoId', Number(e.target.value) || null)}>
-          <option value="">Seleccione</option>
-          {turnos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-        </select>
-      </div>
-    </div>
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Profesorado</InputLabel>
+          <Select
+            label="Profesorado"
+            value={profesoradoId !== null ? String(profesoradoId) : ''}
+            onChange={(e) => onSel('profesoradoId', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {profesorados.map((p) => (
+              <MenuItem key={p.id} value={String(p.id)}>{p.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small" disabled={!profesoradoId}>
+          <InputLabel>Plan de Estudio</InputLabel>
+          <Select
+            label="Plan de Estudio"
+            value={planId !== null ? String(planId) : ''}
+            onChange={(e) => onSel('planId', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {planes.map((p) => (
+              <MenuItem key={p.id} value={String(p.id)}>{p.resolucion}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Año Lectivo</InputLabel>
+          <Select
+            label="Año Lectivo"
+            value={anioLectivo !== null ? String(anioLectivo) : ''}
+            onChange={(e) => onSel('anioLectivo', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {aniosLectivos.map((year) => (
+              <MenuItem key={year} value={String(year)}>{year}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Año (carrera)</InputLabel>
+          <Select
+            label="Año (carrera)"
+            value={anioCarrera !== null ? String(anioCarrera) : ''}
+            onChange={(e) => onSel('anioCarrera', e)}
+          >
+            <MenuItem value="">Seleccione año</MenuItem>
+            <MenuItem value="1">1.º año</MenuItem>
+            <MenuItem value="2">2.º año</MenuItem>
+            <MenuItem value="3">3.º año</MenuItem>
+            <MenuItem value="4">4.º año</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Cuatrimestre</InputLabel>
+          <Select
+            label="Cuatrimestre"
+            value={cuatrimestre !== null ? String(cuatrimestre) : ''}
+            onChange={(e) => onSel('cuatrimestre', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            <MenuItem value="1">1.º cuatrimestre</MenuItem>
+            <MenuItem value="2">2.º cuatrimestre</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Turno</InputLabel>
+          <Select
+            label="Turno"
+            value={turnoId !== null ? String(turnoId) : ''}
+            onChange={(e) => onSel('turnoId', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {turnos.map((t) => (
+              <MenuItem key={t.id} value={String(t.id)}>{t.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+    </Grid>
   );
 };
 
