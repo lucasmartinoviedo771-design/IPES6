@@ -113,12 +113,17 @@ const CargarHorarioPage: React.FC = () => {
             anioCarrera={filters.anioCarrera}
             cuatrimestre={filters.cuatrimestre}
             turnoId={filters.turnoId}
+            selectedMateriaId={selectedMateriaId}
             onChange={handleFilterChange}
+            onMateriaChange={handleMateriaChange}
           />
         </section>
 
         <section className="card md:col-span-2">
-          <h2 className="text-xl font-bold mb-2">Grilla de Horarios</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-bold">Grilla de Horarios</h2>
+            <div className="text-sm text-gray-600">Bloques: <b>{horasAsignadas}</b> / <b>{horasRequeridas}</b></div>
+          </div>
 
           <TimetableGrid
             profesoradoId={filters.profesoradoId}
