@@ -18,6 +18,13 @@ interface Turno {
   nombre: string;
 }
 
+interface Materia {
+  id: number;
+  nombre: string;
+  horas_semana: number;
+  regimen: string;
+}
+
 interface HorarioFiltersProps {
   profesoradoId: number | null;
   planId: number | null;
@@ -25,6 +32,7 @@ interface HorarioFiltersProps {
   anioCarrera: number | null;
   cuatrimestre: 1 | 2 | null;
   turnoId: number | null;
+  selectedMateriaId: number | null;
   onChange: (filters: {
     profesoradoId: number | null;
     planId: number | null;
@@ -33,13 +41,15 @@ interface HorarioFiltersProps {
     cuatrimestre: 1 | 2 | null;
     turnoId: number | null;
   }) => void;
+  onMateriaChange: (materiaId: number | null) => void;
 }
 
 const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
-  const { profesoradoId, planId, anioLectivo, anioCarrera, cuatrimestre, turnoId, onChange } = props;
+  const { profesoradoId, planId, anioLectivo, anioCarrera, cuatrimestre, turnoId, selectedMateriaId, onChange, onMateriaChange } = props;
   const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [materias, setMaterias] = useState<Materia[]>([]);
 
   const aniosLectivos = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
@@ -55,6 +65,29 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
       setPlanes([]);
     }
   }, [profesoradoId]);
+
+  // Cargar materias cuando haya plan y año de carrera. Filtrar por cuatrimestre: ANU o PCU/SCU según corresponda
+  useEffect(() => {
+    if (planId && anioCarrera) {
+      axios
+        .get<Materia[]>(`/planes/${planId}/materias`, { params: { anio_cursada: anioCarrera } })
+        .then(({ data }) => {
+          const normalize = (s: string) => (s || '').toUpperCase().trim();
+          const filtered = cuatrimestre
+            ? data.filter((m) => {
+                const reg = normalize(m.regimen);
+                const regCuatri = cuatrimestre === 1 ? 'PCU' : 'SCU';
+                return reg === 'ANU' || reg === regCuatri;
+              })
+            : data;
+          setMaterias(filtered);
+        })
+        .catch(() => setMaterias([]));
+    } else {
+      setMaterias([]);
+      onMateriaChange(null);
+    }
+  }, [planId, anioCarrera, cuatrimestre, onMateriaChange]);
 
   const handleChange = (field: string, value: any) => {
     const newFilters = { ...props, [field]: value };
@@ -99,6 +132,25 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
             <MenuItem value="">Seleccione</MenuItem>
             {planes.map((p) => (
               <MenuItem key={p.id} value={String(p.id)}>{p.resolucion}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      {/* Materia y Turno en la misma fila */}
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small" disabled={!planId || !anioCarrera}>
+          <InputLabel>Materia</InputLabel>
+          <Select
+            label="Materia"
+            value={selectedMateriaId !== null ? String(selectedMateriaId) : ''}
+            onChange={(e) => onMateriaChange(e.target.value === '' ? null : Number(e.target.value))}
+          >
+            <MenuItem value="">Seleccione Materia</MenuItem>
+            {materias.map((m) => (
+              <MenuItem key={m.id} value={String(m.id)}>
+                {m.nombre} ({m.regimen}) - {m.horas_semana} hs
+              </MenuItem>
             ))}
           </Select>
         </FormControl>

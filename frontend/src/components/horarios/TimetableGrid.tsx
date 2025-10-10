@@ -316,20 +316,7 @@ if (hasBloques) {
 
   return (
     <div>
-      <div className="mb-4">
-        <select
-          className="w-full rounded-md border-gray-300 focus:border-amber-600 focus:ring-amber-600"
-          value={selectedMateriaId ?? ''}
-          onChange={(e) => onMateriaChange(Number(e.target.value) || null)}
-        >
-          <option value="">Seleccione Materia</option>
-          {materias.map(m => (
-            <option key={m.id} value={m.id}>
-              {m.nombre} ({m.regimen}) - {m.horas_semana} hs
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Selector de Materia movido a Filtros */}
 
       <div className="overflow-x-auto">
         <table className="timetable w-full">
