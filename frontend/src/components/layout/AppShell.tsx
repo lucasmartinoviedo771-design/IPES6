@@ -19,6 +19,11 @@ import EventNoteIcon from "@mui/icons-material/EventNote";         // Horarios
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";   // Plan
 import ArticleIcon from "@mui/icons-material/Article";             // Materias
 import PersonIcon from "@mui/icons-material/Person";               // Docentes
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined"; // Cátedra-Docente
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";  // Habilitar fechas
+import LinkIcon from "@mui/icons-material/Link";                      // Correlatividades
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 const drawerWidth = 240;
 
@@ -33,11 +38,14 @@ export default function AppShell({ children }: PropsWithChildren) {
   const [openSec, setOpenSec] = useState(true);
   const isSecPath = current.startsWith("/secretaria");
 
+  const [openAlumnos, setOpenAlumnos] = useState(true);
+  const isAlumnosPath = current.startsWith("/alumnos");
+
   return (
     <Box sx={{ display: "flex", backgroundColor: "background.default", minHeight: "100vh" }}>
       <CssBaseline />
       <AppBar position="fixed" elevation={0} sx={{ backgroundColor: "#f5eedd", color: "text.primary", borderBottom: "1px solid #eee" }}>
-        <Toolbar sx={{ gap: 2 }}>
+        <Toolbar sx={{ gap: 2, minHeight: 48 }}>
           <IconButton edge="start" onClick={() => setOpen(v => !v)} size="small">
             <MenuIcon />
           </IconButton>
@@ -52,8 +60,7 @@ export default function AppShell({ children }: PropsWithChildren) {
       </AppBar>
 
       <Drawer
-        variant="persistent"
-        open={open}
+        variant="permanent"
         sx={{
           width: drawerWidth,
           [`& .MuiDrawer-paper`]: {
@@ -62,11 +69,11 @@ export default function AppShell({ children }: PropsWithChildren) {
           }
         }}
       >
-        <Toolbar />
+        <Toolbar sx={{ minHeight: 48 }} />
         <List dense>
           <ListItemButton
             selected={current === "/dashboard"}
-            onClick={() => navigate("/dashboard")}
+            onClick={() => { console.log("Navigating to Dashboard"); navigate("/dashboard"); }}
             sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
@@ -80,15 +87,6 @@ export default function AppShell({ children }: PropsWithChildren) {
           >
             <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
             <ListItemText primary="Preinscripciones" />
-          </ListItemButton>
-
-          <ListItemButton
-            selected={current.startsWith("/alumnos")}
-            onClick={() => navigate("/alumnos")}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Alumnos" />
           </ListItemButton>
 
           <ListItemButton
@@ -111,15 +109,15 @@ export default function AppShell({ children }: PropsWithChildren) {
 
           {/* --- NUEVO: Secretaría (colapsable) --- */}
           <ListItemButton
-            onClick={() => setOpenSec(v => !v)}
+            onClick={() => navigate("/secretaria")}
             selected={isSecPath}
             sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
             <ListItemText primary="Secretaría" />
-            {openSec ? <ExpandLess /> : <ExpandMore />}
           </ListItemButton>
 
+          {false &&
           <Collapse in={openSec} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
               <ListItemButton sx={{ pl: 5 }} selected={current === "/secretaria"} onClick={() => navigate("/secretaria")}>
@@ -146,13 +144,69 @@ export default function AppShell({ children }: PropsWithChildren) {
                 <ListItemText primary="Asignar Rol" />
               </ListItemButton>
 
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/horarios")} onClick={() => navigate("/secretaria/horarios")}>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/horarios")} onClick={() => { console.log("Navigating to Cargar Horario"); navigate("/secretaria/horarios"); }}>
                 <ListItemIcon sx={{ minWidth: 36 }}><EventNoteIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Cargar Horario" />
               </ListItemButton>
+
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/catedra-docente")} onClick={() => navigate("/secretaria/catedra-docente")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><SchoolOutlinedIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Cátedra - Docente" />
+              </ListItemButton>
+
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/habilitar-fechas")} onClick={() => navigate("/secretaria/habilitar-fechas")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><EventAvailableIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Habilitar Fechas" />
+              </ListItemButton>
+
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/correlatividades")} onClick={() => navigate("/secretaria/correlatividades")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><LinkIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Correlatividades" />
+              </ListItemButton>
             </List>
           </Collapse>
+          }
 
+          {/* --- NUEVO: Alumnos (colapsable) --- */}
+          <ListItemButton
+            onClick={() => navigate("/alumnos")}
+            selected={isAlumnosPath}
+            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Alumnos" />
+          </ListItemButton>
+
+          {false &&
+          <Collapse in={openAlumnos} timeout="auto" unmountOnExit>
+            <List component="div" disablePadding>
+              <ListItemButton sx={{ pl: 5 }} selected={current === "/alumnos"} onClick={() => navigate("/alumnos")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Inicio Alumnos" />
+              </ListItemButton>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/inscripcion-carrera")} onClick={() => navigate("/alumnos/inscripcion-carrera")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Inscripción a Carreras" />
+              </ListItemButton>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/inscripcion-materia")} onClick={() => navigate("/alumnos/inscripcion-materia")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Inscripción a Materias" />
+              </ListItemButton>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/cambio-comision")} onClick={() => navigate("/alumnos/cambio-comision")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><SwapHorizIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Cambio de Comisión" />
+              </ListItemButton>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/pedido-analitico")} onClick={() => navigate("/alumnos/pedido-analitico")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><DescriptionIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Pedido de Analítico" />
+              </ListItemButton>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/mesa-examen")} onClick={() => navigate("/alumnos/mesa-examen")}>
+                <ListItemIcon sx={{ minWidth: 36 }}><EventNoteIcon fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Mesa de Examen" />
+              </ListItemButton>
+            </List>
+          </Collapse>
+          }
           {/* Configuración queda como estaba */}
           <ListItemButton
             selected={current.startsWith("/configuracion")}
@@ -168,8 +222,8 @@ export default function AppShell({ children }: PropsWithChildren) {
         <Box p={2} fontSize={12} color="text.secondary">Sistema de Gestión</Box>
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, ml: open ? `${drawerWidth}px` : 0, transition: "margin .2s" }}>
-        <Toolbar />
+      <Box component="main" className="app-main" sx={{ flexGrow: 1, p: 1.5 }}>
+        <Toolbar sx={{ minHeight: 48 }} />
         {children}
       </Box>
     </Box>

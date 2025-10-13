@@ -1,4 +1,4 @@
-import os
+﻿import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent  # .../backend
 
 # === .env ==============================================================
-# Colocá el archivo .env en backend/.env (mismo nivel que manage.py)
+# ColocÃ¡ el archivo .env en backend/.env (mismo nivel que manage.py)
 load_dotenv(BASE_DIR / ".env")
 
 # === Helpers para ENV ===================================================
@@ -32,7 +32,7 @@ DEBUG = env_bool("DEBUG", True)
 DJANGO_ENV = os.getenv("DJANGO_ENV", "development").lower()
 IS_PROD = DJANGO_ENV == "production"
 
-# Hosts permitidos (¡ajusta con tu dominio real!)
+# Hosts permitidos (Â¡ajusta con tu dominio real!)
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])  # ej: http://localhost:5173, https://tu-dominio
 
@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'core',
     'apps.carreras',
     'apps.preinscriptions',
+    'apps.alumnos',
 ]
 
 # === Middleware =========================================================
@@ -86,44 +87,44 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"  # o ASGI si usás Daphne/Uvicorn
+WSGI_APPLICATION = "config.wsgi.application"  # o ASGI si usÃ¡s Daphne/Uvicorn
 
 # === Base de datos (MySQL) =============================================
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "ipes6",
-        "USER": "root",
-        "PASSWORD": "Talleres486321",
-        "HOST": "127.0.0.1",
-        "PORT": "3306",
+        "NAME": os.getenv("DB_NAME", "ipes6"),
+        "USER": os.getenv("DB_USER", "root"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "3306"),
         "OPTIONS": {"charset": "utf8mb4"},
     }
 }
 
 
-# === Internacionalización ==============================================
+# === InternacionalizaciÃ³n ==============================================
 LANGUAGE_CODE = "es-ar"
 TIME_ZONE = "America/Argentina/Buenos_Aires"
 USE_I18N = True
 USE_TZ = False
 
-# === Archivos estáticos / media ========================================
+# === Archivos estÃ¡ticos / media ========================================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"          # para collectstatic en prod
 STATICFILES_DIRS = [BASE_DIR / "static"]        # opcional (para assets locales)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"                 # aquí se guardan las fotos/documentos
+MEDIA_ROOT = BASE_DIR / "media"                 # aquÃ­ se guardan las fotos/documentos
 
-# Límite de subida (10 MB de ejemplo)
+# LÃ­mite de subida (10 MB de ejemplo)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # === CORS ===============================================================
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Si necesitás permitir todos los headers/metodos en dev:
+# Si necesitÃ¡s permitir todos los headers/metodos en dev:
 CORS_ALLOW_HEADERS = list(default_headers) if "default_headers" in globals() else [
     "accept", "accept-encoding", "authorization", "content-type", "origin",
     "user-agent", "x-csrftoken", "x-requested-with"
@@ -132,7 +133,28 @@ CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 # --- fin CORS ---
 
-# === Logging (mínimo útil) =============================================
+# === CORS (override with FRONTEND_ORIGINS) ==============================
+try:
+    from corsheaders.defaults import default_headers, default_methods
+except Exception:
+    default_headers, default_methods = (), ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+
+FRONTEND_ORIGINS = env_list(
+    "FRONTEND_ORIGINS",
+    [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+)
+
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
+CSRF_TRUSTED_ORIGINS = FRONTEND_ORIGINS
+CORS_ALLOW_HEADERS = list(default_headers)
+CORS_ALLOW_METHODS = list(default_methods)
+
+# === Logging (mÃ­nimo Ãºtil) =============================================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -148,16 +170,16 @@ LOGGING = {
 # === Django 5 defaults ==================================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # DRF + SimpleJWT
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Bearer JWT
-        "rest_framework.authentication.SessionAuthentication",         # Para admin / sesión
+        "rest_framework.authentication.SessionAuthentication",         # Para admin / sesiÃ³n
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",  # Ajustá a gusto a nivel vista
+        "rest_framework.permissions.AllowAny",  # AjustÃ¡ a gusto a nivel vista
     ),
 }
 
@@ -168,35 +190,45 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
     # por defecto usa settings.SECRET_KEY como SIGNING_KEY (suficiente)
-    "AUTH_HEADER_TYPES": ("Bearer",),  # <— importante para "Authorization: Bearer <token>"
+    "AUTH_HEADER_TYPES": ("Bearer",),  # <â€” importante para "Authorization: Bearer <token>"
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
 
-# ──────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # CORS / CSRF (dev)
-# ──────────────────────────────────────────────────────────────────────────────
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-]
-CSRF_TRUSTED_ORIGINS = [
-    "http://127.0.0.1:5173",
-    "http://localhost:5173",
-]
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# try:
+#     from corsheaders.defaults import default_headers, default_methods
+# except Exception:
+#     default_headers, default_methods = (), ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
 
-# Cookies/seguridad (ajustá para prod)
+# FRONTEND_ORIGINS = env_list(
+#     "FRONTEND_ORIGINS",
+#     [
+#         "http://127.0.0.1:5173",
+#         "http://localhost:5173",
+#     ],
+# )
+
+# CORS_ALLOW_ALL_ORIGINS = False
+# CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
+# CSRF_TRUSTED_ORIGINS = FRONTEND_ORIGINS
+# CORS_ALLOW_HEADERS = list(default_headers)
+# CORS_ALLOW_METHODS = list(default_methods)
+
+# Cookies/seguridad (ajustÃ¡ para prod)
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 # CSRF_COOKIE_SECURE = True
 # SESSION_COOKIE_SECURE = True
 
-# === Seguridad en producción ============================================
+# === Seguridad en producciÃ³n ============================================
 if IS_PROD:
-    # Redirección a HTTPS + HSTS
+    # RedirecciÃ³n a HTTPS + HSTS
     SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 año
+    SECURE_HSTS_SECONDS = 31536000  # 1 aÃ±o
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
@@ -209,7 +241,7 @@ if IS_PROD:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "same-origin"
 
-    # SameSite: si front y back son dominios distintos y usás cookies cross-site, usa 'None'
+    # SameSite: si front y back son dominios distintos y usÃ¡s cookies cross-site, usa 'None'
     # SESSION_COOKIE_SAMESITE = "None"
     # CSRF_COOKIE_SAMESITE = "None"
 else:

@@ -1,4 +1,4 @@
-[project]
+﻿[project]
 name = "ipes6-backend"
 version = "0.1.0"
 description = "Backend for IPES6 Pre-registration System"
@@ -10,6 +10,8 @@ dependencies = [
     "Django==5.2.6",
     "django-ninja==1.4.3",
     "django-cors-headers==4.8.0",
+    "djangorestframework==3.15.2",
+    "djangorestframework-simplejwt==5.3.1",
     "pymysql", # Recommended for Windows
     "reportlab==4.4.3",
     "qrcode[pil]",
@@ -64,7 +66,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-package = false   # 👈 clave: no intentes construir wheel del proyecto local
-# (opcional) configs de uv; NO pongas 'python =' acá
+package = false   # ðŸ‘ˆ clave: no intentes construir wheel del proyecto local
+# (opcional) configs de uv; NO pongas 'python =' acÃ¡
 # ejemplo:
 # python-preference = "only-managed"
+

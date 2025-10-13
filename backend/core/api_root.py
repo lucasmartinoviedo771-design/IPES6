@@ -3,12 +3,16 @@ from ninja import NinjaAPI
 
 # ⬇ importa el router del módulo de preinscripciones
 from apps.preinscriptions.api import router as preins_router
-from apps.carreras.api import carreras_router # Importar el router de carreras
+from apps.carreras.api import carreras_router  # Importar el router de carreras
+from apps.alumnos.api import alumnos_router    # Importar el router de alumnos
+from apps.health_api import health  # Health check
 
 api = NinjaAPI(title="IPES6 API")
+api.get("/health")(health) # Health endpoint
 
 api.add_router("/preinscriptions", preins_router)
-api.add_router("/profesorados", carreras_router) # Montar el router de carreras
+api.add_router("/profesorados", carreras_router)
+api.add_router("/alumnos", alumnos_router)  # Montar el router de alumnos
 
 # (opcional) si tienes otros routers, puedes montarlos aquí también:
 from .auth_api import router as auth_router

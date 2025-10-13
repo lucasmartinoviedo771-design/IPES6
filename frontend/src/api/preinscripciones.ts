@@ -52,7 +52,7 @@ export const listarCarreras = () =>
   client.get(`/carreras`).then(r => r.data);
 
 export const listarPreinscripciones = (params: { q?: string; limit?: number; offset?: number }) =>
-  client.get("/preinscripciones", { params }).then(r => r.data);
+  client.get("/preinscriptions/", { params }).then(r => r.data);
 
 export const descargarPdf = (id: number) =>
   window.open(`${import.meta.env.VITE_API_BASE}/preinscripciones/${id}/pdf`, "_blank");
@@ -89,8 +89,8 @@ export async function apiUpdatePreinscripcion(codigo: string, payload: Partial<P
   return data;
 }
 
-export async function apiConfirmarPreinscripcion(codigo: string) {
-  const { data } = await client.post(`/preinscripciones/${encodeURIComponent(codigo)}/confirmar`, {});
+export async function apiConfirmarPreinscripcion(codigo: string, payload?: any) {
+  const { data } = await client.post(`/preinscripciones/${encodeURIComponent(codigo)}/confirmar`, payload ?? {});
   return data;
 }
 

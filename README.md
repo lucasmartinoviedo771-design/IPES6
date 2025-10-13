@@ -118,6 +118,12 @@ Sistema de preinscripción para el IPES6, dividido en un backend de Django y un 
 -   **Autoguardado de Borrador**: El progreso del formulario se guarda automáticamente en `localStorage` para evitar la pérdida de datos.
 -   **API RESTful**: Endpoints claros y definidos con Django Ninja para gestionar preinscripciones y documentos.
 -   **Generación de PDF**: Endpoint para generar un comprobante de preinscripción en formato PDF.
+-   **Gestión de Mesas de Examen**: API para crear, listar y gestionar mesas de examen.
+-   **Inscripción a Mesas de Examen**: Endpoints para que los alumnos se inscriban a mesas de examen, con control de cupo.
+-   **Gestión de Pedidos de Analítico**: Sistema para que los alumnos soliciten certificados analíticos y para que la administración los gestione.
+-   **Consulta de Plan de Estudios y Historial**: Endpoints para que los alumnos consulten las materias de su plan y su historial académico.
+-   **Gestión de Correlatividades**: API para definir y consultar las correlatividades entre materias.
+-   **Gestión de Horarios**: Sistema para la creación y consulta de horarios de cátedras.
 
 ---
 

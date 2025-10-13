@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   Stack,
   Typography,
@@ -15,6 +15,7 @@ import {
   Switch,
   FormControlLabel,
   Box,
+  Chip,
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -221,7 +222,7 @@ export default function CargarProfesoradoPage() {
                 reset();
               }}
             >
-              Cancelar Edición
+              Cancelar Edici\\\\u00f3n
             </Button>
           )}
         </Box>
@@ -234,8 +235,8 @@ export default function CargarProfesoradoPage() {
         {isLoading ? (
           <Typography>Cargando profesorados...</Typography>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ maxHeight: 520 }}>
+            <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
@@ -252,10 +253,10 @@ export default function CargarProfesoradoPage() {
                     <TableCell>{profesorado.id}</TableCell>
                     <TableCell>{profesorado.nombre}</TableCell>
                     <TableCell>{profesorado.duracion_anios}</TableCell>
-                    <TableCell>{profesorado.activo ? "Sí" : "No"}</TableCell>
-                    <TableCell>
-                      {profesorado.inscripcion_abierta ? "Sí" : "No"}
-                    </TableCell>
+                    <TableCell><Chip size="small" label={profesorado.activo ? 'Activo' : 'Inactivo'} color={profesorado.activo ? 'success' : 'default'} variant={profesorado.activo ? 'filled' : 'outlined'} /></TableCell>
+                    <TableCell><Chip size="small" label={profesorado.inscripcion_abierta ? 'Abierta' : 'Cerrada'} color={profesorado.inscripcion_abierta ? 'success' : 'default'} variant={profesorado.inscripcion_abierta ? 'filled' : 'outlined'} /></TableCell>
+                    
+                    
                     <TableCell>
                       <IconButton
                         size="small"
@@ -292,3 +293,8 @@ export default function CargarProfesoradoPage() {
     </Stack>
   );
 }
+
+
+
+
+

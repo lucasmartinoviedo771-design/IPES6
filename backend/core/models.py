@@ -211,3 +211,212 @@ class HorarioCatedraDetalle(models.Model):
         verbose_name = "Detalle de Horario de Cátedra"
         verbose_name_plural = "Detalles de Horario de Cátedra"
         unique_together = ('horario_catedra', 'bloque') # A block can only be assigned once per schedule
+
+
+class VentanaHabilitacion(models.Model):
+    class Tipo(models.TextChoices):
+        INSCRIPCION = 'INSCRIPCION', 'Inscripción (general)'
+        MESAS_FINALES = 'MESAS_FINALES', 'Mesas de examen - Finales'
+        MESAS_EXTRA = 'MESAS_EXTRA', 'Mesas de examen - Extraordinarias'
+        MESAS_LIBRES = 'MESAS_LIBRES', 'Mesas de examen - Libres'
+        MATERIAS = 'MATERIAS', 'Inscripciones a Materias'
+        CARRERAS = 'CARRERAS', 'Inscripciones a Carreras'
+        COMISION = 'COMISION', 'Cambios de Comisión'
+        ANALITICOS = 'ANALITICOS', 'Pedidos de Analíticos'
+        PREINSCRIPCION = 'PREINSCRIPCION', 'Preinscripción'
+
+    tipo = models.CharField(max_length=32, choices=Tipo.choices)
+    desde = models.DateField()
+    hasta = models.DateField()
+    activo = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} ({self.desde} - {self.hasta}) {'[ACTIVO]' if self.activo else ''}"
+
+
+class PreinscripcionChecklist(models.Model):
+    """Checklist administrativo de documentación para confirmar una preinscripción.
+
+    Se asocia 1:1 con la Preinscripcion (por año/carrera/alumno) y permite
+    calcular el estado del legajo (COMPLETO/INCOMPLETO) según la documentación.
+    """
+    preinscripcion = models.OneToOneField('Preinscripcion', on_delete=models.CASCADE, related_name='checklist')
+
+    # Grupo Documentación personal
+    dni_legalizado = models.BooleanField(default=False)
+    fotos_4x4 = models.BooleanField(default=False)
+    certificado_salud = models.BooleanField(default=False)
+    folios_oficio = models.IntegerField(default=0)
+
+    # Titulación de nivel medio (seleccionar una de las tres alternativas)
+    titulo_secundario_legalizado = models.BooleanField(default=False)
+    certificado_titulo_en_tramite = models.BooleanField(default=False)
+    analitico_legalizado = models.BooleanField(default=False)
+    certificado_alumno_regular_sec = models.BooleanField(default=False)
+
+    # Si analítico: detalle de adeuda y establecimiento
+    adeuda_materias = models.BooleanField(default=False)
+    adeuda_materias_detalle = models.TextField(blank=True, default="")
+    escuela_secundaria = models.CharField(max_length=255, blank=True, default="")
+
+    # Trayecto de certificación docente (requiere título terciario/universitario)
+    es_certificacion_docente = models.BooleanField(default=False)
+    titulo_terciario_univ = models.BooleanField(default=False)
+
+    # Derivado
+    estado_legajo = models.CharField(
+        max_length=3,
+        choices=Estudiante.EstadoLegajo.choices,
+        default=Estudiante.EstadoLegajo.PENDIENTE,
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def calcular_estado(self) -> str:
+        """Devuelve código de estado del legajo ('COM' o 'INC')."""
+        # Reglas comunes
+        docs_base = [self.dni_legalizado, self.certificado_salud, self.fotos_4x4, (self.folios_oficio or 0) >= 3]
+
+        if self.es_certificacion_docente:
+            completos = all(docs_base + [self.titulo_terciario_univ])
+            return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
+
+        # Vía secundaria: una (y solo una) de las tres alternativas
+        alternativas_cnt = sum([
+            1 if self.titulo_secundario_legalizado else 0,
+            1 if self.certificado_titulo_en_tramite else 0,
+            1 if self.analitico_legalizado else 0,
+        ])
+
+        cond_alternativas = alternativas_cnt >= 1
+
+        # Si presentó analítico, exigir constancia de alumno regular y detalle de adeuda (si marcó adeuda)
+        extra_ok = True
+        if self.analitico_legalizado:
+            extra_ok = self.certificado_alumno_regular_sec
+            if self.adeuda_materias:
+                extra_ok = extra_ok and bool(self.adeuda_materias_detalle.strip()) and bool(self.escuela_secundaria.strip())
+
+        completos = all(docs_base + [cond_alternativas, extra_ok])
+        return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
+
+    def save(self, *args, **kwargs):
+        # Actualiza estado derivado y refleja en Estudiante asociado
+        self.estado_legajo = self.calcular_estado()
+        super().save(*args, **kwargs)
+        try:
+            est = self.preinscripcion.alumno
+            if est and est.estado_legajo != self.estado_legajo:
+                est.estado_legajo = self.estado_legajo
+                est.save(update_fields=["estado_legajo"])
+        except Exception:
+            pass
+
+
+class EquivalenciaCurricular(models.Model):
+    """Agrupa materias equivalentes entre profesorados/planes.
+
+    Ej.: código "P101" (Pedagogía) relaciona Materia de distintos planes.
+    """
+    codigo = models.CharField(max_length=32, unique=True)
+    nombre = models.CharField(max_length=255, blank=True, null=True)
+    materias = models.ManyToManyField(Materia, related_name='equivalencias', blank=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre or ''}".strip()
+
+
+class InscripcionMateriaAlumno(models.Model):
+    """Inscripción anual de un estudiante a una materia (cursada)."""
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='inscripciones_materia')
+    materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='inscripciones_alumnos')
+    anio = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('estudiante', 'materia', 'anio')
+        ordering = ['-anio', '-created_at']
+
+    def __str__(self):
+        return f"{self.estudiante.dni} -> {self.materia.nombre} ({self.anio})"
+
+
+class PedidoAnalitico(models.Model):
+    class Motivo(models.TextChoices):
+        EQUIVALENCIA = 'equivalencia', 'Pedido de equivalencia'
+        BECA = 'beca', 'Becas'
+        CONTROL = 'control', 'Control'
+        OTRO = 'otro', 'Otro'
+
+    estudiante = models.ForeignKey('Estudiante', on_delete=models.CASCADE, related_name='pedidos_analitico')
+    ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.PROTECT, related_name='pedidos_analitico')
+    motivo = models.CharField(max_length=20, choices=Motivo.choices)
+    motivo_otro = models.CharField(max_length=255, blank=True, null=True)
+    profesorado = models.ForeignKey(Profesorado, on_delete=models.SET_NULL, null=True, blank=True)
+    cohorte = models.IntegerField(null=True, blank=True, help_text='Año de ingreso (cohorte)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Analítico {self.estudiante.dni} {self.created_at.date()} ({self.get_motivo_display()})"
+
+
+class MesaExamen(models.Model):
+    class Tipo(models.TextChoices):
+        PARCIAL = 'PAR', 'Parcial'
+        FINAL = 'FIN', 'Final'
+        LIBRE = 'LIB', 'Libre'
+        EXTRAORDINARIA = 'EXT', 'Extraordinaria'
+
+    materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='mesas')
+    tipo = models.CharField(max_length=3, choices=Tipo.choices)
+    fecha = models.DateField()
+    hora_desde = models.TimeField(null=True, blank=True)
+    hora_hasta = models.TimeField(null=True, blank=True)
+    aula = models.CharField(max_length=64, blank=True, null=True)
+    cupo = models.IntegerField(default=0)
+    ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Mesa {self.get_tipo_display()} {self.materia.nombre} {self.fecha}"
+
+
+class InscripcionMesa(models.Model):
+    class Estado(models.TextChoices):
+        INSCRIPTO = 'INS', 'Inscripto'
+        CANCELADO = 'CAN', 'Cancelado'
+
+    mesa = models.ForeignKey(MesaExamen, on_delete=models.CASCADE, related_name='inscripciones')
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='inscripciones_mesa')
+    estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.INSCRIPTO)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('mesa', 'estudiante')
+
+
+class Regularidad(models.Model):
+    class Situacion(models.TextChoices):
+        PROMOCIONADO = 'PRO', 'Promocionado'
+        REGULAR = 'REG', 'Regular'
+        APROBADO = 'APR', 'Aprobado (sin final)'
+        DESAPROBADO_PA = 'DPA', 'Desaprobado por Parciales'
+        DESAPROBADO_TP = 'DTP', 'Desaprobado por Trabajos Prácticos'
+        LIBRE_I = 'LBI', 'Libre por Inasistencias'
+        LIBRE_AT = 'LAT', 'Libre Antes de Tiempo'
+
+    estudiante = models.ForeignKey('Estudiante', on_delete=models.CASCADE, related_name='regularidades')
+    materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='regularidades')
+    fecha_cierre = models.DateField()
+    nota_final_cursada = models.IntegerField(null=True, blank=True)
+    situacion = models.CharField(max_length=3, choices=Situacion.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('estudiante', 'materia', 'fecha_cierre')
+        ordering = ['-fecha_cierre']
+
+    def __str__(self):
+        return f"Reg {self.estudiante.dni} {self.materia.nombre} {self.get_situacion_display()}"

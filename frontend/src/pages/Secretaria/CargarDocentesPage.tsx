@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import {
   Stack,
   Typography,
@@ -278,8 +278,8 @@ export default function CargarDocentesPage() {
         {isLoadingDocentes ? (
           <Typography>Cargando docentes...</Typography>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ maxHeight: 520 }}>
+            <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
@@ -327,3 +327,4 @@ export default function CargarDocentesPage() {
     </Stack>
   );
 }
+
