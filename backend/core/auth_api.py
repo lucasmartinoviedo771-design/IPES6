@@ -1,5 +1,6 @@
 # backend/core/auth_api.py
 from ninja import Router
+from .auth_ninja import JWTAuth
 from pydantic import BaseModel
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -64,7 +65,7 @@ def login(request, payload: LoginIn):
         "user": user_data,
     }
 
-@router.get("/profile", response={200: UserOut})
+@router.get("/profile", response={200: UserOut}, auth=JWTAuth())
 def profile(request):
     if not request.user or not request.user.is_authenticated:
         raise HttpError(401, "Unauthorized")

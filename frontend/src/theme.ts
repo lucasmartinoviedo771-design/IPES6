@@ -10,9 +10,17 @@ export const theme = createTheme({
   },
   shape: { borderRadius: 14 },
   typography: {
-    fontFamily: `'''Inter''', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`,
-    h5: { fontWeight: 800, letterSpacing: 0.2 },
-    subtitle2: { fontWeight: 600 },
+    fontFamily: `"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`,
+    h1: { fontSize: 28, fontWeight: 800, letterSpacing: 0.2 },
+    h2: { fontSize: 24, fontWeight: 800, letterSpacing: 0.2 },
+    h3: { fontSize: 20, fontWeight: 800, letterSpacing: 0.2 },
+    h4: { fontSize: 18, fontWeight: 700 },
+    h5: { fontSize: 16, fontWeight: 800 },
+    h6: { fontSize: 15, fontWeight: 800 },
+    subtitle1: { fontSize: 14, fontWeight: 600 },
+    subtitle2: { fontSize: 13, fontWeight: 600 },
+    body1: { fontSize: 14 },
+    body2: { fontSize: 13 },
     button: { textTransform: "none", fontWeight: 600 },
   },
   components: {
@@ -27,6 +35,22 @@ export const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: { borderRadius: 12 },
+      },
+    },
+    MuiTableHead: {
+      styleOverrides: {
+        root: {
+          '& .MuiTableCell-root': {
+            fontWeight: 700,
+            background: '#faf7f2',
+          },
+        },
+      },
+    },
+    MuiCardHeader: {
+      defaultProps: {
+        titleTypographyProps: { variant: 'h6', fontWeight: 800 },
+        subheaderTypographyProps: { variant: 'body2', color: 'text.secondary' },
       },
     },
   },

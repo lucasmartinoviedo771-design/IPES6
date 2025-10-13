@@ -1,26 +1,48 @@
-import { Routes, Route, Outlet, Navigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import PreinscripcionWizard from "@/components/preinscripcion/PreinscripcionWizard";
-import ComprobanteScreen from "@/components/preinscripcion/ComprobanteScreen";
-import { Box, CircularProgress, AppBar, Toolbar, Typography } from "@mui/material";
-import LoginPage from "@/pages/LoginPage";
-import DashboardPage from "@/pages/DashboardPage";
-import ConfirmarInscripcionPage from "@/pages/ConfirmarInscripcionPage";
-import Forbidden from "@/pages/Forbidden";
-import { ProtectedRoute, PublicOnlyRoute } from "@/router/guards";
-import ConfiguracionPage from "@/pages/ConfiguracionPage";
-import ReportesPage from "@/pages/ReportesPage";
-import CarrerasPage from "@/pages/CarrerasPage";
-import AlumnosPage from "@/pages/AlumnosPage";
-import PreinscripcionesPage from "@/pages/PreinscripcionesPage";
-import AppShell from "@/components/layout/AppShell";
-import SecretariaIndex from "@/pages/Secretaria/Index";
-import CargarProfesoradoPage from "@/pages/Secretaria/CargarProfesoradoPage";
-import CargarPlanPage from "@/pages/Secretaria/CargarPlanPage";
-import CargarMateriasPage from "@/pages/Secretaria/CargarMateriasPage";
-import CargarDocentesPage from "@/pages/Secretaria/CargarDocentesPage";
-import AsignarRolPage from "@/pages/Secretaria/AsignarRolPage";
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
+
+import { useAuth } from '@/context/AuthContext';
+import { ProtectedRoute, PublicOnlyRoute } from '@/router/guards';
+
+import AppShell from '@/components/layout/AppShell';
+import PreinscripcionWizard from '@/components/preinscripcion/PreinscripcionWizard';
+import ComprobanteScreen from '@/components/preinscripcion/ComprobanteScreen';
+
+import AlumnosPage from '@/pages/AlumnosPage';
+import CarrerasPage from '@/pages/CarrerasPage';
+import ConfiguracionPage from '@/pages/ConfiguracionPage';
+import ConfirmarInscripcionPage from '@/pages/ConfirmarInscripcionPage';
+import DashboardPage from '@/pages/DashboardPage';
+import Forbidden from '@/pages/Forbidden';
+import LoginPage from '@/pages/LoginPage';
+import PreinscripcionesPage from '@/pages/PreinscripcionesPage';
+import ReportesPage from '@/pages/ReportesPage';
+import SecretariaIndex from '@/pages/Secretaria/Index';
+import CargarProfesoradoPage from '@/pages/Secretaria/CargarProfesoradoPage';
+import CargarPlanPage from '@/pages/Secretaria/CargarPlanPage';
+import CargarMateriasPage from '@/pages/Secretaria/CargarMateriasPage';
+import CargarDocentesPage from '@/pages/Secretaria/CargarDocentesPage';
+import AsignarRolPage from '@/pages/Secretaria/AsignarRolPage';
+import AnaliticosPage from '@/pages/Secretaria/AnaliticosPage';
+import MesasPage from '@/pages/Secretaria/MesasPage';
+import ConfirmarInscripcionSecretaria from "@/pages/Secretaria/ConfirmarInscripcion";
+import MesaExamenPage from '@/pages/Alumnos/MesaExamenPage';
+
+
 import CargarHorarioPage from "@/pages/Secretaria/CargarHorarioPage";
+import CatedraDocentePage from "@/pages/Secretaria/CatedraDocentePage";
+import HabilitarFechasPage from "@/pages/Secretaria/HabilitarFechasPage";
+import CorrelatividadesPage from "@/pages/Secretaria/CorrelatividadesPage";
+import ErrorBoundary from "@/debug/ErrorBoundary";
+
+// Nuevas páginas de Alumnos
+import AlumnosIndex from "@/pages/Alumnos/Index";
+import InscripcionCarreraPage from "@/pages/Alumnos/InscripcionCarreraPage";
+import InscripcionMateriaPage from "@/pages/Alumnos/InscripcionMateriaPage";
+import CambioComisionPage from "@/pages/Alumnos/CambioComisionPage";
+import PedidoAnaliticoPage from "@/pages/Alumnos/PedidoAnaliticoPage";
+import TrayectoriaPage from "@/pages/Alumnos/TrayectoriaPage";
+
 
 function AppLayout() {
     const { loading } = useAuth();
@@ -33,21 +55,8 @@ function AppLayout() {
         );
     }
 
-    return (
-        <>
-            <AppBar position="static" elevation={0} sx={{ backgroundColor: "#9aa04a" }}>
-                <Toolbar sx={{ minHeight: 56 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <img src="/ipes-logo.jpg" alt="IPES" width={28} height={28} style={{ display: "block" }} />
-                        <Typography variant="h6" sx={{ color: "#000", fontWeight: 700, letterSpacing: 0.2 }}>
-                            IPES Paulo Freire
-                        </Typography>
-                    </Box>
-                </Toolbar>
-            </AppBar>
-            <Outlet />
-        </>
-    );
+    // AppShell ya provee topbar + sidebar. No duplicamos AppBar acá.
+    return <Outlet />;
 }
 
 export default function App() {
@@ -60,11 +69,12 @@ export default function App() {
 
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
 
-            {/* Bloque protegido con AppShell */}
-            <Route element={<ProtectedRoute roles={['preinscripciones','secretaria','admin']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
+            {/* Bloque protegido con AppShell (incluye alumnos y bedel) */}
+            <Route element={<ProtectedRoute roles={['preinscripciones','secretaria','admin','alumno','bedel']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/preinscripciones" element={<PreinscripcionesPage />} />
-              <Route path="/alumnos" element={<AlumnosPage />} />
+              {/* Alumnos: índice con tarjetas */}
+              <Route path="/alumnos" element={<AlumnosIndex />} />
               <Route path="/carreras" element={<CarrerasPage />} />
               <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/configuracion" element={<ConfiguracionPage />} />
@@ -75,7 +85,21 @@ export default function App() {
 <Route path="/secretaria/plan/:planId/materias" element={<ProtectedRoute roles={['secretaria','admin']}><CargarMateriasPage /></ProtectedRoute>} />
 <Route path="/secretaria/docentes" element={<ProtectedRoute roles={['secretaria','admin']}><CargarDocentesPage /></ProtectedRoute>} />
 <Route path="/secretaria/asignar-rol" element={<ProtectedRoute roles={['secretaria','admin']}><AsignarRolPage /></ProtectedRoute>} />
-<Route path="/secretaria/horarios" element={<ProtectedRoute roles={['secretaria','admin']}><CargarHorarioPage /></ProtectedRoute>} />
+<Route path="/secretaria/horarios" element={<ProtectedRoute roles={['secretaria','admin']}><ErrorBoundary><CargarHorarioPage /></ErrorBoundary></ProtectedRoute>} />
+<Route path="/secretaria/catedra-docente" element={<ProtectedRoute roles={['secretaria','admin']}><CatedraDocentePage /></ProtectedRoute>} />
+<Route path="/secretaria/habilitar-fechas" element={<ProtectedRoute roles={['secretaria','admin']}><HabilitarFechasPage /></ProtectedRoute>} />
+<Route path="/secretaria/analiticos" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><AnaliticosPage /></ProtectedRoute>} />
+<Route path="/secretaria/mesas" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><MesasPage /></ProtectedRoute>} />
+<Route path="/secretaria/correlatividades" element={<ProtectedRoute roles={['secretaria','admin']}><CorrelatividadesPage /></ProtectedRoute>} />
+<Route path="/secretaria/confirmar-inscripcion" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><ConfirmarInscripcionSecretaria /></ProtectedRoute>} />
+
+              {/* Nuevas rutas para Alumnos */}
+              <Route path="/alumnos/inscripcion-carrera" element={<ProtectedRoute roles={['alumno','admin']}><InscripcionCarreraPage /></ProtectedRoute>} />
+              <Route path="/alumnos/inscripcion-materia" element={<ProtectedRoute roles={['alumno','admin']}><InscripcionMateriaPage /></ProtectedRoute>} />
+              <Route path="/alumnos/cambio-comision" element={<ProtectedRoute roles={['alumno','admin']}><CambioComisionPage /></ProtectedRoute>} />
+              <Route path="/alumnos/pedido-analitico" element={<ProtectedRoute roles={['alumno','admin']}><PedidoAnaliticoPage /></ProtectedRoute>} />
+              <Route path="/alumnos/mesa-examen" element={<ProtectedRoute roles={['alumno','admin']}><MesaExamenPage /></ProtectedRoute>} />
+              <Route path="/alumnos/trayectoria" element={<ProtectedRoute roles={['alumno','admin']}><TrayectoriaPage /></ProtectedRoute>} />
             </Route>
     
             <Route path="/dashboard" element={<ProtectedRoute roles={['bedel', 'secretaria', 'admin']}><DashboardPage /></ProtectedRoute>} />

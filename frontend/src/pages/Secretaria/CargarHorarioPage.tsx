@@ -1,16 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import HorarioFilters from '../../components/horarios/HorarioFilters';
-import TimetableGrid from '../../components/horarios/TimetableGrid';
-import { client as axios } from '@/api/client';
-
-interface Materia {
-  id: number;
-  nombre: string;
-  horas_semana: number;
-  regimen: string;
-}
+import React, { useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
+import HorarioFilters from '@/components/horarios/HorarioFilters';
+import TimetableGrid from '@/components/horarios/TimetableGrid';
+import { Materia, HorarioCatedra, HorarioCatedraDetalleOut } from '@/types';
 
 const CargarHorarioPage: React.FC = () => {
+  console.log("CargarHorarioPage: Render");
   const [filters, setFilters] = useState({
     profesoradoId: null as number | null,
     planId: null as number | null,
@@ -23,36 +18,99 @@ const CargarHorarioPage: React.FC = () => {
   const [horasRequeridas, setHorasRequeridas] = useState<number>(0);
   const [horasAsignadas, setHorasAsignadas] = useState<number>(0);
   const [selectedBlocks, setSelectedBlocks] = useState<Set<number>>(new Set());
+  const [horarioCatedra, setHorarioCatedra] = useState<HorarioCatedra | null>(null);
 
   const handleFilterChange = (newFilters: any) => {
+    console.log("CargarHorarioPage: handleFilterChange");
     setFilters(newFilters);
     setSelectedMateriaId(null);
     setHorasRequeridas(0);
     setHorasAsignadas(0);
     setSelectedBlocks(new Set());
+    setHorarioCatedra(null);
   };
 
   const handleMateriaChange = (materiaId: number | null) => {
+    console.log("CargarHorarioPage: handleMateriaChange");
     setSelectedMateriaId(materiaId);
+    setSelectedBlocks(new Set());
+    setHorasAsignadas(0);
+    setHorarioCatedra(null);
   };
 
   const handleBlocksSelected = (count: number, blocks: Set<number>) => {
+    console.log("CargarHorarioPage: handleBlocksSelected");
     setHorasAsignadas(count);
     setSelectedBlocks(blocks);
   };
 
   const handleClearSelection = () => {
+    console.log("CargarHorarioPage: handleClearSelection");
     setSelectedBlocks(new Set());
     setHorasAsignadas(0);
   };
 
+  const fetchHorario = useCallback(async () => {
+    console.log("CargarHorarioPage: fetchHorario called");
+    if (selectedMateriaId && filters.turnoId && filters.anioLectivo) {
+      try {
+        const materiaResponse = await axios.get<Materia>(`/materias/${selectedMateriaId}`);
+        const materiaRegimen = materiaResponse.data.regimen;
+        
+        let cuatrimestreValue: string | undefined = undefined;
+        if (materiaRegimen === 'PCU' || materiaRegimen === 'SCU') {
+          cuatrimestreValue = materiaRegimen;
+        }
+
+        const params: any = {
+          espacio_id: selectedMateriaId,
+          turno_id: filters.turnoId,
+          anio_cursada: filters.anioLectivo,
+        };
+        if (cuatrimestreValue) {
+            params.cuatrimestre = cuatrimestreValue;
+        }
+
+        const response = await axios.get<HorarioCatedra[]>('/horarios_catedra', { params });
+
+        if (response.data && response.data.length > 0) {
+          const loadedHorario = response.data[0];
+          setHorarioCatedra(loadedHorario);
+
+          const detallesResponse = await axios.get<HorarioCatedraDetalleOut[]>(`/horarios_catedra/${loadedHorario.id}/detalles`);
+          if (detallesResponse.data) {
+            const blockIds = new Set(detallesResponse.data.map((d) => d.bloque_id));
+            setSelectedBlocks(blockIds);
+            setHorasAsignadas(blockIds.size);
+          }
+        } else {
+          setHorarioCatedra(null);
+          setSelectedBlocks(new Set());
+          setHorasAsignadas(0);
+        }
+      } catch (error) {
+        console.error("CargarHorarioPage: Error fetching horario:", error);
+        setHorarioCatedra(null);
+        setSelectedBlocks(new Set());
+        setHorasAsignadas(0);
+      }
+    }
+  }, [selectedMateriaId, filters.turnoId, filters.anioLectivo]);
+
+  useEffect(() => {
+    console.log("CargarHorarioPage: useEffect for fetchHorario");
+    fetchHorario();
+  }, [fetchHorario]);
+
   const handleDuplicateToOtherCuatri = () => {
+    console.log("CargarHorarioPage: handleDuplicateToOtherCuatri");
     alert('Funcionalidad "Duplicar al otro cuatri" pendiente de implementación. Necesito más detalles sobre su comportamiento para cursos anuales.');
   };
 
   const handleSave = async () => {
-    if (!selectedMateriaId || !filters.turnoId || !filters.anioCarrera) {
-      alert('Por favor, selecciona una materia, turno y año de cursada.');
+    console.log("CargarHorarioPage: handleSave");
+    if (!selectedMateriaId || !filters.turnoId || !filters.anioCarrera || !filters.anioLectivo) {
+      alert('Por favor, selecciona una materia, turno, año de cursada y año lectivo.');
       return;
     }
 
@@ -73,25 +131,41 @@ const CargarHorarioPage: React.FC = () => {
       const horarioCatedraPayload = {
         espacio_id: selectedMateriaId,
         turno_id: filters.turnoId,
-        anio_cursada: filters.anioCarrera,
+        anio_cursada: filters.anioLectivo,
         cuatrimestre: cuatrimestreValue,
       };
-      const horarioCatedraResponse = await axios.post('/horarios_catedra', horarioCatedraPayload);
-      const horarioCatedraId = horarioCatedraResponse.data.id;
 
-      for (const bloqueId of selectedBlocks) {
+      const response = await axios.post<HorarioCatedra>('/horarios_catedra', horarioCatedraPayload);
+      const horarioCatedraId = response.data.id;
+
+      const existingDetallesResponse = await axios.get<HorarioCatedraDetalleOut[]>(`/horarios_catedra/${horarioCatedraId}/detalles`);
+      const existingBlockIds = new Set(existingDetallesResponse.data.map((d) => d.bloque_id));
+      const existingDetalleMap = new Map(existingDetallesResponse.data.map((d) => [d.bloque_id, d.id]));
+
+      const blocksToAdd = new Set([...selectedBlocks].filter(x => !existingBlockIds.has(x)));
+      const blocksToDelete = new Set([...existingBlockIds].filter(x => !selectedBlocks.has(x)));
+
+      for (const bloqueId of blocksToAdd) {
         await axios.post(`/horarios_catedra/${horarioCatedraId}/detalles`, { bloque_id: bloqueId });
       }
 
+      for (const bloqueId of blocksToDelete) {
+        const detalleId = existingDetalleMap.get(bloqueId);
+        if (detalleId) {
+          await axios.delete(`/horarios_catedra_detalles/${detalleId}`);
+        }
+      }
+
       alert('Horario guardado exitosamente!');
-      handleClearSelection();
+      fetchHorario(); // Recargar el horario
     } catch (error: any) {
-      console.error('Error al guardar horario:', error);
+      console.error('CargarHorarioPage: Error al guardar horario:', error);
       alert(`Error al guardar horario: ${error.response?.data?.detail || error.message}`);
     }
   };
 
   const handleExport = () => {
+    console.log("CargarHorarioPage: handleExport");
     alert('Funcionalidad "Imprimir / Exportar" pendiente de implementación.');
   };
 
@@ -102,7 +176,6 @@ const CargarHorarioPage: React.FC = () => {
         Seleccioná una materia y un turno para definir los bloques horarios que ocupará la cátedra.
       </p>
 
-      {/* Nuevo div para el layout de dos columnas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <section className="card md:col-span-1">
           <h2 className="mb-2 font-bold">Filtros</h2>

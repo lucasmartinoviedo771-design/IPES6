@@ -169,7 +169,7 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
 
   const twoColsReserveRight = (
     left: Array<[string, string?]>, 
-    right: Array<[string, string?]>,
+    right: Array<[string, string?]>, 
     reserveRightW: number,
   ) => {
     const gap = 8;

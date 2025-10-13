@@ -20,17 +20,9 @@ async function tryGet(path: string): Promise<Carrera[] | null> {
 }
 
 export async function listarCarreras(): Promise<Carrera[]> {
-  const paths = [
-    "/preinscriptions/carreras?vigentes=true",
-    "/preinscriptions/carreras",     // por si el backend no usa el query
-    "/carreras?vigentes=true",       // fallback alterno si cambió el router
-    "/carreras",
-  ];
-  for (const p of paths) {
-    const out = await tryGet(p);
-    if (out && out.length >= 0) return out; // si es [] igualmente lo devolvemos
-  }
-  return [];
+  // El endpoint correcto está en /profesorados, no /carreras
+  const out = await tryGet("/profesorados?vigentes=true");
+  return out ?? [];
 }
 
 function humanizeNinjaErrors(err: any): string {

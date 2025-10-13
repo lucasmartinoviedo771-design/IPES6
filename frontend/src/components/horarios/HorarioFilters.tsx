@@ -90,11 +90,26 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
   }, [planId, anioCarrera, cuatrimestre, onMateriaChange]);
 
   const handleChange = (field: string, value: any) => {
-    const newFilters = { ...props, [field]: value };
+    const base = {
+      profesoradoId,
+      planId,
+      anioLectivo,
+      anioCarrera,
+      cuatrimestre,
+      turnoId,
+    } as const;
+
+    const next: any = { ...base, [field]: value };
+
     if (field === 'profesoradoId') {
-      newFilters.planId = null;
+      next.planId = null;
+      onMateriaChange(null);
     }
-    onChange(newFilters);
+    if (field === 'planId' || field === 'anioCarrera' || field === 'cuatrimestre') {
+      onMateriaChange(null);
+    }
+
+    onChange(next);
   };
 
   const onSel = (field: keyof HorarioFiltersProps, ev: SelectChangeEvent<string>) => {
@@ -132,25 +147,6 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
             <MenuItem value="">Seleccione</MenuItem>
             {planes.map((p) => (
               <MenuItem key={p.id} value={String(p.id)}>{p.resolucion}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Grid>
-
-      {/* Materia y Turno en la misma fila */}
-      <Grid item xs={12} md={6}>
-        <FormControl fullWidth size="small" disabled={!planId || !anioCarrera}>
-          <InputLabel>Materia</InputLabel>
-          <Select
-            label="Materia"
-            value={selectedMateriaId !== null ? String(selectedMateriaId) : ''}
-            onChange={(e) => onMateriaChange(e.target.value === '' ? null : Number(e.target.value))}
-          >
-            <MenuItem value="">Seleccione Materia</MenuItem>
-            {materias.map((m) => (
-              <MenuItem key={m.id} value={String(m.id)}>
-                {m.nombre} ({m.regimen}) - {m.horas_semana} hs
-              </MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -215,6 +211,25 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
             <MenuItem value="">Seleccione</MenuItem>
             {turnos.map((t) => (
               <MenuItem key={t.id} value={String(t.id)}>{t.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      {/* Materia al final (última selección) */}
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small" disabled={!planId || !anioCarrera}>
+          <InputLabel>Materia</InputLabel>
+          <Select
+            label="Materia"
+            value={selectedMateriaId !== null ? String(selectedMateriaId) : ''}
+            onChange={(e) => onMateriaChange(e.target.value === '' ? null : Number(e.target.value))}
+          >
+            <MenuItem value="">Seleccione Materia</MenuItem>
+            {materias.map((m) => (
+              <MenuItem key={m.id} value={String(m.id)}>
+                {m.nombre} ({m.regimen}) - {m.horas_semana} hs
+              </MenuItem>
             ))}
           </Select>
         </FormControl>

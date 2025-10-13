@@ -20,4 +20,7 @@ export const clearAuthToken = () => setAuthToken(null);
 
 export const apiPath = (path: string) => path;
 
+// Alias para compatibilidad con imports existentes
+export const api = client;
+
 export default client;

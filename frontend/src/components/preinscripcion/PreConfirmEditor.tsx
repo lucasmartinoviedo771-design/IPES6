@@ -69,8 +69,12 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     onError: () => enqueueSnackbar("No se pudo guardar", { variant: "error" })
   });
 
+  // Documentación requerida (checklist)
+  const [docs, setDocs] = useState<{[k: string]: boolean}>({ dni: false, titulo_secundario: false, partida_nacimiento: false, certificado_salud: false, fotos: false });
+  const allDocs = Object.values(docs).every(Boolean);
+
   const mConfirm = useMutation({
-    mutationFn: () => apiConfirmarPreinscripcion(codigo),
+    mutationFn: () => apiConfirmarPreinscripcion(codigo, { documentos: docs, estado: allDocs ? "regular" : "condicional" }),
     onSuccess: () => { enqueueSnackbar("Preinscripción confirmada", { variant: "success" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
     onError: () => enqueueSnackbar("No se pudo confirmar", { variant: "error" })
   });
@@ -129,6 +133,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           <Tab label="Datos personales" />
           <Tab label="Contacto" />
           <Tab label="Profesorado" />
+          <Tab label="Documentación" />
           <Tab label="Resumen" />
         </Tabs>
       </Paper>
