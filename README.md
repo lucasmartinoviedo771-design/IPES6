@@ -124,6 +124,7 @@ Sistema de preinscripción para el IPES6, dividido en un backend de Django y un 
 -   **Consulta de Plan de Estudios y Historial**: Endpoints para que los alumnos consulten las materias de su plan y su historial académico.
 -   **Gestión de Correlatividades**: API para definir y consultar las correlatividades entre materias.
 -   **Gestión de Horarios**: Sistema para la creación y consulta de horarios de cátedras.
+-   **Funcionalidades Administrativas**: Páginas dedicadas a la configuración del sistema y la generación de reportes.
 
 ---
 
