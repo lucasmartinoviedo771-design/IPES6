@@ -34,16 +34,16 @@ export const crearPreinscripcion = (formData: FormData) =>
   });
 
 export const obtenerPreinscripcion = (id: number) =>
-  client.get(`/preinscripciones/${id}`).then(r => r.data);
+  client.get(`/preinscriptions/${id}`).then(r => r.data);
 
 export const obtenerPorCodigo = (codigo: string) =>
-  client.get(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`).then(r => r.data);
+  client.get(`/preinscriptions/by-code/${encodeURIComponent(codigo)}`).then(r => r.data);
 
 export const patchPreByCodigo = (codigo: string, values: any) =>
-  client.patch(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`, mapFormToPayload(values)).then(r => r.data);
+  client.patch(`/preinscriptions/by-code/${encodeURIComponent(codigo)}`, mapFormToPayload(values)).then(r => r.data);
 
 export const confirmarPreinscripcionById = (id: number, data: any) =>
-  client.post(`/preinscripciones/${id}/confirmar`, data).then(r => r.data);
+  client.post(`/preinscriptions/${id}/confirmar`, data).then(r => r.data);
 
 export const crearInscripcion = (preId: number, carreraId: number, periodo = "2025") =>
   client.post(`/inscripciones`, { preinscripcion: preId, carrera: carreraId, periodo }).then(r => r.data);
@@ -51,11 +51,20 @@ export const crearInscripcion = (preId: number, carreraId: number, periodo = "20
 export const listarCarreras = () =>
   client.get(`/carreras`).then(r => r.data);
 
-export const listarPreinscripciones = (params: { q?: string; limit?: number; offset?: number }) =>
-  client.get("/preinscriptions/", { params }).then(r => r.data);
+export const listarPreinscripciones = (params: { q?: string; limit?: number; offset?: number; include_inactivas?: boolean }) =>
+  client.get<PreinscripcionDTO[] | { results: PreinscripcionDTO[] }>("/preinscriptions/", { params }).then(r => (Array.isArray(r.data) ? { results: r.data } : r.data));
 
-export const descargarPdf = (id: number) =>
-  window.open(`${import.meta.env.VITE_API_BASE}/preinscripciones/${id}/pdf`, "_blank");
+export const activarPreinscripcion = (id: number) =>
+  client.post(`/preinscriptions/${id}/activar`).then(r => r.data);
+
+// Descarga del comprobante PDF: la ruta NO cuelga de /api, es servidor Django raíz
+export const descargarPdf = (id: number) => {
+  // Normalizar base quitando sufijo /api si está presente
+  const raw = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
+  const base = raw.replace(/\/api\/?$/, "");
+  const url = `${base}/preinscripciones/${id}/pdf`;
+  window.open(url, "_blank");
+};
 
 // New types and functions for PreConfirmEditor
 
@@ -66,45 +75,47 @@ export interface PreinscripcionDTO {
   codigo: string;          // PRE-2024-001
   estado: PreEstado;
   fecha: string;
-  alumno: {
-    dni: string;
-    nombre: string;
-    apellido: string;
-    email: string;
-    telefono?: string;
-    domicilio?: string;
-    fecha_nacimiento?: string;
-  };
-  carrera: { id: number; nombre: string };
+  activa?: boolean;
+      alumno: {
+      dni: string;
+      nombre: string;
+      apellido: string;
+      email: string;
+      telefono?: string;
+      domicilio?: string;
+      fecha_nacimiento?: string;
+      cuil?: string;
+    };  carrera: { id: number; nombre: string };
   // ...otros campos que ya tengas
 }
 
 export async function apiGetPreinscripcionByCodigo(codigo: string) {
-  const { data } = await client.get<PreinscripcionDTO>(`/preinscripciones/${encodeURIComponent(codigo)}`);
+  const { data } = await client.get<PreinscripcionDTO>(`/preinscriptions/by-code/${encodeURIComponent(codigo)}`);
   return data;
 }
 
 export async function apiUpdatePreinscripcion(codigo: string, payload: Partial<PreinscripcionDTO>) {
-  const { data } = await client.put(`/preinscripciones/${encodeURIComponent(codigo)}`, payload);
+  const { data } = await client.put(`/preinscriptions/by-code/${encodeURIComponent(codigo)}`, payload);
   return data;
 }
 
 export async function apiConfirmarPreinscripcion(codigo: string, payload?: any) {
-  const { data } = await client.post(`/preinscripciones/${encodeURIComponent(codigo)}/confirmar`, payload ?? {});
+  const { data } = await client.post(`/preinscriptions/by-code/${encodeURIComponent(codigo)}/confirmar`, payload ?? {});
   return data;
 }
 
 export async function apiObservarPreinscripcion(codigo: string, motivo: string) {
-  const { data } = await client.post(`/preinscripciones/${encodeURIComponent(codigo)}/observar`, { motivo });
+  const { data } = await client.post(`/preinscriptions/by-code/${encodeURIComponent(codigo)}/observar`, { motivo });
   return data;
 }
 
 export async function apiRechazarPreinscripcion(codigo: string, motivo: string) {
-  const { data } = await client.post(`/preinscripciones/${encodeURIComponent(codigo)}/rechazar`, { motivo });
+  const { data } = await client.post(`/preinscriptions/by-code/${encodeURIComponent(codigo)}/rechazar`, { motivo });
   return data;
 }
 
 export async function apiCambiarCarrera(codigo: string, carrera_id: number) {
-  const { data } = await client.post(`/preinscripciones/${encodeURIComponent(codigo)}/cambiar-carrera`, { carrera_id });
+  const { data } = await client.post(`/preinscriptions/by-code/${encodeURIComponent(codigo)}/cambiar-carrera`, { carrera_id });
   return data;
 }
+export const eliminarPreinscripcion = (id: number) => client.delete(`/preinscriptions/${id}`).then(r => r.status === 204);
