@@ -11,6 +11,7 @@ type MatrixRow = {
   nombre: string;
   anio_cursada: number;
   regimen: string;
+  formato: string;
   regular_para_cursar: number[];
   aprobada_para_cursar: number[];
   aprobada_para_rendir: number[];
@@ -31,6 +32,8 @@ export default function CorrelatividadesPage() {
   const [matrix, setMatrix] = useState<MatrixRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('');
+  const [regimen, setRegimen] = useState<string | ''>('');
+  const [formato, setFormato] = useState<string | ''>('');
   const [sortBy, setSortBy] = useState<'nombre'|'anio'|'regimen'>('nombre');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('asc');
 
@@ -38,6 +41,8 @@ export default function CorrelatividadesPage() {
   const [open, setOpen] = useState(false);
   const [rowEdit, setRowEdit] = useState<MatrixRow | null>(null);
   const [editSet, setEditSet] = useState<CorrSet>({ regular_para_cursar: [], aprobada_para_cursar: [], aprobada_para_rendir: [] });
+  // Fuente completa (todas las materias del plan) para opciones del editor
+  const [allRows, setAllRows] = useState<MatrixRow[] | null>(null);
   // Ediciones en lote (pendientes de guardar)
   const [pending, setPending] = useState<Record<number, CorrSet>>({});
   const pendingCount = useMemo(() => Object.keys(pending).length, [pending]);
@@ -58,7 +63,13 @@ export default function CorrelatividadesPage() {
     if (!planId) { setMatrix([]); return; }
     setLoading(true);
     try {
-      const url = anio ? `/planes/${planId}/correlatividades_matrix?anio_cursada=${anio}` : `/planes/${planId}/correlatividades_matrix`;
+      const params: string[] = [];
+      if (anio) params.push(`anio_cursada=${anio}`);
+      if (filter) params.push(`nombre=${encodeURIComponent(filter)}`);
+      if (regimen) params.push(`regimen=${encodeURIComponent(regimen)}`);
+      if (formato) params.push(`formato=${encodeURIComponent(formato)}`);
+      const qs = params.length ? `?${params.join('&')}` : '';
+      const url = `/planes/${planId}/correlatividades_matrix${qs}`;
       const { data } = await axios.get<MatrixRow[]>(url);
       setMatrix(data);
     } finally {
@@ -66,19 +77,40 @@ export default function CorrelatividadesPage() {
     }
   };
 
-  useEffect(() => { loadMatrix(); }, [planId, anio]);
+  useEffect(() => { loadMatrix(); }, [planId, anio, regimen, formato, filter]);
 
-  const materiaOptions = useMemo(() => matrix.map(m => ({ label: `${m.nombre} (${m.anio_cursada}º)`, id: m.id, anio_cursada: m.anio_cursada })), [matrix]);
+  const materiaOptions = useMemo(() => {
+    const src = allRows && allRows.length ? allRows : matrix;
+    const maxYear = rowEdit?.anio_cursada;
+    return src
+      .filter(m => !maxYear || m.anio_cursada <= maxYear)
+      .map(m => ({ label: `${m.nombre} (${m.anio_cursada}º)`, id: m.id, anio_cursada: m.anio_cursada }));
+  }, [matrix, allRows, rowEdit]);
 
-  const openEditor = (row: MatrixRow) => {
+  const openEditor = async (row: MatrixRow) => {
     setRowEdit(row);
     setEditSet({
       regular_para_cursar: row.regular_para_cursar || [],
       aprobada_para_cursar: row.aprobada_para_cursar || [],
       aprobada_para_rendir: row.aprobada_para_rendir || [],
     });
+    // Cargar todas las materias del plan (sin filtros) para ofrecer opciones del mismo año y anteriores
+    try {
+      if (planId) {
+        const { data } = await axios.get<MatrixRow[]>(`/planes/${planId}/correlatividades_matrix`);
+        setAllRows(data);
+      } else {
+        setAllRows(null);
+      }
+    } catch {
+      // Si falla, seguimos con las filas ya cargadas
+      setAllRows(null);
+    }
     setOpen(true);
   };
+
+  // Limpiar fuente completa al cambiar plan
+  useEffect(() => { setAllRows(null); }, [planId]);
 
   const saveEditor = async () => {
     if (!rowEdit) return;
@@ -136,12 +168,46 @@ export default function CorrelatividadesPage() {
           </FormControl>
         </Grid>
         <Grid item xs={12} md={4}>
-          <TextField fullWidth size="small" type="number" label="Año (carrera)" value={anio} onChange={e => setAnio(e.target.value ? Number(e.target.value) : '')} />
+          <FormControl fullWidth size="small">
+            <InputLabel>Año (carrera)</InputLabel>
+            <Select label="Año (carrera)" value={anio} onChange={e => setAnio(e.target.value as any)}>
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value={1}>1º año</MenuItem>
+              <MenuItem value={2}>2º año</MenuItem>
+              <MenuItem value={3}>3º año</MenuItem>
+              <MenuItem value={4}>4º año</MenuItem>
+            </Select>
+          </FormControl>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={3}>
           <TextField fullWidth size="small" label="Buscar materia" value={filter} onChange={e=>setFilter(e.target.value)} />
         </Grid>
-        <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Régimen</InputLabel>
+            <Select label="Régimen" value={regimen} onChange={e => setRegimen(e.target.value as any)}>
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="ANU">Anual</MenuItem>
+              <MenuItem value="PCU">1º cuatrimestre</MenuItem>
+              <MenuItem value="SCU">2º cuatrimestre</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <FormControl fullWidth size="small">
+            <InputLabel>Formato</InputLabel>
+            <Select label="Formato" value={formato} onChange={e => setFormato(e.target.value as any)}>
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="ASI">Asignatura</MenuItem>
+              <MenuItem value="PRA">Práctica</MenuItem>
+              <MenuItem value="MOD">Módulo</MenuItem>
+              <MenuItem value="TAL">Taller</MenuItem>
+              <MenuItem value="LAB">Laboratorio</MenuItem>
+              <MenuItem value="SEM">Seminario</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} md={3} display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
           <Button variant="outlined" disabled={!pendingCount} onClick={discardBatch}>Descartar cambios</Button>
           <Button variant="contained" disabled={!pendingCount || loading} onClick={saveBatch}>
             Guardar cambios {pendingCount ? `(${pendingCount})` : ''}
@@ -166,9 +232,10 @@ export default function CorrelatividadesPage() {
               </TableCell>
               <TableCell sortDirection={sortBy==='regimen' ? sortDir : false as any}>
                 <TableSortLabel active={sortBy==='regimen'} direction={sortBy==='regimen'?sortDir:'asc'} onClick={() => { setSortBy('regimen'); setSortDir(d=> (sortBy!=='regimen' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
-                  Régimen
+                Régimen
                 </TableSortLabel>
               </TableCell>
+              <TableCell>Formato</TableCell>
               <TableCell>Para cursar: Regular</TableCell>
               <TableCell>Para cursar: Aprobada</TableCell>
               <TableCell>Para rendir: Aprobada</TableCell>
@@ -197,6 +264,7 @@ export default function CorrelatividadesPage() {
                   </TableCell>
                   <TableCell>{r.anio_cursada}</TableCell>
                   <TableCell>{r.regimen}</TableCell>
+                  <TableCell>{r.formato}</TableCell>
                   <TableCell>{r.regular_para_cursar?.length ? r.regular_para_cursar.map(id => matrix.find(m=>m.id===id)?.nombre || id).join(', ') : <em>Ninguna</em>}</TableCell>
                   <TableCell>{r.aprobada_para_cursar?.length ? r.aprobada_para_cursar.map(id => matrix.find(m=>m.id===id)?.nombre || id).join(', ') : <em>Ninguna</em>}</TableCell>
                   <TableCell>{r.aprobada_para_rendir?.length ? r.aprobada_para_rendir.map(id => matrix.find(m=>m.id===id)?.nombre || id).join(', ') : <em>Ninguna</em>}</TableCell>

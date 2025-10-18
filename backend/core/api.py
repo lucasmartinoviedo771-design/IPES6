@@ -530,17 +530,31 @@ class MateriaCorrelatividadRow(Schema):
     nombre: str
     anio_cursada: int
     regimen: str
+    formato: str
     regular_para_cursar: List[int]
     aprobada_para_cursar: List[int]
     aprobada_para_rendir: List[int]
 
 
 @router.get("/planes/{plan_id}/correlatividades_matrix", response=List[MateriaCorrelatividadRow])
-def correlatividades_por_plan(request, plan_id: int, anio_cursada: Optional[int] = None):
+def correlatividades_por_plan(
+    request,
+    plan_id: int,
+    anio_cursada: Optional[int] = None,
+    nombre: Optional[str] = None,
+    regimen: Optional[str] = None,
+    formato: Optional[str] = None,
+):
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
     materias = plan.materias.all().order_by("anio_cursada", "nombre")
     if anio_cursada is not None:
         materias = materias.filter(anio_cursada=anio_cursada)
+    if nombre is not None and nombre != "":
+        materias = materias.filter(nombre__icontains=nombre)
+    if regimen is not None and regimen != "":
+        materias = materias.filter(regimen=regimen)
+    if formato is not None and formato != "":
+        materias = materias.filter(formato=formato)
 
     rows: List[MateriaCorrelatividadRow] = []
     corr_map = {}
@@ -556,6 +570,7 @@ def correlatividades_por_plan(request, plan_id: int, anio_cursada: Optional[int]
                 nombre=m.nombre,
                 anio_cursada=m.anio_cursada,
                 regimen=m.regimen,
+                formato=m.formato,
                 regular_para_cursar=setvals["regular_para_cursar"],
                 aprobada_para_cursar=setvals["aprobada_para_cursar"],
                 aprobada_para_rendir=setvals["aprobada_para_rendir"],

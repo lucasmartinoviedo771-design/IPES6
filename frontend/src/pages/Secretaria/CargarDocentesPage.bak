@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import {
   Stack,
   Typography,
@@ -151,7 +151,7 @@ export default function CargarDocentesPage() {
   };
 
   const handleDeleteClick = (docenteId: number) => {
-    if (window.confirm("Â¿EstÃ¡s seguro de que quieres eliminar este docente?")) {
+    if (window.confirm("¿Estás seguro de que quieres eliminar este docente?")) {
       deleteDocenteMutation.mutate(docenteId);
     }
   };
@@ -234,7 +234,7 @@ export default function CargarDocentesPage() {
               <TextField
                 {...field}
                 size="small"
-                label="TelÃ©fono (Opcional)"
+                label="Teléfono (Opcional)"
                 error={!!errors.telefono}
                 helperText={errors.telefono?.message}
               />
@@ -265,7 +265,7 @@ export default function CargarDocentesPage() {
                 reset();
               }}
             >
-              Cancelar EdiciÃ³n
+              Cancelar Edición
             </Button>
           )}
         </Box>
@@ -287,7 +287,7 @@ export default function CargarDocentesPage() {
                   <TableCell>Nombre</TableCell>
                   <TableCell>DNI</TableCell>
                   <TableCell>Email</TableCell>
-                  <TableCell>TelÃ©fono</TableCell>
+                  <TableCell>Teléfono</TableCell>
                   <TableCell>CUIL</TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
@@ -327,5 +327,3 @@ export default function CargarDocentesPage() {
     </Stack>
   );
 }
-
-

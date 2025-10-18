@@ -8,9 +8,18 @@ from core.auth_ninja import JWTAuth
 from core.models import Estudiante, Preinscripcion, Profesorado, PreinscripcionChecklist
 from .schemas import PreinscripcionIn, PreinscripcionOut # Importar PreinscripcionOut
 from apps.common.api_schemas import ApiResponse
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional # Importar List y Optional
 from django.db.models import Q # Importar Q
+
+# Helper function to convert dates in a dictionary to ISO format strings
+def convert_dates_to_iso(data_dict):
+    for key, value in data_dict.items():
+        if isinstance(value, date):
+            data_dict[key] = value.isoformat()
+        elif isinstance(value, dict):
+            data_dict[key] = convert_dates_to_iso(value)
+    return data_dict
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["preinscriptions"])
@@ -128,6 +137,11 @@ def crear_o_actualizar(request, payload: PreinscripcionIn):
             estudiante.fecha_nacimiento = alumno_data.fecha_nacimiento
             estudiante.telefono = alumno_data.telefono
             estudiante.domicilio = alumno_data.domicilio
+            try:
+                # cuil puede ser opcional
+                estudiante.cuil = getattr(alumno_data, "cuil", None)
+            except Exception:
+                pass
             estudiante.save()
         else:
             # Si el estudiante no existe, crear un nuevo User y Estudiante.
@@ -158,16 +172,35 @@ def crear_o_actualizar(request, payload: PreinscripcionIn):
 
         # 2. Buscar o crear la Preinscripción.
         current_year = datetime.now().year
-        preinscripcion, created = Preinscripcion.objects.update_or_create(
-            alumno=estudiante,
-            carrera_id=payload.carrera_id,
-            anio=current_year,
-            defaults={
-                'estado': 'Enviada',
-                'foto_4x4_dataurl': payload.foto_4x4_dataurl,
-                'datos_extra': json.loads(payload.json()),
-            }
-        )
+        # 2. Buscar o crear la Preinscripción.
+        current_year = datetime.now().year
+        try:
+            preinscripcion = Preinscripcion.objects.get(
+                alumno=estudiante,
+                carrera_id=payload.carrera_id,
+                anio=current_year,
+            )
+            created = False
+        except Preinscripcion.DoesNotExist:
+            preinscripcion = Preinscripcion.objects.create(
+                alumno=estudiante,
+                carrera_id=payload.carrera_id,
+                anio=current_year,
+            )
+            # Assign other fields after creation
+            preinscripcion.estado = 'Enviada'
+            preinscripcion.foto_4x4_dataurl = payload.foto_4x4_dataurl
+            preinscripcion.datos_extra = convert_dates_to_iso(payload.dict())
+            preinscripcion.cuil = alumno_data.cuil
+            preinscripcion.save()
+            created = True
+
+        if not created:
+            # If object already existed, update its fields
+            preinscripcion.estado = 'Enviada'
+            preinscripcion.datos_extra = convert_dates_to_iso(payload.dict())
+            preinscripcion.cuil = alumno_data.cuil
+            preinscripcion.save()
 
         if created or not preinscripcion.codigo:
             preinscripcion.codigo = _generar_codigo(preinscripcion.id)
@@ -273,7 +306,13 @@ def confirmar_por_codigo(request, codigo: str, payload: Optional[ChecklistIn] = 
 
 def _serialize_pre(pre: Preinscripcion):
     a = pre.alumno
-    u = getattr(a, 'user', None)
+    u = getattr(a, 'user', None) # u can be None
+
+    # Define helper function or variables to safely get user attributes
+    user_first_name = getattr(u, 'first_name', "") if u else ""
+    user_last_name = getattr(u, 'last_name', "") if u else ""
+    user_email = getattr(u, 'email', "") if u else ""
+
     return {
         "id": pre.id,
         "codigo": pre.codigo,
@@ -281,13 +320,13 @@ def _serialize_pre(pre: Preinscripcion):
         "fecha": getattr(pre, 'created_at', None),
         "alumno": {
             "dni": getattr(a, 'dni', ""),
-            "nombre": getattr(u, 'first_name', "") if u else "",
-            "apellido": getattr(u, 'last_name', "") if u else "",
-            "email": getattr(u, 'email', "") if u else "",
+            "nombre": user_first_name,
+            "apellido": user_last_name,
+            "email": user_email,
             "telefono": getattr(a, 'telefono', ""),
             "domicilio": getattr(a, 'domicilio', ""),
             "fecha_nacimiento": getattr(a, 'fecha_nacimiento', None),
-            "cuil": getattr(a, 'cuil', ""),
+            "cuil": getattr(pre, 'cuil', ""),
         },
         "carrera": { "id": pre.carrera_id, "nombre": getattr(pre.carrera, 'nombre', '') },
         "datos_extra": pre.datos_extra,
@@ -299,28 +338,37 @@ def obtener_por_codigo(request, codigo: str):
     pre = _get_pre_by_codigo(codigo)
     return _serialize_pre(pre)
 
+from .schemas import PreinscripcionIn, PreinscripcionOut, PreinscripcionUpdateIn # Importar PreinscripcionOut
+
 @router.put("/by-code/{codigo}", auth=JWTAuth())
 @transaction.atomic
-def actualizar_por_codigo(request, codigo: str, payload: dict):
+def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn):
     check_roles(request, ['admin', 'secretaria', 'bedel'])
     pre = _get_pre_by_codigo(codigo)
-    alumno = payload.get('alumno') or {}
-    carrera = payload.get('carrera') or {}
-    u = pre.alumno.user
-    u.first_name = alumno.get('nombre') or u.first_name
-    u.last_name = alumno.get('apellido') or u.last_name
-    if alumno.get('email'): u.email = alumno['email']
-    u.save()
-    a = pre.alumno
-    if alumno.get('telefono') is not None: a.telefono = alumno['telefono']
-    if alumno.get('domicilio') is not None: a.domicilio = alumno['domicilio']
-    if alumno.get('fecha_nacimiento'): a.fecha_nacimiento = alumno['fecha_nacimiento']
-    a.save()
-    if carrera.get('id'):
-        pre.carrera_id = carrera['id']
-    if payload.get('datos_extra'):
-        pre.datos_extra = payload['datos_extra']
-    pre.save()
+    if payload.alumno:
+        alumno = payload.alumno
+        u = pre.alumno.user
+        u.first_name = alumno.nombres or u.first_name
+        u.last_name = alumno.apellido or u.last_name
+        if alumno.email: u.email = alumno.email
+        u.save()
+        a = pre.alumno
+        if alumno.telefono is not None: a.telefono = alumno.telefono
+        if alumno.domicilio is not None: a.domicilio = alumno.domicilio
+        if alumno.fecha_nacimiento: a.fecha_nacimiento = alumno.fecha_nacimiento
+        a.save()
+        if alumno.cuil: pre.cuil = alumno.cuil
+
+    if payload.carrera_id:
+        pre.carrera_id = payload.carrera_id
+
+    if payload.datos_extra:
+        pre.datos_extra = payload.datos_extra
+    try:
+        pre.save()
+    except Exception as e:
+        logger.exception("Error guardando preinscripción")
+        raise HttpError(500, f"Error interno al guardar la preinscripción: {e}")
     return _serialize_pre(pre)
 
 @router.post("/by-code/{codigo}/observar", auth=JWTAuth())

@@ -1,4 +1,4 @@
-﻿from ninja import Router
+from ninja import Router
 from .schemas import (
     InscripcionCarreraIn, InscripcionCarreraOut,
     InscripcionMateriaIn, InscripcionMateriaOut,
@@ -31,7 +31,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if not isinstance(request.user, AnonymousUser):
         est = getattr(request.user, 'estudiante', None)
     if not est:
-        return 400, {"message": "No se encontr�� el estudiante (inicie sesi��n)"}
+        return 400, {"message": "No se encontró el estudiante (inicie sesión)"}
     mat = Materia.objects.filter(id=payload.materia_id).first()
     if not mat:
         return 404, {"message": "Materia no encontrada"}
@@ -60,7 +60,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if faltan:
         return 400, {"message": "Correlatividades no cumplidas para cursar", "faltantes": faltan}
 
-    # Superposici��n horaria
+    # Superposición horaria
     detalles_cand = (HorarioCatedraDetalle.objects
                      .select_related('horario_catedra__turno','bloque')
                      .filter(horario_catedra__espacio=mat))
@@ -75,19 +75,19 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                 for (t, dia, desde, hasta) in cand:
                     if t == d.horario_catedra.turno_id and dia == d.bloque.dia:
                         if not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta):
-                            return 400, {"message": "Superposici��n horaria con otra materia inscripta"}
+                            return 400, {"message": "Superposición horaria con otra materia inscripta"}
 
     InscripcionMateriaAlumno.objects.get_or_create(estudiante=est, materia=mat, anio=anio_actual)
-    return {"message": "Inscripci��n a materia registrada"}
+    return {"message": "Inscripción a materia registrada"}
 @alumnos_router.post("/cambio-comision", response=CambioComisionOut)
 def cambio_comision(request, payload: CambioComisionIn):
     # Placeholder logic
-    return {"message": "Solicitud de cambio de comisiÃ³n recibida."}
+    return {"message": "Solicitud de cambio de comisión recibida."}
 
 @alumnos_router.get("/pedido_analitico", response=PedidoAnaliticoOut)
 def pedido_analitico(request):
     # Placeholder logic
-    return {"message": "Solicitud de pedido de analÃ­tico recibida."}
+    return {"message": "Solicitud de pedido de analítico recibida."}
 
 @alumnos_router.post("/mesa-examen", response=MesaExamenOut)
 def mesa_examen(request, payload: MesaExamenIn):
@@ -96,20 +96,26 @@ def mesa_examen(request, payload: MesaExamenIn):
 
 # Listar mesas disponibles para alumno (por ventana/tipo)
 @alumnos_router.get('/mesas', response=list[dict])
-def listar_mesas_alumno(request, tipo: str | None = None, ventana_id: int | None = None):
+def listar_mesas_alumno(request, tipo: str | None = None, ventana_id: int | None = None, dni: str | None = None, solo_rendibles: bool = False):
     qs = MesaExamen.objects.select_related('materia').all()
     if tipo:
         qs = qs.filter(tipo=tipo)
     if ventana_id:
         qs = qs.filter(ventana_id=ventana_id)
     out = []
+    est = None
+    if solo_rendibles:
+        if dni:
+            est = Estudiante.objects.filter(dni=dni).first()
+        elif not isinstance(request.user, AnonymousUser):
+            est = getattr(request.user, 'estudiante', None)
     for m in qs.order_by('fecha','hora_desde'):
         # correlativas que requieren estar APROBADAS PARA RENDIR FINAL
         req_aprob = list(Correlatividad.objects.filter(
             materia_origen=m.materia,
             tipo=Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR
         ).values_list('materia_correlativa_id', flat=True))
-        out.append({
+        row = {
             'id': m.id,
             'materia': {'id': m.materia_id, 'nombre': m.materia.nombre, 'anio': m.materia.anio_cursada},
             'tipo': m.tipo,
@@ -119,10 +125,48 @@ def listar_mesas_alumno(request, tipo: str | None = None, ventana_id: int | None
             'aula': m.aula,
             'cupo': m.cupo,
             'correlativas_aprob': req_aprob,
-        })
+        }
+        if not solo_rendibles or not est:
+            out.append(row)
+            continue
+        if m.tipo == MesaExamen.Tipo.FINAL:
+            legajo_ok = (est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO)
+            if not legajo_ok:
+                prof = m.materia.plan_de_estudio.profesorado if m.materia and m.materia.plan_de_estudio else None
+                pre = (Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by('-anio', '-id').first()) if prof else None
+                cl = getattr(pre, 'checklist', None) if pre else None
+                if not (cl and cl.certificado_titulo_en_tramite):
+                    continue
+            reg = (Regularidad.objects.filter(estudiante=est, materia=m.materia).order_by('-fecha_cierre').first())
+            if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
+                continue
+            from datetime import date
+            def _add_years(d: date, years: int) -> date:
+                try:
+                    return d.replace(year=d.year + years)
+                except ValueError:
+                    return d.replace(month=2, day=28, year=d.year + years)
+            two_years = _add_years(reg.fecha_cierre, 2)
+            next_call = (MesaExamen.objects.filter(materia=m.materia, tipo=MesaExamen.Tipo.FINAL, fecha__gte=two_years).order_by('fecha').values_list('fecha', flat=True).first())
+            allowed_until = next_call or two_years
+            if m.fecha > allowed_until:
+                continue
+            if req_aprob:
+                regs = (Regularidad.objects.filter(estudiante=est, materia_id__in=req_aprob).order_by('materia_id', '-fecha_cierre'))
+                latest = {}
+                for r in regs:
+                    latest.setdefault(r.materia_id, r)
+                ok = True
+                for mid in req_aprob:
+                    r = latest.get(mid)
+                    if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                        ok = False; break
+                if not ok:
+                    continue
+        out.append(row)
     return out
 
-# InscripciÃ³n a mesa (alumno o por DNI para roles)
+# Inscripción a mesa (alumno o por DNI para roles)
 @alumnos_router.post('/inscribir_mesa', response=InscripcionMesaOut)
 def inscribir_mesa(request, payload: InscripcionMesaIn):
     mesa = (
@@ -140,14 +184,14 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     elif not isinstance(request.user, AnonymousUser):
         est = getattr(request.user, 'estudiante', None)
     if not est:
-        return 400, {"message": "No se encontrÃ³ el estudiante"}
+        return 400, {"message": "No se encontró el estudiante"}
     # Cupo
     if mesa.cupo and mesa.inscripciones.filter(estado=InscripcionMesa.Estado.INSCRIPTO).count() >= mesa.cupo:
         return 400, {"message": "Cupo completo"}
 
     # Validaciones para Finales
     if mesa.tipo == MesaExamen.Tipo.FINAL:
-        # 1) Legajo completo o excepciÃ³n por 'TÃ­tulo en trÃ¡mite'
+        # 1) Legajo completo o excepción por 'Título en trámite'
         if est.estado_legajo != Estudiante.EstadoLegajo.COMPLETO:
             prof = mesa.materia.plan_de_estudio.profesorado if mesa.materia and mesa.materia.plan_de_estudio else None
             pre = None
@@ -157,7 +201,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                        .order_by('-anio', '-id').first())
             cl = getattr(pre, 'checklist', None) if pre else None
             if not (cl and cl.certificado_titulo_en_tramite):
-                return 400, {"message": "Legajo condicional/pending: no puede rendir Final (salvo 'TÃ­tulo en trÃ¡mite')."}
+                return 400, {"message": "Legajo condicional/pending: no puede rendir Final (salvo 'Título en trámite')."}
 
         # 2) Regularidad vigente en la materia
         reg = (Regularidad.objects
@@ -169,11 +213,26 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                 return 400, {"message": "Materia promocionada: no requiere final."}
             return 400, {"message": "No posee regularidad vigente en la materia."}
 
-        # 2.b) Vigencia (2 años + 1 llamado aprox.) y 3 intentos máximo
-        from datetime import timedelta
-        allowed_until = reg.fecha_cierre + timedelta(days=790)
+        # 2.b) Vigencia: 2 años y el siguiente llamado posterior
+        from datetime import date
+        def _add_years(d: date, years: int) -> date:
+            try:
+                return d.replace(year=d.year + years)
+            except ValueError:
+                # Ajuste para 29/02 → 28/02 en años no bisiestos
+                return d.replace(month=2, day=28, year=d.year + years)
+
+        two_years = _add_years(reg.fecha_cierre, 2)
+        next_call = (MesaExamen.objects
+                     .filter(materia=mesa.materia,
+                             tipo=MesaExamen.Tipo.FINAL,
+                             fecha__gte=two_years)
+                     .order_by('fecha')
+                     .values_list('fecha', flat=True)
+                     .first())
+        allowed_until = next_call or two_years
         if mesa.fecha > allowed_until:
-            return 400, {"message": "Venci�� la vigencia de regularidad (2 a��os + 1 llamado). Debe recursar."}
+            return 400, {"message": "Venció la vigencia de regularidad (2 años y un llamado). Debe recursar."}
 
         intentos = (InscripcionMesa.objects
                     .filter(
@@ -216,7 +275,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
         return 400, {"message": "Ya estabas inscripto"}
     ins.estado = InscripcionMesa.Estado.INSCRIPTO
     ins.save()
-    return {"message": "InscripciÃ³n registrada"}
+    return {"message": "Inscripción registrada"}
 
 # Nuevos endpoints
 @alumnos_router.get("/materias-plan", response=list[MateriaPlan])
@@ -238,7 +297,7 @@ def materias_plan(request, profesorado_id: int | None = None, plan_id: int | Non
     elif profesorado_id:
         plan = PlanDeEstudio.objects.filter(profesorado_id=profesorado_id, vigente=True).order_by('-anio_inicio').first()
     else:
-        # Por DNI explÃ­cito o inferir desde el usuario
+        # Por DNI explícito o inferir desde el usuario
         prof = None
         if dni:
             try:
@@ -264,7 +323,7 @@ def materias_plan(request, profesorado_id: int | None = None, plan_id: int | Non
     def map_cuat(regimen: str) -> str:
         return 'ANUAL' if regimen == Materia.TipoCursada.ANUAL else ('1C' if regimen == Materia.TipoCursada.PRIMER_CUATRIMESTRE else '2C')
 
-    # Horarios por materia (Ãºltimo aÃ±o disponible, consolidado por bloque)
+    # Horarios por materia (último año disponible, consolidado por bloque)
     def horarios_para(m: Materia) -> list[Horario]:
         hcs = (HorarioCatedra.objects
                .filter(espacio=m)
@@ -277,7 +336,7 @@ def materias_plan(request, profesorado_id: int | None = None, plan_id: int | Non
         for d in detalles:
             b: Bloque = d.bloque
             hs.append(Horario(dia=b.get_dia_display(), desde=str(b.hora_desde)[:5], hasta=str(b.hora_hasta)[:5]))
-        # Ordenar por dÃ­a/hora
+        # Ordenar por día/hora
         return sorted(hs, key=lambda x: (x.dia, x.desde))
 
     # Correlatividades por tipo
@@ -301,7 +360,7 @@ def materias_plan(request, profesorado_id: int | None = None, plan_id: int | Non
 @alumnos_router.get("/historial", response=HistorialAlumno)
 def historial_alumno(request, dni: str | None = None):
     # TODO: Enlazar con actas/notas/regularidades reales
-    # Por ahora, admite DNI para que Bedel/SecretarÃ­a/Admin consulten a un alumno especÃ­fico
+    # Por ahora, admite DNI para que Bedel/Secretaría/Admin consulten a un alumno específico
     return HistorialAlumno(aprobadas=[], regularizadas=[1], inscriptas_actuales=[])
 
 
@@ -317,7 +376,7 @@ def equivalencias_para_materia(request, materia_id: int):
         return []
     grupos = EquivalenciaCurricular.objects.filter(materias=m)
     if not grupos.exists():
-        # fallback por nombre exacto (no recomendado, pero Ãºtil mientras se cargan equivalencias)
+        # fallback por nombre exacto (no recomendado, pero útil mientras se cargan equivalencias)
         candidates = Materia.objects.filter(nombre__iexact=m.nombre).exclude(id=m.id)
         items: list[EquivalenciaItem] = []
         for mm in candidates:
@@ -346,7 +405,7 @@ def analiticos_pdf(request, ventana_id: int):
     doc = SimpleDocTemplate(response, pagesize=A4, rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     styles = getSampleStyleSheet()
     story = []
-    story.append(Paragraph('Pedidos de AnalÃ­tico', styles['Title']))
+    story.append(Paragraph('Pedidos de Analítico', styles['Title']))
     story.append(Paragraph(f'Ventana ID: {ventana_id}', styles['Normal']))
     story.append(Spacer(1, 12))
 
@@ -414,7 +473,7 @@ def analiticos_ext_pdf(request, ventana_id: int, dni: str | None = None):
     doc = SimpleDocTemplate(response, pagesize=A4, rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     styles = getSampleStyleSheet()
     story = []
-    story.append(Paragraph('Pedidos de AnalÃ­tico', styles['Title']))
+    story.append(Paragraph('Pedidos de Analítico', styles['Title']))
     story.append(Paragraph(f'Ventana ID: {ventana_id}', styles['Normal']))
     story.append(Spacer(1, 12))
 
@@ -451,19 +510,19 @@ def analiticos_ext_pdf(request, ventana_id: int, dni: str | None = None):
     return response
 
 
-# Crear pedido de analÃ­tico (POST) para alumno o por DNI (roles de gestiÃ³n)
+# Crear pedido de analítico (POST) para alumno o por DNI (roles de gestión)
 @alumnos_router.post("/pedido_analitico", response=PedidoAnaliticoOut)
 def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
     v = VentanaHabilitacion.objects.filter(tipo=VentanaHabilitacion.Tipo.ANALITICOS, activo=True).order_by('-desde').first()
     if not v:
-        return 400, {"message": "No hay periodo activo para pedido de analÃ­tico."}
+        return 400, {"message": "No hay periodo activo para pedido de analítico."}
     est = None
     if payload.dni:
         est = Estudiante.objects.filter(dni=payload.dni).first()
     elif not isinstance(request.user, AnonymousUser):
         est = getattr(request.user, 'estudiante', None)
     if not est:
-        return 400, {"message": "No se encontrÃ³ el estudiante."}
+        return 400, {"message": "No se encontró el estudiante."}
     PedidoAnalitico.objects.create(
         estudiante=est,
         ventana=v,
@@ -474,7 +533,7 @@ def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
     )
     return {"message": "Solicitud registrada."}
 
-# Listar pedidos de analÃ­tico por ventana (para tutor/bedel/secretarÃ­a/admin)
+# Listar pedidos de analítico por ventana (para tutor/bedel/secretaría/admin)
 @alumnos_router.get("/analiticos", response=list[PedidoAnaliticoItem])
 def listar_pedidos_analitico(request, ventana_id: int):
     qs = PedidoAnalitico.objects.select_related('estudiante__user','profesorado','ventana').filter(ventana_id=ventana_id).order_by('-created_at')
@@ -494,3 +553,58 @@ def listar_pedidos_analitico(request, ventana_id: int):
 
 
 
+@alumnos_router.get('/vigencia-regularidad', response=dict)
+def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
+    """Calcula hasta cuándo está vigente la regularidad del alumno en una materia.
+
+    Regla: 2 años desde 'fecha_cierre' y el siguiente llamado FINAL posterior a esa fecha.
+    Devuelve fechas y cantidad de intentos usados dentro de la vigencia (máx. 3).
+    """
+    from datetime import date
+    est = None
+    if dni:
+        est = Estudiante.objects.filter(dni=dni).first()
+    elif not isinstance(request.user, AnonymousUser):
+        est = getattr(request.user, 'estudiante', None)
+    if not est:
+        return {"vigente": False, "motivo": "estudiante_no_encontrado"}
+
+    materia = Materia.objects.filter(id=materia_id).first()
+    if not materia:
+        return {"vigente": False, "motivo": "materia_no_encontrada"}
+
+    reg = (Regularidad.objects
+           .filter(estudiante=est, materia=materia)
+           .order_by('-fecha_cierre')
+           .first())
+    if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
+        return {"vigente": False, "motivo": "sin_regularidad"}
+
+    def _add_years(d: date, years: int) -> date:
+        try:
+            return d.replace(year=d.year + years)
+        except ValueError:
+            return d.replace(month=2, day=28, year=d.year + years)
+
+    two_years = _add_years(reg.fecha_cierre, 2)
+    next_call = (MesaExamen.objects
+                 .filter(materia=materia, tipo=MesaExamen.Tipo.FINAL, fecha__gte=two_years)
+                 .order_by('fecha').values_list('fecha', flat=True).first())
+    allowed_until = next_call or two_years
+
+    intentos = (InscripcionMesa.objects
+                .filter(estudiante=est,
+                        estado=InscripcionMesa.Estado.INSCRIPTO,
+                        mesa__materia=materia,
+                        mesa__tipo=MesaExamen.Tipo.FINAL,
+                        mesa__fecha__gte=reg.fecha_cierre,
+                        mesa__fecha__lte=allowed_until)
+                .count())
+
+    return {
+        "vigente": True,
+        "fecha_cierre": reg.fecha_cierre.isoformat(),
+        "hasta": allowed_until.isoformat(),
+        "intentos_usados": intentos,
+        "intentos_max": 3,
+    }

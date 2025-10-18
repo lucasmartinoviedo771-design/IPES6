@@ -1,52 +1,53 @@
-import { Box, CircularProgress, Typography } from "@mui/material";
-import { useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Box, CircularProgress, Typography, Button } from "@mui/material";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import PrintablePreinscripcion from "./PrintablePreinscripcion";
+import { obtenerPreinscripcion } from "@/api/preinscripciones";
 
 export default function ComprobanteScreen() {
   const navigate = useNavigate();
   const { state } = useLocation() as any;
-  const values = state?.values;
-  const id = state?.id;
+  const params = useParams<{ id: string }>();
+  const id = state?.id ?? (params.id ? Number(params.id) : undefined);
+
+  // Valores provenientes del wizard o cargados desde API
+  const [values, setValues] = useState<any>(state?.values);
 
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!values) {
-      navigate("/", { replace: true });
-      return;
-    }
-
-    const generatePdf = async () => {
-      const el = ref.current!;
-      // Add a small delay to ensure images and QR codes have rendered
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: "#fff",
-        useCORS: true,
-        allowTaint: true,
-      });
-      const img = canvas.toDataURL("image/jpeg", 1.0);
-
-      const w = 216;
-      const h = 340;
-      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: [h, w] });
-
-      const imgW = w;
-      const imgH = (canvas.height / canvas.width) * imgW;
-      pdf.addImage(img, "JPEG", 0, 0, imgW, imgH);
-
-      pdf.save(`preinscripcion_${values?.dni ?? id}.pdf`);
-
-      navigate("/", { replace: true });
+    const ensureValues = async () => {
+      // Si no hay valores desde el wizard, intentar obtenerlos desde la API
+      if (!values && id) {
+        try {
+          const pre = await obtenerPreinscripcion(id);
+          // Mapear DTO -> valores esperados por PrintablePreinscripcion
+          const v = {
+            ...pre.datos_extra, // Spread all extra data
+            apellido: pre?.alumno?.apellido,
+            nombres: pre?.alumno?.nombre,
+            dni: pre?.alumno?.dni,
+            fecha_nacimiento: pre?.alumno?.fecha_nacimiento,
+            domicilio: pre?.alumno?.domicilio,
+            email: pre?.alumno?.email,
+            tel_movil: pre?.alumno?.telefono,
+            carrera_desc: pre?.carrera?.nombre,
+          } as any;
+          setValues(v);
+        } catch (e) {
+          navigate("/", { replace: true });
+          return;
+        }
+      }
     };
+    ensureValues();
+  }, [values, id, navigate]);
 
-    generatePdf();
-  }, [values, navigate, id]);
+  const generatePdf = async () => {
+
+  };
 
   if (!values) {
     return (
@@ -58,7 +59,8 @@ export default function ComprobanteScreen() {
   }
 
   return (
-    <Box display="flex" justifyContent="center" p={2} sx={{bgcolor: '#eee'}}>
+    <Box display="flex" flexDirection="column" alignItems="center" p={2} sx={{bgcolor: '#eee'}}>
+      <Button variant="contained" onClick={generatePdf} sx={{mb: 2}}>Descargar Comprobante</Button>
       <Box ref={ref} className="pdf-oficio">
         <PrintablePreinscripcion values={values} id={id} />
       </Box>

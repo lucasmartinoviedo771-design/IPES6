@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Stack,
   Typography,
@@ -11,6 +11,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   IconButton,
   FormControlLabel,
   Box,
@@ -95,12 +96,43 @@ export default function CargarMateriasPage() {
   const [filterFormato, setFilterFormato] = useState('');
   const [filterRegimen, setFilterRegimen] = useState('');
 
+  // Sorting states
+  const [sortBy, setSortBy] = useState<'anio'|'nombre'|'horas'|'formato'|'regimen'>('anio');
+  const [sortDir, setSortDir] = useState<'asc'|'desc'>('asc');
+
   const handleClearFilters = () => {
     setFilterAnio('');
     setFilterNombre('');
     setFilterFormato('');
     setFilterRegimen('');
+    try {
+      const key = `cm_filters_${currentPlanId ?? 'any'}`;
+      localStorage.removeItem(key);
+    } catch {}
   };
+
+  // Persist/restore filters in localStorage (per plan)
+  useEffect(() => {
+    try {
+      const key = `cm_filters_${currentPlanId ?? 'any'}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const f = JSON.parse(raw);
+        setFilterNombre(typeof f.nombre === 'string' ? f.nombre : '');
+        setFilterAnio(typeof f.anio === 'number' ? f.anio : '');
+        setFilterFormato(typeof f.formato === 'string' ? f.formato : '');
+        setFilterRegimen(typeof f.regimen === 'string' ? f.regimen : '');
+      }
+    } catch {}
+  }, [currentPlanId]);
+
+  useEffect(() => {
+    try {
+      const key = `cm_filters_${currentPlanId ?? 'any'}`;
+      const payload = { nombre: filterNombre, anio: filterAnio || '', formato: filterFormato, regimen: filterRegimen };
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch {}
+  }, [currentPlanId, filterNombre, filterAnio, filterFormato, filterRegimen]);
 
   const {
     control,
@@ -230,9 +262,11 @@ export default function CargarMateriasPage() {
   return (
     <Stack gap={2}>
       <Typography variant="h5" fontWeight={800}>
-        Cargar Materias para Plan {currentPlanId}
+        Cargar Materias — {profesorado?.nombre || (isLoadingProfesorado ? '...': '')}
+        {planDeEstudio ? ` · ${planDeEstudio.resolucion}` : (isLoadingPlanDeEstudio ? '' : '')}
       </Typography>
 
+      {false && (
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6" mb={2}>Filtros</Typography>
         <Stack direction="row" spacing={2} mb={2} alignItems="center">
@@ -288,7 +322,11 @@ export default function CargarMateriasPage() {
           </FormControl>
           <Button variant="outlined" onClick={handleClearFilters}>Limpiar Filtros</Button>
         </Stack>
-      </Paper>
+          </Paper>
+          )}
+
+      {/* Filtros debajo del formulario */}
+      {/* moved filters block below create form */}
 
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" mb={2}>
@@ -412,6 +450,64 @@ export default function CargarMateriasPage() {
         </Box>
       </Paper>
 
+      {/* Filtros debajo del formulario */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" mb={2}>Filtros</Typography>
+        <Stack direction="row" spacing={2} mb={2} alignItems="center">
+          <TextField
+            size="small"
+            label="Nombre de Materia"
+            value={filterNombre}
+            onChange={(e) => setFilterNombre(e.target.value)}
+            sx={{ width: 200 }}
+          />
+          <FormControl size="small" sx={{ width: 120 }} disabled={isLoadingProfesorado}>
+            <InputLabel>Año</InputLabel>
+            <Select
+              value={filterAnio}
+              label="Año"
+              onChange={(e) => setFilterAnio(e.target.value as number | '')}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {profesorado?.duracion_anios && Array.from({ length: profesorado.duracion_anios }, (_, i) => i + 1).map(year => (
+                <MenuItem key={year} value={year}>{year}º Año</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ width: 150 }}>
+            <InputLabel>Formato</InputLabel>
+            <Select
+              value={filterFormato}
+              label="Formato"
+              onChange={(e) => setFilterFormato(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {FORMATO_CHOICES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ width: 150 }}>
+            <InputLabel>Cursada</InputLabel>
+            <Select
+              value={filterRegimen}
+              label="Cursada"
+              onChange={(e) => setFilterRegimen(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {TIPO_CURSADA_CHOICES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button variant="outlined" onClick={handleClearFilters}>Limpiar Filtros</Button>
+        </Stack>
+      </Paper>
+
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" mb={2}>
           Listado de Materias
@@ -424,21 +520,52 @@ export default function CargarMateriasPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
-                  <TableCell>Año</TableCell>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell>Carga Horaria</TableCell>
-                  <TableCell>Formato</TableCell>
-                  <TableCell>Cursada</TableCell>
+                  <TableCell sortDirection={sortBy==='anio' ? sortDir : false as any}>
+                    <TableSortLabel active={sortBy==='anio'} direction={sortBy==='anio'?sortDir:'asc'} onClick={() => { setSortBy('anio'); setSortDir(d=> (sortBy!=='anio' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                      Año
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sortDirection={sortBy==='nombre' ? sortDir : false as any}>
+                    <TableSortLabel active={sortBy==='nombre'} direction={sortBy==='nombre'?sortDir:'asc'} onClick={() => { setSortBy('nombre'); setSortDir(d=> (sortBy!=='nombre' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                      Nombre
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sortDirection={sortBy==='horas' ? sortDir : false as any}>
+                    <TableSortLabel active={sortBy==='horas'} direction={sortBy==='horas'?sortDir:'asc'} onClick={() => { setSortBy('horas'); setSortDir(d=> (sortBy!=='horas' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                      Carga Horaria
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sortDirection={sortBy==='formato' ? sortDir : false as any}>
+                    <TableSortLabel active={sortBy==='formato'} direction={sortBy==='formato'?sortDir:'asc'} onClick={() => { setSortBy('formato'); setSortDir(d=> (sortBy!=='formato' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                      Formato
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell sortDirection={sortBy==='regimen' ? sortDir : false as any}>
+                    <TableSortLabel active={sortBy==='regimen'} direction={sortBy==='regimen'?sortDir:'asc'} onClick={() => { setSortBy('regimen'); setSortDir(d=> (sortBy!=='regimen' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                      Cursada
+                    </TableSortLabel>
+                  </TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {materias?.map((materia) => (
+                {[...(materias || [])]
+                  .sort((a,b) => {
+                    const dir = sortDir === 'asc' ? 1 : -1;
+                    if (sortBy === 'anio') return (a.anio_cursada - b.anio_cursada) * dir;
+                    if (sortBy === 'horas') return (a.horas_semana - b.horas_semana) * dir;
+                    if (sortBy === 'formato') return (a.formato || '').localeCompare(b.formato || '') * dir;
+                    if (sortBy === 'regimen') return (a.regimen || '').localeCompare(b.regimen || '') * dir;
+                    // nombre
+                    return (a.nombre || '').localeCompare(b.nombre || '') * dir;
+                  })
+                  .map((materia) => (
                   <TableRow key={materia.id}>
                     <TableCell>{materia.id}</TableCell>
                     <TableCell>{materia.anio_cursada}</TableCell>
                     <TableCell>{materia.nombre}</TableCell>
                     <TableCell>{materia.horas_semana}</TableCell>
+                    <TableCell>{FORMATO_CHOICES.find(f => f.value === materia.formato)?.label || materia.formato}</TableCell>
                     <TableCell>{TIPO_CURSADA_CHOICES.find(t => t.value === materia.regimen)?.label || materia.regimen}</TableCell>
                     <TableCell>
                       <IconButton

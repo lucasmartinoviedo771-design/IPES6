@@ -6,7 +6,6 @@ import { ProtectedRoute, PublicOnlyRoute } from '@/router/guards';
 
 import AppShell from '@/components/layout/AppShell';
 import PreinscripcionWizard from '@/components/preinscripcion/PreinscripcionWizard';
-import ComprobanteScreen from '@/components/preinscripcion/ComprobanteScreen';
 
 import AlumnosPage from '@/pages/AlumnosPage';
 import CarrerasPage from '@/pages/CarrerasPage';
@@ -65,7 +64,7 @@ export default function App() {
         <Route element={<AppLayout />}>
             <Route index element={<Navigate to="/preinscripcion" replace />} />
             <Route path="/preinscripcion" element={<PreinscripcionWizard />} />
-            <Route path="/preinscripcion/comprobante/:id" element={<ComprobanteScreen />} />
+            {false && <Route path="/preinscripcion/comprobante/:id" element={<div />} />}
 
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
 
@@ -78,7 +77,7 @@ export default function App() {
               <Route path="/carreras" element={<CarrerasPage />} />
               <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/configuracion" element={<ConfiguracionPage />} />
-              <Route path="/gestion/confirmar" element={<ProtectedRoute roles={['preinscripciones','secretaria','admin']}><ConfirmarInscripcionPage /></ProtectedRoute>} />
+              <Route path="/gestion/confirmar" element={<ProtectedRoute roles={['bedel','secretaria','admin']}><ConfirmarInscripcionPage /></ProtectedRoute>} />
               <Route path="/secretaria" element={<ProtectedRoute roles={['secretaria','admin']}><SecretariaIndex /></ProtectedRoute>} />
 <Route path="/secretaria/profesorado" element={<ProtectedRoute roles={['secretaria','admin']}><CargarProfesoradoPage /></ProtectedRoute>} />
 <Route path="/secretaria/profesorado/:profesoradoId/planes" element={<ProtectedRoute roles={['secretaria','admin']}><CargarPlanPage /></ProtectedRoute>} />
@@ -103,7 +102,7 @@ export default function App() {
             </Route>
     
             <Route path="/dashboard" element={<ProtectedRoute roles={['bedel', 'secretaria', 'admin']}><DashboardPage /></ProtectedRoute>} />
-            <Route path="/gestion/confirmar" element={<ProtectedRoute roles={['bedel', 'secretaria', 'admin']}><ConfirmarInscripcionPage /></ProtectedRoute>} />
+
 
             <Route path="/403" element={<Forbidden />} />
         </Route>

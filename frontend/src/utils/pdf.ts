@@ -202,8 +202,15 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
   pdf.setDrawColor(200);
   pdf.rect(photoX - PHOTO.pad, photoY - PHOTO.pad, PHOTO.w + 2*PHOTO.pad, PHOTO.h + 2*PHOTO.pad);
   if (opts?.studentPhotoDataUrl) {
-    // admite PNG o JPEG en dataURL
-    pdf.addImage(opts.studentPhotoDataUrl, undefined, photoX, photoY, PHOTO.w, PHOTO.h, "", "FAST");
+    // admite PNG o JPEG en dataURL; detectar formato explícitamente
+    const isPng = opts.studentPhotoDataUrl.startsWith("data:image/png");
+    const fmt: any = isPng ? "PNG" : "JPEG";
+    try {
+      pdf.addImage(opts.studentPhotoDataUrl, fmt, photoX, photoY, PHOTO.w, PHOTO.h, "", "FAST");
+    } catch (e) {
+      // fallback sin compresión si falla FAST
+      try { pdf.addImage(opts.studentPhotoDataUrl, fmt, photoX, photoY, PHOTO.w, PHOTO.h); } catch {}
+    }
   } else {
     // placeholder
     pdf.setFont("helvetica", "italic"); pdf.setFontSize(7.5);
@@ -347,5 +354,16 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
   close();
 
   // Guardar
-  pdf.save(`preinscripcion_${(v?.dni || "form").toString().padStart(8,"0")}.pdf`);
+  try {
+    const base = `${fmt(v.apellido)}_${fmt(v.nombres)}_${fmt(v.dni)}`
+      .replace(/\s+/g, "_")
+      .replace(/[^A-Za-z0-9_\-]/g, "")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    const filename = (base || "preinscripcion") + ".pdf";
+    pdf.save(filename);
+  } catch {
+    // fallback genérico
+    pdf.save("preinscripcion.pdf");
+  }
 }

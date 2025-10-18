@@ -1,13 +1,10 @@
-// src/components/preinscripcion/steps/CarreraDocumentacion.tsx
-import React, { useId, useRef, useState } from "react";
+import React, { useId, useRef, useState, useEffect } from "react";
 import { Box, Button, Stack, Typography, FormControl, InputLabel, Select, MenuItem, CircularProgress } from "@mui/material";
 import { useFormContext } from "react-hook-form";
 
 type Props = {
-  /** DataURL actual (para hidratar si ya había una foto guardada) */
-  value?: string | null;
-  /** Notifica al padre: DataURL (string) o null si se quitó */
-  onFileChange?: (dataUrl: string | null) => void;
+  /** Notifica al padre: el archivo (File) o null si se quitó */
+  onFileChange?: (file: File | null) => void;
   /** Tamaño máximo permitido en bytes (por defecto 1.5MB) */
   maxBytes?: number;
   // Props para la selección de carrera
@@ -16,7 +13,6 @@ type Props = {
 };
 
 const CarreraDocumentacion: React.FC<Props> = ({
-  value,
   onFileChange,
   maxBytes = 1.5 * 1024 * 1024,
   carreras,
@@ -24,40 +20,46 @@ const CarreraDocumentacion: React.FC<Props> = ({
 }) => {
   const { watch, setValue, formState } = useFormContext();
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [preview, setPreview] = useState<string | null>(value ?? null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const fieldId = useId();
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreview(null);
+    }
+  }, [file]);
 
   const openPicker = () => inputRef.current?.click();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    if (!file) {
+    const selectedFile = e.target.files?.[0] || null;
+    if (!selectedFile) {
+      setFile(null);
       if (typeof onFileChange === "function") onFileChange(null);
-      setPreview(null);
       return;
     }
-    if (!/^image\/(png|jpe?g)$/i.test(file.type)) {
+    if (!/^image\/(png|jpe?g)$/i.test(selectedFile.type)) {
       alert("Formato inválido. Solo JPG o PNG.");
       e.target.value = "";
       return;
     }
-    if (file.size > maxBytes) {
+    if (selectedFile.size > maxBytes) {
       const mb = (maxBytes / (1024 * 1024)).toFixed(1);
       alert(`La imagen supera el tamaño máximo (${mb} MB).`);
       e.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : null;
-      setPreview(dataUrl);
-      if (typeof onFileChange === "function") onFileChange(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    setFile(selectedFile);
+    if (typeof onFileChange === "function") onFileChange(selectedFile);
   };
 
   const handleRemove = () => {
-    setPreview(null);
+    setFile(null);
     if (inputRef.current) inputRef.current.value = "";
     if (typeof onFileChange === "function") onFileChange(null);
   };
@@ -70,9 +72,9 @@ const CarreraDocumentacion: React.FC<Props> = ({
         <Select
           labelId="carrera-label"
           label="Carrera"
-          value={watch("carrera_id") ? String(watch("carrera_id")) : ""}
+          value={watch("carrera_id") || 0}
           onChange={(e) =>
-            setValue("carrera_id", e.target.value ? Number(e.target.value) : 0, {
+            setValue("carrera_id", Number(e.target.value) || 0, {
               shouldValidate: true,
               shouldDirty: true,
             })
@@ -80,11 +82,11 @@ const CarreraDocumentacion: React.FC<Props> = ({
           displayEmpty
           disabled={isLoading}
         >
-          <MenuItem value="">
+          <MenuItem value={0} disabled>
             <em>{isLoading ? "Cargando..." : "Seleccione..."}</em>
           </MenuItem>
           {carreras.map((c) => (
-            <MenuItem key={c.id} value={String(c.id)}>
+            <MenuItem key={c.id} value={c.id}>
               {c.nombre}
             </MenuItem>
           ))}

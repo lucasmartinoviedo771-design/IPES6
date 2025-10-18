@@ -54,23 +54,43 @@ const PrintablePreinscripcion = forwardRef<HTMLDivElement, Props>(
       <Divider sx={{ mb: 2 }} />
 
       {/* Datos personales */}
-      <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1 }}>
-        Datos personales
-      </Typography>
-      <Grid container columnSpacing={4}>
-        <Grid item xs={6}>
-          <Row label="Nombres" value={values.nombres} />
-          <Row label="DNI" value={values.dni} />
-          <Row label="Fecha de nacimiento" value={values.fecha_nacimiento} />
-          <Row label="Estado civil" value={values.estado_civil} />
-          <Row label="Domicilio" value={values.domicilio} />
+      <Grid container spacing={2}>
+        <Grid item xs={9}>
+          <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1 }}>
+            Datos personales
+          </Typography>
+          <Grid container columnSpacing={4}>
+            <Grid item xs={6}>
+              <Row label="Nombres" value={values.nombres} />
+              <Row label="DNI" value={values.dni} />
+              <Row label="Fecha de nacimiento" value={values.fecha_nacimiento} />
+              <Row label="Estado civil" value={values.estado_civil} />
+              <Row label="Domicilio" value={values.domicilio} />
+            </Grid>
+            <Grid item xs={6}>
+              <Row label="Apellido" value={values.apellido} />
+              <Row label="CUIL" value={values.cuil} />
+              <Row label="Nacionalidad" value={values.pais_nac} />
+              <Row label="Localidad de nacimiento" value={values.localidad_nac} />
+            </Grid>
+          </Grid>
         </Grid>
-        <Grid item xs={6}>
-          <Row label="Apellido" value={values.apellido} />
-          <Row label="CUIL" value={values.cuil} />
-          <Row label="Nacionalidad" value={values.pais_nac} />
-          <Row label="Localidad de nacimiento" value={values.localidad_nac} />
-        </Grid>
+        {values.foto_dataUrl && (
+          <Grid item xs={3} sx={{ textAlign: "right" }}>
+            <Box
+              component="img"
+              src={values.foto_dataUrl}
+              alt="Foto del estudiante"
+              sx={{
+                width: 100,
+                height: 100,
+                border: "1px solid #ccc",
+                objectFit: "cover",
+              }}
+              crossOrigin="anonymous"
+            />
+          </Grid>
+        )}
       </Grid>
 
       <Box sx={{ height: 10 }} />

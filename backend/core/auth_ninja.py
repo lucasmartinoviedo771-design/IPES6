@@ -3,6 +3,8 @@ from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
 
+User = get_user_model()
+
 class JWTAuth(HttpBearer):
     def authenticate(self, request, token):
         try:

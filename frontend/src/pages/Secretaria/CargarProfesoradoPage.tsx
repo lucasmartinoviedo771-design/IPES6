@@ -117,7 +117,7 @@ export default function CargarProfesoradoPage() {
   });
 
   const onSubmit = (data: ProfesoradoFormInput) => {
-    console.log("Se llamó a onSubmit con los datos:", data);
+
     if (editingProfesorado) {
       updateProfesoradoMutation.mutate({ ...editingProfesorado, ...data });
     } else {
