@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "ipes6-backend"
 version = "0.1.0"
 description = "Backend for IPES6 Pre-registration System"
@@ -66,8 +66,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-package = false   # ðŸ‘ˆ clave: no intentes construir wheel del proyecto local
-# (opcional) configs de uv; NO pongas 'python =' acÃ¡
+package = false   # 👉 clave: no intentes construir wheel del proyecto local
+# (opcional) configs de uv; NO pongas 'python =' acá
 # ejemplo:
 # python-preference = "only-managed"
-

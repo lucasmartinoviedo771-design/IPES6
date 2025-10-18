@@ -159,7 +159,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
       // 1. Fetch all materias for the given plan and year.
       axios.get<Materia[]>(`/planes/${planId}/materias`, { params: { anio_cursada: anioCarrera } })
         .then(({ data }) => {
-          console.log('Materias recibidas de la API:', data); // Diagnostic log
+
 
           // 2. Filter on the client-side based on the selected cuatrimestre.
           const normalizeRegimen = (s: string) => (s || '').toUpperCase().trim();
@@ -173,7 +173,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
               })
             : data; // If no cuatrimestre is selected, show all.
           
-          console.log('Materias después del filtro:', filteredMaterias); // Diagnostic log
+
           setMaterias(filteredMaterias);
         })
         .catch(e => {

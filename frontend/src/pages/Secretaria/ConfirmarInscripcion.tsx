@@ -1,15 +1,11 @@
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { Box, Button, Stack, TextField, Typography, Paper, Grid, Divider, List, ListItem, ListItemText, Alert, FormGroup, FormControlLabel, Checkbox, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { useSearchParams } from "react-router-dom";
+import { Stack, TextField, Typography, Paper, Grid, Divider, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { listarPreinscripciones, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
+import { listarPreinscripciones } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
-import { useState } from "react";
-
-type DocEstado = 'presentado' | 'pendiente' | 'observado';
 
 export default function ConfirmarInscripcionSecretaria() {
   const [sp, setSp] = useSearchParams();
-  const navigate = useNavigate();
   const codigo = sp.get("codigo") || "";
   const dni = sp.get("dni") || "";
   const nombre = sp.get("q") || "";
@@ -17,20 +13,11 @@ export default function ConfirmarInscripcionSecretaria() {
   const query = (codigo || dni || nombre).trim();
   const { data } = useQuery({
     queryKey: ["preins-busq-sec", query],
-    queryFn: () => listarPreinscripciones({ q: query, limit: 10, offset: 0 }),
-    enabled: !!query && !codigo,
+    queryFn: () => listarPreinscripciones({ q: query || undefined, limit: 20, offset: 0 }),
+    
   });
 
-  const [docs, setDocs] = useState<{[k: string]: boolean}>(
-    { dni: false, titulo_secundario: false, partida_nacimiento: false, certificado_salud: false, fotos: false }
-  );
-  const allDocs = Object.values(docs).every(Boolean);
-
-  const confirmar = async () => {
-    if (!codigo) return;
-    await apiConfirmarPreinscripcion(codigo, { documentos: docs, estado: allDocs ? "regular" : "condicional" });
-    navigate(`/secretaria`);
-  };
+  // La confirmación y el manejo de documentación se realizan dentro de PreConfirmEditor
 
   return (
     <Stack gap={2}>
@@ -89,27 +76,8 @@ export default function ConfirmarInscripcionSecretaria() {
 
       {codigo && (
         <Grid container spacing={2}>
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12}>
             <PreConfirmEditor codigo={codigo} />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p:2 }}>
-              <Typography variant="subtitle1" fontWeight={700}>Documentación presentada</Typography>
-              <Alert severity={allDocs ? "success" : "warning"} sx={{ my:1 }}>
-                {allDocs ? "Documentación completa: quedará Regular/Inscripto." : "Faltante: quedará Condicional y se registrará pendiente."}
-              </Alert>
-              <FormGroup>
-                <FormControlLabel control={<Checkbox checked={docs.dni} onChange={(_,v)=>setDocs(p=>({...p,dni:v}))} />} label="Fotocopia del DNI" />
-                <FormControlLabel control={<Checkbox checked={docs.titulo_secundario} onChange={(_,v)=>setDocs(p=>({...p,titulo_secundario:v}))} />} label="Título Secundario (Original y Copia)" />
-                <FormControlLabel control={<Checkbox checked={docs.partida_nacimiento} onChange={(_,v)=>setDocs(p=>({...p,partida_nacimiento:v}))} />} label="Partida de Nacimiento" />
-                <FormControlLabel control={<Checkbox checked={docs.certificado_salud} onChange={(_,v)=>setDocs(p=>({...p,certificado_salud:v}))} />} label="Certificado de Buena Salud" />
-                <FormControlLabel control={<Checkbox checked={docs.fotos} onChange={(_,v)=>setDocs(p=>({...p,fotos:v}))} />} label="Fotos tipo carnet" />
-              </FormGroup>
-              <Stack direction="row" gap={1} justifyContent="flex-end" sx={{ mt:2 }}>
-                <Button variant="outlined" onClick={()=>setDocs({ dni:false, titulo_secundario:false, partida_nacimiento:false, certificado_salud:false, fotos:false })}>Limpiar</Button>
-                <Button variant="contained" color={allDocs ? "success" : "warning"} onClick={confirmar}>Confirmar Inscripción</Button>
-              </Stack>
-            </Paper>
           </Grid>
         </Grid>
       )}

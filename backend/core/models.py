@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import RegexValidator
 
 class Profesorado(models.Model):
     id = models.AutoField(primary_key=True)
@@ -27,9 +28,11 @@ class Preinscripcion(models.Model):
     alumno = models.ForeignKey('Estudiante', on_delete=models.CASCADE) # Vinculado a Estudiante
     carrera = models.ForeignKey(Profesorado, on_delete=models.PROTECT)
     anio = models.IntegerField() # Año de la preinscripción
-    foto_4x4_dataurl = models.TextField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    datos_extra = models.JSONField(default=dict, blank=True)
+    activa = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
+    cuil = models.CharField(max_length=13, blank=True, null=True, unique=True, validators=[RegexValidator(r'^\d{2}-\d{8}-\d{1}', message="El CUIL debe tener el formato XX-XXXXXXXX-X.")])
 
     def __str__(self):
         return f"Preinscripción {self.codigo} para {self.alumno}"
@@ -134,7 +137,7 @@ class Estudiante(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="estudiante")
     legajo = models.CharField(max_length=20, unique=True, null=True, blank=True, help_text="Número de legajo único del estudiante")
     dni = models.CharField(max_length=10, unique=True)
-    fecha_nacimiento = models.DateField()
+    fecha_nacimiento = models.DateField(null=True, blank=True)
     telefono = models.CharField(max_length=20, blank=True)
     domicilio = models.CharField(max_length=255, blank=True)
     carreras = models.ManyToManyField(Profesorado, related_name="estudiantes")

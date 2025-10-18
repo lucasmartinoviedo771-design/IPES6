@@ -69,7 +69,7 @@ export default function CatedraDocentePage() {
 
   const guardarAsignaciones = async () => {
     // TODO: POST real al backend. Por ahora log y cerrar.
-    console.log('Guardar asignaciones', { materia: dlgMateria, filters, asignaciones: dlgAsignaciones });
+    
     setDlgOpen(false);
   };
 

@@ -3,12 +3,14 @@ import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Button, Step, StepLabel, Stepper, Typography, Paper, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+// import { useNavigate } from "react-router-dom";
 
 // Lógica de negocio y tipos
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues } from "./defaultValues";
 import { PreinscripcionIn, PreinscripcionOut } from "@/types/preinscripcion";
 import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
+import { apiUploadPreDoc } from "@/api/preinscripciones";
 
 // Pasos del Wizard
 import DatosPersonales from "./steps/DatosPersonales";
@@ -18,6 +20,8 @@ import EstudiosSuperiores from "./steps/EstudiosSuperiores";
 import DatosLaborales from "./steps/DatosLaborales";
 import CarreraDocumentacion from "./steps/CarreraDocumentacion";
 import Confirmacion from "./steps/Confirmacion";
+
+const STORAGE_KEY = "preinscripcion_form_data";
 
 const steps = [
   "Datos personales",
@@ -29,8 +33,8 @@ const steps = [
 
 // Mapea los datos del formulario a la estructura que espera la API
 const buildPayload = (v: PreinscripcionForm): PreinscripcionIn => ({
+  ...v, // Incluir todos los campos del formulario
   carrera_id: Number(v.carrera_id),
-  foto_4x4_dataurl: v.foto_dataUrl ?? null,
   alumno: {
     dni: v.dni,
     nombres: v.nombres,
@@ -49,14 +53,36 @@ type SubmitState =
   | { status: "ok"; data: PreinscripcionOut };
 
 export default function PreinscripcionWizard() {
+  // const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const form = useForm<PreinscripcionForm>({
     resolver: zodResolver(preinscripcionSchema),
-    defaultValues: defaultValues,
+    defaultValues: (() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : defaultValues;
+      } catch {
+        return defaultValues;
+      }
+    })(),
     mode: "onChange",
   });
+
+  // Persistir el formulario en localStorage
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+      } catch (e) {
+        console.error("Error saving form to localStorage", e);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const [carreras, setCarreras] = useState<{id:number; nombre:string}[]>([]);
   const [carrerasLoading, setCarrerasLoading] = useState(false);
@@ -68,7 +94,7 @@ export default function PreinscripcionWizard() {
       try {
         const rows = await listarCarreras();
         if (!alive) return;
-        console.log("Carreras recibidas:", rows);
+
         setCarreras(rows ?? []);
         if ((rows?.length ?? 0) === 1) {
           form.setValue("carrera_id", rows[0].id);
@@ -82,6 +108,12 @@ export default function PreinscripcionWizard() {
     return () => { alive = false; };
   }, []);
 
+  // Eliminamos la apertura del PDF del backend; usaremos el comprobante local
+  // Exigir descarga previa del PDF en el paso final
+  useEffect(() => {
+    if (activeStep === steps.length - 1) setPdfDownloaded(false);
+  }, [activeStep]);
+
   const handleNext = () => setActiveStep((s) => s + 1);
   const handleBack = () => setActiveStep((s) => s - 1);
 
@@ -90,8 +122,26 @@ export default function PreinscripcionWizard() {
       setSubmit({ status: "loading" });
       try {
         const payload = buildPayload(values);
-        const response = await crearPreinscripcion(payload); // Usando el nuevo servicio
+        const response = await crearPreinscripcion(payload);
+
+        if (photoFile && response?.data?.id) {
+          try {
+            await apiUploadPreDoc(response.data.id, "foto4x4", photoFile);
+          } catch (uploadError) {
+            console.error("La preinscripción se creó, pero falló la subida de la foto:", uploadError);
+            // Opcional: notificar al usuario que la foto no se subió.
+          }
+        }
+
         setSubmit({ status: "ok", data: response });
+        // Limpiar y volver al paso 1
+        setTimeout(() => {
+          try { localStorage.removeItem(STORAGE_KEY); } catch {}
+          form.reset(defaultValues);
+          setActiveStep(0);
+          setPdfDownloaded(false);
+          setSubmit({ status: "idle" } as any);
+        }, 300);
       } catch (err: any) {
         setSubmit({ status: "error", message: err.message || "Error desconocido" });
       }
@@ -122,13 +172,12 @@ export default function PreinscripcionWizard() {
             <CarreraDocumentacion
               carreras={carreras}
               isLoading={carrerasLoading}
-              value={form.watch("foto_4x4_dataurl")}
-              onFileChange={(dataUrl) => form.setValue("foto_4x4_dataurl", dataUrl)}
+              onFileChange={setPhotoFile}
             />
           )}
           {activeStep === 4 && (
             submit.status !== "ok" ? 
-            <Confirmacion carreraNombre={carreraNombre} /> : 
+            <Confirmacion carreraNombre={carreraNombre} onDownloaded={() => setPdfDownloaded(true)} /> : 
             <Alert severity="success">
               <AlertTitle>¡Preinscripción enviada con éxito!</AlertTitle>
               Tu código de seguimiento es: <strong>{submit.data.data.codigo}</strong>
@@ -137,19 +186,31 @@ export default function PreinscripcionWizard() {
         </Box>
 
         {/* Acciones */}
-        <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
-          <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"}>
-            Atrás
+        <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => {
+              localStorage.removeItem(STORAGE_KEY);
+              form.reset(defaultValues);
+            }}
+          >
+            Limpiar Formulario
           </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"}>
+              Atrás
+            </Button>
           {activeStep < steps.length - 1 ? (
             <Button variant="contained" onClick={handleNext}>
               Siguiente
             </Button>
           ) : (
-            <Button variant="contained" onClick={handleSubmit} disabled={submit.status === "loading" || submit.status === "ok"}>
+            <Button variant="contained" onClick={handleSubmit} disabled={!pdfDownloaded || submit.status === "loading" || submit.status === "ok"}>
               {submit.status === "loading" ? <CircularProgress size={24} /> : "Enviar Preinscripción"}
             </Button>
           )}
+          </Box>
         </Box>
 
         {submit.status === "error" && (

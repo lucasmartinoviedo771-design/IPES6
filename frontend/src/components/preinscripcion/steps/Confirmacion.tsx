@@ -26,7 +26,7 @@ async function imageUrlToDataUrl(url: string): Promise<string> {
   });
 }
 
-export default function Confirmacion({ carreraNombre }: { carreraNombre: string }) {
+export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraNombre: string; onDownloaded?: () => void }) {
   const { watch } = useFormContext<PreinscripcionForm>();
   const v = watch();
   const [docs, setDocs] = React.useState<DocsFlags>({});
@@ -109,13 +109,20 @@ export default function Confirmacion({ carreraNombre }: { carreraNombre: string 
         </Grid>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+      <Box sx={{ display: "flex", gap: 2, mt: 2, alignItems: 'center' }}>
         <Button
           variant="outlined"
-          onClick={() => generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: v.foto_dataUrl, fotoW: v.fotoW, fotoH: v.fotoH })}
+          onClick={() => {
+            const photoUrl = (v as any).foto_dataUrl || (v as any).foto_4x4_dataurl;
+            generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: photoUrl, fotoW: v.fotoW, fotoH: v.fotoH });
+            onDownloaded && onDownloaded();
+          }}
         >
           Descargar PDF
         </Button>
+        <Typography variant="body2" color="text.secondary">
+          Para finalizar, primero debe descargar el formulario de preinscripción.
+        </Typography>
       </Box>
     </Box>
   );

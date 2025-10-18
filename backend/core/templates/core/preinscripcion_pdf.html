@@ -65,6 +65,9 @@
       Código: <strong>{{ codigo }}</strong><br/>
       Fecha: {{ fecha|date:"d/m/Y H:i" }}
     </div>
+    {% if foto_dataUrl %}
+      <img src="{{ foto_dataUrl }}" style="width: 90px; height: 90px; object-fit: cover; border: 1px solid #ccc;" />
+    {% endif %}
   </div>
   <hr />
 

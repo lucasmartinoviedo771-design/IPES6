@@ -5,7 +5,6 @@ import TimetableGrid from '@/components/horarios/TimetableGrid';
 import { Materia, HorarioCatedra, HorarioCatedraDetalleOut } from '@/types';
 
 const CargarHorarioPage: React.FC = () => {
-  console.log("CargarHorarioPage: Render");
   const [filters, setFilters] = useState({
     profesoradoId: null as number | null,
     planId: null as number | null,
@@ -21,7 +20,6 @@ const CargarHorarioPage: React.FC = () => {
   const [horarioCatedra, setHorarioCatedra] = useState<HorarioCatedra | null>(null);
 
   const handleFilterChange = (newFilters: any) => {
-    console.log("CargarHorarioPage: handleFilterChange");
     setFilters(newFilters);
     setSelectedMateriaId(null);
     setHorasRequeridas(0);
@@ -31,7 +29,6 @@ const CargarHorarioPage: React.FC = () => {
   };
 
   const handleMateriaChange = (materiaId: number | null) => {
-    console.log("CargarHorarioPage: handleMateriaChange");
     setSelectedMateriaId(materiaId);
     setSelectedBlocks(new Set());
     setHorasAsignadas(0);
@@ -39,19 +36,16 @@ const CargarHorarioPage: React.FC = () => {
   };
 
   const handleBlocksSelected = (count: number, blocks: Set<number>) => {
-    console.log("CargarHorarioPage: handleBlocksSelected");
     setHorasAsignadas(count);
     setSelectedBlocks(blocks);
   };
 
   const handleClearSelection = () => {
-    console.log("CargarHorarioPage: handleClearSelection");
     setSelectedBlocks(new Set());
     setHorasAsignadas(0);
   };
 
   const fetchHorario = useCallback(async () => {
-    console.log("CargarHorarioPage: fetchHorario called");
     if (selectedMateriaId && filters.turnoId && filters.anioLectivo) {
       try {
         const materiaResponse = await axios.get<Materia>(`/materias/${selectedMateriaId}`);
@@ -98,17 +92,14 @@ const CargarHorarioPage: React.FC = () => {
   }, [selectedMateriaId, filters.turnoId, filters.anioLectivo]);
 
   useEffect(() => {
-    console.log("CargarHorarioPage: useEffect for fetchHorario");
     fetchHorario();
   }, [fetchHorario]);
 
   const handleDuplicateToOtherCuatri = () => {
-    console.log("CargarHorarioPage: handleDuplicateToOtherCuatri");
     alert('Funcionalidad "Duplicar al otro cuatri" pendiente de implementación. Necesito más detalles sobre su comportamiento para cursos anuales.');
   };
 
   const handleSave = async () => {
-    console.log("CargarHorarioPage: handleSave");
     if (!selectedMateriaId || !filters.turnoId || !filters.anioCarrera || !filters.anioLectivo) {
       alert('Por favor, selecciona una materia, turno, año de cursada y año lectivo.');
       return;
@@ -165,7 +156,6 @@ const CargarHorarioPage: React.FC = () => {
   };
 
   const handleExport = () => {
-    console.log("CargarHorarioPage: handleExport");
     alert('Funcionalidad "Imprimir / Exportar" pendiente de implementación.');
   };
 

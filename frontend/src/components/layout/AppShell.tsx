@@ -1,10 +1,12 @@
-import { PropsWithChildren, useMemo, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
   Box, CssBaseline, IconButton, Divider, Collapse
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import SchoolIcon from "@mui/icons-material/School";
@@ -29,7 +31,14 @@ const drawerWidth = 240;
 
 export default function AppShell({ children }: PropsWithChildren) {
   const { user, logout } = useAuth();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem("sidebarOpen");
+      return v === null ? true : v === "1";
+    } catch {
+      return true;
+    }
+  });
   const loc = useLocation();
   const navigate = useNavigate();
 
@@ -41,12 +50,18 @@ export default function AppShell({ children }: PropsWithChildren) {
   const [openAlumnos, setOpenAlumnos] = useState(true);
   const isAlumnosPath = current.startsWith("/alumnos");
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebarOpen", open ? "1" : "0");
+    } catch {}
+  }, [open]);
+
   return (
     <Box sx={{ display: "flex", backgroundColor: "background.default", minHeight: "100vh" }}>
       <CssBaseline />
-      <AppBar position="fixed" elevation={0} sx={{ backgroundColor: "#f5eedd", color: "text.primary", borderBottom: "1px solid #eee" }}>
+      <AppBar position="fixed" elevation={0} sx={{ backgroundColor: "#f5eedd", color: "text.primary", borderBottom: "1px solid #eee", zIndex: (t)=> t.zIndex.drawer + 1 }}>
         <Toolbar sx={{ gap: 2, minHeight: 48 }}>
-          <IconButton edge="start" onClick={() => setOpen(v => !v)} size="small">
+          <IconButton edge="start" color="inherit" onClick={() => setOpen(v => !v)} size="small" aria-label="Alternar menú">
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1, letterSpacing: .3 }}>
@@ -62,18 +77,27 @@ export default function AppShell({ children }: PropsWithChildren) {
       <Drawer
         variant="permanent"
         sx={{
-          width: drawerWidth,
+          width: open ? drawerWidth : 0,
+          transition: 'width .2s ease',
+          overflowX: 'hidden',
           [`& .MuiDrawer-paper`]: {
-            width: drawerWidth, boxSizing: "border-box",
-            backgroundColor: "#e6e8da", borderRight: "1px solid #d8dcc7"
+            width: open ? drawerWidth : 0,
+            transition: 'width .2s ease',
+            boxSizing: "border-box",
+            backgroundColor: "#e6e8da", borderRight: "1px solid #d8dcc7",
+            overflowX: 'hidden',
           }
         }}
       >
-        <Toolbar sx={{ minHeight: 48 }} />
+        <Toolbar sx={{ minHeight: 48, justifyContent: 'flex-end' }}>
+          <IconButton size="small" onClick={() => setOpen(false)} aria-label="Ocultar menú">
+            <ChevronLeftIcon />
+          </IconButton>
+        </Toolbar>
         <List dense>
           <ListItemButton
             selected={current === "/dashboard"}
-            onClick={() => { console.log("Navigating to Dashboard"); navigate("/dashboard"); }}
+            onClick={() => { navigate("/dashboard"); }}
             sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
@@ -86,7 +110,7 @@ export default function AppShell({ children }: PropsWithChildren) {
             sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Preinscripciones" />
+            <ListItemText primary="Formalizar Inscripción" />
           </ListItemButton>
 
           <ListItemButton
@@ -144,7 +168,7 @@ export default function AppShell({ children }: PropsWithChildren) {
                 <ListItemText primary="Asignar Rol" />
               </ListItemButton>
 
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/horarios")} onClick={() => { console.log("Navigating to Cargar Horario"); navigate("/secretaria/horarios"); }}>
+              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/horarios")} onClick={() => { navigate("/secretaria/horarios"); }}>
                 <ListItemIcon sx={{ minWidth: 36 }}><EventNoteIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Cargar Horario" />
               </ListItemButton>
@@ -221,6 +245,14 @@ export default function AppShell({ children }: PropsWithChildren) {
         <Divider sx={{ my: 1 }} />
         <Box p={2} fontSize={12} color="text.secondary">Sistema de Gestión</Box>
       </Drawer>
+
+      {!open && (
+        <Box sx={{ position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 1400, backgroundColor: '#e6e8da', border: '1px solid #d8dcc7', borderLeft: 'none', borderRadius: '0 8px 8px 0', boxShadow: 1 }}>
+          <IconButton size="small" onClick={() => setOpen(true)} aria-label="Mostrar menú">
+            <ChevronRightIcon />
+          </IconButton>
+        </Box>
+      )}
 
       <Box component="main" className="app-main" sx={{ flexGrow: 1, p: 1.5 }}>
         <Toolbar sx={{ minHeight: 48 }} />

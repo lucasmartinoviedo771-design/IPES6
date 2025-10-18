@@ -4,7 +4,7 @@ import { PreinscripcionSchema } from "../schema"; // ajusta la ruta si difiere
 
 export default function DatosLaborales() {
   const ctx = useFormContext<PreinscripcionSchema>();
-  console.log("[DatosLaborales] ctx?", ctx);
+
 
   // ⬇️ CLAVE: sacar formState desde el context
   const { control, watch, formState: { errors, isSubmitting } } =
