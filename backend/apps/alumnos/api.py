@@ -18,23 +18,29 @@ from django.db.models import Max
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 
+from apps.common.api_schemas import ApiResponse
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 alumnos_router = Router(tags=["alumnos"])
-@alumnos_router.post("/inscripcion-materia", response=InscripcionMateriaOut)
+
+@alumnos_router.post(
+    "/inscripcion-materia",
+    response={200: InscripcionMateriaOut, 400: ApiResponse, 404: ApiResponse},
+)
 def inscripcion_materia(request, payload: InscripcionMateriaIn):
     from datetime import datetime
     est = None
     if not isinstance(request.user, AnonymousUser):
         est = getattr(request.user, 'estudiante', None)
     if not est:
-        return 400, {"message": "No se encontró el estudiante (inicie sesión)"}
+        return 400, ApiResponse(ok=False, message="No se encontró el estudiante (inicie sesión)")
     mat = Materia.objects.filter(id=payload.materia_id).first()
     if not mat:
-        return 404, {"message": "Materia no encontrada"}
+        return 404, ApiResponse(ok=False, message="Materia no encontrada")
 
     anio_actual = datetime.now().year
 
@@ -58,7 +64,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             m = Materia.objects.filter(id=mid).first()
             faltan.append(f"Aprobada {m.nombre if m else mid}")
     if faltan:
-        return 400, {"message": "Correlatividades no cumplidas para cursar", "faltantes": faltan}
+        return 400, ApiResponse(ok=False, message="Correlatividades no cumplidas para cursar", data={"faltantes": faltan})
 
     # Superposición horaria
     detalles_cand = (HorarioCatedraDetalle.objects
@@ -75,7 +81,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                 for (t, dia, desde, hasta) in cand:
                     if t == d.horario_catedra.turno_id and dia == d.bloque.dia:
                         if not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta):
-                            return 400, {"message": "Superposición horaria con otra materia inscripta"}
+                            return 400, ApiResponse(ok=False, message="Superposición horaria con otra materia inscripta")
 
     InscripcionMateriaAlumno.objects.get_or_create(estudiante=est, materia=mat, anio=anio_actual)
     return {"message": "Inscripción a materia registrada"}
