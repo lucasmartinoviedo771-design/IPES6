@@ -23,6 +23,13 @@ type CorrSet = {
   aprobada_para_rendir: number[];
 };
 
+type MateriaOption = {
+  label: string;
+  id: number | string;
+  anio_cursada: number;
+  aggregateIds?: number[];
+};
+
 export default function CorrelatividadesPage() {
   const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
@@ -79,13 +86,48 @@ export default function CorrelatividadesPage() {
 
   useEffect(() => { loadMatrix(); }, [planId, anio, regimen, formato, filter]);
 
-  const materiaOptions = useMemo(() => {
+  const materiaOptions = useMemo<MateriaOption[]>(() => {
     const src = allRows && allRows.length ? allRows : matrix;
-    const maxYear = rowEdit?.anio_cursada;
-    return src
-      .filter(m => !maxYear || m.anio_cursada <= maxYear)
-      .map(m => ({ label: `${m.nombre} (${m.anio_cursada}º)`, id: m.id, anio_cursada: m.anio_cursada }));
+    const maxYear = rowEdit?.anio_cursada ?? Infinity;
+
+    const baseOptions: MateriaOption[] = src
+      .filter(m => m.anio_cursada <= maxYear)
+      .map(m => ({
+        label: `${m.nombre} (${m.anio_cursada}º)`,
+        id: m.id,
+        anio_cursada: m.anio_cursada,
+      }));
+
+    const extras: MateriaOption[] = [];
+    const years = [1, 2, 3].filter(y => y < maxYear);
+    years.forEach(year => {
+      const matches = baseOptions.filter(opt => opt.anio_cursada === year);
+      if (matches.length) {
+        extras.push({
+          label: `Todo ${year}º año`,
+          id: `year-${year}`,
+          anio_cursada: year,
+          aggregateIds: matches.map(opt => opt.id as number),
+        });
+      }
+    });
+
+    return [...extras, ...baseOptions];
   }, [matrix, allRows, rowEdit]);
+
+  const resolveIdsFromOptions = (vals: MateriaOption[]) => {
+    const ids = new Set<number>();
+    vals.forEach((v) => {
+      if (typeof v.id === 'number') ids.add(v.id);
+      if (Array.isArray(v.aggregateIds)) v.aggregateIds.forEach((id) => ids.add(id));
+    });
+    return Array.from(ids);
+  };
+
+  const handleFieldChange = (field: keyof CorrSet) => (_: any, vals: MateriaOption[]) => {
+    const ids = resolveIdsFromOptions(vals);
+    setEditSet((prev) => ({ ...prev, [field]: ids }));
+  };
 
   const openEditor = async (row: MatrixRow) => {
     setRowEdit(row);
@@ -282,22 +324,22 @@ export default function CorrelatividadesPage() {
           <Stack gap={2} sx={{ mt: 1 }}>
             <Autocomplete
               multiple options={materiaOptions}
-              value={materiaOptions.filter(o => editSet.regular_para_cursar.includes(o.id))}
-              onChange={(_, vals) => setEditSet(s => ({ ...s, regular_para_cursar: vals.map(v=>v.id) }))}
+              value={materiaOptions.filter(o => typeof o.id === 'number' && editSet.regular_para_cursar.includes(o.id))}
+              onChange={handleFieldChange('regular_para_cursar')}
               getOptionDisabled={(o) => !!rowEdit && (o.id === rowEdit.id || o.anio_cursada > rowEdit.anio_cursada)}
               renderInput={(p) => <TextField {...p} size="small" label="Para cursar: Regular" />}
             />
             <Autocomplete
               multiple options={materiaOptions}
-              value={materiaOptions.filter(o => editSet.aprobada_para_cursar.includes(o.id))}
-              onChange={(_, vals) => setEditSet(s => ({ ...s, aprobada_para_cursar: vals.map(v=>v.id) }))}
+              value={materiaOptions.filter(o => typeof o.id === 'number' && editSet.aprobada_para_cursar.includes(o.id))}
+              onChange={handleFieldChange('aprobada_para_cursar')}
               getOptionDisabled={(o) => !!rowEdit && (o.id === rowEdit.id || o.anio_cursada > rowEdit.anio_cursada)}
               renderInput={(p) => <TextField {...p} size="small" label="Para cursar: Aprobada" />}
             />
             <Autocomplete
               multiple options={materiaOptions}
-              value={materiaOptions.filter(o => editSet.aprobada_para_rendir.includes(o.id))}
-              onChange={(_, vals) => setEditSet(s => ({ ...s, aprobada_para_rendir: vals.map(v=>v.id) }))}
+              value={materiaOptions.filter(o => typeof o.id === 'number' && editSet.aprobada_para_rendir.includes(o.id))}
+              onChange={handleFieldChange('aprobada_para_rendir')}
               getOptionDisabled={(o) => !!rowEdit && (o.id === rowEdit.id || o.anio_cursada > rowEdit.anio_cursada)}
               renderInput={(p) => <TextField {...p} size="small" label="Para rendir: Aprobada" />}
             />

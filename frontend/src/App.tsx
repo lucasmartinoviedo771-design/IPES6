@@ -41,6 +41,7 @@ import InscripcionMateriaPage from "@/pages/Alumnos/InscripcionMateriaPage";
 import CambioComisionPage from "@/pages/Alumnos/CambioComisionPage";
 import PedidoAnaliticoPage from "@/pages/Alumnos/PedidoAnaliticoPage";
 import TrayectoriaPage from "@/pages/Alumnos/TrayectoriaPage";
+import InscripcionPreview from "@/pages/InscripcionPreview";
 
 
 function AppLayout() {
@@ -65,6 +66,7 @@ export default function App() {
             <Route index element={<Navigate to="/preinscripcion" replace />} />
             <Route path="/preinscripcion" element={<PreinscripcionWizard />} />
             {false && <Route path="/preinscripcion/comprobante/:id" element={<div />} />}
+            <Route path="/debug/inscripcion-preview" element={<InscripcionPreview />} />
 
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
 

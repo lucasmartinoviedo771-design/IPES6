@@ -43,7 +43,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Cargar las preinscripciones para las métricas y la lista de recientes
-    listarPreinscripciones({}).then(data => {
+    listarPreinscripciones({}).then(({ results }) => {
+      const data = results ?? [];
       const total = data.length;
       const confirmadas = data.filter(p => p.estado === 'Confirmada').length;
       const pendientes = data.filter(p => p.estado === 'Enviada').length;
