@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Button, Step, StepLabel, Stepper, Typography, Paper, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+import dayjs from "dayjs";
 // import { useNavigate } from "react-router-dom";
 
 // Lógica de negocio y tipos
@@ -11,6 +12,7 @@ import { defaultValues } from "./defaultValues";
 import { PreinscripcionIn, PreinscripcionOut } from "@/types/preinscripcion";
 import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
 import { apiUploadPreDoc } from "@/api/preinscripciones";
+import { client } from "@/api/client";
 
 // Pasos del Wizard
 import DatosPersonales from "./steps/DatosPersonales";
@@ -84,6 +86,35 @@ export default function PreinscripcionWizard() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  const { isLoading: loadingVentana, data: ventanasPre } = useQuery({
+    queryKey: ["ventanas-preinscripcion"],
+    queryFn: async () => {
+      const { data } = await client.get<Ventana[]>("/ventanas", {
+        params: { tipo: "PREINSCRIPCION" },
+      });
+      return data;
+    },
+  });
+
+  const ventanaActiva = useMemo(() => {
+    if (!ventanasPre) return null;
+    const hoy = dayjs();
+    return ventanasPre.find(
+      (v) =>
+        v.activo &&
+        dayjs(v.desde).isSameOrBefore(hoy, "day") &&
+        dayjs(v.hasta).isSameOrAfter(hoy, "day")
+    );
+  }, [ventanasPre]);
+
+  const proximaVentana = useMemo(() => {
+    if (!ventanasPre) return null;
+    const hoy = dayjs();
+    return ventanasPre
+      .filter((v) => dayjs(v.desde).isAfter(hoy, "day"))
+      .sort((a, b) => dayjs(a.desde).diff(dayjs(b.desde)))[0];
+  }, [ventanasPre]);
+
   const [carreras, setCarreras] = useState<{id:number; nombre:string}[]>([]);
   const [carrerasLoading, setCarrerasLoading] = useState(false);
 
@@ -151,7 +182,31 @@ export default function PreinscripcionWizard() {
     }
   );
 
-  const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nombre ?? "";
+    if (loadingVentana) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!ventanaActiva) {
+    return (
+      <Paper sx={{ p: 3, maxWidth: 720, mx: 'auto' }}>
+        <Alert severity="info">
+          <AlertTitle>La preinscripción está cerrada</AlertTitle>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            Actualmente no se encuentran habilitadas las preinscripciones.
+          </Typography>
+          <Typography variant="body1">
+            Para más información, podés visitar <a href="http://www.ipespaulofreire.edu.ar" target="_blank" rel="noopener noreferrer">www.ipespaulofreire.edu.ar</a> o realizar consultas presencialmente en Estrada 1575, Río Grande, Tierra del Fuego.
+          </Typography>
+        </Alert>
+      </Paper>
+    );
+  }
+
+const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nombre ?? "";
 
   return (
     <FormProvider {...form}>

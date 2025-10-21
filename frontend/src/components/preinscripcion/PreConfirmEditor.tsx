@@ -1,4 +1,4 @@
-﻿import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -297,7 +297,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
 
   const mRechazar = useMutation({
     mutationFn: (motivo: string) => apiRechazarPreinscripcion(codigo, motivo),
-    onSuccess: () => { enqueueSnackbar("PreinscripciÃ³n rechazada", { variant: "warning" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
+    onSuccess: () => { enqueueSnackbar("Preinscripción rechazada", { variant: "warning" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
     onError: () => enqueueSnackbar("No se pudo rechazar", { variant: "error" })
   });
 
@@ -310,15 +310,15 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
   const navigate = useNavigate();
   const mDelete = useMutation({
     mutationFn: () => {
-      if (!data?.id) throw new Error("ID de preinscripciÃ³n no encontrado");
+      if (!data?.id) throw new Error("ID de preinscripción no encontrado");
       return eliminarPreinscripcion(data.id);
     },
     onSuccess: () => {
-      enqueueSnackbar("PreinscripciÃ³n eliminada permanentemente", { variant: "success" });
+      enqueueSnackbar("Preinscripción eliminada permanentemente", { variant: "success" });
       qc.invalidateQueries({ queryKey: ["preinscripciones"] }); // Invalidate list
       navigate("/preinscripciones");
     },
-    onError: () => enqueueSnackbar("No se pudo eliminar la preinscripciÃ³n", { variant: "error" })
+    onError: () => enqueueSnackbar("No se pudo eliminar la preinscripción", { variant: "error" })
   });
 
   const onSubmit = (v: PreinscripcionForm) => mUpdate.mutate(v);
@@ -326,7 +326,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
   // Editor unificado: sin tabs
 
   if (isLoading) return <Box py={6} textAlign="center"><CircularProgress /></Box>;
-  if (isError || !data) return <Typography color="error">No se pudo cargar la preinscripciÃ³n.</Typography>;
+  if (isError || !data) return <Typography color="error">No se pudo cargar la preinscripción.</Typography>;
 
   return (
     <Stack gap={2}>
@@ -340,7 +340,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           </Box>
           <Stack direction="row" gap={1}>
             <Button variant="outlined" color="warning" onClick={() => {
-              const m = prompt("Motivo de observaciÃ³n:");
+              const m = prompt("Motivo de observación:");
               if (m) mObservar.mutate(m);
             }}>Marcar Observada</Button>
             <Button variant="outlined" color="error" onClick={() => {
@@ -401,7 +401,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             </Grid>
             <Grid item xs={12} md={4}>
               <Controller name="pais_nac" control={control} render={({ field, fieldState }) => (
-                <TextField {...field} label="PaÃ­s de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
+                <TextField {...field} label="País de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
               )}/>
             </Grid>
             <Grid item xs={12} md={4}>
@@ -417,7 +417,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           </Grid>
           <Divider sx={{ my:2 }} />
 
-        {/* SecciÃ³n: Contacto */}
+        {/* Sección: Contacto */}
           {/* Sección: Contacto */}
           
 <Typography variant="subtitle1" fontWeight={700} gutterBottom>Contacto</Typography>
@@ -429,7 +429,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             </Grid>
             <Grid item xs={12} md={4}>
               <Controller name="tel_movil" control={control} render={({ field }) => (
-                <TextField {...field} label="TelÃ©fono MÃ³vil" fullWidth />
+                <TextField {...field} label="Teléfono Móvil" fullWidth />
               )}/>
             </Grid>
             <Grid item xs={12} md={4}>
@@ -445,7 +445,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             <Grid item xs={12}><Typography variant="subtitle2">Contacto de Emergencia</Typography></Grid>
             <Grid item xs={12} md={4}>
               <Controller name="emergencia_telefono" control={control} render={({ field, fieldState }) => (
-                <TextField {...field} label="TelÃ©fono de Emergencia" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
+                <TextField {...field} label="Teléfono de Emergencia" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
               )}/>
             </Grid>
             <Grid item xs={12} md={4}>
@@ -455,7 +455,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             </Grid>
           </Grid>
 
-        {/* SecciÃ³n: Estudios (Secundario y Superiores) */}
+        {/* Sección: Estudios (Secundario y Superiores) */}
           <Stack spacing={3}>
             <Box>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>Estudios Secundarios</Typography>
@@ -472,7 +472,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <Controller name="sec_titulo" control={control} render={({ field, fieldState }) => (
-                    <TextField {...field} label="TÃ­tulo Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
+                    <TextField {...field} label="Título Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
                   )}/>
                 </Grid>
                 <Grid item xs={12} md={4}>
@@ -487,7 +487,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <Controller name="sec_pais" control={control} render={({ field, fieldState }) => (
-                    <TextField {...field} label="PaÃ­s" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
+                    <TextField {...field} label="País" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
                   )}/>
                 </Grid>
               </Grid>
@@ -507,7 +507,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <Controller name="sup1_titulo" control={control} render={({ field, fieldState }) => (
-                    <TextField {...field} label="TÃ­tulo Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
+                    <TextField {...field} label="Título Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message}/>
                   )}/>
                 </Grid>
               </Grid>
@@ -575,7 +575,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel control={<Switch {...field} checked={!!field.value} />}
-                    label="Â¿Trabaja actualmente?" />
+                    label="¿Trabaja actualmente?" />
                 )}
               />
             </Grid>
@@ -686,14 +686,3 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     </Stack>
   );
 }
-
-
-
-
-
-
-
-
-
-
-

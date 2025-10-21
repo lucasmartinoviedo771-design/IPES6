@@ -3,6 +3,8 @@ from ninja import Router
 from .auth_ninja import JWTAuth
 from pydantic import BaseModel
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from ninja.errors import HttpError
 
@@ -35,6 +37,7 @@ class UserOut(BaseModel):
     roles: list[str]
     is_staff: bool
     is_superuser: bool
+    must_change_password: bool = False
 
 class TokenOut(BaseModel):
     access: str
@@ -44,6 +47,15 @@ class TokenOut(BaseModel):
 class Error(BaseModel):
     detail: str
 
+
+class Message(BaseModel):
+    detail: str
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
 @router.post("/login", response={200: TokenOut, 401: Error})
 def login(request, payload: LoginIn):
     u = _resolve_user_by_identifier(payload.login)
@@ -52,12 +64,15 @@ def login(request, payload: LoginIn):
     if not user:
         return 401, {"detail": "Credenciales inválidas"}
     refresh = RefreshToken.for_user(user)
+    estudiante = getattr(user, "estudiante", None)
+    must_change = getattr(estudiante, "must_change_password", False)
     user_data = {
         "dni": user.username,
         "name": (user.get_full_name() or user.first_name or user.username),
         "roles": list(user.groups.values_list("name", flat=True)),
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
+        "must_change_password": bool(must_change),
     }
     return {
         "access": str(refresh.access_token),
@@ -76,4 +91,30 @@ def profile(request):
         "roles": ["admin"] if u.is_staff else list(u.groups.values_list("name", flat=True)),
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
+        "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)),
     }
+
+
+@router.post("/change-password", response={200: Message, 400: Error}, auth=JWTAuth())
+def change_password(request, payload: ChangePasswordIn):
+    user = request.user
+    if not user or not user.is_authenticated:
+        raise HttpError(401, "Unauthorized")
+
+    if not user.check_password(payload.current_password):
+        return 400, {"detail": "La contraseña actual no es correcta."}
+
+    try:
+        validate_password(payload.new_password, user)
+    except ValidationError as exc:
+        return 400, {"detail": "; ".join(exc.messages)}
+
+    user.set_password(payload.new_password)
+    user.save(update_fields=["password"])
+
+    estudiante = getattr(user, "estudiante", None)
+    if estudiante and estudiante.must_change_password:
+        estudiante.must_change_password = False
+        estudiante.save(update_fields=["must_change_password"])
+
+    return {"detail": "Contraseña actualizada correctamente."}

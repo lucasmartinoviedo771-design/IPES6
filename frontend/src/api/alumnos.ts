@@ -7,6 +7,8 @@ interface InscripcionCarreraPayload {
 
 interface InscripcionMateriaPayload {
   materia_id: number;
+  comision_id?: number;
+  dni?: string;
 }
 
 interface CambioComisionPayload {

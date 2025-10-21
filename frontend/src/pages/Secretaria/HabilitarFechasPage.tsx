@@ -19,13 +19,16 @@ type Ventana = {
   periodo?: '1C_ANUALES' | '2C';
 };
 
+const LABEL_PERIODO: Record<'1C_ANUALES' | '2C', string> = {
+  '1C_ANUALES': '1º Cuatrimestre + Anuales',
+  '2C': '2º Cuatrimestre',
+};
+
 const TIPOS: { key: string; label: string }[] = [
-  { key: 'INSCRIPCION', label: 'Inscripción (general)' },
   { key: 'MESAS_FINALES', label: 'Mesas de examen - Finales' },
   { key: 'MESAS_EXTRA', label: 'Mesas de examen - Extraordinarias' },
   { key: 'MESAS_LIBRES', label: 'Mesas de examen - Libres' },
   { key: 'MATERIAS', label: 'Inscripciones a Materias' },
-  { key: 'CARRERAS', label: 'Inscripciones a Carreras' },
   { key: 'COMISION', label: 'Cambios de Comisión' },
   { key: 'ANALITICOS', label: 'Pedidos de Analíticos (placeholder)' },
   { key: 'PREINSCRIPCION', label: 'Preinscripción' },
@@ -36,6 +39,15 @@ export default function HabilitarFechasPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [editOpen, setEditOpen] = useState(false);
   const [editV, setEditV] = useState<Ventana | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, Ventana>>({});
+
+  const defaultDraft = (tipo: string): Ventana => ({
+    tipo,
+    activo: false,
+    desde: dayjs().format('YYYY-MM-DD'),
+    hasta: dayjs().add(7, 'day').format('YYYY-MM-DD'),
+    periodo: '1C_ANUALES',
+  });
 
   const load = async () => {
     try {
@@ -83,8 +95,23 @@ export default function HabilitarFechasPage() {
 
   const card = (t: { key: string; label: string }) => {
     const list = ventanas[t.key] ?? [];
-    const v: Ventana = list[0] ?? { tipo: t.key, activo: false, desde: dayjs().format('YYYY-MM-DD'), hasta: dayjs().add(7,'day').format('YYYY-MM-DD'), periodo: '1C_ANUALES' };
-    const setLocal = (patch: Partial<Ventana>) => setVentanas(prev => ({ ...prev, [t.key]: [{ ...v, ...patch, tipo: t.key }, ...list.slice(1)] }));
+    const baseDraft =
+      drafts[t.key] ??
+      (() => {
+        const activo = list.find((x) => x.activo);
+        return activo ? { ...activo } : defaultDraft(t.key);
+      })();
+    const setLocal = (patch: Partial<Ventana>) =>
+      setDrafts((prev) => ({
+        ...prev,
+        [t.key]: { ...baseDraft, ...patch, tipo: t.key },
+      }));
+    const resetDraft = () =>
+      setDrafts((prev) => ({
+        ...prev,
+        [t.key]: defaultDraft(t.key),
+      }));
+    const v = baseDraft;
     const today = dayjs();
     const enRango = (x: Ventana) => dayjs(x.desde).isSameOrBefore(today, 'day') && dayjs(x.hasta).isSameOrAfter(today, 'day');
     const estado = (x: Ventana) => enRango(x) ? 'En rango' : (dayjs(x.desde).isAfter(today) ? 'Pendiente' : 'Pasada');
@@ -102,7 +129,14 @@ export default function HabilitarFechasPage() {
       <Grid item xs={12} md={6} key={t.key}>
         <Card variant="outlined">
           <CardHeader title={t.label} action={
-            <FormControlLabel control={<Switch checked={!!v.activo} onChange={(e)=>setLocal({ activo: e.target.checked })} />} label={v.activo? 'Habilitado':'Deshabilitado'} />
+            <FormControlLabel
+              control={<Switch checked={!!v.activo} onChange={(e)=>setLocal({ activo: e.target.checked })} />}
+              label={
+                v.activo
+                  ? `Habilitado (${LABEL_PERIODO[(v.periodo ?? '1C_ANUALES') as '1C_ANUALES' | '2C']})`
+                  : 'Deshabilitado'
+              }
+            />
           }/>
           <CardContent>
             <Grid container spacing={2}>
@@ -123,13 +157,16 @@ export default function HabilitarFechasPage() {
                   </FormControl>
                 </Grid>
               )}
-              <Grid item xs={12}>
-                <Button variant="contained" disabled={!!saving[t.key]} onClick={()=>upsert(v)}>
-                  {saving[t.key] ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2">Histórico</Typography>
+                <Grid item xs={12} display="flex" gap={1}>
+                  <Button variant="outlined" onClick={resetDraft}>
+                    Nuevo periodo
+                  </Button>
+                  <Button variant="contained" disabled={!!saving[t.key]} onClick={()=>upsert(v)}>
+                    {saving[t.key] ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Histórico</Typography>
                 {
                   Array(3).fill(null).map((_, index) => {
                     const x = displayList[index];
@@ -138,6 +175,14 @@ export default function HabilitarFechasPage() {
                         <span>{dayjs(x.desde).format('DD/MM/YYYY')} → {dayjs(x.hasta).format('DD/MM/YYYY')}</span>
                         <Chip size="small" label={x.activo ? 'Habilitado' : 'Deshabilitado'} color={x.activo ? 'success' : 'default'} variant={x.activo ? 'filled' : 'outlined'} />
                         <Chip size="small" label={estado(x)} color={estado(x)==='En rango' ? 'info' : estado(x)==='Pendiente' ? 'warning' : 'default'} variant={estado(x)==='Pasada' ? 'outlined' : 'filled'} />
+                        {t.key === 'MATERIAS' && (
+                          <Chip
+                            size="small"
+                            label={LABEL_PERIODO[(x.periodo ?? '1C_ANUALES') as '1C_ANUALES' | '2C']}
+                            color="primary"
+                            variant="outlined"
+                          />
+                        )}
                         <span style={{ flex: 1 }} />
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openEdit(x)}><EditIcon fontSize="small"/></IconButton></Tooltip>
                         <Tooltip title="Eliminar"><IconButton color="error" size="small" onClick={() => deleteVentana(x.id)}><DeleteForeverIcon fontSize="small"/></IconButton></Tooltip>

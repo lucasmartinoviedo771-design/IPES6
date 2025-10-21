@@ -1,11 +1,13 @@
 from ninja import Router, Schema
 from typing import List, Optional, Dict
 from django.shortcuts import get_object_or_404
-from core.models import Profesorado, PlanDeEstudio, Materia, Docente, Turno, Bloque, HorarioCatedra, HorarioCatedraDetalle, VentanaHabilitacion, Correlatividad, MesaExamen
+from core.models import Profesorado, PlanDeEstudio, Materia, Docente, Turno, Bloque, HorarioCatedra, HorarioCatedraDetalle, Comision, VentanaHabilitacion, Correlatividad, MesaExamen
 from ninja.errors import HttpError
 from datetime import time, date
 from django.db.models import Case, When, Value, CharField, F, Q
 from django.db import transaction
+from apps.common.api_schemas import ApiResponse
+import string
 
 router = Router()
 
@@ -39,6 +41,26 @@ class MateriaIn(Schema):
     horas_semana: int # Changed from carga_horaria_semanal
     formato: str
     regimen: str # Changed from tipo_cursada
+
+def _compatible_cuatrimestres(valor: str | None):
+    """
+    Devuelve el conjunto de valores de cuatrimestre/regimen que deben considerarse
+    compatibles para detectar superposiciones.
+
+    - ANUAL se superpone con todo (ANU, 1C, 2C)
+    - 1C se cruza solo con ANUAL y 1C
+    - 2C se cruza solo con ANUAL y 2C
+    - None (no especificado) se asume como anual.
+    """
+    v = (valor or 'ANU').upper()
+    if v == 'ANU':
+        return ['ANU', 'PCU', 'SCU', None]
+    if v == 'PCU' or v == '1C':
+        return ['ANU', 'PCU', '1C', None]
+    if v == 'SCU' or v == '2C':
+        return ['ANU', 'SCU', '2C', None]
+    return ['ANU', v, None]
+
 
 class MateriaOut(Schema):
     id: int
@@ -349,15 +371,54 @@ def list_horario_catedra_detalles(request, horario_catedra_id: int):
     )
     return detalles
 
-@router.post("/horarios_catedra/{horario_catedra_id}/detalles", response=HorarioCatedraDetalleOut)
+@router.post("/horarios_catedra/{horario_catedra_id}/detalles", response={200: HorarioCatedraDetalleOut, 409: ApiResponse})
 def create_horario_catedra_detalle(request, horario_catedra_id: int, payload: HorarioCatedraDetalleIn):
     horario_catedra = get_object_or_404(HorarioCatedra, id=horario_catedra_id)
     bloque = get_object_or_404(Bloque, id=payload.bloque_id)
     
     # Check for overlaps with other HorarioCatedraDetalle for the same block
-    # This is a basic check, more complex overlap logic will be needed
-    if HorarioCatedraDetalle.objects.filter(bloque=bloque, horario_catedra__anio_cursada=horario_catedra.anio_cursada, horario_catedra__turno=horario_catedra.turno).exclude(horario_catedra=horario_catedra).exists():
-        raise HttpError(409, "Block is already occupied by another schedule in the same year and turn.")
+    conflict = (
+        HorarioCatedraDetalle.objects
+        .select_related(
+            'bloque',
+            'horario_catedra__espacio',
+            'horario_catedra__turno',
+        )
+        .filter(
+            bloque=bloque,
+            horario_catedra__anio_cursada=horario_catedra.anio_cursada,
+            horario_catedra__turno=horario_catedra.turno,
+            horario_catedra__espacio__plan_de_estudio=horario_catedra.espacio.plan_de_estudio,
+            horario_catedra__espacio__anio_cursada=horario_catedra.espacio.anio_cursada,
+            horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(horario_catedra.cuatrimestre),
+            horario_catedra__espacio__regimen__in=_compatible_cuatrimestres(horario_catedra.espacio.regimen),
+        )
+        .exclude(horario_catedra=horario_catedra)
+        .first()
+    )
+    if conflict:
+        hc = conflict.horario_catedra
+        espacio = hc.espacio
+        turno = hc.turno
+        conflict_payload = {
+            "horario_id": hc.id,
+            "materia_id": espacio.id if espacio else None,
+            "materia_nombre": espacio.nombre if espacio else None,
+            "turno": turno.nombre if turno else None,
+            "anio_cursada": hc.anio_cursada,
+            "cuatrimestre": hc.cuatrimestre,
+            "bloque": {
+                "id": conflict.bloque_id,
+                "dia": conflict.bloque.get_dia_display(),
+                "hora_desde": str(conflict.bloque.hora_desde)[:5],
+                "hora_hasta": str(conflict.bloque.hora_hasta)[:5],
+            },
+        }
+        return 409, ApiResponse(
+            ok=False,
+            message="Bloque ocupado por otra cátedra en el mismo turno y año.",
+            data={"conflict": conflict_payload},
+        )
 
     # Idempotente: evitar duplicado por unique_together
     detalle, _created = HorarioCatedraDetalle.objects.get_or_create(
@@ -376,6 +437,251 @@ def create_horario_catedra_detalle(request, horario_catedra_id: int, payload: Ho
 def delete_horario_catedra_detalle(request, detalle_id: int):
     detalle = get_object_or_404(HorarioCatedraDetalle, id=detalle_id)
     detalle.delete()
+    return 204, None
+
+# Comision Endpoints
+class ComisionIn(Schema):
+    materia_id: int
+    anio_lectivo: int
+    codigo: str
+    turno_id: int
+    docente_id: Optional[int] = None
+    horario_id: Optional[int] = None
+    cupo_maximo: Optional[int] = None
+    estado: Optional[str] = None
+    observaciones: Optional[str] = None
+
+
+class ComisionOut(Schema):
+    id: int
+    materia_id: int
+    materia_nombre: str
+    plan_id: int
+    plan_resolucion: str
+    profesorado_id: int
+    profesorado_nombre: str
+    anio_lectivo: int
+    codigo: str
+    turno_id: int
+    turno_nombre: str
+    docente_id: Optional[int] = None
+    docente_nombre: Optional[str] = None
+    horario_id: Optional[int] = None
+    cupo_maximo: Optional[int] = None
+    estado: str
+    observaciones: Optional[str] = None
+
+
+def _serialize_comision(comision: Comision) -> ComisionOut:
+    materia = comision.materia
+    plan = materia.plan_de_estudio
+    profesorado = plan.profesorado
+    turno = comision.turno
+    docente = comision.docente
+    return ComisionOut(
+        id=comision.id,
+        materia_id=materia.id,
+        materia_nombre=materia.nombre,
+        plan_id=plan.id,
+        plan_resolucion=plan.resolucion,
+        profesorado_id=profesorado.id,
+        profesorado_nombre=profesorado.nombre,
+        anio_lectivo=comision.anio_lectivo,
+        codigo=comision.codigo,
+        turno_id=turno.id,
+        turno_nombre=turno.nombre,
+        docente_id=docente.id if docente else None,
+        docente_nombre=f"{docente.apellido}, {docente.nombre}" if docente else None,
+        horario_id=comision.horario_id,
+        cupo_maximo=comision.cupo_maximo,
+        estado=comision.estado,
+        observaciones=comision.observaciones or None,
+    )
+
+
+def _clean_estado(value: Optional[str]) -> str:
+    estado = (value or Comision.Estado.ABIERTA).upper()
+    allowed = {choice[0] for choice in Comision.Estado.choices}
+    if estado not in allowed:
+        raise HttpError(400, f"Estado invalido: {estado}")
+    return estado
+
+
+def _resolve_docente(docente_id: Optional[int]) -> Optional[Docente]:
+    if docente_id is None:
+        return None
+    return get_object_or_404(Docente, id=docente_id)
+
+
+def _resolve_horario(horario_id: Optional[int]) -> Optional[HorarioCatedra]:
+    if horario_id is None:
+        return None
+    return get_object_or_404(HorarioCatedra, id=horario_id)
+
+
+def _codigo_from_index(index: int) -> str:
+    letters = string.ascii_uppercase
+    base = len(letters)
+    result = ""
+    i = index
+    while True:
+        result = letters[i % base] + result
+        i = i // base - 1
+        if i < 0:
+            break
+    return result
+
+
+@router.get("/comisiones", response=List[ComisionOut])
+def list_comisiones(
+    request,
+    profesorado_id: Optional[int] = None,
+    plan_id: Optional[int] = None,
+    materia_id: Optional[int] = None,
+    anio_lectivo: Optional[int] = None,
+    turno_id: Optional[int] = None,
+    estado: Optional[str] = None,
+):
+    qs = Comision.objects.select_related(
+        "materia__plan_de_estudio__profesorado",
+        "turno",
+        "docente",
+    )
+    if profesorado_id:
+        qs = qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
+    if plan_id:
+        qs = qs.filter(materia__plan_de_estudio_id=plan_id)
+    if materia_id:
+        qs = qs.filter(materia_id=materia_id)
+    if anio_lectivo:
+        qs = qs.filter(anio_lectivo=anio_lectivo)
+    if turno_id:
+        qs = qs.filter(turno_id=turno_id)
+    if estado:
+        qs = qs.filter(estado=estado.upper())
+
+    qs = qs.order_by("-anio_lectivo", "materia__nombre", "codigo")
+    return [_serialize_comision(com) for com in qs]
+
+
+@router.post("/comisiones", response=ComisionOut)
+def create_comision(request, payload: ComisionIn):
+    materia = get_object_or_404(Materia, id=payload.materia_id)
+    turno = get_object_or_404(Turno, id=payload.turno_id)
+    docente = _resolve_docente(payload.docente_id)
+    horario = _resolve_horario(payload.horario_id)
+    estado = _clean_estado(payload.estado)
+
+    comision = Comision.objects.create(
+        materia=materia,
+        anio_lectivo=payload.anio_lectivo,
+        codigo=payload.codigo,
+        turno=turno,
+        docente=docente,
+        horario=horario,
+        cupo_maximo=payload.cupo_maximo,
+        estado=estado,
+        observaciones=payload.observaciones or "",
+    )
+    return _serialize_comision(comision)
+
+
+class ComisionBulkGenerateIn(Schema):
+    plan_id: int
+    anio_lectivo: int
+    turnos: Optional[List[int]] = None
+    cantidad: int = 1
+    estado: Optional[str] = None
+
+
+@router.post("/comisiones/generar", response=List[ComisionOut])
+def bulk_generate_comisiones(request, payload: ComisionBulkGenerateIn):
+    if payload.cantidad < 1:
+        raise HttpError(400, "Cantidad debe ser al menos 1.")
+
+    plan = get_object_or_404(PlanDeEstudio.objects.select_related("profesorado"), id=payload.plan_id)
+    materias = list(plan.materias.all().order_by("anio_cursada", "nombre"))
+    if not materias:
+        raise HttpError(400, "El plan no posee materias para generar comisiones.")
+
+    estado = _clean_estado(payload.estado)
+
+    if payload.turnos:
+        turnos = list(Turno.objects.filter(id__in=payload.turnos))
+        if not turnos:
+            raise HttpError(400, "No se encontraron turnos con los identificadores provistos.")
+        if len(turnos) != len(set(payload.turnos)):
+            raise HttpError(400, "Alguno de los turnos solicitados no existe.")
+    else:
+        turnos = list(Turno.objects.all().order_by("id"))
+        if not turnos:
+            raise HttpError(400, "No hay turnos dados de alta en el sistema.")
+
+    created: List[Comision] = []
+
+    with transaction.atomic():
+        for materia in materias:
+            existing_codes = set(
+                Comision.objects.filter(
+                    materia=materia,
+                    anio_lectivo=payload.anio_lectivo,
+                ).values_list("codigo", flat=True)
+            )
+            existentes = len(existing_codes)
+            if existentes >= payload.cantidad:
+                continue
+
+            faltantes = payload.cantidad - existentes
+            code_index = 0
+            nuevos_creados = 0
+            while nuevos_creados < faltantes:
+                codigo = _codigo_from_index(code_index)
+                code_index += 1
+                if codigo in existing_codes:
+                    continue
+                existing_codes.add(codigo)
+                turno = turnos[(existentes + nuevos_creados) % len(turnos)]
+                comision = Comision.objects.create(
+                    materia=materia,
+                    anio_lectivo=payload.anio_lectivo,
+                    codigo=codigo,
+                    turno=turno,
+                    estado=estado,
+                    observaciones="",
+                )
+                created.append(comision)
+                nuevos_creados += 1
+
+    return [_serialize_comision(com) for com in created]
+
+
+@router.put("/comisiones/{comision_id}", response=ComisionOut)
+def update_comision(request, comision_id: int, payload: ComisionIn):
+    comision = get_object_or_404(Comision, id=comision_id)
+    materia = get_object_or_404(Materia, id=payload.materia_id)
+    turno = get_object_or_404(Turno, id=payload.turno_id)
+    docente = _resolve_docente(payload.docente_id)
+    horario = _resolve_horario(payload.horario_id)
+    estado = _clean_estado(payload.estado)
+
+    comision.materia = materia
+    comision.anio_lectivo = payload.anio_lectivo
+    comision.codigo = payload.codigo
+    comision.turno = turno
+    comision.docente = docente
+    comision.horario = horario
+    comision.cupo_maximo = payload.cupo_maximo
+    comision.estado = estado
+    comision.observaciones = payload.observaciones or ""
+    comision.save()
+
+    return _serialize_comision(comision)
+
+
+@router.delete("/comisiones/{comision_id}", response={204: None})
+def delete_comision(request, comision_id: int):
+    comision = get_object_or_404(Comision, id=comision_id)
+    comision.delete()
     return 204, None
 
 # Specific endpoint for timetable builder: Get occupied blocks
@@ -418,6 +724,7 @@ class VentanaIn(Schema):
     desde: date
     hasta: date
     activo: bool = True
+    periodo: Optional[str] = None
 
 class VentanaOut(Schema):
     id: int
@@ -425,6 +732,7 @@ class VentanaOut(Schema):
     desde: date
     hasta: date
     activo: bool
+    periodo: Optional[str] = None
 
 @router.get("/ventanas", response=List[VentanaOut])
 def list_ventanas(request, tipo: Optional[str] = None, estado: Optional[str] = None):
@@ -448,6 +756,7 @@ def create_ventana(request, payload: VentanaIn):
         desde=payload.desde,
         hasta=payload.hasta,
         activo=payload.activo,
+        periodo=payload.periodo,
     )
     return obj
 
@@ -585,6 +894,7 @@ def update_ventana(request, ventana_id: int, payload: VentanaIn):
     obj.desde = payload.desde
     obj.hasta = payload.hasta
     obj.activo = payload.activo
+    obj.periodo = payload.periodo
     obj.save()
     return obj
 

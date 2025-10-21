@@ -146,6 +146,10 @@ class Estudiante(models.Model):
         choices=EstadoLegajo.choices,
         default=EstadoLegajo.PENDIENTE
     )
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="Si está activo, el estudiante debe cambiar la contraseña al iniciar sesión."
+    )
     documentacion_presentada = models.ManyToManyField(
         Documento,
         blank=True,
@@ -216,6 +220,32 @@ class HorarioCatedraDetalle(models.Model):
         unique_together = ('horario_catedra', 'bloque') # A block can only be assigned once per schedule
 
 
+class Comision(models.Model):
+    class Estado(models.TextChoices):
+        ABIERTA = 'ABI', 'Abierta'
+        CERRADA = 'CER', 'Cerrada'
+        SUSPENDIDA = 'SUS', 'Suspendida'
+
+    materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='comisiones')
+    anio_lectivo = models.IntegerField(help_text="Año académico en el que se dicta la comisión")
+    codigo = models.CharField(max_length=32, help_text="Identificador interno de la comisión")
+    turno = models.ForeignKey(Turno, on_delete=models.PROTECT, related_name='comisiones')
+    docente = models.ForeignKey(Docente, on_delete=models.SET_NULL, null=True, blank=True, related_name='comisiones')
+    horario = models.ForeignKey('HorarioCatedra', on_delete=models.SET_NULL, null=True, blank=True, related_name='comisiones')
+    cupo_maximo = models.IntegerField(null=True, blank=True)
+    estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.ABIERTA)
+    observaciones = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('materia', 'anio_lectivo', 'codigo')
+        ordering = ['anio_lectivo', 'materia__nombre', 'codigo']
+
+    def __str__(self):
+        return f"{self.materia.nombre} - {self.codigo} ({self.anio_lectivo})"
+
+
 class VentanaHabilitacion(models.Model):
     class Tipo(models.TextChoices):
         INSCRIPCION = 'INSCRIPCION', 'Inscripción (general)'
@@ -232,6 +262,12 @@ class VentanaHabilitacion(models.Model):
     desde = models.DateField()
     hasta = models.DateField()
     activo = models.BooleanField(default=False)
+    periodo = models.CharField(
+        max_length=16,
+        null=True,
+        blank=True,
+        help_text="Solo para inscripciones a materias: '1C_ANUALES' o '2C'.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -332,18 +368,47 @@ class EquivalenciaCurricular(models.Model):
 
 
 class InscripcionMateriaAlumno(models.Model):
-    """Inscripción anual de un estudiante a una materia (cursada)."""
+    """Inscripción anual de un estudiante a una materia/comisión."""
+
+    class Estado(models.TextChoices):
+        CONFIRMADA = 'CONF', 'Confirmada'
+        PENDIENTE = 'PEND', 'Pendiente'
+        RECHAZADA = 'RECH', 'Rechazada'
+        ANULADA = 'ANUL', 'Anulada'
+
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='inscripciones_materia')
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='inscripciones_alumnos')
+    comision = models.ForeignKey(
+        Comision,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='inscripciones'
+    )
+    comision_solicitada = models.ForeignKey(
+        Comision,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='inscripciones_solicitadas'
+    )
     anio = models.IntegerField()
+    estado = models.CharField(max_length=4, choices=Estado.choices, default=Estado.CONFIRMADA)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('estudiante', 'materia', 'anio')
         ordering = ['-anio', '-created_at']
+        indexes = [
+            models.Index(fields=['estudiante', 'anio']),
+            models.Index(fields=['estudiante', 'estado']),
+        ]
 
     def __str__(self):
-        return f"{self.estudiante.dni} -> {self.materia.nombre} ({self.anio})"
+        materia_nombre = self.materia.nombre if self.materia_id else 'Materia'
+        codigo = f" [{self.comision.codigo}]" if self.comision_id else ''
+        return f"{self.estudiante.dni} -> {materia_nombre}{codigo} ({self.anio}) {self.get_estado_display()}"
 
 
 class PedidoAnalitico(models.Model):
@@ -410,11 +475,22 @@ class Regularidad(models.Model):
         LIBRE_I = 'LBI', 'Libre por Inasistencias'
         LIBRE_AT = 'LAT', 'Libre Antes de Tiempo'
 
+    inscripcion = models.ForeignKey(
+        'InscripcionMateriaAlumno',
+        on_delete=models.CASCADE,
+        related_name='regularidades_historial',
+        null=True,
+        blank=True,
+    )
     estudiante = models.ForeignKey('Estudiante', on_delete=models.CASCADE, related_name='regularidades')
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='regularidades')
     fecha_cierre = models.DateField()
+    nota_trabajos_practicos = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     nota_final_cursada = models.IntegerField(null=True, blank=True)
+    asistencia_porcentaje = models.IntegerField(null=True, blank=True)
+    excepcion = models.BooleanField(default=False)
     situacion = models.CharField(max_length=3, choices=Situacion.choices)
+    observaciones = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

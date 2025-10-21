@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import {
   Stack,
   Typography,
@@ -222,7 +222,7 @@ export default function CargarProfesoradoPage() {
                 reset();
               }}
             >
-              Cancelar Edici\\\\u00f3n
+              Cancelar Edición
             </Button>
           )}
         </Box>
@@ -293,8 +293,3 @@ export default function CargarProfesoradoPage() {
     </Stack>
   );
 }
-
-
-
-
-

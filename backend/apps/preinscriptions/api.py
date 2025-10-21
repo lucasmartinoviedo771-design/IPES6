@@ -2,7 +2,7 @@ import logging
 import json
 from ninja import Router
 from django.db import transaction
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
 from core.models import Estudiante, Preinscripcion, Profesorado, PreinscripcionChecklist
@@ -297,11 +297,25 @@ def confirmar_por_codigo(request, codigo: str, payload: Optional[ChecklistIn] = 
     pre.alumno.carreras.add(pre.carrera)
     pre.estado = "Confirmada"
     pre.save(update_fields=["estado"])
+
+    estudiante = pre.alumno
+    user = estudiante.user
+    default_password = f"Pass{estudiante.dni}"
+    user.set_password(default_password)
+    user.save(update_fields=["password"])
+
+    alumno_group, _ = Group.objects.get_or_create(name="alumno")
+    user.groups.add(alumno_group)
+
+    estudiante.must_change_password = True
+    estudiante.save(update_fields=["must_change_password"])
+
     logger.info("Pre %s confirmada. Legajo=%s", pre.codigo, getattr(pre.checklist, 'estado_legajo', 'PEN'))
     return ApiResponse(ok=True, message="Preinscripción confirmada", data={
         "codigo": pre.codigo,
         "estado": pre.estado,
-        "legajo": getattr(pre.checklist, 'estado_legajo', 'PEN')
+        "legajo": getattr(pre.checklist, 'estado_legajo', 'PEN'),
+        "password_inicial": default_password
     })
 
 def _serialize_pre(pre: Preinscripcion):
