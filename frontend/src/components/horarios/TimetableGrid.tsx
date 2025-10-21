@@ -82,6 +82,7 @@ interface Materia {
   nombre: string;
   horas_semana: number;
   regimen: string;
+  formato?: string | null;
 }
 
 interface TimetableGridProps {
@@ -214,10 +215,28 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 
   const selectedMateria = materias.find(m => m.id === selectedMateriaId) || null;
   const selectedCount = selectedBlocks.size;
+  const horasRequeridas = selectedMateria?.horas_semana ?? 0;
+  const nombreNormalizado = selectedMateria
+    ? selectedMateria.nombre
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+    : '';
+  const formatoNormalizado = (selectedMateria?.formato || '').toUpperCase();
+  const esMateriaFlexible = !!selectedMateria && (
+    formatoNormalizado === 'PRA' ||
+    nombreNormalizado.includes('practica') ||
+    nombreNormalizado.includes('residencia') ||
+    nombreNormalizado.includes('campo de la practica')
+  );
+  const botonDeshabilitado =
+    !selectedMateria ||
+    (!esMateriaFlexible && selectedCount !== horasRequeridas) ||
+    (esMateriaFlexible && selectedCount > horasRequeridas);
 
   useEffect(() => {
-    setHorasRequeridas(selectedMateria?.horas_semana ?? 0);
-  }, [selectedMateria, setHorasRequeridas]);
+    setHorasRequeridas(horasRequeridas);
+  }, [horasRequeridas, setHorasRequeridas]);
 
   const handleBlockClick = (bloqueId: number) => {
     if (!selectedMateriaId) {
@@ -414,7 +433,7 @@ if (hasBloques) {
       <div className="mt-3 flex items-center gap-2">
         <div className="text-sm">
           Horas asignadas: <b>{selectedCount}</b> / Horas requeridas:{" "}
-          <b>{selectedMateria?.horas_semana ?? 0}</b>
+          <b>{horasRequeridas}</b>
         </div>
         <div className="ml-auto flex gap-8">
           <button type="button" className="btn secondary" onClick={onClear}>Limpiar selección</button>
@@ -422,9 +441,17 @@ if (hasBloques) {
           <button
             type="button"
             className="btn"
-            disabled={!selectedMateria || selectedCount !== (selectedMateria?.horas_semana ?? 0)}
+            disabled={botonDeshabilitado}
             onClick={onGuardar}
-            title={!selectedMateria ? "Seleccione materia" : selectedCount !== (selectedMateria?.horas_semana ?? 0) ? "Debe asignar exactamente las horas requeridas" : "Guardar"}
+            title={
+              !selectedMateria
+                ? "Seleccione materia"
+                : botonDeshabilitado
+                ? esMateriaFlexible
+                  ? "No puede exceder las horas requeridas para esta práctica/residencia."
+                  : "Debe asignar exactamente las horas requeridas."
+                : "Guardar"
+            }
           >
             Guardar
           </button>

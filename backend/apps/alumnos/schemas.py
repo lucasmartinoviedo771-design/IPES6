@@ -9,16 +9,12 @@ class InscripcionCarreraOut(Schema):
 
 class InscripcionMateriaIn(Schema):
     materia_id: int
-
-class InscripcionMateriaOut(Schema):
-    message: str
+    comision_id: Optional[int] = None
+    dni: Optional[str] = None
 
 class CambioComisionIn(Schema):
-    comision_actual_id: int
-    comision_nueva_id: int
-
-class CambioComisionOut(Schema):
-    message: str
+    inscripcion_id: int
+    comision_id: int
 
 class PedidoAnaliticoOut(Schema):
     message: str
@@ -81,11 +77,65 @@ class HistorialAlumno(Schema):
     regularizadas: List[int] = []
     inscriptas_actuales: List[int] = []
 
+
+InscripcionEstado = Literal['CONF', 'PEND', 'RECH', 'ANUL']
+
+
+class ComisionResumen(Schema):
+    id: int
+    codigo: str
+    anio_lectivo: int
+    turno_id: int
+    turno: str
+    materia_id: int
+    materia_nombre: str
+    plan_id: Optional[int] = None
+    profesorado_id: Optional[int] = None
+    profesorado_nombre: Optional[str] = None
+    docente: Optional[str] = None
+    cupo_maximo: Optional[int] = None
+    estado: str
+    horarios: List[Horario] = []
+
+
+class MateriaInscriptaItem(Schema):
+    inscripcion_id: int
+    materia_id: int
+    materia_nombre: str
+    plan_id: Optional[int] = None
+    profesorado_id: Optional[int] = None
+    profesorado_nombre: Optional[str] = None
+    anio_plan: int
+    anio_academico: int
+    estado: InscripcionEstado
+    estado_display: str
+    comision_actual: Optional[ComisionResumen] = None
+    comision_solicitada: Optional[ComisionResumen] = None
+    fecha_creacion: str
+    fecha_actualizacion: str
+
+
+class InscripcionMateriaOut(Schema):
+    message: str
+    inscripcion_id: Optional[int] = None
+    estado: Optional[InscripcionEstado] = None
+    comision_asignada: Optional[ComisionResumen] = None
+    comision_solicitada: Optional[ComisionResumen] = None
+    conflictos: List[dict] = []
+    alternativas: List[ComisionResumen] = []
+
+
+CambioComisionOut = InscripcionMateriaOut
+
+
 class EquivalenciaItem(Schema):
     materia_id: int
     materia_nombre: str
+    plan_id: Optional[int] = None
+    profesorado_id: Optional[int] = None
     profesorado: str
     horarios: List[Horario] = []
+    comisiones: List[ComisionResumen] = []
 
 class PedidoAnaliticoIn(Schema):
     motivo: Literal['equivalencia','beca','control','otro']

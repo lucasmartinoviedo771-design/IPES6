@@ -24,6 +24,11 @@ export function ProtectedRoute({
   // No autenticado → al login, preservando "from"
   if (!user) return <Navigate to={redirectTo} replace state={{ from: loc }} />;
 
+  const mustChange = Boolean(user.must_change_password);
+  if (mustChange && loc.pathname !== "/cambiar-password") {
+    return <Navigate to="/cambiar-password" replace state={{ from: loc }} />;
+  }
+
   // Sin requisitos de rol → alcanza con estar logueado
   if (!roles || roles.length === 0) return children;
 

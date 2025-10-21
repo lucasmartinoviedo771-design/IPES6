@@ -16,21 +16,13 @@ import {
   Stack,
   TextField,
   IconButton,
-  Checkbox,
-  FormControlLabel,
-  Grid,
-  Divider,
-  Alert,
-  FormGroup,
 } from "@mui/material";
-import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion, activarPreinscripcion, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
-import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
+import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion } from "@/api/preinscripciones";
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import dayjs from "dayjs";
 
-function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
-  const norm = (estado || '').toLowerCase();
+function EstadoChip({ estado }: { estado: string }) {
   const map: Record<string, "default" | "success" | "warning" | "error"> = {
     enviada: "default",
     observada: "warning",
@@ -38,49 +30,20 @@ function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
     rechazada: "error",
     borrador: "default",
   };
-  const label = activa === false ? 'Borrada' : estado;
-  const color = (activa === false ? 'error' : (map[norm] ?? 'default')) as any;
-  return <Chip label={label} color={color} size="small" sx={{ borderRadius: 99, textTransform: "capitalize" }} />;
+  return <Chip label={estado} color={map[estado] ?? "default"} size="small" sx={{ borderRadius: 99, textTransform: "capitalize" }} />;
 }
 
 export default function PreinscripcionesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [q, setQ] = React.useState("");
-  const [inclInactivas, setInclInactivas] = React.useState(false);
   const { data, isLoading, isError, refetch } = useQuery<{ results: PreinscripcionDTO[] }>({
-    queryKey: ["preinscripciones", q, inclInactivas],
-    queryFn: () => listarPreinscripciones({ q, include_inactivas: inclInactivas }),
+    queryKey: ["preinscripciones", q],
+    queryFn: () => listarPreinscripciones({ q }),
   });
-
-  // Unificación: formalizar en esta misma vista
-  const [codigoSel, setCodigoSel] = React.useState<string | null>(null);
-  const [docs, setDocs] = React.useState<{[k: string]: boolean}>({
-    dni: false,
-    titulo_secundario: false,
-    partida_nacimiento: false,
-    certificado_salud: false,
-    fotos: false,
-  });
-  const allDocs = Object.values(docs).every(Boolean);
-  const [msgOk, setMsgOk] = React.useState<string | null>(null);
-  const [msgErr, setMsgErr] = React.useState<string | null>(null);
-
-  async function confirmarFormalizacion() {
-    if (!codigoSel) return;
-    try {
-      await apiConfirmarPreinscripcion(codigoSel, { documentos: docs, estado: allDocs ? "regular" : "condicional" });
-      setMsgOk("Preinscripción confirmada");
-      setMsgErr(null);
-      await refetch();
-    } catch (e: any) {
-      setMsgErr(e?.response?.data?.message || "No se pudo confirmar");
-      setMsgOk(null);
-    }
-  }
 
   const onDelete = async (id: number) => {
-    if (!confirm("¿Eliminar la Preinscripción seleccionada?")) return;
+    if (!confirm("¿Eliminar la preinscripción seleccionada?")) return;
     try {
       await eliminarPreinscripcion(id);
       await qc.invalidateQueries({ queryKey: ["preinscripciones"] });
@@ -105,7 +68,6 @@ export default function PreinscripcionesPage() {
             onChange={(e)=> setQ(e.target.value)}
             sx={{ minWidth: 360 }}
           />
-          <FormControlLabel control={<Checkbox size="small" checked={inclInactivas} onChange={(e)=> setInclInactivas(e.target.checked)} />} label="Incluir inactivas" />
           <Button startIcon={<AddIcon/>} variant="contained" onClick={()=> navigate('/preinscripcion')}>
             Nueva Preinscripción
           </Button>
@@ -151,23 +113,26 @@ export default function PreinscripcionesPage() {
                   <TableCell>{p.carrera.nombre}</TableCell>
                   <TableCell>{dayjs(p.fecha).format("DD/MM/YYYY HH:mm")}</TableCell>
                   <TableCell>
-                    <EstadoChip estado={p.estado as any} activa={(p as any).activa as any} />
+                    <EstadoChip estado={p.estado} />
                   </TableCell>
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
                       <Button
                         size="small"
-                        onClick={() => setCodigoSel(p.codigo)}
+                        onClick={() => navigate(`/gestion/confirmar?codigo=${p.codigo}`)}
                       >
                         Ver / Editar
                       </Button>
-                      { (p as any).activa === false ? (
-                        <Button size="small" variant="outlined" onClick={async ()=> { await activarPreinscripcion(p.id); await qc.invalidateQueries({ queryKey: ["preinscripciones"] }); refetch(); }}>Activar</Button>
-                      ) : (
-                        <IconButton size="small" onClick={()=> onDelete(p.id)} color="error" title="Eliminar">
-                          <DeleteIcon fontSize="small"/>
-                        </IconButton>
-                      )}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate(`/preinscripcion/comprobante/${p.id}`)}
+                      >
+                        PDF (local)
+                      </Button>
+                      <IconButton size="small" onClick={()=> onDelete(p.id)} color="error" title="Eliminar">
+                        <DeleteIcon fontSize="small"/>
+                      </IconButton>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -176,25 +141,6 @@ export default function PreinscripcionesPage() {
           </Table>
         </TableContainer>
       </Paper>
-
-      {/* Panel inline para Formalizar inscripción */}
-      {codigoSel && (
-        <Paper sx={{ p:2 }}>
-          <Stack gap={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6" fontWeight={700}>Formalizar inscripción — {codigoSel}</Typography>
-              <Button size="small" onClick={()=> setCodigoSel(null)}>Cerrar</Button>
-            </Stack>
-            {msgOk && <Alert severity="success">{msgOk}</Alert>}
-            {msgErr && <Alert severity="error">{msgErr}</Alert>}
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={12}>
-                <PreConfirmEditor codigo={codigoSel} />
-              </Grid>
-              </Grid>
-          </Stack>
-        </Paper>
-      )}
     </Stack>
   );
 }

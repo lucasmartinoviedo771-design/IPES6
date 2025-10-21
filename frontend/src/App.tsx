@@ -14,6 +14,7 @@ import ConfirmarInscripcionPage from '@/pages/ConfirmarInscripcionPage';
 import DashboardPage from '@/pages/DashboardPage';
 import Forbidden from '@/pages/Forbidden';
 import LoginPage from '@/pages/LoginPage';
+import ChangePasswordPage from '@/pages/Auth/ChangePasswordPage';
 import PreinscripcionesPage from '@/pages/PreinscripcionesPage';
 import ReportesPage from '@/pages/ReportesPage';
 import SecretariaIndex from '@/pages/Secretaria/Index';
@@ -32,6 +33,8 @@ import CargarHorarioPage from "@/pages/Secretaria/CargarHorarioPage";
 import CatedraDocentePage from "@/pages/Secretaria/CatedraDocentePage";
 import HabilitarFechasPage from "@/pages/Secretaria/HabilitarFechasPage";
 import CorrelatividadesPage from "@/pages/Secretaria/CorrelatividadesPage";
+import CargaNotasPage from "@/pages/Secretaria/CargaNotasPage";
+import ComisionesPage from "@/pages/Secretaria/ComisionesPage";
 import ErrorBoundary from "@/debug/ErrorBoundary";
 
 // Nuevas páginas de Alumnos
@@ -69,6 +72,7 @@ export default function App() {
             <Route path="/debug/inscripcion-preview" element={<InscripcionPreview />} />
 
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+            <Route path="/cambiar-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
 
             {/* Bloque protegido con AppShell (incluye alumnos y bedel) */}
             <Route element={<ProtectedRoute roles={['preinscripciones','secretaria','admin','alumno','bedel']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
@@ -89,9 +93,11 @@ export default function App() {
 <Route path="/secretaria/horarios" element={<ProtectedRoute roles={['secretaria','admin']}><ErrorBoundary><CargarHorarioPage /></ErrorBoundary></ProtectedRoute>} />
 <Route path="/secretaria/catedra-docente" element={<ProtectedRoute roles={['secretaria','admin']}><CatedraDocentePage /></ProtectedRoute>} />
 <Route path="/secretaria/habilitar-fechas" element={<ProtectedRoute roles={['secretaria','admin']}><HabilitarFechasPage /></ProtectedRoute>} />
+<Route path="/secretaria/comisiones" element={<ProtectedRoute roles={['secretaria','admin']}><ComisionesPage /></ProtectedRoute>} />
 <Route path="/secretaria/analiticos" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><AnaliticosPage /></ProtectedRoute>} />
 <Route path="/secretaria/mesas" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><MesasPage /></ProtectedRoute>} />
 <Route path="/secretaria/correlatividades" element={<ProtectedRoute roles={['secretaria','admin']}><CorrelatividadesPage /></ProtectedRoute>} />
+<Route path="/secretaria/carga-notas" element={<ProtectedRoute roles={['secretaria','admin']}><CargaNotasPage /></ProtectedRoute>} />
 <Route path="/secretaria/confirmar-inscripcion" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><ConfirmarInscripcionSecretaria /></ProtectedRoute>} />
 
               {/* Nuevas rutas para Alumnos */}

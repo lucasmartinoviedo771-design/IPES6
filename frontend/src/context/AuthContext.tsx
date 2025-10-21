@@ -7,6 +7,7 @@ export type User = {
   roles?: string[];
   is_staff?: boolean;
   is_superuser?: boolean;
+  must_change_password?: boolean;
 } | null;
 
 type AuthContextType = {
@@ -14,6 +15,7 @@ type AuthContextType = {
   loading: boolean;
   login: (loginId: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<User | null>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,6 +23,19 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshProfile = async (): Promise<User | null> => {
+    try {
+      const { data } = await client.get(apiPath("auth/profile"));
+      setUser(data);
+      return data;
+    } catch (err: any) {
+      clearAuthToken();
+      localStorage.removeItem("token");
+      setUser(null);
+      throw err;
+    }
+  };
 
   // Bootstrap: si hay token en localStorage, configuro el header y traigo /auth/profile
   useEffect(() => {
@@ -33,8 +48,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           return;
         }
         setAuthToken(token); // pone Authorization: Bearer <token> en el cliente
-        const { data } = await client.get(apiPath("auth/profile"));
-        setUser(data);
+        await refreshProfile();
       } catch (err: any) {
         // Token inválido/expirado o endpoint aún no disponible -> limpio
         clearAuthToken();
@@ -73,9 +87,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
       // Si no vino el user, lo traigo de /auth/profile
       if (!u) {
-        const me = await client.get(apiPath("auth/profile"));
-        setUser(me.data);
-        return me.data;
+        return await refreshProfile();
       }
 
       setUser(u);
@@ -105,7 +117,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

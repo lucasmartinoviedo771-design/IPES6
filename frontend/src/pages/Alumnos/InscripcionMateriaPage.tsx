@@ -151,7 +151,11 @@ const InscripcionMateriaPage: React.FC = () => {
   });
 
   const mInscribir = useMutation({
-    mutationFn: (materiaId: number) => solicitarInscripcionMateria({ materia_id: materiaId }),
+    mutationFn: (materiaId: number) =>
+      solicitarInscripcionMateria({
+        materia_id: materiaId,
+        dni: dniFiltro.trim() ? dniFiltro.trim() : undefined,
+      }),
     onMutate: (materiaId) => {
       setSeleccionadas((prev) => (prev.includes(materiaId) ? prev : [...prev, materiaId]));
     },

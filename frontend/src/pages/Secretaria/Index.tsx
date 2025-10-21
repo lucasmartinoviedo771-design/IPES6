@@ -9,6 +9,8 @@ import EventNoteIcon from "@mui/icons-material/EventNote";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import LinkIcon from "@mui/icons-material/Link";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import ClassIcon from "@mui/icons-material/Class";
 
 interface QuickActionProps {
   title: string;
@@ -139,6 +141,12 @@ export default function SecretariaIndex() {
             path="/secretaria/horarios"
           />
           <QuickActionCard
+            title="Comisiones"
+            description="Crear y administrar comisiones por materia y turno."
+            icon={<ClassIcon />}
+            path="/secretaria/comisiones"
+          />
+          <QuickActionCard
             title="Mesas de Examen"
             description="Crear y gestionar mesas por periodo."
             icon={<EventNoteIcon />}
@@ -149,6 +157,12 @@ export default function SecretariaIndex() {
             description="Listar, crear por DNI y descargar PDF."
             icon={<ArticleIcon />}
             path="/secretaria/analiticos"
+          />
+          <QuickActionCard
+            title="Carga de Notas"
+            description="Planilla de regularidad/promoción y registro de notas."
+            icon={<FactCheckIcon />}
+            path="/secretaria/carga-notas"
           />
           <QuickActionCard
             title="Cátedra - Docente"
