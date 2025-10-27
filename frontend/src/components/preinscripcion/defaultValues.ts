@@ -39,6 +39,11 @@ export const defaultValues: PreinscripcionForm = {
   // carrera
   carrera_id: 0,
 
+  // foto
+  foto_dataUrl: "",
+  fotoW: undefined,
+  fotoH: undefined,
+
   // laborales (se mantienen del esquema anterior)
   trabaja: false,
   empleador: "",

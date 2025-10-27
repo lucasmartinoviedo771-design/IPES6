@@ -1,5 +1,6 @@
 from ninja import Schema
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
+from pydantic import Field
 
 class InscripcionCarreraIn(Schema):
     carrera_id: int
@@ -10,6 +11,9 @@ class InscripcionCarreraOut(Schema):
 class InscripcionMateriaIn(Schema):
     materia_id: int
     comision_id: Optional[int] = None
+    dni: Optional[str] = None
+
+class CancelarInscripcionIn(Schema):
     dni: Optional[str] = None
 
 class CambioComisionIn(Schema):
@@ -134,6 +138,7 @@ class EquivalenciaItem(Schema):
     plan_id: Optional[int] = None
     profesorado_id: Optional[int] = None
     profesorado: str
+    cuatrimestre: Cuatrimestre
     horarios: List[Horario] = []
     comisiones: List[ComisionResumen] = []
 
@@ -155,3 +160,95 @@ class PedidoAnaliticoItem(Schema):
     fecha_solicitud: str  # ISO
     motivo: str
     motivo_otro: Optional[str] = None
+
+EventoTipo = Literal['preinscripcion', 'inscripcion_materia', 'regularidad', 'mesa', 'tramite', 'nota']
+
+class TrayectoriaEvento(Schema):
+    id: str
+    tipo: EventoTipo
+    fecha: str
+    titulo: str
+    subtitulo: Optional[str] = None
+    detalle: Optional[str] = None
+    estado: Optional[str] = None
+    metadata: Dict[str, str] = Field(default_factory=dict)
+
+class TrayectoriaMesa(Schema):
+    id: int
+    mesa_id: int
+    materia_id: int
+    materia_nombre: str
+    tipo: str
+    tipo_display: str
+    fecha: str
+    estado: str
+    estado_display: str
+    aula: Optional[str] = None
+    nota: Optional[str] = None
+
+class RegularidadResumen(Schema):
+    id: int
+    materia_id: int
+    materia_nombre: str
+    situacion: str
+    situacion_display: str
+    fecha_cierre: str
+    nota_tp: Optional[float] = None
+    nota_final: Optional[int] = None
+    asistencia: Optional[int] = None
+    excepcion: bool = False
+    observaciones: Optional[str] = None
+    vigencia_hasta: Optional[str] = None
+    vigente: Optional[bool] = None
+    dias_restantes: Optional[int] = None
+
+class MateriaSugerida(Schema):
+    materia_id: int
+    materia_nombre: str
+    anio: int
+    cuatrimestre: str
+    motivos: List[str] = Field(default_factory=list)
+    alertas: List[str] = Field(default_factory=list)
+
+class FinalHabilitado(Schema):
+    materia_id: int
+    materia_nombre: str
+    regularidad_fecha: str
+    vigencia_hasta: Optional[str] = None
+    dias_restantes: Optional[int] = None
+    comentarios: List[str] = Field(default_factory=list)
+
+class RegularidadVigenciaOut(Schema):
+    materia_id: int
+    materia_nombre: str
+    situacion: str
+    situacion_display: str
+    fecha_cierre: str
+    vigencia_hasta: str
+    dias_restantes: int
+    vigente: bool
+    intentos_usados: int
+    intentos_max: int
+
+class EstudianteResumen(Schema):
+    dni: str
+    legajo: Optional[str] = None
+    apellido_nombre: str
+    carreras: List[str] = Field(default_factory=list)
+
+class RecomendacionesOut(Schema):
+    materias_sugeridas: List[MateriaSugerida] = Field(default_factory=list)
+    finales_habilitados: List[FinalHabilitado] = Field(default_factory=list)
+    alertas: List[str] = Field(default_factory=list)
+
+class TrayectoriaOut(Schema):
+    estudiante: EstudianteResumen
+    historial: List[TrayectoriaEvento] = Field(default_factory=list)
+    mesas: List[TrayectoriaMesa] = Field(default_factory=list)
+    regularidades: List[RegularidadResumen] = Field(default_factory=list)
+    recomendaciones: RecomendacionesOut
+    regularidades_vigencia: List[RegularidadVigenciaOut] = Field(default_factory=list)
+    aprobadas: List[int] = Field(default_factory=list)
+    regularizadas: List[int] = Field(default_factory=list)
+    inscriptas_actuales: List[int] = Field(default_factory=list)
+    updated_at: str

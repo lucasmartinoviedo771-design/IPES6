@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { hasAnyRole, hasAllRoles } from "@/utils/roles";
 
 type ProtectedProps = {
   children: JSX.Element;
@@ -32,21 +33,9 @@ export function ProtectedRoute({
   // Sin requisitos de rol → alcanza con estar logueado
   if (!roles || roles.length === 0) return children;
 
-  // Normalización de roles (case-insensitive)
-  const uRoles = (user.roles || []).map((r) => r.toLowerCase().trim());
-  const needed = roles.map((r) => r.toLowerCase().trim());
-
-  // Superuser siempre pasa
-  if (user.is_superuser) return children;
-
-  // Permite también si considerás admin == staff
-  const hasAdminPower = user.is_staff || uRoles.includes("admin");
-  const check = (r: string) =>
-    uRoles.includes(r) || (r === "admin" && hasAdminPower);
-
   const allowed = requireAll
-    ? needed.every(check)     // AND
-    : needed.some(check);     // OR (por defecto)
+    ? hasAllRoles(user, roles)
+    : hasAnyRole(user, roles);
 
   return allowed ? children : <Navigate to={forbiddenTo} replace />;
 }

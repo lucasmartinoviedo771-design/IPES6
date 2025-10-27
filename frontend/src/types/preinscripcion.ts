@@ -21,6 +21,8 @@ export type PreinscripcionIn = {
   doc_titulo_en_tramite: boolean;
   doc_otro: boolean;
   alumno: AlumnoIn;
+  captcha_token?: string | null;
+  honeypot?: string | null;
 };
 
 export type PreinscripcionOut = {

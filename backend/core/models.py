@@ -160,6 +160,33 @@ class Estudiante(models.Model):
         return f"{self.user.get_full_name()} (DNI: {self.dni})"
 
 
+
+class StaffAsignacion(models.Model):
+    class Rol(models.TextChoices):
+        BEDEL = "bedel", "Bedel"
+        COORDINADOR = "coordinador", "Coordinador"
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="asignaciones_profesorado",
+    )
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.CASCADE,
+        related_name="staff_asignaciones",
+    )
+    rol = models.CharField(max_length=20, choices=Rol.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "profesorado", "rol")
+        verbose_name = "Asignación de staff"
+        verbose_name_plural = "Asignaciones de staff"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.profesorado.nombre} ({self.get_rol_display()})"
+
 class Turno(models.Model):
     nombre = models.CharField(max_length=50, unique=True) # Mañana, Tarde, Noche
 

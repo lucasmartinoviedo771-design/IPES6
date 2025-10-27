@@ -13,7 +13,7 @@ export type User = {
 type AuthContextType = {
   user: User;
   loading: boolean;
-  login: (loginId: string, password: string) => Promise<User>;
+  login: (loginId: string, password: string, captcha: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<User | null>;
 };

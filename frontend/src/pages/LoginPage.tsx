@@ -21,8 +21,12 @@ export default function LoginPage() {
         setError("Completá DNI/Usuario y contraseña.");
         return;
       }
-      await login(loginId, password);
-      navigate(from, { replace: true });
+      const loggedUser = await login(loginId, password);
+      if (loggedUser?.must_change_password) {
+        navigate("/cambiar-password", { replace: true, state: { from: { pathname: from } } });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err: any) {
       const msg = err?.response?.data?.detail || "Credenciales inválidas.";
       setError(msg);

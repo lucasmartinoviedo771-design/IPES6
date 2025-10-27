@@ -1,8 +1,18 @@
 import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Box, CssBaseline, IconButton, Divider, Collapse
+  AppBar,
+  Toolbar,
+  Typography,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Box,
+  CssBaseline,
+  IconButton,
+  Divider
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -13,19 +23,10 @@ import SchoolIcon from "@mui/icons-material/School";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
+import InsightsIcon from "@mui/icons-material/Insights";
 import { useAuth } from "@/context/AuthContext";
-import ExpandLess from "@mui/icons-material/ExpandLess";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import AssignmentIndIcon from "@mui/icons-material/AssignmentInd"; // Asignar rol
-import EventNoteIcon from "@mui/icons-material/EventNote";         // Horarios
-import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";   // Plan
-import ArticleIcon from "@mui/icons-material/Article";             // Materias
-import PersonIcon from "@mui/icons-material/Person";               // Docentes
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined"; // Cátedra-Docente
-import EventAvailableIcon from "@mui/icons-material/EventAvailable";  // Habilitar fechas
-import LinkIcon from "@mui/icons-material/Link";                      // Correlatividades
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import DescriptionIcon from '@mui/icons-material/Description';
+import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
+import TestModeToggle from "./TestModeToggle";
 
 const drawerWidth = 240;
 
@@ -43,12 +44,71 @@ export default function AppShell({ children }: PropsWithChildren) {
   const navigate = useNavigate();
 
   const current = useMemo(() => loc.pathname, [loc.pathname]);
-  
-  const [openSec, setOpenSec] = useState(true);
-  const isSecPath = current.startsWith("/secretaria");
 
-  const [openAlumnos, setOpenAlumnos] = useState(true);
-  const isAlumnosPath = current.startsWith("/alumnos");
+  const studentOnly = isOnlyStudent(user);
+  const dashboardVisible = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "preinscripciones",
+    "jefa_aaee",
+    "jefes",
+    "tutor",
+    "coordinador",
+    "consulta"
+  ]) || studentOnly;
+  const canPreins = hasAnyRole(user, ["admin", "secretaria", "bedel", "preinscripciones"]);
+  const canSeeCarreras = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "preinscripciones",
+    "coordinador",
+    "tutor",
+    "jefes",
+    "jefa_aaee"
+  ]);
+  const canSeeReportes = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "preinscripciones",
+    "jefa_aaee",
+    "jefes",
+    "tutor",
+    "coordinador"
+  ]);
+  const canGlobalOverview = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "preinscripciones",
+    "jefa_aaee",
+    "jefes",
+    "tutor",
+    "coordinador",
+    "consulta",
+  ]);
+  const canSecretaria = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "jefa_aaee",
+    "jefes",
+    "tutor",
+    "coordinador"
+  ]);
+  const canAlumnoPortal = hasAnyRole(user, ["alumno"]);
+  const canAlumnoPanel = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "tutor",
+    "jefes",
+    "jefa_aaee",
+    "coordinador"
+  ]);
+  const showConfig = hasAnyRole(user, ["admin", "secretaria"]);
 
   useEffect(() => {
     try {
@@ -59,17 +119,35 @@ export default function AppShell({ children }: PropsWithChildren) {
   return (
     <Box sx={{ display: "flex", backgroundColor: "background.default", minHeight: "100vh" }}>
       <CssBaseline />
-      <AppBar position="fixed" elevation={0} sx={{ backgroundColor: "#f5eedd", color: "text.primary", borderBottom: "1px solid #eee", zIndex: (t)=> t.zIndex.drawer + 1 }}>
+      <AppBar
+        position="fixed"
+        elevation={0}
+        sx={{
+          backgroundColor: "#f5eedd",
+          color: "text.primary",
+          borderBottom: "1px solid #eee",
+          zIndex: (t) => t.zIndex.drawer + 1,
+        }}
+      >
         <Toolbar sx={{ gap: 2, minHeight: 48 }}>
-          <IconButton edge="start" color="inherit" onClick={() => setOpen(v => !v)} size="small" aria-label="Alternar menú">
+          <IconButton edge="start" color="inherit" onClick={() => setOpen((v) => !v)} size="small" aria-label="Alternar menú">
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1, letterSpacing: .3 }}>
+          <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1, letterSpacing: 0.3 }}>
             IPES Paulo Freire
           </Typography>
+          <TestModeToggle />
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, fontSize: 14 }}>
             <span>Hola, {user?.name ?? user?.dni}</span>
-            <Link to="#" onClick={(e)=>{e.preventDefault(); logout();}}>Cerrar sesión</Link>
+            <Link
+              to="#"
+              onClick={(e) => {
+                e.preventDefault();
+                logout();
+              }}
+            >
+              Cerrar sesión
+            </Link>
           </Box>
         </Toolbar>
       </AppBar>
@@ -78,176 +156,134 @@ export default function AppShell({ children }: PropsWithChildren) {
         variant="permanent"
         sx={{
           width: open ? drawerWidth : 0,
-          transition: 'width .2s ease',
-          overflowX: 'hidden',
+          transition: "width .2s ease",
+          overflowX: "hidden",
           [`& .MuiDrawer-paper`]: {
             width: open ? drawerWidth : 0,
-            transition: 'width .2s ease',
+            transition: "width .2s ease",
             boxSizing: "border-box",
-            backgroundColor: "#e6e8da", borderRight: "1px solid #d8dcc7",
-            overflowX: 'hidden',
-          }
+            backgroundColor: "#e6e8da",
+            borderRight: "1px solid #d8dcc7",
+            overflowX: "hidden",
+          },
         }}
       >
-        <Toolbar sx={{ minHeight: 48, justifyContent: 'flex-end' }}>
+        <Toolbar sx={{ minHeight: 48, justifyContent: "flex-end" }}>
           <IconButton size="small" onClick={() => setOpen(false)} aria-label="Ocultar menú">
             <ChevronLeftIcon />
           </IconButton>
         </Toolbar>
         <List dense>
-          <ListItemButton
-            selected={current === "/dashboard"}
-            onClick={() => { navigate("/dashboard"); }}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Dashboard" />
-          </ListItemButton>
+          {dashboardVisible && (
+            <ListItemButton
+              selected={current === "/dashboard"}
+              onClick={() => navigate("/dashboard")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Dashboard" />
+            </ListItemButton>
+          )}
 
-          <ListItemButton
-            selected={current.startsWith("/preinscripciones")}
-            onClick={() => navigate("/preinscripciones")}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Formalizar Inscripción" />
-          </ListItemButton>
+          {canPreins && (
+            <ListItemButton
+              selected={current.startsWith("/preinscripciones")}
+              onClick={() => navigate("/preinscripciones")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Formalizar inscripción" />
+            </ListItemButton>
+          )}
 
-          <ListItemButton
-            selected={current.startsWith("/carreras")}
-            onClick={() => navigate("/carreras")}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><WorkspacesIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Carreras" />
-          </ListItemButton>
+          {!studentOnly && canSeeCarreras && (
+            <ListItemButton
+              selected={current.startsWith("/carreras")}
+              onClick={() => navigate("/carreras")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><WorkspacesIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Carreras" />
+            </ListItemButton>
+          )}
 
-          <ListItemButton
-            selected={current.startsWith("/reportes")}
-            onClick={() => navigate("/reportes")}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><BarChartIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Reportes" />
-          </ListItemButton>
+          {!studentOnly && canSeeReportes && (
+            <ListItemButton
+              selected={current.startsWith("/reportes")}
+              onClick={() => navigate("/reportes")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><BarChartIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Reportes" />
+            </ListItemButton>
+          )}
 
-          {/* --- NUEVO: Secretaría (colapsable) --- */}
-          <ListItemButton
-            onClick={() => navigate("/secretaria")}
-            selected={isSecPath}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Secretaría" />
-          </ListItemButton>
+          {canGlobalOverview && (
+            <ListItemButton
+              selected={current.startsWith("/vistas")}
+              onClick={() => navigate("/vistas")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><InsightsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Vistas globales" />
+            </ListItemButton>
+          )}
 
-          {false &&
-          <Collapse in={openSec} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding>
-              <ListItemButton sx={{ pl: 5 }} selected={current === "/secretaria"} onClick={() => navigate("/secretaria")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Inicio de Secretaría" />
-              </ListItemButton>
+          {canSecretaria && (
+            <ListItemButton
+              selected={current.startsWith("/secretaria")}
+              onClick={() => navigate("/secretaria")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Secretaría" />
+            </ListItemButton>
+          )}
 
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/profesorado")} onClick={() => navigate("/secretaria/profesorado")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Cargar Profesorado" />
-              </ListItemButton>
+          {(canAlumnoPortal || canAlumnoPanel) && (
+            <ListItemButton
+              selected={current.startsWith("/alumnos")}
+              onClick={() => navigate("/alumnos")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Alumnos" />
+            </ListItemButton>
+          )}
 
-
-
-
-
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/docentes")} onClick={() => navigate("/secretaria/docentes")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><PersonIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Cargar Docentes" />
-              </ListItemButton>
-
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/asignar-rol")} onClick={() => navigate("/secretaria/asignar-rol")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIndIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Asignar Rol" />
-              </ListItemButton>
-
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/horarios")} onClick={() => { navigate("/secretaria/horarios"); }}>
-                <ListItemIcon sx={{ minWidth: 36 }}><EventNoteIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Cargar Horario" />
-              </ListItemButton>
-
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/catedra-docente")} onClick={() => navigate("/secretaria/catedra-docente")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><SchoolOutlinedIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Cátedra - Docente" />
-              </ListItemButton>
-
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/habilitar-fechas")} onClick={() => navigate("/secretaria/habilitar-fechas")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><EventAvailableIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Habilitar Fechas" />
-              </ListItemButton>
-
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/secretaria/correlatividades")} onClick={() => navigate("/secretaria/correlatividades")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><LinkIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Correlatividades" />
-              </ListItemButton>
-            </List>
-          </Collapse>
-          }
-
-          {/* --- NUEVO: Alumnos (colapsable) --- */}
-          <ListItemButton
-            onClick={() => navigate("/alumnos")}
-            selected={isAlumnosPath}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Alumnos" />
-          </ListItemButton>
-
-          {false &&
-          <Collapse in={openAlumnos} timeout="auto" unmountOnExit>
-            <List component="div" disablePadding>
-              <ListItemButton sx={{ pl: 5 }} selected={current === "/alumnos"} onClick={() => navigate("/alumnos")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Inicio Alumnos" />
-              </ListItemButton>
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/inscripcion-carrera")} onClick={() => navigate("/alumnos/inscripcion-carrera")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Inscripción a Carreras" />
-              </ListItemButton>
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/inscripcion-materia")} onClick={() => navigate("/alumnos/inscripcion-materia")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Inscripción a Materias" />
-              </ListItemButton>
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/cambio-comision")} onClick={() => navigate("/alumnos/cambio-comision")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><SwapHorizIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Cambio de Comisión" />
-              </ListItemButton>
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/pedido-analitico")} onClick={() => navigate("/alumnos/pedido-analitico")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><DescriptionIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Pedido de Analítico" />
-              </ListItemButton>
-              <ListItemButton sx={{ pl: 5 }} selected={current.startsWith("/alumnos/mesa-examen")} onClick={() => navigate("/alumnos/mesa-examen")}>
-                <ListItemIcon sx={{ minWidth: 36 }}><EventNoteIcon fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Mesa de Examen" />
-              </ListItemButton>
-            </List>
-          </Collapse>
-          }
-          {/* Configuración queda como estaba */}
-          <ListItemButton
-            selected={current.startsWith("/configuracion")}
-            onClick={() => navigate("/configuracion")}
-            sx={{ borderRadius: 2, mx: 1, my: .5, "&.Mui-selected": { background: "#dfe3ce" } }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Configuración" />
-          </ListItemButton>
+          {showConfig && (
+            <ListItemButton
+              selected={current.startsWith("/configuracion")}
+              onClick={() => navigate("/configuracion")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Configuración" />
+            </ListItemButton>
+          )}
         </List>
 
         <Divider sx={{ my: 1 }} />
-        <Box p={2} fontSize={12} color="text.secondary">Sistema de Gestión</Box>
+        <Box p={2} fontSize={12} color="text.secondary">
+          Sistema de Gestión
+        </Box>
       </Drawer>
 
       {!open && (
-        <Box sx={{ position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 1400, backgroundColor: '#e6e8da', border: '1px solid #d8dcc7', borderLeft: 'none', borderRadius: '0 8px 8px 0', boxShadow: 1 }}>
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            top: "50%",
+            transform: "translateY(-50%)",
+            zIndex: 1400,
+            backgroundColor: "#e6e8da",
+            border: "1px solid #d8dcc7",
+            borderLeft: "none",
+            borderRadius: "0 8px 8px 0",
+            boxShadow: 1,
+          }}
+        >
           <IconButton size="small" onClick={() => setOpen(true)} aria-label="Mostrar menú">
             <ChevronRightIcon />
           </IconButton>
@@ -256,7 +292,9 @@ export default function AppShell({ children }: PropsWithChildren) {
 
       <Box component="main" className="app-main" sx={{ flexGrow: 1, p: 1.5 }}>
         <Toolbar sx={{ minHeight: 48 }} />
-        {children}
+        <Box key={current} sx={{ height: "100%" }}>
+          {children}
+        </Box>
       </Box>
     </Box>
   );

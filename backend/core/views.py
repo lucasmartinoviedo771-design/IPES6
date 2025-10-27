@@ -2,10 +2,9 @@
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.shortcuts import get_object_or_404
-from weasyprint import HTML
 import base64
 import qrcode
-import io # Para manejar la imagen en memoria
+import io  # Para manejar la imagen en memoria
 from .models import Preinscripcion
 
 def generar_pdf_preinscripcion(request, pk):
@@ -39,6 +38,8 @@ def generar_pdf_preinscripcion(request, pk):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="preinscripcion_{preinscripcion.dni}.pdf"'
     
+    from weasyprint import HTML  # Import diferido para evitar cargar GIO al iniciar el servidor
+
     HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
     
     return response

@@ -96,15 +96,29 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     }, { ...formDefaults } as PreinscripcionForm);
 
     // Overwrites desde los campos normalizados del backend
-    sanitized.nombres = String(data.alumno?.nombre ?? formDefaults.nombres);
-    sanitized.apellido = String(data.alumno?.apellido ?? formDefaults.apellido);
-    sanitized.dni = String((data.alumno as any)?.dni ?? sanitized.dni ?? "");
-    sanitized.cuil = String((data as any).alumno?.cuil ?? (extra as any)?.cuil ?? sanitized.cuil ?? "");
-    sanitized.email = String((data.alumno as any)?.email ?? sanitized.email ?? "");
-    sanitized.tel_movil = String((data.alumno as any)?.telefono ?? sanitized.tel_movil ?? "");
-    sanitized.domicilio = String((data.alumno as any)?.domicilio ?? sanitized.domicilio ?? "");
-    sanitized.fecha_nacimiento = String((data.alumno as any)?.fecha_nacimiento ?? sanitized.fecha_nacimiento ?? "");
+    const alumnoDto = data.alumno as any;
+    sanitized.nombres = String(alumnoDto?.nombres ?? alumnoDto?.nombre ?? formDefaults.nombres);
+    sanitized.apellido = String(alumnoDto?.apellido ?? formDefaults.apellido);
+    sanitized.dni = String(alumnoDto?.dni ?? sanitized.dni ?? "");
+    sanitized.cuil = String(alumnoDto?.cuil ?? (extra as any)?.cuil ?? sanitized.cuil ?? "");
+    sanitized.email = String(alumnoDto?.email ?? sanitized.email ?? "");
+    sanitized.tel_movil = String(alumnoDto?.telefono ?? sanitized.tel_movil ?? "");
+    sanitized.domicilio = String(alumnoDto?.domicilio ?? sanitized.domicilio ?? "");
+    sanitized.fecha_nacimiento = String(alumnoDto?.fecha_nacimiento ?? sanitized.fecha_nacimiento ?? "");
     sanitized.carrera_id = Number((data as any).carrera?.id ?? 0);
+
+    const fotoExtra =
+      (extra as any)?.foto_dataUrl ||
+      (extra as any)?.foto_4x4_dataurl ||
+      (data as any)?.foto_4x4_dataurl ||
+      null;
+    sanitized.foto_dataUrl = fotoExtra ? String(fotoExtra) : "";
+    const fotoWExtra = (extra as any)?.fotoW ?? (extra as any)?.foto_4x4_w;
+    const fotoHExtra = (extra as any)?.fotoH ?? (extra as any)?.foto_4x4_h;
+    const parsedW = Number(fotoWExtra);
+    const parsedH = Number(fotoHExtra);
+    sanitized.fotoW = Number.isFinite(parsedW) ? parsedW : undefined;
+    sanitized.fotoH = Number.isFinite(parsedH) ? parsedH : undefined;
 
     reset(sanitized as any);
   }, [data, reset]);
@@ -275,7 +289,11 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     mutationFn: async () => {
       return apiConfirmarPreinscripcion(codigo, buildChecklistPayload());
     },
-    onSuccess: () => { enqueueSnackbar("Preinscripción confirmada", { variant: "success" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
+    onSuccess: () => {
+      enqueueSnackbar("Preinscripción confirmada", { variant: "success" });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
+      qc.invalidateQueries({ queryKey: ["preinscripciones"] });
+    },
     onError: () => enqueueSnackbar("No se pudo confirmar", { variant: "error" })
   });
 
@@ -659,7 +677,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           const docUrl = docFoto?.url || '';
           return (
             <>
-              <FotoPreviewBox dataUrl={docUrl} />
+              <FotoPreviewBox dataUrl={watch('foto_dataUrl') || docUrl} />
               <Typography variant="caption" color="text.secondary">
                 {docUrl ? `Fuente: archivo (len: ${String(docUrl).length})` : 'Sin foto'}
               </Typography>

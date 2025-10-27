@@ -5,7 +5,7 @@ const BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
 
 export const client = axios.create({
   baseURL: BASE,
-  withCredentials: false, // Asegúrate de que esto es lo que quieres
+  withCredentials: false, // Aseg̼rate de que esto es lo que quieres
 });
 
 export const setAuthToken = (token: string | null) => {

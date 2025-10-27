@@ -147,7 +147,12 @@ export default function PreinscripcionesPage() {
               {data?.results && data.results.map((p) => (
                 <TableRow key={p.id} hover>
                   <TableCell>{p.codigo}</TableCell>
-                  <TableCell>{p.alumno.apellido}, {p.alumno.nombre}</TableCell>
+                  <TableCell>
+                    {[
+                      p.alumno.apellido,
+                      p.alumno.nombres ?? p.alumno.nombre ?? ""
+                    ].filter(Boolean).join(", ")}
+                  </TableCell>
                   <TableCell>{p.carrera.nombre}</TableCell>
                   <TableCell>{dayjs(p.fecha).format("DD/MM/YYYY HH:mm")}</TableCell>
                   <TableCell>

@@ -269,14 +269,15 @@ export default function CargarPlanPage() {
           <Controller
             name="anio_fin"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Año de Fin (opcional)"
-                type="number"
-                error={!!errors.anio_fin}
-                helperText={errors.anio_fin?.message}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              size="small"
+              label="Año de Fin (opcional)"
+              type="number"
+              error={!!errors.anio_fin}
+              helperText={errors.anio_fin?.message}
               />
             )}
           />

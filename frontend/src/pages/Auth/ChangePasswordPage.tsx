@@ -75,11 +75,11 @@ const ChangePasswordPage: React.FC = () => {
         <Typography variant="h5" fontWeight={700} gutterBottom>
           Cambiar contraseña
         </Typography>
-        <Typography color="text.secondary" mb={3}>
-          Por seguridad necesitás definir una contraseña nueva antes de continuar.
+        <Typography color="text.secondary" mb={1}>
+          Por seguridad necesitas definir una contraseña nueva antes de continuar.
+        </Typography>
         <Typography color="text.secondary" variant="body2" mb={3}>
           La clave inicial entregada es Pass + DNI (por ejemplo, Pass40123456).
-        </Typography>
         </Typography>
         <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={2}>
@@ -120,4 +120,3 @@ const ChangePasswordPage: React.FC = () => {
 };
 
 export default ChangePasswordPage;
-

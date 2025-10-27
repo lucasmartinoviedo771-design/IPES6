@@ -53,6 +53,7 @@ function asDate(value: any): string | null {
 function mapToApiPayload(v: any) {
   return {
     carrera_id: Number(v.carrera_id),
+    foto_4x4_dataurl: v.foto_4x4_dataurl || v.foto_dataUrl || null,
     // datos personales extra
     nacionalidad: v.nacionalidad || null,
     estado_civil: v.estado_civil || null,
@@ -96,7 +97,7 @@ function mapToApiPayload(v: any) {
 export async function crearPreinscripcion(payload: any) {
   try {
     const apiPayload = mapToApiPayload(payload);
-    const { data } = await client.post("/preinscriptions", apiPayload);
+    const { data } = await client.post("/preinscripciones", apiPayload);
     toast.success("¡Preinscripción enviada!");
     return data;
   } catch (err: any) {

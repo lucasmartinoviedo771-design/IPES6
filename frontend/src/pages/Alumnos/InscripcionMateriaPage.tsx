@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Accordion,
@@ -24,11 +24,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   solicitarInscripcionMateria,
+  cancelarInscripcionMateria,
   obtenerMateriasPlanAlumno,
+  obtenerMateriasInscriptas,
   obtenerHistorialAlumno,
   obtenerVentanaMaterias,
   MateriaPlanDTO,
   HistorialAlumnoDTO,
+  MateriaInscriptaItemDTO,
+  ApiResponseDTO,
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
 
@@ -44,6 +48,12 @@ type Materia = {
   correlativasAprob: number[];
   profesorado?: string;
 };
+
+const cuatrimestreCompatible = (a: Materia["cuatrimestre"], b: Materia["cuatrimestre"]) => {
+  if (a === "ANUAL" || b === "ANUAL") return true;
+  return a === b;
+};
+
 
 type Status = "aprobada" | "habilitada" | "bloqueada";
 type TipoBloqueo = "correlativas" | "periodo" | "choque" | "inscripta" | "otro";
@@ -108,12 +118,16 @@ const InscripcionMateriaPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user: null }) as any;
   const puedeGestionar = !!user && (user.is_staff || (user.roles || []).some((r: string) => ["admin", "secretaria", "bedel"].includes((r || "").toLowerCase())));
 
+  const [dniInput, setDniInput] = useState<string>("");
   const [dniFiltro, setDniFiltro] = useState<string>("");
   const [anioFiltro, setAnioFiltro] = useState<number | "all">("all");
   const [profesoradoFiltro, setProfesoradoFiltro] = useState<string | "all">("all");
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const normalizedDni = dniFiltro.trim();
+  const shouldFetchInscriptas = !puedeGestionar || normalizedDni.length > 0;
 
   const handleAnioChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
@@ -124,6 +138,19 @@ const InscripcionMateriaPage: React.FC = () => {
     const value = event.target.value;
     setProfesoradoFiltro(value === "all" ? "all" : value);
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDniFiltro(dniInput.trim());
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [dniInput]);
+
+  useEffect(() => {
+    setInfo(null);
+    setErr(null);
+    setSeleccionadas([]);
+  }, [dniFiltro]);
 
   const materiasQ = useQuery<Materia[]>({
     queryKey: ["materias-plan", dniFiltro],
@@ -138,9 +165,10 @@ const InscripcionMateriaPage: React.FC = () => {
     queryFn: async () => {
       const d: HistorialAlumnoDTO = await obtenerHistorialAlumno(dniFiltro ? { dni: dniFiltro } : undefined);
       return {
+        ...d,
         aprobadas: d.aprobadas || [],
         regularizadas: d.regularizadas || [],
-        inscriptasActuales: d.inscriptas_actuales || [],
+        inscriptas_actuales: d.inscriptas_actuales || [],
       };
     },
   });
@@ -150,11 +178,23 @@ const InscripcionMateriaPage: React.FC = () => {
     queryFn: obtenerVentanaMaterias,
   });
 
+  const inscripcionesQ = useQuery({
+    queryKey: ["materias-inscriptas", normalizedDni],
+    queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined),
+    enabled: shouldFetchInscriptas,
+  });
+
+  const queryError =
+    materiasQ.isError ||
+    historialQ.isError ||
+    ventanaQ.isError ||
+    (shouldFetchInscriptas && inscripcionesQ.isError);
+
   const mInscribir = useMutation({
     mutationFn: (materiaId: number) =>
       solicitarInscripcionMateria({
         materia_id: materiaId,
-        dni: dniFiltro.trim() ? dniFiltro.trim() : undefined,
+        dni: normalizedDni ? normalizedDni : undefined,
       }),
     onMutate: (materiaId) => {
       setSeleccionadas((prev) => (prev.includes(materiaId) ? prev : [...prev, materiaId]));
@@ -172,6 +212,26 @@ const InscripcionMateriaPage: React.FC = () => {
   });
   const pendingMateriaId = mInscribir.variables as number | undefined;
 
+  const mCancelar = useMutation<ApiResponseDTO, any, { inscripcionId: number; materiaId: number }>({
+    mutationFn: ({ inscripcionId, materiaId }) =>
+      cancelarInscripcionMateria({
+        inscripcion_id: inscripcionId,
+        dni: normalizedDni ? normalizedDni : undefined,
+      }),
+    onSuccess: (res, variables) => {
+      const message = res?.message || "Inscripción cancelada";
+      setInfo(message);
+      setErr(null);
+      setSeleccionadas((prev) => prev.filter((id) => id !== variables.materiaId));
+      qc.invalidateQueries();
+    },
+    onError: (error: any) => {
+      setErr(error?.response?.data?.message || "No se pudo cancelar la inscripción");
+      setInfo(null);
+    },
+  });
+  const cancelarVars = mCancelar.variables;
+
   const materias = materiasQ.data ?? [];
   const historialRaw = historialQ.data ?? EMPTY_HISTORIAL;
   const historial = {
@@ -180,6 +240,7 @@ const InscripcionMateriaPage: React.FC = () => {
     inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
   };
   const ventana = ventanaQ.data ?? null;
+  const inscripcionesData = inscripcionesQ.data ?? [];
 
   const yaInscriptas = new Set<number>([...(historial.inscriptasActuales || []), ...seleccionadas]);
   const periodo = (ventana?.periodo ?? "1C_ANUALES") as "1C_ANUALES" | "2C";
@@ -188,11 +249,49 @@ const InscripcionMateriaPage: React.FC = () => {
       ? (m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C")
       : m.cuatrimestre === "2C";
 
+  const ventanaActiva = useMemo(() => {
+    if (!ventana) return false;
+    try {
+      const desde = new Date(ventana.desde);
+      const hasta = new Date(ventana.hasta);
+      const hoy = new Date();
+      return Boolean(ventana.activo) && hoy >= desde && hoy <= hasta;
+    } catch {
+      return Boolean(ventana?.activo);
+    }
+  }, [ventana]);
+
   const materiaById = useMemo(() => {
     const map = new Map<number, Materia>();
     for (const materia of materias) map.set(materia.id, materia);
     return map;
   }, [materias]);
+
+  const inscripcionPorMateria = useMemo(() => {
+    const map = new Map<number, MateriaInscriptaItemDTO>();
+    inscripcionesData.forEach((ins) => {
+      if (!map.has(ins.materia_id) && (ins.estado === "CONF" || ins.estado === "PEND")) {
+        map.set(ins.materia_id, ins);
+      }
+    });
+    return map;
+  }, [inscripcionesData]);
+
+  const inscripcionesConHorario = useMemo(() => {
+    return inscripcionesData
+      .filter((ins) => (ins.estado === "CONF" || ins.estado === "PEND") && ins.comision_actual)
+      .map((ins) => {
+        const materiaRef = materiaById.get(ins.materia_id);
+        const horarios = ins.comision_actual?.horarios ?? [];
+        return {
+          ins,
+          horarios,
+          materiaNombre: materiaRef?.nombre ?? ins.materia_nombre,
+          cuatrimestre: materiaRef?.cuatrimestre ?? "ANUAL",
+        };
+      })
+      .filter((item) => item.horarios.length > 0);
+  }, [inscripcionesData, materiaById]);
 
   const aniosDisponibles = useMemo(() => {
     const unique = Array.from(new Set(materias.map((m) => m.anio))).sort((a, b) => a - b);
@@ -231,8 +330,8 @@ const InscripcionMateriaPage: React.FC = () => {
 
     const faltasReg = materia.correlativasRegular.filter((id) => !historial.regularizadas.includes(id));
     const faltasApr = materia.correlativasAprob.filter((id) => !historial.aprobadas.includes(id));
-    const faltasRegNombres = faltasReg.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`);
-    const faltasAprNombres = faltasApr.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`);
+    const faltasRegNombres = Array.from(new Set(faltasReg.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
+    const faltasAprNombres = Array.from(new Set(faltasApr.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
 
     if (faltasReg.length || faltasApr.length) {
       const motivos: string[] = [];
@@ -259,19 +358,39 @@ const InscripcionMateriaPage: React.FC = () => {
       };
     }
 
+    const conflictoConInscripciones = inscripcionesConHorario.find((insData) => {
+      if (insData.ins.materia_id === materia.id) return false;
+      if (materia.horarios.length === 0 || insData.horarios.length === 0) return false;
+      if (!cuatrimestreCompatible(materia.cuatrimestre, insData.cuatrimestre)) return false;
+      return hayChoque(materia.horarios, insData.horarios);
+    });
+    if (conflictoConInscripciones) {
+      return {
+        ...materia,
+        status: "bloqueada",
+        motivos: [`Superposición horaria con ${conflictoConInscripciones.materiaNombre}`],
+        tipoBloqueo: "choque",
+        faltantesRegular: [],
+        faltantesAprob: [],
+      };
+    }
+
     const seleccionadasMaterias = materias.filter((x) => seleccionadas.includes(x.id));
     for (const seleccionada of seleccionadasMaterias) {
+      if (seleccionada.horarios.length === 0 || materia.horarios.length === 0) continue;
+      if (!cuatrimestreCompatible(materia.cuatrimestre, seleccionada.cuatrimestre)) continue;
       if (hayChoque(materia.horarios, seleccionada.horarios)) {
         return {
           ...materia,
           status: "bloqueada",
-          motivos: [`SuperposiciÃ³n horaria con ${seleccionada.nombre}`],
+          motivos: [`Superposición horaria con ${seleccionada.nombre}`],
           tipoBloqueo: "choque",
           faltantesRegular: [],
           faltantesAprob: [],
         };
       }
     }
+
 
     return {
       ...materia,
@@ -280,7 +399,7 @@ const InscripcionMateriaPage: React.FC = () => {
       faltantesRegular: [],
       faltantesAprob: [],
     };
-  }), [materias, historial.aprobadas, historial.regularizadas, historial.inscriptasActuales, seleccionadas, periodo, materiaById]);
+  }), [materias, historial.aprobadas, historial.regularizadas, historial.inscriptasActuales, seleccionadas, periodo, inscripcionesConHorario, materiaById]);
 
   const materiasHabilitadas = materiasEvaluadas.filter((m) => m.status === "habilitada");
   const materiasBloqueadas = materiasEvaluadas.filter((m) => m.status === "bloqueada");
@@ -310,9 +429,16 @@ const InscripcionMateriaPage: React.FC = () => {
   }, { correlativas: [], periodo: [], choque: [], inscripta: [], otros: [] });
 
   const inscriptasDetalle = (historial.inscriptasActuales || [])
-    .map((id) => materiaById.get(id))
-    .filter((m): m is Materia => Boolean(m))
-    .filter(matchesFilters);
+    .map((id) => {
+      const materia = materiaById.get(id);
+      if (!materia) return null;
+      return {
+        materia,
+        inscripcion: inscripcionPorMateria.get(id) || null,
+      };
+    })
+    .filter((item): item is { materia: Materia; inscripcion: MateriaInscriptaItemDTO | null } => Boolean(item))
+    .filter(({ materia }) => matchesFilters(materia));
 
   const profesoradoNombre = materias.find((m) => m.profesorado)?.profesorado || "Profesorado";
   const periodoLabel = ventana?.periodo === "2C" ? "2Âº Cuatrimestre" : "1Âº Cuatrimestre + Anuales";
@@ -322,11 +448,14 @@ const InscripcionMateriaPage: React.FC = () => {
     mInscribir.mutate(materiaId);
   };
 
-  if (materiasQ.isLoading || historialQ.isLoading || ventanaQ.isLoading) {
+  const handleCancelar = (materiaId: number, inscripcionId?: number | null) => {
+    if (!ventanaActiva || !inscripcionId) return;
+    if (mCancelar.isPending && cancelarVars?.inscripcionId === inscripcionId) return;
+    mCancelar.mutate({ inscripcionId, materiaId });
+  };
+
+  if (materiasQ.isLoading || historialQ.isLoading || ventanaQ.isLoading || inscripcionesQ.isLoading) {
     return <Skeleton variant="rectangular" height={160} />;
-  }
-  if (materiasQ.isError || historialQ.isError || ventanaQ.isError) {
-    return <Alert severity="error">No se pudieron cargar los datos de inscripciÃ³n.</Alert>;
   }
 
   return (
@@ -356,9 +485,11 @@ const InscripcionMateriaPage: React.FC = () => {
                 <TextField
                   label="DNI del estudiante"
                   size="small"
-                  value={dniFiltro}
-                  onChange={(e) => setDniFiltro(e.target.value)}
+                  value={dniInput}
+                  onChange={(e) => setDniInput(e.target.value.replace(/\D+/g, ""))}
+                  onBlur={() => setDniFiltro(dniInput.trim())}
                   sx={{ maxWidth: 240, bgcolor: "#fff" }}
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 />
                 <Typography variant="caption" color="text.secondary">
                   Bedel/SecretarÃ­a/Admin: filtrÃ¡ por DNI para gestionar inscripciones de un alumno.
@@ -405,6 +536,12 @@ const InscripcionMateriaPage: React.FC = () => {
             </Stack>
           </Stack>
         </Stack>
+
+        {queryError && (
+          <Alert severity="error">
+            No se pudieron cargar los datos de inscripción. Verifica el DNI e intenta nuevamente.
+          </Alert>
+        )}
 
         {err && <Alert severity="error">{err}</Alert>}
         {info && <Alert severity="success">{info}</Alert>}
@@ -495,20 +632,38 @@ const InscripcionMateriaPage: React.FC = () => {
                     {lista.map((materia) => (
                       <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px dashed #d3c19c", bgcolor: "#fff" }}>
                         <Typography fontWeight={600}>{materia.nombre}</Typography>
-                        {materia.motivos.length > 0 && (
-                          <Typography variant="body2" color="text.secondary">
-                            {materia.motivos.join(" | ")}
-                          </Typography>
-                        )}
-                        {materia.faltantesRegular && materia.faltantesRegular.length > 0 && (
-                          <Typography variant="caption" color="text.secondary">
-                            Regularizar: {materia.faltantesRegular.join(", ")}
-                          </Typography>
-                        )}
-                        {materia.faltantesAprob && materia.faltantesAprob.length > 0 && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Aprobar: {materia.faltantesAprob.join(", ")}
-                          </Typography>
+                        {materia.tipoBloqueo === "correlativas" ? (
+                          <>
+                            {materia.faltantesRegular && materia.faltantesRegular.length > 0 && (
+                              <Typography
+                              variant="body2"
+                              color="text.secondary"
+                            >
+                                <Box component="span" sx={{ textDecoration: "underline", fontWeight: 600 }}>
+                                  Regularizar:
+                                </Box>{" "}
+                                {materia.faltantesRegular.join(", ")}
+                              </Typography>
+                            )}
+                            {materia.faltantesAprob && materia.faltantesAprob.length > 0 && (
+                              <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: materia.faltantesRegular?.length ? 0.5 : 0 }}
+                            >
+                              <Box component="span" sx={{ textDecoration: "underline", fontWeight: 600 }}>
+                                  Aprobar:
+                                </Box>{" "}
+                                {materia.faltantesAprob.join(", ")}
+                              </Typography>
+                            )}
+                          </>
+                        ) : (
+                          materia.motivos.length > 0 && (
+                            <Typography variant="body2" color="text.secondary">
+                              {materia.motivos.join(" | ")}
+                            </Typography>
+                          )
                         )}
                       </Box>
                     ))}
@@ -536,27 +691,44 @@ const InscripcionMateriaPage: React.FC = () => {
           </Typography>
           {inscriptasDetalle.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              TodavÃ­a no tenÃ©s inscripciones registradas.
+              Todavía no tenés inscripciones registradas.
             </Typography>
           ) : (
             <Stack spacing={2}>
-              {inscriptasDetalle.map((materia) => (
-                <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#f7f1df" }}>
-                  <Typography fontWeight={600}>{materia.nombre}</Typography>
-                  {materia.horarios.length > 0 ? (
-                    materia.horarios.map((h, idx) => (
-                      <Typography key={idx} variant="body2" color="text.secondary">
-                        {h.dia} {h.desde} â€“ {h.hasta}
-                      </Typography>
-                    ))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">Horario no informado.</Typography>
-                  )}
-                  <Chip label="Inscripta" color="success" size="small" sx={{ mt: 1 }} />
-                </Box>
-              ))}
+              {inscriptasDetalle.map(({ materia, inscripcion }) => {
+                const canceling = inscripcion ? (cancelarVars?.inscripcionId === inscripcion.inscripcion_id && mCancelar.isPending) : false;
+                return (
+                  <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#f7f1df" }}>
+                    <Typography fontWeight={600}>{materia.nombre}</Typography>
+                    {materia.horarios.length > 0 ? (
+                      materia.horarios.map((h, idx) => (
+                        <Typography key={idx} variant="body2" color="text.secondary">
+                          {h.dia} {h.desde} – {h.hasta}
+                        </Typography>
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">Horario no informado.</Typography>
+                    )}
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                      <Chip label="Inscripta" color="success" size="small" />
+                      {ventanaActiva && inscripcion && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          disabled={canceling}
+                          onClick={() => handleCancelar(materia.id, inscripcion.inscripcion_id)}
+                        >
+                          Cancelar inscripción
+                        </Button>
+                      )}
+                    </Stack>
+                  </Box>
+                );
+              })}
             </Stack>
-          )}
+          )
+}
         </Paper>
       </Stack>
     </Box>

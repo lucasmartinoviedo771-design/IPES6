@@ -54,13 +54,28 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
   const aniosLectivos = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
   useEffect(() => {
-    axios.get<Profesorado[]>('/profesorados/').then(response => setProfesorados(response.data));
-    axios.get<Turno[]>('/turnos').then(response => setTurnos(response.data));
+    const fetchInitialData = async () => {
+      try {
+        const [profesoradosRes, turnosRes] = await Promise.all([
+          axios.get<Profesorado[]>('/profesorados/'),
+          axios.get<Turno[]>('/turnos')
+        ]);
+        setProfesorados(profesoradosRes.data);
+        setTurnos(turnosRes.data);
+      } catch (error) {
+        console.error('Error fetching initial filter data:', error);
+      }
+    };
+
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
     if (profesoradoId) {
-      axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data));
+      axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data)).catch(error => {
+        console.error('Error fetching planes:', error);
+        setPlanes([]);
+      });
     } else {
       setPlanes([]);
     }

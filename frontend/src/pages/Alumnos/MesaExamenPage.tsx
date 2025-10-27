@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Button, TextField, Typography, Box, Alert, MenuItem, Select, FormControl, InputLabel, Grid, Paper, Stack } from '@mui/material';
 import { listarMesas, inscribirMesa, obtenerHistorialAlumno } from '@/api/alumnos';
-import { client as api } from '@/api/client';
+import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
+import { useTestMode } from '@/context/TestModeContext';
 
 const MesaExamenPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user:null }) as any;
   const canGestionar = !!user && (user.is_staff || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel'].includes((r||'').toLowerCase())));
   const [dni, setDni] = useState('');
-  const [tipo, setTipo] = useState<'PAR'|'FIN'|'LIB'|'EXT'|''>('');
-  const [ventanas, setVentanas] = useState<any[]>([]);
+  const [tipo, setTipo] = useState<'FIN'|'LIB'|'EXT'|''>('');
+  const { enabled: testMode } = useTestMode();
+  const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
   const [mesas, setMesas] = useState<any[]>([]);
   const [historial, setHistorial] = useState<{ aprobadas:number[]; regularizadas:number[]; inscriptas_actuales:number[] }>({ aprobadas:[], regularizadas:[], inscriptas_actuales:[] });
@@ -19,13 +21,13 @@ const MesaExamenPage: React.FC = () => {
   useEffect(()=>{
     (async()=>{
       try{
-        const { data } = await api.get('/ventanas');
-        const v = (data||[]).filter((x:any)=> ['MESAS_FINALES','MESAS_LIBRES','MESAS_EXTRA'].includes(x.tipo));
+        const data = await fetchVentanas();
+        const v = (data||[]).filter((x)=> ['MESAS_FINALES','MESAS_LIBRES','MESAS_EXTRA'].includes(x.tipo));
         setVentanas(v);
         if (v.length) setVentanaId(String(v[0].id));
       }catch{}
     })();
-  },[]);
+  },[testMode]);
 
   useEffect(()=>{ (async()=>{
     try{
@@ -57,6 +59,7 @@ const MesaExamenPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Mesas de Examen</Typography>
       <Typography variant="body1" paragraph>Inscribite a mesas habilitadas. Evita superposición y respeta correlatividades.</Typography>
+      {testMode && <Alert severity="info" sx={{ mb: 2 }}>Modo prueba activo: las ventanas de inscripción se simulan desde el front.</Alert>}
       {info && <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert>}
       {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
 
@@ -65,7 +68,6 @@ const MesaExamenPage: React.FC = () => {
           <InputLabel>Tipo</InputLabel>
           <Select label="Tipo" value={tipo} onChange={(e)=>setTipo(e.target.value as any)}>
             <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="PAR">Parcial</MenuItem>
             <MenuItem value="FIN">Final</MenuItem>
             <MenuItem value="LIB">Libre</MenuItem>
             <MenuItem value="EXT">Extraordinaria</MenuItem>
@@ -74,7 +76,7 @@ const MesaExamenPage: React.FC = () => {
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel>Periodo</InputLabel>
           <Select label="Periodo" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)}>
-            {ventanas.map((v:any)=> (
+            {ventanas.map((v)=> (
               <MenuItem key={v.id} value={String(v.id)}>{new Date(v.desde).toLocaleDateString()} – {new Date(v.hasta).toLocaleDateString()} ({v.tipo.replace('MESAS_','')})</MenuItem>
             ))}
           </Select>
