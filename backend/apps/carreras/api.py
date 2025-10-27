@@ -2,6 +2,23 @@ from ninja import Router, Schema
 from typing import List, Optional
 from django.shortcuts import get_object_or_404
 from core.models import Profesorado, PlanDeEstudio
+from core.permissions import ensure_roles, ensure_profesorado_access
+from core.auth_ninja import JWTAuth
+
+STRUCTURE_VIEW_ROLES = {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"}
+STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
+
+
+def _require_view(user, profesorado_id: Optional[int] = None) -> None:
+    ensure_roles(user, STRUCTURE_VIEW_ROLES)
+    if profesorado_id is not None:
+        ensure_profesorado_access(user, profesorado_id)
+
+
+def _require_edit(user, profesorado_id: Optional[int] = None) -> None:
+    ensure_roles(user, STRUCTURE_EDIT_ROLES)
+    if profesorado_id is not None:
+        ensure_profesorado_access(user, profesorado_id)
 
 carreras_router = Router(tags=["carreras"])
 
@@ -35,65 +52,79 @@ class PlanDeEstudioOut(Schema):
 
 @carreras_router.get("/", response=List[ProfesoradoOut])
 def listar_carreras(request, vigentes: Optional[bool] = None):
+    if getattr(request, "user", None) and getattr(request.user, "is_authenticated", False):
+        _require_view(request.user)
     qs = Profesorado.objects.all().order_by("nombre")
     if vigentes is not None:
         qs = qs.filter(activo=vigentes, inscripcion_abierta=vigentes)
     return qs
 
-@carreras_router.get("/{profesorado_id}", response=ProfesoradoOut)
+@carreras_router.get("/{profesorado_id}", response=ProfesoradoOut, auth=JWTAuth())
 def get_profesorado(request, profesorado_id: int):
     profesorado = get_object_or_404(Profesorado, id=profesorado_id)
+    if getattr(request.user, "is_authenticated", False):
+        _require_view(request.user, profesorado.id)
     return profesorado
 
-@carreras_router.post("/", response=ProfesoradoOut)
+@carreras_router.post("/", response=ProfesoradoOut, auth=JWTAuth())
 def crear_profesorado(request, payload: ProfesoradoIn):
+    _require_edit(request.user)
     profesorado = Profesorado.objects.create(**payload.dict())
     return profesorado
 
-@carreras_router.put("/{profesorado_id}", response=ProfesoradoOut)
+@carreras_router.put("/{profesorado_id}", response=ProfesoradoOut, auth=JWTAuth())
 def actualizar_profesorado(request, profesorado_id: int, payload: ProfesoradoIn):
+    _require_edit(request.user, profesorado_id)
     profesorado = Profesorado.objects.get(id=profesorado_id)
     for attr, value in payload.dict().items():
         setattr(profesorado, attr, value)
     profesorado.save()
     return profesorado
 
-@carreras_router.delete("/{profesorado_id}", response={"success": bool})
+@carreras_router.delete("/{profesorado_id}", response={"success": bool}, auth=JWTAuth())
 def eliminar_profesorado(request, profesorado_id: int):
+    _require_edit(request.user, profesorado_id)
     profesorado = Profesorado.objects.get(id=profesorado_id)
     profesorado.delete()
     return {"success": True}
 
 # PlanDeEstudio Endpoints
-@carreras_router.get("/{profesorado_id}/planes", response=List[PlanDeEstudioOut])
+@carreras_router.get("/{profesorado_id}/planes", response=List[PlanDeEstudioOut], auth=JWTAuth())
 def planes_por_profesorado(request, profesorado_id: int):
+    if getattr(request.user, "is_authenticated", False):
+        _require_view(request.user, profesorado_id)
     qs = (PlanDeEstudio.objects
           .filter(profesorado_id=profesorado_id, vigente=True)
           .order_by("-anio_inicio", "id"))
     return list(qs)
 
-@carreras_router.post("/{profesorado_id}/planes", response=PlanDeEstudioOut)
+@carreras_router.post("/{profesorado_id}/planes", response=PlanDeEstudioOut, auth=JWTAuth())
 def create_plan_for_profesorado(request, profesorado_id: int, payload: PlanDeEstudioIn):
+    _require_edit(request.user, profesorado_id)
     profesorado = get_object_or_404(Profesorado, id=profesorado_id)
     plan = PlanDeEstudio.objects.create(profesorado=profesorado, **payload.dict())
     return plan
 
-@carreras_router.get("/planes/{plan_id}", response=PlanDeEstudioOut)
+@carreras_router.get("/planes/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
 def get_plan(request, plan_id: int):
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
+    if getattr(request.user, "is_authenticated", False):
+        _require_view(request.user, plan.profesorado_id)
     return plan
 
-@carreras_router.put("/planes/{plan_id}", response=PlanDeEstudioOut)
+@carreras_router.put("/planes/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
 def update_plan(request, plan_id: int, payload: PlanDeEstudioIn):
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
+    _require_edit(request.user, plan.profesorado_id)
     for attr, value in payload.dict().items():
         setattr(plan, attr, value)
     plan.save()
     return plan
 
-@carreras_router.delete("/planes/{plan_id}", response={204: None})
+@carreras_router.delete("/planes/{plan_id}", response={204: None}, auth=JWTAuth())
 def delete_plan(request, plan_id: int):
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
+    _require_edit(request.user, plan.profesorado_id)
     plan.vigente = False  # Soft delete
     plan.save()
     return 204, None

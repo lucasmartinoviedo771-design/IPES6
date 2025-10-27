@@ -9,6 +9,7 @@ type MateriaDTO = {
   regimen: string;
   formato?: string | null;
   horas_semana: number;
+  anio_cursada?: number;
 };
 
 type HorarioCatedraDTO = {
@@ -122,23 +123,30 @@ const CargarHorarioPage: React.FC = () => {
       const materiaResponse = await api.get<MateriaDTO>(`/materias/${selectedMateriaId}`);
       const materia = materiaResponse.data;
       const materiaRegimen = (materia.regimen || '').toUpperCase();
-      const materiaFormato = materia.formato ?? undefined;
+      const materiaFormato = materia.formato ? materia.formato.toUpperCase() : undefined;
+      const materiaAnio = materia.anio_cursada ?? null;
       const nombreNormalizado = materia.nombre
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-      const esFlexible =
-        materiaFormato === 'PRA' ||
-        nombreNormalizado.includes('practica') ||
-        nombreNormalizado.includes('residencia') ||
-        nombreNormalizado.includes('campo de la practica');
+        .replace(/[̀-ͯ]/g, '');
+      const esTallerCuarto = nombreNormalizado.includes('taller') && materiaAnio === 4;
+      const esTallerResidencia = nombreNormalizado.includes('taller') && nombreNormalizado.includes('residencia');
+      const esFlexible = 
+        materiaFormato === 'PRA' || 
+        materiaFormato === 'TAL' || 
+        materiaFormato === 'TALLER' || 
+        nombreNormalizado.includes('practica') || 
+        nombreNormalizado.includes('residencia') || 
+        nombreNormalizado.includes('campo de la practica') || 
+        esTallerCuarto || 
+        esTallerResidencia;
 
       if (!esFlexible && horasAsignadas !== horasRequeridas) {
         alert(`Debes asignar exactamente ${horasRequeridas} horas. Actualmente tienes ${horasAsignadas} asignadas.`);
         return;
       }
       if (esFlexible && horasAsignadas > horasRequeridas) {
-        alert(`No puedes asignar más de ${horasRequeridas} horas para esta práctica/residencia.`);
+        alert(`No puedes asignar más de ${horasRequeridas} horas para esta práctica/residencia/taller flexible.`);
         return;
       }
 

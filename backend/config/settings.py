@@ -3,6 +3,10 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
+# Needed by WeasyPrint on Windows to avoid GLib probing UWP handlers
+os.environ["GIO_USE_VFS"] = "local"
+os.environ.setdefault("GIO_USE_VOLUME_MONITOR", "local")
+
 # === Paths ==============================================================
 BASE_DIR = Path(__file__).resolve().parent.parent  # .../backend
 
@@ -10,6 +14,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # .../backend
 # Colocá el archivo .env en backend/.env (mismo nivel que manage.py)
 load_dotenv(BASE_DIR / ".env")
 
+RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '')
+RECAPTCHA_MIN_SCORE = float(os.getenv('RECAPTCHA_MIN_SCORE', '0.3'))
+PREINS_RATE_LIMIT_PER_HOUR = int(os.getenv('PREINS_RATE_LIMIT_PER_HOUR', '5'))
 # === Helpers para ENV ===================================================
 def env_bool(name: str, default: bool = False) -> bool:
     val = os.getenv(name)
@@ -125,7 +132,11 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Si necesitás permitir todos los headers/metodos en dev:
-CORS_ALLOW_HEADERS = list(default_headers) if "default_headers" in globals() else [
+try:
+    from corsheaders.defaults import default_headers
+    CORS_ALLOW_HEADERS = list(default_headers)
+except ImportError:
+    CORS_ALLOW_HEADERS = [
     "accept", "accept-encoding", "authorization", "content-type", "origin",
     "user-agent", "x-csrftoken", "x-requested-with"
 ]
@@ -170,9 +181,7 @@ LOGGING = {
 # === Django 5 defaults ==================================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# DRF + SimpleJWT
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# REST_FRAMEWORK + SimpleJWT
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Bearer JWT
@@ -190,33 +199,10 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
     # por defecto usa settings.SECRET_KEY como SIGNING_KEY (suficiente)
-    "AUTH_HEADER_TYPES": ("Bearer",),  # <â€” importante para "Authorization: Bearer <token>"
+    "AUTH_HEADER_TYPES": ("Bearer",),  # <— importante para "Authorization: Bearer <token>"
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
-
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# CORS / CSRF (dev)
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# try:
-#     from corsheaders.defaults import default_headers, default_methods
-# except Exception:
-#     default_headers, default_methods = (), ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-
-# FRONTEND_ORIGINS = env_list(
-#     "FRONTEND_ORIGINS",
-#     [
-#         "http://127.0.0.1:5173",
-#         "http://localhost:5173",
-#     ],
-# )
-
-# CORS_ALLOW_ALL_ORIGINS = False
-# CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
-# CSRF_TRUSTED_ORIGINS = FRONTEND_ORIGINS
-# CORS_ALLOW_HEADERS = list(default_headers)
-# CORS_ALLOW_METHODS = list(default_methods)
 
 # Cookies/seguridad (ajustá para prod)
 SESSION_COOKIE_SAMESITE = "Lax"

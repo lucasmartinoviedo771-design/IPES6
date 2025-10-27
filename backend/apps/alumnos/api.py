@@ -1,7 +1,9 @@
 from ninja import Router
+from core.auth_ninja import JWTAuth
 from .schemas import (
     InscripcionCarreraIn, InscripcionCarreraOut,
     InscripcionMateriaIn, InscripcionMateriaOut,
+    CancelarInscripcionIn,
     CambioComisionIn, CambioComisionOut,
     PedidoAnaliticoOut, PedidoAnaliticoIn, PedidoAnaliticoItem,
     MateriaPlan, HistorialAlumno, Horario, EquivalenciaItem,
@@ -10,16 +12,16 @@ from .schemas import (
     RegularidadImportIn, RegularidadItemOut,
 )
 from core.models import (
-    Estudiante, PlanDeEstudio, Materia, Correlatividad, HorarioCatedra,
+    Estudiante, PlanDeEstudio, Materia, Comision, Correlatividad, HorarioCatedra,
     HorarioCatedraDetalle, Bloque, EquivalenciaCurricular, VentanaHabilitacion,
     PedidoAnalitico, MesaExamen, InscripcionMesa, Regularidad,
     Preinscripcion, PreinscripcionChecklist, Profesorado, InscripcionMateriaAlumno,
-    Comision,
 )
+from core.permissions import ensure_roles
 from django.db.models import Max
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
-from datetime import time as dt_time
+from django.utils import timezone
 
 from apps.common.api_schemas import ApiResponse
 
@@ -28,99 +30,41 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-alumnos_router = Router(tags=["alumnos"])
+alumnos_router = Router(tags=["alumnos"], auth=JWTAuth())
 
-
-def _resolve_estudiante(request, dni: str | None):
+def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
+    """Intenta resolver el estudiante a partir del DNI o del usuario autenticado."""
     if dni:
-        return Estudiante.objects.filter(dni=dni).select_related('user').first()
+        return Estudiante.objects.filter(dni=dni).first()
     if isinstance(request.user, AnonymousUser):
         return None
-    return getattr(request.user, 'estudiante', None)
+    return getattr(request.user, "estudiante", None)
 
-
-def _materias_equivalentes(materia: Materia) -> list[Materia]:
-    grupos = (
-        EquivalenciaCurricular.objects
-        .filter(materias=materia)
-        .prefetch_related('materias')
-    )
-    if not grupos.exists():
-        return [materia]
-    materias: dict[int, Materia] = {materia.id: materia}
-    for grupo in grupos:
-        for mm in grupo.materias.all():
-            materias.setdefault(mm.id, mm)
-    return list(materias.values())
-
-
-def _materias_equivalentes_ids(materia: Materia) -> set[int]:
-    return {m.id for m in _materias_equivalentes(materia)}
-
-
-def _build_horario_map(comisiones: list[Comision]) -> dict[int, list[Horario]]:
-    horario_ids = {c.horario_id for c in comisiones if c and c.horario_id}
-    if not horario_ids:
-        return {}
-    detalles = (
-        HorarioCatedraDetalle.objects
-        .filter(horario_catedra_id__in=horario_ids)
-        .select_related('bloque')
-        .order_by('bloque__dia', 'bloque__hora_desde')
-    )
-    horarios: dict[int, list[Horario]] = {}
-    for det in detalles:
-        horarios.setdefault(det.horario_catedra_id, []).append(
-            Horario(
-                dia=det.bloque.get_dia_display(),
-                desde=str(det.bloque.hora_desde)[:5],
-                hasta=str(det.bloque.hora_hasta)[:5],
-            )
-        )
-    return horarios
-
-
-def _bloques_por_comision(comisiones: list[Comision]) -> dict[int, list[tuple[int, dt_time, dt_time]]]:
-    horario_ids = {c.horario_id for c in comisiones if c and c.horario_id}
-    if not horario_ids:
-        return {}
-    detalles = (
-        HorarioCatedraDetalle.objects
-        .filter(horario_catedra_id__in=horario_ids)
-        .select_related('bloque')
-        .order_by('bloque__dia', 'bloque__hora_desde')
-    )
-    bloques: dict[int, list[tuple[int, dt_time, dt_time]]] = {}
-    for det in detalles:
-        bloques.setdefault(det.horario_catedra_id, []).append(
-            (det.bloque.dia, det.bloque.hora_desde, det.bloque.hora_hasta)
-        )
-    return bloques
-
-
-def _horarios_colisionan(bloques_a: list[tuple[int, dt_time, dt_time]], bloques_b: list[tuple[int, dt_time, dt_time]]) -> bool:
-    for dia_a, desde_a, hasta_a in bloques_a:
-        for dia_b, desde_b, hasta_b in bloques_b:
-            if dia_a != dia_b:
-                continue
-            if hasta_a <= desde_b or hasta_b <= desde_a:
-                continue
-            return True
-    return False
-
-
-def _comision_to_resumen(comision: Comision | None, horarios_map: dict[int, list[Horario]]) -> ComisionResumen | None:
+def _comision_to_resumen(comision: Comision | None) -> ComisionResumen | None:
     if not comision:
         return None
     materia = comision.materia
     plan = materia.plan_de_estudio
     profesorado = plan.profesorado if plan else None
+    horarios: list[Horario] = []
+    if comision.horario_id:
+        detalles = (
+            HorarioCatedraDetalle.objects
+            .filter(horario_catedra_id=comision.horario_id)
+            .select_related('bloque')
+            .order_by('bloque__dia', 'bloque__hora_desde')
+        )
+        horarios = [
+            Horario(
+                dia=det.bloque.get_dia_display(),
+                desde=str(det.bloque.hora_desde)[:5],
+                hasta=str(det.bloque.hora_hasta)[:5],
+            )
+            for det in detalles
+        ]
     docente_nombre = None
     if comision.docente_id:
-        docente = comision.docente
-        partes = [p for p in (docente.apellido, docente.nombre) if p]
-        docente_nombre = ", ".join(partes) or None
-    horarios = horarios_map.get(comision.horario_id, [])
+        docente_nombre = comision.docente.get_full_name()
     return ComisionResumen(
         id=comision.id,
         codigo=comision.codigo,
@@ -155,76 +99,67 @@ def _horarios_de_materia(materia: Materia) -> list[Horario]:
         for det in detalles
     ]
 
+@alumnos_router.post(
+    "/inscripcion-materia",
+    response={200: InscripcionMateriaOut, 400: ApiResponse, 404: ApiResponse},
+)
+def inscripcion_materia(request, payload: InscripcionMateriaIn):
+    from datetime import datetime
+    est = _resolve_estudiante(request, getattr(payload, "dni", None))
+    if not est:
+        return 400, ApiResponse(ok=False, message="No se encontró el estudiante (inicie sesión)")
+    if getattr(payload, "dni", None):
+        user_est = getattr(getattr(request, "user", None), "estudiante", None) if getattr(request, "user", None) and request.user.is_authenticated else None
+        if not user_est or user_est.id != est.id:
+            ensure_roles(request.user, {"admin", "secretaria", "bedel"})
 
-def _comisiones_para_materia(materia: Materia, anio_lectivo: int | None) -> list[Comision]:
-    base_qs = (
-        Comision.objects
-        .filter(materia=materia)
-        .select_related('turno', 'docente', 'horario', 'materia__plan_de_estudio__profesorado')
-    )
-    ordered_qs = base_qs.order_by('codigo')
-    if anio_lectivo:
-        actuales = list(ordered_qs.filter(anio_lectivo=anio_lectivo))
-        if actuales:
-            return actuales
-    max_anio = base_qs.aggregate(max_anio=Max('anio_lectivo'))['max_anio']
-    if max_anio is None:
-        return []
-    return list(ordered_qs.filter(anio_lectivo=max_anio))
+    mat = Materia.objects.filter(id=payload.materia_id).first()
+    if not mat:
+        return 404, ApiResponse(ok=False, message="Materia no encontrada")
 
+    anio_actual = datetime.now().year
 
-def _alternativas_comision(
-    materia: Materia,
-    anio_lectivo: int,
-    exclude_ids: set[int],
-    inscripciones_existentes: list[InscripcionMateriaAlumno],
-) -> list[Comision]:
-    candidatos: dict[int, Comision] = {}
-    for com in _comisiones_para_materia(materia, anio_lectivo):
-        if com.estado != Comision.Estado.ABIERTA:
-            continue
-        candidatos.setdefault(com.id, com)
+    # Correlatividades para cursar
+    req_reg = list(Correlatividad.objects.filter(materia_origen=mat, tipo=Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR).values_list('materia_correlativa_id', flat=True))
+    req_apr = list(Correlatividad.objects.filter(materia_origen=mat, tipo=Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR).values_list('materia_correlativa_id', flat=True))
 
-    grupos = (
-        EquivalenciaCurricular.objects
-        .filter(materias=materia)
-        .prefetch_related('materias__plan_de_estudio__profesorado')
-    )
-    if grupos.exists():
-        equivalentes = grupos.first().materias.exclude(id=materia.id)
-        for mm in equivalentes:
-            for com in _comisiones_para_materia(mm, anio_lectivo):
-                if com.estado != Comision.Estado.ABIERTA:
-                    continue
-                candidatos.setdefault(com.id, com)
+    def ultima_situacion(mid: int):
+        r = Regularidad.objects.filter(estudiante=est, materia_id=mid).order_by('-fecha_cierre').first()
+        return r.situacion if r else None
 
-    if not candidatos:
-        return []
+    faltan = []
+    for mid in req_reg:
+        s = ultima_situacion(mid)
+        if s not in (Regularidad.Situacion.REGULAR, Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+            m = Materia.objects.filter(id=mid).first()
+            faltan.append(f"Regular en {m.nombre if m else mid}")
+    for mid in req_apr:
+        s = ultima_situacion(mid)
+        if s not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+            m = Materia.objects.filter(id=mid).first()
+            faltan.append(f"Aprobada {m.nombre if m else mid}")
+    if faltan:
+        return 400, ApiResponse(ok=False, message="Correlatividades no cumplidas para cursar", data={"faltantes": faltan})
 
-    existentes = [ins.comision for ins in inscripciones_existentes if ins.comision_id]
-    bloques = _bloques_por_comision(list(candidatos.values()) + [c for c in existentes if c])
+    # Superposición horaria
+    detalles_cand = (HorarioCatedraDetalle.objects
+                     .select_related('horario_catedra__turno','bloque')
+                     .filter(horario_catedra__espacio=mat))
+    cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in detalles_cand]
+    if cand:
+        actuales = InscripcionMateriaAlumno.objects.filter(estudiante=est, anio=anio_actual)
+        if actuales.exists():
+            det_act = (HorarioCatedraDetalle.objects
+                       .select_related('horario_catedra__turno','bloque')
+                       .filter(horario_catedra__espacio_id__in=list(actuales.values_list('materia_id', flat=True))))
+            for d in det_act:
+                for (t, dia, desde, hasta) in cand:
+                    if t == d.horario_catedra.turno_id and dia == d.bloque.dia:
+                        if not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta):
+                            return 400, ApiResponse(ok=False, message="Superposición horaria con otra materia inscripta")
 
-    alternativas: list[Comision] = []
-    for com in candidatos.values():
-        if com.id in exclude_ids:
-            continue
-        bloques_cand = bloques.get(com.horario_id, [])
-        if not bloques_cand:
-            alternativas.append(com)
-            continue
-        conflicto = False
-        for ins in inscripciones_existentes:
-            other = ins.comision
-            if not other or other.horario_id not in bloques:
-                continue
-            if _horarios_colisionan(bloques_cand, bloques[other.horario_id]):
-                conflicto = True
-                break
-        if not conflicto:
-            alternativas.append(com)
-    return alternativas
-
-
+    InscripcionMateriaAlumno.objects.get_or_create(estudiante=est, materia=mat, anio=anio_actual)
+    return {"message": "Inscripción a materia registrada"}
 @alumnos_router.get(
     "/materias-inscriptas",
     response={200: list[MateriaInscriptaItem], 400: ApiResponse},
@@ -239,34 +174,23 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         .filter(estudiante=est)
         .select_related(
             'materia__plan_de_estudio__profesorado',
-            'comision__materia__plan_de_estudio__profesorado',
-            'comision__turno',
-            'comision__docente',
-            'comision__horario',
-            'comision_solicitada__materia__plan_de_estudio__profesorado',
-            'comision_solicitada__turno',
-            'comision_solicitada__docente',
-            'comision_solicitada__horario',
+            'comision__turno', 'comision__docente', 'comision__horario',
+            'comision_solicitada__turno', 'comision_solicitada__docente', 'comision_solicitada__horario',
         )
-        .order_by('-anio', 'materia__anio_cursada', 'materia__nombre')
+        .order_by('-anio', '-created_at')
     )
     if anio:
         qs = qs.filter(anio=anio)
 
-    inscripciones = list(qs)
-    comisiones_relacionadas: list[Comision] = []
-    for ins in inscripciones:
-        if ins.comision:
-            comisiones_relacionadas.append(ins.comision)
-        if ins.comision_solicitada:
-            comisiones_relacionadas.append(ins.comision_solicitada)
-
-    horarios_map = _build_horario_map(comisiones_relacionadas)
     items: list[MateriaInscriptaItem] = []
-    for ins in inscripciones:
+    for ins in qs:
         materia = ins.materia
         plan = materia.plan_de_estudio
         profesorado = plan.profesorado if plan else None
+        # Si la inscripción todavía no fue asignada a una comisión definitiva,
+        # reutilizamos la comisión solicitada para exponer los horarios y así
+        # poder detectar superposiciones desde el frontend.
+        comision_visible = ins.comision or ins.comision_solicitada
         items.append(
             MateriaInscriptaItem(
                 inscripcion_id=ins.id,
@@ -279,336 +203,53 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 anio_academico=ins.anio,
                 estado=ins.estado,
                 estado_display=ins.get_estado_display(),
-                comision_actual=_comision_to_resumen(ins.comision, horarios_map),
-                comision_solicitada=_comision_to_resumen(ins.comision_solicitada, horarios_map),
-                fecha_creacion=ins.created_at.isoformat(),
-                fecha_actualizacion=ins.updated_at.isoformat(),
+                comision_actual=_comision_to_resumen(comision_visible),
+                comision_solicitada=_comision_to_resumen(ins.comision_solicitada),
+                fecha_creacion=(ins.created_at or timezone.now()).isoformat(),
+                fecha_actualizacion=(ins.updated_at or ins.created_at or timezone.now()).isoformat(),
             )
         )
-
     return items
 
-@alumnos_router.post(
-    "/inscripcion-materia",
-    response={200: InscripcionMateriaOut, 400: ApiResponse, 404: ApiResponse},
-)
-def inscripcion_materia(request, payload: InscripcionMateriaIn):
-    from datetime import datetime
 
-    est = _resolve_estudiante(request, None)
-    if not est and payload.dni:
-        est = Estudiante.objects.filter(dni=payload.dni).select_related("user").first()
+@alumnos_router.post(
+    "/inscripcion-materia/{inscripcion_id}/cancelar",
+    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+)
+def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: CancelarInscripcionIn):
+    est = _resolve_estudiante(request, payload.dni)
     if not est:
         return 400, ApiResponse(ok=False, message="No se encontró el estudiante.")
 
-    materia = (
-        Materia.objects
-        .select_related('plan_de_estudio__profesorado')
-        .filter(id=payload.materia_id)
-        .first()
-    )
-    if not materia:
-        return 404, ApiResponse(ok=False, message="Materia no encontrada.")
-
-    anio_actual = datetime.now().year
-
-    # Correlatividades para cursar
-    req_reg = list(
-        Correlatividad.objects
-        .filter(materia_origen=materia, tipo=Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR)
-        .values_list('materia_correlativa_id', flat=True)
-    )
-    req_apr = list(
-        Correlatividad.objects
-        .filter(materia_origen=materia, tipo=Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR)
-        .values_list('materia_correlativa_id', flat=True)
-    )
-
-    def ultima_situacion(mid: int):
-        r = (
-            Regularidad.objects
-            .filter(estudiante=est, materia_id=mid)
-            .order_by('-fecha_cierre')
-            .first()
-        )
-        return r.situacion if r else None
-
-    faltantes: list[str] = []
-    for mid in req_reg:
-        if ultima_situacion(mid) not in (
-            Regularidad.Situacion.REGULAR,
-            Regularidad.Situacion.APROBADO,
-            Regularidad.Situacion.PROMOCIONADO,
-        ):
-            corr = Materia.objects.filter(id=mid).first()
-            faltantes.append(f"Regular en {corr.nombre if corr else mid}")
-    for mid in req_apr:
-        if ultima_situacion(mid) not in (
-            Regularidad.Situacion.APROBADO,
-            Regularidad.Situacion.PROMOCIONADO,
-        ):
-            corr = Materia.objects.filter(id=mid).first()
-            faltantes.append(f"Aprobada {corr.nombre if corr else mid}")
-    if faltantes:
-        return 400, ApiResponse(
-            ok=False,
-            message="Correlatividades no cumplidas para cursar",
-            data={"faltantes": faltantes},
-        )
-
-    materias_equivalentes = _materias_equivalentes(materia)
-    equivalentes_ids = {m.id for m in materias_equivalentes}
-
-    comision: Comision | None = None
-    if payload.comision_id:
-        comision = (
-            Comision.objects
-            .select_related('materia__plan_de_estudio__profesorado', 'turno', 'docente', 'horario')
-            .filter(id=payload.comision_id)
-            .first()
-        )
-        if not comision or comision.materia_id not in equivalentes_ids:
-            return 400, ApiResponse(ok=False, message="La comisión seleccionada no pertenece a la materia ni a una equivalencia habilitada.")
-    else:
-        disponibles_map: dict[int, Comision] = {}
-        for mat_equiv in materias_equivalentes:
-            for c in _comisiones_para_materia(mat_equiv, anio_actual):
-                if c.estado != Comision.Estado.ABIERTA:
-                    continue
-                disponibles_map.setdefault(c.id, c)
-        disponibles = list(disponibles_map.values())
-        if len(disponibles) == 1:
-            comision = disponibles[0]
-        elif len(disponibles) > 1:
-            horarios_map = _build_horario_map(disponibles)
-            alternativas = [_comision_to_resumen(c, horarios_map) for c in disponibles]
-            return 400, ApiResponse(
-                ok=False,
-                message="Debe seleccionar una comisión disponible para cursar la materia.",
-                data={"alternativas": [alt.dict() for alt in alternativas if alt]},
-            )
-
-    inscripciones_actuales = list(
-        InscripcionMateriaAlumno.objects
-        .filter(estudiante=est, anio=anio_actual)
-        .select_related(
-            'materia__plan_de_estudio__profesorado',
-            'comision__turno', 'comision__docente', 'comision__horario',
-            'comision_solicitada__turno', 'comision_solicitada__docente', 'comision_solicitada__horario',
-        )
-    )
-    existente_materia = next((ins for ins in inscripciones_actuales if ins.materia_id == materia.id), None)
-
-    inscripciones_conflicto = [
-        ins for ins in inscripciones_actuales
-        if ins.materia_id != materia.id
-        and ins.comision_id
-        and ins.estado in (
-            InscripcionMateriaAlumno.Estado.CONFIRMADA,
-            InscripcionMateriaAlumno.Estado.PENDIENTE,
-        )
-    ]
-
-    conflictos: list[dict] = []
-    if comision and comision.horario_id and inscripciones_conflicto:
-        otras_comisiones = [ins.comision for ins in inscripciones_conflicto if ins.comision]
-        bloques_map = _bloques_por_comision([comision] + otras_comisiones)
-        horarios_map_conflicto = _build_horario_map([comision] + otras_comisiones)
-        cand_bloques = bloques_map.get(comision.horario_id, [])
-        for ins in inscripciones_conflicto:
-            other = ins.comision
-            if not other or other.horario_id not in bloques_map:
-                continue
-            if _horarios_colisionan(cand_bloques, bloques_map[other.horario_id]):
-                resumen = _comision_to_resumen(other, horarios_map_conflicto)
-                conflictos.append({
-                    "inscripcion_id": ins.id,
-                    "materia_id": ins.materia_id,
-                    "materia_nombre": ins.materia.nombre,
-                    "estado": ins.estado,
-                    "comision": resumen.dict() if resumen else None,
-                })
-
-    if conflictos:
-        alternativas_com = _alternativas_comision(
-            materia,
-            anio_actual,
-            exclude_ids={comision.id} if comision else set(),
-            inscripciones_existentes=inscripciones_conflicto,
-        )
-        horarios_alt = _build_horario_map(alternativas_com)
-        alternativas_resumen = [_comision_to_resumen(c, horarios_alt) for c in alternativas_com]
-        return 400, ApiResponse(
-            ok=False,
-            message="La comisión seleccionada genera superposición horaria con otra materia inscripta.",
-            data={
-                "conflictos": conflictos,
-                "alternativas": [alt.dict() for alt in alternativas_resumen if alt],
-            },
-        )
-
-    if existente_materia:
-        mensaje = "La materia ya se encuentra inscripta."
-        actualizada = False
-        if comision and existente_materia.comision_id != comision.id:
-            existente_materia.comision = comision
-            actualizada = True
-        if existente_materia.estado != InscripcionMateriaAlumno.Estado.CONFIRMADA:
-            existente_materia.estado = InscripcionMateriaAlumno.Estado.CONFIRMADA
-            existente_materia.comision_solicitada = None
-            actualizada = True
-        if actualizada:
-            existente_materia.save(update_fields=['comision', 'estado', 'comision_solicitada', 'updated_at'])
-            mensaje = "Inscripción actualizada."
-        inscripcion = existente_materia
-    else:
-        inscripcion = InscripcionMateriaAlumno.objects.create(
-            estudiante=est,
-            materia=materia,
-            comision=comision,
-            anio=anio_actual,
-            estado=InscripcionMateriaAlumno.Estado.CONFIRMADA,
-        )
-        mensaje = "Inscripción a materia registrada."
-
-    comisiones_respuesta = [c for c in [inscripcion.comision, inscripcion.comision_solicitada] if c]
-    horarios_resp = _build_horario_map(comisiones_respuesta) if comisiones_respuesta else {}
-
-    return InscripcionMateriaOut(
-        message=mensaje,
-        inscripcion_id=inscripcion.id,
-        estado=inscripcion.estado,
-        comision_asignada=_comision_to_resumen(inscripcion.comision, horarios_resp),
-        comision_solicitada=_comision_to_resumen(inscripcion.comision_solicitada, horarios_resp),
-    )
-@alumnos_router.post("/cambio-comision", response={200: CambioComisionOut, 400: ApiResponse, 404: ApiResponse})
-def cambio_comision(request, payload: CambioComisionIn):
-    est = _resolve_estudiante(request, None)
-    if not est:
-        return 400, ApiResponse(ok=False, message="No se encontró el estudiante (inicie sesión).")
-
     inscripcion = (
         InscripcionMateriaAlumno.objects
-        .select_related(
-            'materia__plan_de_estudio__profesorado',
-            'comision__turno', 'comision__docente', 'comision__horario',
-            'comision_solicitada__turno', 'comision_solicitada__docente', 'comision_solicitada__horario',
-        )
-        .filter(id=payload.inscripcion_id, estudiante=est)
+        .filter(id=inscripcion_id, estudiante=est)
+        .select_related('materia', 'comision')
         .first()
     )
     if not inscripcion:
         return 404, ApiResponse(ok=False, message="Inscripción no encontrada.")
 
-    nueva_comision = (
-        Comision.objects
-        .select_related('materia__plan_de_estudio__profesorado', 'turno', 'docente', 'horario')
-        .filter(id=payload.comision_id)
-        .first()
-    )
-    if not nueva_comision:
-        return 404, ApiResponse(ok=False, message="Comisión destino no encontrada.")
-
-    equivalentes_ids = {m.id for m in _materias_equivalentes(inscripcion.materia)}
-    if nueva_comision.materia_id not in equivalentes_ids:
-        return 400, ApiResponse(ok=False, message="La comisión solicitada no es válida para esta materia.")
-
-    if inscripcion.comision_id == nueva_comision.id:
-        comisiones_resp = _build_horario_map([inscripcion.comision]) if inscripcion.comision else {}
-        return CambioComisionOut(
-            message="La comisión seleccionada ya es la asignada actualmente.",
-            inscripcion_id=inscripcion.id,
-            estado=inscripcion.estado,
-            comision_asignada=_comision_to_resumen(inscripcion.comision, comisiones_resp),
-            comision_solicitada=_comision_to_resumen(inscripcion.comision_solicitada, comisiones_resp),
-        )
-
-    if (
-        inscripcion.estado == InscripcionMateriaAlumno.Estado.PENDIENTE
-        and inscripcion.comision_solicitada_id == nueva_comision.id
+    if inscripcion.estado not in (
+        InscripcionMateriaAlumno.Estado.CONFIRMADA,
+        InscripcionMateriaAlumno.Estado.PENDIENTE,
     ):
-        comisiones_resp = _build_horario_map(
-            [c for c in [inscripcion.comision, inscripcion.comision_solicitada] if c]
-        )
-        return CambioComisionOut(
-            message="Ya existe una solicitud pendiente para esa comisión.",
-            inscripcion_id=inscripcion.id,
-            estado=inscripcion.estado,
-            comision_asignada=_comision_to_resumen(inscripcion.comision, comisiones_resp),
-            comision_solicitada=_comision_to_resumen(inscripcion.comision_solicitada, comisiones_resp),
-        )
+        return 400, ApiResponse(ok=False, message="Solo se pueden cancelar inscripciones confirmadas o pendientes.")
 
-    otras_inscripciones = list(
-        InscripcionMateriaAlumno.objects
-        .filter(estudiante=est, anio=inscripcion.anio)
-        .exclude(id=inscripcion.id)
-        .select_related(
-            'materia__plan_de_estudio__profesorado',
-            'comision__turno', 'comision__docente', 'comision__horario',
-        )
-    )
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
 
-    inscripciones_conflicto = [
-        ins for ins in otras_inscripciones
-        if ins.comision_id
-        and ins.estado in (
-            InscripcionMateriaAlumno.Estado.CONFIRMADA,
-            InscripcionMateriaAlumno.Estado.PENDIENTE,
-        )
-    ]
+    inscripcion.estado = InscripcionMateriaAlumno.Estado.ANULADA
+    inscripcion.comision = None
+    inscripcion.comision_solicitada = None
+    inscripcion.save(update_fields=['estado', 'comision', 'comision_solicitada', 'updated_at'])
 
-    conflictos: list[dict] = []
-    if nueva_comision.horario_id and inscripciones_conflicto:
-        otras_comisiones = [ins.comision for ins in inscripciones_conflicto if ins.comision]
-        bloques_map = _bloques_por_comision([nueva_comision] + otras_comisiones)
-        horarios_map = _build_horario_map([nueva_comision] + otras_comisiones)
-        bloques_cand = bloques_map.get(nueva_comision.horario_id, [])
-        for ins in inscripciones_conflicto:
-            other = ins.comision
-            if not other or other.horario_id not in bloques_map:
-                continue
-            if _horarios_colisionan(bloques_cand, bloques_map[other.horario_id]):
-                resumen = _comision_to_resumen(other, horarios_map)
-                conflictos.append({
-                    "inscripcion_id": ins.id,
-                    "materia_id": ins.materia_id,
-                    "materia_nombre": ins.materia.nombre,
-                    "estado": ins.estado,
-                    "comision": resumen.dict() if resumen else None,
-                })
+    return ApiResponse(ok=True, message="Inscripción cancelada exitosamente.")
 
-    if conflictos:
-        alternativas = _alternativas_comision(
-            inscripcion.materia,
-            inscripcion.anio,
-            exclude_ids={nueva_comision.id},
-            inscripciones_existentes=inscripciones_conflicto,
-        )
-        horarios_alt = _build_horario_map(alternativas)
-        alternativas_resumen = [_comision_to_resumen(c, horarios_alt) for c in alternativas]
-        return 400, ApiResponse(
-            ok=False,
-            message="La comisión solicitada se superpone con otras inscripciones vigentes.",
-            data={
-                "conflictos": conflictos,
-                "alternativas": [alt.dict() for alt in alternativas_resumen if alt],
-            },
-        )
 
-    inscripcion.comision_solicitada = nueva_comision
-    inscripcion.estado = InscripcionMateriaAlumno.Estado.PENDIENTE
-    inscripcion.save(update_fields=['comision_solicitada', 'estado', 'updated_at'])
-
-    comisiones_resp = _build_horario_map(
-        [c for c in [inscripcion.comision, inscripcion.comision_solicitada] if c]
-    )
-    return CambioComisionOut(
-        message="Solicitud de cambio registrada y pendiente de aprobación.",
-        inscripcion_id=inscripcion.id,
-        estado=inscripcion.estado,
-        comision_asignada=_comision_to_resumen(inscripcion.comision, comisiones_resp),
-        comision_solicitada=_comision_to_resumen(inscripcion.comision_solicitada, comisiones_resp),
-    )
+@alumnos_router.post("/cambio-comision", response=CambioComisionOut)
+def cambio_comision(request, payload: CambioComisionIn):
+    # Placeholder logic
+    return {"message": "Solicitud de cambio de comisión recibida."}
 
 @alumnos_router.get("/pedido_analitico", response=PedidoAnaliticoOut)
 def pedido_analitico(request):
@@ -885,82 +526,87 @@ def materias_plan(request, profesorado_id: int | None = None, plan_id: int | Non
 
 @alumnos_router.get("/historial", response=HistorialAlumno)
 def historial_alumno(request, dni: str | None = None):
-    # TODO: Enlazar con actas/notas/regularidades reales
-    # Por ahora, admite DNI para que Bedel/Secretaría/Admin consulten a un alumno específico
-    return HistorialAlumno(aprobadas=[], regularizadas=[1], inscriptas_actuales=[])
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return HistorialAlumno(aprobadas=[], regularizadas=[], inscriptas_actuales=[])
+
+    aprobadas = list(
+        Regularidad.objects
+        .filter(estudiante=est, situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO])
+        .values_list('materia_id', flat=True)
+    )
+    regularizadas = list(
+        Regularidad.objects
+        .filter(estudiante=est, situacion=Regularidad.Situacion.REGULAR)
+        .values_list('materia_id', flat=True)
+    )
+    inscriptas_actuales = list(
+        InscripcionMateriaAlumno.objects
+        .filter(
+            estudiante=est,
+            estado__in=[InscripcionMateriaAlumno.Estado.CONFIRMADA, InscripcionMateriaAlumno.Estado.PENDIENTE]
+        )
+        .values_list('materia_id', flat=True)
+    )
+
+    return HistorialAlumno(
+        aprobadas=aprobadas,
+        regularizadas=regularizadas,
+        inscriptas_actuales=inscriptas_actuales,
+    )
+
 
 
 @alumnos_router.get("/equivalencias", response=list[EquivalenciaItem])
-def equivalencias_para_materia(request, materia_id: int, anio: int | None = None):
+def equivalencias_para_materia(request, materia_id: int):
     """Devuelve materias equivalentes (otros profesorados) para la materia indicada.
 
     Requiere que exista un registro de EquivalenciaCurricular que relacione la materia con sus equivalentes.
     """
-    from datetime import datetime
-
     try:
-        materia = Materia.objects.select_related('plan_de_estudio__profesorado').get(id=materia_id)
+        m = Materia.objects.get(id=materia_id)
     except Materia.DoesNotExist:
         return []
-
-    grupos = EquivalenciaCurricular.objects.filter(materias=materia).prefetch_related('materias__plan_de_estudio__profesorado')
-    if grupos.exists():
-        equivalentes = list(
-            grupos.first()
-            .materias.exclude(id=materia.id)
-            .select_related('plan_de_estudio__profesorado')
-        )
-    else:
-        equivalentes = list(
-            Materia.objects
-            .filter(nombre__iexact=materia.nombre)
-            .exclude(id=materia.id)
-            .select_related('plan_de_estudio__profesorado')
-        )
-    if not equivalentes:
-        return []
-
-    anio_referencia = anio or datetime.now().year
+    grupos = EquivalenciaCurricular.objects.filter(materias=m)
+    if not grupos.exists():
+        # fallback por nombre exacto (no recomendado, pero útil mientras se cargan equivalencias)
+        candidates = Materia.objects.filter(nombre__iexact=m.nombre).exclude(id=m.id)
+        items: list[EquivalenciaItem] = []
+        for mm in candidates:
+            # Horarios simplificados
+            detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mm).select_related('bloque', 'horario_catedra')
+            hs = [Horario(dia=d.bloque.get_dia_display(), desde=str(d.bloque.hora_desde)[:5], hasta=str(d.bloque.hora_hasta)[:5]) for d in detalles]
+            items.append(EquivalenciaItem(materia_id=mm.id, materia_nombre=mm.nombre, profesorado=mm.plan_de_estudio.profesorado.nombre, horarios=hs))
+        return items
+    # Usar equivalencias cargadas
+    eq = grupos.first()
     items: list[EquivalenciaItem] = []
-    for mm in equivalentes:
-        comisiones = _comisiones_para_materia(mm, anio_referencia)
-        horarios_map = _build_horario_map(comisiones)
-        comisiones_resumen = [
-            resumen for resumen in (_comision_to_resumen(c, horarios_map) for c in comisiones) if resumen
-        ]
-        horarios_base: list[Horario] = []
-        for com in comisiones:
-            horarios_base.extend(horarios_map.get(com.horario_id, []))
-        if not horarios_base:
-            horarios_base = _horarios_de_materia(mm)
-        plan = mm.plan_de_estudio
-        prof = plan.profesorado if plan else None
-        items.append(
-            EquivalenciaItem(
-                materia_id=mm.id,
-                materia_nombre=mm.nombre,
-                plan_id=plan.id if plan else None,
-                profesorado_id=prof.id if prof else None,
-                profesorado=prof.nombre if prof else '',
-                horarios=horarios_base,
-                comisiones=comisiones_resumen,
-            )
-        )
+    for mm in eq.materias.exclude(id=m.id):
+        detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mm).select_related('bloque', 'horario_catedra')
+        hs = [Horario(dia=d.bloque.get_dia_display(), desde=str(d.bloque.hora_desde)[:5], hasta=str(d.bloque.hora_hasta)[:5]) for d in detalles]
+        items.append(EquivalenciaItem(materia_id=mm.id, materia_nombre=mm.nombre, profesorado=mm.plan_de_estudio.profesorado.nombre, horarios=hs))
     return items
 
+
+def _formatear_rango_ventana(ventana, ventana_id: int) -> str:
+    if not ventana:
+        return f'Ventana ID: {ventana_id}'
+    rango = f"{ventana.desde.strftime('%d/%m/%Y')} - {ventana.hasta.strftime('%d/%m/%Y')}"
+    etiqueta = " (Activo)" if ventana.activo else ""
+    return f"Ventana: {rango}{etiqueta}"
 
 @alumnos_router.get("/analiticos/pdf")
 def analiticos_pdf(request, ventana_id: int):
     qs = PedidoAnalitico.objects.select_related('estudiante__user','profesorado','ventana').filter(ventana_id=ventana_id).order_by('-created_at')
-    # Build PDF
+    ventana = VentanaHabilitacion.objects.filter(id=ventana_id).first()
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="analiticos_{ventana_id}.pdf"'
 
     doc = SimpleDocTemplate(response, pagesize=A4, rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     styles = getSampleStyleSheet()
     story = []
-    story.append(Paragraph('Pedidos de Analítico', styles['Title']))
-    story.append(Paragraph(f'Ventana ID: {ventana_id}', styles['Normal']))
+    story.append(Paragraph('Pedidos de Analitico', styles['Title']))
+    story.append(Paragraph(_formatear_rango_ventana(ventana, ventana_id), styles['Normal']))
     story.append(Spacer(1, 12))
 
     data = [[
@@ -991,8 +637,6 @@ def analiticos_pdf(request, ventana_id: int):
     doc.build(story)
     return response
 
-
-# Endpoints extendidos con motivo incluido
 @alumnos_router.get("/analiticos_ext", response=list[PedidoAnaliticoItem])
 def listar_pedidos_analitico_ext(request, ventana_id: int, dni: str | None = None):
     qs = PedidoAnalitico.objects.select_related('estudiante__user','profesorado','ventana').filter(ventana_id=ventana_id)
@@ -1020,6 +664,7 @@ def analiticos_ext_pdf(request, ventana_id: int, dni: str | None = None):
     if dni:
         qs = qs.filter(estudiante__dni=dni)
     qs = qs.order_by('-created_at')
+    ventana = VentanaHabilitacion.objects.filter(id=ventana_id).first()
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="analiticos_{ventana_id}.pdf"'
@@ -1027,8 +672,8 @@ def analiticos_ext_pdf(request, ventana_id: int, dni: str | None = None):
     doc = SimpleDocTemplate(response, pagesize=A4, rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     styles = getSampleStyleSheet()
     story = []
-    story.append(Paragraph('Pedidos de Analítico', styles['Title']))
-    story.append(Paragraph(f'Ventana ID: {ventana_id}', styles['Normal']))
+    story.append(Paragraph('Pedidos de Analitico', styles['Title']))
+    story.append(Paragraph(_formatear_rango_ventana(ventana, ventana_id), styles['Normal']))
     story.append(Spacer(1, 12))
 
     data = [[
@@ -1063,8 +708,6 @@ def analiticos_ext_pdf(request, ventana_id: int, dni: str | None = None):
     doc.build(story)
     return response
 
-
-# Crear pedido de analítico (POST) para alumno o por DNI (roles de gestión)
 @alumnos_router.post("/pedido_analitico", response=PedidoAnaliticoOut)
 def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
     v = VentanaHabilitacion.objects.filter(tipo=VentanaHabilitacion.Tipo.ANALITICOS, activo=True).order_by('-desde').first()
@@ -1162,3 +805,4 @@ def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
         "intentos_usados": intentos,
         "intentos_max": 3,
     }
+

@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Alert, Stack, TextField, MenuItem, Button } from '@mui/material';
 import { solicitarPedidoAnalitico } from '@/api/alumnos';
-import { client as api } from '@/api/client';
+import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
+import { useTestMode } from '@/context/TestModeContext';
 
 const PedidoAnaliticoPage: React.FC = () => {
+  const { enabled: testMode } = useTestMode();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = (useAuth?.() ?? { user:null }) as any;
   const canGestionar = !!user && (user.is_staff || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel','tutor'].includes((r||'').toLowerCase())));
 
-  const [ventanaActiva, setVentanaActiva] = useState<any|null>(null);
+  const [ventanaActiva, setVentanaActiva] = useState<VentanaDto | null>(null);
   const [motivo, setMotivo] = useState<'equivalencia'|'beca'|'control'|'otro'>('equivalencia');
   const [motivoOtro, setMotivoOtro] = useState('');
   const [dni, setDni] = useState('');
@@ -19,12 +21,14 @@ const PedidoAnaliticoPage: React.FC = () => {
   useEffect(()=>{
     (async()=>{
       try{
-        const { data } = await api.get('/ventanas');
-        const v = (data||[]).find((x:any)=> x.tipo==='ANALITICOS' && x.activo);
-        setVentanaActiva(v||null);
-      }catch{}
+        const data = await fetchVentanas({ tipo: 'ANALITICOS' });
+        const v = (data || []).find((x) => x.activo);
+        setVentanaActiva(v || null);
+      }catch{
+        setVentanaActiva(null);
+      }
     })();
-  },[]);
+  },[testMode]);
 
   const handleSubmit = async () => {
     try {
@@ -46,6 +50,7 @@ const PedidoAnaliticoPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Solicitud de Pedido de Analítico</Typography>
       <Typography variant="body1" paragraph>Completa el motivo del pedido. Si hay periodo activo podrás enviar la solicitud.</Typography>
+      {testMode && <Alert severity="info" sx={{ mb:2 }}>Modo prueba: las habilitaciones se simulan sin tocar la base de datos.</Alert>}
       {!ventanaActiva && (<Alert severity="warning" sx={{ mb:2 }}>No hay periodo activo para pedido de analítico.</Alert>)}
 
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
@@ -72,4 +77,3 @@ const PedidoAnaliticoPage: React.FC = () => {
 };
 
 export default PedidoAnaliticoPage;
-

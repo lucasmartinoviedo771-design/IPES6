@@ -23,6 +23,8 @@ dayjs.locale("es");
 
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { SnackbarProvider } from "notistack";
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import { TestModeProvider } from "@/context/TestModeContext";
 
 window.addEventListener("error", (e) => {
   console.error("[window.onerror]", e.message, e.error);
@@ -35,25 +37,36 @@ const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
+const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const AppContent = recaptchaKey ? (
+  <GoogleReCaptchaProvider reCaptchaKey={recaptchaKey}>
+    <App />
+  </GoogleReCaptchaProvider>
+) : (
+  <App />
+);
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <QueryClientProvider client={qc}>
           <AuthProvider>
-            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-              <ThemeProvider theme={theme}>
-                <CssBaseline />
-                <SnackbarProvider
-                  maxSnack={4}
-                  autoHideDuration={4000}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                >
-                  <ToastBridge />
-                  <App />
-                </SnackbarProvider>
-              </ThemeProvider>
-            </LocalizationProvider>
+            <TestModeProvider>
+              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+                <ThemeProvider theme={theme}>
+                  <CssBaseline />
+                  <SnackbarProvider
+                    maxSnack={4}
+                    autoHideDuration={4000}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                  >
+                    <ToastBridge />
+                    {AppContent}
+                  </SnackbarProvider>
+                </ThemeProvider>
+              </LocalizationProvider>
+            </TestModeProvider>
           </AuthProvider>
         </QueryClientProvider>
       </BrowserRouter>

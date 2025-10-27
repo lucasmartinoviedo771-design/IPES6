@@ -14,6 +14,14 @@ export type ComisionOptionDTO = {
   codigo: string;
 };
 
+export type MateriaOptionDTO = {
+  id: number;
+  nombre: string;
+  anio: number | null;
+  cuatrimestre: string | null;
+  formato: string | null;
+};
+
 export type ProfesoradoDTO = {
   id: number;
   nombre: string;
@@ -73,6 +81,11 @@ export type GuardarRegularidadPayload = {
   observaciones_generales?: string | null;
 };
 
+export type DatosCargaNotasDTO = {
+  materias: MateriaOptionDTO[];
+  comisiones: ComisionOptionDTO[];
+};
+
 export async function listarProfesorados() {
   const { data } = await client.get<ProfesoradoDTO[]>("/profesorados/", {
     params: { vigentes: true },
@@ -85,21 +98,18 @@ export async function listarPlanes(profesoradoId: number) {
   return data;
 }
 
-export async function listarComisiones(params: {
-  profesorado_id?: number | null;
-  plan_id?: number | null;
+export async function obtenerDatosCargaNotas(params: {
+  plan_id: number;
   materia_id?: number | null;
   anio?: number | null;
   cuatrimestre?: string | null;
 }) {
-  const query: Record<string, any> = {};
-  if (params.profesorado_id) query.profesorado_id = params.profesorado_id;
-  if (params.plan_id) query.plan_id = params.plan_id;
+  const query: Record<string, any> = { plan_id: params.plan_id };
   if (params.materia_id) query.materia_id = params.materia_id;
   if (params.anio) query.anio = params.anio;
   if (params.cuatrimestre) query.cuatrimestre = params.cuatrimestre;
 
-  const { data } = await client.get<ComisionOptionDTO[]>("/alumnos/carga-notas/comisiones", {
+  const { data } = await client.get<DatosCargaNotasDTO>("/alumnos/carga-notas/comisiones", {
     params: query,
   });
   return data;

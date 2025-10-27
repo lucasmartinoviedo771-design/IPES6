@@ -139,20 +139,20 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 
   // Cargar turno Sábado y sus bloques una sola vez
   useEffect(() => {
-    axios.get<{ id: number; nombre: string }[]>(`/turnos`)
-      .then(({ data }) => {
-        const findSab = (s: string) => {
-          const n = s.toLowerCase();
-          return n.includes('sábado') || n.includes('sabado') || n.includes('sab');
-        };
-        const sab = data.find(t => findSab(t.nombre));
-        if (sab) {
-          setSabadoTurnoId(sab.id);
-          return axios.get<Bloque[]>(`/turnos/${sab.id}/bloques`).then(r => setSabadoBloques(r.data));
-        }
-        return Promise.resolve();
-      })
-      .catch(e => console.error('Error fetching turno/bloques sábado:', e));
+    // axios.get<{ id: number; nombre: string }[]>(`/turnos`)
+    //   .then(({ data }) => {
+    //     const findSab = (s: string) => {
+    //       const n = s.toLowerCase();
+    //       return n.includes('sábado') || n.includes('sabado') || n.includes('sab');
+    //     };
+    //     const sab = data.find(t => findSab(t.nombre));
+    //     if (sab) {
+    //       setSabadoTurnoId(sab.id);
+    //       return axios.get<Bloque[]>(`/turnos/${sab.id}/bloques`).then(r => setSabadoBloques(r.data));
+    //     }
+    //     return Promise.resolve();
+    //   })
+    //   .catch(e => console.error('Error fetching turno/bloques sábado:', e));
   }, []);
 
   useEffect(() => {

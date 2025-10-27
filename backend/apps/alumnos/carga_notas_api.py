@@ -5,17 +5,18 @@ from decimal import Decimal
 from typing import List, Optional
 
 from django.db import transaction
-from django.db.models import Prefetch, Q
 from ninja import Router, Schema
 
 from apps.common.api_schemas import ApiResponse
+from core.auth_ninja import JWTAuth
 from core.models import (
     Comision,
     InscripcionMateriaAlumno,
     Materia,
+    PlanDeEstudio,
     Regularidad,
-    Profesorado,
 )
+
 
 
 
@@ -66,6 +67,20 @@ class RegularidadCargaIn(Schema):
 
 
 FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB"}
+
+_VIRTUAL_COMISION_FACTOR = 10000
+
+
+def _virtual_comision_id(materia_id: int, anio: Optional[int]) -> int:
+    base = materia_id * _VIRTUAL_COMISION_FACTOR + (anio or 0)
+    return -base
+
+
+def _split_virtual_comision_id(raw_id: int) -> tuple[int, Optional[int]]:
+    absolute = abs(raw_id)
+    materia_id = absolute // _VIRTUAL_COMISION_FACTOR
+    anio = absolute % _VIRTUAL_COMISION_FACTOR
+    return materia_id, anio or None
 
 _SITUACIONES = {
     "ASI": [
@@ -160,6 +175,32 @@ ALIAS_TO_SITUACION = {
 SITUACION_TO_ALIAS = {v: k for k, v in ALIAS_TO_SITUACION.items()}
 
 
+def _situaciones_para_formato(formato: str) -> List[dict]:
+    if not formato:
+        return _SITUACIONES["ASI"]
+    formato_key = formato.upper()
+    if formato_key in _SITUACIONES:
+        return _SITUACIONES[formato_key]
+    if formato_key in FORMATOS_TALLER:
+        return _SITUACIONES["TAL"]
+    return _SITUACIONES["ASI"]
+
+
+def _alias_desde_situacion(codigo: str | None) -> Optional[str]:
+    if not codigo:
+        return None
+    return SITUACION_TO_ALIAS.get(codigo, None)
+
+
+class MateriaOption(Schema):
+    id: int
+    nombre: str
+    plan_id: int
+    anio: Optional[int] = None
+    cuatrimestre: Optional[str] = None
+    formato: Optional[str] = None
+
+
 class ComisionOption(Schema):
     id: int
     materia_id: int
@@ -174,9 +215,16 @@ class ComisionOption(Schema):
     codigo: str
 
 
+class CargaNotasLookup(Schema):
+    materias: List[MateriaOption]
+    comisiones: List[ComisionOption]
+
+
+
 @carga_notas_router.get(
     "/comisiones",
-    response=List[ComisionOption],
+    response=CargaNotasLookup,
+    auth=JWTAuth(),
 )
 def listar_comisiones(
     request,
@@ -186,101 +234,117 @@ def listar_comisiones(
     anio: Optional[int] = None,
     cuatrimestre: Optional[str] = None,
 ):
-    comisiones = (
+    if not plan_id:
+        return CargaNotasLookup(materias=[], comisiones=[])
+
+    plan = (
+        PlanDeEstudio.objects.select_related("profesorado")
+        .filter(id=plan_id)
+        .first()
+    )
+    if not plan:
+        return CargaNotasLookup(materias=[], comisiones=[])
+
+    if profesorado_id and profesorado_id != plan.profesorado_id:
+        return CargaNotasLookup(materias=[], comisiones=[])
+
+    comisiones_qs = (
         Comision.objects.select_related(
             "materia__plan_de_estudio__profesorado",
             "turno",
         )
+        .filter(materia__plan_de_estudio=plan)
         .order_by("-anio_lectivo", "materia__nombre", "codigo")
     )
 
-    if profesorado_id:
-        comisiones = comisiones.filter(
-            materia__plan_de_estudio__profesorado_id=profesorado_id
-        )
-    if plan_id:
-        comisiones = comisiones.filter(materia__plan_de_estudio_id=plan_id)
     if materia_id:
-        comisiones = comisiones.filter(materia_id=materia_id)
+        comisiones_qs = comisiones_qs.filter(materia_id=materia_id)
     if anio:
-        comisiones = comisiones.filter(anio_lectivo=anio)
+        comisiones_qs = comisiones_qs.filter(anio_lectivo=anio)
     if cuatrimestre:
-        comisiones = comisiones.filter(
-            Q(cuatrimestre=cuatrimestre)
-            | Q(cuatrimestre__isnull=True)
-            | Q(cuatrimestre="")
-        )
+        comisiones_qs = comisiones_qs.filter(materia__regimen=cuatrimestre)
 
-    salida: List[ComisionOption] = []
-    for com in comisiones:
-        materia = com.materia
-        plan = materia.plan_de_estudio
-        profesorado = plan.profesorado
-        salida.append(
+    materias_qs = Materia.objects.filter(plan_de_estudio=plan)
+    if materia_id:
+        materias_qs = materias_qs.filter(id=materia_id)
+    materias_qs = materias_qs.order_by("anio_cursada", "nombre")
+
+    materias_out: List[MateriaOption] = [
+        MateriaOption(
+            id=m.id,
+            nombre=m.nombre,
+            plan_id=plan.id,
+            anio=m.anio_cursada,
+            cuatrimestre=m.regimen,
+            formato=getattr(m, "formato", None),
+        )
+        for m in materias_qs
+    ]
+
+    comisiones_out: List[ComisionOption] = []
+    for com in comisiones_qs:
+        materia_obj = com.materia
+        plan_obj = materia_obj.plan_de_estudio
+        profesorado = plan_obj.profesorado
+        comisiones_out.append(
             ComisionOption(
                 id=com.id,
-                materia_id=materia.id,
-                materia_nombre=materia.nombre,
+                materia_id=materia_obj.id,
+                materia_nombre=materia_obj.nombre,
                 profesorado_id=profesorado.id,
                 profesorado_nombre=profesorado.nombre,
-                plan_id=plan.id,
-                plan_resolucion=plan.resolucion,
+                plan_id=plan_obj.id,
+                plan_resolucion=plan_obj.resolucion,
                 anio=com.anio_lectivo,
-                cuatrimestre=com.cuatrimestre,
-                turno=com.turno.nombre,
+                cuatrimestre=materia_obj.regimen,
+                turno=com.turno.nombre if com.turno else "",
                 codigo=com.codigo,
             )
         )
-    return salida
 
-
-def _formato_clave(formato: str) -> str:
-    if formato in FORMATOS_TALLER:
-        return "TAL"
-    if formato == Materia.FormatoMateria.MODULO:
-        return "MOD"
-    return "ASI"
-
-
-def _situaciones_para_formato(formato: str) -> List[dict]:
-    clave = _formato_clave(formato)
-    return _SITUACIONES[clave]
-
-
-def _alias_desde_situacion(codigo: str) -> Optional[str]:
-    return SITUACION_TO_ALIAS.get(codigo)
-
-
-@carga_notas_router.get(
-    "/regularidad",
-    response={200: RegularidadPlanillaOut, 400: ApiResponse, 404: ApiResponse},
-)
-def obtener_planilla_regularidad(request, comision_id: int):
-    comision = (
-        Comision.objects.select_related(
-            "materia__plan_de_estudio__profesorado", "turno"
-        )
-        .filter(id=comision_id)
-        .first()
+    inscripciones_libres = InscripcionMateriaAlumno.objects.filter(
+        materia__plan_de_estudio=plan, comision__isnull=True
     )
-    if not comision:
-        return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
+    if materia_id:
+        inscripciones_libres = inscripciones_libres.filter(materia_id=materia_id)
+    if anio:
+        inscripciones_libres = inscripciones_libres.filter(anio=anio)
+    if cuatrimestre:
+        inscripciones_libres = inscripciones_libres.filter(materia__regimen=cuatrimestre)
 
-    situaciones = _situaciones_para_formato(comision.materia.formato)
+    libres_distintos = inscripciones_libres.values(
+        "materia_id",
+        "materia__nombre",
+        "materia__regimen",
+        "materia__formato",
+        "anio",
+    ).distinct()
 
-    inscripciones = (
-        InscripcionMateriaAlumno.objects.filter(
-            comision_id=comision.id,
-            anio=comision.anio_lectivo,
+    for row in libres_distintos:
+        materia_row_id = row["materia_id"]
+        materia_nombre = row["materia__nombre"]
+        regimen = row["materia__regimen"]
+        anio_row = row["anio"]
+        comisiones_out.append(
+            ComisionOption(
+                id=_virtual_comision_id(materia_row_id, anio_row),
+                materia_id=materia_row_id,
+                materia_nombre=materia_nombre,
+                profesorado_id=plan.profesorado_id,
+                profesorado_nombre=plan.profesorado.nombre,
+                plan_id=plan.id,
+                plan_resolucion=plan.resolucion,
+                anio=anio_row or 0,
+                cuatrimestre=regimen,
+                turno="Sin turno",
+                codigo="Sin comision",
+            )
         )
-        .select_related("estudiante__user", "materia")
-        .order_by(
-            "estudiante__user__last_name",
-            "estudiante__user__first_name",
-            "estudiante__dni",
-        )
-    )
 
+    return CargaNotasLookup(materias=materias_out, comisiones=comisiones_out)
+
+
+def _build_regularidad_alumnos(inscripciones) -> List[RegularidadAlumnoOut]:
     alumnos: List[RegularidadAlumnoOut] = []
     for idx, insc in enumerate(inscripciones, start=1):
         regularidad = (
@@ -311,15 +375,95 @@ def obtener_planilla_regularidad(request, comision_id: int):
                 observaciones=regularidad.observaciones if regularidad else None,
             )
         )
+    return alumnos
+
+
+@carga_notas_router.get(
+    "/regularidad",
+    response={200: RegularidadPlanillaOut, 400: ApiResponse, 404: ApiResponse},
+)
+def obtener_planilla_regularidad(request, comision_id: int):
+    if comision_id >= 0:
+        comision = (
+            Comision.objects.select_related(
+                "materia__plan_de_estudio__profesorado", "turno"
+            )
+            .filter(id=comision_id)
+            .first()
+        )
+        if not comision:
+            return 404, ApiResponse(ok=False, message="Comision no encontrada.")
+
+        situaciones = _situaciones_para_formato(comision.materia.formato)
+
+        inscripciones = (
+            InscripcionMateriaAlumno.objects.filter(
+                comision_id=comision.id,
+                anio=comision.anio_lectivo,
+            )
+            .select_related("estudiante__user", "materia")
+            .order_by(
+                "estudiante__user__last_name",
+                "estudiante__user__first_name",
+                "estudiante__dni",
+            )
+        )
+
+        alumnos = _build_regularidad_alumnos(inscripciones)
+        turno_nombre = comision.turno.nombre if comision.turno else ""
+
+        return RegularidadPlanillaOut(
+            materia_id=comision.materia_id,
+            materia_nombre=comision.materia.nombre,
+            formato=comision.materia.formato,
+            comision_id=comision.id,
+            comision_codigo=comision.codigo,
+            anio=comision.anio_lectivo,
+            turno=turno_nombre,
+            situaciones=situaciones,
+            alumnos=alumnos,
+        )
+
+    materia_id, anio_virtual = _split_virtual_comision_id(comision_id)
+
+    materia = (
+        Materia.objects.select_related("plan_de_estudio__profesorado")
+        .filter(id=materia_id)
+        .first()
+    )
+    if not materia:
+        return 404, ApiResponse(
+            ok=False,
+            message="Materia no encontrada para la comision virtual.",
+        )
+
+    situaciones = _situaciones_para_formato(materia.formato)
+
+    inscripciones = (
+        InscripcionMateriaAlumno.objects.filter(
+            materia_id=materia.id,
+            comision__isnull=True,
+        )
+        .select_related("estudiante__user", "materia")
+        .order_by(
+            "estudiante__user__last_name",
+            "estudiante__user__first_name",
+            "estudiante__dni",
+        )
+    )
+    if anio_virtual is not None:
+        inscripciones = inscripciones.filter(anio=anio_virtual)
+
+    alumnos = _build_regularidad_alumnos(inscripciones)
 
     return RegularidadPlanillaOut(
-        materia_id=comision.materia_id,
-        materia_nombre=comision.materia.nombre,
-        formato=comision.materia.formato,
-        comision_id=comision.id,
-        comision_codigo=comision.codigo,
-        anio=comision.anio_lectivo,
-        turno=comision.turno.nombre,
+        materia_id=materia.id,
+        materia_nombre=materia.nombre,
+        formato=materia.formato,
+        comision_id=comision_id,
+        comision_codigo="Sin comision",
+        anio=anio_virtual if anio_virtual is not None else date.today().year,
+        turno="Sin turno",
         situaciones=situaciones,
         alumnos=alumnos,
     )
@@ -330,16 +474,31 @@ def obtener_planilla_regularidad(request, comision_id: int):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
 )
 def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
-    comision = (
-        Comision.objects.select_related("materia")
-        .filter(id=payload.comision_id)
-        .first()
-    )
-    if not comision:
-        return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
+    is_virtual = payload.comision_id < 0
+    comision = None
+    materia = None
+    anio_virtual = None
+
+    if is_virtual:
+        materia_id, anio_virtual = _split_virtual_comision_id(payload.comision_id)
+        materia = Materia.objects.filter(id=materia_id).first()
+        if not materia:
+            return 404, ApiResponse(
+                ok=False,
+                message="Materia no encontrada para la comision virtual.",
+            )
+    else:
+        comision = (
+            Comision.objects.select_related("materia")
+            .filter(id=payload.comision_id)
+            .first()
+        )
+        if not comision:
+            return 404, ApiResponse(ok=False, message="Comision no encontrada.")
+        materia = comision.materia
 
     situaciones_validas = {
-        item["alias"] for item in _situaciones_para_formato(comision.materia.formato)
+        item["alias"] for item in _situaciones_para_formato(materia.formato)
     }
 
     if not payload.alumnos:
@@ -352,13 +511,13 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
             if alumno.situacion not in situaciones_validas:
                 return 400, ApiResponse(
                     ok=False,
-                    message=f"Situación '{alumno.situacion}' no permitida para el formato de la materia.",
+                    message=f"Situacion '{alumno.situacion}' no permitida para el formato de la materia.",
                 )
 
             situacion_codigo = ALIAS_TO_SITUACION.get(alumno.situacion)
             if not situacion_codigo:
                 return 400, ApiResponse(
-                    ok=False, message=f"Situación desconocida: {alumno.situacion}"
+                    ok=False, message=f"Situacion desconocida: {alumno.situacion}"
                 )
 
             if (
@@ -368,22 +527,37 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
             ):
                 return 400, ApiResponse(
                     ok=False,
-                    message="La nota final debe ser ≥ 8 para registrar PROMOCION.",
+                    message="La nota final debe ser >= 8 para registrar PROMOCION.",
                 )
 
-            inscripcion = (
-                InscripcionMateriaAlumno.objects.filter(
-                    id=alumno.inscripcion_id,
-                    comision_id=comision.id,
-                )
-                .select_related("estudiante", "materia")
-                .first()
+            inscripcion_qs = InscripcionMateriaAlumno.objects.filter(
+                id=alumno.inscripcion_id,
             )
-            if not inscripcion:
-                return 400, ApiResponse(
-                    ok=False,
-                    message=f"Inscripción {alumno.inscripcion_id} no pertenece a la comisión.",
+
+            if is_virtual:
+                inscripcion_qs = inscripcion_qs.filter(
+                    materia_id=materia.id,
+                    comision__isnull=True,
                 )
+                if anio_virtual is not None:
+                    inscripcion_qs = inscripcion_qs.filter(anio=anio_virtual)
+            else:
+                inscripcion_qs = inscripcion_qs.filter(comision_id=comision.id)
+
+            inscripcion = (
+                inscripcion_qs.select_related("estudiante", "materia").first()
+            )
+
+            if not inscripcion:
+                if is_virtual:
+                    message = (
+                        f"Inscripcion {alumno.inscripcion_id} no corresponde a la materia sin comision."
+                    )
+                else:
+                    message = (
+                        f"Inscripcion {alumno.inscripcion_id} no pertenece a la comision."
+                    )
+                return 400, ApiResponse(ok=False, message=message)
 
             Regularidad.objects.update_or_create(
                 inscripcion=inscripcion,

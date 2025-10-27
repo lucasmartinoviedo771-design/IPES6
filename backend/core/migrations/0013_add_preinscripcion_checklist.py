@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('escuela_secundaria', models.CharField(blank=True, default='', max_length=255)),
                 ('es_certificacion_docente', models.BooleanField(default=False)),
                 ('titulo_terciario_univ', models.BooleanField(default=False)),
-                ('estado_legajo', models.CharField(choices=[('COM', 'Completo'), ('INC', 'Incompleto / Condicional'), ('PEN', 'Pendiente de Revisión')], default='PEN', max_length=3)),
+                ('estado_legajo', models.CharField(choices=[('COM', 'Completo'), ('INC', 'Incompleto / Condicional'), ('PEN', 'Pendiente de Revisi√≥n')], default='PEN', max_length=3)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('preinscripcion', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='checklist', to='core.preinscripcion')),
             ],

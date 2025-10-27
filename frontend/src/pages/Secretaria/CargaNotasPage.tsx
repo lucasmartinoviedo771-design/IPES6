@@ -30,12 +30,13 @@ import { enqueueSnackbar } from "notistack";
 import {
   ComisionOptionDTO,
   GuardarRegularidadPayload,
+  MateriaOptionDTO,
   PlanDTO,
   ProfesoradoDTO,
   RegularidadAlumnoDTO,
   RegularidadPlanillaDTO,
   SituacionOptionDTO,
-  listarComisiones,
+  obtenerDatosCargaNotas,
   listarPlanes,
   listarProfesorados,
   obtenerPlanillaRegularidad,
@@ -47,6 +48,7 @@ type FiltersState = {
   planId: number | null;
   anio: number | null;
   cuatrimestre: string | null;
+  materiaId: number | null;
   comisionId: number | null;
 };
 
@@ -76,12 +78,14 @@ const CargaNotasPage: React.FC = () => {
     planId: null,
     anio: null,
     cuatrimestre: null,
+    materiaId: null,
     comisionId: null,
   });
 
   const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
   const [planes, setPlanes] = useState<PlanDTO[]>([]);
-  const [comisiones, setComisiones] = useState<ComisionOptionDTO[]>([]);
+  const [materias, setMaterias] = useState<MateriaOptionDTO[]>([]);
+  const [allComisiones, setAllComisiones] = useState<ComisionOptionDTO[]>([]);
   const [planilla, setPlanilla] = useState<RegularidadPlanillaDTO | null>(null);
   const [situaciones, setSituaciones] = useState<SituacionOptionDTO[]>([]);
   const [activeTab, setActiveTab] = useState<"regularidad" | "finales">("regularidad");
@@ -113,7 +117,7 @@ const CargaNotasPage: React.FC = () => {
   useEffect(() => {
     if (!filters.profesoradoId) {
       setPlanes([]);
-      setFilters((prev) => ({ ...prev, planId: null }));
+      setFilters((prev) => ({ ...prev, planId: null, materiaId: null, comisionId: null, anio: null, cuatrimestre: null }));
       return;
     }
     const loadPlanes = async () => {
@@ -132,51 +136,127 @@ const CargaNotasPage: React.FC = () => {
 
   useEffect(() => {
     if (!filters.planId) {
-      setComisiones([]);
-      setFilters((prev) => ({ ...prev, comisionId: null, anio: null, cuatrimestre: null }));
+      setMaterias([]);
+      setAllComisiones([]);
+      setFilters((prev) => ({ ...prev, materiaId: null, comisionId: null, anio: null, cuatrimestre: null }));
       return;
     }
-    const loadComisiones = async () => {
+    const loadDatos = async () => {
       setLoadingComisiones(true);
       try {
-        const data = await listarComisiones({
+        const data = await obtenerDatosCargaNotas({
           plan_id: filters.planId,
+          anio: filters.anio ?? undefined,
         });
-        setComisiones(data);
+        setMaterias(data.materias);
+        setAllComisiones(data.comisiones);
       } catch (error) {
-        enqueueSnackbar("No se pudieron obtener las comisiones.", { variant: "error" });
+        enqueueSnackbar("No se pudieron obtener los datos de comisiones.", { variant: "error" });
       } finally {
         setLoadingComisiones(false);
       }
     };
-    loadComisiones();
-  }, [filters.planId]);
+    loadDatos();
+  }, [filters.planId, filters.anio]);
 
   const uniqueAnios = useMemo(() => {
     const set = new Set<number>();
-    comisiones.forEach((c) => set.add(c.anio));
+    allComisiones.forEach((c) => {
+      if (c.anio) {
+        set.add(c.anio);
+      }
+    });
     return Array.from(set).sort((a, b) => b - a);
-  }, [comisiones]);
+  }, [allComisiones]);
 
   const uniqueCuatrimestres = useMemo(() => {
     const set = new Set<string>();
-    comisiones.forEach((c) => {
+    allComisiones.forEach((c) => {
       const clave = c.cuatrimestre ? c.cuatrimestre : "ANU";
       set.add(clave);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [comisiones]);
+  }, [allComisiones]);
+
+  useEffect(() => {
+    if (!filters.planId) return;
+    if (!filters.anio && uniqueAnios.length === 1) {
+      setFilters((prev) => ({
+        ...prev,
+        anio: uniqueAnios[0],
+      }));
+    }
+  }, [filters.planId, filters.anio, uniqueAnios]);
+
+  useEffect(() => {
+    if (!filters.planId) return;
+    if (!filters.cuatrimestre && uniqueCuatrimestres.length === 1) {
+      setFilters((prev) => ({
+        ...prev,
+        cuatrimestre: uniqueCuatrimestres[0],
+      }));
+    }
+  }, [filters.planId, filters.cuatrimestre, uniqueCuatrimestres]);
+
+  const materiaOptions = useMemo(() => {
+    let base = materias;
+    if (filters.cuatrimestre) {
+      base = base.filter((m) => {
+        const clave = m.cuatrimestre ? m.cuatrimestre : "ANU";
+        return clave === filters.cuatrimestre;
+      });
+    }
+    return base;
+  }, [materias, filters.anio, filters.cuatrimestre]);
 
   const filteredComisiones = useMemo(() => {
-    return comisiones.filter((c) => {
-      if (filters.anio && c.anio !== filters.anio) return false;
-      if (filters.cuatrimestre) {
+    let base = allComisiones;
+    if (filters.materiaId) {
+      base = base.filter((c) => c.materia_id === filters.materiaId);
+    }
+    if (filters.anio) {
+      base = base.filter((c) => c.anio === filters.anio);
+    }
+    if (filters.cuatrimestre) {
+      base = base.filter((c) => {
         const clave = c.cuatrimestre ? c.cuatrimestre : "ANU";
-        if (clave !== filters.cuatrimestre) return false;
+        return clave === filters.cuatrimestre;
+      });
+    }
+    return base;
+  }, [allComisiones, filters.materiaId, filters.anio, filters.cuatrimestre]);
+
+  useEffect(() => {
+    if (!filters.materiaId) {
+      if (filters.comisionId) {
+        setFilters((prev) => ({ ...prev, comisionId: null }));
       }
-      return true;
-    });
-  }, [comisiones, filters.anio, filters.cuatrimestre]);
+      return;
+    }
+
+    const exists = materiaOptions.some((m) => m.id === filters.materiaId);
+    if (!exists) {
+      setFilters((prev) => ({ ...prev, materiaId: null, comisionId: null }));
+    }
+  }, [materiaOptions, filters.materiaId, filters.comisionId]);
+
+  useEffect(() => {
+    if (!filters.materiaId) {
+      if (filters.comisionId) {
+        setFilters((prev) => ({ ...prev, comisionId: null }));
+      }
+      return;
+    }
+    if (!filteredComisiones.length) {
+      if (filters.comisionId) {
+        setFilters((prev) => ({ ...prev, comisionId: null }));
+      }
+      return;
+    }
+    if (!filters.comisionId || !filteredComisiones.some((c) => c.id === filters.comisionId)) {
+      setFilters((prev) => ({ ...prev, comisionId: filteredComisiones[0].id }));
+    }
+  }, [filteredComisiones, filters.materiaId, filters.comisionId]);
 
   const selectedComision = useMemo(
     () => filteredComisiones.find((c) => c.id === filters.comisionId) || null,
@@ -370,6 +450,7 @@ const CargaNotasPage: React.FC = () => {
                         ...prev,
                         profesoradoId: value?.id ?? null,
                         planId: null,
+                        materiaId: null,
                         comisionId: null,
                         anio: null,
                         cuatrimestre: null,
@@ -403,6 +484,7 @@ const CargaNotasPage: React.FC = () => {
                       setFilters((prev) => ({
                         ...prev,
                         planId: value?.id ?? null,
+                        materiaId: null,
                         comisionId: null,
                         anio: null,
                         cuatrimestre: null,
@@ -437,6 +519,7 @@ const CargaNotasPage: React.FC = () => {
                         setFilters((prev) => ({
                           ...prev,
                           anio: event.target.value ? Number(event.target.value) : null,
+                          materiaId: null,
                           comisionId: null,
                         }))
                       }
@@ -463,6 +546,7 @@ const CargaNotasPage: React.FC = () => {
                         setFilters((prev) => ({
                           ...prev,
                           cuatrimestre: event.target.value || null,
+                          materiaId: null,
                           comisionId: null,
                         }))
                       }
@@ -480,23 +564,25 @@ const CargaNotasPage: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} md={6} lg={8}>
                   <Autocomplete
-                    options={filteredComisiones}
+                    options={materiaOptions}
                     loading={loadingComisiones}
-                    getOptionLabel={(option) =>
-                      `${option.anio} - ${option.materia_nombre} (${option.codigo})`
-                    }
-                    value={selectedComision}
+                    getOptionLabel={(option) => {
+                      const etiquetaCuatrimestre = option.cuatrimestre ? cuatrimestreLabel[option.cuatrimestre] ?? option.cuatrimestre : "Anual";
+                      return `${option.anio ?? "-"} - ${option.nombre} (${etiquetaCuatrimestre})`;
+                    }}
+                    value={materiaOptions.find((m) => m.id === filters.materiaId) ?? null}
                     onChange={(_, value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        comisionId: value?.id ?? null,
+                        materiaId: value?.id ?? null,
+                        comisionId: null,
                       }))
                     }
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="Comision"
-                        placeholder="Selecciona comision"
+                        label="Materia"
+                        placeholder="Selecciona materia"
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -514,15 +600,15 @@ const CargaNotasPage: React.FC = () => {
             </Stack>
           </Paper>
 
-          {filters.planId && !filteredComisiones.length ? (
+          {filters.planId && filters.materiaId && !filteredComisiones.length ? (
             <Paper sx={{ p: 3 }}>
               <Typography color="text.secondary">
-                No encontramos comisiones para los filtros aplicados.
+                No encontramos comisiones para la materia y filtros seleccionados.
               </Typography>
             </Paper>
           ) : null}
 
-          {filteredComisiones.length > 0 && (
+          {filters.materiaId && filteredComisiones.length > 0 && (
             <Paper sx={{ p: 3 }}>
               <Stack gap={2}>
                 <Typography variant="subtitle1" fontWeight={700}>

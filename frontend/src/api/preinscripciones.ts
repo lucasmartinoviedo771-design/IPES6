@@ -76,16 +76,18 @@ export interface PreinscripcionDTO {
   estado: PreEstado;
   fecha: string;
   activa?: boolean;
-      alumno: {
-      dni: string;
-      nombre: string;
-      apellido: string;
-      email: string;
-      telefono?: string;
-      domicilio?: string;
-      fecha_nacimiento?: string;
-      cuil?: string;
-    };  carrera: { id: number; nombre: string };
+  alumno: {
+    dni: string;
+    nombres?: string;
+    nombre?: string;
+    apellido: string;
+    email: string;
+    telefono?: string;
+    domicilio?: string;
+    fecha_nacimiento?: string;
+    cuil?: string;
+  };
+  carrera: { id: number; nombre: string };
   // ...otros campos que ya tengas
 }
 

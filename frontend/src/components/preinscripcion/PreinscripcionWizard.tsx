@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Button, Step, StepLabel, Stepper, Typography, Paper, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 // import { useNavigate } from "react-router-dom";
 
 // Lógica de negocio y tipos
@@ -12,7 +13,7 @@ import { defaultValues } from "./defaultValues";
 import { PreinscripcionIn, PreinscripcionOut } from "@/types/preinscripcion";
 import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
 import { apiUploadPreDoc } from "@/api/preinscripciones";
-import { client } from "@/api/client";
+import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 
 // Pasos del Wizard
 import DatosPersonales from "./steps/DatosPersonales";
@@ -34,9 +35,11 @@ const steps = [
 ];
 
 // Mapea los datos del formulario a la estructura que espera la API
-const buildPayload = (v: PreinscripcionForm): PreinscripcionIn => ({
+const buildPayload = (v: PreinscripcionForm, captchaToken?: string | null, honeypotValue?: string): PreinscripcionIn => ({
   ...v, // Incluir todos los campos del formulario
   carrera_id: Number(v.carrera_id),
+  captcha_token: captchaToken ?? undefined,
+  honeypot: honeypotValue || undefined,
   alumno: {
     dni: v.dni,
     nombres: v.nombres,
@@ -56,6 +59,9 @@ type SubmitState =
 
 export default function PreinscripcionWizard() {
   // const navigate = useNavigate();
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  const [honeypotValue, setHoneypotValue] = useState('');
   const [activeStep, setActiveStep] = useState(0);
   const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
@@ -86,14 +92,9 @@ export default function PreinscripcionWizard() {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  const { isLoading: loadingVentana, data: ventanasPre } = useQuery({
+  const { isLoading: loadingVentana, data: ventanasPre } = useQuery<VentanaDto[]>({
     queryKey: ["ventanas-preinscripcion"],
-    queryFn: async () => {
-      const { data } = await client.get<Ventana[]>("/ventanas", {
-        params: { tipo: "PREINSCRIPCION" },
-      });
-      return data;
-    },
+    queryFn: () => fetchVentanas({ tipo: "PREINSCRIPCION" }),
   });
 
   const ventanaActiva = useMemo(() => {
@@ -152,7 +153,19 @@ export default function PreinscripcionWizard() {
     async (values) => {
       setSubmit({ status: "loading" });
       try {
-        const payload = buildPayload(values);
+        let captchaToken: string | null = null;
+        if (recaptchaSiteKey && executeRecaptcha) {
+          try {
+            captchaToken = await executeRecaptcha('preinscripcion_submit');
+          } catch (captchaError) {
+            console.warn('No se pudo ejecutar reCAPTCHA', captchaError);
+          }
+        } else if (!recaptchaSiteKey) {
+          console.warn('reCAPTCHA deshabilitado: falta VITE_RECAPTCHA_SITE_KEY. Se envía sin token.');
+        } else {
+          console.warn('reCAPTCHA todavía no está listo, se envía sin token.');
+        }
+        const payload = buildPayload(values, captchaToken, honeypotValue);
         const response = await crearPreinscripcion(payload);
 
         if (photoFile && response?.data?.id) {
@@ -171,6 +184,7 @@ export default function PreinscripcionWizard() {
           form.reset(defaultValues);
           setActiveStep(0);
           setPdfDownloaded(false);
+          setHoneypotValue('');
           setSubmit({ status: "idle" } as any);
         }, 300);
       } catch (err: any) {
@@ -210,6 +224,15 @@ const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nom
 
   return (
     <FormProvider {...form}>
+      <input
+        type="text"
+        value={honeypotValue}
+        onChange={(event) => setHoneypotValue(event.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        name="website"
+        style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}
+      />
       <Paper sx={{ p: 3, maxWidth: 900, mx: "auto" }}>
         <Typography variant="h4" sx={{ mb: 2 }}>Preinscripción</Typography>
         <Stepper activeStep={activeStep} sx={{ mb: 3 }}>

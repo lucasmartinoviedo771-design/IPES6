@@ -29,6 +29,8 @@ class PreinscripcionIn(Schema):
     carrera_id: int
     foto_4x4_dataurl: Optional[str] = None
     alumno: AlumnoIn
+    captcha_token: Optional[str] = None
+    honeypot: Optional[str] = None
 
     # Datos personales
     nacionalidad: Optional[str] = None

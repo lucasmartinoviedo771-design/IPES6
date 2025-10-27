@@ -1,13 +1,15 @@
 import React from 'react';
 import { Box, Typography, Stack, Grid, Paper, TextField, MenuItem, Button, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { client as api } from '@/api/client';
+import { fetchVentanas, VentanaDto } from '@/api/ventanas';
+import { useTestMode } from '@/context/TestModeContext';
 import { solicitarPedidoAnalitico } from '@/api/alumnos';
 
-type Ventana = { id:number; tipo:string; desde:string; hasta:string; activo:boolean };
 type Pedido = { dni:string; apellido_nombre:string; profesorado?:string; cohorte?:number; fecha_solicitud:string; motivo?: string; motivo_otro?: string };
 
 export default function AnaliticosPage(){
-  const [ventanas, setVentanas] = React.useState<Ventana[]>([]);
+  const { enabled: testMode } = useTestMode();
+  const [ventanas, setVentanas] = React.useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = React.useState<string>('');
   const [pedidos, setPedidos] = React.useState<Pedido[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -17,13 +19,13 @@ export default function AnaliticosPage(){
 
   const loadVentanas = async()=>{
     try{
-      const { data } = await api.get<Ventana[]>(`/ventanas`);
+      const data = await fetchVentanas();
       const v = (data||[]).filter(v=> v.tipo === 'ANALITICOS');
       setVentanas(v);
       if (v.length) setVentanaId(String(v[0].id));
     }catch(err:any){ setError('No se pudieron cargar ventanas'); }
   };
-  React.useEffect(()=>{ loadVentanas(); },[]);
+  React.useEffect(()=>{ loadVentanas(); },[testMode]);
 
   const loadPedidos = async(id:number)=>{
     try{
@@ -33,15 +35,38 @@ export default function AnaliticosPage(){
   };
   React.useEffect(()=>{ if(ventanaId) loadPedidos(Number(ventanaId)); },[ventanaId, dniFilter]);
 
-  const descargarPDF = ()=>{
-    if (!ventanaId) return;
-    const base = import.meta.env.VITE_API_BASE;
-    const qs = new URLSearchParams({ ventana_id: ventanaId });
-    if (dniFilter) qs.append('dni', dniFilter);
-    window.open(`${base}/alumnos/analiticos_ext/pdf?${qs.toString()}`, '_blank');
+  const [descargando, setDescargando] = React.useState(false);
+
+  const descargarPDF = async ()=>{
+    if (!ventanaId || testMode) return;
+    try{
+      setDescargando(true);
+      setError(null);
+      const params: Record<string, string> = { ventana_id: ventanaId };
+      if (dniFilter) params.dni = dniFilter;
+      const response = await api.get(`/alumnos/analiticos_ext/pdf`, { params, responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const suffix = dniFilter ? `_${dniFilter}` : '';
+      link.download = `analiticos_${ventanaId}${suffix}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }catch(err){
+      setError('No se pudo descargar el PDF.');
+    }finally{
+      setDescargando(false);
+    }
   };
 
   const crearPedido = async ()=>{
+    if (testMode) {
+      setError('Modo prueba activo: no se generan pedidos reales.');
+      return;
+    }
     try{
       const payload = {
         dni: form.dni || undefined,
@@ -61,6 +86,7 @@ export default function AnaliticosPage(){
     <Box sx={{ p:2 }}>
       <Typography variant="h5" fontWeight={800}>Pedidos de Analítico</Typography>
       <Typography variant="body2" color="text.secondary">Seleccione un periodo para ver y descargar en PDF</Typography>
+      {testMode && <Alert severity="info" sx={{ mt:1 }}>Modo prueba activado: las ventanas se simulan temporalmente y no se guardan cambios en la base.</Alert>}
       {error && <Alert severity="error" sx={{ mt:1 }}>{error}</Alert>}
       <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ mt:2 }}>
         <TextField select label="Periodo (Ventana)" size="small" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)} sx={{ minWidth: 260 }}>
@@ -71,8 +97,10 @@ export default function AnaliticosPage(){
           ))}
         </TextField>
         <TextField label="DNI (opcional)" size="small" value={dniFilter} onChange={(e)=>setDniFilter(e.target.value)} sx={{ maxWidth: 200 }} />
-        <Button variant="contained" onClick={descargarPDF} disabled={!ventanaId}>Descargar PDF</Button>
-        <Button variant="outlined" onClick={()=>setCreating(true)} disabled={!ventanaId}>Nuevo pedido</Button>
+        <Button variant="contained" onClick={descargarPDF} disabled={!ventanaId || testMode || descargando}>
+          {descargando ? 'Generando...' : 'Descargar PDF'}
+        </Button>
+        <Button variant="outlined" onClick={()=>setCreating(true)} disabled={!ventanaId || testMode}>Nuevo pedido</Button>
       </Stack>
 
       <Grid container spacing={1.5} sx={{ mt:2 }}>
@@ -114,7 +142,7 @@ export default function AnaliticosPage(){
         </DialogContent>
         <DialogActions>
           <Button onClick={()=>setCreating(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={crearPedido} disabled={!form.dni}>Crear</Button>
+          <Button variant="contained" onClick={crearPedido} disabled={!form.dni || testMode}>Crear</Button>
         </DialogActions>
       </Dialog>
     </Box>
