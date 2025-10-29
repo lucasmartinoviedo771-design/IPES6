@@ -118,7 +118,7 @@ export default function App() {
               <Route path="/alumnos/cambio-comision" element={<ProtectedRoute roles={['alumno','admin']}><CambioComisionPage /></ProtectedRoute>} />
               <Route path="/alumnos/pedido-analitico" element={<ProtectedRoute roles={['alumno','admin']}><PedidoAnaliticoPage /></ProtectedRoute>} />
               <Route path="/alumnos/mesa-examen" element={<ProtectedRoute roles={['alumno','admin']}><MesaExamenPage /></ProtectedRoute>} />
-              <Route path="/alumnos/trayectoria" element={<ProtectedRoute roles={['alumno','admin']}><TrayectoriaPage /></ProtectedRoute>} />
+              <Route path="/alumnos/trayectoria" element={<ProtectedRoute roles={['alumno','admin', 'bedel', 'secretaria']}><TrayectoriaPage /></ProtectedRoute>} />
             </Route>
     
             <Route path="/403" element={<Forbidden />} />

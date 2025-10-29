@@ -2857,6 +2857,7 @@ def list_mesas(
     plan_id: Optional[int] = None,
     anio: Optional[int] = None,
     cuatrimestre: Optional[str] = None,
+    materia_id: Optional[int] = None,
 ):
 
     qs = (
@@ -2890,6 +2891,10 @@ def list_mesas(
     if cuatrimestre:
 
         qs = qs.filter(materia__regimen=cuatrimestre)
+
+    if materia_id:
+
+        qs = qs.filter(materia_id=materia_id)
 
     resultado: List[MesaOut] = []
 

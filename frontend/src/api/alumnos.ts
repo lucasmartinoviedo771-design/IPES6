@@ -1,5 +1,4 @@
 import { client } from "@/api/client";
-import { client } from "@/api/client";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 
 // Schemas de entrada (payloads)
@@ -166,6 +165,47 @@ export type TrayectoriaEstudianteDTO = {
   legajo?: string | null;
   apellido_nombre: string;
   carreras: string[];
+  email?: string | null;
+  telefono?: string | null;
+  fecha_nacimiento?: string | null;
+  lugar_nacimiento?: string | null;
+  curso_introductorio?: string | null;
+  promedio_general?: string | null;
+  libreta_entregada?: boolean | null;
+  legajo_estado?: string | null;
+  cohorte?: string | null;
+  activo?: boolean | null;
+  materias_totales?: number | null;
+  materias_aprobadas?: number | null;
+  materias_regularizadas?: number | null;
+  materias_en_curso?: number | null;
+};
+
+export type CartonEventoDTO = {
+  fecha?: string | null;
+  condicion?: string | null;
+  nota?: string | null;
+  folio?: string | null;
+  libro?: string | null;
+  id_fila?: number | null;
+};
+
+export type CartonMateriaDTO = {
+  materia_id: number;
+  materia_nombre: string;
+  anio?: number | null;
+  regimen?: string | null;
+  regimen_display?: string | null;
+  regularidad?: CartonEventoDTO | null;
+  final?: CartonEventoDTO | null;
+};
+
+export type CartonPlanDTO = {
+  profesorado_id: number;
+  profesorado_nombre: string;
+  plan_id: number;
+  plan_resolucion: string;
+  materias: CartonMateriaDTO[];
 };
 
 export type TrayectoriaDTO = {
@@ -178,6 +218,7 @@ export type TrayectoriaDTO = {
   aprobadas: number[];
   regularizadas: number[];
   inscriptas_actuales: number[];
+  carton: CartonPlanDTO[];
   updated_at: string;
 };
 
@@ -263,7 +304,7 @@ export async function obtenerEquivalencias(materia_id: number): Promise<Equivale
 }
 
 // Mesas de examen (alumno)
-export async function listarMesas(params?: { tipo?: 'FIN'|'LIB'|'EXT'; ventana_id?: number; }): Promise<any[]> {
+export async function listarMesas(params?: { tipo?: 'FIN'|'LIB'|'EXT'; ventana_id?: number; profesorado_id?: number; plan_id?: number; anio?: number; cuatrimestre?: string; materia_id?: number; }): Promise<any[]> {
   const { data } = await client.get<any[]>(`/alumnos/mesas`, { params });
   return data;
 }

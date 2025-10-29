@@ -42,26 +42,30 @@ export default function DashboardPage() {
   const [recientes, setRecientes] = useState<PreinscripcionDTO[]>([]);
 
   useEffect(() => {
-    // Cargar las preinscripciones para las métricas y la lista de recientes
-    listarPreinscripciones({}).then(({ results }) => {
-      const data = results ?? [];
-      const total = data.length;
-      const confirmadas = data.filter(p => p.estado === 'Confirmada').length;
-      const pendientes = data.filter(p => p.estado === 'Enviada').length;
-      const observadas = data.filter(p => p.estado === 'Observada').length;
-      const rechazadas = data.filter(p => p.estado === 'Rechazada').length;
-      const ratio = total > 0 ? Math.round((confirmadas / total) * 100) : 0;
-      
-      setMetrics({ total, confirmadas, pendientes, observadas, rechazadas, ratio });
+    const canViewStats = can(['admin', 'secretaria', 'bedel', 'preinscripciones']);
 
-      // Tomar las 3 más recientes para la lista
-      // Asumiendo que la API devuelve ordenado por fecha descendente
-      setRecientes(data.slice(0, 3));
-    }).catch(error => {
-      console.error("Error al cargar el dashboard:", error);
-      // Opcional: mostrar un estado de error en la UI
-    });
-  }, []);
+    if (canViewStats) {
+      // Cargar las preinscripciones para las métricas y la lista de recientes
+      listarPreinscripciones({}).then(({ results }) => {
+        const data = results ?? [];
+        const total = data.length;
+        const confirmadas = data.filter(p => p.estado === 'Confirmada').length;
+        const pendientes = data.filter(p => p.estado === 'Enviada').length;
+        const observadas = data.filter(p => p.estado === 'Observada').length;
+        const rechazadas = data.filter(p => p.estado === 'Rechazada').length;
+        const ratio = total > 0 ? Math.round((confirmadas / total) * 100) : 0;
+
+        setMetrics({ total, confirmadas, pendientes, observadas, rechazadas, ratio });
+
+        // Tomar las 3 más recientes para la lista
+        // Asumiendo que la API devuelve ordenado por fecha descendente
+        setRecientes(data.slice(0, 3));
+      }).catch(error => {
+        console.error("Error al cargar el dashboard:", error);
+        // Opcional: mostrar un estado de error en la UI
+      });
+    }
+  }, [user]);
 
 
   const can = (roles?: string[]) => {
