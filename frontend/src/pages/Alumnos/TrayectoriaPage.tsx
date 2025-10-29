@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Tabs,
@@ -17,11 +17,15 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  TableContainer,
+  Divider,
+  MenuItem,
 } from '@mui/material';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import InsightsIcon from '@mui/icons-material/Insights';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import TableChartIcon from '@mui/icons-material/TableChart';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useQuery } from '@tanstack/react-query';
 
@@ -31,7 +35,9 @@ import {
   TrayectoriaEventoDTO,
   TrayectoriaMesaDTO,
   RegularidadVigenciaDTO,
+  CartonPlanDTO,
 } from '@/api/alumnos';
+import { CartonTabPanel } from "@/features/alumnos/carton/CartonTabPanel";
 import { useAuth } from '@/context/AuthContext';
 
 function a11yProps(index: number) {
@@ -58,6 +64,17 @@ const EVENT_TYPE_LABEL: Record<TrayectoriaEventoDTO['tipo'], string> = {
   nota: 'Nota',
 };
 
+const REGIMEN_LABEL: Record<string, string> = {
+  ANU: 'Anual',
+  PCU: '1° Cuat.',
+  SCU: '2° Cuat.',
+};
+
+const formatRegimen = (value?: string | null, fallback?: string | null) => {
+  if (!value) return fallback ?? '-';
+  return REGIMEN_LABEL[value] ?? value;
+};
+
 const formatDate = (value?: string | null) => {
   if (!value) return '-';
   if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
@@ -82,6 +99,11 @@ const TrayectoriaPage: React.FC = () => {
   const [tab, setTab] = useState(0);
   const [dniInput, setDniInput] = useState('');
   const [dniQuery, setDniQuery] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('');
+  const [filtroDetalle, setFiltroDetalle] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroMetadata, setFiltroMetadata] = useState('');
 
   const queryKey = useMemo(() => ['trayectoria', canGestionar ? (dniQuery || '').trim() : 'self'], [canGestionar, dniQuery]);
   const trayectoriaQ = useQuery<TrayectoriaDTO>({
@@ -92,6 +114,66 @@ const TrayectoriaPage: React.FC = () => {
   const trayectoria = trayectoriaQ.data;
   const eventos = trayectoria?.historial ?? [];
   const regularidades = trayectoria?.regularidades ?? [];
+
+  const tiposEventos = useMemo(() => {
+    const unique = new Set<string>();
+    eventos.forEach((ev) => unique.add(ev.tipo));
+    return Array.from(unique);
+  }, [eventos]);
+
+  const eventosFiltrados = useMemo(() => {
+    const fechaFilter = filtroFecha.trim().toLowerCase();
+    const detalleFilter = filtroDetalle.trim().toLowerCase();
+    const estadoFilter = filtroEstado.trim().toLowerCase();
+    const metadataFilter = filtroMetadata.trim().toLowerCase();
+
+    return eventos.filter((evento) => {
+      if (filtroTipo && evento.tipo !== filtroTipo) {
+        return false;
+      }
+
+      if (fechaFilter) {
+        const fechaRaw = (evento.fecha || '').toLowerCase();
+        const fechaFormateada = formatDate(evento.fecha).toLowerCase();
+        if (!fechaRaw.includes(fechaFilter) && !fechaFormateada.includes(fechaFilter)) {
+          return false;
+        }
+      }
+
+      if (detalleFilter) {
+        const textoDetalle = [
+          evento.titulo,
+          evento.subtitulo,
+          evento.detalle,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!textoDetalle.includes(detalleFilter)) {
+          return false;
+        }
+      }
+
+      if (estadoFilter) {
+        const estadoTexto = (evento.estado || '').toLowerCase();
+        if (!estadoTexto.includes(estadoFilter)) {
+          return false;
+        }
+      }
+
+      if (metadataFilter) {
+        const metadataTexto = Object.entries(evento.metadata || {})
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(' ')
+          .toLowerCase();
+        if (!metadataTexto.includes(metadataFilter)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [eventos, filtroTipo, filtroFecha, filtroDetalle, filtroEstado, filtroMetadata]);
   const mesas = trayectoria?.mesas ?? [];
   const vigencias = useMemo<RegularidadVigenciaDTO[]>(() => {
     const list = [...(trayectoria?.regularidades_vigencia ?? [])];
@@ -191,9 +273,10 @@ const TrayectoriaPage: React.FC = () => {
         <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
           <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons allowScrollButtonsMobile>
             <Tab icon={<HistoryEduIcon />} iconPosition="start" label="Historial academico" {...a11yProps(0)} />
-            <Tab icon={<AssignmentTurnedInIcon />} iconPosition="start" label="Mesas y notas" {...a11yProps(1)} />
-            <Tab icon={<InsightsIcon />} iconPosition="start" label="Recomendaciones" {...a11yProps(2)} />
-            <Tab icon={<EventAvailableIcon />} iconPosition="start" label="Caducidad regularidades" {...a11yProps(3)} />
+            <Tab icon={<TableChartIcon />} iconPosition="start" label="Cartón" {...a11yProps(1)} />
+            <Tab icon={<AssignmentTurnedInIcon />} iconPosition="start" label="Mesas y notas" {...a11yProps(2)} />
+            <Tab icon={<InsightsIcon />} iconPosition="start" label="Recomendaciones" {...a11yProps(3)} />
+            <Tab icon={<EventAvailableIcon />} iconPosition="start" label="Caducidad regularidades" {...a11yProps(4)} />
           </Tabs>
           <Divider />
           <Box sx={{ p: 2 }}>
@@ -202,36 +285,135 @@ const TrayectoriaPage: React.FC = () => {
                 <Alert severity="info">Sin eventos registrados en la trayectoria.</Alert>
               ) : (
                 <Stack spacing={2}>
-                  {eventos.map((evento) => {
-                    const chips = Object.entries(evento.metadata || {}).filter(([, value]) => value).map(([key, value]) => (
-                      <Chip key={key} label={`${key}: ${value}`} size="small" variant="outlined" />
-                    ));
-                    return (
-                      <Paper key={evento.id} variant="outlined" sx={{ p: 2 }}>
-                        <Stack spacing={1}>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip label={EVENT_TYPE_LABEL[evento.tipo]} size="small" color="primary" />
-                            <Typography variant="subtitle1" fontWeight={700}>{evento.titulo}</Typography>
-                          </Stack>
-                          <Typography variant="body2" color="text.secondary">{formatDate(evento.fecha)}</Typography>
-                          {evento.subtitulo && (
-                            <Typography variant="body2">{evento.subtitulo}</Typography>
-                          )}
-                          {evento.detalle && (
-                            <Typography variant="body2" color="text.secondary">{evento.detalle}</Typography>
-                          )}
-                          {chips.length > 0 && (
-                            <Stack direction="row" spacing={1} flexWrap="wrap">{chips}</Stack>
-                          )}
-                        </Stack>
-                      </Paper>
-                    );
-                  })}
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap">
+                    <TextField
+                      select
+                      size="small"
+                      label="Tipo"
+                      value={filtroTipo}
+                      onChange={(e) => setFiltroTipo(e.target.value)}
+                      sx={{ minWidth: 180 }}
+                    >
+                      <MenuItem value="">Todos</MenuItem>
+                      {tiposEventos.map((tipo) => (
+                        <MenuItem key={tipo} value={tipo}>{EVENT_TYPE_LABEL[tipo]}</MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      size="small"
+                      label="Fecha (texto)"
+                      value={filtroFecha}
+                      onChange={(e) => setFiltroFecha(e.target.value)}
+                      sx={{ minWidth: 180 }}
+                      placeholder="Ej: 2025-10 o 10/2025"
+                    />
+                    <TextField
+                      size="small"
+                      label="Detalle"
+                      value={filtroDetalle}
+                      onChange={(e) => setFiltroDetalle(e.target.value)}
+                      sx={{ minWidth: 220 }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Estado"
+                      value={filtroEstado}
+                      onChange={(e) => setFiltroEstado(e.target.value)}
+                      sx={{ minWidth: 180 }}
+                    />
+                    <TextField
+                      size="small"
+                      label="Datos extra"
+                      value={filtroMetadata}
+                      onChange={(e) => setFiltroMetadata(e.target.value)}
+                      sx={{ minWidth: 220 }}
+                    />
+                    {(filtroTipo || filtroFecha || filtroDetalle || filtroEstado || filtroMetadata) && (
+                      <Button variant="text" size="small" onClick={() => {
+                        setFiltroTipo('');
+                        setFiltroFecha('');
+                        setFiltroDetalle('');
+                        setFiltroEstado('');
+                        setFiltroMetadata('');
+                      }}>
+                        Limpiar filtros
+                      </Button>
+                    )}
+                  </Stack>
+
+                  {eventosFiltrados.length === 0 ? (
+                    <Alert severity="info">No se encontraron eventos con los filtros aplicados.</Alert>
+                  ) : (
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ width: 120 }}>Tipo</TableCell>
+                            <TableCell sx={{ width: 170 }}>Fecha</TableCell>
+                            <TableCell sx={{ width: 320 }}>Detalle</TableCell>
+                            <TableCell sx={{ width: 90 }}>Estado</TableCell>
+                            <TableCell sx={{ width: 420 }}>Datos extra</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {eventosFiltrados.map((evento) => {
+                            const metadata = Object.entries(evento.metadata || {}).filter(([, value]) => value !== undefined && value !== null && value !== '');
+                            const fechaLegible = formatDate(evento.fecha);
+                            return (
+                              <TableRow key={evento.id}>
+                                <TableCell sx={{ width: 120 }}>
+                                  <Chip label={EVENT_TYPE_LABEL[evento.tipo]} size="small" color="primary" />
+                                </TableCell>
+                                <TableCell sx={{ width: 170 }}>{fechaLegible}</TableCell>
+                                <TableCell sx={{ width: 320 }}>
+                                  <Typography variant="subtitle2" fontWeight={600}>{evento.titulo}</Typography>
+                                  {evento.subtitulo && (
+                                    <Typography variant="body2" color="text.secondary">{evento.subtitulo}</Typography>
+                                  )}
+                                  {evento.detalle && (
+                                    <Typography variant="body2" color="text.secondary">{evento.detalle}</Typography>
+                                  )}
+                                </TableCell>
+                                <TableCell sx={{ width: 90 }}>
+                                  {evento.estado ? (
+                                    <Chip label={evento.estado} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 22 }} />
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">-</Typography>
+                                  )}
+                                </TableCell>
+                                <TableCell sx={{ width: 420 }}>
+                                  {metadata.length ? (
+                                    <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                                      {metadata.map(([key, value]) => (
+                                        <Chip
+                                          key={`${evento.id}-${key}`}
+                                          label={`${key}: ${value}`}
+                                          size="small"
+                                          variant="outlined"
+                                          sx={{ fontSize: '0.75rem', height: 22 }}
+                                        />
+                                      ))}
+                                    </Stack>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">-</Typography>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
                 </Stack>
               )}
             </TabPanel>
 
             <TabPanel value={tab} index={1}>
+              {trayectoria && <CartonTabPanel trayectoria={trayectoria} />}
+            </TabPanel>
+
+            <TabPanel value={tab} index={2}>
               <Stack spacing={3}>
                 <Box>
                   <Typography variant="subtitle1" fontWeight={700} gutterBottom>Regularidades recientes</Typography>
@@ -308,7 +490,7 @@ const TrayectoriaPage: React.FC = () => {
               </Stack>
             </TabPanel>
 
-            <TabPanel value={tab} index={2}>
+            <TabPanel value={tab} index={3}>
               <Stack spacing={2}>
                 {(recomendaciones?.alertas ?? []).map((alerta, idx) => (
                   <Alert key={`alerta-${idx}`} severity="warning">{alerta}</Alert>
@@ -384,7 +566,7 @@ const TrayectoriaPage: React.FC = () => {
               </Stack>
             </TabPanel>
 
-            <TabPanel value={tab} index={3}>
+            <TabPanel value={tab} index={4}>
               {vigencias.length === 0 ? (
                 <Alert severity="info">No se registran regularidades vigentes.</Alert>
               ) : (

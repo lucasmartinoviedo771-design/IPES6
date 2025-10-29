@@ -235,11 +235,50 @@ class EstudianteResumen(Schema):
     legajo: Optional[str] = None
     apellido_nombre: str
     carreras: List[str] = Field(default_factory=list)
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    fecha_nacimiento: Optional[str] = None
+    lugar_nacimiento: Optional[str] = None
+    curso_introductorio: Optional[str] = None
+    promedio_general: Optional[str] = None
+    libreta_entregada: Optional[bool] = None
+    legajo_estado: Optional[str] = None
+    cohorte: Optional[str] = None
+    activo: Optional[bool] = None
+    materias_totales: Optional[int] = None
+    materias_aprobadas: Optional[int] = None
+    materias_regularizadas: Optional[int] = None
+    materias_en_curso: Optional[int] = None
+    fotoUrl: Optional[str] = None
 
 class RecomendacionesOut(Schema):
     materias_sugeridas: List[MateriaSugerida] = Field(default_factory=list)
     finales_habilitados: List[FinalHabilitado] = Field(default_factory=list)
     alertas: List[str] = Field(default_factory=list)
+
+class CartonEvento(Schema):
+    fecha: Optional[str] = None
+    condicion: Optional[str] = None
+    nota: Optional[str] = None
+    folio: Optional[str] = None
+    libro: Optional[str] = None
+    id_fila: Optional[int] = None
+
+class CartonMateria(Schema):
+    materia_id: int
+    materia_nombre: str
+    anio: Optional[int] = None
+    regimen: Optional[str] = None
+    regimen_display: Optional[str] = None
+    regularidad: Optional[CartonEvento] = None
+    final: Optional[CartonEvento] = None
+
+class CartonPlan(Schema):
+    profesorado_id: int
+    profesorado_nombre: str
+    plan_id: int
+    plan_resolucion: str
+    materias: List[CartonMateria] = Field(default_factory=list)
 
 class TrayectoriaOut(Schema):
     estudiante: EstudianteResumen
@@ -251,4 +290,5 @@ class TrayectoriaOut(Schema):
     aprobadas: List[int] = Field(default_factory=list)
     regularizadas: List[int] = Field(default_factory=list)
     inscriptas_actuales: List[int] = Field(default_factory=list)
+    carton: List[CartonPlan] = Field(default_factory=list)
     updated_at: str

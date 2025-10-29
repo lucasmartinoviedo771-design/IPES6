@@ -1,3 +1,4 @@
+from decimal import Decimal
 from ninja import Router
 from core.auth_ninja import JWTAuth
 from .schemas import (
@@ -10,6 +11,9 @@ from .schemas import (
     MateriaInscriptaItem, ComisionResumen,
     InscripcionMesaIn, InscripcionMesaOut, MesaExamenIn, MesaExamenOut,
     RegularidadImportIn, RegularidadItemOut,
+    TrayectoriaOut, TrayectoriaEvento, TrayectoriaMesa, RegularidadResumen,
+    RecomendacionesOut, MateriaSugerida, FinalHabilitado, RegularidadVigenciaOut,
+    EstudianteResumen, CartonPlan, CartonMateria, CartonEvento,
 )
 from core.models import (
     Estudiante, PlanDeEstudio, Materia, Comision, Correlatividad, HorarioCatedra,
@@ -22,6 +26,7 @@ from django.db.models import Max
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 from django.utils import timezone
+from datetime import date
 
 from apps.common.api_schemas import ApiResponse
 
@@ -98,6 +103,68 @@ def _horarios_de_materia(materia: Materia) -> list[Horario]:
         )
         for det in detalles
     ]
+
+def _metadata_str(data: dict[str, object]) -> dict[str, str]:
+    return {k: str(v) for k, v in data.items() if v not in (None, '')}
+
+
+def _add_years(base: date, years: int) -> date:
+    try:
+        return base.replace(year=base.year + years)
+    except ValueError:
+        return base.replace(month=2, day=28, year=base.year + years)
+
+
+def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regularidad) -> tuple[date, int]:
+    limite_base = _add_years(regularidad.fecha_cierre, 2)
+    siguiente_llamado = (
+        MesaExamen.objects
+        .filter(
+            materia=regularidad.materia,
+            tipo=MesaExamen.Tipo.FINAL,
+            fecha__gte=limite_base,
+        )
+        .order_by('fecha')
+        .values_list('fecha', flat=True)
+        .first()
+    )
+    limite = siguiente_llamado or limite_base
+
+    intentos = (
+        InscripcionMesa.objects
+        .filter(
+            estudiante=estudiante,
+            estado=InscripcionMesa.Estado.INSCRIPTO,
+            mesa__materia=regularidad.materia,
+            mesa__tipo=MesaExamen.Tipo.FINAL,
+            mesa__fecha__gte=regularidad.fecha_cierre,
+            mesa__fecha__lte=limite,
+        )
+        .count()
+    )
+    return limite, intentos
+
+
+def _to_iso(value):
+    if not value:
+        return timezone.now().isoformat()
+    return value.isoformat()
+
+
+def _format_nota(value: Decimal | float | int | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        normalized = value.normalize()
+        text = f"{normalized:f}"
+        if '.' in text:
+            text = text.rstrip('0').rstrip('.')
+        return text
+    if isinstance(value, float):
+        text = f"{value:.2f}".rstrip('0').rstrip('.')
+        return text
+    return str(value)
+
 
 @alumnos_router.post(
     "/inscripcion-materia",
@@ -554,6 +621,381 @@ def historial_alumno(request, dni: str | None = None):
         regularizadas=regularizadas,
         inscriptas_actuales=inscriptas_actuales,
     )
+
+
+@alumnos_router.get("/trayectoria", response={200: TrayectoriaOut, 404: ApiResponse})
+def trayectoria_alumno(request, dni: str | None = None):
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
+
+    carreras = list(est.carreras.order_by("nombre").values_list("nombre", flat=True))
+
+    eventos_raw: list[dict] = []
+    mesas_raw: list[dict] = []
+
+    preinscripciones = list(
+        Preinscripcion.objects
+        .filter(alumno=est)
+        .select_related("carrera")
+        .order_by("-created_at")
+    )
+    for pre in preinscripciones:
+        eventos_raw.append({
+            "id": f"pre-{pre.id}",
+            "tipo": "preinscripcion",
+            "fecha": _to_iso(pre.created_at or pre.updated_at),
+            "titulo": f"Preinscripción a {pre.carrera.nombre}",
+            "subtitulo": pre.estado,
+            "detalle": None,
+            "estado": pre.estado,
+            "metadata": _metadata_str({
+                "carrera": pre.carrera.nombre,
+                "anio": pre.anio,
+                "codigo": pre.codigo,
+            }),
+        })
+
+    inscripciones_qs = (
+        InscripcionMateriaAlumno.objects
+        .filter(estudiante=est)
+        .select_related("materia", "comision", "comision__turno", "comision_solicitada")
+        .order_by("-created_at")
+    )
+    inscripciones = list(inscripciones_qs)
+    for insc in inscripciones:
+        detalle = None
+        if insc.comision:
+            detalle = f"Comisión {insc.comision.codigo}"
+        elif insc.comision_solicitada:
+            detalle = f"Cambio solicitado a {insc.comision_solicitada.codigo}"
+        eventos_raw.append({
+            "id": f"insc-{insc.id}",
+            "tipo": "inscripcion_materia",
+            "fecha": _to_iso(insc.created_at or insc.updated_at),
+            "titulo": f"Inscripción a {insc.materia.nombre}",
+            "subtitulo": f"Año académico {insc.anio}",
+            "detalle": detalle,
+            "estado": insc.estado,
+            "metadata": _metadata_str({
+                "materia": insc.materia.nombre,
+                "materia_id": insc.materia_id,
+                "estado": insc.get_estado_display(),
+                "anio": insc.anio,
+            }),
+        })
+
+    regularidades_qs = (
+        Regularidad.objects
+        .filter(estudiante=est)
+        .select_related("materia")
+        .order_by("-fecha_cierre")
+    )
+    regularidades = list(regularidades_qs)
+    regularidad_map: dict[int, Regularidad] = {}
+    for reg in regularidades:
+        if reg.materia_id not in regularidad_map:
+            regularidad_map[reg.materia_id] = reg
+
+    regularidades_resumen_data: list[dict] = []
+    regularidades_vigencia_data: list[dict] = []
+    finales_habilitados_data: list[dict] = []
+    alertas: list[str] = []
+
+    hoy = timezone.now().date()
+    for reg in regularidades:
+        vigencia_iso = None
+        vigente = None
+        dias_restantes: int | None = None
+        if reg.situacion == Regularidad.Situacion.REGULAR:
+            vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
+            dias_restantes = (vigencia_limite - hoy).days
+            vigente = dias_restantes >= 0
+            vigencia_iso = vigencia_limite.isoformat()
+            regularidades_vigencia_data.append({
+                "materia_id": reg.materia_id,
+                "materia_nombre": reg.materia.nombre,
+                "situacion": reg.situacion,
+                "situacion_display": reg.get_situacion_display(),
+                "fecha_cierre": reg.fecha_cierre.isoformat(),
+                "vigencia_hasta": vigencia_iso,
+                "dias_restantes": dias_restantes,
+                "vigente": vigente,
+                "intentos_usados": intentos,
+                "intentos_max": 3,
+            })
+            if vigente:
+                comentarios: list[str] = []
+                if dias_restantes <= 30:
+                    comentarios.append("La regularidad vence en menos de 30 días.")
+                finales_habilitados_data.append({
+                    "materia_id": reg.materia_id,
+                    "materia_nombre": reg.materia.nombre,
+                    "regularidad_fecha": reg.fecha_cierre.isoformat(),
+                    "vigencia_hasta": vigencia_iso,
+                    "dias_restantes": dias_restantes,
+                    "comentarios": comentarios,
+                })
+            else:
+                alertas.append(f"La regularidad de {reg.materia.nombre} está vencida desde {vigencia_iso}.")
+        regularidades_resumen_data.append({
+            "id": reg.id,
+            "materia_id": reg.materia_id,
+            "materia_nombre": reg.materia.nombre,
+            "situacion": reg.situacion,
+            "situacion_display": reg.get_situacion_display(),
+            "fecha_cierre": reg.fecha_cierre.isoformat(),
+            "nota_tp": float(reg.nota_trabajos_practicos) if reg.nota_trabajos_practicos is not None else None,
+            "nota_final": reg.nota_final_cursada,
+            "asistencia": reg.asistencia_porcentaje,
+            "excepcion": reg.excepcion,
+            "observaciones": reg.observaciones,
+            "vigencia_hasta": vigencia_iso,
+            "vigente": vigente,
+            "dias_restantes": dias_restantes,
+        })
+        if dias_restantes is not None and dias_restantes >= 0 and dias_restantes <= 30:
+            alertas.append(f"La regularidad de {reg.materia.nombre} vence en {dias_restantes} días.")
+
+        eventos_raw.append({
+            "id": f"reg-{reg.id}",
+            "tipo": "regularidad",
+            "fecha": reg.fecha_cierre.isoformat(),
+            "titulo": reg.materia.nombre,
+            "subtitulo": reg.get_situacion_display(),
+            "detalle": reg.observaciones or None,
+            "estado": reg.situacion,
+            "metadata": _metadata_str({
+                "nota_tp": reg.nota_trabajos_practicos,
+                "nota_final": reg.nota_final_cursada,
+                "asistencia": reg.asistencia_porcentaje,
+            }),
+        })
+
+    mesas_qs = (
+        InscripcionMesa.objects
+        .filter(estudiante=est)
+        .select_related("mesa__materia")
+        .order_by("-mesa__fecha", "-created_at")
+    )
+    mesas = list(mesas_qs)
+    finales_map: dict[int, InscripcionMesa] = {}
+    for insc in mesas:
+        mesa = insc.mesa
+        mesas_raw.append({
+            "id": insc.id,
+            "mesa_id": mesa.id,
+            "materia_id": mesa.materia_id,
+            "materia_nombre": mesa.materia.nombre,
+            "tipo": mesa.tipo,
+            "tipo_display": mesa.get_tipo_display(),
+            "fecha": mesa.fecha.isoformat(),
+            "estado": insc.estado,
+            "estado_display": insc.get_estado_display(),
+            "aula": mesa.aula,
+            "nota": None,
+        })
+        eventos_raw.append({
+            "id": f"mesa-{insc.id}",
+            "tipo": "mesa",
+            "fecha": mesa.fecha.isoformat(),
+            "titulo": f"Mesa {mesa.get_tipo_display()}",
+            "subtitulo": mesa.materia.nombre,
+            "detalle": mesa.aula,
+            "estado": insc.estado,
+            "metadata": _metadata_str({
+                "mesa_id": mesa.id,
+                "estado": insc.get_estado_display(),
+            }),
+        })
+        if (
+            mesa.tipo == MesaExamen.Tipo.FINAL
+            and mesa.materia_id not in finales_map
+        ):
+            finales_map[mesa.materia_id] = insc
+
+    aprobadas_set = {
+        reg.materia_id
+        for reg in regularidades
+        if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO)
+    }
+    regularizadas_set = {
+        reg.materia_id
+        for reg in regularidades
+        if reg.situacion == Regularidad.Situacion.REGULAR
+    }
+    inscriptas_actuales_set = {
+        insc.materia_id
+        for insc in inscripciones
+        if insc.estado in (InscripcionMateriaAlumno.Estado.CONFIRMADA, InscripcionMateriaAlumno.Estado.PENDIENTE)
+    }
+
+    carton_planes: list[CartonPlan] = []
+    total_materias = 0
+    carreras_est = list(est.carreras.all())
+    for profesorado in carreras_est:
+        planes_prof = (
+            PlanDeEstudio.objects
+            .filter(profesorado=profesorado)
+            .order_by('resolucion')
+        )
+        for plan in planes_prof:
+            materias_qs = (
+                Materia.objects
+                .filter(plan_de_estudio=plan)
+                .order_by('anio_cursada', 'regimen', 'nombre')
+            )
+            materias_out: list[CartonMateria] = []
+            for materia in materias_qs:
+                reg = regularidad_map.get(materia.id)
+                regularidad_evt = None
+                if reg:
+                    nota_reg = _format_nota(
+                        reg.nota_final_cursada
+                        if reg.nota_final_cursada is not None
+                        else reg.nota_trabajos_practicos
+                    )
+                    regularidad_evt = CartonEvento(
+                        fecha=reg.fecha_cierre.isoformat(),
+                        condicion=reg.get_situacion_display(),
+                        nota=nota_reg,
+                    )
+
+                final_insc = finales_map.get(materia.id)
+                final_evt = None
+                if final_insc:
+                    mesa_final = final_insc.mesa
+                    final_evt = CartonEvento(
+                        fecha=mesa_final.fecha.isoformat() if mesa_final.fecha else None,
+                        condicion=final_insc.get_estado_display(),
+                        nota=None,
+                    )
+
+                materias_out.append(CartonMateria(
+                    materia_id=materia.id,
+                    materia_nombre=materia.nombre,
+                    anio=materia.anio_cursada,
+                    regimen=materia.regimen,
+                    regimen_display=materia.get_regimen_display(),
+                    regularidad=regularidad_evt,
+                    final=final_evt,
+                ))
+
+            if materias_out:
+                total_materias += len(materias_out)
+                carton_planes.append(CartonPlan(
+                    profesorado_id=profesorado.id,
+                    profesorado_nombre=profesorado.nombre,
+                    plan_id=plan.id,
+                    plan_resolucion=plan.resolucion or "",
+                    materias=materias_out,
+                ))
+
+    regularizadas_sin_final = regularizadas_set.difference(aprobadas_set)
+
+    confirmada_pre = next(
+        (pre for pre in preinscripciones if (pre.estado or "").upper() == "CONFIRMADA"),
+        None,
+    )
+    cohorte_val = None
+    if confirmada_pre:
+        if getattr(confirmada_pre, "anio", None):
+            cohorte_val = str(confirmada_pre.anio)
+        else:
+            referencia = confirmada_pre.updated_at or confirmada_pre.created_at
+            if referencia:
+                cohorte_val = str(referencia.year)
+
+    extra_sources = [
+        extra for extra in (getattr(pre, "datos_extra", None) or {} for pre in preinscripciones)
+        if extra
+    ]
+
+    def _extra_value(*keys):
+        for extra in extra_sources:
+            for key in keys:
+                value = extra.get(key)
+                if value not in (None, "", []):
+                    return value
+        return None
+
+    def _to_bool(value):
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return value != 0
+        text = str(value).strip().lower()
+        if not text:
+            return None
+        if text in {"si", "sí", "true", "1", "entregado", "presentado"}:
+            return True
+        if text in {"no", "false", "0", "pendiente", "ausente"}:
+            return False
+        return None
+
+    lugar_nacimiento = _extra_value("lugar_nacimiento", "lugarNacimiento")
+    curso_introductorio = _extra_value("curso_introductorio", "cursoIntroductorio")
+    promedio_general = _extra_value("promedio_general", "promedioGeneral")
+    libreta_extra = _extra_value("libreta_entregada", "libretaEntregada", "libreta")
+    libreta_entregada = _to_bool(libreta_extra)
+    if libreta_entregada is None:
+        libreta_entregada = est.documentacion_presentada.exists()
+
+    promedio_general_str = None
+    if promedio_general is not None:
+        promedio_general_str = str(promedio_general)
+
+    estudiante_out = EstudianteResumen(
+        dni=est.dni,
+        legajo=est.legajo,
+        apellido_nombre=est.user.get_full_name() if est.user_id else "",
+        carreras=carreras,
+        email=est.user.email if est.user_id else None,
+        telefono=est.telefono or None,
+        fecha_nacimiento=est.fecha_nacimiento.isoformat() if est.fecha_nacimiento else None,
+        lugar_nacimiento=lugar_nacimiento,
+        curso_introductorio=curso_introductorio,
+        promedio_general=promedio_general_str,
+        libreta_entregada=bool(libreta_entregada),
+        legajo_estado=est.get_estado_legajo_display(),
+        cohorte=cohorte_val,
+        activo=est.user.is_active if est.user_id else None,
+        materias_totales=total_materias or None,
+        materias_aprobadas=len(aprobadas_set),
+        materias_regularizadas=len(regularizadas_sin_final),
+        materias_en_curso=len(inscriptas_actuales_set),
+    )
+
+    eventos_raw.sort(key=lambda item: item["fecha"], reverse=True)
+    mesas_raw.sort(key=lambda item: item["fecha"], reverse=True)
+    regularidades_resumen_data.sort(key=lambda item: item["fecha_cierre"], reverse=True)
+    regularidades_vigencia_data.sort(key=lambda item: item["vigencia_hasta"] if item["vigencia_hasta"] else "")
+    finales_habilitados_data.sort(key=lambda item: item["dias_restantes"] if item["dias_restantes"] is not None else 9999)
+    alertas = list(dict.fromkeys(alertas))
+
+    recomendaciones = RecomendacionesOut(
+        materias_sugeridas=[],
+        finales_habilitados=[FinalHabilitado(**item) for item in finales_habilitados_data],
+        alertas=alertas,
+    )
+
+    trayectoria = TrayectoriaOut(
+        estudiante=estudiante_out,
+        historial=[TrayectoriaEvento(**item) for item in eventos_raw],
+        mesas=[TrayectoriaMesa(**item) for item in mesas_raw],
+        regularidades=[RegularidadResumen(**item) for item in regularidades_resumen_data],
+        recomendaciones=recomendaciones,
+        regularidades_vigencia=[RegularidadVigenciaOut(**item) for item in regularidades_vigencia_data],
+        aprobadas=sorted(aprobadas_set),
+        regularizadas=sorted(regularizadas_set),
+        inscriptas_actuales=sorted(inscriptas_actuales_set),
+        carton=carton_planes,
+        updated_at=timezone.now().isoformat(),
+    )
+
+    return trayectoria
 
 
 
