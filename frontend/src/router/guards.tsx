@@ -42,7 +42,7 @@ export function ProtectedRoute({
 
 export function PublicOnlyRoute({
   children,
-  redirectTo = "/dashboard",
+  redirectTo = "/alumnos",
 }: {
   children: JSX.Element;
   redirectTo?: string;

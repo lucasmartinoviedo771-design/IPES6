@@ -72,7 +72,7 @@ ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
 
 ACADEMIC_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
 
-VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
+VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "alumno"}
 
 PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel", "preinscripciones"}
 
@@ -3009,6 +3009,5 @@ def eliminar_mesa(request, mesa_id: int):
     mesa.delete()
 
     return 204, None
-
 
 

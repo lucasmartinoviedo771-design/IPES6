@@ -39,8 +39,12 @@ export const defaultValues: PreinscripcionForm = {
   // carrera
   carrera_id: 0,
 
+  // formalización
+  curso_introductorio_aprobado: false,
+  libreta_entregada: false,
+
   // foto
-  foto_dataUrl: "",
+  foto_dataUrl: undefined,
   fotoW: undefined,
   fotoH: undefined,
 
@@ -49,4 +53,15 @@ export const defaultValues: PreinscripcionForm = {
   empleador: "",
   horario_trabajo: "",
   domicilio_trabajo: "",
+
+  // documentación (checkboxes)
+  doc_dni: false,
+  doc_secundario: false,
+  doc_constancia_cuil: false,
+  doc_cert_trabajo: false,
+  doc_buenasalud: false,
+  doc_foto4x4: false,
+  doc_titulo_en_tramite: false,
+  doc_otro: false,
 };
+

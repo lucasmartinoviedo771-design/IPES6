@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { client as axios } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
-import { useTestMode } from '@/context/TestModeContext';
 import { useSnackbar } from 'notistack';
-import { Box, Button, Card, CardContent, CardHeader, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography, Alert } from '@mui/material';
+import { Box, Button, Card, CardContent, CardHeader, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import dayjs from 'dayjs';
@@ -31,7 +30,6 @@ const TIPOS: { key: string; label: string }[] = [
 ];
 
 export default function HabilitarFechasPage() {
-  const { enabled: testMode } = useTestMode();
   const { enqueueSnackbar } = useSnackbar();
   const [ventanas, setVentanas] = useState<Record<string, Ventana[]>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -59,13 +57,9 @@ export default function HabilitarFechasPage() {
     }
   };
 
-  useEffect(() => { load(); }, [testMode]);
+  useEffect(() => { load(); }, []);
 
   const upsert = async (v: Ventana) => {
-    if (testMode) {
-      enqueueSnackbar('Modo prueba activo: no se guardan cambios en la base.', { variant: 'info' });
-      return;
-    }
     setSaving(s => ({ ...s, [v.tipo]: true }));
     try {
       const payload = { ...v };
@@ -83,20 +77,12 @@ export default function HabilitarFechasPage() {
   const openEdit = (v: Ventana) => { setEditV({ ...v }); setEditOpen(true); };
   const closeEdit = () => { setEditOpen(false); setEditV(null); };
   const saveEdit = async () => {
-    if (testMode) {
-      enqueueSnackbar('Modo prueba activo: sin persistencia en la base.', { variant: 'info' });
-      return;
-    }
     if (!editV || !editV.id) return;
     await axios.put(`/ventanas/${editV.id}`, editV);
     closeEdit();
     load();
   };
   const deleteVentana = async (id?: number) => {
-    if (testMode) {
-      enqueueSnackbar('Modo prueba activo: sin eliminaciones reales.', { variant: 'info' });
-      return;
-    }
     if (!id) return;
     await axios.delete(`/ventanas/${id}`);
     closeEdit();
@@ -171,7 +157,7 @@ export default function HabilitarFechasPage() {
                   <Button variant="outlined" onClick={resetDraft}>
                     Nuevo periodo
                   </Button>
-                  <Button variant="contained" disabled={!!saving[t.key] || testMode} onClick={()=>upsert(v)}>
+                  <Button variant="contained" disabled={!!saving[t.key]} onClick={()=>upsert(v)}>
                     {saving[t.key] ? 'Guardando...' : 'Guardar'}
                   </Button>
                 </Grid>
@@ -196,7 +182,6 @@ export default function HabilitarFechasPage() {
                         <span style={{ flex: 1 }} />
                         <Tooltip title="Editar"><IconButton size="small" onClick={() => openEdit(x)}><EditIcon fontSize="small"/></IconButton></Tooltip>
                        <Tooltip title="Eliminar"><IconButton color="error" size="small" onClick={() => deleteVentana(x.id)}><DeleteForeverIcon fontSize="small"/></IconButton></Tooltip>
-                        {testMode && <Chip size="small" label="Simulado" color="warning" variant="outlined" />}
                       </Box>
                     ) : (
                       <Box key={`placeholder-${index}`} sx={{ display: 'flex', gap: 1, alignItems: 'center', py: .5, height: '34px' }}>
@@ -218,11 +203,6 @@ export default function HabilitarFechasPage() {
       <h1 className="text-3xl font-extrabold mb-1">Habilitar Fechas</h1>
       <p className="text-gray-600 mb-6">Definí periodos (desde/hasta) para inscripciones y trámites.</p>
       <Grid container spacing={2}>
-        {testMode && (
-          <Grid item xs={12}>
-            <Alert severity="info">Modo prueba activado. Las ventanas se simulan sólo en esta sesión y los cambios no impactan en la base de datos.</Alert>
-          </Grid>
-        )}
         {TIPOS.map(card)}
       </Grid>
       <Dialog open={editOpen} onClose={closeEdit} maxWidth="xs" fullWidth>
@@ -245,8 +225,8 @@ export default function HabilitarFechasPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeEdit}>Cancelar</Button>
-          <Button color="error" onClick={()=>deleteVentana(editV?.id)} disabled={testMode}>Eliminar</Button>
-          <Button variant="contained" onClick={saveEdit} disabled={testMode}>Guardar</Button>
+          <Button color="error" onClick={()=>deleteVentana(editV?.id)}>Eliminar</Button>
+          <Button variant="contained" onClick={saveEdit}>Guardar</Button>
         </DialogActions>
       </Dialog>
     </div>

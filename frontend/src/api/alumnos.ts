@@ -179,6 +179,7 @@ export type TrayectoriaEstudianteDTO = {
   materias_aprobadas?: number | null;
   materias_regularizadas?: number | null;
   materias_en_curso?: number | null;
+  fotoUrl?: string | null;
 };
 
 export type CartonEventoDTO = {
@@ -304,12 +305,74 @@ export async function obtenerEquivalencias(materia_id: number): Promise<Equivale
 }
 
 // Mesas de examen (alumno)
-export async function listarMesas(params?: { tipo?: 'FIN'|'LIB'|'EXT'; ventana_id?: number; profesorado_id?: number; plan_id?: number; anio?: number; cuatrimestre?: string; materia_id?: number; }): Promise<any[]> {
+type MesaListadoParams = {
+  tipo?: 'FIN' | 'EXT';
+  modalidad?: 'REG' | 'LIB';
+  ventana_id?: number;
+  profesorado_id?: number;
+  plan_id?: number;
+  anio?: number;
+  cuatrimestre?: string;
+  materia_id?: number;
+};
+
+export type MesaPlanillaCondicionDTO = {
+  value: string;
+  label: string;
+  cuenta_para_intentos: boolean;
+};
+
+export type MesaPlanillaAlumnoDTO = {
+  inscripcion_id: number;
+  alumno_id: number;
+  dni: string;
+  apellido_nombre: string;
+  condicion?: string | null;
+  condicion_display?: string | null;
+  nota?: number | null;
+  folio?: string | null;
+  libro?: string | null;
+  fecha_resultado?: string | null;
+  cuenta_para_intentos: boolean;
+  observaciones?: string | null;
+};
+
+export type MesaPlanillaDTO = {
+  mesa_id: number;
+  materia_id: number;
+  materia_nombre: string;
+  tipo: string;
+  modalidad: string;
+  fecha: string;
+  condiciones: MesaPlanillaCondicionDTO[];
+  alumnos: MesaPlanillaAlumnoDTO[];
+};
+
+export async function listarMesas(params?: MesaListadoParams): Promise<any[]> {
   const { data } = await client.get<any[]>(`/alumnos/mesas`, { params });
   return data;
 }
 
 export async function inscribirMesa(payload: { mesa_id: number; dni?: string }): Promise<{ message: string }> {
   const { data } = await client.post<{ message: string }>(`/alumnos/inscribir_mesa`, payload);
+  return data;
+}
+
+export async function obtenerMesaPlanilla(mesaId: number): Promise<MesaPlanillaDTO> {
+  const { data } = await client.get<MesaPlanillaDTO>(`/alumnos/mesas/${mesaId}/planilla`);
+  return data;
+}
+
+export async function actualizarMesaPlanilla(mesaId: number, payload: { alumnos: Array<{
+  inscripcion_id: number;
+  fecha_resultado?: string | null;
+  condicion?: string | null;
+  nota?: number | null;
+  folio?: string | null;
+  libro?: string | null;
+  observaciones?: string | null;
+  cuenta_para_intentos?: boolean | null;
+}> }): Promise<ApiResponseDTO> {
+  const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/planilla`, payload);
   return data;
 }

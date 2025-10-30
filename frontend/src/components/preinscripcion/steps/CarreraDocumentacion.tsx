@@ -2,6 +2,8 @@ import React, { useId, useRef } from "react";
 import { Box, Button, Stack, Typography, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
 import { useFormContext } from "react-hook-form";
 
+import { PreinscripcionForm } from "../schema";
+
 type Props = {
   /** Notifica al padre: el archivo (File) o null si se quito */
   onFileChange?: (file: File | null) => void;
@@ -18,7 +20,7 @@ const CarreraDocumentacion: React.FC<Props> = ({
   carreras,
   isLoading,
 }) => {
-  const { watch, setValue, formState } = useFormContext();
+  const { watch, setValue, formState } = useFormContext<PreinscripcionForm>();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const fieldId = useId();
 
@@ -167,3 +169,5 @@ const CarreraDocumentacion: React.FC<Props> = ({
 };
 
 export default CarreraDocumentacion;
+
+

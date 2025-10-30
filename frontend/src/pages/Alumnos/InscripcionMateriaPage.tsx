@@ -219,14 +219,14 @@ const InscripcionMateriaPage: React.FC = () => {
         dni: normalizedDni ? normalizedDni : undefined,
       }),
     onSuccess: (res, variables) => {
-      const message = res?.message || "Inscripción cancelada";
+      const message = res?.message || "inscripciÃ³n cancelada";
       setInfo(message);
       setErr(null);
       setSeleccionadas((prev) => prev.filter((id) => id !== variables.materiaId));
       qc.invalidateQueries();
     },
     onError: (error: any) => {
-      setErr(error?.response?.data?.message || "No se pudo cancelar la inscripción");
+      setErr(error?.response?.data?.message || "No se pudo cancelar la inscripciÃ³n");
       setInfo(null);
     },
   });
@@ -368,7 +368,7 @@ const InscripcionMateriaPage: React.FC = () => {
       return {
         ...materia,
         status: "bloqueada",
-        motivos: [`Superposición horaria con ${conflictoConInscripciones.materiaNombre}`],
+        motivos: [`SuperposiciÃ³n horaria con ${conflictoConInscripciones.materiaNombre}`],
         tipoBloqueo: "choque",
         faltantesRegular: [],
         faltantesAprob: [],
@@ -383,7 +383,7 @@ const InscripcionMateriaPage: React.FC = () => {
         return {
           ...materia,
           status: "bloqueada",
-          motivos: [`Superposición horaria con ${seleccionada.nombre}`],
+          motivos: [`SuperposiciÃ³n horaria con ${seleccionada.nombre}`],
           tipoBloqueo: "choque",
           faltantesRegular: [],
           faltantesAprob: [],
@@ -420,13 +420,12 @@ const InscripcionMateriaPage: React.FC = () => {
       .map(([anio, items]) => ({ anio, items }));
   }, [habilitadasFiltradas]);
 
-  const bloqueadasPorTipo = bloqueadasFiltradas.reduce<Record<TipoBloqueo | "otros", MateriaEvaluada[]>>((acc, materia) => {
+  const bloqueadasPorTipo = bloqueadasFiltradas.reduce<Record<TipoBloqueo, MateriaEvaluada[]>>((acc, materia) => {
     const tipo = materia.tipoBloqueo ?? "otro";
-    const key = tipo in acc ? tipo : "otros";
-    acc[key] = acc[key] || [];
-    acc[key].push(materia);
+    if (!acc[tipo]) acc[tipo] = [];
+    acc[tipo].push(materia);
     return acc;
-  }, { correlativas: [], periodo: [], choque: [], inscripta: [], otros: [] });
+  }, { correlativas: [], periodo: [], choque: [], inscripta: [], otro: [] });
 
   const inscriptasDetalle = (historial.inscriptasActuales || [])
     .map((id) => {
@@ -499,11 +498,11 @@ const InscripcionMateriaPage: React.FC = () => {
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
               <FormControl size="small" sx={{ minWidth: 150, bgcolor: "#fff" }}>
-                <InputLabel id="filtro-anio-label">Anio</InputLabel>
+                <InputLabel id="filtro-anio-label">AÃ±o</InputLabel>
                 <Select
                   labelId="filtro-anio-label"
                   value={anioFiltro === "all" ? "all" : String(anioFiltro)}
-                  label="Anio"
+                  label="AÃ±o"
                   onChange={handleAnioChange}
                 >
                   <MenuItem value="all">Todos los anios</MenuItem>
@@ -539,7 +538,7 @@ const InscripcionMateriaPage: React.FC = () => {
 
         {queryError && (
           <Alert severity="error">
-            No se pudieron cargar los datos de inscripción. Verifica el DNI e intenta nuevamente.
+            No se pudieron cargar los datos de inscripciÃ³n. Verifica el DNI e intenta nuevamente.
           </Alert>
         )}
 
@@ -559,7 +558,7 @@ const InscripcionMateriaPage: React.FC = () => {
               {habilitadasPorAnio.map(({ anio, items }) => (
                 <Box key={anio}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-                    {anio}Âº aÃ±o
+                    {anio}Âº anio
                   </Typography>
                   <Box
                     sx={{
@@ -622,14 +621,14 @@ const InscripcionMateriaPage: React.FC = () => {
             <Typography fontWeight={700}>Materias pendientes / no disponibles</Typography>
           </AccordionSummary>
           <AccordionDetails>
-            {(["correlativas", "periodo", "choque", "inscripta", "otros"] as const).map((tipo) => {
+            {(["correlativas", "periodo", "choque", "inscripta", "otro"] as const).map((tipo) => {
               const lista = bloqueadasPorTipo[tipo];
               if (!lista || lista.length === 0) return null;
               return (
                 <Box key={tipo} sx={{ mb: 3 }}>
                   <Divider textAlign="left" sx={{ mb: 1.5 }}>{BLOQUEO_LABEL[tipo]}</Divider>
                   <Stack spacing={1.5}>
-                    {lista.map((materia) => (
+                    {lista.map((materia: MateriaEvaluada) => (
                       <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px dashed #d3c19c", bgcolor: "#fff" }}>
                         <Typography fontWeight={600}>{materia.nombre}</Typography>
                         {materia.tipoBloqueo === "correlativas" ? (
@@ -691,7 +690,7 @@ const InscripcionMateriaPage: React.FC = () => {
           </Typography>
           {inscriptasDetalle.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              Todavía no tenés inscripciones registradas.
+              TodavÃ­a no tenÃ©s inscripciones registradas.
             </Typography>
           ) : (
             <Stack spacing={2}>
@@ -703,7 +702,7 @@ const InscripcionMateriaPage: React.FC = () => {
                     {materia.horarios.length > 0 ? (
                       materia.horarios.map((h, idx) => (
                         <Typography key={idx} variant="body2" color="text.secondary">
-                          {h.dia} {h.desde} – {h.hasta}
+                          {h.dia} {h.desde} - {h.hasta}
                         </Typography>
                       ))
                     ) : (
@@ -719,7 +718,7 @@ const InscripcionMateriaPage: React.FC = () => {
                           disabled={canceling}
                           onClick={() => handleCancelar(materia.id, inscripcion.inscripcion_id)}
                         >
-                          Cancelar inscripción
+                          Cancelar inscripciÃ³n
                         </Button>
                       )}
                     </Stack>
@@ -736,3 +735,4 @@ const InscripcionMateriaPage: React.FC = () => {
 };
 
 export default InscripcionMateriaPage;
+

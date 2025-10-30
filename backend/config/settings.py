@@ -17,6 +17,10 @@ load_dotenv(BASE_DIR / ".env")
 RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '')
 RECAPTCHA_MIN_SCORE = float(os.getenv('RECAPTCHA_MIN_SCORE', '0.3'))
 PREINS_RATE_LIMIT_PER_HOUR = int(os.getenv('PREINS_RATE_LIMIT_PER_HOUR', '5'))
+
+# === Entorno ==============================================================
+DJANGO_ENV = os.getenv("DJANGO_ENV", "development").lower()
+IS_PROD = DJANGO_ENV == "production"
 # === Helpers para ENV ===================================================
 def env_bool(name: str, default: bool = False) -> bool:
     val = os.getenv(name)
@@ -33,11 +37,20 @@ def env_list(name: str, default=None):
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 # === Seguridad / Debug ==================================================
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
-DEBUG = env_bool("DEBUG", True)
+DEFAULT_DEBUG = False if IS_PROD else True
+DEBUG = env_bool("DEBUG", DEFAULT_DEBUG)
 
-DJANGO_ENV = os.getenv("DJANGO_ENV", "development").lower()
-IS_PROD = DJANGO_ENV == "production"
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if IS_PROD:
+        raise RuntimeError(
+            "SECRET_KEY no está configurada. Define la variable de entorno SECRET_KEY con un valor seguro en producción."
+        )
+    SECRET_KEY = "dev-insecure-change-me"
+
+# Rate limiting para login (fall back sensato en desarrollo)
+LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "5"))
+LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
 
 # Hosts permitidos (¡ajusta con tu dominio real!)
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])
@@ -181,6 +194,23 @@ LOGGING = {
 # === Django 5 defaults ==================================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Política de contraseñas explícita
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": int(os.getenv("AUTH_PASSWORD_MIN_LENGTH", "8"))},
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
+
 # REST_FRAMEWORK + SimpleJWT
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -204,9 +234,17 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
 }
 
+# === JWT Cookies ==========================================================
+JWT_ACCESS_COOKIE_NAME = "jwt_access_token"
+JWT_REFRESH_COOKIE_NAME = "jwt_refresh_token"
+JWT_COOKIE_PATH = "/api/" # Ruta donde las cookies JWT estarán disponibles
+
 # Cookies/seguridad (ajustá para prod)
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+# Mantenemos el token CSRF en cookie para que el frontend pueda leerlo
+# y enviarlo en el encabezado X-CSRFToken.
+CSRF_USE_SESSIONS = False
 # CSRF_COOKIE_SECURE = True
 # SESSION_COOKIE_SECURE = True
 

@@ -11,6 +11,7 @@ export type MateriaDTO = {
   anio_cursada: number;
   regimen: string;
   formato: string;
+  permite_mesa_libre: boolean;
 };
 
 export type ComisionDTO = {

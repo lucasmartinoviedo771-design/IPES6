@@ -102,6 +102,12 @@ class Materia(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.anio_cursada}° Año) - Plan: {self.plan_de_estudio.resolucion}"
 
+    @property
+    def permite_mesa_libre(self) -> bool:
+        from .libre_config import materia_permite_mesa_libre
+
+        return materia_permite_mesa_libre(self)
+
 class Correlatividad(models.Model):
     class TipoCorrelatividad(models.TextChoices):
         REGULAR_PARA_CURSAR = 'RPC', 'Regular para Cursar'
@@ -459,13 +465,16 @@ class PedidoAnalitico(models.Model):
 
 class MesaExamen(models.Model):
     class Tipo(models.TextChoices):
-        PARCIAL = 'PAR', 'Parcial'
         FINAL = 'FIN', 'Final'
-        LIBRE = 'LIB', 'Libre'
         EXTRAORDINARIA = 'EXT', 'Extraordinaria'
+
+    class Modalidad(models.TextChoices):
+        REGULAR = 'REG', 'Regular'
+        LIBRE = 'LIB', 'Libre'
 
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='mesas')
     tipo = models.CharField(max_length=3, choices=Tipo.choices)
+    modalidad = models.CharField(max_length=3, choices=Modalidad.choices, default=Modalidad.REGULAR)
     fecha = models.DateField()
     hora_desde = models.TimeField(null=True, blank=True)
     hora_hasta = models.TimeField(null=True, blank=True)
@@ -483,10 +492,23 @@ class InscripcionMesa(models.Model):
         INSCRIPTO = 'INS', 'Inscripto'
         CANCELADO = 'CAN', 'Cancelado'
 
+    class Condicion(models.TextChoices):
+        APROBADO = 'APR', 'Aprobado'
+        DESAPROBADO = 'DES', 'Desaprobado'
+        AUSENTE = 'AUS', 'Ausente'
+        AUSENTE_JUSTIFICADO = 'AUJ', 'Ausente justificado'
+
     mesa = models.ForeignKey(MesaExamen, on_delete=models.CASCADE, related_name='inscripciones')
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name='inscripciones_mesa')
     estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.INSCRIPTO)
     created_at = models.DateTimeField(auto_now_add=True)
+    fecha_resultado = models.DateField(null=True, blank=True)
+    condicion = models.CharField(max_length=3, choices=Condicion.choices, null=True, blank=True)
+    nota = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    folio = models.CharField(max_length=32, null=True, blank=True)
+    libro = models.CharField(max_length=32, null=True, blank=True)
+    observaciones = models.TextField(null=True, blank=True)
+    cuenta_para_intentos = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ('mesa', 'estudiante')

@@ -91,7 +91,7 @@ export default function CargarProfesoradoPage() {
   >({
     mutationFn: async (updatedProfesorado) => {
       const response = await api.put(
-        `/profesorados/${updatedProfesorado.id}/`,
+        `/profesorados/${updatedProfesorado.id}`,
         updatedProfesorado
       );
       return response.data;
@@ -109,7 +109,7 @@ export default function CargarProfesoradoPage() {
     number
   >({
     mutationFn: async (profesoradoId) => {
-      await api.delete(`/profesorados/${profesoradoId}/`);
+      await api.delete(`/profesorados/${profesoradoId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profesorados"] });

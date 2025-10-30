@@ -2,11 +2,15 @@
 from ninja import Router
 from .auth_ninja import JWTAuth
 from pydantic import BaseModel
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from ninja.errors import HttpError
+
+from django.http import HttpResponse, JsonResponse
 
 router = Router()  # <— IMPORTANTE
 
@@ -56,14 +60,42 @@ class ChangePasswordIn(BaseModel):
     current_password: str
     new_password: str
 
-@router.post("/login", response={200: TokenOut, 401: Error})
+
+def _client_identifier(request, login: str) -> str:
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "") or "unknown"
+    login_id = (login or "").strip().lower() or "anonymous"
+    return f"auth:login:{ip}:{login_id}"
+
+
+def _rate_limit_exceeded(cache_key: str) -> bool:
+    limit = getattr(settings, "LOGIN_RATE_LIMIT_ATTEMPTS", 5)
+    attempts = cache.get(cache_key)
+    return attempts is not None and attempts >= limit
+
+@router.post("/login")
 def login(request, payload: LoginIn):
+    cache_key = _client_identifier(request, payload.login)
+    window = getattr(settings, "LOGIN_RATE_LIMIT_WINDOW_SECONDS", 300)
+    limit = getattr(settings, "LOGIN_RATE_LIMIT_ATTEMPTS", 5)
+
+    if _rate_limit_exceeded(cache_key):
+        return 429, {"detail": "Demasiados intentos fallidos. Intenta nuevamente mas tarde."}
+
     u = _resolve_user_by_identifier(payload.login)
     username = u.username if u else payload.login
     user = authenticate(request, username=username, password=payload.password)
     if not user:
-        return 401, {"detail": "Credenciales inválidas"}
+        attempts = cache.get(cache_key, 0) + 1
+        cache.set(cache_key, attempts, timeout=window)
+        if attempts >= limit:
+            return 429, {"detail": "Demasiados intentos fallidos. Intenta nuevamente mas tarde."}
+        return 401, {"detail": "Credenciales invalidas"}
+
+    cache.delete(cache_key)
     refresh = RefreshToken.for_user(user)
+
+    # Prepare user data for response
     estudiante = getattr(user, "estudiante", None)
     must_change = getattr(estudiante, "must_change_password", False)
     user_data = {
@@ -74,11 +106,30 @@ def login(request, payload: LoginIn):
         "is_superuser": user.is_superuser,
         "must_change_password": bool(must_change),
     }
-    return {
-        "access": str(refresh.access_token),
+
+    # Create JSON response body
+    response_body = {
         "refresh": str(refresh),
         "user": user_data,
     }
+    response = JsonResponse(response_body)
+
+    access_token_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
+    cookie_kwargs = {
+        'key': settings.JWT_ACCESS_COOKIE_NAME,
+        'value': str(refresh.access_token),
+        'max_age': int(access_token_lifetime.total_seconds()),
+        'httponly': True,
+        'path': settings.JWT_COOKIE_PATH,
+    }
+
+    if not settings.DEBUG:
+        cookie_kwargs['secure'] = settings.SESSION_COOKIE_SECURE
+        cookie_kwargs['samesite'] = settings.SESSION_COOKIE_SAMESITE
+
+    response.set_cookie(**cookie_kwargs)
+
+    return response
 
 @router.get("/profile", response={200: UserOut}, auth=JWTAuth())
 def profile(request):
@@ -118,3 +169,9 @@ def change_password(request, payload: ChangePasswordIn):
         estudiante.save(update_fields=["must_change_password"])
 
     return {"detail": "Contraseña actualizada correctamente."}
+
+@router.post("/logout")
+def logout(request):
+    response = JsonResponse({"detail": "Sesión cerrada correctamente."})
+    response.delete_cookie(key=settings.JWT_ACCESS_COOKIE_NAME, path=settings.JWT_COOKIE_PATH)
+    return response

@@ -24,7 +24,6 @@ dayjs.locale("es");
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { SnackbarProvider } from "notistack";
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
-import { TestModeProvider } from "@/context/TestModeContext";
 
 window.addEventListener("error", (e) => {
   console.error("[window.onerror]", e.message, e.error);
@@ -52,10 +51,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <QueryClientProvider client={qc}>
           <AuthProvider>
-            <TestModeProvider>
-              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-                <ThemeProvider theme={theme}>
-                  <CssBaseline />
+            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+              <ThemeProvider theme={theme}>
+                <CssBaseline />
                   <SnackbarProvider
                     maxSnack={4}
                     autoHideDuration={4000}
@@ -64,9 +62,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <ToastBridge />
                     {AppContent}
                   </SnackbarProvider>
-                </ThemeProvider>
-              </LocalizationProvider>
-            </TestModeProvider>
+              </ThemeProvider>
+            </LocalizationProvider>
           </AuthProvider>
         </QueryClientProvider>
       </BrowserRouter>

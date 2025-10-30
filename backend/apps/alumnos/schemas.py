@@ -37,6 +37,43 @@ class InscripcionMesaIn(Schema):
 class InscripcionMesaOut(Schema):
     message: str
 
+class MesaResultadoAlumno(Schema):
+    inscripcion_id: int
+    alumno_id: int
+    dni: str
+    apellido_nombre: str
+    condicion: Optional[str] = None
+    condicion_display: Optional[str] = None
+    nota: Optional[float] = None
+    folio: Optional[str] = None
+    libro: Optional[str] = None
+    fecha_resultado: Optional[str] = None
+    cuenta_para_intentos: bool = True
+    observaciones: Optional[str] = None
+
+class MesaPlanillaOut(Schema):
+    mesa_id: int
+    materia_id: int
+    materia_nombre: str
+    tipo: str
+    modalidad: str
+    fecha: str
+    condiciones: List[Dict[str, object]]
+    alumnos: List[MesaResultadoAlumno]
+
+class MesaResultadoIn(Schema):
+    inscripcion_id: int
+    fecha_resultado: Optional[str] = None
+    condicion: Optional[str] = None
+    nota: Optional[float] = None
+    folio: Optional[str] = None
+    libro: Optional[str] = None
+    observaciones: Optional[str] = None
+    cuenta_para_intentos: Optional[bool] = None
+
+class MesaPlanillaUpdateIn(Schema):
+    alumnos: List[MesaResultadoIn]
+
 # Regularidad (importación por planilla)
 class RegularidadRowIn(Schema):
     dni: str

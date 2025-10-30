@@ -2,13 +2,11 @@ import React from 'react';
 import { Box, Typography, Stack, Grid, Paper, TextField, MenuItem, Button, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
-import { useTestMode } from '@/context/TestModeContext';
 import { solicitarPedidoAnalitico } from '@/api/alumnos';
 
 type Pedido = { dni:string; apellido_nombre:string; profesorado?:string; cohorte?:number; fecha_solicitud:string; motivo?: string; motivo_otro?: string };
 
 export default function AnaliticosPage(){
-  const { enabled: testMode } = useTestMode();
   const [ventanas, setVentanas] = React.useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = React.useState<string>('');
   const [pedidos, setPedidos] = React.useState<Pedido[]>([]);
@@ -25,7 +23,7 @@ export default function AnaliticosPage(){
       if (v.length) setVentanaId(String(v[0].id));
     }catch(err:any){ setError('No se pudieron cargar ventanas'); }
   };
-  React.useEffect(()=>{ loadVentanas(); },[testMode]);
+  React.useEffect(()=>{ loadVentanas(); },[]);
 
   const loadPedidos = async(id:number)=>{
     try{
@@ -38,7 +36,7 @@ export default function AnaliticosPage(){
   const [descargando, setDescargando] = React.useState(false);
 
   const descargarPDF = async ()=>{
-    if (!ventanaId || testMode) return;
+    if (!ventanaId) return;
     try{
       setDescargando(true);
       setError(null);
@@ -63,10 +61,6 @@ export default function AnaliticosPage(){
   };
 
   const crearPedido = async ()=>{
-    if (testMode) {
-      setError('Modo prueba activo: no se generan pedidos reales.');
-      return;
-    }
     try{
       const payload = {
         dni: form.dni || undefined,
@@ -86,7 +80,6 @@ export default function AnaliticosPage(){
     <Box sx={{ p:2 }}>
       <Typography variant="h5" fontWeight={800}>Pedidos de Analítico</Typography>
       <Typography variant="body2" color="text.secondary">Seleccione un periodo para ver y descargar en PDF</Typography>
-      {testMode && <Alert severity="info" sx={{ mt:1 }}>Modo prueba activado: las ventanas se simulan temporalmente y no se guardan cambios en la base.</Alert>}
       {error && <Alert severity="error" sx={{ mt:1 }}>{error}</Alert>}
       <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ mt:2 }}>
         <TextField select label="Periodo (Ventana)" size="small" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)} sx={{ minWidth: 260 }}>
@@ -97,10 +90,10 @@ export default function AnaliticosPage(){
           ))}
         </TextField>
         <TextField label="DNI (opcional)" size="small" value={dniFilter} onChange={(e)=>setDniFilter(e.target.value)} sx={{ maxWidth: 200 }} />
-        <Button variant="contained" onClick={descargarPDF} disabled={!ventanaId || testMode || descargando}>
+        <Button variant="contained" onClick={descargarPDF} disabled={!ventanaId || descargando}>
           {descargando ? 'Generando...' : 'Descargar PDF'}
         </Button>
-        <Button variant="outlined" onClick={()=>setCreating(true)} disabled={!ventanaId || testMode}>Nuevo pedido</Button>
+        <Button variant="outlined" onClick={()=>setCreating(true)} disabled={!ventanaId}>Nuevo pedido</Button>
       </Stack>
 
       <Grid container spacing={1.5} sx={{ mt:2 }}>
@@ -109,7 +102,7 @@ export default function AnaliticosPage(){
             <Paper variant="outlined" sx={{ p:1.5 }}>
               <Stack gap={0.5}>
                 <Typography variant="subtitle2">{p.apellido_nombre} — {p.dni}</Typography>
-                <Typography variant="body2" color="text.secondary">{p.profesorado || '-'} • Cohorte: {p.cohorte || '-'}</Typography>
+                <Typography variant="body2" color="text.secondary">{p.profesorado || '-'} — Cohorte: {p.cohorte || '-'}</Typography>
                 <Typography variant="caption" color="text.secondary">Solicitado: {new Date(p.fecha_solicitud).toLocaleString()}</Typography>
                 {p.motivo && (
                   <Typography variant="caption" color="text.secondary">Motivo: {p.motivo === 'equivalencia' ? 'Pedido de equivalencia' : p.motivo === 'beca' ? 'Becas' : p.motivo === 'control' ? 'Control' : 'Otro'}{p.motivo === 'otro' && p.motivo_otro ? ` - ${p.motivo_otro}` : ''}</Typography>
@@ -142,7 +135,7 @@ export default function AnaliticosPage(){
         </DialogContent>
         <DialogActions>
           <Button onClick={()=>setCreating(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={crearPedido} disabled={!form.dni || testMode}>Crear</Button>
+          <Button variant="contained" onClick={crearPedido} disabled={!form.dni}>Crear</Button>
         </DialogActions>
       </Dialog>
     </Box>

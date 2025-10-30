@@ -2,14 +2,15 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { TextField, Button, Alert, Paper, Stack, Typography } from "@mui/material";
+import { isOnlyStudent } from "@/utils/roles";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from?.pathname || "/dashboard";
+  const from = (location.state as any)?.from?.pathname ?? null;
 
-  const [loginId, setLoginId] = useState("");   // DNI/usuario/email
+  const [loginId, setLoginId] = useState(""); // DNI/usuario/email
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -25,10 +26,13 @@ export default function LoginPage() {
       if (loggedUser?.must_change_password) {
         navigate("/cambiar-password", { replace: true, state: { from: { pathname: from } } });
       } else {
-        navigate(from, { replace: true });
+        const fallback = "/alumnos";
+        const studentOnly = isOnlyStudent(loggedUser);
+        const target = studentOnly ? fallback : from ?? fallback;
+        navigate(target, { replace: true });
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || "Credenciales inválidas.";
+      const msg = err?.message || err?.response?.data?.detail || "Credenciales inválidas.";
       setError(msg);
       console.warn("[Login] error:", err);
     }
@@ -37,7 +41,9 @@ export default function LoginPage() {
   return (
     <Stack alignItems="center" justifyContent="center" sx={{ minHeight: "60vh" }}>
       <Paper sx={{ p: 4, width: 400 }} elevation={3}>
-        <Typography variant="h5" mb={2}>Iniciar Sesión</Typography>
+        <Typography variant="h5" mb={2}>
+          Iniciar Sesión
+        </Typography>
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>
             <TextField
@@ -56,8 +62,12 @@ export default function LoginPage() {
               required
             />
             {error && <Alert severity="error">{error}</Alert>}
-            <Button type="submit" variant="contained">INGRESAR</Button>
-            <Button component={Link} to="/" variant="text">Volver</Button>
+            <Button type="submit" variant="contained">
+              INGRESAR
+            </Button>
+            <Button component={Link} to="/" variant="text">
+              Volver
+            </Button>
           </Stack>
         </form>
       </Paper>

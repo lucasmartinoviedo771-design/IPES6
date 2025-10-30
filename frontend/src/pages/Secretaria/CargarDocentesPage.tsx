@@ -90,11 +90,7 @@ export default function CargarDocentesPage() {
     },
   });
 
-  const updateDocenteMutation = useMutation<
-    Docente,
-    Error,
-    DocenteFormInput
-  >({
+  const updateDocenteMutation = useMutation<Docente, Error, Docente>({
     mutationFn: async (updatedDocente) => {
       const response = await api.put(
         `/docentes/${updatedDocente.id}`,

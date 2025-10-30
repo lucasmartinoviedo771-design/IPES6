@@ -29,7 +29,7 @@ async function imageUrlToDataUrl(url: string): Promise<string> {
 export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraNombre: string; onDownloaded?: () => void }) {
   const { watch } = useFormContext<PreinscripcionForm>();
   const v = watch();
-  const [docs, setDocs] = React.useState<DocsFlags>({});
+  const [docs, setDocs] = useState<DocsFlags>({});
   const [logos, setLogos] = useState<{left?: string, right?: string}>({});
   const [qrDataUrl, setQrDataUrl] = useState<string | undefined>();
 
@@ -114,7 +114,7 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
           variant="outlined"
           onClick={() => {
             const photoUrl = (v as any).foto_dataUrl || (v as any).foto_4x4_dataurl;
-            generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: photoUrl, fotoW: v.fotoW, fotoH: v.fotoH });
+            generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: photoUrl });
             onDownloaded && onDownloaded();
           }}
         >
@@ -127,3 +127,5 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
     </Box>
   );
 }
+
+
