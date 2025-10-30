@@ -1,10 +1,11 @@
 // src/components/preinscripcion/steps/DatosPersonales.tsx
-import { Grid, TextField, MenuItem } from "@mui/material";
-import { Controller, useFormContext } from "react-hook-form";
+import { Grid, MenuItem, TextField } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
+import { Controller, useFormContext } from "react-hook-form";
+
 import RHFDate from "@/components/RHFDate";
-import { PreinscripcionSchema } from "../schema";
+import { PreinscripcionForm } from "../schema";
 
 dayjs.locale("es");
 
@@ -17,15 +18,13 @@ const ESTADOS_CIVIL = [
 ];
 
 function DatosPersonales() {
-  const { control, formState, setValue, watch } = useFormContext<PreinscripcionSchema>();
-  const { errors } = formState;
-
-  // debug mínimo para confirmar que el componente entra
-
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<PreinscripcionForm>();
 
   return (
     <Grid container spacing={2}>
-      {/* Nombres */}
       <Grid item xs={12} md={6}>
         <Controller
           name="nombres"
@@ -41,8 +40,6 @@ function DatosPersonales() {
           )}
         />
       </Grid>
-
-      {/* Apellido */}
       <Grid item xs={12} md={6}>
         <Controller
           name="apellido"
@@ -59,7 +56,6 @@ function DatosPersonales() {
         />
       </Grid>
 
-      {/* DNI */}
       <Grid item xs={12} md={4}>
         <Controller
           name="dni"
@@ -70,15 +66,13 @@ function DatosPersonales() {
               label="DNI *"
               fullWidth
               inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-              onChange={(e) => field.onChange(e.target.value.replace(/\D+/g, ""))}
+              onChange={(event) => field.onChange(event.target.value.replace(/\D+/g, ""))}
               error={Boolean(errors.dni)}
               helperText={errors.dni?.message}
             />
           )}
         />
       </Grid>
-
-      {/* CUIL */}
       <Grid item xs={12} md={4}>
         <Controller
           name="cuil"
@@ -89,20 +83,17 @@ function DatosPersonales() {
               label="CUIL *"
               fullWidth
               inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-              onChange={(e) => field.onChange(e.target.value.replace(/\D+/g, ""))}
+              onChange={(event) => field.onChange(event.target.value.replace(/\D+/g, ""))}
               error={Boolean(errors.cuil)}
               helperText={errors.cuil?.message}
             />
           )}
         />
       </Grid>
-
-      {/* Fecha de nacimiento (DD/MM/YYYY) */}
       <Grid item xs={12} md={4}>
         <RHFDate name="fecha_nacimiento" label="Fecha de nacimiento *" maxDate={dayjs()} />
       </Grid>
 
-      {/* Nacionalidad */}
       <Grid item xs={12} md={4}>
         <Controller
           name="nacionalidad"
@@ -118,8 +109,6 @@ function DatosPersonales() {
           )}
         />
       </Grid>
-
-      {/* Estado civil */}
       <Grid item xs={12} md={4}>
         <Controller
           name="estado_civil"
@@ -133,49 +122,15 @@ function DatosPersonales() {
               error={Boolean(errors.estado_civil)}
               helperText={errors.estado_civil?.message}
             >
-              {ESTADOS_CIVIL.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
+              {ESTADOS_CIVIL.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
                 </MenuItem>
               ))}
             </TextField>
           )}
         />
       </Grid>
-
-      {/* Localidad, provincia y país de nacimiento */}
-      <Grid item xs={12} md={4}>
-        <Controller
-          name="localidad_nac"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Localidad de nacimiento *"
-              fullWidth
-              error={Boolean(errors.localidad_nac)}
-              helperText={errors.localidad_nac?.message}
-            />
-          )}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={4}>
-        <Controller
-          name="provincia_nac"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Provincia de nacimiento *"
-              fullWidth
-              error={Boolean(errors.provincia_nac)}
-              helperText={errors.provincia_nac?.message}
-            />
-          )}
-        />
-      </Grid>
-
       <Grid item xs={12} md={4}>
         <Controller
           name="pais_nac"
@@ -192,7 +147,36 @@ function DatosPersonales() {
         />
       </Grid>
 
-      {/* Domicilio */}
+      <Grid item xs={12} md={4}>
+        <Controller
+          name="localidad_nac"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Localidad de nacimiento *"
+              fullWidth
+              error={Boolean(errors.localidad_nac)}
+              helperText={errors.localidad_nac?.message}
+            />
+          )}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Controller
+          name="provincia_nac"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Provincia de nacimiento *"
+              fullWidth
+              error={Boolean(errors.provincia_nac)}
+              helperText={errors.provincia_nac?.message}
+            />
+          )}
+        />
+      </Grid>
       <Grid item xs={12}>
         <Controller
           name="domicilio"

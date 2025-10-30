@@ -26,7 +26,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import InsightsIcon from "@mui/icons-material/Insights";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
-import TestModeToggle from "./TestModeToggle";
 
 const drawerWidth = 240;
 
@@ -56,7 +55,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     "tutor",
     "coordinador",
     "consulta"
-  ]) || studentOnly;
+  ]);
   const canPreins = hasAnyRole(user, ["admin", "secretaria", "bedel", "preinscripciones"]);
   const canSeeCarreras = hasAnyRole(user, [
     "admin",
@@ -136,7 +135,6 @@ export default function AppShell({ children }: PropsWithChildren) {
           <Typography variant="h6" fontWeight={800} sx={{ flexGrow: 1, letterSpacing: 0.3 }}>
             IPES Paulo Freire
           </Typography>
-          <TestModeToggle />
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, fontSize: 14 }}>
             <span>Hola, {user?.name ?? user?.dni}</span>
             <Link

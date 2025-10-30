@@ -1,12 +1,15 @@
 import { Grid, TextField } from "@mui/material";
-import { Controller, useFormContext } from "react-hook-form";
-import RHFDate from "@/components/RHFDate";
 import dayjs from "dayjs";
-import { PreinscripcionSchema } from "../schema"; // <-- ajusta el import
+import { Controller, useFormContext } from "react-hook-form";
+
+import RHFDate from "@/components/RHFDate";
+import { PreinscripcionForm } from "../schema";
 
 export default function EstudiosSuperiores() {
-  const { control, formState: { errors } } = useFormContext<PreinscripcionSchema>();
-
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<PreinscripcionForm>();
 
   return (
     <Grid container spacing={2}>
@@ -17,7 +20,7 @@ export default function EstudiosSuperiores() {
           render={({ field }) => (
             <TextField
               {...field}
-              label="Título Superior"
+              label="Título superior"
               fullWidth
               error={!!errors.sup1_titulo}
               helperText={errors.sup1_titulo?.message}
@@ -25,7 +28,6 @@ export default function EstudiosSuperiores() {
           )}
         />
       </Grid>
-
       <Grid item xs={12} md={6}>
         <Controller
           name="sup1_establecimiento"
@@ -41,7 +43,6 @@ export default function EstudiosSuperiores() {
           )}
         />
       </Grid>
-
       <Grid item xs={12} md={6}>
         <RHFDate name="sup1_fecha_egreso" label="Fecha de egreso" maxDate={dayjs()} />
       </Grid>

@@ -193,11 +193,7 @@ export default function CargarMateriasPage() {
     },
   });
 
-  const updateMateriaMutation = useMutation<
-    Materia,
-    Error,
-    MateriaFormInput
-  >({
+  const updateMateriaMutation = useMutation<Materia, Error, Materia>({
     mutationFn: async (updatedMateria) => {
       const response = await api.put(
         `/materias/${updatedMateria.id}`,

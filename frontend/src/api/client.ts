@@ -1,26 +1,35 @@
 // src/api/client.ts
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
+const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
 
 export const client = axios.create({
   baseURL: BASE,
-  withCredentials: false, // Aseg̼rate de que esto es lo que quieres
+  withCredentials: true, // IMPORTANT: Set to true to send cookies
 });
 
-export const setAuthToken = (token: string | null) => {
-  if (token) {
-    client.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete client.defaults.headers.common.Authorization;
+client.interceptors.request.use((config) => {
+  const method = (config.method || "").toLowerCase();
+  if (!["get", "head", "options"].includes(method)) {
+    const csrftoken = getCookie("csrftoken");
+    if (csrftoken) {
+      config.headers = config.headers ?? {};
+      config.headers["X-CSRFToken"] = csrftoken;
+    }
   }
-};
-
-export const clearAuthToken = () => setAuthToken(null);
+  return config;
+}, (error) => Promise.reject(error));
 
 export const apiPath = (path: string) => path;
 
-// Alias para compatibilidad con imports existentes
 export const api = client;
 
 export default client;
+
+export function getCookie(name: string) {
+  const value = document.cookie
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`));
+  return value ? decodeURIComponent(value.split("=")[1]) : null;
+}

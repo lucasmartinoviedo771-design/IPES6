@@ -12,8 +12,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import dayjs from "dayjs";
 import { useAuth } from "@/context/AuthContext";
 import { alpha } from "@mui/material/styles";
-import { listarPreinscripciones } from "@/api/preinscripciones";
-import { PreinscripcionDTO } from "@/types"; // Asumiendo que el tipo está en @/types
+import { listarPreinscripciones, PreinscripcionDTO } from "@/api/preinscripciones";
 
 type QuickAction = {
   title: string;
@@ -41,6 +40,9 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState({ total: 0, confirmadas: 0, pendientes: 0, observadas: 0, rechazadas: 0, ratio: 0 });
   const [recientes, setRecientes] = useState<PreinscripcionDTO[]>([]);
 
+  type EstadoNormalizado = Lowercase<PreinscripcionDTO['estado']>;
+  const normalizeEstado = (estado: PreinscripcionDTO['estado']) => estado.toLowerCase() as EstadoNormalizado;
+
   useEffect(() => {
     const canViewStats = can(['admin', 'secretaria', 'bedel', 'preinscripciones']);
 
@@ -49,10 +51,10 @@ export default function DashboardPage() {
       listarPreinscripciones({}).then(({ results }) => {
         const data = results ?? [];
         const total = data.length;
-        const confirmadas = data.filter(p => p.estado === 'Confirmada').length;
-        const pendientes = data.filter(p => p.estado === 'Enviada').length;
-        const observadas = data.filter(p => p.estado === 'Observada').length;
-        const rechazadas = data.filter(p => p.estado === 'Rechazada').length;
+        const confirmadas = data.filter((p) => normalizeEstado(p.estado) === 'confirmada').length;
+        const pendientes = data.filter((p) => normalizeEstado(p.estado) === 'enviada').length;
+        const observadas = data.filter((p) => normalizeEstado(p.estado) === 'observada').length;
+        const rechazadas = data.filter((p) => normalizeEstado(p.estado) === 'rechazada').length;
         const ratio = total > 0 ? Math.round((confirmadas / total) * 100) : 0;
 
         setMetrics({ total, confirmadas, pendientes, observadas, rechazadas, ratio });
@@ -75,13 +77,15 @@ export default function DashboardPage() {
     return roles.some(r => u.includes(r.toLowerCase().trim()));
   };
 
-  const actions: QuickAction[] = [
+  const rawActions: QuickAction[] = [
     { title: "Nueva Preinscripción", description: "Crear una nueva preinscripción", icon: <AddIcon />, onClick: () => navigate("/preinscripcion"), variant: "contained" },
     { title: "Ver Preinscripciones", description: "Gestionar preinscripciones existentes", icon: <ScheduleIcon />, onClick: () => navigate("/preinscripciones"), variant: "outlined" },
     { title: "Gestión de Alumnos", description: "Administrar información de alumnos", icon: <PeopleIcon />, onClick: () => navigate("/alumnos"), variant: "outlined", roles: ["secretaria", "admin"] },
     { title: "Carreras", description: "Administrar carreras y cohortes", icon: <MenuBookIcon />, onClick: () => navigate("/carreras"), variant: "outlined", roles: ["admin"] },
     { title: "Reportes", description: "Ver estadísticas y reportes", icon: <BarChartIcon />, onClick: () => navigate("/reportes"), variant: "outlined", roles: ["secretaria", "admin"] },
-  ].filter(a => can(a.roles));
+  ];
+
+  const actions = rawActions.filter((a) => can(a.roles));
 
   const Stat = ({ title, value, subtitle, icon, tint = "#87973a" }:
     { title: string; value: number; subtitle?: string; icon: React.ReactNode; tint?: string }) => (
@@ -99,11 +103,24 @@ export default function DashboardPage() {
     </CardBox>
   );
 
-  const estadoChip = (estado: string) => {
-    const map: Record<string, "default" | "success" | "warning" | "error"> = {
-      "Confirmada": "success", "Observada": "warning", "Rechazada": "error", "Enviada": "default",
+  const estadoChip = (estado: PreinscripcionDTO["estado"]) => {
+    const map: Record<EstadoNormalizado, "default" | "success" | "warning" | "error"> = {
+      confirmada: "success",
+      observada: "warning",
+      rechazada: "error",
+      enviada: "warning",
+      borrador: "default",
     };
-    return <Chip size="small" variant="filled" label={estado} color={map[estado] ?? "default"} sx={{ borderRadius: 99 }} />;
+    const intent = map[normalizeEstado(estado)] ?? "default";
+    return (
+      <Chip
+        size="small"
+        variant={intent === "default" ? "outlined" : "filled"}
+        label={estado}
+        color={intent}
+        sx={{ borderRadius: 99 }}
+      />
+    );
   };
 
   return (
@@ -173,9 +190,9 @@ export default function DashboardPage() {
                 >
                   <ListItemText
                     primaryTypographyProps={{ fontWeight: 600 }}
-                    primary={`${r.alumno.apellido}, ${r.alumno.nombres} • ${r.carrera.nombre}`}
+                    primary={`${r.alumno.apellido}, ${r.alumno.nombres} - ${r.carrera.nombre}`}
                     secondaryTypographyProps={{ color: "text.secondary" }}
-                    secondary={`${r.codigo} — ${dayjs(r.created_at).format("DD/MM/YYYY")}`}
+                    secondary={`${r.codigo} — ${dayjs(r.fecha).format("DD/MM/YYYY")}`}
                   />
                 </ListItem>
               ))}

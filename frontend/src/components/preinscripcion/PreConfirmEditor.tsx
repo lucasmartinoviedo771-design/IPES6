@@ -86,7 +86,47 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         const n = typeof v === 'number' ? v : Number(v);
         (acc as any)[k] = Number.isFinite(n) ? n : dv;
       } else if (typeof dv === 'boolean') {
-        (acc as any)[k] = (typeof v === 'boolean') ? v : String(v).toLowerCase() === 'true';
+        if (typeof v === 'boolean') {
+          (acc as any)[k] = v;
+        } else {
+          const normalized = String(v).trim().toLowerCase();
+          if (!normalized) {
+            (acc as any)[k] = dv;
+          } else if (
+            [
+              'si',
+              'sí',
+              'true',
+              '1',
+              'aprobado',
+              'aprobada',
+              'entregado',
+              'entregada',
+              'ok',
+              'presentado',
+            ].includes(normalized)
+          ) {
+            (acc as any)[k] = true;
+          } else if (
+            [
+              'no',
+              'false',
+              '0',
+              'desaprobado',
+              'desaprobada',
+              'no_entregada',
+              'no entregada',
+              'noentregada',
+              'noentregado',
+              'pendiente',
+              'ausente',
+            ].includes(normalized)
+          ) {
+            (acc as any)[k] = false;
+          } else {
+            (acc as any)[k] = dv;
+          }
+        }
       } else if (typeof dv === 'string') {
         (acc as any)[k] = String(v);
       } else {
@@ -582,6 +622,47 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
               </Button>
             </Grid>
           </Grid>
+
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Formalización</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="curso_introductorio_aprobado"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!field.value}
+                      inputRef={field.ref}
+                      onChange={(_, checked) => field.onChange(checked)}
+                    />
+                  }
+                  label="Curso introductorio aprobado"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="libreta_entregada"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!field.value}
+                      inputRef={field.ref}
+                      onChange={(_, checked) => field.onChange(checked)}
+                    />
+                  }
+                  label="Libreta entregada"
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
 
         {/* Datos laborales */}
           <Divider sx={{ my: 2 }} />

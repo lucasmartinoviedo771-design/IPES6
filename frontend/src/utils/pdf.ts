@@ -41,7 +41,7 @@ export type PreinscripcionValues = {
   sup1_titulo?: string; sup1_establecimiento?: string; sup1_fecha_egreso?: string;
 };
 
-type DocsFlags = {
+export type DocsFlags = {
   dni?: boolean; analitico?: boolean; fotos?: boolean; titulo?: boolean;
   alumnoRegular?: boolean; tituloTramite?: boolean; salud?: boolean; folios?: boolean;
 };

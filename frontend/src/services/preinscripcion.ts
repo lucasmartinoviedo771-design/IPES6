@@ -1,6 +1,6 @@
 import { client } from "@/api/client";
 import { toast } from "@/utils/toast";
-import { Carrera } from "@/types/preinscripcion";
+import { Carrera, PreinscripcionOut } from "@/types/preinscripcion";
 import dayjs from "dayjs";
 
 async function tryGet(path: string): Promise<Carrera[] | null> {
@@ -54,8 +54,15 @@ function mapToApiPayload(v: any) {
   return {
     carrera_id: Number(v.carrera_id),
     foto_4x4_dataurl: v.foto_4x4_dataurl || v.foto_dataUrl || null,
-    // datos personales extra
-    nacionalidad: v.nacionalidad || null,
+    doc_dni: !!v.doc_dni,
+    doc_secundario: !!v.doc_secundario,
+    doc_constancia_cuil: !!v.doc_constancia_cuil,
+    doc_cert_trabajo: !!v.doc_cert_trabajo,
+    doc_buenasalud: !!v.doc_buenasalud,
+    doc_foto4x4: !!v.doc_foto4x4,
+    doc_titulo_en_tramite: !!v.doc_titulo_en_tramite,
+    doc_otro: !!v.doc_otro,
+    // datos personales extra\n    nacionalidad: v.nacionalidad || null,
     estado_civil: v.estado_civil || null,
     localidad_nac: v.localidad_nac || null,
     provincia_nac: v.provincia_nac || null,
@@ -94,12 +101,12 @@ function mapToApiPayload(v: any) {
   };
 }
 
-export async function crearPreinscripcion(payload: any) {
+export async function crearPreinscripcion(payload: any): Promise<PreinscripcionOut> {
   try {
     const apiPayload = mapToApiPayload(payload);
     const { data } = await client.post("/preinscripciones", apiPayload);
     toast.success("¡Preinscripción enviada!");
-    return data;
+    return data as PreinscripcionOut;
   } catch (err: any) {
     if (err?.response?.status === 422) {
       const msg = humanizeNinjaErrors(err);
@@ -119,4 +126,7 @@ export async function crearPreinscripcion(payload: any) {
     throw err;
   }
 }
+
+
+
 

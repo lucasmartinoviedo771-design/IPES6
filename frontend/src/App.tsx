@@ -87,7 +87,7 @@ export default function App() {
 
             {/* Bloque protegido con AppShell (incluye alumnos y roles administrativos) */}
             <Route element={<ProtectedRoute roles={['preinscripciones','secretaria','admin','alumno','bedel','coordinador','tutor','jefes','jefa_aaee']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
-              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/dashboard" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones','jefa_aaee','jefes','tutor','coordinador','consulta']}><DashboardPage /></ProtectedRoute>} />
               <Route path="/preinscripciones" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones']}><PreinscripcionesPage /></ProtectedRoute>} />
               {/* Alumnos: índice con tarjetas */}
               <Route path="/alumnos" element={<AlumnosIndex />} />

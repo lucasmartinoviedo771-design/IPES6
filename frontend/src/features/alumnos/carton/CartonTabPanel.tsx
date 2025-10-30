@@ -64,6 +64,7 @@ const buildStudentInfo = (trayectoria: TrayectoriaDTO, plan?: CartonPlanDTO): St
     materiasAprobadas: aprobadasCount ?? null,
     materiasRegularizadas: regularizadasCount ?? null,
     materiasEnCurso: enCursoCount ?? null,
+    fotoUrl: trayectoria.estudiante.fotoUrl ?? undefined,
   };
 };
 

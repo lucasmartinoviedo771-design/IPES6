@@ -36,6 +36,7 @@ import {
   TrayectoriaMesaDTO,
   RegularidadVigenciaDTO,
   CartonPlanDTO,
+  RegularidadResumenDTO,
 } from '@/api/alumnos';
 import { CartonTabPanel } from "@/features/alumnos/carton/CartonTabPanel";
 import { useAuth } from '@/context/AuthContext';
@@ -115,8 +116,8 @@ const TrayectoriaPage: React.FC = () => {
   const eventos = trayectoria?.historial ?? [];
   const regularidades = trayectoria?.regularidades ?? [];
 
-  const tiposEventos = useMemo(() => {
-    const unique = new Set<string>();
+  const tiposEventos = useMemo<TrayectoriaEventoDTO['tipo'][]>(() => {
+    const unique = new Set<TrayectoriaEventoDTO['tipo']>();
     eventos.forEach((ev) => unique.add(ev.tipo));
     return Array.from(unique);
   }, [eventos]);

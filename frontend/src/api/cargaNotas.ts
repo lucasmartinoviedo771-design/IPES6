@@ -86,6 +86,25 @@ export type DatosCargaNotasDTO = {
   comisiones: ComisionOptionDTO[];
 };
 
+export type MesaResumenDTO = {
+  id: number;
+  materia_id: number;
+  materia_nombre: string;
+  profesorado_id: number | null;
+  profesorado_nombre: string | null;
+  plan_id: number | null;
+  plan_resolucion: string | null;
+  anio_cursada: number | null;
+  regimen: string | null;
+  tipo: string;
+  modalidad: string;
+  fecha: string;
+  hora_desde?: string | null;
+  hora_hasta?: string | null;
+  aula?: string | null;
+  cupo: number;
+};
+
 export async function listarProfesorados() {
   const { data } = await client.get<ProfesoradoDTO[]>("/profesorados/", {
     params: { vigentes: true },
@@ -124,5 +143,21 @@ export async function obtenerPlanillaRegularidad(comisionId: number) {
 
 export async function guardarPlanillaRegularidad(payload: GuardarRegularidadPayload) {
   const { data } = await client.post("/alumnos/carga-notas/regularidad", payload);
+  return data;
+}
+
+export async function listarMesasFinales(params?: {
+  ventana_id?: number;
+  tipo?: "FIN" | "EXT";
+  modalidad?: "REG" | "LIB";
+  profesorado_id?: number;
+  plan_id?: number;
+  anio?: number;
+  cuatrimestre?: string;
+  materia_id?: number;
+}) {
+  const { data } = await client.get<MesaResumenDTO[]>("/mesas", {
+    params,
+  });
   return data;
 }

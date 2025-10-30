@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Button, Step, StepLabel, Stepper, Typography, Paper, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 // Lógica de negocio y tipos
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues } from "./defaultValues";
-import { PreinscripcionIn, PreinscripcionOut } from "@/types/preinscripcion";
+import { PreinscripcionOut } from "@/types/preinscripcion";
 import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
 import { apiUploadPreDoc } from "@/api/preinscripciones";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
@@ -35,21 +35,23 @@ const steps = [
 ];
 
 // Mapea los datos del formulario a la estructura que espera la API
-const buildPayload = (v: PreinscripcionForm, captchaToken?: string | null, honeypotValue?: string): PreinscripcionIn => ({
-  ...v, // Incluir todos los campos del formulario
-  carrera_id: Number(v.carrera_id),
-  captcha_token: captchaToken ?? undefined,
+type SubmissionPayload = PreinscripcionForm & {
+  carrera_id: number;
+  captcha_token?: string | null;
+  honeypot?: string | null;
+  foto_4x4_dataurl?: string | null;
+};
+
+const buildPayload = (
+  values: PreinscripcionForm,
+  captchaToken?: string | null,
+  honeypotValue?: string,
+): SubmissionPayload => ({
+  ...values,
+  carrera_id: Number(values.carrera_id),
+  captcha_token: captchaToken ?? null,
   honeypot: honeypotValue || undefined,
-  alumno: {
-    dni: v.dni,
-    nombres: v.nombres,
-    apellido: v.apellido,
-    cuil: v.cuil || null,
-    fecha_nacimiento: v.fecha_nacimiento ? v.fecha_nacimiento.split('/').reverse().join('-') : null, // DD/MM/YYYY -> YYYY-MM-DD
-    email: v.email || null,
-    telefono: v.tel_movil || v.tel_fijo || null,
-    domicilio: v.domicilio || null,
-  },
+  foto_4x4_dataurl: values.foto_dataUrl || null,
 });
 
 type SubmitState = 
@@ -60,7 +62,6 @@ type SubmitState =
 export default function PreinscripcionWizard() {
   // const navigate = useNavigate();
   const { executeRecaptcha } = useGoogleReCaptcha();
-  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
   const [honeypotValue, setHoneypotValue] = useState('');
   const [activeStep, setActiveStep] = useState(0);
   const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
@@ -68,7 +69,7 @@ export default function PreinscripcionWizard() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const form = useForm<PreinscripcionForm>({
-    resolver: zodResolver(preinscripcionSchema),
+    resolver: zodResolver(preinscripcionSchema) as any,
     defaultValues: (() => {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -108,14 +109,6 @@ export default function PreinscripcionWizard() {
     );
   }, [ventanasPre]);
 
-  const proximaVentana = useMemo(() => {
-    if (!ventanasPre) return null;
-    const hoy = dayjs();
-    return ventanasPre
-      .filter((v) => dayjs(v.desde).isAfter(hoy, "day"))
-      .sort((a, b) => dayjs(a.desde).diff(dayjs(b.desde)))[0];
-  }, [ventanasPre]);
-
   const [carreras, setCarreras] = useState<{id:number; nombre:string}[]>([]);
   const [carrerasLoading, setCarrerasLoading] = useState(false);
 
@@ -149,54 +142,53 @@ export default function PreinscripcionWizard() {
   const handleNext = () => setActiveStep((s) => s + 1);
   const handleBack = () => setActiveStep((s) => s - 1);
 
-  const handleSubmit = form.handleSubmit(
-    async (values) => {
-      setSubmit({ status: "loading" });
-      try {
-        let captchaToken: string | null = null;
-        if (recaptchaSiteKey && executeRecaptcha) {
-          try {
-            captchaToken = await executeRecaptcha('preinscripcion_submit');
-          } catch (captchaError) {
-            console.warn('No se pudo ejecutar reCAPTCHA', captchaError);
-          }
-        } else if (!recaptchaSiteKey) {
-          console.warn('reCAPTCHA deshabilitado: falta VITE_RECAPTCHA_SITE_KEY. Se envía sin token.');
-        } else {
-          console.warn('reCAPTCHA todavía no está listo, se envía sin token.');
+  const onSubmit: SubmitHandler<PreinscripcionForm> = async (values) => {
+    setSubmit({ status: "loading" });
+    try {
+      let captchaToken: string | null = null;
+      if (executeRecaptcha) {
+        try {
+          captchaToken = await executeRecaptcha("preinscripcion_submit");
+        } catch (captchaError) {
+          console.warn("No se pudo ejecutar reCAPTCHA", captchaError);
         }
-        const payload = buildPayload(values, captchaToken, honeypotValue);
-        const response = await crearPreinscripcion(payload);
-
-        if (photoFile && response?.data?.id) {
-          try {
-            await apiUploadPreDoc(response.data.id, "foto4x4", photoFile);
-          } catch (uploadError) {
-            console.error("La preinscripción se creó, pero falló la subida de la foto:", uploadError);
-            // Opcional: notificar al usuario que la foto no se subió.
-          }
-        }
-
-        setSubmit({ status: "ok", data: response });
-        // Limpiar y volver al paso 1
-        setTimeout(() => {
-          try { localStorage.removeItem(STORAGE_KEY); } catch {}
-          form.reset(defaultValues);
-          setActiveStep(0);
-          setPdfDownloaded(false);
-          setHoneypotValue('');
-          setSubmit({ status: "idle" } as any);
-        }, 300);
-      } catch (err: any) {
-        setSubmit({ status: "error", message: err.message || "Error desconocido" });
+      } else {
+        console.warn("reCAPTCHA no está disponible, se envía sin token.");
       }
-    },
-    (errors) => {
-      console.error("Errores de validación del formulario:", errors);
-    }
-  );
+      const payload = buildPayload(values, captchaToken, honeypotValue);
+      const response = await crearPreinscripcion(payload);
 
-    if (loadingVentana) {
+      if (photoFile && response?.id) {
+        try {
+          await apiUploadPreDoc(response.id, "foto4x4", photoFile);
+        } catch (uploadError) {
+          console.error("La preinscripción se creó, pero falló la subida de la foto:", uploadError);
+        }
+      }
+
+      setSubmit({ status: "ok", data: response });
+      setTimeout(() => {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {}
+        form.reset(defaultValues);
+        setActiveStep(0);
+        setPdfDownloaded(false);
+        setHoneypotValue("");
+        setSubmit({ status: "idle" });
+      }, 300);
+    } catch (err: any) {
+      setSubmit({ status: "error", message: err.message || "Error desconocido" });
+    }
+  };
+
+  const onSubmitError: SubmitErrorHandler<PreinscripcionForm> = (errors) => {
+    console.error("Errores de validación del formulario:", errors);
+  };
+
+  const handleSubmit = form.handleSubmit(onSubmit, onSubmitError);
+
+  if (loadingVentana) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
@@ -220,7 +212,7 @@ export default function PreinscripcionWizard() {
     );
   }
 
-const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nombre ?? "";
+  const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nombre ?? "";
 
   return (
     <FormProvider {...form}>
@@ -258,7 +250,7 @@ const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nom
             <Confirmacion carreraNombre={carreraNombre} onDownloaded={() => setPdfDownloaded(true)} /> : 
             <Alert severity="success">
               <AlertTitle>¡Preinscripción enviada con éxito!</AlertTitle>
-              Tu código de seguimiento es: <strong>{submit.data.data.codigo}</strong>
+              Tu código de seguimiento es: <strong>{submit.data.codigo}</strong>
             </Alert>
           )}
         </Box>
@@ -298,3 +290,13 @@ const carreraNombre = carreras.find(c => c.id === form.watch("carrera_id"))?.nom
     </FormProvider>
   );
 }
+
+
+
+
+
+
+
+
+
+

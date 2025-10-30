@@ -27,9 +27,9 @@ interface CartonViewerProps {
 }
 
 const formatDisplay = (value?: string | number | null): string => {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) return '-';
   const text = String(value).trim();
-  return text.length ? text : '—';
+  return text.length ? text : '-';
 };
 
 const formatBooleanLabel = (value?: boolean | null, trueLabel = 'Sí', falseLabel = 'No'): string => {
@@ -294,7 +294,7 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                       }
                     }
 
-                    const isFirstInGroup =
+                    const isFirstInGroup = 
                       index === 0 || record.espacioCurricular !== data.registros[index - 1].espacioCurricular;
                     let rowSpan = 1;
                     if (isFirstInGroup) {
@@ -317,19 +317,19 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                           </>
                         )}
                         <TableCell align="center">
-                          {record.tipo === 'regularidad' ? formatDateToDDMMYY(record.fecha) : '—'}
+                          {record.tipo === 'regularidad' ? formatDateToDDMMYY(record.fecha) : '-'}
                         </TableCell>
-                        <TableCell align="center">{record.tipo === 'regularidad' ? record.condicion ?? '—' : '—'}</TableCell>
+                        <TableCell align="center">{record.tipo === 'regularidad' ? record.condicion ?? '-' : '-'}</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 'medium' }}>
-                          {record.tipo === 'regularidad' ? record.nota ?? '—' : '—'}
+                          {record.tipo === 'regularidad' ? record.nota ?? '-' : '-'}
                         </TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? formatDateToDDMMYY(record.fecha) : '—'}</TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? record.condicion ?? '—' : '—'}</TableCell>
+                        <TableCell align="center">{record.tipo === 'final' ? formatDateToDDMMYY(record.fecha) : '-'}</TableCell>
+                        <TableCell align="center">{record.tipo === 'final' ? record.condicion ?? '-' : '-'}</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 'medium' }}>
-                          {record.tipo === 'final' ? record.nota ?? '—' : '—'}
+                          {record.tipo === 'final' ? record.nota ?? '-' : '-'}
                         </TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? record.folio ?? '—' : '—'}</TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? record.libro ?? '—' : '—'}</TableCell>
+                        <TableCell align="center">{record.tipo === 'final' ? record.folio ?? '-' : '-'}</TableCell>
+                        <TableCell align="center">{record.tipo === 'final' ? record.libro ?? '-' : '-'}</TableCell>
                       </TableRow>
                     );
                   })}

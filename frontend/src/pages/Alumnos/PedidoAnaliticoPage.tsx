@@ -3,10 +3,8 @@ import { Box, Typography, Alert, Stack, TextField, MenuItem, Button } from '@mui
 import { solicitarPedidoAnalitico } from '@/api/alumnos';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
-import { useTestMode } from '@/context/TestModeContext';
 
 const PedidoAnaliticoPage: React.FC = () => {
-  const { enabled: testMode } = useTestMode();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = (useAuth?.() ?? { user:null }) as any;
@@ -28,7 +26,7 @@ const PedidoAnaliticoPage: React.FC = () => {
         setVentanaActiva(null);
       }
     })();
-  },[testMode]);
+  },[]);
 
   const handleSubmit = async () => {
     try {
@@ -50,7 +48,6 @@ const PedidoAnaliticoPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>Solicitud de Pedido de Analítico</Typography>
       <Typography variant="body1" paragraph>Completa el motivo del pedido. Si hay periodo activo podrás enviar la solicitud.</Typography>
-      {testMode && <Alert severity="info" sx={{ mb:2 }}>Modo prueba: las habilitaciones se simulan sin tocar la base de datos.</Alert>}
       {!ventanaActiva && (<Alert severity="warning" sx={{ mb:2 }}>No hay periodo activo para pedido de analítico.</Alert>)}
 
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}

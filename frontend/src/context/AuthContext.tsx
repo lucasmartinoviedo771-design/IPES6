@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { client, apiPath, setAuthToken, clearAuthToken } from "@/api/client";
+import { client, apiPath } from "@/api/client"; // Removed setAuthToken, clearAuthToken
 
 export type User = {
   dni: string;
@@ -13,7 +13,7 @@ export type User = {
 type AuthContextType = {
   user: User;
   loading: boolean;
-  login: (loginId: string, password: string, captcha: string) => Promise<User>;
+  login: (loginId: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<User | null>;
 };
@@ -30,29 +30,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setUser(data);
       return data;
     } catch (err: any) {
-      clearAuthToken();
-      localStorage.removeItem("token");
+      // If profile fetch fails, it means the cookie is invalid or missing
       setUser(null);
+      // No need to clear local storage or set auth header manually
       throw err;
     }
   };
 
-  // Bootstrap: si hay token en localStorage, configuro el header y traigo /auth/profile
+  // Bootstrap: Check for existing session via cookie
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setUser(null);
-          setLoading(false);
-          return;
-        }
-        setAuthToken(token); // pone Authorization: Bearer <token> en el cliente
-        await refreshProfile();
+        await refreshProfile(); // Attempt to load profile, relies on browser sending cookie
       } catch (err: any) {
-        // Token inválido/expirado o endpoint aún no disponible -> limpio
-        clearAuthToken();
-        localStorage.removeItem("token");
+        // No valid session cookie found or profile request failed
         setUser(null);
       } finally {
         setLoading(false);
@@ -63,7 +54,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const login = async (loginId: string, password: string) => {
     const id = String(loginId).trim();
     const payload = {
-      // Mandamos todas las variantes para ser compatibles con el backend
       login: id,
       username: id,
       dni: id,
@@ -73,27 +63,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
     try {
       const { data } = await client.post(apiPath("auth/login"), payload);
-      // Esperamos { access, user }
-      const access: string | undefined = data?.access;
       const u: User = data?.user ?? null;
 
-      if (!access) {
-        throw new Error("Respuesta inválida del servidor: falta el token.");
-      }
-
-      // Persisto token y configuro header
-      localStorage.setItem("token", access);
-      setAuthToken(access);
-
-      // Si no vino el user, lo traigo de /auth/profile
       if (!u) {
         return await refreshProfile();
       }
 
       setUser(u);
+      try {
+        await refreshProfile();
+      } catch (refreshError) {
+        console.warn("[Auth] refresh after login failed", refreshError);
+      }
       return u;
     } catch (err: any) {
-      // Mensaje de error amigable
       const status = err?.response?.status;
       const msg =
         err?.response?.data?.detail ||
@@ -107,11 +90,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const logout = async () => {
     try {
-      // Si tenés endpoint de logout en el backend, buenísimo (opcional):
-      await client.post(apiPath("auth/logout")).catch(() => {});
+      await client.post(apiPath("auth/logout")); // Call backend logout endpoint to clear cookie
+    } catch (err: any) {
+      console.error("Error during logout:", err); // Log error but still clear local state
     } finally {
-      clearAuthToken();
-      localStorage.removeItem("token");
       setUser(null);
     }
   };
@@ -122,6 +104,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);

@@ -910,6 +910,9 @@ def trayectoria_alumno(request, dni: str | None = None):
         extra for extra in (getattr(pre, "datos_extra", None) or {} for pre in preinscripciones)
         if extra
     ]
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"extra_sources: {extra_sources}")
 
     def _extra_value(*keys):
         for extra in extra_sources:
@@ -939,6 +942,8 @@ def trayectoria_alumno(request, dni: str | None = None):
     curso_introductorio = _extra_value("curso_introductorio", "cursoIntroductorio")
     promedio_general = _extra_value("promedio_general", "promedioGeneral")
     libreta_extra = _extra_value("libreta_entregada", "libretaEntregada", "libreta")
+    foto_url = _extra_value("foto_dataUrl", "foto_4x4_dataurl")
+    logger.info(f"foto_url: {foto_url}")
     libreta_entregada = _to_bool(libreta_extra)
     if libreta_entregada is None:
         libreta_entregada = est.documentacion_presentada.exists()
@@ -966,6 +971,7 @@ def trayectoria_alumno(request, dni: str | None = None):
         materias_aprobadas=len(aprobadas_set),
         materias_regularizadas=len(regularizadas_sin_final),
         materias_en_curso=len(inscriptas_actuales_set),
+        fotoUrl=foto_url,
     )
 
     eventos_raw.sort(key=lambda item: item["fecha"], reverse=True)
