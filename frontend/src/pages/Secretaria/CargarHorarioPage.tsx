@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import api from '@/api/axios';
+import { client as api } from '@/api/client';
 import HorarioFilters from '@/components/horarios/HorarioFilters';
 import TimetableGrid from '@/components/horarios/TimetableGrid';
 

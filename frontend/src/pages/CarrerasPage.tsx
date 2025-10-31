@@ -43,10 +43,12 @@ const STAFF_ROLES = [
   "consulta",
 ] as const;
 
+const SELECTION_STORAGE_KEY = "carreras.selection";
+
 const regimenLabel: Record<string, string> = {
   ANU: "Anual",
-  PCU: "1º Cuatrimestre",
-  SCU: "2º Cuatrimestre",
+  PCU: "1.º Cuatrimestre",
+  SCU: "2.º Cuatrimestre",
 };
 
 const formatoLabel: Record<string, string> = {
@@ -58,7 +60,19 @@ const formatoLabel: Record<string, string> = {
   SEM: "Seminario",
 };
 
-const MateriasTable: React.FC<{ materias: MateriaDTO[]; loading: boolean }> = ({ materias, loading }) => {
+const tipoFormacionLabel: Record<string, string> = {
+  FGN: "Formación general",
+  FES: "Formación específica",
+  PDC: "Práctica docente",
+};
+
+type MateriasTableProps = {
+  materias: MateriaDTO[];
+  loading: boolean;
+  onVerInscriptos: (materia: MateriaDTO) => void;
+};
+
+const MateriasTable: React.FC<MateriasTableProps> = ({ materias, loading, onVerInscriptos }) => {
   if (loading) {
     return (
       <Box>
@@ -86,15 +100,30 @@ const MateriasTable: React.FC<{ materias: MateriaDTO[]; loading: boolean }> = ({
             <TableCell>Materia</TableCell>
             <TableCell>Cuatrimestre</TableCell>
             <TableCell>Formato</TableCell>
+            <TableCell>Tipo de formación</TableCell>
+            <TableCell align="right">Inscriptos</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {materias.map((materia) => (
             <TableRow key={materia.id} hover>
-              <TableCell>{materia.anio_cursada ?? "—"}</TableCell>
+              <TableCell>{materia.anio_cursada ?? "-"}</TableCell>
               <TableCell>{materia.nombre}</TableCell>
               <TableCell>{regimenLabel[materia.regimen] ?? materia.regimen}</TableCell>
               <TableCell>{formatoLabel[materia.formato] ?? materia.formato}</TableCell>
+              <TableCell>{tipoFormacionLabel[materia.tipo_formacion] ?? materia.tipo_formacion}</TableCell>
+              <TableCell align="right">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onVerInscriptos(materia);
+                  }}
+                >
+                  Ver inscriptos
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -109,6 +138,8 @@ export default function CarrerasPage() {
 
   const soloAlumno = isOnlyStudent(user);
   const puedeGestionarCarreras = hasAnyRole(user, STAFF_ROLES as unknown as string[]);
+
+
 
   const [profesoradoId, setProfesoradoId] = useState<number | "">("");
   const [planId, setPlanId] = useState<number | "">("");
@@ -132,22 +163,57 @@ export default function CarrerasPage() {
   });
 
   useEffect(() => {
-    if (!puedeGestionarCarreras) return;
-    if (carrerasQuery.data && carrerasQuery.data.length > 0 && profesoradoId === "") {
-      setProfesoradoId(carrerasQuery.data[0].id);
-    }
-  }, [carrerasQuery.data, puedeGestionarCarreras, profesoradoId]);
+    if (typeof window === "undefined") return;
+    const payload = {
+      profesoradoId: typeof profesoradoId === "number" ? profesoradoId : null,
+      planId: typeof planId === "number" ? planId : null,
+    };
+    window.sessionStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(payload));
+  }, [profesoradoId, planId]);
 
   useEffect(() => {
-    if (!puedeGestionarCarreras) return;
-    if (planesQuery.data && planesQuery.data.length > 0) {
-      if (planId === "" || !planesQuery.data.some((plan) => plan.id === planId)) {
-        setPlanId(planesQuery.data[0].id);
+    if (carrerasQuery.data) {
+      const stored = (() => {
+        try {
+          const raw = window.sessionStorage.getItem(SELECTION_STORAGE_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed?.profesoradoId ?? null;
+        } catch {
+          return null;
+        }
+      })();
+
+      if (stored && carrerasQuery.data.some((c) => c.id === stored)) {
+        setProfesoradoId(stored);
+      } else if (carrerasQuery.data.length > 0) {
+        setProfesoradoId(carrerasQuery.data[0].id);
       }
-    } else {
-      setPlanId("");
     }
-  }, [planesQuery.data, puedeGestionarCarreras]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [carrerasQuery.data]);
+
+  useEffect(() => {
+    if (planesQuery.data) {
+      const stored = (() => {
+        try {
+          const raw = window.sessionStorage.getItem(SELECTION_STORAGE_KEY);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return parsed?.planId ?? null;
+        } catch {
+          return null;
+        }
+      })();
+
+      if (stored && planesQuery.data.some((p) => p.id === stored)) {
+        setPlanId(stored);
+      } else if (planesQuery.data.length > 0) {
+        setPlanId(planesQuery.data[0].id);
+      } else {
+        setPlanId("");
+      }
+    }
+  }, [planesQuery.data]);
 
   const carreraSeleccionada: Carrera | undefined = useMemo(() => {
     if (!carrerasQuery.data) return undefined;
@@ -159,7 +225,7 @@ export default function CarrerasPage() {
       <Box sx={{ p: 4, maxWidth: 640, margin: "0 auto" }}>
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="h5" fontWeight={700} gutterBottom>
-            Gestiona tus materias
+            Gestioná tus materias
           </Typography>
           <Typography paragraph color="text.secondary">
             La información detallada de carreras está disponible para personal administrativo. Podés inscribirte o revisar tus materias desde el Portal de Alumnos.
@@ -189,6 +255,23 @@ export default function CarrerasPage() {
 
   const planes = planesQuery.data ?? [];
   const materias = materiasQuery.data ?? [];
+  const planSeleccionado: PlanDTO | undefined = useMemo(() => {
+    if (typeof planId !== "number") return undefined;
+    return planes.find((plan) => plan.id === planId);
+  }, [planes, planId]);
+
+  const handleVerInscriptos = (materia: MateriaDTO) => {
+    if (typeof planId !== "number" || typeof profesoradoId !== "number") {
+      return;
+    }
+    navigate(`/carreras/${profesoradoId}/planes/${planId}/materias/${materia.id}/inscriptos`, {
+      state: {
+        materiaNombre: materia.nombre,
+        planResolucion: planSeleccionado?.resolucion ?? null,
+        profesoradoNombre: carreraSeleccionada?.nombre ?? null,
+      },
+    });
+  };
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f7f4ea", minHeight: "100vh" }}>
@@ -198,7 +281,7 @@ export default function CarrerasPage() {
             Gestión de carreras
           </Typography>
           <Typography color="text.secondary">
-            Visualiza profesorados, planes vigentes y sus materias asociadas.
+            Visualizá profesorados, planes vigentes y sus materias asociadas.
           </Typography>
         </Box>
 
@@ -290,16 +373,20 @@ export default function CarrerasPage() {
             Materias del plan
           </Typography>
           {typeof planId !== "number" && (
-            <Alert severity="info">Selecciona un plan para ver sus materias.</Alert>
+            <Alert severity="info">Seleccioná un plan para ver sus materias.</Alert>
           )}
           {typeof planId === "number" && (
-            <MateriasTable materias={materias} loading={materiasQuery.isLoading} />
+            <MateriasTable
+              materias={materias}
+              loading={materiasQuery.isLoading}
+              onVerInscriptos={handleVerInscriptos}
+            />
           )}
         </Paper>
 
         {carrerasQuery.isError && (
           <Alert severity="error">
-            No pudimos cargar el listado de profesorados. Intenta nuevamente más tarde.
+            No pudimos cargar el listado de profesorados. Intentá nuevamente más tarde.
           </Alert>
         )}
         {planesQuery.isError && (
@@ -313,10 +400,7 @@ export default function CarrerasPage() {
           </Alert>
         )}
 
-        <Divider />
-        <Typography variant="caption" color="text.secondary">
-          Información obtenida del módulo académico actualizado.
-        </Typography>
+
       </Stack>
     </Box>
   );

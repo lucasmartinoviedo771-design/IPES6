@@ -11,6 +11,7 @@ import {
   ListItemText,
   Divider,
   Chip,
+  Stack,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -24,23 +25,39 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 
+type GridSizeConfig = {
+  xs?: number;
+  sm?: number;
+  md?: number;
+  lg?: number;
+  xl?: number;
+};
+
 type QuickActionProps = {
   title: string;
   description: string;
   icon: React.ReactNode;
   path: string;
+  grid?: GridSizeConfig;
 };
 
-const QuickActionCard: React.FC<QuickActionProps> = ({ title, description, icon, path }) => {
+const QuickActionCard: React.FC<QuickActionProps> = ({ title, description, icon, path, grid }) => {
   const navigate = useNavigate();
 
   return (
-    <Grid item xs={12} sm={6} md={4}>
+    <Grid
+      item
+      xs={grid?.xs ?? 12}
+      sm={grid?.sm ?? 6}
+      md={grid?.md ?? 4}
+      lg={grid?.lg}
+      xl={grid?.xl}
+    >
       <ButtonBase
         onClick={() => navigate(path)}
         sx={{
           width: "100%",
-          textAlign: "left",
+          textAlign: "center",
           p: 2,
           borderRadius: 2,
           border: "2px solid",
@@ -62,27 +79,35 @@ const QuickActionCard: React.FC<QuickActionProps> = ({ title, description, icon,
           },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Box className="qa-icon" sx={{ fontSize: 40, color: "text.secondary", transition: "color .15s ease" }}>
+        <Stack spacing={1.5} alignItems="center" sx={{ width: "100%", textAlign: "center" }}>
+          <Box
+            className="qa-icon"
+            sx={{
+              fontSize: 40,
+              color: "text.secondary",
+              transition: "color .15s ease",
+            }}
+          >
             {icon}
           </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6">{title}</Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                minHeight: "3em",
-              }}
-            >
-              {description}
-            </Typography>
-          </Box>
-        </Box>
+          <Typography variant="h6" textAlign="center">
+            {title}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              minHeight: "3em",
+              textAlign: "center",
+            }}
+          >
+            {description}
+          </Typography>
+        </Stack>
       </ButtonBase>
     </Grid>
   );
@@ -275,14 +300,14 @@ const AlumnosIndex: React.FC = () => {
         Portal de Alumnos
       </Typography>
       <Typography variant="body1" paragraph>
-        Aquí puedes gestionar tus solicitudes y trámites académicos.
+        Acá puedes gestionar tus solicitudes y trámites académicos.
       </Typography>
 
       <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2 }}>
         Trayectoria
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Explora tu historial completo, mesas y recomendaciones en un panel dedicado.
+        Explorá tu historial completo, mesas y recomendaciones en un panel dedicado.
       </Typography>
       <Grid container spacing={2} sx={{ mt: 1 }} justifyContent="flex-start" alignItems="stretch">
         <QuickActionCard
@@ -290,7 +315,72 @@ const AlumnosIndex: React.FC = () => {
           description="Historial completo, mesas/notas y sugerencias de inscripción."
           icon={<TimelineIcon />}
           path="/alumnos/trayectoria"
+          grid={{ xs: 12, md: 5 }}
         />
+        <Grid item xs={12} md={7}>
+          <Paper
+            elevation={0}
+            sx={{
+              height: "100%",
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Box sx={{ p: 2, pb: 1 }}>
+              <Typography variant="h6" fontWeight={700}>
+                Próximos eventos
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Fechas relevantes vinculadas a tus gestiones
+              </Typography>
+            </Box>
+            <Divider />
+            <List sx={{ flexGrow: 1 }}>
+              {cargando ? (
+                <ListItem>
+                  <ListItemText primary="Cargando eventos..." />
+                </ListItem>
+              ) : (
+                eventos.map((evento, index) => (
+                  <React.Fragment key={evento.key}>
+                    <ListItem
+                      onClick={() => navigate(evento.path)}
+                      sx={{ alignItems: "flex-start", cursor: "pointer" }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40, color: "text.secondary" }}>
+                        {evento.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={600}>
+                              {evento.titulo}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={estadoLabel[evento.estado]}
+                              color={estadoColor[evento.estado]}
+                              sx={{ borderRadius: 1 }}
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="body2" color="text.secondary">
+                            {evento.descripcion}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                    {index < eventos.length - 1 && <Divider component="li" />}
+                  </React.Fragment>
+                ))
+              )}
+            </List>
+          </Paper>
+        </Grid>
       </Grid>
 
       <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 3 }}>
@@ -308,13 +398,13 @@ const AlumnosIndex: React.FC = () => {
         />
         <QuickActionCard
           title="Cambio de Comisión"
-          description="Solicita un cambio de comisión para alguna materia."
+          description="Solicitá un cambio de comisión para alguna materia."
           icon={<SwapHorizIcon />}
           path="/alumnos/cambio-comision"
         />
         <QuickActionCard
           title="Pedido de Analítico"
-          description="Solicita tu certificado analítico."
+          description="Solicitá tu certificado analítico."
           icon={<DescriptionIcon />}
           path="/alumnos/pedido-analitico"
         />
@@ -326,58 +416,6 @@ const AlumnosIndex: React.FC = () => {
         />
       </Grid>
 
-      <Paper elevation={0} sx={{ mt: 4, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
-        <Box sx={{ p: 2, pb: 1 }}>
-          <Typography variant="h6" fontWeight={700}>
-            Próximos eventos
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Fechas relevantes vinculadas a tus gestiones
-          </Typography>
-        </Box>
-        <Divider />
-        <List>
-          {cargando ? (
-            <ListItem>
-              <ListItemText primary="Cargando eventos..." />
-            </ListItem>
-          ) : (
-            eventos.map((evento, index) => (
-              <React.Fragment key={evento.key}>
-                <ListItem
-                  onClick={() => navigate(evento.path)}
-                  sx={{ alignItems: "flex-start", cursor: "pointer" }}
-                >
-                  <ListItemIcon sx={{ minWidth: 40, color: "text.secondary" }}>
-                    {evento.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                          {evento.titulo}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={estadoLabel[evento.estado]}
-                          color={estadoColor[evento.estado]}
-                          sx={{ borderRadius: 1 }}
-                        />
-                      </Box>
-                    }
-                    secondary={
-                      <Typography variant="body2" color="text.secondary">
-                        {evento.descripcion}
-                      </Typography>
-                    }
-                  />
-                </ListItem>
-                {index < eventos.length - 1 && <Divider component="li" />}
-              </React.Fragment>
-            ))
-          )}
-        </List>
-      </Paper>
     </Box>
   );
 };

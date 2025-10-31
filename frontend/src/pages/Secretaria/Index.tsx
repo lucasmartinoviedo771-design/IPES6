@@ -28,7 +28,7 @@ const QuickActionCard: React.FC<QuickActionProps> = ({ title, description, icon,
         onClick={() => navigate(path)}
         sx={{
           width: "100%",
-          textAlign: "left",
+          textAlign: "center",
           p: 2,
           borderRadius: 2,
           border: "2px solid",
@@ -51,25 +51,28 @@ const QuickActionCard: React.FC<QuickActionProps> = ({ title, description, icon,
           },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Box className="qa-icon" sx={{ fontSize: 40, color: "text.secondary", transition: "color .15s ease" }}>{icon}</Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h6">{title}</Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                minHeight: "3em",
-              }}
-            >
-              {description}
-            </Typography>
+        <Stack spacing={1.5} alignItems="center" sx={{ width: "100%", textAlign: "center" }}>
+          <Box className="qa-icon" sx={{ fontSize: 40, color: "text.secondary", transition: "color .15s ease" }}>
+            {icon}
           </Box>
-        </Box>
+          <Typography variant="h6" textAlign="center">
+            {title}
+          </Typography>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              minHeight: "3em",
+              textAlign: "center",
+            }}
+          >
+            {description}
+          </Typography>
+        </Stack>
       </ButtonBase>
     </Grid>
   );

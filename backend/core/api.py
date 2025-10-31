@@ -1,8 +1,18 @@
-from ninja import Router, Schema
+from ninja import Router, Schema, Form, File, Query
 
-from typing import List, Optional, Dict
+from datetime import datetime
+from typing import List, Optional, Dict, Set
+from ninja.files import UploadedFile
 
+from django.contrib.auth.models import Group, User
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+from django.conf import settings
+from django.utils import timezone
+from django.db.models import Case, When, Value, CharField, F, Q, Count, Prefetch
+from django.db import transaction
+
+import string
 
 from core.models import (
 
@@ -40,27 +50,25 @@ from core.models import (
 
     Preinscripcion,
 
+    MessageTopic,
+    Conversation,
+    ConversationParticipant,
+    Message,
+    ConversationAudit,
+    StaffAsignacion,
+    Estudiante,
+
 )
 
 from ninja.errors import HttpError
 
 from datetime import time, date
 
-from django.db.models import Case, When, Value, CharField, F, Q, Count
-
-from django.db import transaction
-
 from apps.common.api_schemas import ApiResponse
-
-import string
 
 from core.permissions import ensure_roles, allowed_profesorados, ensure_profesorado_access
 
 from core.auth_ninja import JWTAuth
-
-from django.db.models import Prefetch
-
-from django.utils import timezone
 
 
 
@@ -78,8 +86,330 @@ PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel", "preinscripciones"}
 
 GLOBAL_OVERVIEW_ROLES = {"admin", "secretaria", "bedel", "preinscripciones", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta"}
 
+SLA_WARNING_DAYS = getattr(settings, "MESSAGES_SLA_WARNING_DAYS", 3)
+SLA_DANGER_DAYS = getattr(settings, "MESSAGES_SLA_DANGER_DAYS", 6)
+
+ROLE_MASS_RULES: Dict[str, Optional[Set[str]]] = {
+    "admin": None,
+    "secretaria": None,
+    "jefa_aaee": None,
+    "jefes": None,
+    "coordinador": {"alumno", "docente"},
+    "tutor": {"alumno"},
+    "bedel": {"alumno"},
+}
+
+ROLES_DIRECT_ALL = {"admin", "secretaria", "jefa_aaee", "jefes", "coordinador", "tutor", "bedel"}
+ROLES_FORBIDDEN_SENDER = {"preinscripciones"}
+
+ROLE_STAFF_ASSIGNMENT = {
+    "bedel": {"bedel"},
+    "tutor": {"tutor"},
+    "coordinador": {"coordinador"},
+}
+
+ALL_ROLES: Set[str] = {
+    "admin",
+    "secretaria",
+    "bedel",
+    "preinscripciones",
+    "jefa_aaee",
+    "jefes",
+    "tutor",
+    "coordinador",
+    "consulta",
+}
+
+ROLE_ASSIGN_MATRIX: Dict[str, List[str]] = {
+    "admin": list(ALL_ROLES),
+    "secretaria": [role for role in ALL_ROLES if role != "admin"],
+    "jefa_aaee": ["bedel", "tutor", "coordinador"],
+    "jefes": [],
+    "tutor": [],
+    "bedel": [],
+    "coordinador": [],
+    "preinscripciones": [],
+    "consulta": [],
+}
+
+def _normalized_user_roles(user: User) -> Set[str]:
+    roles = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    if user.is_superuser or user.is_staff:
+        roles.add("admin")
+    return roles
 
 
+def _assignable_roles_for_user(user: User) -> Set[str]:
+    if user.is_superuser or user.is_staff:
+        return set(ALL_ROLES)
+    assignable: Set[str] = set()
+    for role in _normalized_user_roles(user):
+        assignable.update(ROLE_ASSIGN_MATRIX.get(role, []))
+    return assignable
+
+
+def _get_user_for_docente(docente: Docente) -> Optional[User]:
+    candidates = [docente.dni]
+    if docente.email:
+        candidates.append(docente.email)
+    for candidate in candidates:
+        if not candidate:
+            continue
+        user = User.objects.filter(username__iexact=candidate).first()
+        if user:
+            return user
+        user = User.objects.filter(email__iexact=candidate).first()
+        if user:
+            return user
+    return None
+
+
+
+
+
+
+
+def _user_display(user: User) -> str:
+    full_name = (user.get_full_name() or "").strip()
+    return full_name or user.get_username()
+
+
+def _staff_profesorados(user: User, roles: Optional[Set[str]] = None) -> Set[int]:
+    qs = StaffAsignacion.objects.filter(user=user)
+    if roles:
+        qs = qs.filter(rol__in=roles)
+    return set(qs.values_list("profesorado_id", flat=True))
+
+
+def _student_profesorados(student: Estudiante) -> Set[int]:
+    return set(student.carreras.values_list("id", flat=True))
+
+
+def _get_student(user: User) -> Optional[Estudiante]:
+    try:
+        return user.estudiante
+    except Estudiante.DoesNotExist:
+        return None
+
+
+def _get_staff_for_student(student: Estudiante, role: str) -> Set[User]:
+    profes = _student_profesorados(student)
+    if not profes:
+        return set()
+    qs = StaffAsignacion.objects.filter(
+        profesorado_id__in=profes,
+        rol=role,
+    ).select_related("user")
+    return {assignment.user for assignment in qs if assignment.user and assignment.user.is_active}
+
+
+def _shared_profesorado(staff_user: User, student: Estudiante, roles: Set[str]) -> bool:
+    staff_prof = _staff_profesorados(staff_user, roles)
+    if not staff_prof:
+        return False
+    return bool(staff_prof.intersection(_student_profesorados(student)))
+
+
+def _allowed_mass_roles(sender_roles: Set[str]) -> Optional[Set[str]]:
+    roles: Set[str] = set()
+    allow_all = False
+    for role in sender_roles:
+        if role in ROLE_MASS_RULES:
+            rule = ROLE_MASS_RULES[role]
+            if rule is None:
+                allow_all = True
+            else:
+                roles.update(rule)
+    if allow_all:
+        return None
+    return roles
+
+
+def _can_send_individual(sender: User, target: User) -> bool:
+    if sender == target:
+        return False
+    sender_roles = _normalized_user_roles(sender)
+    if sender_roles & ROLES_FORBIDDEN_SENDER:
+        return False
+    target_roles = _normalized_user_roles(target)
+    # Admins/secretaría/jefes/etc pueden escribir a cualquiera
+    if sender_roles & ROLES_DIRECT_ALL:
+        if "alumno" in target_roles:
+            student = _get_student(target)
+            if not student:
+                return False
+            if sender_roles & {"bedel"}:
+                return _shared_profesorado(sender, student, {"bedel"})
+            if sender_roles & {"coordinador"}:
+                staff_ok = _shared_profesorado(sender, student, {"coordinador"})
+                return staff_ok if staff_ok or _staff_profesorados(sender, {"coordinador"}) else True
+            if sender_roles & {"tutor"}:
+                return _shared_profesorado(sender, student, {"tutor"})
+        return True
+    # Estudiantes: solo con bedel/tutor asignado
+    if "alumno" in sender_roles:
+        student = _get_student(sender)
+        if not student:
+            return False
+        if not (target_roles & {"bedel", "tutor"}):
+            return False
+        allowed_users = set()
+        allowed_users.update(_get_staff_for_student(student, "bedel"))
+        allowed_users.update(_get_staff_for_student(student, "tutor"))
+        return target in allowed_users
+    # Otros roles (preinscripciones, consulta, etc) no pueden iniciar
+    return False
+
+
+def _resolve_mass_recipients(sender: User, role: str, carreras: Optional[List[int]]) -> List[User]:
+    role = role.lower()
+    sender_roles = _normalized_user_roles(sender)
+    allowed_roles = _allowed_mass_roles(sender_roles)
+    if allowed_roles is not None and role not in allowed_roles:
+        raise HttpError(403, "No tienes permisos para enviar mensajes masivos a ese rol.")
+    limit_profesorados: Optional[Set[int]] = None
+    if role == "alumno":
+        if sender_roles & {"bedel"}:
+            limit_profesorados = _staff_profesorados(sender, {"bedel"})
+            if not limit_profesorados:
+                raise HttpError(403, "No tienes carreras asignadas para enviar mensajes a estudiantes.")
+        elif sender_roles & {"tutor"}:
+            limit_profesorados = _staff_profesorados(sender, {"tutor"})
+        elif sender_roles & {"coordinador"}:
+            limit_profesorados = _staff_profesorados(sender, {"coordinador"}) or None
+        if carreras:
+            carreras_set = set(carreras)
+            if limit_profesorados is not None:
+                limit_profesorados = limit_profesorados.intersection(carreras_set)
+                if not limit_profesorados:
+                    raise HttpError(403, "Las carreras seleccionadas no coinciden con tus asignaciones.")
+            else:
+                limit_profesorados = carreras_set
+    elif carreras and role in ROLE_STAFF_ASSIGNMENT:
+        limit_profesorados = set(carreras)
+    users = _get_users_by_role(role, limit_profesorados)
+    return [u for u in users if u != sender]
+
+
+def _conversation_allow_student_reply(is_massive: bool, recipients_roles: Set[str], payload_flag: Optional[bool]) -> bool:
+    if payload_flag is not None:
+        return payload_flag
+    if is_massive and "alumno" in recipients_roles:
+        return False
+    return True
+
+
+def _compute_sla_indicator(conversation: Conversation, participant: ConversationParticipant) -> Optional[str]:
+    last_message = getattr(conversation, "_last_message", None)
+    if not last_message:
+        last_message = conversation.messages.order_by("-created_at").first()
+        conversation._last_message = last_message
+    if not last_message:
+        return None
+    if last_message.author_id == participant.user_id:
+        return None
+    if participant.last_read_at and participant.last_read_at >= last_message.created_at:
+        return None
+    delta_days = (timezone.now() - last_message.created_at).days
+    if delta_days >= SLA_DANGER_DAYS:
+        return "danger"
+    if delta_days >= SLA_WARNING_DAYS:
+        return "warning"
+    return None
+
+
+def _conversation_unread(conversation: Conversation, participant: ConversationParticipant) -> bool:
+    if not conversation.last_message_at:
+        return False
+    if participant.last_read_at and participant.last_read_at >= conversation.last_message_at:
+        return False
+    return True
+
+
+def _get_conversation_topic(conversation: Conversation) -> Optional[str]:
+    if conversation.topic:
+        return conversation.topic.name
+    return None
+
+
+
+def _create_conversation(
+    *,
+    sender: User,
+    recipient: User,
+    subject: Optional[str],
+    topic: Optional[MessageTopic],
+    body: str,
+    allow_student_reply: bool,
+    context_type: Optional[str],
+    context_id: Optional[str],
+    is_massive: bool,
+) -> Conversation:
+    conversation = Conversation.objects.create(
+        topic=topic,
+        created_by=sender,
+        subject=subject or "",
+        context_type=context_type,
+        context_id=context_id,
+        status=Conversation.Status.OPEN,
+        is_massive=is_massive,
+        allow_student_reply=allow_student_reply,
+    )
+    now = timezone.now()
+    ConversationParticipant.objects.create(
+        conversation=conversation,
+        user=sender,
+        role_snapshot=_primary_role(sender) or "",
+        can_reply=True,
+        last_read_at=now,
+    )
+    recipient_roles = _normalized_user_roles(recipient)
+    recipient_can_reply = True
+    if "alumno" in recipient_roles and not allow_student_reply:
+        recipient_can_reply = False
+    ConversationParticipant.objects.create(
+        conversation=conversation,
+        user=recipient,
+        role_snapshot=_primary_role(recipient) or "",
+        can_reply=recipient_can_reply,
+    )
+    message = Message.objects.create(
+        conversation=conversation,
+        author=sender,
+        body=body,
+    )
+    conversation.last_message_at = message.created_at
+    conversation.updated_at = message.created_at
+    conversation.save(update_fields=["last_message_at", "updated_at"])
+    conversation._last_message = message
+    return conversation
+
+
+def _add_message(
+    conversation: Conversation,
+    author: User,
+    body: str,
+    attachment: Optional[UploadedFile] = None,
+) -> Message:
+    if conversation.status == Conversation.Status.CLOSED:
+        raise HttpError(400, "La conversación está cerrada.")
+    message_kwargs = {
+        "conversation": conversation,
+        "author": author,
+        "body": body,
+    }
+    if attachment is not None:
+        message_kwargs["attachment"] = attachment
+    message = Message.objects.create(**message_kwargs)
+    conversation.last_message_at = message.created_at
+    conversation.updated_at = message.created_at
+    conversation.save(update_fields=["last_message_at", "updated_at"])
+    conversation._last_message = message
+    participant = conversation.participants.filter(user=author).first()
+    if participant:
+        participant.last_read_at = message.created_at
+        participant.save(update_fields=["last_read_at"])
+    return message
 
 
 def _ensure_structure_view(user, profesorado_id: Optional[int] = None) -> None:
@@ -191,6 +521,8 @@ class MateriaIn(Schema):
 
     regimen: str # Changed from tipo_cursada
 
+    tipo_formacion: str = Materia.TipoFormacion.FORMACION_GENERAL
+
 
 
 def _compatible_cuatrimestres(valor: str | None):
@@ -251,6 +583,21 @@ class MateriaOut(Schema):
 
     regimen: str # Changed from tipo_cursada
 
+    tipo_formacion: str
+
+
+class MateriaInscriptoOut(Schema):
+
+    id: int
+    estudiante_id: int
+    estudiante: str
+    dni: str
+    legajo: Optional[str] = None
+    estado: str
+    anio: int
+    comision_id: Optional[int] = None
+    comision_codigo: Optional[str] = None
+
 
 
 # Materia Endpoints
@@ -270,6 +617,8 @@ def list_materias_for_plan(
     formato: Optional[str] = None,
 
     regimen: Optional[str] = None,
+
+    tipo_formacion: Optional[str] = None,
 
 ):
 
@@ -296,6 +645,10 @@ def list_materias_for_plan(
     if regimen is not None:
 
         materias = materias.filter(regimen=regimen)
+
+    if tipo_formacion is not None:
+
+        materias = materias.filter(tipo_formacion=tipo_formacion)
 
 
 
@@ -334,6 +687,57 @@ def get_materia(request, materia_id: int):
     return materia
 
 
+@router.get("/materias/{materia_id}/inscriptos", response=List[MateriaInscriptoOut], auth=JWTAuth())
+def list_inscriptos_materia(
+    request,
+    materia_id: int,
+    anio: Optional[int] = None,
+    estado: Optional[str] = None,
+):
+
+    materia = get_object_or_404(Materia, id=materia_id)
+
+    _ensure_structure_view(request.user, materia.plan_de_estudio.profesorado_id)
+
+    inscripciones = (
+        InscripcionMateriaAlumno.objects.select_related("estudiante__user", "comision")
+        .filter(materia_id=materia_id)
+    )
+
+    if anio is not None:
+        inscripciones = inscripciones.filter(anio=anio)
+    if estado:
+        inscripciones = inscripciones.filter(estado=estado)
+
+    resultado: List[MateriaInscriptoOut] = []
+    for inscripcion in inscripciones.order_by(
+        "estudiante__user__last_name",
+        "estudiante__user__first_name",
+        "estudiante__dni",
+    ):
+        estudiante = inscripcion.estudiante
+        user = getattr(estudiante, "user", None)
+        nombre = (
+            user.get_full_name()
+            if user and user.get_full_name()
+            else estudiante.dni
+        )
+        resultado.append(
+            MateriaInscriptoOut(
+                id=inscripcion.id,
+                estudiante_id=estudiante.id,
+                estudiante=nombre,
+                dni=estudiante.dni,
+                legajo=estudiante.legajo,
+                estado=inscripcion.estado,
+                anio=inscripcion.anio,
+                comision_id=inscripcion.comision_id,
+                comision_codigo=inscripcion.comision.codigo if inscripcion.comision_id else None,
+            )
+        )
+
+    return resultado
+
 
 @router.put("/materias/{materia_id}", response=MateriaOut, auth=JWTAuth())
 
@@ -367,6 +771,91 @@ def delete_materia(request, materia_id: int):
 
 
 
+# Schemas for Mensajería
+
+class ConversationParticipantOut(Schema):
+    id: int
+    user_id: int
+    name: str
+    roles: List[str]
+    can_reply: bool
+    last_read_at: Optional[datetime]
+
+
+class MessageOut(Schema):
+    id: int
+    author_id: Optional[int]
+    author_name: str
+    body: str
+    created_at: datetime
+    attachment_url: Optional[str]
+    attachment_name: Optional[str]
+
+
+class ConversationSummaryOut(Schema):
+    id: int
+    subject: str
+    topic: Optional[str]
+    status: str
+    is_massive: bool
+    allow_student_reply: bool
+    last_message_at: Optional[datetime]
+    unread: bool
+    sla: Optional[str]
+    participants: List[ConversationParticipantOut]
+    last_message_excerpt: Optional[str]
+
+
+class ConversationDetailOut(ConversationSummaryOut):
+    messages: List[MessageOut]
+
+
+class ConversationCreateIn(Schema):
+    subject: Optional[str]
+    topic_id: Optional[int]
+    body: str
+    recipients: Optional[List[int]] = None
+    roles: Optional[List[str]] = None
+    carreras: Optional[List[int]] = None
+    allow_student_reply: Optional[bool] = None
+    context_type: Optional[str]
+    context_id: Optional[str]
+
+
+class ConversationCreateOut(Schema):
+    created_ids: List[int]
+    total_recipients: int
+
+
+class ConversationListQuery(Schema):
+    status: Optional[str] = None
+    topic_id: Optional[int] = None
+    unread: Optional[bool] = False
+
+
+class ConversationCountsOut(Schema):
+    unread: int
+    sla_warning: int
+    sla_danger: int
+
+
+class SimpleOk(Schema):
+    success: bool = True
+
+
+class MessageTopicOut(Schema):
+    id: int
+    slug: str
+    name: str
+    description: Optional[str]
+
+
+class SimpleUserOut(Schema):
+    id: int
+    name: str
+    roles: List[str]
+
+
 # Schemas for Docente
 
 class DocenteIn(Schema):
@@ -385,20 +874,26 @@ class DocenteIn(Schema):
 
 
 
+class DocenteRoleAssignIn(Schema):
+    role: str
+    profesorados: Optional[List[int]] = None
+
+
+class DocenteRoleAssignOut(Schema):
+    success: bool
+    user_id: int
+    username: str
+    role: str
+    profesorados: Optional[List[int]] = None
+
+
 class DocenteOut(Schema):
-
     id: int
-
     nombre: str
-
     apellido: str
-
     dni: str
-
     email: Optional[str] = None
-
     telefono: Optional[str] = None
-
     cuil: Optional[str] = None
 
 
@@ -519,7 +1014,7 @@ class HorarioCatedraDetalleOut(Schema):
 
 # Docente Endpoints
 
-@router.get("/docentes", response=List[DocenteOut])
+@router.get("/docentes", response=List[DocenteOut], auth=JWTAuth())
 
 def list_docentes(request):
 
@@ -575,6 +1070,56 @@ def update_docente(request, docente_id: int, payload: DocenteIn):
 
     return docente
 
+
+
+@router.post("/docentes/{docente_id}/roles", response=DocenteRoleAssignOut, auth=JWTAuth())
+def assign_role_to_docente(request, docente_id: int, payload: DocenteRoleAssignIn):
+    docente = get_object_or_404(Docente, id=docente_id)
+    role = payload.role.strip().lower()
+    if role not in ALL_ROLES:
+        raise HttpError(400, "Rol desconocido.")
+    assignable = _assignable_roles_for_user(request.user)
+    if role not in assignable:
+        raise HttpError(403, "No está autorizado para asignar este rol.")
+    user = _get_user_for_docente(docente)
+    if not user:
+        raise HttpError(404, "No encontramos un usuario asociado al docente.")
+    group, _ = Group.objects.get_or_create(name=role)
+    user.groups.add(group)
+    profesorados_payload = payload.profesorados or []
+    requires_profesorados = role in ROLE_STAFF_ASSIGNMENT
+    if requires_profesorados and not profesorados_payload:
+        raise HttpError(400, "Debes seleccionar al menos un profesorado para este rol.")
+    profesorados_ids = set(profesorados_payload)
+    if profesorados_ids:
+        existentes = set(
+            Profesorado.objects.filter(id__in=profesorados_ids).values_list("id", flat=True)
+        )
+        missing = profesorados_ids - existentes
+        if missing:
+            raise HttpError(404, f"Profesorados inexistentes: {sorted(missing)}")
+        allowed = allowed_profesorados(request.user, role_filter=[role])
+        if allowed is not None and not profesorados_ids.issubset(allowed):
+            raise HttpError(403, "No tiene permisos sobre alguno de los profesorados seleccionados.")
+        StaffAsignacion.objects.filter(user=user, rol=role).exclude(
+            profesorado_id__in=profesorados_ids
+        ).delete()
+        for prof_id in profesorados_ids:
+            StaffAsignacion.objects.get_or_create(
+                user=user, rol=role, profesorado_id=prof_id
+            )
+    elif requires_profesorados:
+        StaffAsignacion.objects.filter(user=user, rol=role).delete()
+    assigned_profesorados = sorted(
+        StaffAsignacion.objects.filter(user=user, rol=role).values_list("profesorado_id", flat=True)
+    )
+    return DocenteRoleAssignOut(
+        success=True,
+        user_id=user.id,
+        username=user.username,
+        role=role,
+        profesorados=assigned_profesorados or None,
+    )
 
 
 @router.delete("/docentes/{docente_id}", response={204: None})
@@ -1619,7 +2164,7 @@ def delete_comision(request, comision_id: int):
 
 # Specific endpoint for timetable builder: Get occupied blocks
 
-@router.get("/horarios/ocupacion", response=List[BloqueOut])
+@router.get("/horarios/ocupacion", response=List[BloqueOut], auth=JWTAuth())
 
 def get_occupied_blocks(request, anio_cursada: int, turno_id: int, cuatrimestre: Optional[str] = None):
 
@@ -3010,4 +3555,429 @@ def eliminar_mesa(request, mesa_id: int):
 
     return 204, None
 
+
+
+
+# Mensajería endpoints
+
+@router.get("/mensajes/temas", response=List[MessageTopicOut], auth=JWTAuth())
+def list_message_topics(request):
+    qs = MessageTopic.objects.filter(is_active=True).order_by("name")
+    return [
+        MessageTopicOut(
+            id=topic.id,
+            slug=topic.slug,
+            name=topic.name,
+            description=topic.description,
+        )
+        for topic in qs
+    ]
+
+
+@router.get("/usuarios/buscar", response=List[SimpleUserOut], auth=JWTAuth())
+def search_users(request, q: str = Query(...)):
+    query = (q or "").strip()
+    if len(query) < 2:
+        return []
+    like = (
+        Q(first_name__icontains=query)
+        | Q(last_name__icontains=query)
+        | Q(username__icontains=query)
+        | Q(email__icontains=query)
+        | Q(estudiante__dni__icontains=query)
+    )
+    users = (
+        User.objects.filter(like, is_active=True)
+        .select_related("estudiante")
+        .distinct()
+        .order_by("last_name", "first_name", "username")[:20]
+    )
+    results: List[SimpleUserOut] = []
+    for candidate in users:
+        if candidate.id == request.user.id:
+            continue
+        if not _can_send_individual(request.user, candidate):
+            continue
+        results.append(
+            SimpleUserOut(
+                id=candidate.id,
+                name=_user_display(candidate),
+                roles=sorted(_normalized_user_roles(candidate)),
+            )
+        )
+    return results
+
+@router.get("/mensajes/conversaciones", response=List[ConversationSummaryOut], auth=JWTAuth())
+def list_conversations(request, filters: ConversationListQuery = Query(...)):
+    user = request.user
+    qs = Conversation.objects.filter(participants__user=user).distinct()
+    if filters.status:
+        qs = qs.filter(status=filters.status)
+    if filters.topic_id:
+        qs = qs.filter(topic_id=filters.topic_id)
+    if filters.unread:
+        qs = qs.filter(
+            Q(last_message_at__isnull=False),
+            Q(participants__user=user),
+            Q(participants__last_read_at__lt=F("last_message_at")) | Q(participants__last_read_at__isnull=True),
+        )
+    qs = qs.prefetch_related(
+        Prefetch(
+            "participants",
+            queryset=ConversationParticipant.objects.select_related("user"),
+        ),
+        Prefetch(
+            "messages",
+            queryset=Message.objects.select_related("author").order_by("-created_at")[:1],
+            to_attr="_last_message_list",
+        ),
+        "topic",
+    ).order_by("-updated_at")
+
+    results: List[ConversationSummaryOut] = []
+    for conversation in qs:
+        participants = list(conversation.participants.all())
+        viewer_participant = next((p for p in participants if p.user_id == user.id), None)
+        if not viewer_participant:
+            continue
+        last_message = getattr(conversation, "_last_message_list", [])
+        last_message = last_message[0] if last_message else None
+        conversation._last_message = last_message
+        participants_out = [
+            ConversationParticipantOut(
+                id=participant.id,
+                user_id=participant.user_id,
+                name=_user_display(participant.user),
+                roles=sorted(_normalized_user_roles(participant.user)),
+                can_reply=participant.can_reply,
+                last_read_at=participant.last_read_at,
+            )
+            for participant in participants
+        ]
+        excerpt = None
+        if last_message and last_message.body:
+            excerpt = last_message.body.strip()[:140]
+        results.append(
+            ConversationSummaryOut(
+                id=conversation.id,
+                subject=conversation.subject,
+                topic=_get_conversation_topic(conversation),
+                status=conversation.status,
+                is_massive=conversation.is_massive,
+                allow_student_reply=conversation.allow_student_reply,
+                last_message_at=conversation.last_message_at,
+                unread=_conversation_unread(conversation, viewer_participant),
+                sla=_compute_sla_indicator(conversation, viewer_participant),
+                participants=participants_out,
+                last_message_excerpt=excerpt,
+            )
+        )
+    return results
+
+
+@router.post("/mensajes/conversaciones", response=ConversationCreateOut, auth=JWTAuth())
+def create_conversation_endpoint(request, payload: ConversationCreateIn):
+    user = request.user
+    sender_roles = _normalized_user_roles(user)
+    if sender_roles & ROLES_FORBIDDEN_SENDER:
+        raise HttpError(403, "No tienes permisos para iniciar conversaciones.")
+    if not payload.body.strip():
+        raise HttpError(400, "El mensaje no puede estar vacío.")
+
+    targets: Dict[int, Dict[str, object]] = {}
+
+    if payload.recipients:
+        users = list(User.objects.filter(id__in=payload.recipients, is_active=True))
+        found_ids = {u.id for u in users}
+        missing = set(payload.recipients) - found_ids
+        if missing:
+            raise HttpError(404, f"Usuarios no encontrados: {sorted(missing)}")
+        for recipient in users:
+            if not _can_send_individual(user, recipient):
+                raise HttpError(403, f"No tienes permisos para contactar a { _user_display(recipient) }.")
+            targets[recipient.id] = {
+                "user": recipient,
+                "is_massive": False,
+                "recipient_roles": _normalized_user_roles(recipient),
+            }
+
+    if payload.roles:
+        carreras_filter = payload.carreras or []
+        for role in payload.roles:
+            recipients = _resolve_mass_recipients(user, role, carreras_filter)
+            for recipient in recipients:
+                entry = targets.setdefault(
+                    recipient.id,
+                    {
+                        "user": recipient,
+                        "is_massive": False,
+                        "recipient_roles": _normalized_user_roles(recipient),
+                    },
+                )
+                entry["is_massive"] = True
+                entry.setdefault("mass_roles", set()).add(role.lower())
+
+    if not targets:
+        raise HttpError(400, "Debes seleccionar destinatarios válidos.")
+
+    topic = None
+    if payload.topic_id is not None:
+        topic = get_object_or_404(MessageTopic, pk=payload.topic_id, is_active=True)
+
+    created_ids: List[int] = []
+    for entry in targets.values():
+        recipient: User = entry["user"]  # type: ignore[assignment]
+        is_massive = bool(entry.get("is_massive"))
+        recipient_roles = entry.get("recipient_roles") or set()
+        allow_student_reply = _conversation_allow_student_reply(
+            is_massive,
+            recipient_roles,
+            payload.allow_student_reply,
+        )
+        conversation = _create_conversation(
+            sender=user,
+            recipient=recipient,
+            subject=payload.subject,
+            topic=topic,
+            body=payload.body,
+            allow_student_reply=allow_student_reply,
+            context_type=payload.context_type,
+            context_id=payload.context_id,
+            is_massive=is_massive,
+        )
+        created_ids.append(conversation.id)
+
+    return ConversationCreateOut(created_ids=created_ids, total_recipients=len(created_ids))
+
+
+@router.get(
+    "/mensajes/conversaciones/{conversation_id}",
+    response=ConversationDetailOut,
+    auth=JWTAuth(),
+)
+def get_conversation_detail(request, conversation_id: int, mark_read: bool = Query(False)):
+    user = request.user
+    conversation = get_object_or_404(
+        Conversation.objects.filter(participants__user=user)
+        .prefetch_related(
+            Prefetch(
+                "participants",
+                queryset=ConversationParticipant.objects.select_related("user"),
+            ),
+            Prefetch(
+                "messages",
+                queryset=Message.objects.select_related("author").order_by("created_at"),
+            ),
+            "topic",
+        ),
+        pk=conversation_id,
+    )
+    participants = list(conversation.participants.all())
+    viewer_participant = next((p for p in participants if p.user_id == user.id), None)
+    if not viewer_participant:
+        raise HttpError(403, "No participas de esta conversación.")
+    if mark_read:
+        viewer_participant.mark_read()
+    conversation._last_message = conversation.messages.last()
+
+    participants_out = [
+        ConversationParticipantOut(
+            id=participant.id,
+            user_id=participant.user_id,
+            name=_user_display(participant.user),
+            roles=sorted(_normalized_user_roles(participant.user)),
+            can_reply=participant.can_reply,
+            last_read_at=participant.last_read_at,
+        )
+        for participant in participants
+    ]
+
+    messages_out: List[MessageOut] = []
+    for message in conversation.messages.all():
+        attachment_url = None
+        attachment_name = None
+        if message.attachment:
+            try:
+                attachment_url = request.build_absolute_uri(message.attachment.url)
+            except Exception:
+                attachment_url = message.attachment.url
+            attachment_name = message.attachment.name.rsplit("/", 1)[-1]
+        messages_out.append(
+            MessageOut(
+                id=message.id,
+                author_id=message.author_id,
+                author_name=_user_display(message.author) if message.author else "Sistema",
+                body=message.body,
+                created_at=message.created_at,
+                attachment_url=attachment_url,
+                attachment_name=attachment_name,
+            )
+        )
+
+    summary = ConversationSummaryOut(
+        id=conversation.id,
+        subject=conversation.subject,
+        topic=_get_conversation_topic(conversation),
+        status=conversation.status,
+        is_massive=conversation.is_massive,
+        allow_student_reply=conversation.allow_student_reply,
+        last_message_at=conversation.last_message_at,
+        unread=_conversation_unread(conversation, viewer_participant),
+        sla=_compute_sla_indicator(conversation, viewer_participant),
+        participants=participants_out,
+        last_message_excerpt=None,
+    )
+
+    return ConversationDetailOut(**summary.dict(), messages=messages_out)
+
+
+@router.post(
+    "/mensajes/conversaciones/{conversation_id}/mensajes",
+    response=MessageOut,
+    auth=JWTAuth(),
+)
+def send_message(request, conversation_id: int, body: str = Form(...), attachment: Optional[UploadedFile] = File(None)):
+    user = request.user
+    conversation = get_object_or_404(
+        Conversation.objects.prefetch_related(
+            Prefetch(
+                "participants",
+                queryset=ConversationParticipant.objects.select_related("user"),
+            )
+        ),
+        pk=conversation_id,
+    )
+    participant = conversation.participants.filter(user=user).first()
+    if not participant:
+        raise HttpError(403, "No participas de esta conversación.")
+    if not participant.can_reply:
+        raise HttpError(403, "No podes responder en esta conversación.")
+    if not body.strip():
+        raise HttpError(400, "El mensaje no puede estar vacío.")
+    try:
+        message = _add_message(conversation, user, body, attachment)
+    except ValidationError as exc:
+        raise HttpError(400, "; ".join(exc.messages))
+
+    attachment_url = None
+    attachment_name = None
+    if message.attachment:
+        try:
+            attachment_url = request.build_absolute_uri(message.attachment.url)
+        except Exception:
+            attachment_url = message.attachment.url
+        attachment_name = message.attachment.name.rsplit("/", 1)[-1]
+
+    return MessageOut(
+        id=message.id,
+        author_id=message.author_id,
+        author_name=_user_display(message.author) if message.author else "Sistema",
+        body=message.body,
+        created_at=message.created_at,
+        attachment_url=attachment_url,
+        attachment_name=attachment_name,
+    )
+
+
+@router.post(
+    "/mensajes/conversaciones/{conversation_id}/leer",
+    response=SimpleOk,
+    auth=JWTAuth(),
+)
+def mark_conversation_read(request, conversation_id: int):
+    participant = get_object_or_404(
+        ConversationParticipant,
+        conversation_id=conversation_id,
+        user=request.user,
+    )
+    participant.mark_read()
+    return SimpleOk()
+
+
+@router.post(
+    "/mensajes/conversaciones/{conversation_id}/solicitar-cierre",
+    response=SimpleOk,
+    auth=JWTAuth(),
+)
+def request_conversation_close(request, conversation_id: int):
+    conversation = get_object_or_404(
+        Conversation.objects.filter(participants__user=request.user),
+        pk=conversation_id,
+    )
+    if conversation.status != Conversation.Status.OPEN:
+        raise HttpError(400, "La conversación no está abierta.")
+    if conversation.is_massive and conversation.created_by_id != request.user.id:
+        raise HttpError(403, "No podés solicitar cierre en un mensaje masivo.")
+    conversation.status = Conversation.Status.CLOSE_REQUESTED
+    conversation.close_requested_by = request.user
+    conversation.close_requested_at = timezone.now()
+    conversation.save(update_fields=["status", "close_requested_by", "close_requested_at"])
+    ConversationAudit.objects.create(
+        conversation=conversation,
+        action=ConversationAudit.Action.CLOSE_REQUESTED,
+        actor=request.user,
+        payload={},
+    )
+    return SimpleOk()
+
+
+@router.post(
+    "/mensajes/conversaciones/{conversation_id}/cerrar",
+    response=SimpleOk,
+    auth=JWTAuth(),
+)
+def close_conversation(request, conversation_id: int):
+    conversation = get_object_or_404(
+        Conversation.objects.filter(participants__user=request.user),
+        pk=conversation_id,
+    )
+    user = request.user
+    sender_roles = _normalized_user_roles(user)
+    if conversation.created_by_id not in {user.id, None} and not (sender_roles & {"admin", "secretaria"}):
+        raise HttpError(403, "Solo el remitente puede cerrar la conversación.")
+    conversation.status = Conversation.Status.CLOSED
+    conversation.closed_by = user
+    conversation.closed_at = timezone.now()
+    conversation.save(update_fields=["status", "closed_by", "closed_at"])
+    ConversationAudit.objects.create(
+        conversation=conversation,
+        action=ConversationAudit.Action.CLOSED,
+        actor=user,
+        payload={},
+    )
+    return SimpleOk()
+
+
+@router.get("/mensajes/resumen", response=ConversationCountsOut, auth=JWTAuth())
+def conversations_summary(request):
+    user = request.user
+    qs = Conversation.objects.filter(participants__user=user).distinct().prefetch_related(
+        Prefetch(
+            "participants",
+            queryset=ConversationParticipant.objects.select_related("user"),
+        ),
+        Prefetch(
+            "messages",
+            queryset=Message.objects.order_by("-created_at")[:1],
+            to_attr="_last_message_list",
+        ),
+    )
+    unread = 0
+    warning = 0
+    danger = 0
+    for conversation in qs:
+        participants = list(conversation.participants.all())
+        viewer_participant = next((p for p in participants if p.user_id == user.id), None)
+        if not viewer_participant:
+            continue
+        last_message = getattr(conversation, "_last_message_list", [])
+        conversation._last_message = last_message[0] if last_message else None
+        if _conversation_unread(conversation, viewer_participant):
+            unread += 1
+        indicator = _compute_sla_indicator(conversation, viewer_participant)
+        if indicator == "warning":
+            warning += 1
+        elif indicator == "danger":
+            danger += 1
+    return ConversationCountsOut(unread=unread, sla_warning=warning, sla_danger=danger)
 

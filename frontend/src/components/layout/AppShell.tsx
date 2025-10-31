@@ -12,7 +12,9 @@ import {
   Box,
   CssBaseline,
   IconButton,
-  Divider
+  Divider,
+  Badge,
+  Tooltip
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -24,7 +26,10 @@ import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
 import InsightsIcon from "@mui/icons-material/Insights";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { useAuth } from "@/context/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { obtenerResumenMensajes } from "@/api/mensajes";
 import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
 
 const drawerWidth = 240;
@@ -107,7 +112,27 @@ export default function AppShell({ children }: PropsWithChildren) {
     "jefa_aaee",
     "coordinador"
   ]);
-  const showConfig = hasAnyRole(user, ["admin", "secretaria"]);
+
+  const canUseMessages = !!user && !hasAnyRole(user, ["preinscripciones"]);
+  console.log("[DEBUG] user", user);
+  console.log("[DEBUG] canUseMessages", canUseMessages);
+
+  const { data: messageSummary } = useQuery({
+    queryKey: ["mensajes", "resumen"],
+    queryFn: obtenerResumenMensajes,
+    enabled: canUseMessages,
+    refetchInterval: 60_000,
+  });
+
+  const unreadMessages = messageSummary?.unread ?? 0;
+  const badgeColor =
+    unreadMessages === 0
+      ? "default"
+      : messageSummary?.sla_danger
+      ? "error"
+      : messageSummary?.sla_warning
+      ? "warning"
+      : "primary";
 
   useEffect(() => {
     try {
@@ -136,6 +161,15 @@ export default function AppShell({ children }: PropsWithChildren) {
             IPES Paulo Freire
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, fontSize: 14 }}>
+            {canUseMessages && (
+              <Tooltip title="Mensajes">
+                <IconButton size="small" onClick={() => navigate("/mensajes")}>
+                  <Badge color={badgeColor} badgeContent={unreadMessages} max={99}>
+                    <MailOutlineIcon fontSize="small" />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+            )}
             <span>Hola, {user?.name ?? user?.dni}</span>
             <Link
               to="#"
@@ -216,6 +250,21 @@ export default function AppShell({ children }: PropsWithChildren) {
             </ListItemButton>
           )}
 
+          {canUseMessages && (
+            <ListItemButton
+              selected={current.startsWith("/mensajes")}
+              onClick={() => navigate("/mensajes")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <Badge color={badgeColor} badgeContent={unreadMessages} max={99}>
+                  <MailOutlineIcon fontSize="small" />
+                </Badge>
+              </ListItemIcon>
+              <ListItemText primary="Mensajes" />
+            </ListItemButton>
+          )}
+
           {canGlobalOverview && (
             <ListItemButton
               selected={current.startsWith("/vistas")}
@@ -249,16 +298,7 @@ export default function AppShell({ children }: PropsWithChildren) {
             </ListItemButton>
           )}
 
-          {showConfig && (
-            <ListItemButton
-              selected={current.startsWith("/configuracion")}
-              onClick={() => navigate("/configuracion")}
-              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
-            >
-              <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
-              <ListItemText primary="Configuración" />
-            </ListItemButton>
-          )}
+
         </List>
 
         <Divider sx={{ my: 1 }} />

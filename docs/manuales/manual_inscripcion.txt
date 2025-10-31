@@ -1,0 +1,68 @@
+Manual de inscripcion para aspirantes
+================================
+Objetivo
+Este instructivo explica paso a paso como completar la preinscripcion online y la formalizacion presencial en el IPES Paulo Freire.
+
+Requisitos previos
+- Contar con una ventana de preinscripcion abierta. Verificalo en la pagina principal: si no esta habilitada aparecera un aviso informativo.
+- Disponer de correo electronico vigente y numero de telefono actualizado.
+- Digitalizar en PDF o imagen (JPG/PNG) la documentacion obligatoria:
+  - DNI frente y dorso.
+  - Analitico definitivo o constancia de titulo en tramite.
+  - Certificado de alumno regular (si corresponde).
+  - Certificado de buena salud.
+  - 2 fotos 4x4 fondo claro (una se carga en el sistema).
+  - 3 folios oficio (se entregan en la instancia presencial).
+
+Ingreso al sistema
+1. Accede a la URL oficial y selecciona "Preinscripcion".
+2. Completa el captcha (segun disponibilidad) y presiona "Comenzar".
+3. El asistente guarda automaticamente el progreso en tu navegador; podes cerrar la ventana y continuar luego.
+
+Paso 1 - Datos personales
+- Completa apellidos, nombres, DNI, CUIL, fecha y lugar de nacimiento.
+- Verifica ortografia y mayusculas tal como figuran en tu DNI.
+
+Paso 2 - Contacto
+- Ingresa domicilio actual (calle, numero, localidad, provincia, pais).
+- Registra correo electronico, telefono movil y fijo si lo tenes.
+- Completa contacto de emergencia (nombre, parentesco, telefono).
+
+Paso 3 - Estudios
+- Estudios secundarios: institucion, localidad, provincia, pais, titulo y fecha de egreso.
+- Estudios superiores (si aplica): titulo obtenido, institucion y fecha.
+- Si aun no tenes titulo definitivo, marca la opcion correspondiente para presentar constancia luego.
+
+Paso 4 - Carrera y documentacion
+- Selecciona la carrera/profesorado deseado. Si hay una sola opcion se seleccionara automaticamente.
+- Sube la foto 4x4 en formato JPG o PNG (maximo 1.5 MB). El sistema muestra una vista previa; si no se ve, repetila.
+- Conserva los originales para la entrega presencial.
+
+Paso 5 - Confirmacion
+- Revisa el resumen de todos los datos. Si detectas un error podes volver al paso correspondiente usando el boton "Atras".
+- Marca en el checklist la documentacion que ya tenes disponible (fotocopia DNI, analitico, fotos, certificados, folios).
+- Presiona "Descargar PDF" para generar la planilla de preinscripcion. Debes hacerlo antes de enviar; el sistema habilita el boton final solo despues de la descarga.
+- Una vez listo, pulsa "Enviar preinscripcion". Si el envio fue exitoso veras el mensaje de confirmacion con un codigo PRE-XXXX.
+
+Despues del envio
+- Guardar el PDF descargado y anotar el codigo PRE-XXXX. Ese codigo se utiliza para seguimiento y formalizacion.
+- El sistema envia un correo de confirmacion (si proprocionaste email valido). Revisar bandeja de entrada y spam.
+- Si necesitas corregir datos, vuelve a ingresar al asistente y usa el codigo para reabrir la planilla mientras la ventana siga habilitada.
+
+Formalizacion presencial
+- Acercate a Secretaria en las fechas informadas con:
+  - Planilla impresa y firmada (PDF descargado).
+  - Documentacion marcada en el checklist (originales y copias).
+  - 3 folios oficio.
+- En la oficina verificaran datos, digitalizaran faltantes y confirmaran la inscripcion en el sistema. Una vez completado el estado pasara a "Confirmada".
+
+Seguimiento
+- Podes consultar el estado ingresando al asistente con tu DNI o codigo PRE-XXXX.
+- Si Secretaria marca la solicitud como "Observada", revisa el PDF actualizado para saber que falta y acercalo en la oficina.
+- Ante un rechazo, deberas comunicarte presencialmente para conocer el motivo y los pasos a seguir.
+
+Recomendaciones
+- Conserva copias digitales en un servicio en la nube por si necesitas reenviarlas.
+- No dejes campos en blanco: la validacion final podra demorar si faltan datos.
+- Si cambias de correo o telefono, informa el nuevo dato durante la formalizacion.
+- Cualquier inconveniente tecnico (captcha, carga de foto, error de servidor) reportalo a soporte@ipes.edu.ar o presencialmente en ventanilla.

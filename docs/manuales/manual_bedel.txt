@@ -1,0 +1,57 @@
+Manual de uso - Rol Bedel
+================================
+Objetivo del rol
+El rol bedel articula la administracion diaria entre estudiantes, tutores y secretaria. Permite formalizar preinscripciones, mantener datos de carreras y colaborar con el seguimiento academico sin habilitar tareas sensibles como asignar roles o abrir ventanas institucionales.
+
+Acceso inicial
+- Ingresa al sistema y autenticate con tus credenciales personales.
+- Cambia la contrasena provista apenas ingreses por primera vez.
+- Verifica que tu usuario tenga asociado el profesorado correcto; si falta alguno solicitalo a Secretaria o Administracion.
+
+Dashboard
+- Desde el menu lateral abre "Dashboard". Vas a ver metricas de preinscripciones (totales, confirmadas, pendientes, observadas, rechazadas) y las ultimas tres novedades.
+- Los botones de accion rapida permiten crear una preinscripcion manual (casos excepcionales), abrir la bandeja de "Preinscripciones" o navegar a "Gestion de alumnos" y "Reportes" si estan habilitados.
+
+Gestion de preinscripciones
+1. Menu lateral > "Formalizar inscripcion" o boton directo en Dashboard.
+2. Usa los campos de busqueda por DNI, apellido y nombre o codigo PRE-xxx.
+3. Selecciona el registro para abrir el editor (PreConfirmEditor):
+   - Pestaña Datos: revisa domicilios, contacto, estudios previos y carrera elegida. Actualiza la informacion si fue corregida en ventanilla.
+   - Pestaña Documentacion: controla el checklist (fotocopia DNI, titulo, analitico, folios, etc.). Marca cada item recibido; podes subir versiones digitales cuando te las entregan en PDF/JPG.
+   - Pestaña Observaciones: deja notas breves sobre la entrevista presencial o requisitos faltantes.
+4. Acciones disponibles:
+   - Confirmar: utiliza cuando toda la documentacion esta completa y sin observaciones.
+   - Observar: deja la preinscripcion pendiente e indica los faltantes; el aspirante puede ver el detalle en su comprobante.
+   - Rechazar: solo en casos excepcionales (duplicado, datos falsos). Describe el motivo con claridad.
+5. Cada cambio queda registrado en la linea de tiempo ubicada al final del editor.
+
+Secretaria > Estructura academica
+- Cargar Profesorado: crea, actualiza o elimina carreras. Define duracion en años, estado (activo/inactivo) y si la inscripcion esta abierta. El icono de ojo abre la vista de planes.
+- Planes y Materias: desde la botonera superior navega a "Planes" o "Materias" para cargar nuevas resoluciones, asociar materias por anio y definir regimen (anual/cuatrimestral) y tipo de formacion.
+- Correlatividades: establece requisitos de cursado y aprobacion entre materias. Siempre valida los cambios con Coordinacion para evitar bloqueos a los estudiantes.
+- Estas pantallas permiten edicion completa; evita borrar informacion sin respaldo previo.
+
+Secretaria > Gestion academica
+- Formalizar inscripcion: acceso directo al flujo descrito arriba.
+- Comisiones: crea comisiones, asigna turnos/cupos y vincula docentes existentes. Controla la solapa de horarios para evitar superposiciones.
+- Mesas de examen: arma mesas segun periodo. Define fecha, tipo de mesa y tribunal; los estudiantes veran las mesas habilitadas en su portal.
+- Carga de notas: abre planillas por comision. Puedes registrar regularidad, promocion y notas finales; al guardar se notifica a los estudiantes.
+- Pedidos de analitico: consulta pedidos por ventana, filtra por DNI y descarga el PDF consolidado. Desde el boton "Nuevo pedido" podras cargar solicitudes recibidas presencialmente.
+
+Otras vistas disponibles
+- Carreras: vision rapida de profesorados, planes y materias con inscriptos. Útil para controlar cupos.
+- Reportes: consolida indicadores (inscripciones, mesas, actividad reciente). Son de solo lectura.
+- Vistas globales: resumen grafico de docentes activos, ventanas y preinscripciones. Ideal para preparar informes diarios.
+- Mensajes: canal formal con estudiantes. Como bedel podes responder consultas y solicitar data adicional; el sistema te permite abrir conversaciones masivas solo con alumnos.
+
+Buenas practicas
+- Completa el checklist de documentacion en el momento. Evita dejar casillas sin marcar porque el estado "Confirmada" depende de ese control.
+- Al cargar planes o materias realiza exportes previos (boton "Descargar") para disponer de un respaldo.
+- Antes de crear una nueva comision revisa horarios y cupos existentes para no fragmentar grupos.
+- Usa el campo de observaciones con frases cortas y fecha al inicio (por ejemplo "2024-03-15 Falta certificado salud").
+- Genera reportes PDF de analiticos y guardalos en la unidad compartida antes de entregarlos.
+
+Soporte y escalamiento
+- Incidentes funcionales (API, pantallas en blanco): notifica al equipo tecnico por Mensajes con tema "Soporte tecnico".
+- Cambios de rol o permisos faltantes: deriva a Administracion (rol admin).
+- Consultas academicas complejas: coordina con tutores o coordinadores segun el profesorado.

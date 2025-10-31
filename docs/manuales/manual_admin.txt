@@ -1,0 +1,57 @@
+Manual de uso - Rol Admin
+================================
+Objetivo del rol
+El rol admin otorga control total sobre el sistema: configuracion inicial, gestion de permisos, estructuras academicas, ventanas, datos maestros y soporte tecnico. Se reserva para un equipo reducido por el impacto de cada accion.
+
+Seguridad y acceso
+- Utiliza credenciales personales con contrasena robusta (12 caracteres minimo, combinacion de letras, numeros y simbolos).
+- Activa segundo factor si esta disponible.
+- No compartas sesiones ni ejecutes acciones en nombre de terceros; cada operacion queda auditada con fecha y hora.
+
+Responsabilidades clave
+- Alta y baja de usuarios administrativos, docentes y personal de apoyo.
+- Definicion y asignacion de roles (secretaria, bedel, tutor, coordinador, jefes, jefa_aaee, consulta, alumno).
+- Configuracion y mantenimiento de carreras, planes, materias, correlatividades y comisiones.
+- Publicacion de ventanas de preinscripcion, inscripcion a materias, mesas, analiticos y otros procesos.
+- Supervisar integridad de datos, realizar respaldos y coordinar con TI cuando haya incidencias.
+
+Pantallas y modulos
+- Dashboard: vision ejecutiva de preinscripciones y accesos a tareas criticas.
+- Preinscripciones: administracion completa del ciclo (creacion manual, edicion, confirmacion, observacion o rechazo).
+- Secretaria:
+  - Cargar Docentes, Asignar Rol y gestion de profesorados/planes/materias/correlatividades.
+  - Gestion academica: formalizacion, horarios, comisiones, mesas, carga de notas, catedra-docente, pedidos de analitico, habilitar fechas.
+- Carreras, Reportes y Vistas globales: indicadores de seguimiento y auditoria.
+- Mensajes: comunicacion con cualquier rol, incluidos avisos masivos.
+- Configuracion externa: validar que las variables de entorno del backend y frontend esten actualizadas (VITE_API_BASE, claves ReCaptcha, etc.).
+
+Procedimientos recomendados
+1. Alta de personal
+   - Crear usuario (via backend o importacion).
+   - Ingresar a Secretaria > Asignar Rol, buscarlo y asignar roles necesarios; para bedeles/coordinadores/tutores selecciona profesorados.
+   - Comunicar credenciales iniciales por canal seguro.
+2. Creacion de carrera
+   - Secretaria > Cargar Profesorado: alta de la carrera.
+   - Secretaria > Cargar Plan: incorporar resolucion y fechas.
+   - Secretaria > Cargar Materias: cargar la oferta.
+   - Secretaria > Correlatividades: definir requisitos.
+   - Secretaria > Comisiones: crear comisiones iniciales por cohorte.
+3. Publicacion de ventana
+   - Secretaria > Habilitar Fechas: crear la ventana con tipo, fechas y estado activo.
+   - Notificar a Secretaria y Tutores por Mensajes con los detalles.
+4. Auditoria periodica
+   - Exportar reportes de inscripcion, mesas y notas.
+   - Revisar listados de roles para detectar cuentas inactivas.
+   - Verificar logs del servidor (via equipo TI) y limpiar sesiones obsoletas.
+
+Buenas practicas
+- Realiza respaldos regulares de la base de datos y almacenamiento de documentos antes de cambios masivos.
+- Documenta configuraciones en un repositorio interno (por ejemplo, claves de ReCaptcha, endpoints externos).
+- Usa ambientes de prueba para validar nuevas funcionalidades antes de llevarlas a produccion.
+- Cuando modifiques correlatividades o carreras, comunica inmediatamente a Coordinacion y publica el cambio en Mensajes.
+- Revisa la bandeja de Mensajes diariamente; las consultas escaladas suelen requerir respuesta prioritaria.
+
+Escalamiento
+- Incidentes tecnicos graves (caida del servicio, errores 500 recurrentes): contacta a TI y levanta ticket interno detallando logs y acciones realizadas.
+- Requerimientos de nuevas funcionalidades: coordina con el equipo de desarrollo y registra el pedido en el backlog (docs/ISSUES.md).
+- Solicitudes legales o auditorias: prepara reportes desde Vistas globales y coordina con Direccion.

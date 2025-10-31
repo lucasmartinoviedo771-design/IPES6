@@ -1,0 +1,53 @@
+Manual de uso - Rol Tutor
+================================
+Objetivo del rol
+El rol tutor acompaña la trayectoria de los estudiantes, resolviendo superposiciones de cursada, respondiendo consultas y generando pedidos administrativos puntuales. Tiene acceso a vistas consolidadas pero no modifica estructura academica ni ventanas institucionales.
+
+Acceso y alcance
+- Inicia sesion con tus credenciales personales.
+- Tus permisos se limitan a los profesorados en los que estas asignado. Si falta alguno comunicate con Secretaria.
+
+Pantallas principales
+- Dashboard: brinda una fotografia general de preinscripciones y accesos rapidos a gestiones frecuentes.
+- Alumnos > Portal: permite revisar trayectoria, inscripciones y solicitudes individuales de los estudiantes.
+- Alumnos > Cambio de comision: herramienta clave para resolver choques de horarios.
+- Secretaria > Analiticos: consulta y genera pedidos de analitico.
+- Carreras, Reportes y Vistas globales: muestran datos consolidados del profesorado a cargo.
+- Mensajes: canal de comunicacion directa con estudiantes, bedeles y coordinadores.
+
+Gestion de cambios de comision
+1. Menu lateral > Alumnos > "Cambio de comision".
+2. En el campo "DNI del estudiante" ingresa el documento sin puntos. Espera a que cargue la informacion.
+3. Si hay materias con choque horario se listaran con detalle de comisiones conflictivas.
+4. Usa el boton "Ver alternativas" para revisar comisiones compatibles. Se muestran horarios, profesorado y turnos.
+5. Selecciona "Solicitar inscripcion" en la alternativa elegida. El sistema registra la solicitud en nombre del estudiante y deja constancia en la bandeja.
+6. Informa el resultado al alumno via Mensajes y registra notas internas si corresponde.
+
+Pedidos de analitico
+- Secretaria > "Pedidos de Analitico".
+- Elije la ventana activa; si no hay, pide a Secretaria que habilite una.
+- Filtra por DNI para ver pedidos vinculados a tus estudiantes.
+- Boton "Nuevo pedido": completa DNI, motivo (equivalencia, beca, control u otro) y cohorte si se conoce. Guarda y confirma con el estudiante.
+- Usa "Descargar PDF" para generar el listado que se entrega a la oficina correspondiente.
+
+Seguimiento individual
+- Portal de alumnos > "Trayectoria del estudiante": filtra por apellido o DNI y revisa la ficha completa (materias aprobadas, regularidades, mesas, recomendaciones).
+- Inscripcion a materias y mesas: podes simular el recorrido para detectar bloqueos antes de que lo haga el estudiante.
+- Pedido de analitico y otros tramites: verifica estados pendientes para priorizar gestiones.
+
+Mensajes
+- Atiende consultas desde la bandeja; los estudiantes veran tu respuesta en su portal.
+- Podes iniciar conversaciones masivas hacia el grupo de alumnos de un profesorado (por ejemplo, recordatorios de documentacion).
+- Cuando cierres un caso usa la opcion "Solicitar cierre" para que quede registrado.
+
+Buenas practicas
+- Registrá en Mensajes cada decision (por ejemplo, "Cambio aprobado a comision 3 turno tarde"). Esto sirve de historial.
+- Antes de confirmar una alternativa revisa correlatividades y limites de cupo para evitar rechazos posteriores.
+- Coordina con bedeles comisiones con sobrecupo; ellos pueden crear nuevas si es necesario.
+- Descarga el PDF de pedidos de analitico luego de cada jornada y compartilo con Secretaria.
+- Manten un listado interno de estudiantes en seguimiento con fecha y accion acordada.
+
+Escalamiento
+- Cambios de plan, correlatividades o cupos: derivar a Coordinacion o Secretaria.
+- Problemas de acceso o errores tecnicos: enviar Mensaje con tema "Soporte tecnico" adjuntando capturas.
+- Casos socioeducativos complejos: informar a Jefes o al area de acompanamiento segun protocolo institucional.

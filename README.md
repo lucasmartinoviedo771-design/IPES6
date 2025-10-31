@@ -68,7 +68,12 @@ Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarr
     uv run python manage.py migrate
     ```
 
-5.  **Crea un superusuario (opcional):**
+5.  **Verifica las variables de entorno críticas (opcional pero recomendado):**
+    ```bash
+    uv run python manage.py check_env
+    ```
+
+6.  **Crea un superusuario (opcional):**
     Para acceder al panel de administrador de Django (`/admin`):
     ```bash
     uv run python manage.py createsuperuser
@@ -95,7 +100,7 @@ Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarr
 3.  **Configura la variable de entorno:**
     Crea un archivo `.env.local` en `frontend/` para indicarle a la aplicación dónde encontrar la API del backend.
     ```env
-    VITE_API_BASE=http://127.0.0.1:8000/api
+    VITE_API_BASE=http://localhost:8000/api
     ```
 
 4.  **Inicia el servidor de desarrollo:**
@@ -110,6 +115,7 @@ Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarr
 
 -   **Corrección de Codificación de Caracteres**: Se solucionaron errores de codificación (UTF-8) en múltiples componentes del frontend, asegurando la correcta visualización de acentos y caracteres especiales en toda la aplicación.
 -   **Actualización de Dependencias**: Se actualizó el archivo `requirements.txt` para reflejar el estado actual de las dependencias del backend.
+-   **Mejoras de Seguridad en Autenticación**: Se migró el almacenamiento del token JWT a cookies HTTP-only, se implementó protección CSRF en el frontend y se endurecieron las configuraciones de seguridad del backend, mejorando la resiliencia contra ataques XSS.
 
 ---
 
