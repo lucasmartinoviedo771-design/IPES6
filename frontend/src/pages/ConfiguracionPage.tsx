@@ -1,1 +1,0 @@
-export default function ConfiguracionPage(){ return <>Configuración del sistema</>; }

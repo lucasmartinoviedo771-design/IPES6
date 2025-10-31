@@ -1,0 +1,48 @@
+Manual de uso - Rol Estudiante
+================================
+Objetivo del rol
+El rol estudiante permite gestionar tu trayectoria academica dentro del IPES Paulo Freire. Desde el portal podes revisar tu historia, inscribirte a materias y mesas, solicitar tramites y comunicarte con el equipo institucional.
+
+Acceso inicial
+- Accede a la URL del sistema y elige la opcion "Iniciar sesion".
+- Ingresar con tu DNI (sin puntos) y la contrasena temporal entregada por Secretaria.
+- El sistema te pedira cambiar la contrasena la primera vez; elegi una combinacion segura y memorizala.
+- Si perdes el acceso contacta a Secretaria o a tu tutor para que restablezcan la contrasena. No existe recupero automatico por correo.
+
+Menu lateral y navegacion
+- Portal de alumnos: es la pagina principal cuando ingresas.
+- Mensajes: canal oficial para consultas con tutores, bedeles, coordinadores y otros roles.
+- Vistas adicionales (si las ves disponibles) son solo de lectura; no alteran tus datos.
+
+Portal de alumnos
+- Seccion Trayectoria: ingresa a "Trayectoria del estudiante" para ver materias aprobadas, regularizadas, mesas inscriptas y recomendaciones. Utiliza los filtros superiores para cambiar de cohorte o carrera si corresponde.
+- Proximos eventos: listado dinamico que cruza tus inscripciones con las ventanas habilitadas (materias, mesas, analiticos). Cada item abre la pantalla relacionada.
+- Atajos rapidos de inscripcion:
+  - Inscripcion a materias: muestra materias habilitadas segun tu plan y la ventana en curso. Selecciona la materia, el turno/comision y confirma. El resumen indica correlativas pendientes o bloqueos de horarios.
+  - Cambio de comision: se activa cuando tenes superposiciones. Elegi la materia bloqueada, revisa las alternativas sugeridas y envia la solicitud. Queda pendiente de aprobacion por tutor o bedel; podes seguir el estado dentro de la misma pantalla.
+  - Pedido de analitico: completa DNI, motivo y cohorte si lo conoces. Cada pedido queda asociado a una "ventana" administrativa; podras descargar el comprobante cuando Secretaria procese el lote.
+  - Mesa de examen: filtra por carrera y tipo de mesa. Elegi mesa y confirmala; podes anularla mientras la ventana siga abierta.
+- Historiales y descargas: en cada pantalla hay botones "Descargar PDF" o "Exportar" cuando la informacion admite reporte.
+
+Mensajes
+- Desde el menu lateral ingresa a "Mensajes".
+- Bandeja de entrada: a la izquierda se listan conversaciones ordenadas por actividad reciente. Un punto verde indica mensajes sin leer.
+- Nueva conversacion: boton "Iniciar conversacion" permite elegir el tema y el destinatario (tutor, bedel, secretaria, etc.). Describe el motivo con claridad.
+- Respuestas: escribe tu mensaje, agrega PDF si es necesario y presiona "Enviar". Si una conversacion figura cerrada no admite nuevos mensajes; crea otra con referencia al numero anterior si requeris continuar.
+
+Buenas practicas
+- Descarga y guarda los comprobantes en tu dispositivo. El sistema tambien los conserva, pero tener una copia facilita cualquier reclamo.
+- Revisa las "ventanas" publicadas antes de intentar una gestion; fuera de plazo el sistema bloqueara la accion.
+- Actualiza tus datos personales en el formulario de inscripcion cada vez que haya cambios; Secretaria los revisa durante la confirmacion presencial.
+- Utiliza el canal de mensajes en lugar de redes sociales para que quede registro formal de cada consulta.
+
+Resolucion de problemas frecuentes
+- No veo materias para inscribirme: verifica que haya una ventana activa y que cumplas correlativas. Si persiste, escribi a tu tutor.
+- El boton "Enviar preinscripcion" esta deshabilitado: primero descarga el PDF final desde la pantalla de confirmacion.
+- Error al adjuntar foto 4x4: asegurate de subir JPG o PNG menor a 1.5 MB. Podes comprimirla antes de volver a intentar.
+- No puedo ingresar: luego de cinco intentos fallidos la cuenta se bloquea temporalmente. Espera 15 minutos o solicita el desbloqueo via Mensajes.
+
+Soporte
+- Consultas academicas: tu tutor o coordinador.
+- Tramites de documentacion: ventanilla de Secretaria.
+- Incidentes tecnicos: reportalos desde "Mensajes" eligiendo tema "Soporte tecnico".

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { client, apiPath } from "@/api/client"; // Removed setAuthToken, clearAuthToken
 
 export type User = {
+  id?: number;
   dni: string;
   name?: string;
   roles?: string[];

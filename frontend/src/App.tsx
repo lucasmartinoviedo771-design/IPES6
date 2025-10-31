@@ -9,7 +9,8 @@ import PreinscripcionWizard from '@/components/preinscripcion/PreinscripcionWiza
 
 import AlumnosPage from '@/pages/AlumnosPage';
 import CarrerasPage from '@/pages/CarrerasPage';
-import ConfiguracionPage from '@/pages/ConfiguracionPage';
+import MateriaInscriptosPage from "@/pages/MateriaInscriptosPage";
+
 import ConfirmarInscripcionPage from '@/pages/ConfirmarInscripcionPage';
 import DashboardPage from '@/pages/DashboardPage';
 import Forbidden from '@/pages/Forbidden';
@@ -47,6 +48,7 @@ import CambioComisionPage from "@/pages/Alumnos/CambioComisionPage";
 import PedidoAnaliticoPage from "@/pages/Alumnos/PedidoAnaliticoPage";
 import TrayectoriaPage from "@/pages/Alumnos/TrayectoriaPage";
 import InscripcionPreview from "@/pages/InscripcionPreview";
+import MensajesInboxPage from "@/pages/Mensajes/InboxPage";
 
 
 function AppLayout() {
@@ -91,10 +93,26 @@ export default function App() {
               <Route path="/preinscripciones" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones']}><PreinscripcionesPage /></ProtectedRoute>} />
               {/* Alumnos: índice con tarjetas */}
               <Route path="/alumnos" element={<AlumnosIndex />} />
+              <Route
+                path="/mensajes"
+                element={
+                  <ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones','jefa_aaee','jefes','tutor','coordinador','consulta','alumno']}>
+                    <MensajesInboxPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/carreras" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones','coordinador','tutor','jefes','jefa_aaee','consulta']}><CarrerasPage /></ProtectedRoute>} />
+              <Route
+                path="/carreras/:profesoradoId/planes/:planId/materias/:materiaId/inscriptos"
+                element={
+                  <ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones','coordinador','tutor','jefes','jefa_aaee','consulta']}>
+                    <MateriaInscriptosPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/reportes" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones','jefa_aaee','jefes','tutor','coordinador','consulta']}><ReportesPage /></ProtectedRoute>} />
               <Route path="/vistas" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones','jefa_aaee','jefes','tutor','coordinador','consulta']}><GlobalOverviewPage /></ProtectedRoute>} />
-              <Route path="/configuracion" element={<ProtectedRoute roles={['admin','secretaria']}><ConfiguracionPage /></ProtectedRoute>} />
+
               <Route path="/gestion/confirmar" element={<ProtectedRoute roles={['bedel','secretaria','admin']}><ConfirmarInscripcionPage /></ProtectedRoute>} />
               <Route path="/secretaria" element={<ProtectedRoute roles={['secretaria','admin','bedel','jefa_aaee','jefes','tutor']}><SecretariaIndex /></ProtectedRoute>} />
               <Route path="/secretaria/profesorado" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarProfesoradoPage /></ProtectedRoute>} />

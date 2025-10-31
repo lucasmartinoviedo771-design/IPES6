@@ -36,6 +36,7 @@ interface Materia {
   horas_semana: number;
   formato: string;
   regimen: string;
+  tipo_formacion: string;
 }
 
 interface MateriaFormInput {
@@ -45,6 +46,7 @@ interface MateriaFormInput {
   horas_semana: number;
   formato: string;
   regimen: string;
+  tipo_formacion: string;
 }
 
 // Define choices for Formato and TipoCursada to match backend
@@ -61,6 +63,12 @@ const TIPO_CURSADA_CHOICES = [
   { value: "ANU", label: "Anual" },
   { value: "PCU", label: "Primer Cuatrimestre" },
   { value: "SCU", label: "Segundo Cuatrimestre" },
+];
+
+const TIPO_FORMACION_CHOICES = [
+  { value: "FGN", label: "Formación general" },
+  { value: "FES", label: "Formación específica" },
+  { value: "PDC", label: "Práctica docente" },
 ];
 
 export default function CargarMateriasPage() {
@@ -95,9 +103,12 @@ export default function CargarMateriasPage() {
   const [filterNombre, setFilterNombre] = useState('');
   const [filterFormato, setFilterFormato] = useState('');
   const [filterRegimen, setFilterRegimen] = useState('');
+  const [filterTipoFormacion, setFilterTipoFormacion] = useState('');
 
   // Sorting states
-  const [sortBy, setSortBy] = useState<'anio'|'nombre'|'horas'|'formato'|'regimen'>('anio');
+  const [sortBy, setSortBy] = useState<
+    'anio' | 'nombre' | 'horas' | 'formato' | 'regimen' | 'tipo_formacion'
+  >('anio');
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('asc');
 
   const handleClearFilters = () => {
@@ -105,6 +116,7 @@ export default function CargarMateriasPage() {
     setFilterNombre('');
     setFilterFormato('');
     setFilterRegimen('');
+    setFilterTipoFormacion('');
     try {
       const key = `cm_filters_${currentPlanId ?? 'any'}`;
       localStorage.removeItem(key);
@@ -122,6 +134,7 @@ export default function CargarMateriasPage() {
         setFilterAnio(typeof f.anio === 'number' ? f.anio : '');
         setFilterFormato(typeof f.formato === 'string' ? f.formato : '');
         setFilterRegimen(typeof f.regimen === 'string' ? f.regimen : '');
+        setFilterTipoFormacion(typeof f.tipo_formacion === 'string' ? f.tipo_formacion : '');
       }
     } catch {}
   }, [currentPlanId]);
@@ -129,10 +142,16 @@ export default function CargarMateriasPage() {
   useEffect(() => {
     try {
       const key = `cm_filters_${currentPlanId ?? 'any'}`;
-      const payload = { nombre: filterNombre, anio: filterAnio || '', formato: filterFormato, regimen: filterRegimen };
+      const payload = {
+        nombre: filterNombre,
+        anio: filterAnio || '',
+        formato: filterFormato,
+        regimen: filterRegimen,
+        tipo_formacion: filterTipoFormacion,
+      };
       localStorage.setItem(key, JSON.stringify(payload));
     } catch {}
-  }, [currentPlanId, filterNombre, filterAnio, filterFormato, filterRegimen]);
+  }, [currentPlanId, filterNombre, filterAnio, filterFormato, filterRegimen, filterTipoFormacion]);
 
   const {
     control,
@@ -148,12 +167,21 @@ export default function CargarMateriasPage() {
       horas_semana: 0,
       formato: "ASI",
       regimen: "ANU",
+      tipo_formacion: "FGN",
     },
   });
 
   // Fetch Materias for the current Plan
   const { data: materias, isLoading: isLoadingMaterias } = useQuery<Materia[]>({
-    queryKey: ["materias", currentPlanId, filterAnio, filterNombre, filterFormato, filterRegimen],
+    queryKey: [
+      "materias",
+      currentPlanId,
+      filterAnio,
+      filterNombre,
+      filterFormato,
+      filterRegimen,
+      filterTipoFormacion,
+    ],
     queryFn: async () => {
       if (!currentPlanId) return [];
       const params = new URLSearchParams();
@@ -161,6 +189,7 @@ export default function CargarMateriasPage() {
       if (filterNombre) params.append("nombre", filterNombre);
       if (filterFormato) params.append("formato", filterFormato);
       if (filterRegimen) params.append("regimen", filterRegimen);
+      if (filterTipoFormacion) params.append("tipo_formacion", filterTipoFormacion);
 
       const response = await api.get(`/planes/${currentPlanId}/materias?${params.toString()}`);
       return response.data;
@@ -247,6 +276,7 @@ export default function CargarMateriasPage() {
     setValue("horas_semana", materia.horas_semana);
     setValue("formato", materia.formato);
     setValue("regimen", materia.regimen);
+    setValue("tipo_formacion", materia.tipo_formacion);
   };
 
   const handleDeleteClick = (materiaId: number) => {
@@ -316,7 +346,22 @@ export default function CargarMateriasPage() {
               ))}
             </Select>
           </FormControl>
-          <Button variant="outlined" onClick={handleClearFilters}>Limpiar Filtros</Button>
+          <FormControl size="small" sx={{ width: 200 }}>
+            <InputLabel>Tipo de formación</InputLabel>
+            <Select
+              value={filterTipoFormacion}
+              label="Tipo de formación"
+              onChange={(e) => setFilterTipoFormacion(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {TIPO_FORMACION_CHOICES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button variant="outlined" onClick={handleClearFilters}>Limpiar filtros</Button>
         </Stack>
           </Paper>
           )}
@@ -402,6 +447,28 @@ export default function CargarMateriasPage() {
             {errors.formato && (
               <Typography color="error" variant="caption">
                 {errors.formato.message}
+              </Typography>
+            )}
+          </FormControl>
+          <FormControl fullWidth size="small" error={!!errors.tipo_formacion}>
+            <InputLabel id="tipo-formacion-label">Tipo de Formación</InputLabel>
+            <Controller
+              name="tipo_formacion"
+              control={control}
+              rules={{ required: "El tipo de formación es obligatorio" }}
+              render={({ field }) => (
+                <Select {...field} labelId="tipo-formacion-label" label="Tipo de Formación">
+                  {TIPO_FORMACION_CHOICES.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
+            />
+            {errors.tipo_formacion && (
+              <Typography color="error" variant="caption">
+                {errors.tipo_formacion.message}
               </Typography>
             )}
           </FormControl>
@@ -500,7 +567,22 @@ export default function CargarMateriasPage() {
               ))}
             </Select>
           </FormControl>
-          <Button variant="outlined" onClick={handleClearFilters}>Limpiar Filtros</Button>
+          <FormControl size="small" sx={{ width: 200 }}>
+            <InputLabel>Tipo de formación</InputLabel>
+            <Select
+              value={filterTipoFormacion}
+              label="Tipo de formación"
+              onChange={(e) => setFilterTipoFormacion(e.target.value)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {TIPO_FORMACION_CHOICES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button variant="outlined" onClick={handleClearFilters}>Limpiar filtros</Button>
         </Stack>
       </Paper>
 
@@ -551,6 +633,8 @@ export default function CargarMateriasPage() {
                     if (sortBy === 'anio') return (a.anio_cursada - b.anio_cursada) * dir;
                     if (sortBy === 'horas') return (a.horas_semana - b.horas_semana) * dir;
                     if (sortBy === 'formato') return (a.formato || '').localeCompare(b.formato || '') * dir;
+                    if (sortBy === 'tipo_formacion')
+                      return (a.tipo_formacion || '').localeCompare(b.tipo_formacion || '') * dir;
                     if (sortBy === 'regimen') return (a.regimen || '').localeCompare(b.regimen || '') * dir;
                     // nombre
                     return (a.nombre || '').localeCompare(b.nombre || '') * dir;
@@ -562,6 +646,7 @@ export default function CargarMateriasPage() {
                     <TableCell>{materia.nombre}</TableCell>
                     <TableCell>{materia.horas_semana}</TableCell>
                     <TableCell>{FORMATO_CHOICES.find(f => f.value === materia.formato)?.label || materia.formato}</TableCell>
+                    <TableCell>{TIPO_FORMACION_CHOICES.find(t => t.value === materia.tipo_formacion)?.label || materia.tipo_formacion}</TableCell>
                     <TableCell>{TIPO_CURSADA_CHOICES.find(t => t.value === materia.regimen)?.label || materia.regimen}</TableCell>
                     <TableCell>
                       <IconButton

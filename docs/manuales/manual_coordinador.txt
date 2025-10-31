@@ -1,0 +1,40 @@
+Manual de uso - Rol Coordinador
+================================
+Objetivo del rol
+El rol coordinador permite supervisar la estructura academica y el avance de los estudiantes del profesorado asignado. Ofrece vistas consolidadas, reportes filtrados y canales de comunicacion para articular con tutores, bedeles y secretaria sin modificar datos sensibles.
+
+Acceso y alcance
+- Inicia sesion con tus credenciales nominales.
+- Al recibir el rol coordinador se vinculan los profesorados que estan bajo tu responsabilidad; todas las pantallas se filtran automaticamente a ese alcance.
+- Si no ves algun profesorado solicitale a Secretaria que lo agregue en "Asignar Rol".
+
+Pantallas principales
+- Dashboard: visibilidad general de preinscripciones y actividad reciente. Aunque los numeros sean globales, los accesos rapidos respetan tu alcance.
+- Carreras: permite seleccionar el profesorado asignado, ver planes vigentes, materias del plan y cantidad de inscriptos. Utiliza la opcion "Ver inscriptos" para descargar listados de cada materia.
+- Reportes: consulta graficos y tablas resumidas (altas de inscripcion, mesas, notas). Exporta a CSV para compartir con la direccion.
+- Vistas globales: muestra docentes activos, ventanas vigentes y preinscripciones recientes. Solo se listan los datos correspondientes a tus profesorados.
+- Portal de alumnos (modo consulta): desde el menu "Alumnos" revisa solicitudes puntuales (inscripcion a materias, cambio de comision, pedidos de analitico) a modo de seguimiento. No confirma acciones pero facilita detectar bloqueos.
+- Mensajes: canal directo con tutores, bedeles, docentes y estudiantes de tu profesorado. Úsalo para coordinar horarios, documentacion o resolver dudas.
+
+Flujos recomendados
+1. Control semanal de inscripciones
+   - Ingresar a Carreras, elegir el profesorado y plan vigente.
+   - Exportar la tabla de materias con inscriptos.
+   - Verificar cupos y detectar materias con demanda extraordinaria para informar a Secretaria.
+2. Seguimiento de estudiantes en riesgo
+   - Revisar en Portal de alumnos > "Trayectoria del estudiante" los casos informados por tutores.
+   - Coordinar acciones mediante Mensajes, copiando a la direccion cuando corresponda.
+3. Coordinacion de ventanas
+   - Consultar Vistas globales > Ventanas y periodos para corroborar fechas de inscripcion y mesas.
+   - Si se requieren ajustes, comunicarlos a Secretaria para que los gestione en "Habilitar fechas".
+
+Buenas practicas
+- Documenta acuerdos o pedidos especiales en Mensajes para que queden trazables.
+- Antes de solicitar nuevas comisiones o cambios de cupo revisa correlatividades y horarios publicados.
+- Manten una copia local de los reportes exportados cada cierre de periodo; sirven como respaldo para auditorias.
+- Comparte con tutores la informacion de alumnos observados para alinear el acompanamiento.
+
+Escalamiento
+- Problemas de acceso o permisos: contactar a Secretaria.
+- Inconsistencias en planes o materias: coordinar con Administracion o con el equipo de curriculo segun corresponda.
+- Incidentes tecnicos: registrar un Mensaje con tema "Soporte tecnico" adjuntando capturas.

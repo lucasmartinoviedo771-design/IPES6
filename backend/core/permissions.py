@@ -28,7 +28,7 @@ def ensure_roles(user: Optional[User], allowed_roles: Iterable[str]) -> None:
     allowed = {role.lower() for role in allowed_roles}
     groups = _group_names(user)
     if not groups.intersection(allowed):
-        raise HttpError(403, "No tiene permisos suficientes para realizar esta acciÃ³n.")
+        raise HttpError(403, "No tiene permisos suficientes para realizar esta acción.")
 
 
 def allowed_profesorados(user: Optional[User], role_filter: Optional[Iterable[str]] = None) -> Optional[Set[int]]:

@@ -11,7 +11,31 @@ export type MateriaDTO = {
   anio_cursada: number;
   regimen: string;
   formato: string;
+  tipo_formacion: string;
   permite_mesa_libre: boolean;
+};
+
+export type MateriaDetalleDTO = {
+  id: number;
+  plan_de_estudio_id: number;
+  anio_cursada: number;
+  nombre: string;
+  horas_semana: number;
+  formato: string;
+  regimen: string;
+  tipo_formacion: string;
+};
+
+export type MateriaInscriptoDTO = {
+  id: number;
+  estudiante_id: number;
+  estudiante: string;
+  dni: string;
+  legajo?: string | null;
+  estado: string;
+  anio: number;
+  comision_id?: number | null;
+  comision_codigo?: string | null;
 };
 
 export type ComisionDTO = {
@@ -53,6 +77,21 @@ export async function listarTurnos(): Promise<TurnoDTO[]> {
 
 export async function listarMaterias(planId: number): Promise<MateriaDTO[]> {
   const { data } = await client.get<MateriaDTO[]>(`/planes/${planId}/materias`);
+  return data;
+}
+
+export async function obtenerMateria(materiaId: number): Promise<MateriaDetalleDTO> {
+  const { data } = await client.get<MateriaDetalleDTO>(`/materias/${materiaId}`);
+  return data;
+}
+
+export async function listarInscriptosMateria(
+  materiaId: number,
+  params?: { anio?: number; estado?: string }
+): Promise<MateriaInscriptoDTO[]> {
+  const { data } = await client.get<MateriaInscriptoDTO[]>(`/materias/${materiaId}/inscriptos`, {
+    params,
+  });
   return data;
 }
 
