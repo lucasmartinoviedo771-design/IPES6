@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'apps.carreras',
     'apps.preinscriptions',
     'apps.alumnos',
+    'apps.guias',
 ]
 
 # === Middleware =========================================================

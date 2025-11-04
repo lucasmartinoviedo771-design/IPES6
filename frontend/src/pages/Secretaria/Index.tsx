@@ -10,6 +10,8 @@ import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import LinkIcon from "@mui/icons-material/Link";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import GavelIcon from "@mui/icons-material/Gavel";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 
@@ -91,6 +93,7 @@ export default function SecretariaIndex() {
   const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
   const canManageCatDoc = hasAnyRole(user, ["admin", "secretaria"]);
   const canManageVentanas = hasAnyRole(user, ["admin", "secretaria", "jefa_aaee"]);
+  const canManageStudents = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
   const userCards: QuickActionProps[] = [];
   if (canManageDocentes) {
@@ -107,6 +110,14 @@ export default function SecretariaIndex() {
       description: "Gestionar permisos y roles de usuarios.",
       icon: <AssignmentIndIcon />,
       path: "/secretaria/asignar-rol",
+    });
+  }
+  if (canManageStudents) {
+    userCards.push({
+      title: "Gestión de Estudiantes",
+      description: "Revisión y actualización de legajos y datos personales.",
+      icon: <PeopleAltIcon />,
+      path: "/secretaria/estudiantes",
     });
   }
 
@@ -179,6 +190,12 @@ export default function SecretariaIndex() {
       description: "Planilla de regularidad/promoción y registro de notas.",
       icon: <FactCheckIcon />,
       path: "/secretaria/carga-notas",
+    });
+    academicCards.push({
+      title: "Cargar Finales",
+      description: "Registrar actas de mesas finales.",
+      icon: <GavelIcon />,
+      path: "/secretaria/actas-examen",
     });
   }
   if (canManageCatDoc) {

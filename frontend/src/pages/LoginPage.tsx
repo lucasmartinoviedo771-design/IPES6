@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { TextField, Button, Alert, Paper, Stack, Typography } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Alert,
+  Paper,
+  Stack,
+  Typography,
+  IconButton, // Import IconButton
+  InputAdornment, // Import InputAdornment
+} from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility"; // Import Visibility icon
+import VisibilityOff from "@mui/icons-material/VisibilityOff"; // Import VisibilityOff icon
 import { isOnlyStudent } from "@/utils/roles";
 
 export default function LoginPage() {
@@ -13,6 +24,12 @@ export default function LoginPage() {
   const [loginId, setLoginId] = useState(""); // DNI/usuario/email
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,11 +72,25 @@ export default function LoginPage() {
             />
             <TextField
               label="Contraseña"
-              type="password"
+              type={showPassword ? "text" : "password"} // Toggle type based on showPassword state
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               required
+              InputProps={{ // Add InputProps for the adornment
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={handleClickShowPassword}
+                      onMouseDown={handleMouseDownPassword}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             {error && <Alert severity="error">{error}</Alert>}
             <Button type="submit" variant="contained">

@@ -13,7 +13,6 @@ import {
   Chip,
   Stack,
 } from "@mui/material";
-import SchoolIcon from "@mui/icons-material/School";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -141,13 +140,6 @@ type EventoEvaluado = EventoConfig & {
 };
 
 const EVENTO_CONFIGS: EventoConfig[] = [
-  {
-    key: "insc-carrera",
-    titulo: "Inscripción a Carreras",
-    icon: <SchoolIcon />,
-    path: "/alumnos/inscripcion-carrera",
-    tiposVentana: ["CARRERAS"],
-  },
   {
     key: "insc-materia",
     titulo: "Inscripción a Materias",

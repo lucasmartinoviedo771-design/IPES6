@@ -30,6 +30,11 @@ export function ProtectedRoute({
     return <Navigate to="/cambiar-password" replace state={{ from: loc }} />;
   }
 
+  const mustCompleteProfile = Boolean(user.must_complete_profile);
+  if (!mustChange && mustCompleteProfile && loc.pathname !== "/alumnos/completar-perfil") {
+    return <Navigate to="/alumnos/completar-perfil" replace state={{ from: loc }} />;
+  }
+
   // Sin requisitos de rol → alcanza con estar logueado
   if (!roles || roles.length === 0) return children;
 

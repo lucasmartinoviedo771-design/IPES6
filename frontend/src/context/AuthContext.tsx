@@ -9,6 +9,7 @@ export type User = {
   is_staff?: boolean;
   is_superuser?: boolean;
   must_change_password?: boolean;
+  must_complete_profile?: boolean;
 } | null;
 
 type AuthContextType = {

@@ -1,5 +1,11 @@
 import { client } from "@/api/client";
 
+interface ApiResponse<T> {
+  ok: boolean;
+  message: string;
+  data: T;
+}
+
 export type ComisionOptionDTO = {
   id: number;
   materia_id: number;
@@ -159,5 +165,95 @@ export async function listarMesasFinales(params?: {
   const { data } = await client.get<MesaResumenDTO[]>("/mesas", {
     params,
   });
+  return data;
+}
+
+export type ActaNotaOption = {
+  value: string;
+  label: string;
+};
+
+export type ActaMetadataMateria = {
+  id: number;
+  nombre: string;
+  anio_cursada: number | null;
+  plan_id: number;
+  plan_resolucion: string;
+};
+
+export type ActaMetadataPlan = {
+  id: number;
+  resolucion: string;
+  materias: ActaMetadataMateria[];
+};
+
+export type ActaMetadataProfesorado = {
+  id: number;
+  nombre: string;
+  planes: ActaMetadataPlan[];
+};
+
+export type ActaMetadataDocente = {
+  id: number;
+  nombre: string;
+  dni?: string | null;
+};
+
+export type ActaMetadataDTO = {
+  profesorados: ActaMetadataProfesorado[];
+  docentes: ActaMetadataDocente[];
+  nota_opciones: ActaNotaOption[];
+};
+
+export type ActaDocentePayload = {
+  rol: string;
+  docente_id?: number | null;
+  nombre: string;
+  dni?: string | null;
+};
+
+export type ActaAlumnoPayload = {
+  numero_orden: number;
+  permiso_examen?: string | null;
+  dni: string;
+  apellido_nombre: string;
+  examen_escrito?: string | null;
+  examen_oral?: string | null;
+  calificacion_definitiva: string;
+  observaciones?: string | null;
+};
+
+export type ActaCreatePayload = {
+  tipo: "REG" | "LIB";
+  profesorado_id: number;
+  materia_id: number;
+  fecha: string;
+  folio: string;
+  libro?: string | null;
+  observaciones?: string | null;
+  docentes: ActaDocentePayload[];
+  alumnos: ActaAlumnoPayload[];
+  total_aprobados?: number;
+  total_desaprobados?: number;
+  total_ausentes?: number;
+};
+
+export type ActaCreateResult = {
+  id: number;
+  codigo: string;
+};
+
+export async function fetchActaMetadata(): Promise<ActaMetadataDTO> {
+  const { data } = await client.get<ApiResponse<ActaMetadataDTO>>(
+    "/alumnos/carga-notas/actas/metadata",
+  );
+  return data.data;
+}
+
+export async function crearActaExamen(payload: ActaCreatePayload) {
+  const { data } = await client.post<ApiResponse<ActaCreateResult>>(
+    "/alumnos/carga-notas/actas",
+    payload,
+  );
   return data;
 }

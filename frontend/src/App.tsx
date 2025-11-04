@@ -30,6 +30,7 @@ import MesasPage from '@/pages/Secretaria/MesasPage';
 import ConfirmarInscripcionSecretaria from "@/pages/Secretaria/ConfirmarInscripcion";
 import MesaExamenPage from '@/pages/Alumnos/MesaExamenPage';
 
+import EstudiantesAdminPage from "@/pages/Secretaria/EstudiantesAdminPage";
 
 import CargarHorarioPage from "@/pages/Secretaria/CargarHorarioPage";
 import CatedraDocentePage from "@/pages/Secretaria/CatedraDocentePage";
@@ -39,16 +40,21 @@ import CargaNotasPage from "@/pages/Secretaria/CargaNotasPage";
 import ComisionesPage from "@/pages/Secretaria/ComisionesPage";
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import ActaExamenPage from "@/pages/Secretaria/ActaExamenPage";
+import ActaExamenPrimeraCargaPage from "@/pages/admin/ActaExamenPrimeraCargaPage";
 
 // Nuevas páginas de Alumnos
 import AlumnosIndex from "@/pages/Alumnos/Index";
-import InscripcionCarreraPage from "@/pages/Alumnos/InscripcionCarreraPage";
 import InscripcionMateriaPage from "@/pages/Alumnos/InscripcionMateriaPage";
 import CambioComisionPage from "@/pages/Alumnos/CambioComisionPage";
 import PedidoAnaliticoPage from "@/pages/Alumnos/PedidoAnaliticoPage";
 import TrayectoriaPage from "@/pages/Alumnos/TrayectoriaPage";
 import InscripcionPreview from "@/pages/InscripcionPreview";
 import MensajesInboxPage from "@/pages/Mensajes/InboxPage";
+import CompletarPerfilPage from "@/pages/Alumnos/CompletarPerfilPage";
+
+// Nueva página de Primera Carga
+import PrimeraCargaPage from '@/pages/admin/PrimeraCargaPage';
 
 
 function AppLayout() {
@@ -93,6 +99,7 @@ export default function App() {
               <Route path="/preinscripciones" element={<ProtectedRoute roles={['admin','secretaria','bedel','preinscripciones']}><PreinscripcionesPage /></ProtectedRoute>} />
               {/* Alumnos: índice con tarjetas */}
               <Route path="/alumnos" element={<AlumnosIndex />} />
+              <Route path="/alumnos/completar-perfil" element={<ProtectedRoute roles={['alumno','admin']}><CompletarPerfilPage /></ProtectedRoute>} />
               <Route
                 path="/mensajes"
                 element={
@@ -125,13 +132,14 @@ export default function App() {
               <Route path="/secretaria/habilitar-fechas" element={<ProtectedRoute roles={['secretaria','admin','jefa_aaee']}><HabilitarFechasPage /></ProtectedRoute>} />
               <Route path="/secretaria/comisiones" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><ComisionesPage /></ProtectedRoute>} />
               <Route path="/secretaria/analiticos" element={<ProtectedRoute roles={['secretaria','bedel','admin','tutor','jefes','jefa_aaee']}><AnaliticosPage /></ProtectedRoute>} />
+              <Route path="/secretaria/estudiantes" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><EstudiantesAdminPage /></ProtectedRoute>} />
               <Route path="/secretaria/mesas" element={<ProtectedRoute roles={['secretaria','bedel','admin','jefes','jefa_aaee']}><MesasPage /></ProtectedRoute>} />
               <Route path="/secretaria/correlatividades" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CorrelatividadesPage /></ProtectedRoute>} />
               <Route path="/secretaria/carga-notas" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargaNotasPage /></ProtectedRoute>} />
+              <Route path="/secretaria/actas-examen" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><ActaExamenPage /></ProtectedRoute>} />
               <Route path="/secretaria/confirmar-inscripcion" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><ConfirmarInscripcionSecretaria /></ProtectedRoute>} />
 
               {/* Nuevas rutas para Alumnos */}
-              <Route path="/alumnos/inscripcion-carrera" element={<ProtectedRoute roles={['alumno','admin']}><InscripcionCarreraPage /></ProtectedRoute>} />
               <Route path="/alumnos/inscripcion-materia" element={<ProtectedRoute roles={['alumno','admin']}><InscripcionMateriaPage /></ProtectedRoute>} />
               <Route path="/alumnos/cambio-comision" element={<ProtectedRoute roles={['alumno','admin']}><CambioComisionPage /></ProtectedRoute>} />
               <Route path="/alumnos/pedido-analitico" element={<ProtectedRoute roles={['alumno','admin']}><PedidoAnaliticoPage /></ProtectedRoute>} />
@@ -139,6 +147,10 @@ export default function App() {
               <Route path="/alumnos/trayectoria" element={<ProtectedRoute roles={['alumno','admin', 'bedel', 'secretaria']}><TrayectoriaPage /></ProtectedRoute>} />
             </Route>
     
+            {/* Ruta para Primera Carga (fuera del AppShell, pero protegida) */}
+            <Route path="/admin/primera-carga" element={<ProtectedRoute roles={['admin','secretaria','bedel']}><AppShell><PrimeraCargaPage /></AppShell></ProtectedRoute>} />
+            <Route path="/admin/primera-carga/actas-examen" element={<ProtectedRoute roles={['admin','secretaria','bedel']}><AppShell><ActaExamenPrimeraCargaPage /></AppShell></ProtectedRoute>} />
+
             <Route path="/403" element={<Forbidden />} />
         </Route>
     </Routes>

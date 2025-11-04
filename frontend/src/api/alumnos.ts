@@ -2,10 +2,6 @@ import { client } from "@/api/client";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 
 // Schemas de entrada (payloads)
-interface InscripcionCarreraPayload {
-  carrera_id: number;
-}
-
 interface InscripcionMateriaPayload {
   materia_id: number;
   comision_id?: number;
@@ -38,9 +34,6 @@ export interface ApiResponseDTO {
   data?: unknown;
 }
 
-export const solicitarInscripcionCarrera = (payload: InscripcionCarreraPayload) =>
-  client.post<GenericResponse>("/alumnos/inscripcion-carrera", payload).then(res => res.data);
-
 export const solicitarInscripcionMateria = (payload: InscripcionMateriaPayload) =>
   client.post<GenericResponse>("/alumnos/inscripcion-materia", payload).then(res => res.data);
 
@@ -53,7 +46,7 @@ export const cancelarInscripcionMateria = (payload: CancelarInscripcionPayload) 
   return client.post<ApiResponseDTO>(`/alumnos/inscripcion-materia/${inscripcion_id}/cancelar`, body).then(res => res.data);
 };
 
-export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia'|'beca'|'control'|'otro'; motivo_otro?: string; dni?: string; cohorte?: number; }) =>
+export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia'|'beca'|'control'|'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
   client.post<GenericResponse>("/alumnos/pedido_analitico", payload).then(res => res.data);
 
 export const solicitarMesaExamen = (payload: MesaExamenPayload) =>
@@ -73,6 +66,8 @@ export type MateriaPlanDTO = {
   correlativas_regular?: number[];
   correlativas_aprob?: number[];
   profesorado?: string; // opcional para encabezado
+  profesorado_id?: number;
+  plan_id?: number;
 };
 
 export type HistorialAlumnoDTO = {
@@ -89,6 +84,8 @@ export type TrayectoriaEventoDTO = {
   subtitulo?: string;
   detalle?: string;
   estado?: string;
+  profesorado_id?: number | null;
+  profesorado_nombre?: string | null;
   metadata?: Record<string, string>;
 };
 
@@ -165,6 +162,7 @@ export type TrayectoriaEstudianteDTO = {
   legajo?: string | null;
   apellido_nombre: string;
   carreras: string[];
+  carreras_detalle?: TrayectoriaCarreraDetalleDTO[];
   email?: string | null;
   telefono?: string | null;
   fecha_nacimiento?: string | null;
@@ -180,6 +178,16 @@ export type TrayectoriaEstudianteDTO = {
   materias_regularizadas?: number | null;
   materias_en_curso?: number | null;
   fotoUrl?: string | null;
+};
+
+export type TrayectoriaCarreraDetalleDTO = {
+  profesorado_id: number;
+  nombre: string;
+  planes: {
+    id: number;
+    resolucion?: string | null;
+    vigente: boolean;
+  }[];
 };
 
 export type CartonEventoDTO = {
@@ -236,6 +244,11 @@ export async function obtenerVentanaMaterias(): Promise<VentanaInscripcion | nul
 
 export async function obtenerMateriasPlanAlumno(params?: { dni?: string; plan_id?: number; profesorado_id?: number }): Promise<MateriaPlanDTO[]> {
   const { data } = await client.get<MateriaPlanDTO[]>(`/alumnos/materias-plan`, { params });
+  return data;
+}
+
+export async function obtenerCarrerasActivas(params?: { dni?: string }): Promise<TrayectoriaCarreraDetalleDTO[]> {
+  const { data } = await client.get<TrayectoriaCarreraDetalleDTO[]>(`/alumnos/carreras-activas`, { params });
   return data;
 }
 
@@ -314,6 +327,7 @@ type MesaListadoParams = {
   anio?: number;
   cuatrimestre?: string;
   materia_id?: number;
+  dni?: string;
 };
 
 export type MesaPlanillaCondicionDTO = {
@@ -374,5 +388,109 @@ export async function actualizarMesaPlanilla(mesaId: number, payload: { alumnos:
   cuenta_para_intentos?: boolean | null;
 }> }): Promise<ApiResponseDTO> {
   const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/planilla`, payload);
+  return data;
+}
+
+// --- Administración de estudiantes ---
+
+export interface EstudianteAdminDocumentacionDTO {
+  dni_legalizado?: boolean;
+  fotos_4x4?: boolean;
+  certificado_salud?: boolean;
+  folios_oficio?: number;
+  titulo_secundario_legalizado?: boolean;
+  certificado_titulo_en_tramite?: boolean;
+  analitico_legalizado?: boolean;
+  certificado_alumno_regular_sec?: boolean;
+  adeuda_materias?: boolean;
+  adeuda_materias_detalle?: string;
+  escuela_secundaria?: string;
+  es_certificacion_docente?: boolean;
+  titulo_terciario_univ?: boolean;
+}
+
+export interface EstudianteAdminListItemDTO {
+  dni: string;
+  apellido: string;
+  nombre: string;
+  email?: string | null;
+  telefono?: string | null;
+  estado_legajo: string;
+  estado_legajo_display: string;
+  carreras: string[];
+  legajo?: string | null;
+}
+
+export interface EstudianteAdminListResponseDTO {
+  total: number;
+  items: EstudianteAdminListItemDTO[];
+}
+
+export interface EstudianteAdminDetailDTO {
+  dni: string;
+  apellido: string;
+  nombre: string;
+  email?: string | null;
+  telefono?: string | null;
+  domicilio?: string | null;
+  fecha_nacimiento?: string | null;
+  estado_legajo: string;
+  estado_legajo_display: string;
+  must_change_password: boolean;
+  carreras: string[];
+  legajo?: string | null;
+  datos_extra: Record<string, unknown>;
+  documentacion?: EstudianteAdminDocumentacionDTO | null;
+  condicion_calculada?: string | null;
+  curso_introductorio_aprobado?: boolean | null;
+  libreta_entregada?: boolean | null;
+}
+
+export interface EstudianteAdminUpdatePayload {
+  telefono?: string | null;
+  domicilio?: string | null;
+  estado_legajo?: string | null;
+  must_change_password?: boolean | null;
+  fecha_nacimiento?: string | null;
+  documentacion?: Partial<EstudianteAdminDocumentacionDTO>;
+  anio_ingreso?: string | null;
+  genero?: string | null;
+  rol_extra?: string | null;
+  observaciones?: string | null;
+  cuil?: string | null;
+  curso_introductorio_aprobado?: boolean | null;
+  libreta_entregada?: boolean | null;
+}
+
+type EstudianteAdminListParams = {
+  q?: string;
+  carrera_id?: number;
+  estado_legajo?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export async function fetchEstudiantesAdmin(params: EstudianteAdminListParams = {}): Promise<EstudianteAdminListResponseDTO> {
+  const { data } = await client.get<EstudianteAdminListResponseDTO>("/alumnos/admin/estudiantes", { params });
+  return data;
+}
+
+export async function fetchEstudianteAdminDetail(dni: string): Promise<EstudianteAdminDetailDTO> {
+  const { data } = await client.get<EstudianteAdminDetailDTO>(`/alumnos/admin/estudiantes/${dni}`);
+  return data;
+}
+
+export async function updateEstudianteAdmin(dni: string, payload: EstudianteAdminUpdatePayload): Promise<EstudianteAdminDetailDTO> {
+  const { data } = await client.put<EstudianteAdminDetailDTO>(`/alumnos/admin/estudiantes/${dni}`, payload);
+  return data;
+}
+
+export async function fetchPerfilCompletar(): Promise<EstudianteAdminDetailDTO> {
+  const { data } = await client.get<EstudianteAdminDetailDTO>("/alumnos/perfil/completar");
+  return data;
+}
+
+export async function completarPerfil(payload: EstudianteAdminUpdatePayload): Promise<EstudianteAdminDetailDTO> {
+  const { data } = await client.put<EstudianteAdminDetailDTO>("/alumnos/perfil/completar", payload);
   return data;
 }

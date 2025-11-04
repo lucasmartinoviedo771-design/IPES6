@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MaxValueValidator, MinValueValidator
 from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import timezone
@@ -170,6 +170,7 @@ class Estudiante(models.Model):
         default=False,
         help_text="Si está activo, el estudiante debe cambiar la contraseña al iniciar sesión."
     )
+    datos_extra = models.JSONField(default=dict, blank=True)
     documentacion_presentada = models.ManyToManyField(
         Documento,
         blank=True,
@@ -351,6 +352,7 @@ class PreinscripcionChecklist(models.Model):
     # Trayecto de certificación docente (requiere título terciario/universitario)
     es_certificacion_docente = models.BooleanField(default=False)
     titulo_terciario_univ = models.BooleanField(default=False)
+    curso_introductorio_aprobado = models.BooleanField(default=False)
 
     # Derivado
     estado_legajo = models.CharField(
@@ -563,6 +565,323 @@ class Regularidad(models.Model):
 
     def __str__(self):
         return f"Reg {self.estudiante.dni} {self.materia.nombre} {self.get_situacion_display()}"
+
+
+class RegularidadFormato(models.Model):
+    slug = models.SlugField(max_length=32, unique=True)
+    nombre = models.CharField(max_length=64)
+    descripcion = models.TextField(blank=True, null=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nombre"]
+
+    def __str__(self) -> str:
+        return self.nombre
+
+
+class RegularidadPlantilla(models.Model):
+    class Dictado(models.TextChoices):
+        ANUAL = "ANUAL", "Anual"
+        PRIMER_CUATRIMESTRE = "1C", "1° Cuatrimestre"
+        SEGUNDO_CUATRIMESTRE = "2C", "2° Cuatrimestre"
+
+    formato = models.ForeignKey(
+        RegularidadFormato,
+        on_delete=models.CASCADE,
+        related_name="plantillas",
+    )
+    dictado = models.CharField(max_length=8, choices=Dictado.choices)
+    nombre = models.CharField(max_length=128)
+    descripcion = models.TextField(blank=True, null=True)
+    columnas = models.JSONField(default=list, blank=True)
+    situaciones = models.JSONField(default=list, blank=True)
+    referencias = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("formato", "dictado")
+        ordering = ["formato__nombre", "dictado"]
+
+    def __str__(self) -> str:
+        return f"{self.formato.nombre} ({self.get_dictado_display()})"
+
+
+class PlanillaRegularidad(models.Model):
+    class Estado(models.TextChoices):
+        DRAFT = "draft", "Borrador"
+        FINAL = "final", "Finalizada"
+
+    codigo = models.CharField(max_length=64, unique=True)
+    numero = models.PositiveIntegerField(default=0)
+    anio_academico = models.IntegerField(default=0)
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.CASCADE,
+        related_name="planillas_regularidad",
+    )
+    materia = models.ForeignKey(
+        Materia,
+        on_delete=models.CASCADE,
+        related_name="planillas_regularidad",
+    )
+    plantilla = models.ForeignKey(
+        RegularidadPlantilla,
+        on_delete=models.PROTECT,
+        related_name="planillas",
+    )
+    formato = models.ForeignKey(
+        RegularidadFormato,
+        on_delete=models.PROTECT,
+        related_name="planillas",
+    )
+    dictado = models.CharField(
+        max_length=8,
+        choices=RegularidadPlantilla.Dictado.choices,
+    )
+    plan_resolucion = models.CharField(max_length=128, blank=True)
+    folio = models.CharField(max_length=32, blank=True)
+    fecha = models.DateField()
+    observaciones = models.TextField(blank=True)
+    estado = models.CharField(max_length=16, choices=Estado.choices, default=Estado.FINAL)
+    datos_adicionales = models.JSONField(default=dict, blank=True)
+    pdf = models.FileField(upload_to="planillas_regularidad/%Y/%m/%d", null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="planillas_regularidad_creadas",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_regularidad_actualizadas",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "codigo"]
+        indexes = [
+            models.Index(fields=["profesorado", "anio_academico"]),
+            models.Index(fields=["materia", "fecha"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.codigo} - {self.materia.nombre}"
+
+
+class PlanillaRegularidadDocente(models.Model):
+    class Rol(models.TextChoices):
+        PROFESOR = "profesor", "Profesor/a"
+        BEDEL = "bedel", "Bedel"
+        OTRO = "otro", "Otro"
+
+    planilla = models.ForeignKey(
+        PlanillaRegularidad,
+        on_delete=models.CASCADE,
+        related_name="docentes",
+    )
+    docente = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_regularidad",
+    )
+    nombre = models.CharField(max_length=255)
+    dni = models.CharField(max_length=20, blank=True)
+    rol = models.CharField(max_length=16, choices=Rol.choices, default=Rol.PROFESOR)
+    orden = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["orden", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.nombre} ({self.get_rol_display()})"
+
+
+class PlanillaRegularidadFila(models.Model):
+    planilla = models.ForeignKey(
+        PlanillaRegularidad,
+        on_delete=models.CASCADE,
+        related_name="filas",
+    )
+    orden = models.PositiveIntegerField()
+    estudiante = models.ForeignKey(
+        Estudiante,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_regularidad",
+    )
+    dni = models.CharField(max_length=20)
+    apellido_nombre = models.CharField(max_length=255)
+    nota_final = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    asistencia_porcentaje = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    situacion = models.CharField(max_length=32)
+    excepcion = models.BooleanField(default=False)
+    datos = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["orden", "id"]
+        unique_together = ("planilla", "orden")
+
+    def __str__(self) -> str:
+        return f"{self.planilla.codigo} - #{self.orden} {self.apellido_nombre}"
+
+
+class PlanillaRegularidadHistorial(models.Model):
+    class Accion(models.TextChoices):
+        CREACION = "create", "Creación"
+        EDICION = "update", "Edición"
+        ELIMINACION_FILA = "delete_row", "Eliminación de fila"
+        REGENERACION_PDF = "regenerate_pdf", "Regeneración de PDF"
+
+    planilla = models.ForeignKey(
+        PlanillaRegularidad,
+        on_delete=models.CASCADE,
+        related_name="historial",
+    )
+    accion = models.CharField(max_length=32, choices=Accion.choices)
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_regularidad_historial",
+    )
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.planilla.codigo} - {self.get_accion_display()} ({self.created_at:%Y-%m-%d %H:%M})"
+
+
+class ActaExamen(models.Model):
+    class Tipo(models.TextChoices):
+        REGULAR = "REG", "Regular"
+        LIBRE = "LIB", "Libre"
+
+    codigo = models.CharField(max_length=64, unique=True)
+    numero = models.PositiveIntegerField(default=0)
+    anio_academico = models.IntegerField(default=0)
+    tipo = models.CharField(max_length=4, choices=Tipo.choices)
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.PROTECT,
+        related_name="actas_examen",
+    )
+    materia = models.ForeignKey(
+        Materia,
+        on_delete=models.PROTECT,
+        related_name="actas_examen",
+    )
+    plan = models.ForeignKey(
+        PlanDeEstudio,
+        on_delete=models.PROTECT,
+        related_name="actas_examen",
+    )
+    anio_cursada = models.IntegerField(null=True, blank=True)
+    fecha = models.DateField()
+    folio = models.CharField(max_length=64, blank=True)
+    libro = models.CharField(max_length=64, blank=True)
+    observaciones = models.TextField(blank=True)
+    total_alumnos = models.PositiveIntegerField(default=0)
+    total_aprobados = models.PositiveIntegerField(default=0)
+    total_desaprobados = models.PositiveIntegerField(default=0)
+    total_ausentes = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="actas_examen_creadas",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actas_examen_actualizadas",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        unique_together = ("profesorado", "anio_academico", "numero")
+
+    def __str__(self) -> str:
+        return f"{self.codigo} - {self.materia.nombre}"
+
+
+class ActaExamenDocente(models.Model):
+    class Rol(models.TextChoices):
+        PRESIDENTE = "PRES", "Presidente"
+        VOCAL1 = "VOC1", "Vocal 1"
+        VOCAL2 = "VOC2", "Vocal 2"
+
+    acta = models.ForeignKey(
+        ActaExamen,
+        on_delete=models.CASCADE,
+        related_name="docentes",
+    )
+    docente = models.ForeignKey(
+        "Docente",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actas_examen",
+    )
+    nombre = models.CharField(max_length=255)
+    dni = models.CharField(max_length=32, blank=True)
+    rol = models.CharField(max_length=4, choices=Rol.choices, default=Rol.PRESIDENTE)
+    orden = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["orden", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.get_rol_display()} - {self.nombre}"
+
+
+class ActaExamenAlumno(models.Model):
+    NOTA_AUSENTE_JUSTIFICADO = "AJ"
+    NOTA_AUSENTE_INJUSTIFICADO = "AI"
+
+    acta = models.ForeignKey(
+        ActaExamen,
+        on_delete=models.CASCADE,
+        related_name="alumnos",
+    )
+    numero_orden = models.PositiveIntegerField()
+    permiso_examen = models.CharField(max_length=64, blank=True)
+    dni = models.CharField(max_length=16)
+    apellido_nombre = models.CharField(max_length=255)
+    examen_escrito = models.CharField(max_length=4, blank=True)
+    examen_oral = models.CharField(max_length=4, blank=True)
+    calificacion_definitiva = models.CharField(max_length=4)
+    observaciones = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["numero_orden", "id"]
+
+    def __str__(self) -> str:
+        return f"{self.numero_orden}. {self.apellido_nombre} ({self.calificacion_definitiva})"
 
 
 def validate_pdf_attachment(file):

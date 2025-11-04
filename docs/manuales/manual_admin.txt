@@ -55,3 +55,116 @@ Escalamiento
 - Incidentes tecnicos graves (caida del servicio, errores 500 recurrentes): contacta a TI y levanta ticket interno detallando logs y acciones realizadas.
 - Requerimientos de nuevas funcionalidades: coordina con el equipo de desarrollo y registra el pedido en el backlog (docs/ISSUES.md).
 - Solicitudes legales o auditorias: prepara reportes desde Vistas globales y coordina con Direccion.
+
+Circuitos Administrativos
+================================
+
+Nueva Preinscripción
+-------------------------
+Este circuito permite a un aspirante o a un administrativo en su nombre completar el formulario de preinscripción a una carrera.
+
+Acceso y Propósito:
+- El formulario es público y se accede desde la página principal del sistema.
+- Un administrador puede iniciarlo también desde el Dashboard > "Nueva Preinscripción".
+- El objetivo es recolectar todos los datos necesarios del aspirante de forma digital para formalizar su legajo.
+
+Pasos del Asistente:
+1.  **Datos Personales:** Se ingresan los datos de identidad del aspirante (nombre, apellido, DNI, CUIL, fecha y lugar de nacimiento, etc.). Todos los campos marcados con * son obligatorios.
+2.  **Contacto:** Se registran el email y los teléfonos del aspirante, además de un contacto de emergencia.
+3.  **Estudios:** Se divide en dos partes:
+    *   **Estudios Secundarios:** Título, establecimiento, fecha de egreso y lugar de finalización.
+    *   **Estudios Superiores:** Opcional, para quienes tengan títulos previos.
+4.  **Carrera y Documentación:**
+    *   Se selecciona la carrera a la que se desea inscribir de un listado de ofertas activas.
+    *   Se debe adjuntar una foto 4x4 digital (formato JPG o PNG, tamaño máximo 1.5 MB).
+5.  **Confirmar y Enviar:**
+    *   Se muestra un resumen de toda la información cargada para su revisión final.
+    *   El aspirante debe marcar la documentación que presentará físicamente (DNI, analítico, fotos, etc.).
+    *   **Paso Crítico:** Es obligatorio descargar el formulario en formato PDF antes de poder enviarlo. El botón "Enviar Preinscripción" solo se activa después de la descarga.
+    *   Una vez enviado, el sistema muestra un código de seguimiento y la preinscripción pasa al estado "Enviada".
+
+Puntos Clave y Errores Comunes:
+- **Ventana de Preinscripción:** El formulario solo está disponible si existe una "Ventana de Habilitación" de tipo "PREINSCRIPCION" activa. Si no, mostrará un mensaje de que la preinscripción está cerrada. Esto se gestiona desde `Secretaría > Habilitar Fechas`.
+- **Validación de Campos:** El formulario realiza validaciones en tiempo real. Si un campo obligatorio está vacío o tiene un formato incorrecto (ej. un email inválido), se mostrará un error debajo del campo.
+- **Persistencia de Datos:** El formulario guarda el progreso en el navegador. Si el aspirante cierra la pestaña, al volver podrá continuar donde dejó. El botón "Limpiar Formulario" borra todos los datos guardados.
+- **Error al Enviar:** Si ocurre un problema (falla de conexión, error del servidor), se mostrará un mensaje de error. Causas comunes:
+    *   El token de reCAPTCHA no se pudo obtener.
+    *   El servidor no está disponible (error 500).
+    *   La foto es demasiado grande o en formato incorrecto (aunque esto se valida antes de subirla).
+- **Confirmación de la Preinscripción:** El envío de este formulario NO confirma la inscripción. Solo crea un registro que luego debe ser procesado por un Bedel o Secretario desde el módulo de `Preinscripciones` para cambiar su estado a "Confirmada", "Observada" o "Rechazada".
+
+Sistema de Mensajería
+-------------------------
+El sistema de mensajería es la herramienta de comunicación interna oficial. Permite el contacto directo y grupal entre distintos roles, asegurando la trazabilidad y centralización de las consultas.
+
+Acceso y Propósito:
+- Se accede desde el menú lateral, en el ícono de "Mensajes".
+- Su propósito es reemplazar el email o WhatsApp para comunicaciones institucionales, proveyendo un canal formal con historial.
+
+Interfaz Principal:
+La pantalla se divide en tres partes:
+1.  **Filtros:** A la izquierda, permite filtrar conversaciones por estado (Abiertas, Cierre solicitado, Cerradas) o ver solo las no leídas.
+2.  **Lista de Conversaciones:** Muestra un resumen de cada conversación con su asunto, último mensaje y fecha. Las conversaciones con mensajes no leídos o que requieren atención prioritaria (SLA) se resaltan visualmente.
+3.  **Detalle de la Conversación:** Al seleccionar una conversación, se muestra el historial completo de mensajes, los participantes y las opciones para responder o gestionar el estado.
+
+Crear una Nueva Conversación:
+1.  Haz clic en el botón "Nuevo mensaje".
+2.  **Asunto y Tema:** Define un asunto claro y, opcionalmente, asigna un tema (ej. "Consultas Bedelía", "Soporte Técnico") para clasificar el mensaje.
+3.  **Destinatarios:** Puedes añadir destinatarios de dos formas:
+    *   **Búsqueda individual:** Busca usuarios por nombre, email o DNI.
+    *   **Mensaje masivo por rol:** Selecciona uno o más roles (ej. "Estudiantes", "Docentes"). Como Admin, puedes enviar mensajes a cualquier rol.
+4.  **Mensaje:** Escribe el contenido del mensaje. Es obligatorio.
+5.  **Opciones Adicionales (para mensajes masivos):
+    *   **Filtrar por Carrera:** Si envías a "Estudiantes", puedes limitar el mensaje a carreras específicas.
+    *   **Permitir Respuesta:** Puedes definir si los estudiantes pueden responder al mensaje o si es solo un comunicado unidireccional.
+6.  Haz clic en "Enviar".
+
+Gestionar Conversaciones:
+- **Responder:** En una conversación abierta, puedes escribir una respuesta y adjuntar un archivo PDF si es necesario.
+- **Solicitar Cierre:** Si consideras que una consulta fue resuelta, pero no tienes permiso para cerrarla (ej. un estudiante), puedes solicitar su cierre. El destinatario administrativo verá la solicitud.
+- **Cerrar Conversación:** Como Admin, puedes cerrar cualquier conversación. Esto la archiva y la quita de la vista "Abiertas". Una conversación cerrada no puede ser reabierta.
+
+Roles y Permisos (Simplificado):
+- **Admin/Secretaría/Jefes:** Pueden iniciar conversaciones con cualquier otro rol, de forma individual o masiva.
+- **Coordinador/Tutor/Bedel:** Pueden enviar mensajes masivos a los roles que tienen asignados (generalmente Alumnos y Docentes).
+- **Estudiantes:** Solo pueden iniciar conversaciones con roles administrativos (Bedel, Tutor, Coordinador, Secretaría), no con otros estudiantes.
+
+Confirmación de Inscripciones (Formalización)
+-------------------------------------------
+Este circuito es el paso posterior a la preinscripción online. Permite a un Bedel o Secretario revisar la información y documentación del aspirante para oficializar su inscripción.
+
+Acceso y Propósito:
+- Se accede desde el Dashboard > "Ver Preinscripciones" o desde el menú lateral en "Preinscripciones".
+- El objetivo es validar los datos del aspirante, verificar la documentación presentada y cambiar el estado de la preinscripción a "Confirmada", "Observada" o "Rechazada".
+
+Interfaz de Gestión:
+- La página muestra una tabla con todas las preinscripciones.
+- Se puede buscar por DNI, nombre, apellido o código de preinscripción.
+- Por defecto, solo se muestran las preinscripciones activas. Se puede marcar la opción "Incluir inactivas" para ver las que fueron borradas.
+
+Proceso de Formalización:
+1.  **Seleccionar Preinscripción:**
+    *   Busca al aspirante en la tabla y haz clic en el botón "Ver / Editar".
+    *   Se abrirá un panel con toda la información de esa preinscripción.
+
+2.  **Revisión y Edición de Datos:**
+    *   En este panel, puedes corregir cualquier dato del formulario (ej. errores de tipeo en el DNI, nombre, etc.).
+    *   Después de hacer cambios, haz clic en "Guardar cambios".
+
+3.  **Checklist de Documentación:**
+    *   En la columna de la derecha, se muestra un checklist con toda la documentación requerida.
+    *   Marca cada documento que el aspirante haya presentado físicamente (ej. Fotocopia de DNI, Título secundario).
+    *   El estado documental del aspirante ("Regular" o "Condicional") se actualiza automáticamente según los documentos marcados.
+    *   **Estado Regular:** Se otorga si el aspirante presenta toda la documentación obligatoria, incluyendo el título secundario legalizado.
+    *   **Estado Condicional:** Se otorga si falta alguna documentación. Para confirmar a un alumno condicional, se debe marcar la casilla "DDJJ / Nota compromiso".
+
+4.  **Cambio de Estado:**
+    *   **Confirmar Inscripción:** Si la documentación es correcta (ya sea para un estado Regular o Condicional con DDJJ), haz clic en "Confirmar Inscripción". Esto cambia el estado de la preinscripción a "Confirmada" y crea el legajo del estudiante.
+    *   **Marcar Observada:** Si falta información o hay un problema con la documentación, haz clic en "Marcar Observada". El sistema pedirá un motivo. El aspirante será notificado (si el sistema de notificaciones está configurado) para que corrija el problema.
+    *   **Rechazar:** Si la preinscripción no es válida, haz clic en "Rechazar" y proporciona un motivo.
+    *   **Eliminar:** Mueve la preinscripción a un estado inactivo. No la borra físicamente y se puede reactivar.
+
+Posibles Errores y Consideraciones:
+- **No se puede confirmar:** El botón "Confirmar Inscripción" estará desactivado si el estado es "Condicional" y no se ha marcado la DDJJ.
+- **Cambio de Carrera:** Si el aspirante se equivocó de carrera, puedes seleccionarla en el formulario y hacer clic en "Cambiar Profesorado" para actualizarla.
+- **Guardar Checklist:** Los cambios en el checklist de documentación no se guardan automáticamente. Haz clic en "Guardar checklist" para persistir el estado de la documentación sin necesidad de confirmar la inscripción.

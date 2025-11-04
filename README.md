@@ -113,6 +113,7 @@ Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarr
 
 ## Mantenimiento Reciente
 
+-   **Actualización de Dependencias del Backend**: Se ha regenerado el archivo `requirements.txt` para asegurar que todas las dependencias del proyecto estén actualizadas y consistentes.
 -   **Corrección de Codificación de Caracteres**: Se solucionaron errores de codificación (UTF-8) en múltiples componentes del frontend, asegurando la correcta visualización de acentos y caracteres especiales en toda la aplicación.
 -   **Actualización de Dependencias**: Se actualizó el archivo `requirements.txt` para reflejar el estado actual de las dependencias del backend.
 -   **Mejoras de Seguridad en Autenticación**: Se migró el almacenamiento del token JWT a cookies HTTP-only, se implementó protección CSRF en el frontend y se endurecieron las configuraciones de seguridad del backend, mejorando la resiliencia contra ataques XSS.

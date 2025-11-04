@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, Typography, Stack, Grid, Paper, TextField, MenuItem, Button, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Stack, Grid, Paper, TextField, MenuItem, Button, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select } from '@mui/material';
 import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
-import { solicitarPedidoAnalitico } from '@/api/alumnos';
+import { solicitarPedidoAnalitico, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
 
 type Pedido = { dni:string; apellido_nombre:string; profesorado?:string; cohorte?:number; fecha_solicitud:string; motivo?: string; motivo_otro?: string };
 
@@ -14,6 +14,19 @@ export default function AnaliticosPage(){
   const [dniFilter, setDniFilter] = React.useState('');
   const [creating, setCreating] = React.useState(false);
   const [form, setForm] = React.useState<{dni:string; motivo:'equivalencia'|'beca'|'control'|'otro'; motivo_otro?:string; cohorte?:number|''}>({ dni:'', motivo:'equivalencia', motivo_otro:'', cohorte:'' });
+  const [carrerasModal, setCarrerasModal] = React.useState<TrayectoriaCarreraDetalleDTO[]>([]);
+  const [carrerasModalLoading, setCarrerasModalLoading] = React.useState(false);
+  const [selectedCarreraModal, setSelectedCarreraModal] = React.useState<string>('');
+  const [selectedPlanModal, setSelectedPlanModal] = React.useState<string>('');
+
+  const resetModalState = () => {
+    setCarrerasModal([]);
+    setSelectedCarreraModal('');
+    setSelectedPlanModal('');
+    setCarrerasModalLoading(false);
+    setForm({ dni:'', motivo:'equivalencia', motivo_otro:'', cohorte:'' });
+    setError(null);
+  };
 
   const loadVentanas = async()=>{
     try{
@@ -24,6 +37,80 @@ export default function AnaliticosPage(){
     }catch(err:any){ setError('No se pudieron cargar ventanas'); }
   };
   React.useEffect(()=>{ loadVentanas(); },[]);
+
+  React.useEffect(() => {
+    if (!creating) return;
+    if (!form.dni.trim()) {
+      setCarrerasModal([]);
+      setSelectedCarreraModal('');
+      setSelectedPlanModal('');
+      return;
+    }
+    let cancelled = false;
+    const fetchCarreras = async () => {
+      setCarrerasModalLoading(true);
+      try {
+        const data = await obtenerCarrerasActivas({ dni: form.dni.trim() });
+        const list = data || [];
+        if (!cancelled) {
+          setCarrerasModal(list);
+          if (!list.length) {
+            setSelectedCarreraModal('');
+            setSelectedPlanModal('');
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setCarrerasModal([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCarrerasModalLoading(false);
+        }
+      }
+    };
+    fetchCarreras();
+    return () => {
+      cancelled = true;
+    };
+  }, [creating, form.dni]);
+
+  React.useEffect(() => {
+    if (!creating || carrerasModalLoading) return;
+    if (!carrerasModal.length) {
+      setSelectedCarreraModal('');
+      setSelectedPlanModal('');
+      return;
+    }
+    if (selectedCarreraModal) {
+      const actual = carrerasModal.find((c) => String(c.profesorado_id) === selectedCarreraModal);
+      if (!actual) {
+        setSelectedCarreraModal('');
+        setSelectedPlanModal('');
+        return;
+      }
+      if (!selectedPlanModal || !actual.planes.some((p) => String(p.id) === selectedPlanModal)) {
+        const preferido = actual.planes.find((p) => p.vigente) || actual.planes[0] || null;
+        setSelectedPlanModal(preferido ? String(preferido.id) : '');
+      }
+      return;
+    }
+    if (carrerasModal.length === 1) {
+      const unica = carrerasModal[0];
+      setSelectedCarreraModal(String(unica.profesorado_id));
+      const preferido = unica.planes.find((p) => p.vigente) || unica.planes[0] || null;
+      setSelectedPlanModal(preferido ? String(preferido.id) : '');
+    }
+  }, [creating, carrerasModal, carrerasModalLoading, selectedCarreraModal, selectedPlanModal]);
+
+  const planesModal = React.useMemo(() => {
+    if (!selectedCarreraModal) return [];
+    const carrera = carrerasModal.find((c) => String(c.profesorado_id) === selectedCarreraModal);
+    return carrera ? carrera.planes : [];
+  }, [carrerasModal, selectedCarreraModal]);
+
+  const requiereSeleccionCarreraModal = creating && !carrerasModalLoading && carrerasModal.length > 1 && !selectedCarreraModal;
+  const requiereSeleccionPlanModal = creating && !carrerasModalLoading && planesModal.length > 1 && !selectedPlanModal;
 
   const loadPedidos = async(id:number)=>{
     try{
@@ -62,14 +149,25 @@ export default function AnaliticosPage(){
 
   const crearPedido = async ()=>{
     try{
+      if (!form.dni.trim()) {
+        setError('Ingresa un DNI para generar el pedido.');
+        return;
+      }
+      if (requiereSeleccionCarreraModal || requiereSeleccionPlanModal) {
+        setError('Selecciona profesorado y plan antes de continuar.');
+        return;
+      }
       const payload = {
         dni: form.dni || undefined,
         motivo: form.motivo,
         motivo_otro: form.motivo==='otro' ? (form.motivo_otro || undefined) : undefined,
         cohorte: typeof form.cohorte === 'number' ? form.cohorte : undefined,
+        profesorado_id: selectedPlanModal ? undefined : (selectedCarreraModal ? Number(selectedCarreraModal) : undefined),
+        plan_id: selectedPlanModal ? Number(selectedPlanModal) : undefined,
       } as any;
       await solicitarPedidoAnalitico(payload);
       setCreating(false);
+      resetModalState();
       if (ventanaId) await loadPedidos(Number(ventanaId));
     }catch(err:any){
       setError(err?.response?.data?.message || 'No se pudo crear el pedido');
@@ -93,7 +191,16 @@ export default function AnaliticosPage(){
         <Button variant="contained" onClick={descargarPDF} disabled={!ventanaId || descargando}>
           {descargando ? 'Generando...' : 'Descargar PDF'}
         </Button>
-        <Button variant="outlined" onClick={()=>setCreating(true)} disabled={!ventanaId}>Nuevo pedido</Button>
+        <Button
+          variant="outlined"
+          onClick={()=>{
+            resetModalState();
+            setCreating(true);
+          }}
+          disabled={!ventanaId}
+        >
+          Nuevo pedido
+        </Button>
       </Stack>
 
       <Grid container spacing={1.5} sx={{ mt:2 }}>
@@ -116,11 +223,53 @@ export default function AnaliticosPage(){
         )}
       </Grid>
 
-      <Dialog open={creating} onClose={()=>setCreating(false)} maxWidth="xs" fullWidth>
+      <Dialog open={creating} onClose={()=>{ setCreating(false); resetModalState(); }} maxWidth="xs" fullWidth>
         <DialogTitle>Nuevo pedido de analítico</DialogTitle>
         <DialogContent>
           <Stack gap={2} sx={{ mt: 1 }}>
             <TextField label="DNI del estudiante" size="small" value={form.dni} onChange={(e)=>setForm(f=>({...f, dni:e.target.value}))} />
+            <FormControl size="small" disabled={!form.dni.trim() || carrerasModalLoading}>
+              <InputLabel>Profesorado</InputLabel>
+              <Select
+                label="Profesorado"
+                value={selectedCarreraModal}
+                onChange={(e)=>{
+                  setSelectedCarreraModal(String(e.target.value));
+                  setSelectedPlanModal('');
+                  setError(null);
+                }}
+                displayEmpty
+              >
+                {carrerasModalLoading && <MenuItem value="">Cargando...</MenuItem>}
+                {!carrerasModalLoading && !carrerasModal.length && <MenuItem value="">Sin profesorados</MenuItem>}
+                {carrerasModal.map((carrera) => (
+                  <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
+                    {carrera.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {planesModal.length > 1 && (
+              <FormControl size="small">
+                <InputLabel>Plan</InputLabel>
+                <Select
+                  label="Plan"
+                  value={selectedPlanModal}
+                  onChange={(e)=>{
+                    setSelectedPlanModal(String(e.target.value));
+                    setError(null);
+                  }}
+                  displayEmpty
+                >
+                  {planesModal.map((plan) => (
+                    <MenuItem key={plan.id} value={String(plan.id)}>
+                      {plan.resolucion ? `Plan ${plan.resolucion}` : `Plan ${plan.id}`}
+                      {plan.vigente ? ' (vigente)' : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             <TextField select label="Motivo" size="small" value={form.motivo} onChange={(e)=>setForm(f=>({...f, motivo:e.target.value as any}))}>
               <MenuItem value="equivalencia">Pedido de equivalencia</MenuItem>
               <MenuItem value="beca">Becas</MenuItem>
@@ -131,11 +280,24 @@ export default function AnaliticosPage(){
               <TextField label="Detalle del motivo" size="small" value={form.motivo_otro || ''} onChange={(e)=>setForm(f=>({...f, motivo_otro:e.target.value}))} />
             )}
             <TextField label="Cohorte (año de ingreso)" size="small" type="number" value={form.cohorte || ''} onChange={(e)=>setForm(f=>({...f, cohorte: e.target.value? Number(e.target.value): ''}))} />
+            {requiereSeleccionCarreraModal && <Alert severity="info">Selecciona un profesorado.</Alert>}
+            {requiereSeleccionPlanModal && <Alert severity="info">Selecciona un plan.</Alert>}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={()=>setCreating(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={crearPedido} disabled={!form.dni}>Crear</Button>
+          <Button onClick={()=>{ setCreating(false); resetModalState(); }}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={crearPedido}
+            disabled={
+              !form.dni.trim() ||
+              carrerasModalLoading ||
+              requiereSeleccionCarreraModal ||
+              requiereSeleccionPlanModal
+            }
+          >
+            Crear
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

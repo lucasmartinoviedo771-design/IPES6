@@ -184,6 +184,16 @@ export default function PreinscripcionWizard() {
 
   const onSubmitError: SubmitErrorHandler<PreinscripcionForm> = (errors) => {
     console.error("Errores de validación del formulario:", errors);
+    // Find the first field with an error and scroll to it
+    const errorKeys = Object.keys(errors) as Array<keyof typeof errors>;
+    const firstErrorField = errorKeys.find((field) => !!errors[field]);
+    if (firstErrorField) {
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+    setSubmit({ status: "error", message: "Por favor, corrige los errores en el formulario." });
   };
 
   const handleSubmit = form.handleSubmit(onSubmit, onSubmitError);
@@ -237,7 +247,17 @@ export default function PreinscripcionWizard() {
         <Box sx={{ p: 2, border: "1px solid #eee", borderRadius: 2 }}>
           {activeStep === 0 && <DatosPersonales />}
           {activeStep === 1 && <Contacto />}
-          {activeStep === 2 && <><EstudiosSecundarios /><Box mt={2}><EstudiosSuperiores /></Box></>}
+          {activeStep === 2 && (
+            <>
+              <EstudiosSecundarios />
+              <Box mt={2}>
+                <EstudiosSuperiores />
+              </Box>
+              <Box mt={2}>
+                <DatosLaborales />
+              </Box>
+            </>
+          )}
           {activeStep === 3 && (
             <CarreraDocumentacion
               carreras={carreras}

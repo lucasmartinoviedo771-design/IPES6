@@ -98,10 +98,26 @@ export default function HabilitarFechasPage() {
         return activo ? { ...activo } : defaultDraft(t.key);
       })();
     const setLocal = (patch: Partial<Ventana>) =>
-      setDrafts((prev) => ({
-        ...prev,
-        [t.key]: { ...baseDraft, ...patch, tipo: t.key },
-      }));
+      setDrafts((prev) => {
+        let draftBase: Ventana = baseDraft;
+        if (patch.periodo && t.key === 'MATERIAS') {
+          const candidato = list.find((item) => item.periodo === patch.periodo);
+          if (candidato) {
+            draftBase = { ...candidato };
+          } else {
+            draftBase = {
+              ...draftBase,
+              id: undefined,
+              activo: false,
+              periodo: patch.periodo,
+            };
+          }
+        }
+        return {
+          ...prev,
+          [t.key]: { ...draftBase, ...patch, tipo: t.key },
+        };
+      });
     const resetDraft = () =>
       setDrafts((prev) => ({
         ...prev,

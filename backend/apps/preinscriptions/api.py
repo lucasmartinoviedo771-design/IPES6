@@ -1,5 +1,6 @@
 import logging
 import json
+import copy
 from ninja import Router
 from django.db import transaction
 from django.conf import settings
@@ -8,7 +9,15 @@ import requests
 from django.contrib.auth.models import User, Group
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
-from core.models import Estudiante, Preinscripcion, Profesorado, PreinscripcionChecklist
+from core.models import (
+    Estudiante,
+    Preinscripcion,
+    Profesorado,
+    PreinscripcionChecklist,
+    InscripcionMateriaAlumno,
+    Regularidad,
+    InscripcionMesa,
+)
 from .schemas import PreinscripcionIn, PreinscripcionOut # Importar PreinscripcionOut
 from apps.common.api_schemas import ApiResponse
 from datetime import datetime, date
@@ -309,10 +318,15 @@ class ChecklistIn(Schema):
     escuela_secundaria: Optional[str] = ""
     es_certificacion_docente: bool = False
     titulo_terciario_univ: bool = False
+    curso_introductorio_aprobado: bool = False
 
 
 class ChecklistOut(ChecklistIn):
     estado_legajo: str
+
+
+class NuevaCarreraIn(Schema):
+    carrera_id: int
 
 
 def _get_pre_by_codigo(codigo: str) -> Preinscripcion:
@@ -426,6 +440,64 @@ def obtener_por_codigo(request, codigo: str):
     pre = _get_pre_by_codigo(codigo)
     return _serialize_pre(pre)
 
+
+@router.get("/alumno/{dni}", auth=JWTAuth())
+def listar_por_alumno(request, dni: str):
+    check_roles(request, PREINS_ALLOWED_ROLES)
+    preins = (
+        Preinscripcion.objects
+        .select_related("alumno__user", "carrera")
+        .filter(alumno__dni=dni)
+        .order_by("-anio", "-created_at")
+    )
+    return [_serialize_pre(p) for p in preins]
+
+
+@router.post("/by-code/{codigo}/carreras", response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse}, auth=JWTAuth())
+@transaction.atomic
+def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn):
+    check_roles(request, PREINS_ALLOWED_ROLES)
+    pre = _get_pre_by_codigo(codigo)
+    carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
+    if not carrera:
+        return 404, ApiResponse(ok=False, message="Profesorado no encontrado.")
+
+    anio = pre.anio or datetime.now().year
+    if Preinscripcion.objects.filter(
+        alumno=pre.alumno,
+        carrera_id=carrera.id,
+        anio=anio,
+        activa=True,
+    ).exists():
+        return 400, ApiResponse(ok=False, message="El alumno ya tiene una preinscripción activa para esa carrera en el ciclo actual.")
+
+    try:
+        datos_extra = copy.deepcopy(pre.datos_extra or {})
+        nueva_kwargs = dict(
+            alumno=pre.alumno,
+            carrera=carrera,
+            anio=anio,
+            estado="Enviada",
+            activa=True,
+            datos_extra=datos_extra,
+        )
+        foto_4x4 = getattr(pre, "foto_4x4_dataurl", None)
+        if foto_4x4:
+            nueva_kwargs["foto_4x4_dataurl"] = foto_4x4
+        nueva = Preinscripcion.objects.create(**nueva_kwargs)
+        nueva.codigo = _generar_codigo(nueva.id)
+        nueva.save(update_fields=["codigo"])
+        PreinscripcionChecklist.objects.create(preinscripcion=nueva)
+    except Exception as exc:
+        logger.exception("No se pudo agregar profesorado %s al alumno %s", carrera.id, pre.alumno_id)
+        raise HttpError(500, f"No se pudo crear la nueva preinscripción: {exc}")
+
+    return ApiResponse(
+        ok=True,
+        message="Se agregó un nuevo profesorado para el alumno.",
+        data=_serialize_pre(nueva),
+    )
+
 from .schemas import PreinscripcionIn, PreinscripcionOut, PreinscripcionUpdateIn # Importar PreinscripcionOut
 
 @router.put("/by-code/{codigo}", auth=JWTAuth())
@@ -479,6 +551,28 @@ def rechazar(request, codigo: str, motivo: Optional[str] = None):
 def cambiar_carrera(request, codigo: str, carrera_id: int):
     check_roles(request, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
+    carrera_actual = pre.carrera
+    alumno = pre.alumno
+
+    hay_inscripciones = InscripcionMateriaAlumno.objects.filter(
+        estudiante=alumno,
+        materia__plan_de_estudio__profesorado_id=carrera_actual.id,
+    ).exists()
+    hay_regularidades = Regularidad.objects.filter(
+        estudiante=alumno,
+        materia__plan_de_estudio__profesorado_id=carrera_actual.id,
+    ).exists()
+    hay_mesas = InscripcionMesa.objects.filter(
+        estudiante=alumno,
+        mesa__materia__plan_de_estudio__profesorado_id=carrera_actual.id,
+    ).exists()
+
+    if hay_inscripciones or hay_regularidades or hay_mesas:
+        return 400, ApiResponse(
+            ok=False,
+            message="No se puede cambiar el profesorado porque el alumno ya registra inscripciones o notas en esta carrera.",
+        )
+
     pre.carrera_id = carrera_id
     pre.save(update_fields=['carrera'])
     return _serialize_pre(pre)

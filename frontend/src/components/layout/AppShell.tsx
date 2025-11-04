@@ -14,7 +14,12 @@ import {
   IconButton,
   Divider,
   Badge,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -27,10 +32,13 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
 import InsightsIcon from "@mui/icons-material/Insights";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // Importar ícono de ayuda
+import UploadFileIcon from "@mui/icons-material/UploadFile"; // Importar ícono para Primera Carga
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { obtenerResumenMensajes } from "@/api/mensajes";
 import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
+import UserGuideDisplay from "../guia/UserGuideDisplay"; // Importar componente de guía
 
 const drawerWidth = 240;
 
@@ -44,6 +52,7 @@ export default function AppShell({ children }: PropsWithChildren) {
       return true;
     }
   });
+  const [guideOpen, setGuideOpen] = useState(false); // Estado para el diálogo de la guía
   const loc = useLocation();
   const navigate = useNavigate();
 
@@ -112,10 +121,10 @@ export default function AppShell({ children }: PropsWithChildren) {
     "jefa_aaee",
     "coordinador"
   ]);
+  const canPrimeraCarga = hasAnyRole(user, ["admin", "secretaria", "bedel"]); // New role check
 
   const canUseMessages = !!user && !hasAnyRole(user, ["preinscripciones"]);
-  console.log("[DEBUG] user", user);
-  console.log("[DEBUG] canUseMessages", canUseMessages);
+
 
   const { data: messageSummary } = useQuery({
     queryKey: ["mensajes", "resumen"],
@@ -161,6 +170,11 @@ export default function AppShell({ children }: PropsWithChildren) {
             IPES Paulo Freire
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, fontSize: 14 }}>
+            <Tooltip title="Guía de Usuario">
+              <IconButton size="small" onClick={() => setGuideOpen(true)}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             {canUseMessages && (
               <Tooltip title="Mensajes">
                 <IconButton size="small" onClick={() => navigate("/mensajes")}>
@@ -171,6 +185,12 @@ export default function AppShell({ children }: PropsWithChildren) {
               </Tooltip>
             )}
             <span>Hola, {user?.name ?? user?.dni}</span>
+            <Link
+              to="/cambiar-password"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
+              Cambiar contraseña
+            </Link>
             <Link
               to="#"
               onClick={(e) => {
@@ -183,6 +203,17 @@ export default function AppShell({ children }: PropsWithChildren) {
           </Box>
         </Toolbar>
       </AppBar>
+
+      {/* Diálogo para la Guía de Usuario */}
+      <Dialog open={guideOpen} onClose={() => setGuideOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Guía de Usuario</DialogTitle>
+        <DialogContent>
+          <UserGuideDisplay />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGuideOpen(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
 
       <Drawer
         variant="permanent"
@@ -295,6 +326,17 @@ export default function AppShell({ children }: PropsWithChildren) {
             >
               <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Alumnos" />
+            </ListItemButton>
+          )}
+
+          {canPrimeraCarga && ( // New sidebar item for "Primera Carga"
+            <ListItemButton
+              selected={current.startsWith("/admin/primera-carga")}
+              onClick={() => navigate("/admin/primera-carga")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}><UploadFileIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Primera Carga" />
             </ListItemButton>
           )}
 
