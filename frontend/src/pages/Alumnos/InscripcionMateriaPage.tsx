@@ -29,10 +29,13 @@ import {
   obtenerMateriasInscriptas,
   obtenerHistorialAlumno,
   obtenerVentanaMaterias,
+  obtenerCarrerasActivas,
   MateriaPlanDTO,
   HistorialAlumnoDTO,
   MateriaInscriptaItemDTO,
   ApiResponseDTO,
+  TrayectoriaCarreraDetalleDTO,
+  VentanaInscripcion,
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
 
@@ -47,6 +50,8 @@ type Materia = {
   correlativasRegular: number[];
   correlativasAprob: number[];
   profesorado?: string;
+  profesoradoId?: number | null;
+  planId?: number | null;
 };
 
 const cuatrimestreCompatible = (a: Materia["cuatrimestre"], b: Materia["cuatrimestre"]) => {
@@ -76,6 +81,8 @@ function mapMateria(dto: MateriaPlanDTO): Materia {
     correlativasRegular: dto.correlativas_regular || [],
     correlativasAprob: dto.correlativas_aprob || [],
     profesorado: dto.profesorado,
+    profesoradoId: dto.profesorado_id ?? null,
+    planId: dto.plan_id ?? null,
   };
 }
 
@@ -121,22 +128,43 @@ const InscripcionMateriaPage: React.FC = () => {
   const [dniInput, setDniInput] = useState<string>("");
   const [dniFiltro, setDniFiltro] = useState<string>("");
   const [anioFiltro, setAnioFiltro] = useState<number | "all">("all");
-  const [profesoradoFiltro, setProfesoradoFiltro] = useState<string | "all">("all");
+  const [selectedCarreraId, setSelectedCarreraId] = useState<string>("");
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const normalizedDni = dniFiltro.trim();
   const shouldFetchInscriptas = !puedeGestionar || normalizedDni.length > 0;
+  const requiereSeleccionAlumno = puedeGestionar && !shouldFetchInscriptas;
 
   const handleAnioChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
     setAnioFiltro(value === "all" ? "all" : Number(value));
   };
 
-  const handleProfesoradoChange = (event: SelectChangeEvent<string>) => {
+  const handleCarreraChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
-    setProfesoradoFiltro(value === "all" ? "all" : value);
+    setSelectedCarreraId(value);
+    setErr(null);
+    setInfo(null);
+    if (!value) {
+      setSelectedPlanId("");
+      return;
+    }
+    const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === value);
+    if (!carrera) {
+      setSelectedPlanId("");
+      return;
+    }
+    const preferido = carrera.planes.find((p) => p.vigente) ?? carrera.planes[0];
+    setSelectedPlanId(preferido ? String(preferido.id) : "");
+  };
+
+  const handlePlanChange = (event: SelectChangeEvent<string>) => {
+    setErr(null);
+    setInfo(null);
+    setSelectedPlanId(event.target.value);
   };
 
   useEffect(() => {
@@ -150,17 +178,83 @@ const InscripcionMateriaPage: React.FC = () => {
     setInfo(null);
     setErr(null);
     setSeleccionadas([]);
+    setSelectedCarreraId("");
+    setSelectedPlanId("");
   }, [dniFiltro]);
 
-  const materiasQ = useQuery<Materia[]>({
-    queryKey: ["materias-plan", dniFiltro],
-    queryFn: async () => {
-      const data = await obtenerMateriasPlanAlumno(dniFiltro ? { dni: dniFiltro } : undefined);
-      return data.map(mapMateria);
-    },
+  const carrerasQ = useQuery<TrayectoriaCarreraDetalleDTO[]>({
+    queryKey: ["carreras-activas", dniFiltro],
+    queryFn: () => obtenerCarrerasActivas(shouldFetchInscriptas ? (dniFiltro ? { dni: dniFiltro } : undefined) : undefined),
+    enabled: shouldFetchInscriptas,
+    retry: false,
   });
 
-  const historialQ = useQuery({
+  const carrerasDisponibles = carrerasQ.data ?? [];
+  const selectedCarreraIdNum = selectedCarreraId ? Number(selectedCarreraId) : undefined;
+  const selectedPlanIdNum = selectedPlanId ? Number(selectedPlanId) : undefined;
+  const puedeSolicitarMaterias = !shouldFetchInscriptas || (carrerasQ.isSuccess && (carrerasDisponibles.length <= 1 || !!selectedCarreraIdNum || !!selectedPlanIdNum));
+
+  const planesDisponibles = useMemo(() => {
+    if (!selectedCarreraId) return [];
+    const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === selectedCarreraId);
+    return carrera ? carrera.planes : [];
+  }, [selectedCarreraId, carrerasDisponibles]);
+
+  useEffect(() => {
+    const disponibles = carrerasDisponibles;
+    if (!disponibles.length) {
+      setSelectedCarreraId("");
+      setSelectedPlanId("");
+      return;
+    }
+    if (selectedCarreraId) {
+      const actual = disponibles.find((c) => String(c.profesorado_id) === selectedCarreraId);
+      if (!actual) {
+        setSelectedCarreraId("");
+        setSelectedPlanId("");
+        return;
+      }
+      if (!selectedPlanId || !actual.planes.some((p) => String(p.id) === selectedPlanId)) {
+        const preferido = actual.planes.find((p) => p.vigente) ?? actual.planes[0];
+        setSelectedPlanId(preferido ? String(preferido.id) : "");
+      }
+      return;
+    }
+    if (disponibles.length === 1) {
+      const unica = disponibles[0];
+      setSelectedCarreraId(String(unica.profesorado_id));
+      const preferido = unica.planes.find((p) => p.vigente) ?? unica.planes[0];
+      setSelectedPlanId(preferido ? String(preferido.id) : "");
+    }
+  }, [carrerasDisponibles, selectedCarreraId, selectedPlanId]);
+
+  const materiasQ = useQuery<Materia[]>({
+    queryKey: ["materias-plan", dniFiltro, selectedCarreraId, selectedPlanId],
+    enabled: shouldFetchInscriptas && puedeSolicitarMaterias,
+    queryFn: async () => {
+      const params: { dni?: string; plan_id?: number; profesorado_id?: number } = {};
+      if (dniFiltro) params.dni = dniFiltro;
+      if (selectedPlanIdNum) {
+        params.plan_id = selectedPlanIdNum;
+      } else if (selectedCarreraIdNum) {
+        params.profesorado_id = selectedCarreraIdNum;
+      }
+      const data = await obtenerMateriasPlanAlumno(Object.keys(params).length ? params : undefined);
+      return data.map(mapMateria);
+    },
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (materiasQ.isError) {
+      const error = materiasQ.error as any;
+      setErr(error?.response?.data?.message || "No se pudieron obtener las materias del plan.");
+    } else if (materiasQ.isSuccess) {
+      setErr(null);
+    }
+  }, [materiasQ.isError, materiasQ.isSuccess, materiasQ.error]);
+
+  const historialQ = useQuery<HistorialAlumnoDTO>({
     queryKey: ["historial-alumno", dniFiltro],
     queryFn: async () => {
       const d: HistorialAlumnoDTO = await obtenerHistorialAlumno(dniFiltro ? { dni: dniFiltro } : undefined);
@@ -171,14 +265,15 @@ const InscripcionMateriaPage: React.FC = () => {
         inscriptas_actuales: d.inscriptas_actuales || [],
       };
     },
+    enabled: shouldFetchInscriptas,
   });
 
-  const ventanaQ = useQuery({
+  const ventanaQ = useQuery<VentanaInscripcion | null>({
     queryKey: ["ventana-materias"],
     queryFn: obtenerVentanaMaterias,
   });
 
-  const inscripcionesQ = useQuery({
+  const inscripcionesQ = useQuery<MateriaInscriptaItemDTO[]>({
     queryKey: ["materias-inscriptas", normalizedDni],
     queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined),
     enabled: shouldFetchInscriptas,
@@ -188,7 +283,7 @@ const InscripcionMateriaPage: React.FC = () => {
     materiasQ.isError ||
     historialQ.isError ||
     ventanaQ.isError ||
-    (shouldFetchInscriptas && inscripcionesQ.isError);
+    (shouldFetchInscriptas && (inscripcionesQ.isError || carrerasQ.isError));
 
   const mInscribir = useMutation({
     mutationFn: (materiaId: number) =>
@@ -298,18 +393,11 @@ const InscripcionMateriaPage: React.FC = () => {
     return unique;
   }, [materias]);
 
-  const profesoradosDisponibles = useMemo(() => {
-    const set = new Set<string>();
-    materias.forEach((m) => {
-      if (m.profesorado) set.add(m.profesorado);
-    });
-    return Array.from(set).sort();
-  }, [materias]);
-
   const matchesFilters = (materia: MateriaEvaluada | Materia) => {
     const byAnio = anioFiltro === "all" || materia.anio === anioFiltro;
-    const byProf = profesoradoFiltro === "all" || (materia.profesorado ?? "") === profesoradoFiltro;
-    return byAnio && byProf;
+    const byCarrera = !selectedCarreraIdNum || materia.profesoradoId === selectedCarreraIdNum;
+    const byPlan = !selectedPlanIdNum || materia.planId === selectedPlanIdNum;
+    return byAnio && byCarrera && byPlan;
   };
 
   const materiasEvaluadas: MateriaEvaluada[] = useMemo(() => materias.map((materia) => {
@@ -439,7 +527,20 @@ const InscripcionMateriaPage: React.FC = () => {
     .filter((item): item is { materia: Materia; inscripcion: MateriaInscriptaItemDTO | null } => Boolean(item))
     .filter(({ materia }) => matchesFilters(materia));
 
-  const profesoradoNombre = materias.find((m) => m.profesorado)?.profesorado || "Profesorado";
+  const profesoradoNombre = useMemo(() => {
+    if (selectedCarreraId) {
+      const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === selectedCarreraId);
+      if (carrera) return carrera.nombre;
+    }
+    if (materias.length) {
+      const withNombre = materias.find((m) => m.profesorado);
+      if (withNombre?.profesorado) return withNombre.profesorado;
+    }
+    if (carrerasDisponibles.length === 1) {
+      return carrerasDisponibles[0].nombre;
+    }
+    return "Profesorado";
+  }, [selectedCarreraId, materias, carrerasDisponibles]);
   const periodoLabel = ventana?.periodo === "2C" ? "2º Cuatrimestre" : "1º Cuatrimestre + Anuales";
 
   const handleInscribir = (materiaId: number) => {
@@ -453,7 +554,9 @@ const InscripcionMateriaPage: React.FC = () => {
     mCancelar.mutate({ inscripcionId, materiaId });
   };
 
-  if (materiasQ.isLoading || historialQ.isLoading || ventanaQ.isLoading || inscripcionesQ.isLoading) {
+  const loadingAlumno =
+    shouldFetchInscriptas && (carrerasQ.isLoading || historialQ.isLoading || materiasQ.isLoading || inscripcionesQ.isLoading);
+  if (loadingAlumno || ventanaQ.isLoading) {
     return <Skeleton variant="rectangular" height={160} />;
   }
 
@@ -514,27 +617,62 @@ const InscripcionMateriaPage: React.FC = () => {
                 </Select>
               </FormControl>
 
-              {(profesoradosDisponibles.length > 0) && (
-                <FormControl size="small" sx={{ minWidth: 200, bgcolor: "#fff" }}>
-                  <InputLabel id="filtro-profesorado-label">Profesorado</InputLabel>
+              {shouldFetchInscriptas && (
+                <FormControl size="small" sx={{ minWidth: 220, bgcolor: "#fff" }} disabled={carrerasDisponibles.length === 0}>
+                  <InputLabel id="select-profesorado-label">Profesorado</InputLabel>
                   <Select
-                    labelId="filtro-profesorado-label"
-                    value={profesoradoFiltro === "all" ? "all" : profesoradoFiltro}
+                    labelId="select-profesorado-label"
+                    value={selectedCarreraId}
                     label="Profesorado"
-                    onChange={handleProfesoradoChange}
+                    onChange={handleCarreraChange}
+                    displayEmpty
                   >
-                    <MenuItem value="all">Todos los profesorados</MenuItem>
-                    {profesoradosDisponibles.map((nombre) => (
-                      <MenuItem key={nombre} value={nombre}>
-                        {nombre}
+                    {carrerasDisponibles.length === 0 && (
+                      <MenuItem value="">
+                        {carrerasQ.isLoading ? "Cargando..." : "Sin profesorados"}
+                      </MenuItem>
+                    )}
+                    {carrerasDisponibles.map((carrera) => (
+                      <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
+                        {carrera.nombre}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+
+              {planesDisponibles.length > 1 && (
+                <FormControl size="small" sx={{ minWidth: 200, bgcolor: "#fff" }}>
+                  <InputLabel id="select-plan-label">Plan</InputLabel>
+                  <Select
+                    labelId="select-plan-label"
+                    value={selectedPlanId}
+                    label="Plan"
+                    onChange={handlePlanChange}
+                    displayEmpty
+                  >
+                    {planesDisponibles.map((plan) => (
+                      <MenuItem key={plan.id} value={String(plan.id)}>
+                        {plan.resolucion ? `Plan ${plan.resolucion}` : `Plan ${plan.id}`}{plan.vigente ? " (vigente)" : ""}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               )}
             </Stack>
+            {shouldFetchInscriptas && carrerasDisponibles.length > 1 && !selectedCarreraId && !carrerasQ.isLoading && (
+              <Typography variant="caption" color="error">
+                Seleccioná un profesorado para ver sus materias.
+              </Typography>
+            )}
           </Stack>
         </Stack>
+
+        {requiereSeleccionAlumno && (
+          <Alert severity="info">
+            Ingresa un DNI para gestionar inscripciones de otro estudiante.
+          </Alert>
+        )}
 
         {queryError && (
           <Alert severity="error">

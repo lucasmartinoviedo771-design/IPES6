@@ -1,8 +1,8 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from typing import Iterable
 from ninja import Router
 from core.auth_ninja import JWTAuth
 from .schemas import (
-    InscripcionCarreraIn, InscripcionCarreraOut,
     InscripcionMateriaIn, InscripcionMateriaOut,
     CancelarInscripcionIn,
     CambioComisionIn, CambioComisionOut,
@@ -10,23 +10,25 @@ from .schemas import (
     MateriaPlan, HistorialAlumno, Horario, EquivalenciaItem,
     MateriaInscriptaItem, ComisionResumen,
     InscripcionMesaIn, InscripcionMesaOut, MesaExamenIn, MesaExamenOut,
-    RegularidadImportIn, RegularidadItemOut,
     TrayectoriaOut, TrayectoriaEvento, TrayectoriaMesa, RegularidadResumen,
     RecomendacionesOut, MateriaSugerida, FinalHabilitado, RegularidadVigenciaOut,
     EstudianteResumen, CartonPlan, CartonMateria, CartonEvento,
+    EstudianteAdminListItem, EstudianteAdminListResponse,
+    EstudianteAdminDetail, EstudianteAdminUpdateIn, EstudianteAdminDocumentacion,
+    CarreraDetalleResumen, CarreraPlanResumen,
 )
 from core.models import (
     Estudiante, PlanDeEstudio, Materia, Comision, Correlatividad, HorarioCatedra,
     HorarioCatedraDetalle, Bloque, EquivalenciaCurricular, VentanaHabilitacion,
-    PedidoAnalitico, MesaExamen, InscripcionMesa, Regularidad,
+    PedidoAnalitico, MesaExamen, InscripcionMesa, Regularidad, ActaExamenAlumno,
     Preinscripcion, PreinscripcionChecklist, Profesorado, InscripcionMateriaAlumno,
 )
 from core.permissions import ensure_roles
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 from django.utils import timezone
-from datetime import date
+from datetime import date, datetime
 
 from apps.common.api_schemas import ApiResponse
 
@@ -37,6 +39,27 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 
 alumnos_router = Router(tags=["alumnos"], auth=JWTAuth())
 
+ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
+DOCUMENTACION_FIELDS = {
+    "dni_legalizado",
+    "fotos_4x4",
+    "certificado_salud",
+    "folios_oficio",
+    "titulo_secundario_legalizado",
+    "certificado_titulo_en_tramite",
+    "analitico_legalizado",
+    "certificado_alumno_regular_sec",
+    "adeuda_materias",
+    "adeuda_materias_detalle",
+    "escuela_secundaria",
+    "es_certificacion_docente",
+    "titulo_terciario_univ",
+}
+
+
+def _ensure_admin(request):
+    ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
+
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     """Intenta resolver el estudiante a partir del DNI o del usuario autenticado."""
     if dni:
@@ -44,6 +67,219 @@ def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     if isinstance(request.user, AnonymousUser):
         return None
     return getattr(request.user, "estudiante", None)
+
+
+def _parse_optional_date(value: str | None):
+    if not value:
+        return None
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(trimmed, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _extract_documentacion(datos_extra: dict | None) -> dict:
+    if not datos_extra:
+        return {}
+    raw = datos_extra.get("documentacion") or {}
+    return {key: raw.get(key) for key in DOCUMENTACION_FIELDS if key in raw}
+
+
+def _listar_carreras_detalle(est: Estudiante, carreras: Iterable[Profesorado] | None = None) -> list[dict]:
+    carreras_list = list(carreras) if carreras is not None else list(est.carreras.all())
+    if not carreras_list:
+        return []
+    planes_qs = (
+        PlanDeEstudio.objects
+        .filter(profesorado__in=carreras_list)
+        .order_by('profesorado_id', '-vigente', '-anio_inicio', 'resolucion')
+    )
+    planes_por_prof: dict[int, list[PlanDeEstudio]] = {}
+    for plan in planes_qs:
+        planes_por_prof.setdefault(plan.profesorado_id, []).append(plan)
+    detalle: list[dict] = []
+    for prof in carreras_list:
+        planes = planes_por_prof.get(prof.id, [])
+        detalle.append({
+            "profesorado_id": prof.id,
+            "nombre": prof.nombre,
+            "planes": [
+                {
+                    "id": plan.id,
+                    "resolucion": plan.resolucion or "",
+                    "vigente": bool(getattr(plan, "vigente", False)),
+                }
+                for plan in planes
+            ],
+        })
+    return detalle
+
+
+def _apply_estudiante_updates(
+    est: Estudiante,
+    payload: EstudianteAdminUpdateIn,
+    *,
+    allow_estado_legajo: bool,
+    allow_force_password: bool,
+    mark_profile_complete: bool = False,
+) -> tuple[bool, tuple[int, ApiResponse] | None]:
+    fields_to_update: set[str] = set()
+
+    if payload.telefono is not None:
+        est.telefono = payload.telefono
+        fields_to_update.add("telefono")
+
+    if payload.domicilio is not None:
+        est.domicilio = payload.domicilio
+        fields_to_update.add("domicilio")
+
+    if allow_estado_legajo and payload.estado_legajo is not None:
+        est.estado_legajo = payload.estado_legajo.upper()
+        fields_to_update.add("estado_legajo")
+
+    if allow_force_password and payload.must_change_password is not None:
+        est.must_change_password = payload.must_change_password
+        fields_to_update.add("must_change_password")
+
+    if payload.fecha_nacimiento is not None:
+        raw_fecha = payload.fecha_nacimiento or ""
+        new_date = _parse_optional_date(raw_fecha)
+        if new_date is None and raw_fecha.strip():
+            return False, (
+                400,
+                ApiResponse(
+                    ok=False,
+                    message="Formato de fecha invalido. Usa DD/MM/AAAA o AAAA-MM-DD.",
+                ),
+            )
+        est.fecha_nacimiento = new_date
+        fields_to_update.add("fecha_nacimiento")
+
+    datos_extra = dict(est.datos_extra or {})
+
+    if payload.documentacion is not None:
+        doc_updates = payload.documentacion.model_dump(exclude_unset=True)
+        current_doc = dict(datos_extra.get("documentacion") or {})
+        for key, value in doc_updates.items():
+            if value is None:
+                current_doc.pop(key, None)
+            elif isinstance(value, str) and not value.strip():
+                current_doc.pop(key, None)
+            else:
+                current_doc[key] = value
+        if current_doc:
+            datos_extra["documentacion"] = current_doc
+        else:
+            datos_extra.pop("documentacion", None)
+
+    for extra_key in ("anio_ingreso", "genero", "rol_extra", "observaciones", "cuil"):
+        value = getattr(payload, extra_key)
+        if value is None:
+            continue
+        if value == "":
+            datos_extra.pop(extra_key, None)
+        else:
+            datos_extra[extra_key] = value
+
+    if payload.curso_introductorio_aprobado is not None:
+        datos_extra["curso_introductorio_aprobado"] = bool(payload.curso_introductorio_aprobado)
+    if payload.libreta_entregada is not None:
+        datos_extra["libreta_entregada"] = bool(payload.libreta_entregada)
+
+    if mark_profile_complete and not datos_extra.get("perfil_actualizado"):
+        datos_extra["perfil_actualizado"] = True
+
+    if datos_extra != (est.datos_extra or {}):
+        est.datos_extra = datos_extra
+        fields_to_update.add("datos_extra")
+
+    if fields_to_update:
+        est.save(update_fields=list(fields_to_update))
+
+    return True, None
+
+
+def _determine_condicion(documentacion: dict | None) -> str:
+    if not documentacion:
+        return "Pendiente"
+    requisito_basico = all(
+        (
+            bool(documentacion.get("dni_legalizado")),
+            bool(documentacion.get("fotos_4x4")),
+            bool(documentacion.get("certificado_salud")),
+            (documentacion.get("folios_oficio") or 0) >= 3,
+        )
+    )
+    requisito_secundario = any(
+        (
+            bool(documentacion.get("titulo_secundario_legalizado")),
+            bool(documentacion.get("certificado_titulo_en_tramite")),
+            bool(documentacion.get("analitico_legalizado")),
+        )
+    )
+    if requisito_basico and requisito_secundario:
+        return "Regular"
+    if requisito_basico or requisito_secundario:
+        return "Condicional"
+    return "Pendiente"
+
+
+def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
+    user = estudiante.user if estudiante.user_id else None
+    carreras_nombres = [c.nombre for c in estudiante.carreras.all()]
+    datos_extra = estudiante.datos_extra or {}
+    documentacion_data = _extract_documentacion(datos_extra)
+    documentacion = (
+        EstudianteAdminDocumentacion(**documentacion_data)
+        if documentacion_data
+        else None
+    )
+    condicion = _determine_condicion(documentacion_data)
+    curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
+    libreta_entregada = bool(datos_extra.get("libreta_entregada"))
+    regularidades_resumen = [
+        RegularidadResumen(
+            id=reg.id,
+            materia_id=reg.materia_id,
+            materia_nombre=reg.materia.nombre if reg.materia_id and reg.materia else "",
+            situacion=reg.situacion,
+            situacion_display=reg.get_situacion_display(),
+            fecha_cierre=reg.fecha_cierre.isoformat(),
+            nota_tp=float(reg.nota_trabajos_practicos) if reg.nota_trabajos_practicos is not None else None,
+            nota_final=reg.nota_final_cursada,
+            asistencia=reg.asistencia_porcentaje,
+            excepcion=reg.excepcion,
+            observaciones=reg.observaciones or None,
+        )
+        for reg in Regularidad.objects.filter(estudiante=estudiante)
+        .select_related("materia")
+        .order_by("-fecha_cierre")
+    ]
+    return EstudianteAdminDetail(
+        dni=estudiante.dni,
+        apellido=user.last_name if user else "",
+        nombre=user.first_name if user else "",
+        email=user.email if user else None,
+        telefono=estudiante.telefono or None,
+        domicilio=estudiante.domicilio or None,
+        fecha_nacimiento=estudiante.fecha_nacimiento.isoformat() if estudiante.fecha_nacimiento else None,
+        estado_legajo=estudiante.estado_legajo,
+        estado_legajo_display=estudiante.get_estado_legajo_display(),
+        must_change_password=estudiante.must_change_password,
+        carreras=carreras_nombres,
+        legajo=estudiante.legajo or None,
+        datos_extra=datos_extra,
+        documentacion=documentacion,
+        condicion_calculada=condicion,
+        curso_introductorio_aprobado=curso_introductorio_aprobado,
+        libreta_entregada=libreta_entregada,
+        regularidades=regularidades_resumen,
+    )
 
 def _comision_to_resumen(comision: Comision | None) -> ComisionResumen | None:
     if not comision:
@@ -145,6 +381,141 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
     return limite, intentos
 
 
+@alumnos_router.get(
+    "/admin/estudiantes",
+    response=EstudianteAdminListResponse,
+)
+def admin_list_estudiantes(
+    request,
+    q: str | None = None,
+    carrera_id: int | None = None,
+    estado_legajo: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    _ensure_admin(request)
+    qs = (
+        Estudiante.objects.select_related("user")
+        .prefetch_related("carreras")
+        .order_by("user__last_name", "user__first_name", "dni")
+    )
+    if q:
+        q_clean = q.strip()
+        if q_clean:
+            qs = qs.filter(
+                Q(dni__icontains=q_clean)
+                | Q(user__first_name__icontains=q_clean)
+                | Q(user__last_name__icontains=q_clean)
+            )
+    if carrera_id:
+        qs = qs.filter(carreras__id=carrera_id)
+    if estado_legajo:
+        qs = qs.filter(estado_legajo=estado_legajo.upper())
+
+    total = qs.count()
+    if limit:
+        qs = qs[offset : offset + limit]
+    else:
+        qs = qs[offset:]
+
+    items = []
+    for est in qs:
+        user = est.user if est.user_id else None
+        items.append(
+            EstudianteAdminListItem(
+                dni=est.dni,
+                apellido=user.last_name if user else "",
+                nombre=user.first_name if user else "",
+                email=user.email if user else None,
+                telefono=est.telefono or None,
+                estado_legajo=est.estado_legajo,
+                estado_legajo_display=est.get_estado_legajo_display(),
+                carreras=[c.nombre for c in est.carreras.all()],
+                legajo=est.legajo or None,
+            )
+        )
+    return EstudianteAdminListResponse(total=total, items=items)
+
+
+@alumnos_router.get(
+    "/admin/estudiantes/{dni}",
+    response={200: EstudianteAdminDetail, 404: ApiResponse},
+)
+def admin_get_estudiante(request, dni: str):
+    _ensure_admin(request)
+    est = (
+        Estudiante.objects.select_related("user")
+        .prefetch_related("carreras")
+        .filter(dni=dni)
+        .first()
+    )
+    if not est:
+        return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
+    return _build_admin_detail(est)
+
+
+@alumnos_router.put(
+    "/admin/estudiantes/{dni}",
+    response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
+)
+def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn):
+    _ensure_admin(request)
+    est = (
+        Estudiante.objects.select_related("user")
+        .prefetch_related("carreras")
+        .filter(dni=dni)
+        .first()
+    )
+    if not est:
+        return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
+
+    updated, error = _apply_estudiante_updates(
+        est,
+        payload,
+        allow_estado_legajo=True,
+        allow_force_password=True,
+    )
+    if not updated and error:
+        status_code, api_resp = error
+        return status_code, api_resp
+
+    return _build_admin_detail(est)
+
+
+@alumnos_router.get(
+    "/perfil/completar",
+    response={200: EstudianteAdminDetail, 404: ApiResponse},
+)
+def alumno_get_perfil_completar(request):
+    est = _resolve_estudiante(request)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
+    return _build_admin_detail(est)
+
+
+@alumnos_router.put(
+    "/perfil/completar",
+    response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
+)
+def alumno_update_perfil_completar(request, payload: EstudianteAdminUpdateIn):
+    est = _resolve_estudiante(request)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
+
+    updated, error = _apply_estudiante_updates(
+        est,
+        payload,
+        allow_estado_legajo=False,
+        allow_force_password=False,
+        mark_profile_complete=True,
+    )
+    if not updated and error:
+        status_code, api_resp = error
+        return status_code, api_resp
+
+    return _build_admin_detail(est)
+
+
 def _to_iso(value):
     if not value:
         return timezone.now().isoformat()
@@ -164,6 +535,41 @@ def _format_nota(value: Decimal | float | int | None) -> str | None:
         text = f"{value:.2f}".rstrip('0').rstrip('.')
         return text
     return str(value)
+
+
+def _format_acta_calificacion(value: str | None) -> str | None:
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    normalized = text.replace(",", ".")
+    upper_value = normalized.upper()
+    if upper_value in {
+        ActaExamenAlumno.NOTA_AUSENTE_JUSTIFICADO,
+        ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO,
+    }:
+        return upper_value
+    try:
+        number = Decimal(normalized)
+    except InvalidOperation:
+        return text.upper()
+    return _format_nota(number)
+
+
+def _acta_condicion(calificacion: str | None) -> tuple[str, str]:
+    if not calificacion:
+        return ("SIN", "Sin resultado")
+    normalized = calificacion.strip().upper()
+    if normalized == ActaExamenAlumno.NOTA_AUSENTE_JUSTIFICADO:
+        return ("AUS", "Ausente (justificado)")
+    if normalized == ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO:
+        return ("AUS", "Ausente")
+    try:
+        valor = Decimal(normalized.replace(",", "."))
+    except InvalidOperation:
+        return ("DES", "Desaprobado")
+    return ("APR", "Aprobado") if valor >= 6 else ("DES", "Desaprobado")
 
 
 @alumnos_router.post(
@@ -329,20 +735,80 @@ def mesa_examen(request, payload: MesaExamenIn):
     return {"message": "Solicitud de mesa de examen recibida."}
 
 # Listar mesas disponibles para alumno (por ventana/tipo)
-@alumnos_router.get('/mesas', response=list[dict])
-def listar_mesas_alumno(request, tipo: str | None = None, ventana_id: int | None = None, dni: str | None = None, solo_rendibles: bool = False):
-    qs = MesaExamen.objects.select_related('materia').all()
+@alumnos_router.get(
+    '/mesas',
+    response={200: list[dict], 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
+def listar_mesas_alumno(
+    request,
+    tipo: str | None = None,
+    ventana_id: int | None = None,
+    dni: str | None = None,
+    solo_rendibles: bool = False,
+    profesorado_id: int | None = None,
+    plan_id: int | None = None,
+):
+    est = _resolve_estudiante(request, dni)
+    carreras_est = list(est.carreras.all()) if est else []
+
+    plan_obj: PlanDeEstudio | None = None
+    plan_profesorado: Profesorado | None = None
+
+    if plan_id is not None:
+        plan_obj = (
+            PlanDeEstudio.objects
+            .select_related("profesorado")
+            .filter(id=plan_id)
+            .first()
+        )
+        if not plan_obj:
+            return 404, ApiResponse(ok=False, message="No se encontró el plan de estudio solicitado.")
+        plan_profesorado = plan_obj.profesorado
+        if est and plan_profesorado not in carreras_est:
+            return 403, ApiResponse(ok=False, message="El estudiante no pertenece al profesorado de ese plan.")
+    elif profesorado_id is not None:
+        plan_profesorado = Profesorado.objects.filter(id=profesorado_id).first()
+        if not plan_profesorado:
+            return 404, ApiResponse(ok=False, message="No se encontró el profesorado solicitado.")
+        if est and plan_profesorado not in carreras_est:
+            return 403, ApiResponse(ok=False, message="El estudiante no está inscripto en ese profesorado.")
+    else:
+        if est:
+            if not carreras_est:
+                return 400, ApiResponse(ok=False, message="El estudiante no tiene profesorados asociados.")
+            if len(carreras_est) > 1:
+                return 400, ApiResponse(
+                    ok=False,
+                    message="Debe seleccionar un profesorado para listar mesas.",
+                    data={"carreras": _listar_carreras_detalle(est, carreras_est)},
+                )
+            plan_profesorado = carreras_est[0]
+
+    qs = (
+        MesaExamen.objects
+        .select_related('materia__plan_de_estudio__profesorado')
+        .all()
+    )
+
     if tipo:
         qs = qs.filter(tipo=tipo)
     if ventana_id:
         qs = qs.filter(ventana_id=ventana_id)
+    if plan_obj:
+        qs = qs.filter(materia__plan_de_estudio=plan_obj)
+    elif plan_profesorado:
+        qs = qs.filter(materia__plan_de_estudio__profesorado=plan_profesorado)
+
     out = []
-    est = None
-    if solo_rendibles:
-        if dni:
-            est = Estudiante.objects.filter(dni=dni).first()
-        elif not isinstance(request.user, AnonymousUser):
-            est = getattr(request.user, 'estudiante', None)
+    if not solo_rendibles:
+        estudiante_para_rendir = None
+    else:
+        estudiante_para_rendir = est
+        if not estudiante_para_rendir and dni:
+            estudiante_para_rendir = Estudiante.objects.filter(dni=dni).first()
+        elif not estudiante_para_rendir and not isinstance(request.user, AnonymousUser):
+            estudiante_para_rendir = getattr(request.user, 'estudiante', None)
+
     for m in qs.order_by('fecha','hora_desde'):
         # correlativas que requieren estar APROBADAS PARA RENDIR FINAL
         req_aprob = list(Correlatividad.objects.filter(
@@ -359,19 +825,35 @@ def listar_mesas_alumno(request, tipo: str | None = None, ventana_id: int | None
             'aula': m.aula,
             'cupo': m.cupo,
             'correlativas_aprob': req_aprob,
+            'plan_id': m.materia.plan_de_estudio_id if m.materia_id else None,
+            'profesorado_id': (
+                m.materia.plan_de_estudio.profesorado_id
+                if m.materia_id and m.materia.plan_de_estudio_id
+                else None
+            ),
         }
-        if not solo_rendibles or not est:
+        if not solo_rendibles or not estudiante_para_rendir:
             out.append(row)
             continue
         if m.tipo == MesaExamen.Tipo.FINAL:
-            legajo_ok = (est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO)
+            legajo_ok = (estudiante_para_rendir.estado_legajo == Estudiante.EstadoLegajo.COMPLETO)
             if not legajo_ok:
                 prof = m.materia.plan_de_estudio.profesorado if m.materia and m.materia.plan_de_estudio else None
-                pre = (Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by('-anio', '-id').first()) if prof else None
+                pre = (
+                    Preinscripcion.objects
+                    .filter(alumno=estudiante_para_rendir, carrera=prof)
+                    .order_by('-anio', '-id')
+                    .first()
+                ) if prof else None
                 cl = getattr(pre, 'checklist', None) if pre else None
                 if not (cl and cl.certificado_titulo_en_tramite):
                     continue
-            reg = (Regularidad.objects.filter(estudiante=est, materia=m.materia).order_by('-fecha_cierre').first())
+            reg = (
+                Regularidad.objects
+                .filter(estudiante=estudiante_para_rendir, materia=m.materia)
+                .order_by('-fecha_cierre')
+                .first()
+            )
             if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
                 continue
             from datetime import date
@@ -386,7 +868,11 @@ def listar_mesas_alumno(request, tipo: str | None = None, ventana_id: int | None
             if m.fecha > allowed_until:
                 continue
             if req_aprob:
-                regs = (Regularidad.objects.filter(estudiante=est, materia_id__in=req_aprob).order_by('materia_id', '-fecha_cierre'))
+                regs = (
+                    Regularidad.objects
+                    .filter(estudiante=estudiante_para_rendir, materia_id__in=req_aprob)
+                    .order_by('materia_id', '-fecha_cierre')
+                )
                 latest = {}
                 for r in regs:
                     latest.setdefault(r.materia_id, r)
@@ -512,46 +998,71 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     return {"message": "Inscripción registrada"}
 
 # Nuevos endpoints
-@alumnos_router.get("/materias-plan", response=list[MateriaPlan])
+@alumnos_router.get(
+    "/materias-plan",
+    response={200: list[MateriaPlan], 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
 def materias_plan(request, profesorado_id: int | None = None, plan_id: int | None = None, dni: str | None = None):
-    """Devuelve las materias del plan vigente del alumno (o del profesorado/plan indicado).
+    """Devuelve las materias del plan de estudio elegido para el alumno."""
+    est = _resolve_estudiante(request, dni)
+    carreras_est = list(est.carreras.all()) if est else []
+    plan_profesorado: Profesorado | None = None
 
-    Estrategia:
-      - Si se pasa plan_id: usa ese plan.
-      - Sino, si se pasa profesorado_id: busca el plan vigente de ese profesorado.
-      - Sino, intenta inferir el profesorado a partir del Estudiante (request.user.estudiante) y toma su plan vigente.
-    """
-    # Resolver plan
     plan: PlanDeEstudio | None = None
-    if plan_id:
-        try:
-            plan = PlanDeEstudio.objects.get(id=plan_id)
-        except PlanDeEstudio.DoesNotExist:
-            plan = None
-    elif profesorado_id:
-        plan = PlanDeEstudio.objects.filter(profesorado_id=profesorado_id, vigente=True).order_by('-anio_inicio').first()
-    else:
-        # Por DNI explícito o inferir desde el usuario
-        prof = None
-        if dni:
-            try:
-                est = Estudiante.objects.get(dni=dni)
-                prof = est.carreras.order_by('nombre').first()
-            except Estudiante.DoesNotExist:
-                prof = None
-        elif not isinstance(request.user, AnonymousUser):
-            try:
-                est: Estudiante = request.user.estudiante  # type: ignore
-                prof = est.carreras.order_by('nombre').first()
-            except Exception:
-                prof = None
-        if prof:
-            plan = PlanDeEstudio.objects.filter(profesorado=prof, vigente=True).order_by('-anio_inicio').first()
-    if not plan:
-        # Fallback: tomar cualquier plan vigente para demo/admin
-        plan = PlanDeEstudio.objects.filter(vigente=True).order_by('-anio_inicio').first()
+    if plan_id is not None:
+        plan = (
+            PlanDeEstudio.objects
+            .select_related("profesorado")
+            .filter(id=plan_id)
+            .first()
+        )
         if not plan:
-            return []
+            return 404, ApiResponse(ok=False, message="No se encontró el plan de estudio solicitado.")
+        plan_profesorado = plan.profesorado
+        if est and plan_profesorado not in carreras_est:
+            return 403, ApiResponse(ok=False, message="El estudiante no pertenece al profesorado de ese plan.")
+    elif profesorado_id is not None:
+        plan_profesorado = Profesorado.objects.filter(id=profesorado_id).first()
+        if not plan_profesorado:
+            return 404, ApiResponse(ok=False, message="No se encontró el profesorado solicitado.")
+        if est and plan_profesorado not in carreras_est:
+            return 403, ApiResponse(ok=False, message="El estudiante no está inscripto en ese profesorado.")
+        plan = (
+            PlanDeEstudio.objects
+            .filter(profesorado=plan_profesorado)
+            .order_by('-vigente', '-anio_inicio')
+            .first()
+        )
+    else:
+        if est:
+            if not carreras_est:
+                return 400, ApiResponse(ok=False, message="El estudiante no tiene profesorados asociados.")
+            if len(carreras_est) > 1:
+                return 400, ApiResponse(
+                    ok=False,
+                    message="Debe seleccionar un profesorado para continuar.",
+                    data={"carreras": _listar_carreras_detalle(est, carreras_est)},
+                )
+            plan_profesorado = carreras_est[0]
+            plan = (
+                PlanDeEstudio.objects
+                .filter(profesorado=plan_profesorado)
+                .order_by('-vigente', '-anio_inicio')
+                .first()
+            )
+        else:
+            plan = (
+                PlanDeEstudio.objects
+                .select_related("profesorado")
+                .filter(vigente=True)
+                .order_by('-anio_inicio')
+                .first()
+            )
+            if plan:
+                plan_profesorado = plan.profesorado
+
+    if not plan or not plan_profesorado:
+        return 404, ApiResponse(ok=False, message="No se pudo resolver un plan de estudio válido.")
 
     # Helper: map regimen -> cuatrimestre label
     def map_cuat(regimen: str) -> str:
@@ -587,9 +1098,40 @@ def materias_plan(request, profesorado_id: int | None = None, plan_id: int | Non
             horarios=horarios_para(m),
             correlativas_regular=correlativas_ids(m, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR),
             correlativas_aprob=correlativas_ids(m, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR),
-            profesorado=plan.profesorado.nombre,
+            profesorado=plan_profesorado.nombre,
+            profesorado_id=plan_profesorado.id,
+            plan_id=plan.id,
         ))
     return materias
+
+
+@alumnos_router.get(
+    "/carreras-activas",
+    response={200: list[CarreraDetalleResumen], 404: ApiResponse},
+)
+def carreras_activas(request, dni: str | None = None):
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
+    carreras_est = list(est.carreras.all())
+    if not carreras_est:
+        return []
+    detalle = _listar_carreras_detalle(est, carreras_est)
+    return [
+        CarreraDetalleResumen(
+            profesorado_id=item["profesorado_id"],
+            nombre=item["nombre"],
+            planes=[
+                CarreraPlanResumen(
+                    id=plan["id"],
+                    resolucion=plan["resolucion"],
+                    vigente=plan["vigente"],
+                )
+                for plan in item["planes"]
+            ],
+        )
+        for item in detalle
+    ]
 
 @alumnos_router.get("/historial", response=HistorialAlumno)
 def historial_alumno(request, dni: str | None = None):
@@ -629,7 +1171,8 @@ def trayectoria_alumno(request, dni: str | None = None):
     if not est:
         return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
 
-    carreras = list(est.carreras.order_by("nombre").values_list("nombre", flat=True))
+    carreras_est = list(est.carreras.order_by("nombre"))
+    carreras = [profesorado.nombre for profesorado in carreras_est]
 
     eventos_raw: list[dict] = []
     mesas_raw: list[dict] = []
@@ -649,6 +1192,8 @@ def trayectoria_alumno(request, dni: str | None = None):
             "subtitulo": pre.estado,
             "detalle": None,
             "estado": pre.estado,
+            "profesorado_id": pre.carrera_id,
+            "profesorado_nombre": pre.carrera.nombre,
             "metadata": _metadata_str({
                 "carrera": pre.carrera.nombre,
                 "anio": pre.anio,
@@ -659,7 +1204,14 @@ def trayectoria_alumno(request, dni: str | None = None):
     inscripciones_qs = (
         InscripcionMateriaAlumno.objects
         .filter(estudiante=est)
-        .select_related("materia", "comision", "comision__turno", "comision_solicitada")
+        .select_related(
+            "materia",
+            "materia__plan_de_estudio",
+            "materia__plan_de_estudio__profesorado",
+            "comision",
+            "comision__turno",
+            "comision_solicitada",
+        )
         .order_by("-created_at")
     )
     inscripciones = list(inscripciones_qs)
@@ -669,6 +1221,8 @@ def trayectoria_alumno(request, dni: str | None = None):
             detalle = f"Comisión {insc.comision.codigo}"
         elif insc.comision_solicitada:
             detalle = f"Cambio solicitado a {insc.comision_solicitada.codigo}"
+        plan_estudio = getattr(insc.materia, "plan_de_estudio", None)
+        profesorado = getattr(plan_estudio, "profesorado", None)
         eventos_raw.append({
             "id": f"insc-{insc.id}",
             "tipo": "inscripcion_materia",
@@ -677,6 +1231,8 @@ def trayectoria_alumno(request, dni: str | None = None):
             "subtitulo": f"Año académico {insc.anio}",
             "detalle": detalle,
             "estado": insc.estado,
+            "profesorado_id": getattr(profesorado, "id", None),
+            "profesorado_nombre": getattr(profesorado, "nombre", None),
             "metadata": _metadata_str({
                 "materia": insc.materia.nombre,
                 "materia_id": insc.materia_id,
@@ -688,7 +1244,7 @@ def trayectoria_alumno(request, dni: str | None = None):
     regularidades_qs = (
         Regularidad.objects
         .filter(estudiante=est)
-        .select_related("materia")
+        .select_related("materia", "materia__plan_de_estudio", "materia__plan_de_estudio__profesorado")
         .order_by("-fecha_cierre")
     )
     regularidades = list(regularidades_qs)
@@ -757,6 +1313,8 @@ def trayectoria_alumno(request, dni: str | None = None):
         if dias_restantes is not None and dias_restantes >= 0 and dias_restantes <= 30:
             alertas.append(f"La regularidad de {reg.materia.nombre} vence en {dias_restantes} días.")
 
+        plan_estudio_reg = getattr(reg.materia, "plan_de_estudio", None)
+        profesorado_reg = getattr(plan_estudio_reg, "profesorado", None)
         eventos_raw.append({
             "id": f"reg-{reg.id}",
             "tipo": "regularidad",
@@ -765,6 +1323,8 @@ def trayectoria_alumno(request, dni: str | None = None):
             "subtitulo": reg.get_situacion_display(),
             "detalle": reg.observaciones or None,
             "estado": reg.situacion,
+            "profesorado_id": getattr(profesorado_reg, "id", None),
+            "profesorado_nombre": getattr(profesorado_reg, "nombre", None),
             "metadata": _metadata_str({
                 "nota_tp": reg.nota_trabajos_practicos,
                 "nota_final": reg.nota_final_cursada,
@@ -775,13 +1335,15 @@ def trayectoria_alumno(request, dni: str | None = None):
     mesas_qs = (
         InscripcionMesa.objects
         .filter(estudiante=est)
-        .select_related("mesa__materia")
+        .select_related("mesa__materia", "mesa__materia__plan_de_estudio", "mesa__materia__plan_de_estudio__profesorado")
         .order_by("-mesa__fecha", "-created_at")
     )
     mesas = list(mesas_qs)
     finales_map: dict[int, InscripcionMesa] = {}
     for insc in mesas:
         mesa = insc.mesa
+        plan_materia = getattr(mesa.materia, "plan_de_estudio", None)
+        profesorado_mesa = getattr(plan_materia, "profesorado", None)
         mesas_raw.append({
             "id": insc.id,
             "mesa_id": mesa.id,
@@ -803,6 +1365,8 @@ def trayectoria_alumno(request, dni: str | None = None):
             "subtitulo": mesa.materia.nombre,
             "detalle": mesa.aula,
             "estado": insc.estado,
+            "profesorado_id": getattr(profesorado_mesa, "id", None),
+            "profesorado_nombre": getattr(profesorado_mesa, "nombre", None),
             "metadata": _metadata_str({
                 "mesa_id": mesa.id,
                 "estado": insc.get_estado_display(),
@@ -813,6 +1377,44 @@ def trayectoria_alumno(request, dni: str | None = None):
             and mesa.materia_id not in finales_map
         ):
             finales_map[mesa.materia_id] = insc
+
+    actas_finales_map: dict[int, ActaExamenAlumno] = {}
+    actas_qs = (
+        ActaExamenAlumno.objects
+        .filter(dni=est.dni)
+        .select_related(
+            "acta",
+            "acta__materia",
+            "acta__profesorado",
+            "acta__plan",
+        )
+        .order_by("-acta__fecha", "-acta__id", "-id")
+    )
+    for acta_fila in actas_qs:
+        acta = acta_fila.acta
+        condicion_codigo, condicion_display = _acta_condicion(acta_fila.calificacion_definitiva)
+        nota_formateada = _format_acta_calificacion(acta_fila.calificacion_definitiva)
+        eventos_raw.append({
+            "id": f"acta-{acta.id}-{acta_fila.id}",
+            "tipo": "nota",
+            "fecha": acta.fecha.isoformat(),
+            "titulo": f"Acta de examen - {acta.materia.nombre}",
+            "subtitulo": condicion_display,
+            "detalle": acta_fila.observaciones or acta.observaciones or None,
+            "estado": condicion_codigo,
+            "profesorado_id": getattr(acta.profesorado, "id", None),
+            "profesorado_nombre": getattr(acta.profesorado, "nombre", None),
+            "metadata": _metadata_str({
+                "materia": acta.materia.nombre,
+                "materia_id": acta.materia_id,
+                "nota": nota_formateada or acta_fila.calificacion_definitiva,
+                "folio": acta.folio,
+                "libro": acta.libro,
+                "acta_codigo": acta.codigo,
+            }),
+        })
+        if acta.materia_id not in actas_finales_map:
+            actas_finales_map[acta.materia_id] = acta_fila
 
     aprobadas_set = {
         reg.materia_id
@@ -832,13 +1434,25 @@ def trayectoria_alumno(request, dni: str | None = None):
 
     carton_planes: list[CartonPlan] = []
     total_materias = 0
-    carreras_est = list(est.carreras.all())
+    carreras_detalle_data: list[dict] = []
     for profesorado in carreras_est:
-        planes_prof = (
+        planes_prof = list(
             PlanDeEstudio.objects
             .filter(profesorado=profesorado)
             .order_by('resolucion')
         )
+        carreras_detalle_data.append({
+            "profesorado_id": profesorado.id,
+            "nombre": profesorado.nombre,
+            "planes": [
+                {
+                    "id": plan.id,
+                    "resolucion": plan.resolucion or "",
+                    "vigente": bool(getattr(plan, "vigente", False)),
+                }
+                for plan in planes_prof
+            ],
+        })
         for plan in planes_prof:
             materias_qs = (
                 Materia.objects
@@ -862,13 +1476,55 @@ def trayectoria_alumno(request, dni: str | None = None):
                     )
 
                 final_insc = finales_map.get(materia.id)
+                acta_fila = actas_finales_map.get(materia.id)
                 final_evt = None
-                if final_insc:
-                    mesa_final = final_insc.mesa
+                if final_insc or acta_fila:
+                    final_fecha = None
+                    final_condicion = None
+                    final_nota = None
+                    final_folio = None
+                    final_libro = None
+                    final_id_fila = None
+
+                    if final_insc:
+                        mesa_final = final_insc.mesa
+                        if final_insc.fecha_resultado:
+                            final_fecha = final_insc.fecha_resultado.isoformat()
+                        elif mesa_final and mesa_final.fecha:
+                            final_fecha = mesa_final.fecha.isoformat()
+                        if final_insc.condicion:
+                            final_condicion = final_insc.get_condicion_display()
+                        else:
+                            final_condicion = final_insc.get_estado_display()
+                        if final_insc.nota is not None:
+                            final_nota = _format_nota(final_insc.nota)
+                        if final_insc.folio:
+                            final_folio = final_insc.folio
+                        if final_insc.libro:
+                            final_libro = final_insc.libro
+
+                    if acta_fila:
+                        final_fecha = acta_fila.acta.fecha.isoformat()
+                        _, condicion_display = _acta_condicion(acta_fila.calificacion_definitiva)
+                        final_condicion = condicion_display
+                        nota_acta = _format_acta_calificacion(acta_fila.calificacion_definitiva)
+                        if nota_acta:
+                            final_nota = nota_acta
+                        elif final_nota is None:
+                            final_nota = acta_fila.calificacion_definitiva
+                        if acta_fila.acta.folio:
+                            final_folio = acta_fila.acta.folio
+                        if acta_fila.acta.libro:
+                            final_libro = acta_fila.acta.libro
+                        final_id_fila = acta_fila.id
+
                     final_evt = CartonEvento(
-                        fecha=mesa_final.fecha.isoformat() if mesa_final.fecha else None,
-                        condicion=final_insc.get_estado_display(),
-                        nota=None,
+                        fecha=final_fecha,
+                        condicion=final_condicion,
+                        nota=final_nota,
+                        folio=final_folio,
+                        libro=final_libro,
+                        id_fila=final_id_fila,
                     )
 
                 materias_out.append(CartonMateria(
@@ -910,9 +1566,6 @@ def trayectoria_alumno(request, dni: str | None = None):
         extra for extra in (getattr(pre, "datos_extra", None) or {} for pre in preinscripciones)
         if extra
     ]
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"extra_sources: {extra_sources}")
 
     def _extra_value(*keys):
         for extra in extra_sources:
@@ -943,7 +1596,6 @@ def trayectoria_alumno(request, dni: str | None = None):
     promedio_general = _extra_value("promedio_general", "promedioGeneral")
     libreta_extra = _extra_value("libreta_entregada", "libretaEntregada", "libreta")
     foto_url = _extra_value("foto_dataUrl", "foto_4x4_dataurl")
-    logger.info(f"foto_url: {foto_url}")
     libreta_entregada = _to_bool(libreta_extra)
     if libreta_entregada is None:
         libreta_entregada = est.documentacion_presentada.exists()
@@ -957,6 +1609,7 @@ def trayectoria_alumno(request, dni: str | None = None):
         legajo=est.legajo,
         apellido_nombre=est.user.get_full_name() if est.user_id else "",
         carreras=carreras,
+        carreras_detalle=carreras_detalle_data,
         email=est.user.email if est.user_id else None,
         telefono=est.telefono or None,
         fecha_nacimiento=est.fecha_nacimiento.isoformat() if est.fecha_nacimiento else None,
@@ -1168,12 +1821,40 @@ def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
         est = getattr(request.user, 'estudiante', None)
     if not est:
         return 400, {"message": "No se encontró el estudiante."}
+    carreras_est = list(est.carreras.all())
+    profesorado_obj: Profesorado | None = None
+    if payload.plan_id is not None:
+        plan = (
+            PlanDeEstudio.objects
+            .select_related("profesorado")
+            .filter(id=payload.plan_id)
+            .first()
+        )
+        if not plan:
+            return 404, {"message": "No se encontró el plan de estudio indicado."}
+        if plan.profesorado not in carreras_est:
+            return 403, {"message": "El estudiante no pertenece al profesorado de ese plan."}
+        profesorado_obj = plan.profesorado
+    elif payload.profesorado_id is not None:
+        profesorado_obj = Profesorado.objects.filter(id=payload.profesorado_id).first()
+        if not profesorado_obj:
+            return 404, {"message": "No se encontró el profesorado indicado."}
+        if profesorado_obj not in carreras_est:
+            return 403, {"message": "El estudiante no está inscripto en el profesorado seleccionado."}
+    else:
+        if len(carreras_est) > 1:
+            return 400, {
+                "message": "Debe seleccionar un profesorado.",
+                "data": {"carreras": _listar_carreras_detalle(est, carreras_est)},
+            }
+        profesorado_obj = carreras_est[0] if carreras_est else None
+
     PedidoAnalitico.objects.create(
         estudiante=est,
         ventana=v,
         motivo=payload.motivo,
         motivo_otro=payload.motivo_otro,
-        profesorado=est.carreras.first() if est else None,
+        profesorado=profesorado_obj,
         cohorte=payload.cohorte,
     )
     return {"message": "Solicitud registrada."}
@@ -1253,4 +1934,5 @@ def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
         "intentos_usados": intentos,
         "intentos_max": 3,
     }
+
 

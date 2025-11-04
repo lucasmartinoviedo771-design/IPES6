@@ -42,6 +42,7 @@ class UserOut(BaseModel):
     is_staff: bool
     is_superuser: bool
     must_change_password: bool = False
+    must_complete_profile: bool = False
 
 class TokenOut(BaseModel):
     access: str
@@ -61,6 +62,14 @@ class ChangePasswordIn(BaseModel):
     new_password: str
 
 
+def _must_complete_profile(user) -> bool:
+    estudiante = getattr(user, "estudiante", None)
+    if not estudiante:
+        return False
+    datos_extra = getattr(estudiante, "datos_extra", {}) or {}
+    return not bool(datos_extra.get("perfil_actualizado"))
+
+
 def _client_identifier(request, login: str) -> str:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
     ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "") or "unknown"
@@ -73,7 +82,7 @@ def _rate_limit_exceeded(cache_key: str) -> bool:
     attempts = cache.get(cache_key)
     return attempts is not None and attempts >= limit
 
-@router.post("/login")
+@router.post("/login", response={200: TokenOut, 401: Error, 429: Error})
 def login(request, payload: LoginIn):
     cache_key = _client_identifier(request, payload.login)
     window = getattr(settings, "LOGIN_RATE_LIMIT_WINDOW_SECONDS", 300)
@@ -98,6 +107,7 @@ def login(request, payload: LoginIn):
     # Prepare user data for response
     estudiante = getattr(user, "estudiante", None)
     must_change = getattr(estudiante, "must_change_password", False)
+    must_complete_profile = _must_complete_profile(user)
     user_data = {
         "dni": user.username,
         "name": (user.get_full_name() or user.first_name or user.username),
@@ -105,6 +115,7 @@ def login(request, payload: LoginIn):
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "must_change_password": bool(must_change),
+        "must_complete_profile": bool(must_complete_profile),
     }
 
     # Create JSON response body
@@ -143,6 +154,7 @@ def profile(request):
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
         "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)),
+        "must_complete_profile": _must_complete_profile(u),
     }
 
 

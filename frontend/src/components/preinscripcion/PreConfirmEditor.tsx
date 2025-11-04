@@ -6,11 +6,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   apiGetPreinscripcionByCodigo, apiUpdatePreinscripcion,
   apiConfirmarPreinscripcion, apiObservarPreinscripcion, apiRechazarPreinscripcion, apiCambiarCarrera, PreinscripcionDTO,
-  eliminarPreinscripcion, apiGetChecklist, apiPutChecklist, ChecklistDTO, apiListPreDocs, apiUploadPreDoc, PreinscripcionUpdatePayload
+  eliminarPreinscripcion, apiGetChecklist, apiPutChecklist, ChecklistDTO, apiListPreDocs, apiUploadPreDoc, PreinscripcionUpdatePayload,
+  listarPreinscripcionesAlumno, agregarCarreraPreinscripcion
 } from "@/api/preinscripciones";
 import { fetchCarreras } from "@/api/carreras";
 import {
-  Box, Button, Chip, CircularProgress, Grid, MenuItem, Paper, Stack, TextField, Typography, Divider, Checkbox, FormControlLabel, Switch
+  Box, Button, Chip, CircularProgress, Grid, MenuItem, Paper, Stack, TextField, Typography, Divider, Checkbox, FormControlLabel, Switch,
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, List, ListItemButton, ListItemText
 } from "@mui/material";
 import dayjs from "dayjs";
 import { enqueueSnackbar } from "notistack";
@@ -177,10 +179,12 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       analitico_legalizado: !!cl.analitico_legalizado,
       certificado_alumno_regular_sec: !!cl.certificado_alumno_regular_sec,
       adeuda_materias: !!cl.adeuda_materias,
+      curso_introductorio_aprobado: !!cl.curso_introductorio_aprobado,
       // mirrors para la UI
       titulo_secundario: !!cl.titulo_secundario_legalizado,
       titulo_en_tramite: !!cl.certificado_titulo_en_tramite,
     });
+    setValue("curso_introductorio_aprobado", !!cl.curso_introductorio_aprobado, { shouldDirty: false });
     setAdeudaDetalle({
       materias: cl.adeuda_materias_detalle || "",
       institucion: cl.escuela_secundaria || "",
@@ -242,6 +246,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     analitico_legalizado: false,
     certificado_alumno_regular_sec: false,
     adeuda_materias: false,
+    curso_introductorio_aprobado: false,
     // mirrors para compatibilidad con UI existente
     titulo_secundario: false,
     titulo_en_tramite: false,
@@ -264,18 +269,34 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     onError: () => enqueueSnackbar("No se pudo subir la foto", { variant: "error" })
   });
   const [adeudaDetalle, setAdeudaDetalle] = useState<{ materias: string; institucion: string }>({ materias: "", institucion: "" });
+  const libretaEntregada = watch("libreta_entregada");
   // Estado completo (criterio similar al backend)
-  // Criterio para estado Regular: solo con título secundario legalizado
-  // Si no, queda Condicional (puede confirmarse con DDJJ)
-  const allDocs = !!(
-    docs.dni_legalizado &&
-    docs.fotos_4x4 &&
-    docs.certificado_salud &&
-    docs.folios_oficio_ok &&
-    docs.titulo_secundario_legalizado
-  );
+  // Requisitos generales + alguna alternativa de secundario
+  const docsGeneralesOk = docs.dni_legalizado && docs.fotos_4x4 && docs.certificado_salud && docs.folios_oficio_ok;
+  const docsSecundarioOk =
+    docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado;
+
+
+  const allDocs = !!(docsGeneralesOk && (docsSecundarioOk || docs.adeuda_materias));
 
   const anyMainSelected = !!(docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado);
+
+  const alumnoDni = data?.alumno?.dni ?? "";
+  const preinsAlumnoQ = useQuery({
+    queryKey: ["preinscripciones", "alumno", alumnoDni],
+    queryFn: () => listarPreinscripcionesAlumno(alumnoDni),
+    enabled: !!alumnoDni,
+    staleTime: 30_000,
+  });
+  
+  const preinscripcionesAlumno = (preinsAlumnoQ.data as PreinscripcionDTO[] | undefined) ?? [];
+  const existingCarreraIds = new Set<number>(
+    preinscripcionesAlumno
+      .map((p: any) => p?.carrera?.id)
+      .filter((id: number | undefined): id is number => typeof id === "number"),
+  );
+  const availableCarreras = (carrerasQ.data ?? []).filter((c: any) => !existingCarreraIds.has(c.id));
+
 
   // Exclusividad en opciones de Secundario: solo una permitida
   const pickSecundario = (
@@ -324,6 +345,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     adeuda_materias: !!docs.adeuda_materias,
     adeuda_materias_detalle: adeudaDetalle.materias,
     escuela_secundaria: adeudaDetalle.institucion,
+    curso_introductorio_aprobado: !!docs.curso_introductorio_aprobado,
   });
   const mConfirm = useMutation({
     mutationFn: async () => {
@@ -361,8 +383,15 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
 
   const mCambiarCarrera = useMutation({
     mutationFn: (carrera_id: number) => apiCambiarCarrera(codigo, carrera_id),
-    onSuccess: () => { enqueueSnackbar("Profesorado actualizado", { variant: "success" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
-    onError: () => enqueueSnackbar("No se pudo cambiar el profesorado", { variant: "error" })
+    onSuccess: () => {
+      enqueueSnackbar("Profesorado actualizado", { variant: "success" });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
+      qc.invalidateQueries({ queryKey: ["preinscripciones", "alumno", alumnoDni] });
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || "No se pudo cambiar el profesorado";
+      enqueueSnackbar(msg, { variant: "error" });
+    },
   });
 
   const navigate = useNavigate();
@@ -379,7 +408,33 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     onError: () => enqueueSnackbar("No se pudo eliminar la preinscripción", { variant: "error" })
   });
 
+  const agregarCarreraMutation = useMutation({
+    mutationFn: (carreraId: number) => agregarCarreraPreinscripcion(codigo, carreraId),
+    onSuccess: (resp) => {
+      enqueueSnackbar(resp.message || 'Profesorado agregado', { variant: 'success' });
+      setAddCarreraOpen(false);
+      setNuevaCarreraId('');
+      qc.invalidateQueries({ queryKey: ['preinscripciones', 'alumno', alumnoDni] });
+      if (resp.data?.codigo) {
+        navigate(`/secretaria/confirmar-inscripcion?codigo=${resp.data.codigo}`);
+      }
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || 'No se pudo agregar el profesorado';
+      enqueueSnackbar(msg, { variant: 'error' });
+    },
+  });
+
   const onSubmit = (v: PreinscripcionForm) => mUpdate.mutate(v);
+
+  const [addCarreraOpen, setAddCarreraOpen] = useState(false);
+  const [nuevaCarreraId, setNuevaCarreraId] = useState<number | ''>('');
+
+
+
+
+
+
 
   // Editor unificado: sin tabs
 
@@ -622,48 +677,6 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
               </Button>
             </Grid>
           </Grid>
-
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Formalización</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <Controller
-              name="curso_introductorio_aprobado"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value}
-                      inputRef={field.ref}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label="Curso introductorio aprobado"
-                />
-              )}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Controller
-              name="libreta_entregada"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={!!field.value}
-                      inputRef={field.ref}
-                      onChange={(_, checked) => field.onChange(checked)}
-                    />
-                  }
-                  label="Libreta entregada"
-                />
-              )}
-            />
-          </Grid>
-        </Grid>
-
         {/* Datos laborales */}
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle1" fontWeight={700} gutterBottom>Datos Laborales</Typography>
@@ -705,6 +718,40 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         </Grid>
         <Grid item xs={12} md={4}>
       <Paper sx={{ p:2 }}>
+        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorados asociados</Typography>
+        {preinsAlumnoQ.isLoading ? (
+          <Typography variant="body2" color="text.secondary">Cargando profesorados…</Typography>
+        ) : preinscripcionesAlumno.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">No se encontraron otras preinscripciones.</Typography>
+        ) : (
+          <Stack direction="column" spacing={1} mb={2}>
+            {preinscripcionesAlumno.map((pre) => {
+              const activo = pre.codigo === codigo;
+              return (
+                <Button
+                  key={pre.codigo}
+                  size="small"
+                  variant={activo ? "contained" : "outlined"}
+                  color={activo ? "success" : "primary"}
+                  onClick={() => {
+                    if (!activo) navigate(`/secretaria/confirmar-inscripcion?codigo=${pre.codigo}`);
+                  }}
+                >
+                  {pre.carrera?.nombre ?? "Carrera sin nombre"} · {pre.codigo}
+                </Button>
+              );
+            })}
+          </Stack>
+        )}
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => setAddCarreraOpen(true)}
+          disabled={availableCarreras.length === 0 || agregarCarreraMutation.isPending}
+          sx={{ mb: 2 }}
+        >
+          Agregar nuevo profesorado
+        </Button>
         <Typography variant="subtitle1" gutterBottom>Documentación</Typography>
 
         <Typography variant="subtitle2" gutterBottom>Requisitos generales</Typography>
@@ -713,6 +760,8 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           <FormControlLabel control={<Checkbox checked={!!docs.fotos_4x4} onChange={(_, c)=>setDocs(s=>({...s,fotos_4x4:c}))} />} label="2 fotos carnet 4×4" />
           <FormControlLabel control={<Checkbox checked={!!docs.folios_oficio_ok} onChange={(_, c)=>setDocs(s=>({...s,folios_oficio_ok:c}))} />} label="3 folios oficio" />
           <FormControlLabel control={<Checkbox checked={!!docs.certificado_salud} onChange={(_, c)=>setDocs(s=>({...s,certificado_salud:c}))} />} label="Certificado de Buena Salud" />
+          <FormControlLabel control={<Checkbox checked={!!docs.curso_introductorio_aprobado} onChange={(_, c)=>{ setDocs(s=>({...s,curso_introductorio_aprobado:c})); setValue('curso_introductorio_aprobado', !!c, { shouldDirty: true }); }} />} label="Curso Introductorio Aprobado" />
+          <FormControlLabel control={<Checkbox checked={!!libretaEntregada} onChange={(_, checked)=> setValue('libreta_entregada', checked, { shouldDirty: true })} />} label="Libreta entregada" />
         </Stack>
 
         <Divider sx={{ my: 2 }} />
@@ -782,6 +831,72 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       </Paper>
         </Grid>
       </Grid>
+      <Dialog
+        open={addCarreraOpen}
+        onClose={() => {
+          if (!agregarCarreraMutation.isPending) {
+            setAddCarreraOpen(false);
+            setNuevaCarreraId("");
+          }
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Agregar nuevo profesorado</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          {availableCarreras.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              Este alumno ya tiene cargados todos los profesorados disponibles.
+            </Typography>
+          ) : (
+            <FormControl fullWidth size="small">
+              <InputLabel id="nueva-carrera-label">Profesorado</InputLabel>
+              <Select
+                labelId="nueva-carrera-label"
+                label="Profesorado"
+                value={nuevaCarreraId === "" ? "" : String(nuevaCarreraId)}
+                onChange={(event) => {
+                  const value = event.target.value === "" ? "" : Number(event.target.value);
+                  setNuevaCarreraId(value);
+                }}
+              >
+                <MenuItem value="">
+                  <em>Seleccioná un profesorado</em>
+                </MenuItem>
+                {availableCarreras.map((c: any) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              if (!agregarCarreraMutation.isPending) {
+                setAddCarreraOpen(false);
+                setNuevaCarreraId("");
+              }
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (typeof nuevaCarreraId === "number") {
+                agregarCarreraMutation.mutate(nuevaCarreraId);
+              }
+            }}
+            disabled={availableCarreras.length === 0 || typeof nuevaCarreraId !== "number" || agregarCarreraMutation.isPending}
+          >
+            {agregarCarreraMutation.isPending ? "Agregando..." : "Agregar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
+

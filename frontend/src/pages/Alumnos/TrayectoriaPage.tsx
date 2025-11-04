@@ -35,7 +35,6 @@ import {
   TrayectoriaEventoDTO,
   TrayectoriaMesaDTO,
   RegularidadVigenciaDTO,
-  CartonPlanDTO,
   RegularidadResumenDTO,
 } from '@/api/alumnos';
 import { CartonTabPanel } from "@/features/alumnos/carton/CartonTabPanel";
@@ -105,6 +104,7 @@ const TrayectoriaPage: React.FC = () => {
   const [filtroDetalle, setFiltroDetalle] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroMetadata, setFiltroMetadata] = useState('');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
   const queryKey = useMemo(() => ['trayectoria', canGestionar ? (dniQuery || '').trim() : 'self'], [canGestionar, dniQuery]);
   const trayectoriaQ = useQuery<TrayectoriaDTO>({
@@ -115,6 +115,7 @@ const TrayectoriaPage: React.FC = () => {
   const trayectoria = trayectoriaQ.data;
   const eventos = trayectoria?.historial ?? [];
   const regularidades = trayectoria?.regularidades ?? [];
+  const planesCarton = trayectoria?.carton ?? [];
 
   const tiposEventos = useMemo<TrayectoriaEventoDTO['tipo'][]>(() => {
     const unique = new Set<TrayectoriaEventoDTO['tipo']>();
@@ -175,6 +176,49 @@ const TrayectoriaPage: React.FC = () => {
       return true;
     });
   }, [eventos, filtroTipo, filtroFecha, filtroDetalle, filtroEstado, filtroMetadata]);
+
+  useEffect(() => {
+    if (!planesCarton.length) {
+      setSelectedPlanId('');
+      return;
+    }
+    setSelectedPlanId((prev) => {
+      if (prev && planesCarton.some((plan) => String(plan.plan_id) === prev)) {
+        return prev;
+      }
+      return String(planesCarton[0].plan_id);
+    });
+  }, [planesCarton]);
+
+  const carreraChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; detalle: string | null; disabled?: boolean }> = [];
+    const usedNombres = new Set<string>();
+
+    planesCarton.forEach((plan) => {
+      chips.push({
+        id: String(plan.plan_id),
+        label: plan.profesorado_nombre,
+        detalle: plan.plan_resolucion,
+      });
+      usedNombres.add(plan.profesorado_nombre);
+    });
+
+    const nombres = trayectoria?.estudiante?.carreras ?? [];
+    nombres.forEach((nombre, index) => {
+      if (usedNombres.has(nombre)) {
+        return;
+      }
+      chips.push({
+        id: `carrera-${index}`,
+        label: nombre,
+        detalle: null,
+        disabled: true,
+      });
+    });
+
+    return chips;
+  }, [planesCarton, trayectoria?.estudiante?.carreras]);
+
   const mesas = trayectoria?.mesas ?? [];
   const vigencias = useMemo<RegularidadVigenciaDTO[]>(() => {
     const list = [...(trayectoria?.regularidades_vigencia ?? [])];
@@ -249,9 +293,21 @@ const TrayectoriaPage: React.FC = () => {
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle1" fontWeight={700}>Carreras activas</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                {(estudiante.carreras && estudiante.carreras.length > 0) ? estudiante.carreras.map((carrera) => (
-                  <Chip key={carrera} label={carrera} size="small" />
-                )) : <Typography variant="body2" color="text.secondary">Sin carreras asociadas</Typography>}
+                {carreraChips.length > 0 ? carreraChips.map((chip) => {
+                  const isPlan = !chip.disabled;
+                  const isSelected = isPlan && chip.id === selectedPlanId;
+                  return (
+                    <Chip
+                      key={chip.id}
+                      label={chip.detalle ? `${chip.label} · Plan ${chip.detalle}` : chip.label}
+                      size="small"
+                      clickable={isPlan}
+                      color={isSelected ? 'primary' : 'default'}
+                      variant={isSelected ? 'filled' : 'outlined'}
+                      onClick={isPlan ? () => setSelectedPlanId(chip.id) : undefined}
+                    />
+                  );
+                }) : <Typography variant="body2" color="text.secondary">Sin carreras asociadas</Typography>}
               </Stack>
             </Grid>
           </Grid>
@@ -411,7 +467,13 @@ const TrayectoriaPage: React.FC = () => {
             </TabPanel>
 
             <TabPanel value={tab} index={1}>
-              {trayectoria && <CartonTabPanel trayectoria={trayectoria} />}
+              {trayectoria && (
+                <CartonTabPanel
+                  trayectoria={trayectoria}
+                  selectedPlanId={selectedPlanId || undefined}
+                  onSelectPlan={(value) => setSelectedPlanId(value)}
+                />
+              )}
             </TabPanel>
 
             <TabPanel value={tab} index={2}>

@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
   Card,
+  CardActionArea,
   CardContent,
   Checkbox,
   CircularProgress,
@@ -38,9 +39,7 @@ import {
   MesaResumenDTO,
   PlanDTO,
   ProfesoradoDTO,
-  RegularidadAlumnoDTO,
   RegularidadPlanillaDTO,
-  SituacionOptionDTO,
   guardarPlanillaRegularidad,
   listarMesasFinales,
   listarPlanes,
@@ -56,6 +55,7 @@ import {
   MesaPlanillaDTO,
   obtenerMesaPlanilla,
 } from "@/api/alumnos";
+import RegularidadPlanillaEditor from "@/components/secretaria/RegularidadPlanillaEditor";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -64,20 +64,6 @@ type FiltersState = {
   cuatrimestre: string | null;
   materiaId: number | null;
   comisionId: number | null;
-};
-
-type RowState = {
-  inscripcionId: number;
-  orden: number;
-  alumnoId: number;
-  apellidoNombre: string;
-  dni: string;
-  notaTp: string;
-  notaFinal: string;
-  asistencia: string;
-  excepcion: boolean;
-  situacion: string | null;
-  observaciones: string;
 };
 
 type FinalFiltersState = {
@@ -121,22 +107,22 @@ const CargaNotasPage: React.FC = () => {
   comisionId: null,
 });
 
-const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
-const [planes, setPlanes] = useState<PlanDTO[]>([]);
+  const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
+  const [planes, setPlanes] = useState<PlanDTO[]>([]);
   const [materias, setMaterias] = useState<MateriaOptionDTO[]>([]);
   const [allComisiones, setAllComisiones] = useState<ComisionOptionDTO[]>([]);
   const [planilla, setPlanilla] = useState<RegularidadPlanillaDTO | null>(null);
-const [situaciones, setSituaciones] = useState<SituacionOptionDTO[]>([]);
-const [activeTab, setActiveTab] = useState<"regularidad" | "finales">("regularidad");
-const [rows, setRows] = useState<RowState[]>([]);
-const [observacionesGenerales, setObservacionesGenerales] = useState<string>("");
-const [fechaCierre, setFechaCierre] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [activeTab, setActiveTab] = useState<"regularidad" | "finales">("regularidad");
 
   const [loadingProfesorados, setLoadingProfesorados] = useState(false);
   const [loadingPlanes, setLoadingPlanes] = useState(false);
-const [loadingComisiones, setLoadingComisiones] = useState(false);
-const [loadingPlanilla, setLoadingPlanilla] = useState(false);
-const [saving, setSaving] = useState(false);
+  const [loadingComisiones, setLoadingComisiones] = useState(false);
+  const [loadingPlanilla, setLoadingPlanilla] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [defaultFechaCierre, setDefaultFechaCierre] = useState<string>(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [defaultObservaciones, setDefaultObservaciones] = useState<string>(""); 
 
 const [finalFilters, setFinalFilters] = useState<FinalFiltersState>({
   ventanaId: "",
@@ -601,120 +587,41 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     setActiveTab(value as "regularidad" | "finales");
   };
 
-  useEffect(() => {
-    if (!filters.comisionId) {
-      setPlanilla(null);
-      setRows([]);
-      setSituaciones([]);
-      return;
-    }
-    const loadPlanilla = async () => {
+  const fetchPlanilla = useCallback(
+    async (comisionId: number) => {
       setLoadingPlanilla(true);
       try {
-        const data = await obtenerPlanillaRegularidad(filters.comisionId!);
+        const data = await obtenerPlanillaRegularidad(comisionId);
         setPlanilla(data);
-        setSituaciones(data.situaciones);
-        setRows(
-          data.alumnos.map((alumno) => ({
-            inscripcionId: alumno.inscripcion_id,
-            orden: alumno.orden,
-            alumnoId: alumno.alumno_id,
-            apellidoNombre: alumno.apellido_nombre,
-            dni: alumno.dni,
-            notaTp: alumno.nota_tp !== null ? String(alumno.nota_tp) : "",
-            notaFinal: alumno.nota_final !== null ? String(alumno.nota_final) : "",
-            asistencia: alumno.asistencia !== null ? String(alumno.asistencia) : "",
-            excepcion: alumno.excepcion,
-            situacion: alumno.situacion,
-            observaciones: alumno.observaciones ?? "",
-          }))
-        );
       } catch (error) {
+        setPlanilla(null);
         enqueueSnackbar("No se pudo cargar la planilla de regularidad.", { variant: "error" });
       } finally {
         setLoadingPlanilla(false);
       }
-    };
-    loadPlanilla();
-  }, [filters.comisionId]);
+    },
+    [enqueueSnackbar]
+  );
 
-  const handleRowChange = (inscripcionId: number, patch: Partial<RowState>) => {
-    setRows((prev) =>
-      prev.map((row) => (row.inscripcionId === inscripcionId ? { ...row, ...patch } : row))
-    );
-  };
-
-  const handleGuardar = async () => {
-    if (!selectedComision) {
-      enqueueSnackbar("Selecciona una Comision antes de guardar.", { variant: "warning" });
+  useEffect(() => {
+    if (!filters.comisionId) {
+      setPlanilla(null);
       return;
     }
-    if (rows.length === 0) {
-      enqueueSnackbar("No hay alumnos para guardar.", { variant: "warning" });
-      return;
-    }
-    const payload: GuardarRegularidadPayload = {
-      comision_id: selectedComision.id,
-      fecha_cierre: fechaCierre,
-      alumnos: [],
-      observaciones_generales: observacionesGenerales || undefined,
-    };
+    fetchPlanilla(filters.comisionId);
+  }, [filters.comisionId, fetchPlanilla]);
 
-    for (const row of rows) {
-      if (!row.situacion) {
-        enqueueSnackbar(
-          `Falta seleccionar la situacion academica para ${row.apellidoNombre}.`,
-          { variant: "warning" }
-        );
-        return;
-      }
-
-      const notaTp =
-        row.notaTp.trim() === "" ? null : Number.parseFloat(row.notaTp.replace(",", "."));
-      const notaFinal =
-        row.notaFinal.trim() === "" ? null : Number.parseInt(row.notaFinal, 10);
-      const asistencia =
-        row.asistencia.trim() === "" ? null : Number.parseInt(row.asistencia, 10);
-
-      if (Number.isNaN(notaTp as number)) {
-        enqueueSnackbar(
-          `La nota de TP de ${row.apellidoNombre} no es valida.`,
-          { variant: "warning" }
-        );
-        return;
-      }
-      if (Number.isNaN(notaFinal as number)) {
-        enqueueSnackbar(
-          `La nota final de ${row.apellidoNombre} no es valida.`,
-          { variant: "warning" }
-        );
-        return;
-      }
-      if (Number.isNaN(asistencia as number)) {
-        enqueueSnackbar(
-          `El porcentaje de asistencia de ${row.apellidoNombre} no es valido.`,
-          { variant: "warning" }
-        );
-        return;
-      }
-
-      payload.alumnos.push({
-        inscripcion_id: row.inscripcionId,
-        nota_tp: notaTp ?? undefined,
-        nota_final: notaFinal ?? undefined,
-        asistencia: asistencia ?? undefined,
-        excepcion: row.excepcion,
-        situacion: row.situacion,
-        observaciones: row.observaciones || undefined,
-      });
-    }
-
+  const handleGuardarRegularidad = async (payload: GuardarRegularidadPayload) => {
     setSaving(true);
     try {
       await guardarPlanillaRegularidad(payload);
       enqueueSnackbar("Notas de regularidad guardadas correctamente.", { variant: "success" });
+      setDefaultFechaCierre(payload.fecha_cierre);
+      setDefaultObservaciones(payload.observaciones_generales ?? "");
+      await fetchPlanilla(payload.comision_id);
     } catch (error: any) {
-      const message = error?.response?.data?.message || "No se pudieron guardar las notas.";
+      const message =
+        error?.response?.data?.message || "No se pudieron guardar las notas de regularidad.";
       enqueueSnackbar(message, { variant: "error" });
     } finally {
       setSaving(false);

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button, TextField, Typography, Box, Alert, MenuItem, Select, FormControl, InputLabel, Grid, Paper, Stack } from '@mui/material';
-import { listarMesas, inscribirMesa, obtenerHistorialAlumno } from '@/api/alumnos';
+import { listarMesas, inscribirMesa, obtenerHistorialAlumno, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
 
@@ -16,6 +16,24 @@ const MesaExamenPage: React.FC = () => {
   const [historial, setHistorial] = useState<{ aprobadas:number[]; regularizadas:number[]; inscriptas_actuales:number[] }>({ aprobadas:[], regularizadas:[], inscriptas_actuales:[] });
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [carreras, setCarreras] = useState<TrayectoriaCarreraDetalleDTO[]>([]);
+  const [carrerasLoading, setCarrerasLoading] = useState(false);
+  const [selectedCarreraId, setSelectedCarreraId] = useState<string>('');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+
+  const handleCarreraChange = (event: any) => {
+    const value = String(event.target.value ?? '');
+    setSelectedCarreraId(value);
+    setSelectedPlanId('');
+    setErr(null);
+    setInfo(null);
+  };
+
+  const handlePlanChange = (event: any) => {
+    setSelectedPlanId(String(event.target.value ?? ''));
+    setErr(null);
+    setInfo(null);
+  };
 
   useEffect(()=>{
     (async()=>{
@@ -28,18 +46,137 @@ const MesaExamenPage: React.FC = () => {
     })();
   },[]);
 
-  useEffect(()=>{ (async()=>{
-    try{
-      const data = await listarMesas({
-        tipo: tipo || undefined,
-        modalidad: modalidad || undefined,
-        ventana_id: ventanaId ? Number(ventanaId) : undefined,
-      });
-      setMesas(data||[]);
-    }catch{ setMesas([]); }
-  })(); }, [tipo, modalidad, ventanaId]);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCarreras = async () => {
+      if (canGestionar && !dni.trim()) {
+        setCarreras([]);
+        setSelectedCarreraId('');
+        setSelectedPlanId('');
+        return;
+      }
+      setCarrerasLoading(true);
+      try {
+        const data = await obtenerCarrerasActivas(canGestionar ? (dni ? { dni } : undefined) : undefined);
+        const list = data || [];
+        if (!cancelled) {
+          setCarreras(list);
+          if (!list.length) {
+            setSelectedCarreraId('');
+            setSelectedPlanId('');
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setCarreras([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCarrerasLoading(false);
+        }
+      }
+    };
+    fetchCarreras();
+    return () => {
+      cancelled = true;
+    };
+  }, [canGestionar, dni]);
 
-  useEffect(()=>{ (async()=>{
+  useEffect(() => {
+    if (carrerasLoading) return;
+    if (!carreras.length) {
+      setSelectedCarreraId('');
+      setSelectedPlanId('');
+      return;
+    }
+    if (selectedCarreraId) {
+      const actual = carreras.find((c) => String(c.profesorado_id) === selectedCarreraId);
+      if (!actual) {
+        setSelectedCarreraId('');
+        setSelectedPlanId('');
+        return;
+      }
+      if (!selectedPlanId || !actual.planes.some((p) => String(p.id) === selectedPlanId)) {
+        const preferido = actual.planes.find((p) => p.vigente) || actual.planes[0] || null;
+        setSelectedPlanId(preferido ? String(preferido.id) : '');
+      }
+      return;
+    }
+    if (carreras.length === 1) {
+      const unica = carreras[0];
+      setSelectedCarreraId(String(unica.profesorado_id));
+      const preferido = unica.planes.find((p) => p.vigente) || unica.planes[0] || null;
+      setSelectedPlanId(preferido ? String(preferido.id) : '');
+    }
+  }, [carreras, carrerasLoading, selectedCarreraId, selectedPlanId]);
+
+  const planesDisponibles = useMemo(() => {
+    if (!selectedCarreraId) return [];
+    const carrera = carreras.find((c) => String(c.profesorado_id) === selectedCarreraId);
+    return carrera ? carrera.planes : [];
+  }, [carreras, selectedCarreraId]);
+
+  const selectedCarreraIdNum = selectedCarreraId ? Number(selectedCarreraId) : undefined;
+  const selectedPlanIdNum = selectedPlanId ? Number(selectedPlanId) : undefined;
+
+  const requiereSeleccionCarrera = !carrerasLoading && carreras.length > 1 && !selectedCarreraId;
+  const requiereSeleccionPlan = !carrerasLoading && planesDisponibles.length > 1 && !selectedPlanId;
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMesas = async () => {
+      if (carrerasLoading) return;
+      if (canGestionar && !dni.trim()) {
+        setMesas([]);
+        setErr(null);
+        setInfo(null);
+        return;
+      }
+      if (requiereSeleccionCarrera || requiereSeleccionPlan) {
+        setMesas([]);
+        setErr(null);
+        return;
+      }
+      try {
+        const data = await listarMesas({
+          tipo: tipo || undefined,
+          modalidad: modalidad || undefined,
+          ventana_id: ventanaId ? Number(ventanaId) : undefined,
+          profesorado_id: selectedPlanIdNum ? undefined : selectedCarreraIdNum,
+          plan_id: selectedPlanIdNum,
+          dni: canGestionar ? (dni || undefined) : undefined,
+        });
+        if (!cancelled) {
+          setMesas(data || []);
+          setErr(null);
+        }
+      } catch (error: any) {
+        const message = error?.response?.data?.message || 'No se pudieron cargar las mesas.';
+        if (!cancelled) {
+          setErr(message);
+          setMesas([]);
+        }
+      }
+    };
+    fetchMesas();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    carrerasLoading,
+    requiereSeleccionCarrera,
+    requiereSeleccionPlan,
+    selectedCarreraIdNum,
+    selectedPlanIdNum,
+    tipo,
+    modalidad,
+    ventanaId,
+    canGestionar,
+    dni,
+  ]);
+
+  
+useEffect(()=>{ (async()=>{
     try{
       const h = await obtenerHistorialAlumno(canGestionar && dni ? { dni } : undefined);
       setHistorial({
@@ -92,10 +229,51 @@ const MesaExamenPage: React.FC = () => {
             ))}
           </Select>
         </FormControl>
+        <FormControl size="small" sx={{ minWidth: 220 }} disabled={carrerasLoading || (canGestionar && !dni.trim() && carreras.length === 0)}>
+          <InputLabel>Profesorado</InputLabel>
+          <Select label="Profesorado" value={selectedCarreraId} onChange={handleCarreraChange} displayEmpty>
+            {carrerasLoading && <MenuItem value="">Cargando...</MenuItem>}
+            {!carrerasLoading && !carreras.length && <MenuItem value="">Sin profesorados</MenuItem>}
+            {carreras.map((carrera) => (
+              <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
+                {carrera.nombre}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {planesDisponibles.length > 1 && (
+          <FormControl size="small" sx={{ minWidth: 220 }}>
+            <InputLabel>Plan</InputLabel>
+            <Select label="Plan" value={selectedPlanId} onChange={handlePlanChange} displayEmpty>
+              {planesDisponibles.map((plan) => (
+                <MenuItem key={plan.id} value={String(plan.id)}>
+                  {plan.resolucion ? `Plan ${plan.resolucion}` : `Plan ${plan.id}`}
+                  {plan.vigente ? ' (vigente)' : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
         {canGestionar && (
           <TextField size="small" label="DNI estudiante (opcional)" value={dni} onChange={(e)=>setDni(e.target.value)} />
         )}
       </Stack>
+
+      {canGestionar && !dni.trim() && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Ingresa un DNI para gestionar las mesas de un estudiante.
+        </Alert>
+      )}
+      {requiereSeleccionCarrera && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Selecciona un profesorado para ver las mesas disponibles.
+        </Alert>
+      )}
+      {requiereSeleccionPlan && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Selecciona un plan de estudios para filtrar las mesas.
+        </Alert>
+      )}
 
       <Grid container spacing={1.5}>
         <>

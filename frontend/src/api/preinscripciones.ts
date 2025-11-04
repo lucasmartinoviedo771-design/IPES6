@@ -1,6 +1,12 @@
 import { client } from "@/api/client";
 import dayjs from "dayjs";
 
+export interface ApiResponse<T = unknown> {
+  ok: boolean;
+  message: string;
+  data?: T;
+}
+
 const d = (s?: string) => (s ? dayjs(s).format("YYYY-MM-DD") : null);
 
 export function mapFormToPayload(v: any) {
@@ -121,6 +127,19 @@ export async function apiConfirmarPreinscripcion(codigo: string, payload?: any) 
   return data;
 }
 
+export async function listarPreinscripcionesAlumno(dni: string) {
+  const { data } = await client.get<PreinscripcionDTO[]>(`/preinscripciones/alumno/${encodeURIComponent(dni)}`);
+  return data;
+}
+
+export async function agregarCarreraPreinscripcion(codigo: string, carreraId: number) {
+  const { data } = await client.post<ApiResponse<PreinscripcionDTO>>(
+    `/preinscripciones/by-code/${encodeURIComponent(codigo)}/carreras`,
+    { carrera_id: carreraId },
+  );
+  return data;
+}
+
 export async function apiObservarPreinscripcion(codigo: string, motivo: string) {
   const { data } = await client.post(`/preinscripciones/by-code/${encodeURIComponent(codigo)}/observar`, { motivo });
   return data;
@@ -156,6 +175,7 @@ export interface ChecklistDTO {
   es_certificacion_docente?: boolean;
   titulo_terciario_univ?: boolean;
   estado_legajo?: string;
+  curso_introductorio_aprobado?: boolean;
 }
 
 export const apiGetChecklist = async (preId: number) => {

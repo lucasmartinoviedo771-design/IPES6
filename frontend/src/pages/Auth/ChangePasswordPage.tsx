@@ -7,7 +7,10 @@ import {
   Stack,
   TextField,
   Typography,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { enqueueSnackbar } from "notistack";
 import { changePassword } from "@/api/auth";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +30,10 @@ const ChangePasswordPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -78,35 +85,71 @@ const ChangePasswordPage: React.FC = () => {
         <Typography color="text.secondary" mb={1}>
           Por seguridad necesitas definir una contraseña nueva antes de continuar.
         </Typography>
-        <Typography color="text.secondary" variant="body2" mb={3}>
-          La clave inicial entregada es Pass + DNI (por ejemplo, Pass40123456).
-        </Typography>
         <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={2}>
             <TextField
-              type="password"
+              type={showCurrentPassword ? "text" : "password"}
               label="Contraseña actual"
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
               autoComplete="current-password"
               required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowCurrentPassword((show) => !show)}
+                      edge="end"
+                    >
+                      {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <TextField
-              type="password"
+              type={showNewPassword ? "text" : "password"}
               label="Contraseña nueva"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               autoComplete="new-password"
               helperText="Debe cumplir con los requisitos de seguridad del sistema."
               required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowNewPassword((show) => !show)}
+                      edge="end"
+                    >
+                      {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             <TextField
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               label="Confirmar contraseña nueva"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               autoComplete="new-password"
               required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowConfirmPassword((show) => !show)}
+                      edge="end"
+                    >
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
             {error && <Alert severity="error">{error}</Alert>}
             <Button type="submit" variant="contained" disabled={loading}>

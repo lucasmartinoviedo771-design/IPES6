@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, Alert, Stack, TextField, MenuItem, Typography } from '@mui/material';
 
 import { CartonViewer } from './CartonViewer';
@@ -7,6 +7,8 @@ import { CartonPlanDTO, TrayectoriaDTO } from '@/api/alumnos';
 
 interface CartonTabPanelProps {
   trayectoria: TrayectoriaDTO;
+  selectedPlanId?: string;
+  onSelectPlan?: (planId: string) => void;
 }
 
 const getCuatrimestreLabel = (regimen?: string | null, display?: string | null): string => {
@@ -153,9 +155,34 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
   };
 };
 
-export const CartonTabPanel = ({ trayectoria }: CartonTabPanelProps) => {
+export const CartonTabPanel = ({ trayectoria, selectedPlanId: controlledSelectedId, onSelectPlan }: CartonTabPanelProps) => {
   const planes = trayectoria.carton ?? [];
-  const [selectedPlanId, setSelectedPlanId] = useState(() => (planes[0] ? String(planes[0].plan_id) : ''));
+  const [internalSelectedId, setInternalSelectedId] = useState(() => (planes[0] ? String(planes[0].plan_id) : ''));
+
+  const selectedPlanId = controlledSelectedId ?? internalSelectedId;
+
+  useEffect(() => {
+    if (controlledSelectedId) return;
+    if (!planes.length) {
+      setInternalSelectedId('');
+      return;
+    }
+    setInternalSelectedId((prev) => {
+      if (prev && planes.some((plan) => String(plan.plan_id) === prev)) {
+        return prev;
+      }
+      return String(planes[0].plan_id);
+    });
+  }, [planes, controlledSelectedId]);
+
+  const handleSelect = (value: string) => {
+    if (onSelectPlan) {
+      onSelectPlan(value);
+    }
+    if (controlledSelectedId === undefined) {
+      setInternalSelectedId(value);
+    }
+  };
 
   const selectedPlan = useMemo(() => {
     if (!planes.length) return undefined;
@@ -184,7 +211,7 @@ export const CartonTabPanel = ({ trayectoria }: CartonTabPanelProps) => {
           size="small"
           label="Plan de estudio"
           value={selectedPlanId}
-          onChange={(event) => setSelectedPlanId(event.target.value)}
+          onChange={(event) => handleSelect(event.target.value)}
           sx={{ maxWidth: 320 }}
         >
           {planes.map((plan) => (

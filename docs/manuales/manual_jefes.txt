@@ -1,37 +1,36 @@
-Manual de uso - Rol Jefes
-================================
+Manual de uso - Rol Jefes de Departamento
+=========================================
+
 Objetivo del rol
-El rol jefes brinda una vision estrategica de la actividad academica para responsables de nivel o area. Permite monitorear planes, inscripciones, mesas y documentacion sin intervenir en cargas operativas sensibles.
+------------------
+El rol de Jefe de Departamento está orientado a la supervisión y gestión estratégica de las áreas académicas. Sus funciones incluyen el análisis de indicadores, la validación de la oferta académica y la comunicación con el personal a su cargo.
 
-Acceso y alcance
-- Inicia sesion con tu usuario institucional.
-- Contaras con visibilidad global sobre los profesorados definidos por Administracion. Si requieres ampliar o restringir alcance solicitalo a Secretaria.
+Pantallas y Módulos
+---------------------
+- **Dashboard:** Ofrece una visión ejecutiva del estado de las preinscripciones y otros indicadores clave.
+- **Carreras:** Permite visualizar la estructura completa de los profesorados y sus planes de estudio.
+- **Reportes y Vistas globales:** Herramientas esenciales para el análisis de datos, la generación de informes y el seguimiento de métricas institucionales.
+- **Mensajes:** Canal de comunicación para contactar a coordinadores, tutores, docentes y otros roles.
 
-Pantallas principales
-- Dashboard: indicadores generales de preinscripciones y accesos rapidos a reportes.
-- Carreras: consulta de planes vigentes, materias y volumen de inscriptos por profesorados. Exporta tablas para seguimiento propio.
-- Reportes: paneles estadisticos (inscripciones por carrera, actividad de mesas, notas publicadas). Admiten descarga en CSV/PDF.
-- Vistas globales: resumen de docentes activos, ventanas, preinscripciones recientes y actividad de comisiones. Útil para reuniones con direccion.
-- Secretaria > Pedidos de Analitico: acceso de lectura y descarga de pedidos registrados. Permite generar PDF consolidado para auditar tiempos de respuesta.
-- Mensajes: canal para comunicarse con tutores, bedeles y coordinadores. Evita usarlo para instrucciones operativas detalladas; orienta o solicita reportes.
+Circuitos Principales
+=======================
 
-Rutinas sugeridas
-1. Control diario
-   - Revisar Dashboard y Vistas globales para detectar variaciones significativas.
-   - Chequear Mensajes por consultas escaladas.
-2. Cierre semanal
-   - Exportar desde Reportes el resumen de inscripciones y mesas.
-   - Descargar PDF de pedidos de analitico para controlar tiempos de resolucion.
-3. Reuniones con equipos
-   - Utilizar Carreras y los reportes filtrados para respaldar decisiones sobre cupos, correlatividades o designaciones docentes.
+Análisis y Supervisión Académica
+---------------------------------
+Como Jefe de Departamento, tu rol es más de supervisión que de gestión operativa. Las siguientes herramientas te permitirán cumplir esta función:
 
-Buenas practicas
-- Mantene un registro interno de acuerdos (fecha, responsable, accion) basado en la informacion exportada desde el sistema.
-- Cuando detectes inconsistencias (datos duplicados, planes obsoletos) comunica a Secretaria mediante Mensajes, adjuntando evidencia.
-- Coordina con Coordinadores y Tutores antes de solicitar ajustes de correlatividades o cupos.
-- Evita compartir capturas con informacion sensible fuera de los canales oficiales.
+- **Dashboard:** Utilízalo como punto de partida para tener un panorama rápido del estado de las inscripciones y la actividad reciente.
+- **Reportes:** Genera reportes periódicos para analizar tendencias, tasas de egreso, y otros indicadores de rendimiento de las carreras a tu cargo.
+- **Vistas Globales:** Accede a dashboards con gráficos y datos consolidados para una visión macro de la institución.
+- **Carreras:** Navega por la estructura de las carreras y planes de estudio para asegurar que la oferta académica esté alineada con los objetivos institucionales.
 
-Escalamiento
-- Errores funcionales o caidas del sistema: reportar via Mensajes con tema "Soporte tecnico".
-- Ajustes de permisos: solicitar a Administracion (rol admin).
-- Necesidades pedagogicas o de normativa: tratar con la Direccion o Consejo Academico segun protocolo.
+Comunicación Estratégica
+--------------------------
+El sistema de mensajería te permite comunicarte de manera eficiente con tu equipo y otros roles.
+
+**¿Cómo funciona?**
+1.  **Acceso:** Ingresa desde el menú lateral a "Mensajes".
+2.  **Comunicación con Equipos:**
+    *   Envía comunicados a roles específicos como "Coordinadores" o "Tutores" para bajar lineamientos o solicitar información.
+    *   Puedes iniciar conversaciones individuales con cualquier miembro del personal.
+3.  **Seguimiento:** Mantén un registro de las comunicaciones importantes y asegúrate de que las directivas sean recibidas y comprendidas.
