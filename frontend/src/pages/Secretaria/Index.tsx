@@ -151,9 +151,10 @@ export default function SecretariaIndex() {
     );
   }
 
-  const academicCards: QuickActionProps[] = [];
+  const academicStudentCards: QuickActionProps[] = [];
+  const academicSecretariaCards: QuickActionProps[] = [];
   if (canFormalize) {
-    academicCards.push({
+    academicStudentCards.push({
       title: "Formalizar Inscripción",
       description: "Confirmar preinscripción presencial: edición de datos y documentación.",
       icon: <AssignmentIndIcon />,
@@ -161,7 +162,7 @@ export default function SecretariaIndex() {
     });
   }
   if (canManageHorarios) {
-    academicCards.push({
+    academicSecretariaCards.push({
       title: "Cargar Horario",
       description: "Armar y publicar horarios de cursada.",
       icon: <EventNoteIcon />,
@@ -169,7 +170,7 @@ export default function SecretariaIndex() {
     });
   }
   if (canManageMesas) {
-    academicCards.push({
+    academicSecretariaCards.push({
       title: "Mesas de Examen",
       description: "Crear y gestionar mesas por periodo.",
       icon: <EventNoteIcon />,
@@ -177,7 +178,7 @@ export default function SecretariaIndex() {
     });
   }
   if (canManageAnaliticos) {
-    academicCards.push({
+    academicStudentCards.push({
       title: "Pedidos de Analítico",
       description: "Listar, crear por DNI y descargar PDF.",
       icon: <ArticleIcon />,
@@ -185,21 +186,21 @@ export default function SecretariaIndex() {
     });
   }
   if (canManageNotas) {
-    academicCards.push({
-      title: "Carga de Notas",
-      description: "Planilla de regularidad/promoción y registro de notas.",
+    academicStudentCards.push({
+      title: "Cargar planilla de regularidad y promoción",
+      description: "Genera, completa y modifica planillas de cursada.",
       icon: <FactCheckIcon />,
       path: "/secretaria/carga-notas",
     });
-    academicCards.push({
-      title: "Cargar Finales",
-      description: "Registrar actas de mesas finales.",
+    academicStudentCards.push({
+      title: "Cargar actas finales",
+      description: "Registrar actas y calificaciones de mesas finales.",
       icon: <GavelIcon />,
-      path: "/secretaria/actas-examen",
+      path: "/secretaria/carga-notas?tab=finales&scope=finales",
     });
   }
   if (canManageCatDoc) {
-    academicCards.push({
+    academicSecretariaCards.push({
       title: "Cátedra - Docente",
       description: "Asignar docentes a cátedras y comisiones.",
       icon: <SchoolOutlinedIcon />,
@@ -207,7 +208,7 @@ export default function SecretariaIndex() {
     });
   }
   if (canManageVentanas) {
-    academicCards.push({
+    academicSecretariaCards.push({
       title: "Habilitar Fechas",
       description: "Configurar periodos y fechas clave.",
       icon: <EventAvailableIcon />,
@@ -242,11 +243,22 @@ export default function SecretariaIndex() {
         </Stack>
       )}
 
-      {academicCards.length > 0 && (
+      {academicStudentCards.length > 0 && (
         <Stack gap={1}>
-          <Typography variant="subtitle1" fontWeight={700}>Gestión académica</Typography>
+          <Typography variant="subtitle1" fontWeight={700}>Gestión académica - Estudiantes</Typography>
           <Grid container spacing={2} alignItems="stretch" justifyContent="flex-start">
-            {academicCards.map((card) => (
+            {academicStudentCards.map((card) => (
+              <QuickActionCard key={card.title} {...card} />
+            ))}
+          </Grid>
+        </Stack>
+      )}
+
+      {academicSecretariaCards.length > 0 && (
+        <Stack gap={1}>
+          <Typography variant="subtitle1" fontWeight={700}>Gestión académica - Secretaría</Typography>
+          <Grid container spacing={2} alignItems="stretch" justifyContent="flex-start">
+            {academicSecretariaCards.map((card) => (
               <QuickActionCard key={card.title} {...card} />
             ))}
           </Grid>

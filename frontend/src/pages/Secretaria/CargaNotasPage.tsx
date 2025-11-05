@@ -18,8 +18,6 @@ import {
   Paper,
   Select,
   Stack,
-  Tab,
-  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -32,6 +30,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import { enqueueSnackbar } from "notistack";
+import { useSearchParams } from "react-router-dom";
 import {
   ComisionOptionDTO,
   GuardarRegularidadPayload,
@@ -56,6 +55,7 @@ import {
   obtenerMesaPlanilla,
 } from "@/api/alumnos";
 import RegularidadPlanillaEditor from "@/components/secretaria/RegularidadPlanillaEditor";
+import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -112,7 +112,9 @@ const CargaNotasPage: React.FC = () => {
   const [materias, setMaterias] = useState<MateriaOptionDTO[]>([]);
   const [allComisiones, setAllComisiones] = useState<ComisionOptionDTO[]>([]);
   const [planilla, setPlanilla] = useState<RegularidadPlanillaDTO | null>(null);
-  const [activeTab, setActiveTab] = useState<"regularidad" | "finales">("regularidad");
+  const [searchParams] = useSearchParams();
+  const scope = searchParams.get("scope");
+  const isFinalsMode = scope === "finales";
 
   const [loadingProfesorados, setLoadingProfesorados] = useState(false);
   const [loadingPlanes, setLoadingPlanes] = useState(false);
@@ -209,7 +211,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
   }, [filters.profesoradoId]);
 
   useEffect(() => {
-    if (activeTab !== "finales") {
+    if (!isFinalsMode) {
       return;
     }
     const planId = finalFilters.planId;
@@ -238,10 +240,10 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
       }
     };
     loadFinalMaterias();
-  }, [activeTab, finalFilters.planId]);
+  }, [isFinalsMode, finalFilters.planId]);
 
   useEffect(() => {
-    if (activeTab !== "finales") {
+    if (!isFinalsMode) {
       return;
     }
 
@@ -279,7 +281,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
 
     loadMesas();
   }, [
-    activeTab,
+    isFinalsMode,
     finalFilters.anio,
     finalFilters.cuatrimestre,
     finalFilters.modalidad,
@@ -305,7 +307,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
   });
 
   useEffect(() => {
-    if (activeTab !== "finales") {
+    if (!isFinalsMode) {
       return;
     }
     if (!finalSelectedMesaId) {
@@ -335,10 +337,10 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     };
 
     loadPlanillaFinal();
-  }, [activeTab, finalSelectedMesaId]);
+  }, [isFinalsMode, finalSelectedMesaId]);
 
   useEffect(() => {
-    if (activeTab !== "finales") {
+    if (!isFinalsMode) {
       return;
     }
     const profesoradoId = finalFilters.profesoradoId;
@@ -366,7 +368,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
       }
     };
     loadFinalPlanes();
-  }, [activeTab, finalFilters.profesoradoId]);
+  }, [isFinalsMode, finalFilters.profesoradoId]);
 
   useEffect(() => {
     const planId = filters.planId;
@@ -498,7 +500,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
   }, [finalMaterias, finalFilters.anio, finalFilters.cuatrimestre]);
 
   useEffect(() => {
-    if (activeTab !== "finales") return;
+    if (!isFinalsMode) return;
     if (!finalFilters.planId) return;
     if (!finalFilters.anio && finalAvailableAnios.length === 1) {
       setFinalFilters((prev) => ({
@@ -506,10 +508,10 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
         anio: finalAvailableAnios[0],
       }));
     }
-  }, [activeTab, finalAvailableAnios, finalFilters.anio, finalFilters.planId]);
+  }, [isFinalsMode, finalAvailableAnios, finalFilters.anio, finalFilters.planId]);
 
   useEffect(() => {
-    if (activeTab !== "finales") return;
+    if (!isFinalsMode) return;
     if (!finalFilters.planId) return;
     if (!finalFilters.cuatrimestre && finalCuatrimestreOptions.length === 1) {
       setFinalFilters((prev) => ({
@@ -517,7 +519,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
         cuatrimestre: finalCuatrimestreOptions[0]?.value ?? null,
       }));
     }
-  }, [activeTab, finalCuatrimestreOptions, finalFilters.cuatrimestre, finalFilters.planId]);
+  }, [isFinalsMode, finalCuatrimestreOptions, finalFilters.cuatrimestre, finalFilters.planId]);
 
   const condicionFinalPorValor = useMemo(() => {
     const map = new Map<string, MesaPlanillaCondicionDTO>();
@@ -583,16 +585,14 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     [filteredComisiones, filters.comisionId]
   );
 
-  const handleTabChange = (_event: React.SyntheticEvent, value: string) => {
-    setActiveTab(value as "regularidad" | "finales");
-  };
-
   const fetchPlanilla = useCallback(
     async (comisionId: number) => {
       setLoadingPlanilla(true);
       try {
         const data = await obtenerPlanillaRegularidad(comisionId);
         setPlanilla(data);
+        setDefaultFechaCierre(new Date().toISOString().slice(0, 10));
+        setDefaultObservaciones("");
       } catch (error) {
         setPlanilla(null);
         enqueueSnackbar("No se pudo cargar la planilla de regularidad.", { variant: "error" });
@@ -626,29 +626,6 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     } finally {
       setSaving(false);
     }
-  };
-
-  const renderSituacionLegend = () => {
-    if (!situaciones.length) return null;
-    return (
-      <Card variant="outlined">
-        <CardContent>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-            Referencias de situacion academica
-          </Typography>
-          <Stack gap={1}>
-            {situaciones.map((sit) => (
-              <Box key={sit.alias}>
-                <Typography variant="subtitle2">{sit.alias}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {sit.descripcion}
-                </Typography>
-              </Box>
-            ))}
-          </Stack>
-        </CardContent>
-      </Card>
-    );
   };
 
   const handleFinalRowChange = (inscripcionId: number, patch: Partial<FinalRowState>) => {
@@ -748,24 +725,16 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     <Stack gap={3}>
       <Box>
         <Typography variant="h5" fontWeight={800}>
-          Carga de Notas - Regularidad y Promocion
+          {isFinalsMode ? "Cargar finales" : "Carga de Notas - Regularidad y Promocion"}
         </Typography>
         <Typography color="text.secondary">
-          Completa la planilla de regularidad al cierre del cuatrimestre o ciclo lectivo.
+          {isFinalsMode
+            ? "Gestioná las planillas y el acta manual de mesas finales."
+            : "Completa la planilla de regularidad al cierre del cuatrimestre o ciclo lectivo."}
         </Typography>
       </Box>
 
-      <Box>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          sx={{ borderBottom: 1, borderColor: "divider" }}
-        >
-          <Tab value="regularidad" label="Regularidad y Promocion" />
-          <Tab value="finales" label="Examenes finales" />
-        </Tabs>
-      </Box>
-      {activeTab === "regularidad" && (
+      {!isFinalsMode && (
         <>
           <Paper sx={{ p: 3 }}>
             <Stack gap={3}>
@@ -934,703 +903,586 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
             </Stack>
           </Paper>
 
-          {filters.planId && filters.materiaId && !filteredComisiones.length ? (
-            <Paper sx={{ p: 3 }}>
-              <Typography color="text.secondary">
-                No encontramos comisiones para la materia y filtros seleccionados.
-              </Typography>
-            </Paper>
-          ) : null}
-
-          {filters.materiaId && filteredComisiones.length > 0 && (
-            <Paper sx={{ p: 3 }}>
-              <Stack gap={2}>
+          {filters.planId && filters.materiaId && (
+            <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+              <Stack spacing={2}>
                 <Typography variant="subtitle1" fontWeight={700}>
                   Comisiones disponibles
                 </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Año</TableCell>
-                        <TableCell>Materia</TableCell>
-                        <TableCell>Turno</TableCell>
-                        <TableCell>Comisión</TableCell>
-                        <TableCell>Cuatrimestre</TableCell>
-                        <TableCell align="center">Acciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredComisiones.map((com) => {
-                        const cuatri = com.cuatrimestre ?? "ANU";
-                        return (
-                          <TableRow
-                            key={com.id}
-                            hover
-                            selected={selectedComision?.id === com.id}
+                {!filteredComisiones.length ? (
+                  <Alert severity="info">
+                    No encontramos comisiones para la selección realizada.
+                  </Alert>
+                ) : (
+                  <Grid container spacing={2}>
+                    {filteredComisiones.map((com) => {
+                      const cuatri = com.cuatrimestre ?? "ANU";
+                      const isSelected = selectedComision?.id === com.id;
+                      return (
+                        <Grid item xs={12} md={6} lg={4} key={com.id}>
+                          <Card
+                            variant="outlined"
+                            sx={{
+                              height: "100%",
+                              borderColor: isSelected ? "primary.main" : "divider",
+                              boxShadow: isSelected ? "0 0 0 2px rgba(25,118,210,0.15)" : "none",
+                              transition: "border-color .15s ease, box-shadow .15s ease",
+                            }}
                           >
-                            <TableCell>{com.anio}</TableCell>
-                            <TableCell>{com.materia_nombre}</TableCell>
-                            <TableCell>{com.turno}</TableCell>
-                            <TableCell>{com.codigo}</TableCell>
-                            <TableCell>
-                              {cuatrimestreLabel[cuatri] ?? cuatri}
-                            </TableCell>
-                            <TableCell align="center">
-                              <Button
-                                size="small"
-                                variant={
-                                  selectedComision?.id === com.id ? "contained" : "outlined"
-                                }
-                                onClick={() =>
-                                  setFilters((prev) => ({ ...prev, comisionId: com.id }))
-                                }
-                              >
-                                {selectedComision?.id === com.id ? "Seleccionado" : "Seleccionar"}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                            <CardActionArea
+                              onClick={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  comisionId: com.id,
+                                }))
+                              }
+                              sx={{ height: "100%" }}
+                            >
+                              <CardContent>
+                                <Stack spacing={0.5}>
+                                  <Typography variant="subtitle2" fontWeight={700}>
+                                    Comisión {com.codigo}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {com.materia_nombre}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Año {com.anio ?? "-"} · {cuatrimestreLabel[cuatri] ?? cuatri}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Turno {com.turno || "Sin turno"}
+                                  </Typography>
+                                </Stack>
+                              </CardContent>
+                            </CardActionArea>
+                          </Card>
+                        </Grid>
+                      );
+                    })}
+                  </Grid>
+                )}
               </Stack>
             </Paper>
           )}
 
-          <Paper sx={{ p: 3 }}>
-            <Stack gap={2}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography variant="h6" fontWeight={700}>
-                    Planilla Regularidad / Promocion
-                  </Typography>
-                  {planilla && (
-                    <Typography color="text.secondary">
-                      {planilla.materia_nombre} - {planilla.turno} - Comision {planilla.comision_codigo}
-                    </Typography>
-                  )}
-                </Box>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <TextField
-                    label="Fecha de cierre"
-                    type="date"
-                    size="small"
-                    value={fechaCierre}
-                    onChange={(event) => setFechaCierre(event.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={handleGuardar}
-                    disabled={saving || !selectedComision || !rows.length}
-                  >
-                    {saving ? "Guardando..." : "Guardar planilla"}
-                  </Button>
-                </Stack>
-              </Box>
-
-              {loadingPlanilla ? (
-                <Box py={6} display="flex" alignItems="center" justifyContent="center">
-                  <CircularProgress />
-                </Box>
-              ) : rows.length ? (
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>N°</TableCell>
-                        <TableCell>Alumno</TableCell>
-                        <TableCell>DNI</TableCell>
-                        <TableCell align="right">Nota TP</TableCell>
-                        <TableCell align="right">Nota final</TableCell>
-                        <TableCell align="right">Asistencia %</TableCell>
-                        <TableCell align="center">Excepcion</TableCell>
-                        <TableCell>Situacion academica</TableCell>
-                        <TableCell>Observaciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {rows.map((row) => (
-                        <TableRow key={row.inscripcionId} hover>
-                          <TableCell>{row.orden}</TableCell>
-                          <TableCell sx={{ minWidth: 240 }}>{row.apellidoNombre}</TableCell>
-                          <TableCell sx={{ minWidth: 120 }}>{row.dni}</TableCell>
-                          <TableCell align="right" sx={{ minWidth: 120 }}>
-                            <TextField
-                              size="small"
-                              type="number"
-                              value={row.notaTp}
-                              onChange={(event) =>
-                                handleRowChange(row.inscripcionId, {
-                                  notaTp: event.target.value,
-                                })
-                              }
-                              inputProps={{ min: 0, max: 10, step: 0.5 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right" sx={{ minWidth: 120 }}>
-                            <TextField
-                              size="small"
-                              type="number"
-                              value={row.notaFinal}
-                              onChange={(event) =>
-                                handleRowChange(row.inscripcionId, {
-                                  notaFinal: event.target.value,
-                                })
-                              }
-                              inputProps={{ min: 0, max: 10, step: 1 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right" sx={{ minWidth: 120 }}>
-                            <TextField
-                              size="small"
-                              type="number"
-                              value={row.asistencia}
-                              onChange={(event) =>
-                                handleRowChange(row.inscripcionId, {
-                                  asistencia: event.target.value,
-                                })
-                              }
-                              inputProps={{ min: 0, max: 100, step: 1 }}
-                              InputProps={{
-                                endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <Checkbox
-                              checked={row.excepcion}
-                              onChange={(event) =>
-                                handleRowChange(row.inscripcionId, {
-                                  excepcion: event.target.checked,
-                                })
-                              }
-                            />
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 200 }}>
-                            <FormControl fullWidth size="small">
-                              <Select
-                                value={row.situacion ?? ""}
-                                displayEmpty
-                                onChange={(event) =>
-                                  handleRowChange(row.inscripcionId, {
-                                    situacion: event.target.value || null,
-                                  })
-                                }
-                              >
-                                <MenuItem value="">
-                                  <em>Seleccionar</em>
-                                </MenuItem>
-                                {situaciones.map((option) => (
-                                  <MenuItem key={option.alias} value={option.alias}>
-                                    {option.alias}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 220 }}>
-                            <TextField
-                              size="small"
-                              fullWidth
-                              value={row.observaciones}
-                              onChange={(event) =>
-                                handleRowChange(row.inscripcionId, {
-                                  observaciones: event.target.value,
-                                })
-                              }
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              ) : (
-                <Box py={6} textAlign="center">
-                  <Typography color="text.secondary">
-                    Selecciona una Comision para mostrar la planilla de alumnos.
-                  </Typography>
-                </Box>
-              )}
-
-              <Stack gap={1}>
-                <TextField
-                  label="Observaciones generales"
-                  value={observacionesGenerales}
-                  onChange={(event) => setObservacionesGenerales(event.target.value)}
-                  multiline
-                  minRows={3}
-                />
-                {renderSituacionLegend()}
-              </Stack>
-            </Stack>
-          </Paper>
+          {selectedComision ? (
+            loadingPlanilla ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CircularProgress />
+              </Paper>
+            ) : planilla ? (
+              <RegularidadPlanillaEditor
+                comisionId={selectedComision.id}
+                planilla={planilla}
+                situaciones={planilla.situaciones}
+                defaultFechaCierre={defaultFechaCierre}
+                defaultObservaciones={defaultObservaciones}
+                saving={saving}
+                onSave={handleGuardarRegularidad}
+              />
+            ) : (
+              <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+                <Typography color="text.secondary">
+                  No pudimos obtener la planilla de regularidad para la comisión seleccionada.
+                </Typography>
+              </Paper>
+            )
+          ) : filters.materiaId ? (
+            <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+              <Typography color="text.secondary">
+                Seleccioná una comisión para continuar con la carga de notas.
+              </Typography>
+            </Paper>
+          ) : null}
         </>
       )}
 
-      {activeTab === "finales" && (
-        <Paper sx={{ p: 3 }}>
-          <Stack gap={3}>
-            <Box>
-              <Typography variant="subtitle1" fontWeight={700}>
-                Examenes finales
-              </Typography>
-              <Typography color="text.secondary">
-                Gestiona las planillas de actas y notas de las mesas finales habilitadas.
-              </Typography>
-            </Box>
-
-            <Stack direction={{ xs: "column", md: "row" }} gap={2} sx={{ flexWrap: "wrap" }}>
-              <TextField
-                select
-                label="Periodo"
-                size="small"
-                sx={{ minWidth: 220 }}
-                value={finalFilters.ventanaId}
-                onChange={(event) =>
-                  setFinalFilters((prev) => ({ ...prev, ventanaId: event.target.value }))
-                }
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {ventanasFinales.map((ventana) => (
-                  <MenuItem key={ventana.id} value={String(ventana.id)}>
-                    {new Date(ventana.desde).toLocaleDateString()} -{" "}
-                    {new Date(ventana.hasta).toLocaleDateString()} ({ventana.tipo.replace("MESAS_", "")})
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Tipo"
-                size="small"
-                sx={{ minWidth: 160 }}
-                value={finalFilters.tipo ?? ""}
-                onChange={(event) =>
-                  setFinalFilters((prev) => ({ ...prev, tipo: event.target.value as FinalFiltersState["tipo"] }))
-                }
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="FIN">Final</MenuItem>
-                <MenuItem value="EXT">Extraordinaria</MenuItem>
-              </TextField>
-              <TextField
-                select
-                label="Modalidad"
-                size="small"
-                sx={{ minWidth: 180 }}
-                value={finalFilters.modalidad ?? ""}
-                onChange={(event) =>
-                  setFinalFilters((prev) => ({
-                    ...prev,
-                    modalidad: event.target.value as FinalFiltersState["modalidad"],
-                  }))
-                }
-              >
-                <MenuItem value="">Todas</MenuItem>
-                <MenuItem value="REG">Regulares</MenuItem>
-                <MenuItem value="LIB">Libres</MenuItem>
-              </TextField>
-              <TextField
-                select
-                label="Profesorado"
-                size="small"
-                sx={{ minWidth: 220 }}
-                value={finalFilters.profesoradoId ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value === "" ? null : Number(event.target.value);
-                  setFinalFilters((prev) => ({
-                    ...prev,
-                    profesoradoId: value,
-                    planId: null,
-                    materiaId: null,
-                    anio: null,
-                    cuatrimestre: null,
-                  }));
-                }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {profesorados.map((profesorado) => (
-                  <MenuItem key={profesorado.id} value={String(profesorado.id)}>
-                    {profesorado.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Plan de estudio"
-                size="small"
-                sx={{ minWidth: 220 }}
-                value={finalFilters.planId ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value === "" ? null : Number(event.target.value);
-                  setFinalFilters((prev) => ({
-                    ...prev,
-                    planId: value,
-                    materiaId: null,
-                    anio: null,
-                    cuatrimestre: null,
-                  }));
-                }}
-                disabled={!finalFilters.profesoradoId}
-                InputProps={{
-                  endAdornment: loadingFinalPlanes ? <CircularProgress size={18} /> : undefined,
-                }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {finalPlanes.map((plan) => (
-                  <MenuItem key={plan.id} value={String(plan.id)}>
-                    {plan.resolucion}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Stack>
-
-            <Stack direction={{ xs: "column", md: "row" }} gap={2} sx={{ flexWrap: "wrap" }}>
-              <TextField
-                select
-                label="Anio cursada"
-                size="small"
-                sx={{ minWidth: 160 }}
-                value={finalFilters.anio ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value === "" ? null : Number(event.target.value);
-                  setFinalFilters((prev) => ({
-                    ...prev,
-                    anio: value,
-                    materiaId: null,
-                  }));
-                }}
-                disabled={!finalFilters.planId}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {finalAvailableAnios.map((anio) => (
-                  <MenuItem key={anio} value={anio}>
-                    {anio}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Cuatrimestre"
-                size="small"
-                sx={{ minWidth: 180 }}
-                value={finalFilters.cuatrimestre ?? ""}
-                onChange={(event) =>
-                  setFinalFilters((prev) => ({
-                    ...prev,
-                    cuatrimestre: event.target.value === "" ? null : (event.target.value as string),
-                    materiaId: null,
-                  }))
-                }
-                disabled={!finalFilters.planId}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {finalCuatrimestreOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Materia"
-                size="small"
-                sx={{ minWidth: 240 }}
-                value={finalFilters.materiaId ?? ""}
-                onChange={(event) =>
-                  setFinalFilters((prev) => ({
-                    ...prev,
-                    materiaId: event.target.value === "" ? null : Number(event.target.value),
-                  }))
-                }
-                disabled={!finalFilters.planId}
-                InputProps={{
-                  endAdornment: loadingFinalMaterias ? <CircularProgress size={18} /> : undefined,
-                }}
-              >
-                <MenuItem value="">Todas</MenuItem>
-                {finalMateriasFiltradas.map((materia) => (
-                  <MenuItem key={materia.id} value={materia.id}>
-                    {materia.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Stack>
-
-            {finalError && (
-              <Alert severity="error" onClose={() => setFinalError(null)}>
-                {finalError}
-              </Alert>
-            )}
-            {finalSuccess && (
-              <Alert severity="success" onClose={() => setFinalSuccess(null)}>
-                {finalSuccess}
-              </Alert>
-            )}
-
-            <Grid container spacing={1.5}>
-              {finalLoadingMesas ? (
-                <Grid item xs={12}>
-                  <Stack alignItems="center" py={4}>
-                    <CircularProgress size={32} />
-                  </Stack>
-                </Grid>
-              ) : finalMesas.length ? (
-                finalMesas.map((mesa) => {
-                  const fecha = mesa.fecha ? new Date(mesa.fecha).toLocaleDateString() : "-";
-                  const horaDesde = mesa.hora_desde ? mesa.hora_desde.slice(0, 5) : "";
-                  const horaHasta = mesa.hora_hasta ? mesa.hora_hasta.slice(0, 5) : "";
-                  const isSelected = mesa.id === finalSelectedMesaId;
-                  return (
-                    <Grid item xs={12} md={6} lg={4} key={mesa.id}>
-                      <Paper
-                        variant="outlined"
-                        sx={{
-                          p: 1.5,
-                          borderColor: isSelected ? "primary.main" : "divider",
-                          borderWidth: isSelected ? 2 : 1,
-                        }}
-                      >
-                        <Stack gap={0.5}>
-                          <Typography variant="subtitle2">
-                            {mesa.materia_nombre} (#{mesa.materia_id})
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {mesa.profesorado_nombre ?? "Sin profesorado"} | Plan {mesa.plan_resolucion ?? "-"}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {fecha} {horaDesde}
-                            {horaHasta ? ` - ${horaHasta}` : ""} | {mesa.modalidad === "LIB" ? "Libre" : "Regular"} |{" "}
-                            {mesa.tipo === "FIN" ? "Final" : "Extraordinaria"}
-                          </Typography>
-                          <Stack direction="row" gap={1}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              onClick={() => handleOpenFinalPlanilla(mesa.id)}
-                              disabled={finalLoadingPlanilla && isSelected}
-                            >
-                              Ver planilla
-                            </Button>
-                          </Stack>
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  );
-                })
-              ) : (
-                <Grid item xs={12}>
-                  <Alert severity="info">
-                    No se encontraron mesas que coincidan con los filtros seleccionados.
-                  </Alert>
-                </Grid>
-              )}
-            </Grid>
-
-            {finalSelectedMesaId && (
+      {isFinalsMode && (
+        <Stack gap={3}>
+          <Paper sx={{ p: 3 }}>
+            <Stack gap={3}>
               <Box>
-                {finalLoadingPlanilla ? (
-                  <Stack alignItems="center" py={4}>
-                    <CircularProgress size={32} />
-                  </Stack>
-                ) : finalPlanilla ? (
-                  <Stack gap={2}>
-                    <Box
-                      display="flex"
-                      flexDirection={{ xs: "column", md: "row" }}
-                      justifyContent="space-between"
-                      alignItems={{ xs: "flex-start", md: "center" }}
-                      gap={2}
-                    >
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight={700}>
-                          {finalPlanilla.materia_nombre} - Mesa #{finalPlanilla.mesa_id}
-                        </Typography>
-                        <Typography color="text.secondary">
-                          {finalPlanilla.fecha ? new Date(finalPlanilla.fecha).toLocaleDateString() : "-"} - {" "}
-                          {finalPlanilla.tipo === "FIN" ? "Final" : "Extraordinaria"} - {" "}
-                          {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
-                        </Typography>
-                      </Box>
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1.5}
-                        alignItems={{ xs: "stretch", sm: "center" }}
-                        sx={{ width: { xs: "100%", sm: "auto" } }}
-                      >
-                        {totalFinalRows > 0 && (
-                          <Typography variant="body2" color="text.secondary" sx={{ minWidth: "fit-content" }}>
-                            {visibleFinalRows} de {totalFinalRows} inscripciones{hasFinalSearch ? " (filtrado)" : ""}
-                          </Typography>
-                        )}
-                        <TextField
-                          size="small"
-                          placeholder="Buscar por apellido o DNI"
-                          value={finalSearch}
-                          onChange={(event) => setFinalSearch(event.target.value)}
-                          sx={{ minWidth: { xs: "100%", sm: 260 } }}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <SearchIcon fontSize="small" />
-                              </InputAdornment>
-                            ),
-                            endAdornment: finalSearch ? (
-                              <InputAdornment position="end">
-                                <IconButton
-                                  size="small"
-                                  edge="end"
-                                  onClick={() => setFinalSearch("")}
-                                  aria-label="Limpiar busqueda"
-                                >
-                                  <CloseIcon fontSize="small" />
-                                </IconButton>
-                              </InputAdornment>
-                            ) : undefined,
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Exámenes finales (planilla de mesa)
+                </Typography>
+                <Typography color="text.secondary">
+                  Gestioná las planillas de actas y notas de las mesas finales habilitadas.
+                </Typography>
+              </Box>
+
+              <Stack direction={{ xs: "column", md: "row" }} gap={2} sx={{ flexWrap: "wrap" }}>
+                <TextField
+                  select
+                  label="Periodo"
+                  size="small"
+                  sx={{ minWidth: 220 }}
+                  value={finalFilters.ventanaId}
+                  onChange={(event) =>
+                    setFinalFilters((prev) => ({ ...prev, ventanaId: event.target.value }))
+                  }
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {ventanasFinales.map((ventana) => (
+                    <MenuItem key={ventana.id} value={String(ventana.id)}>
+                      {new Date(ventana.desde).toLocaleDateString()} - {new Date(ventana.hasta).toLocaleDateString()} ({ventana.tipo.replace("MESAS_", "")})
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Tipo"
+                  size="small"
+                  sx={{ minWidth: 160 }}
+                  value={finalFilters.tipo ?? ""}
+                  onChange={(event) =>
+                    setFinalFilters((prev) => ({ ...prev, tipo: event.target.value as FinalFiltersState["tipo"] }))
+                  }
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="FIN">Final</MenuItem>
+                  <MenuItem value="EXT">Extraordinaria</MenuItem>
+                </TextField>
+                <TextField
+                  select
+                  label="Modalidad"
+                  size="small"
+                  sx={{ minWidth: 180 }}
+                  value={finalFilters.modalidad ?? ""}
+                  onChange={(event) =>
+                    setFinalFilters((prev) => ({
+                      ...prev,
+                      modalidad: event.target.value as FinalFiltersState["modalidad"],
+                    }))
+                  }
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  <MenuItem value="REG">Regulares</MenuItem>
+                  <MenuItem value="LIB">Libres</MenuItem>
+                </TextField>
+                <TextField
+                  select
+                  label="Profesorado"
+                  size="small"
+                  sx={{ minWidth: 220 }}
+                  value={finalFilters.profesoradoId ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value === "" ? null : Number(event.target.value);
+                    setFinalFilters((prev) => ({
+                      ...prev,
+                      profesoradoId: value,
+                      planId: null,
+                      materiaId: null,
+                      anio: null,
+                      cuatrimestre: null,
+                    }));
+                  }}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {profesorados.map((profesorado) => (
+                    <MenuItem key={profesorado.id} value={String(profesorado.id)}>
+                      {profesorado.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Plan de estudio"
+                  size="small"
+                  sx={{ minWidth: 220 }}
+                  value={finalFilters.planId ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value === "" ? null : Number(event.target.value);
+                    setFinalFilters((prev) => ({
+                      ...prev,
+                      planId: value,
+                      materiaId: null,
+                      anio: null,
+                      cuatrimestre: null,
+                    }));
+                  }}
+                  disabled={!finalFilters.profesoradoId}
+                  InputProps={{
+                    endAdornment: loadingFinalPlanes ? <CircularProgress size={18} /> : undefined,
+                  }}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {finalPlanes.map((plan) => (
+                    <MenuItem key={plan.id} value={String(plan.id)}>
+                      {plan.resolucion}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+
+              <Stack direction={{ xs: "column", md: "row" }} gap={2} sx={{ flexWrap: "wrap" }}>
+                <TextField
+                  select
+                  label="Año cursada"
+                  size="small"
+                  sx={{ minWidth: 160 }}
+                  value={finalFilters.anio ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value === "" ? null : Number(event.target.value);
+                    setFinalFilters((prev) => ({
+                      ...prev,
+                      anio: value,
+                      materiaId: null,
+                    }));
+                  }}
+                  disabled={!finalFilters.planId}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {finalAvailableAnios.map((anio) => (
+                    <MenuItem key={anio} value={anio}>
+                      {anio}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Cuatrimestre"
+                  size="small"
+                  sx={{ minWidth: 180 }}
+                  value={finalFilters.cuatrimestre ?? ""}
+                  onChange={(event) =>
+                    setFinalFilters((prev) => ({
+                      ...prev,
+                      cuatrimestre: event.target.value === "" ? null : (event.target.value as string),
+                      materiaId: null,
+                    }))
+                  }
+                  disabled={!finalFilters.planId}
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {finalCuatrimestreOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Materia"
+                  size="small"
+                  sx={{ minWidth: 240 }}
+                  value={finalFilters.materiaId ?? ""}
+                  onChange={(event) =>
+                    setFinalFilters((prev) => ({
+                      ...prev,
+                      materiaId: event.target.value === "" ? null : Number(event.target.value),
+                    }))
+                  }
+                  disabled={!finalFilters.planId}
+                  InputProps={{
+                    endAdornment: loadingFinalMaterias ? <CircularProgress size={18} /> : undefined,
+                  }}
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {finalMateriasFiltradas.map((materia) => (
+                    <MenuItem key={materia.id} value={materia.id}>
+                      {materia.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+
+              {finalError && (
+                <Alert severity="error" onClose={() => setFinalError(null)}>
+                  {finalError}
+                </Alert>
+              )}
+              {finalSuccess && (
+                <Alert severity="success" onClose={() => setFinalSuccess(null)}>
+                  {finalSuccess}
+                </Alert>
+              )}
+
+              <Grid container spacing={1.5}>
+                {finalLoadingMesas ? (
+                  <Grid item xs={12}>
+                    <Stack alignItems="center" py={4}>
+                      <CircularProgress size={32} />
+                    </Stack>
+                  </Grid>
+                ) : finalMesas.length ? (
+                  finalMesas.map((mesa) => {
+                    const fecha = mesa.fecha ? new Date(mesa.fecha).toLocaleDateString() : "-";
+                    const horaDesde = mesa.hora_desde ? mesa.hora_desde.slice(0, 5) : "";
+                    const horaHasta = mesa.hora_hasta ? mesa.hora_hasta.slice(0, 5) : "";
+                    const isSelected = mesa.id === finalSelectedMesaId;
+                    return (
+                      <Grid item xs={12} md={6} lg={4} key={mesa.id}>
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 1.5,
+                            borderColor: isSelected ? "primary.main" : "divider",
+                            borderWidth: isSelected ? 2 : 1,
                           }}
-                        />
-                      </Stack>
-                    </Box>
-                    {totalFinalRows === 0 ? (
-                      <Alert severity="info">No hay inscripciones registradas para esta mesa.</Alert>
-                    ) : visibleFinalRows === 0 ? (
-                      <Alert severity="info">No se encontraron inscripciones que coincidan con la busqueda.</Alert>
-                    ) : (
-                      <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>DNI</TableCell>
-                              <TableCell>Apellido y nombre</TableCell>
-                              <TableCell>Condicion</TableCell>
-                              <TableCell>Nota</TableCell>
-                              <TableCell>Fecha</TableCell>
-                              <TableCell>Cuenta intentos</TableCell>
-                              <TableCell>Folio</TableCell>
-                              <TableCell>Libro</TableCell>
-                              <TableCell>Observaciones</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {filteredFinalRows.map((row) => (
-                              <TableRow
-                                key={row.inscripcionId}
-                                hover
-                                sx={{
-                                  backgroundColor: row.condicion ? "inherit" : "rgba(255, 213, 79, 0.12)",
-                                }}
+                        >
+                          <Stack gap={0.5}>
+                            <Typography variant="subtitle2">
+                              {mesa.materia_nombre} (#{mesa.materia_id})
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {mesa.profesorado_nombre ?? "Sin profesorado"} | Plan {mesa.plan_resolucion ?? "-"}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {fecha} {horaDesde}
+                              {horaHasta ? ` - ${horaHasta}` : ""} | {mesa.modalidad === "LIB" ? "Libre" : "Regular"} | {mesa.tipo === "FIN" ? "Final" : "Extraordinaria"}
+                            </Typography>
+                            <Stack direction="row" gap={1}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() => handleOpenFinalPlanilla(mesa.id)}
+                                disabled={finalLoadingPlanilla && isSelected}
                               >
-                                <TableCell>{row.dni}</TableCell>
-                                <TableCell>{row.apellidoNombre}</TableCell>
-                                <TableCell sx={{ minWidth: 180 }}>
-                                  <FormControl fullWidth size="small">
-                                    <Select
-                                      value={row.condicion ?? ""}
-                                      displayEmpty
+                                Ver planilla
+                              </Button>
+                            </Stack>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    );
+                  })
+                ) : (
+                  <Grid item xs={12}>
+                    <Alert severity="info">
+                      No se encontraron mesas que coincidan con los filtros seleccionados.
+                    </Alert>
+                  </Grid>
+                )}
+              </Grid>
+
+              {finalSelectedMesaId && (
+                <Box>
+                  {finalLoadingPlanilla ? (
+                    <Stack alignItems="center" py={4}>
+                      <CircularProgress size={32} />
+                    </Stack>
+                  ) : finalPlanilla ? (
+                    <Stack gap={2}>
+                      <Box
+                        display="flex"
+                        flexDirection={{ xs: "column", md: "row" }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", md: "center" }}
+                        gap={2}
+                      >
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={700}>
+                            {finalPlanilla.materia_nombre} - Mesa #{finalPlanilla.mesa_id}
+                          </Typography>
+                          <Typography color="text.secondary">
+                            {finalPlanilla.fecha ? new Date(finalPlanilla.fecha).toLocaleDateString() : "-"} - {finalPlanilla.tipo === "FIN" ? "Final" : "Extraordinaria"} - {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
+                          </Typography>
+                        </Box>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.5}
+                          alignItems={{ xs: "stretch", sm: "center" }}
+                          sx={{ width: { xs: "100%", sm: "auto" } }}
+                        >
+                          {totalFinalRows > 0 && (
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: "fit-content" }}>
+                              {visibleFinalRows} de {totalFinalRows} inscripciones{hasFinalSearch ? " (filtrado)" : ""}
+                            </Typography>
+                          )}
+                          <TextField
+                            size="small"
+                            placeholder="Buscar por apellido o DNI"
+                            value={finalSearch}
+                            onChange={(event) => setFinalSearch(event.target.value)}
+                            sx={{ minWidth: { xs: "100%", sm: 260 } }}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <SearchIcon fontSize="small" />
+                                </InputAdornment>
+                              ),
+                              endAdornment: finalSearch ? (
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    size="small"
+                                    edge="end"
+                                    onClick={() => setFinalSearch("")}
+                                    aria-label="Limpiar busqueda"
+                                  >
+                                    <CloseIcon fontSize="small" />
+                                  </IconButton>
+                                </InputAdornment>
+                              ) : undefined,
+                            }}
+                          />
+                        </Stack>
+                      </Box>
+                      {totalFinalRows === 0 ? (
+                        <Alert severity="info">No hay inscripciones registradas para esta mesa.</Alert>
+                      ) : visibleFinalRows === 0 ? (
+                        <Alert severity="info">No se encontraron inscripciones que coincidan con la búsqueda.</Alert>
+                      ) : (
+                        <TableContainer component={Paper} variant="outlined">
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>DNI</TableCell>
+                                <TableCell>Apellido y nombre</TableCell>
+                                <TableCell>Condicion</TableCell>
+                                <TableCell>Nota</TableCell>
+                                <TableCell>Fecha</TableCell>
+                                <TableCell>Cuenta intentos</TableCell>
+                                <TableCell>Folio</TableCell>
+                                <TableCell>Libro</TableCell>
+                                <TableCell>Observaciones</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {filteredFinalRows.map((row) => (
+                                <TableRow
+                                  key={row.inscripcionId}
+                                  hover
+                                  sx={{
+                                    backgroundColor: row.condicion ? "inherit" : "rgba(255, 213, 79, 0.12)",
+                                  }}
+                                >
+                                  <TableCell>{row.dni}</TableCell>
+                                  <TableCell>{row.apellidoNombre}</TableCell>
+                                  <TableCell sx={{ minWidth: 180 }}>
+                                    <FormControl fullWidth size="small">
+                                      <Select
+                                        value={row.condicion ?? ""}
+                                        displayEmpty
+                                        onChange={(event) =>
+                                          handleFinalRowChange(row.inscripcionId, {
+                                            condicion: event.target.value ? String(event.target.value) : null,
+                                          })
+                                        }
+                                      >
+                                        <MenuItem value="">
+                                          <em>Seleccionar</em>
+                                        </MenuItem>
+                                        {finalCondiciones.map((condicion) => (
+                                          <MenuItem key={condicion.value} value={condicion.value}>
+                                            {condicion.label}
+                                          </MenuItem>
+                                        ))}
+                                      </Select>
+                                    </FormControl>
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 120 }}>
+                                    <TextField
+                                      size="small"
+                                      type="number"
+                                      value={row.nota}
+                                      onChange={(event) =>
+                                        handleFinalRowChange(row.inscripcionId, { nota: event.target.value })
+                                      }
+                                      inputProps={{ step: 0.5, min: 0, max: 10 }}
+                                    />
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 150 }}>
+                                    <TextField
+                                      size="small"
+                                      type="date"
+                                      value={row.fechaResultado}
+                                      onChange={(event) =>
+                                        handleFinalRowChange(row.inscripcionId, { fechaResultado: event.target.value })
+                                      }
+                                      InputLabelProps={{ shrink: true }}
+                                    />
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <Checkbox
+                                      checked={row.cuentaParaIntentos}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, {
-                                          condicion: event.target.value ? String(event.target.value) : null,
+                                          cuentaParaIntentos: event.target.checked,
                                         })
                                       }
-                                    >
-                                      <MenuItem value="">
-                                        <em>Seleccionar</em>
-                                      </MenuItem>
-                                      {finalCondiciones.map((condicion) => (
-                                        <MenuItem key={condicion.value} value={condicion.value}>
-                                          {condicion.label}
-                                        </MenuItem>
-                                      ))}
-                                    </Select>
-                                  </FormControl>
-                                </TableCell>
-                                <TableCell sx={{ minWidth: 120 }}>
-                                  <TextField
-                                    size="small"
-                                    type="number"
-                                    value={row.nota}
-                                    onChange={(event) =>
-                                      handleFinalRowChange(row.inscripcionId, { nota: event.target.value })
-                                    }
-                                    inputProps={{ step: 0.5, min: 0, max: 10 }}
-                                  />
-                                </TableCell>
-                                <TableCell sx={{ minWidth: 150 }}>
-                                  <TextField
-                                    size="small"
-                                    type="date"
-                                    value={row.fechaResultado}
-                                    onChange={(event) =>
-                                      handleFinalRowChange(row.inscripcionId, { fechaResultado: event.target.value })
-                                    }
-                                    InputLabelProps={{ shrink: true }}
-                                  />
-                                </TableCell>
-                                <TableCell align="center">
-                                  <Checkbox
-                                    checked={row.cuentaParaIntentos}
-                                    onChange={(event) =>
-                                      handleFinalRowChange(row.inscripcionId, {
-                                        cuentaParaIntentos: event.target.checked,
-                                      })
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell sx={{ minWidth: 120 }}>
-                                  <TextField
-                                    size="small"
-                                    value={row.folio}
-                                    onChange={(event) =>
-                                      handleFinalRowChange(row.inscripcionId, { folio: event.target.value })
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell sx={{ minWidth: 120 }}>
-                                  <TextField
-                                    size="small"
-                                    value={row.libro}
-                                    onChange={(event) =>
-                                      handleFinalRowChange(row.inscripcionId, { libro: event.target.value })
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell sx={{ minWidth: 220 }}>
-                                  <TextField
-                                    size="small"
-                                    value={row.observaciones}
-                                    onChange={(event) =>
-                                      handleFinalRowChange(row.inscripcionId, { observaciones: event.target.value })
-                                    }
-                                    multiline
-                                    maxRows={3}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    )}
-                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}>
-                      <Button
-                        variant="contained"
-                        onClick={handleGuardarFinalPlanilla}
-                        disabled={finalSaving || finalRows.length === 0}
-                      >
-                        {finalSaving ? "Guardando..." : "Guardar planilla"}
-                      </Button>
+                                    />
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 120 }}>
+                                    <TextField
+                                      size="small"
+                                      value={row.folio}
+                                      onChange={(event) =>
+                                        handleFinalRowChange(row.inscripcionId, { folio: event.target.value })
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 120 }}>
+                                    <TextField
+                                      size="small"
+                                      value={row.libro}
+                                      onChange={(event) =>
+                                        handleFinalRowChange(row.inscripcionId, { libro: event.target.value })
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 220 }}>
+                                    <TextField
+                                      size="small"
+                                      value={row.observaciones}
+                                      onChange={(event) =>
+                                        handleFinalRowChange(row.inscripcionId, { observaciones: event.target.value })
+                                      }
+                                      multiline
+                                      maxRows={3}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+
+                      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}>
+                        <Button
+                          variant="contained"
+                          onClick={handleGuardarFinalPlanilla}
+                          disabled={finalSaving || finalRows.length === 0}
+                        >
+                          {finalSaving ? "Guardando..." : "Guardar planilla"}
+                        </Button>
+                      </Stack>
                     </Stack>
-                  </Stack>
-                ) : (
-                  <Alert severity="info">Selecciona una mesa para cargar las notas.</Alert>
-                )}
+                  ) : (
+                    <Alert severity="info">Seleccioná una mesa para cargar las notas.</Alert>
+                  )}
+                </Box>
+              )}
+            </Stack>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+            <Stack spacing={1.5}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Acta de examen manual
+                </Typography>
+                <Typography color="text.secondary">
+                  Generá o actualizá actas finales cargando los datos manualmente. El sistema valida correlatividades, regularidades y ventanas vigentes.
+                </Typography>
               </Box>
-            )}
-          </Stack>
-        </Paper>
+              <ActaExamenForm
+                strict
+                title="Acta de examen"
+                subtitle="Ingresá los datos del acta para los estudiantes rendidos."
+                successMessage="Acta generada correctamente."
+              />
+            </Stack>
+          </Paper>
+        </Stack>
       )}
     </Stack>
   );

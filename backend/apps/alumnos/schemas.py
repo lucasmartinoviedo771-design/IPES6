@@ -421,3 +421,4 @@ class TrayectoriaOut(Schema):
     inscriptas_actuales: List[int] = Field(default_factory=list)
     carton: List[CartonPlan] = Field(default_factory=list)
     updated_at: str
+

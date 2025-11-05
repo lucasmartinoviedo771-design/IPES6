@@ -39,14 +39,37 @@ const ORDER_BY_CUATRIMESTRE: Record<string, number> = {
 
 const buildStudentInfo = (trayectoria: TrayectoriaDTO, plan?: CartonPlanDTO): StudentInfo => {
   const estudiante = trayectoria.estudiante;
-  const totalMaterias =
-    estudiante.materias_totales ??
-    (plan ? plan.materias.length : trayectoria.regularidades.length || trayectoria.historial.length);
-  const aprobadasCount = estudiante.materias_aprobadas ?? trayectoria.aprobadas.length;
-  const regularizadasCount =
-    estudiante.materias_regularizadas ??
-    Math.max(trayectoria.regularizadas.length - trayectoria.aprobadas.length, 0);
-  const enCursoCount = estudiante.materias_en_curso ?? trayectoria.inscriptas_actuales.length;
+  const planMateriaIds = plan
+    ? new Set(
+        plan.materias
+          .map((materia) => materia.materia_id)
+          .filter((value): value is number => value !== null && value !== undefined),
+      )
+    : null;
+
+  const totalMaterias = planMateriaIds
+    ? planMateriaIds.size
+    : estudiante.materias_totales ??
+      (plan ? plan.materias.length : trayectoria.regularidades.length || trayectoria.historial.length);
+
+  const planAprobadas = planMateriaIds
+    ? trayectoria.aprobadas.filter((id) => planMateriaIds.has(id))
+    : [];
+  const aprobadasCount = planMateriaIds
+    ? planAprobadas.length
+    : estudiante.materias_aprobadas ?? trayectoria.aprobadas.length;
+
+  const regularizadasCount = planMateriaIds
+    ? Math.max(
+        trayectoria.regularizadas.filter((id) => planMateriaIds.has(id)).length - planAprobadas.length,
+        0,
+      )
+    : estudiante.materias_regularizadas ??
+      Math.max(trayectoria.regularizadas.length - trayectoria.aprobadas.length, 0);
+
+  const enCursoCount = planMateriaIds
+    ? trayectoria.inscriptas_actuales.filter((id) => planMateriaIds.has(id)).length
+    : estudiante.materias_en_curso ?? trayectoria.inscriptas_actuales.length;
 
   return {
     apellidoNombre: estudiante.apellido_nombre,

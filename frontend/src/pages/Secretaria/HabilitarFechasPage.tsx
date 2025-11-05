@@ -1,106 +1,278 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { client as axios } from '@/api/client';
-import { fetchVentanas, VentanaDto } from '@/api/ventanas';
-import { useSnackbar } from 'notistack';
-import { Box, Button, Card, CardContent, CardHeader, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputLabel, MenuItem, Select, Switch, TextField, Tooltip, Typography } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
-import dayjs from 'dayjs';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import React, { useEffect, useMemo, useState } from "react";
+import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  ButtonBase,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  Grid,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  Switch,
+  Tab,
+  Tabs,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { client as axios } from "@/api/client";
+import { fetchVentanas, VentanaDto } from "@/api/ventanas";
+import { useSnackbar } from "notistack";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 type Ventana = VentanaDto;
 
-const LABEL_PERIODO: Record<'1C_ANUALES' | '2C', string> = {
-  '1C_ANUALES': '1º Cuatrimestre + Anuales',
-  '2C': '2º Cuatrimestre',
+const LABEL_PERIODO: Record<"1C_ANUALES" | "2C", string> = {
+  "1C_ANUALES": "1º Cuatrimestre + Anuales",
+  "2C": "2º Cuatrimestre",
 };
 
-const TIPOS: { key: string; label: string }[] = [
-  { key: 'MESAS_FINALES', label: 'Mesas de examen - Finales' },
-  { key: 'MESAS_EXTRA', label: 'Mesas de examen - Extraordinarias' },
-  { key: 'MESAS_LIBRES', label: 'Mesas de examen - Libres' },
-  { key: 'MATERIAS', label: 'Inscripciones a Materias' },
-  { key: 'COMISION', label: 'Cambios de Comisión' },
-  { key: 'ANALITICOS', label: 'Pedidos de Analíticos (placeholder)' },
-  { key: 'PREINSCRIPCION', label: 'Preinscripción' },
+const TYPE_CONFIG: Array<{
+  key: Ventana["tipo"];
+  label: string;
+  category: "mesas" | "tramites";
+  description: string;
+}> = [
+  {
+    key: "MESAS_FINALES",
+    label: "Mesas de examen - Finales",
+    category: "mesas",
+    description: "Ventanas para las mesas regulares de examen final.",
+  },
+  {
+    key: "MESAS_EXTRA",
+    label: "Mesas de examen - Extraordinarias",
+    category: "mesas",
+    description: "Mesas especiales o extraordinarias habilitadas por dirección.",
+  },
+  {
+    key: "MESAS_LIBRES",
+    label: "Mesas de examen - Libres",
+    category: "mesas",
+    description: "Mesas destinadas a estudiantes libres.",
+  },
+  {
+    key: "MATERIAS",
+    label: "Inscripciones a Materias",
+    category: "tramites",
+    description: "Períodos para que los estudiantes se inscriban a cursadas.",
+  },
+  {
+    key: "COMISION",
+    label: "Cambios de Comisión",
+    category: "tramites",
+    description: "Gestiona solicitudes de cambio de comisión.",
+  },
+  {
+    key: "ANALITICOS",
+    label: "Pedidos de Analíticos",
+    category: "tramites",
+    description: "Ventanas para solicitar constancias o analíticos.",
+  },
+  {
+    key: "PREINSCRIPCION",
+    label: "Preinscripción",
+    category: "tramites",
+    description: "Periodo de preinscripción inicial a la institución.",
+  },
 ];
+
+const CATEGORY_CONFIG = [
+  {
+    id: "tramites",
+    label: "Inscripciones y trámites",
+    helper: "Habilita los periodos que impactan directamente en los estudiantes.",
+  },
+  {
+    id: "mesas",
+    label: "Mesas de examen",
+    helper: "Configura las fechas de generación y cierre de las mesas finales.",
+  },
+];
+
+const TYPE_BY_CATEGORY = CATEGORY_CONFIG.reduce<Record<string, string[]>>((acc, category) => {
+  acc[category.id] = TYPE_CONFIG.filter((type) => type.category === category.id).map((type) => type.key);
+  return acc;
+}, {});
+
+const CATEGORY_FROM_TYPE = TYPE_CONFIG.reduce<Record<string, string>>((acc, type) => {
+  acc[type.key] = type.category;
+  return acc;
+}, {});
+
+const formatRange = (ventana?: Ventana | null) => {
+  if (!ventana) return "Sin ventana activa";
+  return `${dayjs(ventana.desde).format("DD/MM/YYYY")} → ${dayjs(ventana.hasta).format("DD/MM/YYYY")}`;
+};
+
+const today = () => dayjs();
+
+const classifyVentana = (ventana: Ventana | undefined) => {
+  if (!ventana) return { label: "Sin ventana", color: "default" as const };
+  const now = today();
+  if (dayjs(ventana.desde).isSameOrBefore(now, "day") && dayjs(ventana.hasta).isSameOrAfter(now, "day")) {
+    return { label: "Activa", color: "success" as const };
+  }
+  if (dayjs(ventana.desde).isAfter(now, "day")) {
+    return { label: "Pendiente", color: "warning" as const };
+  }
+  return { label: "Vencida", color: "default" as const };
+};
 
 export default function HabilitarFechasPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [ventanas, setVentanas] = useState<Record<string, Ventana[]>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [editOpen, setEditOpen] = useState(false);
-  const [editV, setEditV] = useState<Ventana | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Ventana>>({});
+  const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORY_CONFIG[0].id);
+  const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editVentana, setEditVentana] = useState<Ventana | null>(null);
 
   const defaultDraft = (tipo: string): Ventana => ({
     tipo,
     activo: false,
-    desde: dayjs().format('YYYY-MM-DD'),
-    hasta: dayjs().add(7, 'day').format('YYYY-MM-DD'),
-    periodo: '1C_ANUALES',
+    desde: dayjs().format("YYYY-MM-DD"),
+    hasta: dayjs().add(7, "day").format("YYYY-MM-DD"),
+    periodo: "1C_ANUALES",
   });
 
-  const load = async () => {
+  const loadVentanas = async () => {
     try {
       const data = await fetchVentanas();
       const map: Record<string, Ventana[]> = {};
-      data.forEach(v => { (map[v.tipo] ||= []).push(v); });
-      Object.keys(map).forEach(k => map[k].sort((a,b)=> a.desde < b.desde ? 1 : -1));
+      data.forEach((ventana) => {
+        (map[ventana.tipo] ||= []).push(ventana);
+      });
+      Object.keys(map).forEach((key) => {
+        map[key].sort((a, b) => dayjs(b.desde).diff(dayjs(a.desde)));
+      });
       setVentanas(map);
-    } catch {
+    } catch (error) {
       setVentanas({});
+      enqueueSnackbar("No se pudieron cargar las ventanas.", { variant: "error" });
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadVentanas();
+  }, []);
 
-  const upsert = async (v: Ventana) => {
-    setSaving(s => ({ ...s, [v.tipo]: true }));
+  const upsertVentana = async (ventana: Ventana) => {
+    setSaving((state) => ({ ...state, [ventana.tipo]: true }));
     try {
-      const payload = { ...v };
-      if (v.id) {
-        await axios.put(`/ventanas/${v.id}`, payload);
+      const payload = { ...ventana };
+      if (ventana.id) {
+        await axios.put(`/ventanas/${ventana.id}`, payload);
       } else {
         await axios.post(`/ventanas`, payload);
       }
+      enqueueSnackbar("Ventana guardada correctamente.", { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar("No se pudo guardar la ventana.", { variant: "error" });
     } finally {
-      setSaving(s => ({ ...s, [v.tipo]: false }));
-      load();
+      setSaving((state) => ({ ...state, [ventana.tipo]: false }));
+      loadVentanas();
     }
   };
 
-  const openEdit = (v: Ventana) => { setEditV({ ...v }); setEditOpen(true); };
-  const closeEdit = () => { setEditOpen(false); setEditV(null); };
-  const saveEdit = async () => {
-    if (!editV || !editV.id) return;
-    await axios.put(`/ventanas/${editV.id}`, editV);
-    closeEdit();
-    load();
-  };
-  const deleteVentana = async (id?: number) => {
-    if (!id) return;
-    await axios.delete(`/ventanas/${id}`);
-    closeEdit();
-    load();
+  const openEditDialog = (ventana: Ventana) => {
+    setEditVentana({ ...ventana });
+    setEditOpen(true);
   };
 
-  const card = (t: { key: string; label: string }) => {
-    const list = ventanas[t.key] ?? [];
+  const closeEditDialog = () => {
+    setEditOpen(false);
+    setEditVentana(null);
+  };
+
+  const saveEditDialog = async () => {
+    if (!editVentana?.id) return;
+    try {
+      await axios.put(`/ventanas/${editVentana.id}`, editVentana);
+      enqueueSnackbar("Ventana actualizada.", { variant: "success" });
+      closeEditDialog();
+      loadVentanas();
+    } catch (error) {
+      enqueueSnackbar("No se pudo actualizar la ventana.", { variant: "error" });
+    }
+  };
+
+  const deleteVentana = async (id?: number) => {
+    if (!id) return;
+    try {
+      await axios.delete(`/ventanas/${id}`);
+      enqueueSnackbar("Ventana eliminada.", { variant: "success" });
+      closeEditDialog();
+      loadVentanas();
+    } catch (error) {
+      enqueueSnackbar("No se pudo eliminar la ventana.", { variant: "error" });
+    }
+  };
+
+  const summaryItems = useMemo(() => {
+    return TYPE_CONFIG.map((config) => {
+      const list = ventanas[config.key] ?? [];
+      const active = list.find((item) => item.activo);
+      const upcoming = list
+        .filter((item) => dayjs(item.desde).isAfter(today(), "day"))
+        .sort((a, b) => dayjs(a.desde).diff(dayjs(b.desde)))[0];
+      const reference = active ?? upcoming ?? list[0];
+      const state = classifyVentana(active ?? upcoming ?? list[0]);
+      return {
+        ...config,
+        active,
+        upcoming,
+        reference,
+        state,
+      };
+    });
+  }, [ventanas]);
+
+  const handleSummaryClick = (typeKey: string) => {
+    const category = CATEGORY_FROM_TYPE[typeKey];
+    if (category) {
+      setSelectedCategory(category);
+      setExpandedPanel((prev) => (prev === typeKey ? prev : typeKey));
+    }
+  };
+
+  const renderTypePanel = (typeKey: string) => {
+    const config = TYPE_CONFIG.find((item) => item.key === typeKey);
+    if (!config) return null;
+
+    const list = ventanas[typeKey] ?? [];
+    const now = today();
+
     const baseDraft =
-      drafts[t.key] ??
+      drafts[typeKey] ??
       (() => {
-        const activo = list.find((x) => x.activo);
-        return activo ? { ...activo } : defaultDraft(t.key);
+        const active = list.find((ventana) => ventana.activo);
+        return active ? { ...active } : defaultDraft(typeKey);
       })();
-    const setLocal = (patch: Partial<Ventana>) =>
+
+    const setLocalDraft = (patch: Partial<Ventana>) =>
       setDrafts((prev) => {
         let draftBase: Ventana = baseDraft;
-        if (patch.periodo && t.key === 'MATERIAS') {
+        if (patch.periodo && typeKey === "MATERIAS") {
           const candidato = list.find((item) => item.periodo === patch.periodo);
           if (candidato) {
             draftBase = { ...candidato };
@@ -115,136 +287,348 @@ export default function HabilitarFechasPage() {
         }
         return {
           ...prev,
-          [t.key]: { ...draftBase, ...patch, tipo: t.key },
+          [typeKey]: { ...draftBase, ...patch, tipo: typeKey },
         };
       });
+
     const resetDraft = () =>
       setDrafts((prev) => ({
         ...prev,
-        [t.key]: defaultDraft(t.key),
+        [typeKey]: defaultDraft(typeKey),
       }));
-    const v = baseDraft;
-    const today = dayjs();
-    const enRango = (x: Ventana) => dayjs(x.desde).isSameOrBefore(today, 'day') && dayjs(x.hasta).isSameOrAfter(today, 'day');
-    const estado = (x: Ventana) => enRango(x) ? 'En rango' : (dayjs(x.desde).isAfter(today) ? 'Pendiente' : 'Pasada');
 
-    const displayList = list
-      .filter(x => x.activo || dayjs(x.hasta).isSameOrAfter(today, 'day'))
-      .sort((a, b) => {
-        if (a.activo && !b.activo) return -1;
-        if (!a.activo && b.activo) return 1;
-        return dayjs(a.desde).diff(dayjs(b.desde));
-      })
-      .slice(0, 3);
+    const currentDraft = baseDraft;
+
+    const historyItems = list
+      .filter((ventana) => ventana.activo || dayjs(ventana.hasta).isSameOrAfter(now, "day"))
+      .slice(0, 5);
+
+    const reference = list.find((ventana) => ventana.activo) ?? list[0];
+    const state = classifyVentana(reference);
 
     return (
-      <Grid item xs={12} md={6} key={t.key}>
-        <Card variant="outlined">
-          <CardHeader title={t.label} action={
-            <FormControlLabel
-              control={<Switch checked={!!v.activo} onChange={(e)=>setLocal({ activo: e.target.checked })} />}
-              label={
-                v.activo
-                  ? `Habilitado (${LABEL_PERIODO[(v.periodo ?? '1C_ANUALES') as '1C_ANUALES' | '2C']})`
-                  : 'Deshabilitado'
-              }
-            />
-          }/>
-          <CardContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField type="date" label="Desde" InputLabelProps={{ shrink: true }} fullWidth size="small" value={v.desde} onChange={(e)=>setLocal({ desde: e.target.value })} />
+      <Accordion
+        key={typeKey}
+        disableGutters
+        elevation={0}
+        square
+        expanded={expandedPanel === typeKey}
+        onChange={(_, expanded) => setExpandedPanel(expanded ? typeKey : null)}
+        sx={{
+          border: "1px solid",
+          borderColor: expandedPanel === typeKey ? "primary.main" : "divider",
+          borderRadius: 2,
+          "&:not(:last-of-type)": {
+            mb: 2,
+          },
+        }}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {config.label}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {reference ? formatRange(reference) : "Sin periodos configurados"}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip size="small" label={state.label} color={state.color} />
+            {reference?.activo && (
+              <Chip size="small" color="success" variant="outlined" label="Habilitado" />
+            )}
+          </Stack>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={3}>
+            <Typography variant="body2" color="text.secondary">
+              {config.description}
+            </Typography>
+            <Grid container spacing={2} alignItems="flex-start">
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  label="Desde"
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                  size="small"
+                  value={currentDraft.desde}
+                  onChange={(event) => setLocalDraft({ desde: event.target.value })}
+                />
               </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField type="date" label="Hasta" InputLabelProps={{ shrink: true }} fullWidth size="small" value={v.hasta} onChange={(e)=>setLocal({ hasta: e.target.value })} />
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  label="Hasta"
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                  size="small"
+                  value={currentDraft.hasta}
+                  onChange={(event) => setLocalDraft({ hasta: event.target.value })}
+                />
               </Grid>
-              {t.key === 'MATERIAS' && (
-                <Grid item xs={12} md={6}>
+              {typeKey === "MATERIAS" && (
+                <Grid item xs={12} md={3}>
                   <FormControl fullWidth size="small">
-                    <InputLabel id={`periodo-${t.key}`}>Período habilitado</InputLabel>
-                    <Select labelId={`periodo-${t.key}`} label="Período habilitado" value={v.periodo ?? '1C_ANUALES'} onChange={(e)=>setLocal({ periodo: e.target.value as any })}>
-                      <MenuItem value="1C_ANUALES">1° Cuatrimestre + Anuales</MenuItem>
-                      <MenuItem value="2C">2° Cuatrimestre</MenuItem>
+                    <InputLabel id={`periodo-${typeKey}`}>Período</InputLabel>
+                    <Select
+                      labelId={`periodo-${typeKey}`}
+                      label="Período"
+                      value={currentDraft.periodo ?? "1C_ANUALES"}
+                      onChange={(event) =>
+                        setLocalDraft({ periodo: event.target.value as "1C_ANUALES" | "2C" })
+                      }
+                    >
+                      <MenuItem value="1C_ANUALES">1º Cuatrimestre + Anuales</MenuItem>
+                      <MenuItem value="2C">2º Cuatrimestre</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
               )}
-                <Grid item xs={12} display="flex" gap={1}>
-                  <Button variant="outlined" onClick={resetDraft}>
-                    Nuevo periodo
-                  </Button>
-                  <Button variant="contained" disabled={!!saving[t.key]} onClick={()=>upsert(v)}>
-                    {saving[t.key] ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2">Histórico</Typography>
-                {
-                  Array(3).fill(null).map((_, index) => {
-                    const x = displayList[index];
-                    return x ? (
-                      <Box key={(x.id ?? 0) + x.desde + x.hasta} sx={{ display: 'flex', gap: 1, alignItems: 'center', py: .5 }}>
-                        <span>{dayjs(x.desde).format('DD/MM/YYYY')} → {dayjs(x.hasta).format('DD/MM/YYYY')}</span>
-                        <Chip size="small" label={x.activo ? 'Habilitado' : 'Deshabilitado'} color={x.activo ? 'success' : 'default'} variant={x.activo ? 'filled' : 'outlined'} />
-                        <Chip size="small" label={estado(x)} color={estado(x)==='En rango' ? 'info' : estado(x)==='Pendiente' ? 'warning' : 'default'} variant={estado(x)==='Pasada' ? 'outlined' : 'filled'} />
-                        {t.key === 'MATERIAS' && (
-                          <Chip
-                            size="small"
-                            label={LABEL_PERIODO[(x.periodo ?? '1C_ANUALES') as '1C_ANUALES' | '2C']}
-                            color="primary"
-                            variant="outlined"
-                          />
-                        )}
-                        <span style={{ flex: 1 }} />
-                        <Tooltip title="Editar"><IconButton size="small" onClick={() => openEdit(x)}><EditIcon fontSize="small"/></IconButton></Tooltip>
-                       <Tooltip title="Eliminar"><IconButton color="error" size="small" onClick={() => deleteVentana(x.id)}><DeleteForeverIcon fontSize="small"/></IconButton></Tooltip>
-                      </Box>
-                    ) : (
-                      <Box key={`placeholder-${index}`} sx={{ display: 'flex', gap: 1, alignItems: 'center', py: .5, height: '34px' }}>
-                        <Typography variant="body2" color="text.secondary">-</Typography>
-                      </Box>
-                    );
-                  })
-                }
+              <Grid item xs={12} md={3} display="flex" justifyContent={{ xs: "flex-start", md: "flex-end" }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!currentDraft.activo}
+                      onChange={(event) => setLocalDraft({ activo: event.target.checked })}
+                    />
+                  }
+                  label={currentDraft.activo ? "Habilitado" : "Deshabilitado"}
+                />
               </Grid>
             </Grid>
-          </CardContent>
-        </Card>
-      </Grid>
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="flex-end">
+              <Button variant="outlined" onClick={resetDraft}>
+                Limpiar borrador
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => upsertVentana(currentDraft)}
+                disabled={!!saving[typeKey]}
+              >
+                {saving[typeKey] ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </Stack>
+
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Historial reciente
+              </Typography>
+              {historyItems.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Todavía no hay registros para este tipo.
+                </Typography>
+              ) : (
+                <Stack spacing={1.5}>
+                  {historyItems.map((item) => {
+                    const itemState = classifyVentana(item);
+                    return (
+                      <Paper
+                        key={`${typeKey}-${item.id ?? item.desde}`}
+                        variant="outlined"
+                        sx={{ p: 1.5, display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" fontWeight={600}>
+                            {formatRange(item)}
+                          </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                            <Chip size="small" label={itemState.label} color={itemState.color} />
+                            {item.activo ? (
+                              <Chip size="small" color="success" variant="outlined" label="Habilitado" />
+                            ) : (
+                              <Chip size="small" variant="outlined" label="Cerrado" />
+                            )}
+                            {typeKey === "MATERIAS" && (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                label={LABEL_PERIODO[(item.periodo ?? "1C_ANUALES") as "1C_ANUALES" | "2C"]}
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Editar">
+                            <span>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => openEditDialog(item)}
+                                startIcon={<EditIcon fontSize="small" />}
+                              >
+                                Editar
+                              </Button>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="Cargar en el borrador">
+                            <span>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => {
+                                  setDrafts((prev) => ({
+                                    ...prev,
+                                    [typeKey]: { ...item },
+                                  }));
+                                  setExpandedPanel(typeKey);
+                                }}
+                              >
+                                Usar
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        </Stack>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
     );
   };
 
   return (
-    <div className="center-page">
-      <h1 className="text-3xl font-extrabold mb-1">Habilitar Fechas</h1>
-      <p className="text-gray-600 mb-6">Definí periodos (desde/hasta) para inscripciones y trámites.</p>
-      <Grid container spacing={2}>
-        {TIPOS.map(card)}
-      </Grid>
-      <Dialog open={editOpen} onClose={closeEdit} maxWidth="xs" fullWidth>
+    <Box className="center-page" sx={{ pb: 6 }}>
+      <Typography variant="h4" fontWeight={800} gutterBottom>
+        Habilitar Fechas
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+        Definí y administrá los periodos de inscripción, trámites y mesas de examen. Activá una ventana
+        cuando quieras que quede disponible para los usuarios.
+      </Typography>
+
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+          Resumen rápido
+        </Typography>
+        <Grid container spacing={2}>
+          {summaryItems.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.key}>
+              <ButtonBase
+                onClick={() => handleSummaryClick(item.key)}
+                sx={{
+                  width: "100%",
+                  textAlign: "left",
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  p: 2,
+                  transition: "all .15s ease",
+                  "&:hover": {
+                    borderColor: "primary.main",
+                    boxShadow: (theme) => `${theme.palette.primary.main}33 0px 0px 0px 2px`,
+                  },
+                }}
+              >
+                <Stack spacing={1}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.reference ? formatRange(item.reference) : "Sin periodos cargados"}
+                  </Typography>
+                  <Stack direction="row" spacing={1}>
+                    <Chip size="small" label={item.state.label} color={item.state.color} />
+                    {item.reference?.activo && <Chip size="small" label="Habilitado" color="success" />}
+                  </Stack>
+                </Stack>
+              </ButtonBase>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+        <Tabs
+          value={selectedCategory}
+          onChange={(_, value) => {
+            setSelectedCategory(value);
+            setExpandedPanel(null);
+          }}
+          variant="scrollable"
+          allowScrollButtonsMobile
+        >
+          {CATEGORY_CONFIG.map((category) => (
+            <Tab key={category.id} value={category.id} label={category.label} />
+          ))}
+        </Tabs>
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {
+          CATEGORY_CONFIG.find((category) => category.id === selectedCategory)?.helper ??
+          "Seleccioná un periodo para editarlo."
+        }
+      </Typography>
+
+      <Stack spacing={2}>
+        {TYPE_BY_CATEGORY[selectedCategory].map((typeKey) => renderTypePanel(typeKey))}
+      </Stack>
+
+      <Dialog open={editOpen} onClose={closeEditDialog} maxWidth="xs" fullWidth>
         <DialogTitle>Editar ventana</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: .5 }}>
-            <Grid item xs={12}>
-              <TextField label="Tipo" fullWidth size="small" value={editV?.tipo ?? ''} onChange={(e)=>setEditV(v=> v?{...v, tipo: e.target.value}:v)} />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField type="date" label="Desde" InputLabelProps={{ shrink: true }} fullWidth size="small" value={editV?.desde ?? ''} onChange={(e)=>setEditV(v=> v?{...v, desde: e.target.value}:v)} />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField type="date" label="Hasta" InputLabelProps={{ shrink: true }} fullWidth size="small" value={editV?.hasta ?? ''} onChange={(e)=>setEditV(v=> v?{...v, hasta: e.target.value}:v)} />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel control={<Switch checked={!!editV?.activo} onChange={(e)=>setEditV(v=> v?{...v, activo: e.target.checked}:v)} />} label={editV?.activo ? 'Habilitado' : 'Deshabilitado'} />
-            </Grid>
-          </Grid>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Tipo"
+              fullWidth
+              size="small"
+              value={editVentana?.tipo ?? ""}
+              onChange={(event) =>
+                setEditVentana((prev) => (prev ? { ...prev, tipo: event.target.value } : prev))
+              }
+            />
+            <TextField
+              type="date"
+              label="Desde"
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+              value={editVentana?.desde ?? ""}
+              onChange={(event) =>
+                setEditVentana((prev) => (prev ? { ...prev, desde: event.target.value } : prev))
+              }
+            />
+            <TextField
+              type="date"
+              label="Hasta"
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+              value={editVentana?.hasta ?? ""}
+              onChange={(event) =>
+                setEditVentana((prev) => (prev ? { ...prev, hasta: event.target.value } : prev))
+              }
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={!!editVentana?.activo}
+                  onChange={(event) =>
+                    setEditVentana((prev) => (prev ? { ...prev, activo: event.target.checked } : prev))
+                  }
+                />
+              }
+              label={editVentana?.activo ? "Habilitado" : "Deshabilitado"}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeEdit}>Cancelar</Button>
-          <Button color="error" onClick={()=>deleteVentana(editV?.id)}>Eliminar</Button>
-          <Button variant="contained" onClick={saveEdit}>Guardar</Button>
+          <Button onClick={closeEditDialog}>Cancelar</Button>
+          <Button color="error" onClick={() => deleteVentana(editVentana?.id)}>
+            Eliminar
+          </Button>
+          <Button variant="contained" onClick={saveEditDialog}>
+            Guardar
+          </Button>
         </DialogActions>
       </Dialog>
-    </div>
+    </Box>
   );
 }

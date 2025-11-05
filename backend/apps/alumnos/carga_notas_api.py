@@ -248,7 +248,11 @@ def _acta_metadata() -> ActaMetadataOut:
         )
 
     docentes_payload = [
-        ActaMetadataDocente(id=doc.id, nombre=doc.nombre, dni=doc.dni or None)
+        ActaMetadataDocente(
+            id=doc.id,
+            nombre=f"{doc.apellido}, {doc.nombre}".strip(", "),
+            dni=doc.dni or None,
+        )
         for doc in Docente.objects.order_by("apellido", "nombre", "id")
     ]
 

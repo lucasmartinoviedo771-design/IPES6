@@ -15,32 +15,46 @@ interface UploadData {
   dry_run: boolean;
 }
 
-export const uploadEstudiantes = async (data: UploadData): Promise<UploadResult> => {
-  const formData = new FormData();
-  formData.append('file', data.file);
-  formData.append('dry_run', String(data.dry_run));
 
-  const response = await api.post<UploadResult>('/admin/primera-carga/estudiantes', formData, { // Changed apiClient.post to api.post
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
+
+export interface EstudianteInicialPayload {
+  dni: string;
+  nombre: string;
+  apellido: string;
+  profesorado_id: number;
+  email?: string;
+  telefono?: string;
+  domicilio?: string;
+  fecha_nacimiento?: string;
+  estado_legajo?: string;
+  anio_ingreso?: string;
+  genero?: string;
+  rol_extra?: string;
+  observaciones?: string;
+  cuil?: string;
+  cohorte?: string;
+  is_active?: boolean;
+  must_change_password?: boolean;
+  password?: string;
+}
+
+export interface EstudianteInicialResult {
+  estudiante_id: number;
+  dni: string;
+  nombre: string;
+  created: boolean;
+  message: string;
+}
+
+export const crearEstudianteInicial = async (
+  payload: EstudianteInicialPayload,
+): Promise<ApiResponse<EstudianteInicialResult>> => {
+  const { data } = await api.post<ApiResponse<EstudianteInicialResult>>(
+    '/admin/primera-carga/estudiantes/manual',
+    payload,
+  );
+  return data;
 };
-
-export const uploadFoliosFinales = async (data: UploadData): Promise<UploadResult> => {
-  const formData = new FormData();
-  formData.append('file', data.file);
-  formData.append('dry_run', String(data.dry_run));
-
-  const response = await api.post<UploadResult>('/admin/primera-carga/folios-finales', formData, { // Changed apiClient.post to api.post
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
-};
-
 export const uploadEquivalencias = async (data: UploadData): Promise<UploadResult> => {
   const formData = new FormData();
   formData.append('file', data.file);
