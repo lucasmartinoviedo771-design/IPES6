@@ -40,8 +40,8 @@ import CargaNotasPage from "@/pages/Secretaria/CargaNotasPage";
 import ComisionesPage from "@/pages/Secretaria/ComisionesPage";
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
-import ActaExamenPage from "@/pages/Secretaria/ActaExamenPage";
 import ActaExamenPrimeraCargaPage from "@/pages/admin/ActaExamenPrimeraCargaPage";
+import ActaExamenPage from "@/pages/Secretaria/ActaExamenPage";
 
 // Nuevas páginas de Alumnos
 import AlumnosIndex from "@/pages/Alumnos/Index";

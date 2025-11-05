@@ -60,7 +60,7 @@ def _to_bool(value: Optional[str]) -> bool:
     if value is None:
         return False
     val = value.strip().lower()
-    return val in {"true", "1", "si", "sí", "yes", "verdadero"}
+    return val in {"true", "1", "si", "sÃƒÆ’Ã‚Â­", "yes", "verdadero"}
 
 
 def _parse_date(value: str) -> Optional[date]:
@@ -103,7 +103,7 @@ def _normalize_header(value: Optional[str]) -> str:
     if value is None:
         return ""
     cleaned = value.replace("\ufeff", "")
-    if cleaned.startswith("ï»¿"):
+    if cleaned.startswith("ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â¿"):
         cleaned = cleaned[3:]
     return cleaned.strip()
 
@@ -149,7 +149,7 @@ FORMATO_SLUG_MAP = {
 def _format_column_label(value: Optional[str]) -> str:
     if not value:
         return ""
-    normalized = value.replace("º", "").replace("°", "")
+    normalized = value.replace("Ãƒâ€šÃ‚Âº", "").replace("Ãƒâ€šÃ‚Â°", "")
     normalized = re.sub(r"([0-9])\s*C\.?", r"\1C", normalized)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.strip()
@@ -187,7 +187,7 @@ def _next_planilla_numero(profesorado_id: int, anio: int) -> int:
 def _resolve_situacion(raw: str, formato_slug: str) -> str:
     alias_key = _normalize_alias(raw)
     if not alias_key:
-        raise ValueError("La situación académica es obligatoria.")
+        raise ValueError("La situaciÃƒÆ’Ã‚Â³n acadÃƒÆ’Ã‚Â©mica es obligatoria.")
 
     if alias_key in ALIAS_TO_SITUACION:
         return ALIAS_TO_SITUACION[alias_key]
@@ -392,7 +392,7 @@ from decimal import Decimal
 from typing import List, Optional, Dict, Any, Tuple
 
 # -------------------------------------------------------------
-# Función Principal para la Generación del PDF
+# FunciÃƒÆ’Ã‚Â³n Principal para la GeneraciÃƒÆ’Ã‚Â³n del PDF
 # -------------------------------------------------------------
 
 
@@ -610,7 +610,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     )
     elements.append(header_table)
     elements.append(Spacer(1, 10))
-    elements.append(Paragraph("PLANILLA DE REGULARIDAD Y PROMOCIÓN", title_style))
+    elements.append(Paragraph("PLANILLA DE REGULARIDAD Y PROMOCIÃƒÆ’Ã¢â‚¬Å“N", title_style))
 
     docentes_qs = planilla.docentes.all().order_by("orden", "id")
     docente_principal = docentes_qs.filter(rol="P").first()
@@ -628,7 +628,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         (
             "UNIDAD CURRICULAR",
             planilla.materia.nombre,
-            "RESOLUCIÓN NRO",
+            "RESOLUCIÃƒÆ’Ã¢â‚¬Å“N NRO",
             planilla.plan_resolucion or planilla.materia.plan_de_estudio.resolucion,
         ),
         (
@@ -638,7 +638,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
             planilla.plantilla.get_dictado_display(),
         ),
         (
-            "AÑO DE CURSADA",
+            "AÃƒÆ’Ã¢â‚¬ËœO DE CURSADA",
             planilla.materia.anio_cursada or "-",
             "FOLIO NRO",
             planilla.folio or "-",
@@ -752,7 +752,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         ("<b>FINAL</b>", nota_final_idx),
         ("<b>%</b>", asistencia_idx),
         ("<b>EXC.</b>", excepcion_idx),
-        ("<b>SITUACIÓN ACADÉMICA</b>", situacion_idx),
+        ("<b>SITUACIÃƒÆ’Ã¢â‚¬Å“N ACADÃƒÆ’Ã¢â‚¬Â°MICA</b>", situacion_idx),
     ]
     for title, _ in constant_headers:
         headers_row1.append(Paragraph(title, header_style))
@@ -1043,14 +1043,14 @@ def crear_planilla_regularidad(
             _ensure_required_row_fields(fila_data)
 
             if orden in ordenes_usados:
-                raise ValueError(f"El número de orden {orden} está duplicado.")
+                raise ValueError(f"El nÃƒÆ’Ã‚Âºmero de orden {orden} estÃƒÆ’Ã‚Â¡ duplicado.")
             ordenes_usados.add(orden)
 
             dni = _normalize_value(fila_data.get("dni"))
             if dni:
                 if dni in dnis_usados:
                     raise ValueError(
-                        f"El DNI {dni} aparece más de una vez en la planilla."
+                        f"El DNI {dni} aparece mÃƒÆ’Ã‚Â¡s de una vez en la planilla."
                     )
                 dnis_usados.add(dni)
             estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
@@ -1067,7 +1067,7 @@ def crear_planilla_regularidad(
                     )
                 except (InvalidOperation, ValueError):
                     raise ValueError(
-                        f"La nota final de la fila {orden} debe ser un número válido."
+                        f"La nota final de la fila {orden} debe ser un nÃƒÆ’Ã‚Âºmero vÃƒÆ’Ã‚Â¡lido."
                     )
             nota_final_entera = None
             if nota_final_decimal is not None:
@@ -1111,12 +1111,12 @@ def crear_planilla_regularidad(
                 and nota_final_entera < 8
             ):
                 raise ValueError(
-                    f"La nota final debe ser >= 8 para registrar una promoción en la fila {orden}."
+                    f"La nota final debe ser >= 8 para registrar una promociÃƒÆ’Ã‚Â³n en la fila {orden}."
                 )
 
             if not estudiante:
                 warnings.append(
-                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitió el registro de regularidad."
+                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitiÃƒÆ’Ã‚Â³ el registro de regularidad."
                 )
                 continue
 
@@ -1132,12 +1132,12 @@ def crear_planilla_regularidad(
                     if not checklist.curso_introductorio_aprobado:
                         raise ValueError(
                             f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
-                            f"No se puede registrar la situación '{situacion}' para una materia EDI."
+                            f"No se puede registrar la situaciÃƒÆ’Ã‚Â³n '{situacion}' para una materia EDI."
                         )
                 except PreinscripcionChecklist.DoesNotExist:
                     raise ValueError(
-                        f"El estudiante {estudiante.dni} no posee checklist de preinscripción. "
-                        f"No se puede registrar la situación '{situacion}' para una materia EDI."
+                        f"El estudiante {estudiante.dni} no posee checklist de preinscripciÃƒÆ’Ã‚Â³n. "
+                        f"No se puede registrar la situaciÃƒÆ’Ã‚Â³n '{situacion}' para una materia EDI."
                     )
 
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
@@ -1159,8 +1159,8 @@ def crear_planilla_regularidad(
                 )
                 if inscripcion is None:
                     warnings.append(
-                        f"[Fila {orden}] No se encontró inscripción para {estudiante.dni} en {materia.nombre}. "
-                        "Se registró la regularidad sin asociarla a una inscripción."
+                        f"[Fila {orden}] No se encontrÃƒÆ’Ã‚Â³ inscripciÃƒÆ’Ã‚Â³n para {estudiante.dni} en {materia.nombre}. "
+                        "Se registrÃƒÆ’Ã‚Â³ la regularidad sin asociarla a una inscripciÃƒÆ’Ã‚Â³n."
                     )
 
             regularidad_defaults = {
@@ -1226,7 +1226,7 @@ REQUIRED_COLUMNS_ESTUDIANTES = {
     "must_change_password",
     "is_active",
     "fecha_nacimiento",
-    "teléfono",
+    "telÃƒÆ’Ã‚Â©fono",
     "domicilio",
     "estado_legajo",
     "carreras",
@@ -1250,18 +1250,160 @@ def _get_profesorado_from_cache(
             return profesorado
     disponibles = ", ".join(nombre for _, nombre in opciones)
     raise CommandError(
-        f"No se encontró el profesorado '{nombre}'. Disponibles: {disponibles}"
+        f"No se encontrÃƒÆ’Ã‚Â³ el profesorado '{nombre}'. Disponibles: {disponibles}"
     )
 
 
+def _import_estudiante_record(
+    record: Dict[str, Any],
+    *,
+    profesorado: Profesorado,
+    alumno_group: Group,
+) -> Tuple[Estudiante, bool]:
+    dni = (record.get("dni") or record.get("DNI") or "").strip()
+    if not dni:
+        raise ValueError("El DNI es obligatorio.")
+
+    first_name = (record.get("nombre") or record.get("first_name") or "").strip()
+    last_name = (record.get("apellido") or record.get("last_name") or "").strip()
+    email = (record.get("email") or "").strip()
+    password = (record.get("password_plane") or record.get("password") or "").strip()
+
+    raw_is_active = record.get("is_active")
+    is_active = True if raw_is_active in (None, "", [], {}) else _to_bool(str(raw_is_active))
+
+    raw_must_change = record.get("must_change_password")
+    must_change = (
+        True if raw_must_change in (None, "", [], {}) else _to_bool(str(raw_must_change))
+    )
+
+    raw_fecha = record.get("fecha_nacimiento") or record.get("fecha_nac")
+    if isinstance(raw_fecha, date):
+        fecha_nacimiento = raw_fecha
+    elif raw_fecha:
+        fecha_nacimiento = _parse_date(str(raw_fecha))
+    else:
+        fecha_nacimiento = None
+
+    telefono = (record.get("telefono") or record.get("telÃƒÆ’Ã‚Â©fono") or "").strip()
+    domicilio = (record.get("domicilio") or "").strip()
+    estado_legajo = (record.get("estado_legajo") or "").strip().upper()
+    anio_ingreso = (record.get("anio_ingreso") or "").strip()
+    genero = (record.get("genero") or "").strip()
+    rol_extra = (record.get("rol_extra") or "").strip()
+    observaciones = (record.get("observaciones") or "").strip()
+    cuil_valor = (record.get("cuil") or record.get("Cuil") or "").strip()
+    cohorte = (record.get("cohorte") or "").strip()
+    legajo_valor = (record.get("legajo") or "").strip()
+
+    user, user_created = User.objects.get_or_create(
+        username=dni,
+        defaults={
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": email,
+            "is_active": is_active,
+        },
+    )
+
+    updated_user = False
+    if not user_created:
+        if user.first_name != first_name:
+            user.first_name = first_name
+            updated_user = True
+        if user.last_name != last_name:
+            user.last_name = last_name
+            updated_user = True
+        if email and user.email != email:
+            user.email = email
+            updated_user = True
+        if user.is_active != is_active:
+            user.is_active = is_active
+            updated_user = True
+    if password:
+        user.set_password(password)
+        updated_user = True
+    elif user_created and not password:
+        user.set_unusable_password()
+        updated_user = True
+    if updated_user:
+        user.save()
+
+    if alumno_group not in user.groups.all():
+        user.groups.add(alumno_group)
+
+    estudiante, student_created = Estudiante.objects.get_or_create(
+        dni=dni,
+        defaults={
+            "user": user,
+            "fecha_nacimiento": fecha_nacimiento,
+            "telefono": telefono,
+            "domicilio": domicilio,
+            "estado_legajo": _normalize_estado_legajo(estado_legajo),
+            "must_change_password": must_change,
+            "legajo": legajo_valor or None,
+            "datos_extra": _merge_datos_extra(
+                {},
+                anio_ingreso=anio_ingreso,
+                genero=genero,
+                rol_extra=rol_extra,
+                observaciones=observaciones,
+                cuil=cuil_valor,
+                cohorte=cohorte,
+            ),
+        },
+    )
+
+    updated_student = False
+    if not student_created:
+        if estudiante.user_id != user.id:
+            estudiante.user = user
+            updated_student = True
+        if estudiante.fecha_nacimiento != fecha_nacimiento:
+            estudiante.fecha_nacimiento = fecha_nacimiento
+            updated_student = True
+        if estudiante.telefono != telefono:
+            estudiante.telefono = telefono
+            updated_student = True
+        if estudiante.domicilio != domicilio:
+            estudiante.domicilio = domicilio
+            updated_student = True
+        estado_normalizado = _normalize_estado_legajo(estado_legajo)
+        if estado_normalizado and estudiante.estado_legajo != estado_normalizado:
+            estudiante.estado_legajo = estado_normalizado
+            updated_student = True
+        if estudiante.must_change_password != must_change:
+            estudiante.must_change_password = must_change
+            updated_student = True
+        if legajo_valor and estudiante.legajo != legajo_valor:
+            estudiante.legajo = legajo_valor
+            updated_student = True
+        merged_extra = _merge_datos_extra(
+            estudiante.datos_extra,
+            anio_ingreso=anio_ingreso,
+            genero=genero,
+            rol_extra=rol_extra,
+            observaciones=observaciones,
+            cuil=cuil_valor,
+            cohorte=cohorte,
+        )
+        if merged_extra != (estudiante.datos_extra or {}):
+            estudiante.datos_extra = merged_extra
+            updated_student = True
+        if updated_student:
+            estudiante.save()
+    else:
+        estudiante.save()
+
+    estudiante.carreras.add(profesorado)
+    return estudiante, student_created
+
+
 def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
-    """
-    Processes student data from CSV content.
-    Returns a dictionary with import results.
-    """
+    """Procesa datos de estudiantes desde un CSV."""
     processed_count = 0
     skipped_count = 0
-    errors = []
+    errors: List[str] = []
 
     f = io.StringIO(file_content)
     reader = csv.DictReader(f, delimiter=";")
@@ -1287,7 +1429,6 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
 
     alumno_group, _ = Group.objects.get_or_create(name="alumno")
     carreras_cache: Dict[str, Profesorado] = {}
-
     atomic_context = transaction.atomic if not dry_run else _atomic_rollback
 
     with atomic_context():
@@ -1304,29 +1445,9 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
                     errors.append(f"[Fila {idx}] Se omite por no tener DNI.")
                     continue
 
-                first_name = normalized_row.get("nombre", "").strip()
-                last_name = normalized_row.get("apellido", "").strip()
-                email = normalized_row.get("email", "").strip() or ""
-                password = normalized_row.get("password_plane", "").strip()
-                is_active = _to_bool(normalized_row.get("is_active"))
-                must_change = _to_bool(normalized_row.get("must_change_password"))
-                fecha_nacimiento = _parse_date(
-                    normalized_row.get("fecha_nacimiento", "")
-                )
-                telefono = normalized_row.get("telÃ©fono", "").strip()
-                domicilio = normalized_row.get("domicilio", "").strip()
-                estado_legajo = (
-                    (normalized_row.get("estado_legajo") or "").strip().upper()
-                )
                 carrera_nombre = normalized_row.get("carreras", "").strip()
-                anio_ingreso = normalized_row.get("anio_ingreso", "").strip()
-                genero = normalized_row.get("genero", "").strip()
-                rol_extra = normalized_row.get("rol_extra", "").strip()
-                observaciones = normalized_row.get("observaciones", "").strip()
-                cuil_valor = normalized_row.get("Cuil", "").strip()
-
                 if not carrera_nombre:
-                    raise ValueError(f"No se especificó la carrera.")
+                    raise ValueError("No se especificÃƒÂ³ la carrera.")
 
                 profesorado = carreras_cache.get(carrera_nombre)
                 if profesorado is None:
@@ -1334,101 +1455,13 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
                         carreras_cache, carrera_nombre
                     )
 
-                user, user_created = User.objects.get_or_create(
-                    username=dni,
-                    defaults={
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "email": email,
-                        "is_active": is_active,
-                    },
+                record = dict(normalized_row)
+                record["dni"] = dni
+                _import_estudiante_record(
+                    record,
+                    profesorado=profesorado,
+                    alumno_group=alumno_group,
                 )
-
-                if not user_created:
-                    updated = False
-                    if user.first_name != first_name:
-                        user.first_name = first_name
-                        updated = True
-                    if user.last_name != last_name:
-                        user.last_name = last_name
-                        updated = True
-                    if email and user.email != email:
-                        user.email = email
-                        updated = True
-                    if user.is_active != is_active:
-                        user.is_active = is_active
-                        updated = True
-                    if password:
-                        user.set_password(password)
-                        updated = True
-                    if updated:
-                        pass
-                if password and user_created:
-                    user.set_password(password)
-                user.save()
-
-                if alumno_group not in user.groups.all():
-                    user.groups.add(alumno_group)
-
-                estudiante, student_created = Estudiante.objects.get_or_create(
-                    dni=dni,
-                    defaults={
-                        "user": user,
-                        "fecha_nacimiento": fecha_nacimiento,
-                        "telefono": telefono,
-                        "domicilio": domicilio,
-                        "estado_legajo": _normalize_estado_legajo(estado_legajo),
-                        "must_change_password": must_change,
-                        "datos_extra": _merge_datos_extra(
-                            {},
-                            anio_ingreso=anio_ingreso,
-                            genero=genero,
-                            rol_extra=rol_extra,
-                            observaciones=observaciones,
-                            cuil=cuil_valor,
-                        ),
-                    },
-                )
-
-                if not student_created:
-                    updated_student = False
-                    if estudiante.user_id != user.id:
-                        estudiante.user = user
-                        updated_student = True
-                    if estudiante.fecha_nacimiento != fecha_nacimiento:
-                        estudiante.fecha_nacimiento = fecha_nacimiento
-                        updated_student = True
-                    if estudiante.telefono != telefono:
-                        estudiante.telefono = telefono
-                        updated_student = True
-                    if estudiante.domicilio != domicilio:
-                        estudiante.domicilio = domicilio
-                        updated_student = True
-                    estado_normalizado = _normalize_estado_legajo(estado_legajo)
-                    if (
-                        estado_normalizado
-                        and estudiante.estado_legajo != estado_normalizado
-                    ):
-                        estudiante.estado_legajo = estado_normalizado
-                        updated_student = True
-                    if estudiante.must_change_password != must_change:
-                        estudiante.must_change_password = must_change
-                        updated_student = True
-                    merged_extra = _merge_datos_extra(
-                        estudiante.datos_extra,
-                        anio_ingreso=anio_ingreso,
-                        genero=genero,
-                        rol_extra=rol_extra,
-                        observaciones=observaciones,
-                        cuil=cuil_valor,
-                    )
-                    if merged_extra != (estudiante.datos_extra or {}):
-                        estudiante.datos_extra = merged_extra
-                        updated_student = True
-                    if updated_student:
-                        pass
-                estudiante.save()
-                estudiante.carreras.add(profesorado)
                 processed_count += 1
             except Exception as e:
                 skipped_count += 1
@@ -1442,8 +1475,37 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
     }
 
 
+def crear_estudiante_manual(*, user: User, data: Dict[str, Any]) -> Dict[str, Any]:
+    alumno_group, _ = Group.objects.get_or_create(name="alumno")
+    profesorado_id = data.get("profesorado_id")
+    if not profesorado_id:
+        raise ValueError("Debe indicar el profesorado.")
 
+    try:
+        profesorado = Profesorado.objects.get(pk=profesorado_id)
+    except Profesorado.DoesNotExist:
+        raise ValueError("Profesorado no encontrado.")
 
+    record = dict(data)
+    record.pop("profesorado_id", None)
+
+    with transaction.atomic():
+        estudiante, created = _import_estudiante_record(
+            record,
+            profesorado=profesorado,
+            alumno_group=alumno_group,
+        )
+
+    full_name = estudiante.user.get_full_name() if estudiante.user_id else ""
+    message = "Estudiante registrado." if created else "Estudiante actualizado."
+
+    return {
+        "estudiante_id": estudiante.id,
+        "dni": estudiante.dni,
+        "nombre": full_name,
+        "created": created,
+        "message": message,
+    }
 REQUIRED_COLUMNS_FOLIOS_FINALES = {
     "DNI",
     "Materia",
@@ -1543,7 +1605,7 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict
 
                 if not inscripcion_mesa:
                     raise ValueError(
-                        f"Inscripción a mesa de examen para {estudiante.dni} en {materia.nombre} ({fecha_mesa_str}) no encontrada."
+                        f"InscripciÃƒÆ’Ã‚Â³n a mesa de examen para {estudiante.dni} en {materia.nombre} ({fecha_mesa_str}) no encontrada."
                     )
 
                 inscripcion_mesa.folio = folio
@@ -1567,7 +1629,7 @@ REQUIRED_COLUMNS_EQUIVALENCIAS = {
     "Codigo Equivalencia",
     "Nombre Equivalencia",
     "Materia",
-    "Año Cursada",
+    "AÃƒÆ’Ã‚Â±o Cursada",
     "Plan de Estudio Resolucion",
 }
 
@@ -1613,7 +1675,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
                     "Nombre Equivalencia", ""
                 ).strip()
                 materia_nombre = normalized_row.get("Materia", "").strip()
-                anio_cursada_str = normalized_row.get("Año Cursada", "").strip()
+                anio_cursada_str = normalized_row.get("AÃƒÆ’Ã‚Â±o Cursada", "").strip()
                 plan_resolucion = normalized_row.get(
                     "Plan de Estudio Resolucion", ""
                 ).strip()
@@ -1625,13 +1687,13 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
                     or not plan_resolucion
                 ):
                     raise ValueError(
-                        "Codigo Equivalencia, Materia, Año Cursada y Plan de Estudio Resolucion son campos requeridos."
+                        "Codigo Equivalencia, Materia, AÃƒÆ’Ã‚Â±o Cursada y Plan de Estudio Resolucion son campos requeridos."
                     )
                 try:
                     anio_cursada = int(anio_cursada_str)
                 except ValueError:
                     raise ValueError(
-                        f"Año Cursada '{anio_cursada_str}' no es un número válido."
+                        f"AÃƒÆ’Ã‚Â±o Cursada '{anio_cursada_str}' no es un nÃƒÆ’Ã‚Âºmero vÃƒÆ’Ã‚Â¡lido."
                     )
 
                 plan_de_estudio = PlanDeEstudio.objects.filter(
@@ -1639,7 +1701,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
                 ).first()
                 if not plan_de_estudio:
                     raise ValueError(
-                        f"Plan de Estudio con resolución '{plan_resolucion}' no encontrado."
+                        f"Plan de Estudio con resoluciÃƒÆ’Ã‚Â³n '{plan_resolucion}' no encontrado."
                     )
 
                 materia = Materia.objects.filter(
@@ -1649,7 +1711,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
                 ).first()
                 if not materia:
                     raise ValueError(
-                        f"Materia '{materia_nombre}' ({anio_cursada}° año, Plan {plan_resolucion}) no encontrada."
+                        f"Materia '{materia_nombre}' ({anio_cursada}Ãƒâ€šÃ‚Â° aÃƒÆ’Ã‚Â±o, Plan {plan_resolucion}) no encontrada."
                     )
 
                 equivalencia, created = EquivalenciaCurricular.objects.get_or_create(

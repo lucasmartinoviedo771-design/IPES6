@@ -13,6 +13,7 @@ from apps.primera_carga.services import (
     process_equivalencias_csv,
     obtener_regularidad_metadata,
     crear_planilla_regularidad,
+    crear_estudiante_manual,
 )
 
 
@@ -21,6 +22,27 @@ primera_carga_router = Router(tags=["primera_carga"], auth=JWTAuth())
 
 class UploadForm(Schema):
     dry_run: bool = False
+
+
+class EstudianteManualIn(Schema):
+    dni: str
+    nombre: str
+    apellido: str
+    profesorado_id: int
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    domicilio: Optional[str] = None
+    fecha_nacimiento: Optional[str] = None
+    estado_legajo: Optional[str] = None
+    anio_ingreso: Optional[str] = None
+    genero: Optional[str] = None
+    rol_extra: Optional[str] = None
+    observaciones: Optional[str] = None
+    cuil: Optional[str] = None
+    cohorte: Optional[str] = None
+    is_active: Optional[bool] = True
+    must_change_password: Optional[bool] = True
+    password: Optional[str] = None
 
 
 @primera_carga_router.post(
@@ -34,10 +56,27 @@ def upload_estudiantes(request, file: UploadedFile = File(...), form: UploadForm
         result = process_estudiantes_csv(file_content, dry_run=form.dry_run)
 
         if result["ok"]:
-            return ApiResponse(ok=True, message="Importación de estudiantes completada.", data=result)
-        return 400, ApiResponse(ok=False, message="Importación de estudiantes con errores.", data=result)
+            return ApiResponse(ok=True, message="ImportaciÃ³n de estudiantes completada.", data=result)
+        return 400, ApiResponse(ok=False, message="ImportaciÃ³n de estudiantes con errores.", data=result)
     except Exception as exc:
         return 400, ApiResponse(ok=False, message=f"Error al procesar el archivo: {exc}")
+
+
+
+
+@primera_carga_router.post(
+    "/estudiantes/manual",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def crear_estudiante_manual_endpoint(request, payload: EstudianteManualIn):
+    try:
+        result = crear_estudiante_manual(user=request.user, data=payload.dict())
+        return ApiResponse(ok=True, message=result.get("message", "Estudiante registrado."), data=result)
+    except ValueError as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
+    except Exception as exc:
+        return 400, ApiResponse(ok=False, message=f"Error al registrar al estudiante: {exc}")
 
 
 class FoliosFinalesUploadForm(Schema):
@@ -55,8 +94,8 @@ def upload_folios_finales(request, file: UploadedFile = File(...), form: FoliosF
         result = process_folios_finales_csv(file_content, dry_run=form.dry_run)
 
         if result["ok"]:
-            return ApiResponse(ok=True, message="Asignación de folios finales completada.", data=result)
-        return 400, ApiResponse(ok=False, message="Asignación de folios finales con errores.", data=result)
+            return ApiResponse(ok=True, message="AsignaciÃ³n de folios finales completada.", data=result)
+        return 400, ApiResponse(ok=False, message="AsignaciÃ³n de folios finales con errores.", data=result)
     except Exception as exc:
         return 400, ApiResponse(ok=False, message=f"Error al procesar el archivo: {exc}")
 
@@ -76,8 +115,8 @@ def upload_equivalencias(request, file: UploadedFile = File(...), form: Equivale
         result = process_equivalencias_csv(file_content, dry_run=form.dry_run)
 
         if result["ok"]:
-            return ApiResponse(ok=True, message="Importación de equivalencias completada.", data=result)
-        return 400, ApiResponse(ok=False, message="Importación de equivalencias con errores.", data=result)
+            return ApiResponse(ok=True, message="ImportaciÃ³n de equivalencias completada.", data=result)
+        return 400, ApiResponse(ok=False, message="ImportaciÃ³n de equivalencias con errores.", data=result)
     except Exception as exc:
         return 400, ApiResponse(ok=False, message=f"Error al procesar el archivo: {exc}")
 
@@ -136,7 +175,7 @@ def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
     try:
         estado = payload.estado or PlanillaRegularidad.Estado.FINAL
         if estado not in PlanillaRegularidad.Estado.values:
-            return 400, ApiResponse(ok=False, message="Estado de planilla inválido.")
+            return 400, ApiResponse(ok=False, message="Estado de planilla invÃ¡lido.")
 
         result = crear_planilla_regularidad(
             user=request.user,

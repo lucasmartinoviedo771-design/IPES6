@@ -77,6 +77,13 @@ const toIsoDate = (value?: string): string => {
   return new Date().toISOString().slice(0, 10);
 };
 
+const ensureString = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  return String(value);
+};
+
 const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
   comisionId,
   planilla,
@@ -113,7 +120,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     });
   }, [planilla, defaultFechaCierre, defaultObservaciones, reset]);
 
-  const filas = watch("filas");
+  const filas = watch("filas") ?? [];
 
   const summary = useMemo(() => {
     const total = filas.length;
@@ -121,13 +128,16 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     let conNotaFinal = 0;
     let conAsistencia = 0;
     filas.forEach((fila) => {
+      if (!fila) {
+        return;
+      }
       if (fila.situacion) {
         situacionCount[fila.situacion] = (situacionCount[fila.situacion] || 0) + 1;
       }
-      if (fila.notaFinal.trim()) {
+      if (ensureString(fila.notaFinal).trim()) {
         conNotaFinal += 1;
       }
-      if (fila.asistencia.trim()) {
+      if (ensureString(fila.asistencia).trim()) {
         conAsistencia += 1;
       }
     });
@@ -143,8 +153,9 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     situaciones.find((item) => item.alias === alias)?.descripcion || alias;
 
   const parseDecimal = (value: string): number | null | "invalid" => {
-    if (!value.trim()) return null;
-    const normalized = value.replace(",", ".");
+    const normalizedValue = ensureString(value);
+    if (!normalizedValue.trim()) return null;
+    const normalized = normalizedValue.replace(",", ".");
     const parsed = Number(normalized);
     if (Number.isNaN(parsed)) {
       return "invalid";
@@ -153,8 +164,9 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
   };
 
   const parseInteger = (value: string): number | null | "invalid" => {
-    if (!value.trim()) return null;
-    const parsed = Number.parseInt(value, 10);
+    const normalizedValue = ensureString(value);
+    if (!normalizedValue.trim()) return null;
+    const parsed = Number.parseInt(normalizedValue, 10);
     if (Number.isNaN(parsed)) {
       return "invalid";
     }
@@ -206,14 +218,14 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
         asistencia: asistencia ?? undefined,
         excepcion: fila.excepcion,
         situacion: fila.situacion,
-        observaciones: fila.observaciones.trim() || undefined,
+        observaciones: ensureString(fila.observaciones).trim() || undefined,
       });
     }
 
     const payload: GuardarRegularidadPayload = {
       comision_id: comisionId,
       fecha_cierre: values.fechaCierre,
-      observaciones_generales: values.observaciones.trim() || undefined,
+      observaciones_generales: ensureString(values.observaciones).trim() || undefined,
       alumnos,
     };
 
@@ -443,4 +455,3 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
 };
 
 export default RegularidadPlanillaEditor;
-
