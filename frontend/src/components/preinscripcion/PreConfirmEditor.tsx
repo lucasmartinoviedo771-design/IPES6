@@ -66,6 +66,23 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     defaultValues: formDefaults,
   });
 
+  // Documentación requerida (checklist)
+  const [docs, setDocs] = useState<{ [k: string]: boolean }>({
+    dni_legalizado: false,
+    fotos_4x4: false,
+    folios_oficio_ok: false,
+    certificado_salud: false,
+    titulo_secundario_legalizado: false,
+    certificado_titulo_en_tramite: false,
+    analitico_legalizado: false,
+    certificado_alumno_regular_sec: false,
+    adeuda_materias: false,
+    curso_introductorio_aprobado: false,
+    // mirrors para compatibilidad con UI existente
+    titulo_secundario: false,
+    titulo_en_tramite: false,
+  });
+
   // Asegurar registro del campo virtual de foto para que watch() funcione
   useEffect(() => {
     try { (register as any)('foto_dataUrl'); } catch {}
@@ -235,22 +252,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     onError: () => enqueueSnackbar("No se pudo guardar", { variant: "error" })
   });
 
-    // Documentación requerida (checklist)
-  const [docs, setDocs] = useState<{ [k: string]: boolean }>({
-    dni_legalizado: false,
-    fotos_4x4: false,
-    folios_oficio_ok: false,
-    certificado_salud: false,
-    titulo_secundario_legalizado: false,
-    certificado_titulo_en_tramite: false,
-    analitico_legalizado: false,
-    certificado_alumno_regular_sec: false,
-    adeuda_materias: false,
-    curso_introductorio_aprobado: false,
-    // mirrors para compatibilidad con UI existente
-    titulo_secundario: false,
-    titulo_en_tramite: false,
-  });
+
 
   // Listado de documentos (para detectar una foto ya subida por archivos)
   const docsQ = useQuery({
