@@ -165,6 +165,9 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     sanitized.domicilio = String(alumnoDto?.domicilio ?? sanitized.domicilio ?? "");
     sanitized.fecha_nacimiento = String(alumnoDto?.fecha_nacimiento ?? sanitized.fecha_nacimiento ?? "");
     sanitized.carrera_id = Number((data as any).carrera?.id ?? 0);
+    const cohorteFallback = (extra as any)?.cohorte ?? (data as any)?.anio ?? formDefaults.cohorte ?? "";
+    const cohorteResolved = cohorteFallback ? String(cohorteFallback) : String(new Date().getFullYear());
+    sanitized.cohorte = cohorteResolved;
 
     const fotoExtra =
       (extra as any)?.foto_dataUrl ||
@@ -411,11 +414,12 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
   });
 
   const agregarCarreraMutation = useMutation({
-    mutationFn: (carreraId: number) => agregarCarreraPreinscripcion(codigo, carreraId),
+    mutationFn: ({ carreraId, anio }: { carreraId: number; anio?: number }) =>
+      agregarCarreraPreinscripcion(codigo, carreraId, anio),
     onSuccess: (resp) => {
       enqueueSnackbar(resp.message || 'Profesorado agregado', { variant: 'success' });
       setAddCarreraOpen(false);
-      setNuevaCarreraId('');
+      resetAgregarCarreraForm();
       qc.invalidateQueries({ queryKey: ['preinscripciones', 'alumno', alumnoDni] });
       if (resp.data?.codigo) {
         navigate(`/secretaria/confirmar-inscripcion?codigo=${resp.data.codigo}`);
@@ -431,6 +435,13 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
 
   const [addCarreraOpen, setAddCarreraOpen] = useState(false);
   const [nuevaCarreraId, setNuevaCarreraId] = useState<number | ''>('');
+  const [nuevaCarreraCohorte, setNuevaCarreraCohorte] = useState<string>(() => String(new Date().getFullYear()));
+
+  const resetAgregarCarreraForm = (preset?: string) => {
+    setNuevaCarreraId('');
+    const fallback = (preset?.trim() || String(new Date().getFullYear()));
+    setNuevaCarreraCohorte(fallback);
+  };
 
 
 
@@ -678,6 +689,22 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
                 Cambiar Profesorado
               </Button>
             </Grid>
+            <Grid item xs={12} sm={4}>
+              <Controller
+                name="cohorte"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    label="Cohorte (año de ingreso)"
+                    fullWidth
+                    required
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message ?? "Ej: 2025"}
+                  />
+                )}
+              />
+            </Grid>
           </Grid>
         {/* Datos laborales */}
           <Divider sx={{ my: 2 }} />
@@ -748,7 +775,10 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         <Button
           size="small"
           variant="outlined"
-          onClick={() => setAddCarreraOpen(true)}
+          onClick={() => {
+            resetAgregarCarreraForm(watch("cohorte"));
+            setAddCarreraOpen(true);
+          }}
           disabled={availableCarreras.length === 0 || agregarCarreraMutation.isPending}
           sx={{ mb: 2 }}
         >
@@ -838,7 +868,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         onClose={() => {
           if (!agregarCarreraMutation.isPending) {
             setAddCarreraOpen(false);
-            setNuevaCarreraId("");
+            resetAgregarCarreraForm();
           }
         }}
         fullWidth
@@ -851,27 +881,38 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
               Este alumno ya tiene cargados todos los profesorados disponibles.
             </Typography>
           ) : (
-            <FormControl fullWidth size="small">
-              <InputLabel id="nueva-carrera-label">Profesorado</InputLabel>
-              <Select
-                labelId="nueva-carrera-label"
-                label="Profesorado"
-                value={nuevaCarreraId === "" ? "" : String(nuevaCarreraId)}
-                onChange={(event) => {
-                  const value = event.target.value === "" ? "" : Number(event.target.value);
-                  setNuevaCarreraId(value);
-                }}
-              >
-                <MenuItem value="">
-                  <em>Seleccioná un profesorado</em>
-                </MenuItem>
-                {availableCarreras.map((c: any) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.nombre}
+            <Stack spacing={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="nueva-carrera-label">Profesorado</InputLabel>
+                <Select
+                  labelId="nueva-carrera-label"
+                  label="Profesorado"
+                  value={nuevaCarreraId === "" ? "" : String(nuevaCarreraId)}
+                  onChange={(event) => {
+                    const value = event.target.value === "" ? "" : Number(event.target.value);
+                    setNuevaCarreraId(value);
+                  }}
+                >
+                  <MenuItem value="">
+                    <em>Seleccioná un profesorado</em>
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                  {availableCarreras.map((c: any) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Cohorte (año de ingreso)"
+                type="number"
+                size="small"
+                value={nuevaCarreraCohorte}
+                onChange={(event) => setNuevaCarreraCohorte(event.target.value)}
+                helperText="Por defecto usamos el año actual; modificalo si corresponde a una cohorte anterior."
+                inputProps={{ min: 1900, max: 2100 }}
+              />
+            </Stack>
           )}
         </DialogContent>
         <DialogActions>
@@ -879,7 +920,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             onClick={() => {
               if (!agregarCarreraMutation.isPending) {
                 setAddCarreraOpen(false);
-                setNuevaCarreraId("");
+                resetAgregarCarreraForm();
               }
             }}
           >
@@ -889,7 +930,10 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             variant="contained"
             onClick={() => {
               if (typeof nuevaCarreraId === "number") {
-                agregarCarreraMutation.mutate(nuevaCarreraId);
+                const cohorteTrimmed = (nuevaCarreraCohorte ?? "").trim();
+                const cohorteParsed = cohorteTrimmed ? Number(cohorteTrimmed) : NaN;
+                const anioPayload = Number.isFinite(cohorteParsed) ? cohorteParsed : undefined;
+                agregarCarreraMutation.mutate({ carreraId: nuevaCarreraId, anio: anioPayload });
               }
             }}
             disabled={availableCarreras.length === 0 || typeof nuevaCarreraId !== "number" || agregarCarreraMutation.isPending}
@@ -901,4 +945,3 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     </Stack>
   );
 }
-

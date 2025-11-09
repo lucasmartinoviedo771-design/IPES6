@@ -1,55 +1,64 @@
+from typing import Any, Literal
+
 from ninja import Schema
-from typing import Optional, List, Literal, Dict, Any
 from pydantic import Field
+
 
 class InscripcionCarreraIn(Schema):
     carrera_id: int
 
+
 class InscripcionCarreraOut(Schema):
     message: str
 
+
 class InscripcionMateriaIn(Schema):
     materia_id: int
-    comision_id: Optional[int] = None
-    dni: Optional[str] = None
+    comision_id: int | None = None
+    dni: str | None = None
+
 
 class CancelarInscripcionIn(Schema):
-    dni: Optional[str] = None
+    dni: str | None = None
+
 
 class CambioComisionIn(Schema):
     inscripcion_id: int
     comision_id: int
 
-class PedidoAnaliticoOut(Schema):
-    message: str
 
 class MesaExamenIn(Schema):
     materia_id: int
-    tipo_examen: str # parcial, final, libre, extraordinaria
+    tipo_examen: str  # parcial, final, libre, extraordinaria
+
 
 class MesaExamenOut(Schema):
     message: str
 
+
 class InscripcionMesaIn(Schema):
     mesa_id: int
-    dni: Optional[str] = None
+    dni: str | None = None
+
 
 class InscripcionMesaOut(Schema):
     message: str
+
 
 class MesaResultadoAlumno(Schema):
     inscripcion_id: int
     alumno_id: int
     dni: str
     apellido_nombre: str
-    condicion: Optional[str] = None
-    condicion_display: Optional[str] = None
-    nota: Optional[float] = None
-    folio: Optional[str] = None
-    libro: Optional[str] = None
-    fecha_resultado: Optional[str] = None
+    condicion: str | None = None
+    condicion_display: str | None = None
+    nota: float | None = None
+    folio: str | None = None
+    libro: str | None = None
+    fecha_resultado: str | None = None
     cuenta_para_intentos: bool = True
-    observaciones: Optional[str] = None
+    observaciones: str | None = None
+
 
 class MesaPlanillaOut(Schema):
     mesa_id: int
@@ -58,42 +67,48 @@ class MesaPlanillaOut(Schema):
     tipo: str
     modalidad: str
     fecha: str
-    condiciones: List[Dict[str, object]]
-    alumnos: List[MesaResultadoAlumno]
+    condiciones: list[dict[str, object]]
+    alumnos: list[MesaResultadoAlumno]
+
 
 class MesaResultadoIn(Schema):
     inscripcion_id: int
-    fecha_resultado: Optional[str] = None
-    condicion: Optional[str] = None
-    nota: Optional[float] = None
-    folio: Optional[str] = None
-    libro: Optional[str] = None
-    observaciones: Optional[str] = None
-    cuenta_para_intentos: Optional[bool] = None
+    fecha_resultado: str | None = None
+    condicion: str | None = None
+    nota: float | None = None
+    folio: str | None = None
+    libro: str | None = None
+    observaciones: str | None = None
+    cuenta_para_intentos: bool | None = None
+
 
 class MesaPlanillaUpdateIn(Schema):
-    alumnos: List[MesaResultadoIn]
+    alumnos: list[MesaResultadoIn]
+
 
 # Regularidad (importación por planilla)
 class RegularidadRowIn(Schema):
     dni: str
-    nombre: Optional[str] = None
-    nota_final: Optional[int] = None
+    nombre: str | None = None
+    nota_final: int | None = None
     situacion: str  # texto tal como en planilla (REGULAR, LIBRE-AT, etc.)
+
 
 class RegularidadImportIn(Schema):
     materia_id: int
     fecha: str  # YYYY-MM-DD
-    formato: Literal['ASIG', 'MOD', 'TAL']
-    filas: List[RegularidadRowIn]
+    formato: Literal["ASIG", "MOD", "TAL"]
+    filas: list[RegularidadRowIn]
+
 
 class RegularidadItemOut(Schema):
     dni: str
-    nombre: Optional[str]
+    nombre: str | None
     materia_id: int
     fecha: str
-    nota_final: Optional[int]
+    nota_final: int | None
     situacion: str
+
 
 # Nuevos schemas para materias-plan e historial
 class Horario(Schema):
@@ -101,27 +116,30 @@ class Horario(Schema):
     desde: str
     hasta: str
 
-Cuatrimestre = Literal['ANUAL','1C','2C']
+
+Cuatrimestre = Literal["ANUAL", "1C", "2C"]
+
 
 class MateriaPlan(Schema):
     id: int
     nombre: str
     anio: int
     cuatrimestre: Cuatrimestre
-    horarios: List[Horario] = []
-    correlativas_regular: List[int] = []
-    correlativas_aprob: List[int] = []
-    profesorado: Optional[str] = None
-    profesorado_id: Optional[int] = None
-    plan_id: Optional[int] = None
+    horarios: list[Horario] = []
+    correlativas_regular: list[int] = []
+    correlativas_aprob: list[int] = []
+    profesorado: str | None = None
+    profesorado_id: int | None = None
+    plan_id: int | None = None
+
 
 class HistorialAlumno(Schema):
-    aprobadas: List[int] = []
-    regularizadas: List[int] = []
-    inscriptas_actuales: List[int] = []
+    aprobadas: list[int] = []
+    regularizadas: list[int] = []
+    inscriptas_actuales: list[int] = []
 
 
-InscripcionEstado = Literal['CONF', 'PEND', 'RECH', 'ANUL']
+InscripcionEstado = Literal["CONF", "PEND", "RECH", "ANUL"]
 
 
 class ComisionResumen(Schema):
@@ -132,40 +150,40 @@ class ComisionResumen(Schema):
     turno: str
     materia_id: int
     materia_nombre: str
-    plan_id: Optional[int] = None
-    profesorado_id: Optional[int] = None
-    profesorado_nombre: Optional[str] = None
-    docente: Optional[str] = None
-    cupo_maximo: Optional[int] = None
+    plan_id: int | None = None
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    docente: str | None = None
+    cupo_maximo: int | None = None
     estado: str
-    horarios: List[Horario] = []
+    horarios: list[Horario] = []
 
 
 class MateriaInscriptaItem(Schema):
     inscripcion_id: int
     materia_id: int
     materia_nombre: str
-    plan_id: Optional[int] = None
-    profesorado_id: Optional[int] = None
-    profesorado_nombre: Optional[str] = None
+    plan_id: int | None = None
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
     anio_plan: int
     anio_academico: int
     estado: InscripcionEstado
     estado_display: str
-    comision_actual: Optional[ComisionResumen] = None
-    comision_solicitada: Optional[ComisionResumen] = None
+    comision_actual: ComisionResumen | None = None
+    comision_solicitada: ComisionResumen | None = None
     fecha_creacion: str
     fecha_actualizacion: str
 
 
 class InscripcionMateriaOut(Schema):
     message: str
-    inscripcion_id: Optional[int] = None
-    estado: Optional[InscripcionEstado] = None
-    comision_asignada: Optional[ComisionResumen] = None
-    comision_solicitada: Optional[ComisionResumen] = None
-    conflictos: List[dict] = []
-    alternativas: List[ComisionResumen] = []
+    inscripcion_id: int | None = None
+    estado: InscripcionEstado | None = None
+    comision_asignada: ComisionResumen | None = None
+    comision_solicitada: ComisionResumen | None = None
+    conflictos: list[dict] = []
+    alternativas: list[ComisionResumen] = []
 
 
 CambioComisionOut = InscripcionMateriaOut
@@ -174,33 +192,36 @@ CambioComisionOut = InscripcionMateriaOut
 class EquivalenciaItem(Schema):
     materia_id: int
     materia_nombre: str
-    plan_id: Optional[int] = None
-    profesorado_id: Optional[int] = None
+    plan_id: int | None = None
+    profesorado_id: int | None = None
     profesorado: str
     cuatrimestre: Cuatrimestre
-    horarios: List[Horario] = []
-    comisiones: List[ComisionResumen] = []
+    horarios: list[Horario] = []
+    comisiones: list[ComisionResumen] = []
+
 
 class PedidoAnaliticoIn(Schema):
-    motivo: Literal['equivalencia','beca','control','otro']
-    motivo_otro: Optional[str] = None
-    dni: Optional[str] = None  # para que bedel/secretaría/admin soliciten por alumno
-    cohorte: Optional[int] = None
-    profesorado_id: Optional[int] = None
-    plan_id: Optional[int] = None
+    motivo: Literal["equivalencia", "beca", "control", "otro"]
+    motivo_otro: str | None = None
+    dni: str | None = None  # para que bedel/secretaría/admin soliciten por alumno
+    cohorte: int | None = None
+    profesorado_id: int | None = None
+    plan_id: int | None = None
+
 
 class PedidoAnaliticoOut(Schema):
     message: str
 
+
 class PedidoAnaliticoItem(Schema):
     dni: str
     apellido_nombre: str
-    profesorado: Optional[str]
-    anio_cursada: Optional[int] = None  # placeholder
-    cohorte: Optional[int]
+    profesorado: str | None
+    anio_cursada: int | None = None  # placeholder
+    cohorte: int | None
     fecha_solicitud: str  # ISO
     motivo: str
-    motivo_otro: Optional[str] = None
+    motivo_otro: str | None = None
 
 
 class RegularidadResumen(Schema):
@@ -210,100 +231,101 @@ class RegularidadResumen(Schema):
     situacion: str
     situacion_display: str
     fecha_cierre: str
-    nota_tp: Optional[float] = None
-    nota_final: Optional[int] = None
-    asistencia: Optional[int] = None
+    nota_tp: float | None = None
+    nota_final: int | None = None
+    asistencia: int | None = None
     excepcion: bool = False
-    observaciones: Optional[str] = None
-    vigencia_hasta: Optional[str] = None
-    vigente: Optional[bool] = None
-    dias_restantes: Optional[int] = None
+    observaciones: str | None = None
+    vigencia_hasta: str | None = None
+    vigente: bool | None = None
+    dias_restantes: int | None = None
 
 
 class EstudianteAdminDocumentacion(Schema):
-    dni_legalizado: Optional[bool] = None
-    fotos_4x4: Optional[bool] = None
-    certificado_salud: Optional[bool] = None
-    folios_oficio: Optional[int] = None
-    titulo_secundario_legalizado: Optional[bool] = None
-    certificado_titulo_en_tramite: Optional[bool] = None
-    analitico_legalizado: Optional[bool] = None
-    certificado_alumno_regular_sec: Optional[bool] = None
-    adeuda_materias: Optional[bool] = None
-    adeuda_materias_detalle: Optional[str] = None
-    escuela_secundaria: Optional[str] = None
-    es_certificacion_docente: Optional[bool] = None
-    titulo_terciario_univ: Optional[bool] = None
+    dni_legalizado: bool | None = None
+    fotos_4x4: bool | None = None
+    certificado_salud: bool | None = None
+    folios_oficio: int | None = None
+    titulo_secundario_legalizado: bool | None = None
+    certificado_titulo_en_tramite: bool | None = None
+    analitico_legalizado: bool | None = None
+    certificado_alumno_regular_sec: bool | None = None
+    adeuda_materias: bool | None = None
+    adeuda_materias_detalle: str | None = None
+    escuela_secundaria: str | None = None
+    es_certificacion_docente: bool | None = None
+    titulo_terciario_univ: bool | None = None
 
 
 class EstudianteAdminListItem(Schema):
     dni: str
     apellido: str
     nombre: str
-    email: Optional[str] = None
-    telefono: Optional[str] = None
+    email: str | None = None
+    telefono: str | None = None
     estado_legajo: str
     estado_legajo_display: str
-    carreras: List[str]
-    legajo: Optional[str] = None
+    carreras: list[str]
+    legajo: str | None = None
 
 
 class EstudianteAdminListResponse(Schema):
     total: int
-    items: List[EstudianteAdminListItem]
+    items: list[EstudianteAdminListItem]
 
 
 class EstudianteAdminDetail(Schema):
     dni: str
     apellido: str
     nombre: str
-    email: Optional[str] = None
-    telefono: Optional[str] = None
-    domicilio: Optional[str] = None
-    fecha_nacimiento: Optional[str] = None
+    email: str | None = None
+    telefono: str | None = None
+    domicilio: str | None = None
+    fecha_nacimiento: str | None = None
     estado_legajo: str
     estado_legajo_display: str
     must_change_password: bool
-    carreras: List[str]
-    legajo: Optional[str] = None
-    datos_extra: Dict[str, Any] = {}
-    documentacion: Optional[EstudianteAdminDocumentacion] = None
-    condicion_calculada: Optional[str] = None
-    curso_introductorio_aprobado: Optional[bool] = None
-    libreta_entregada: Optional[bool] = None
-    regularidades: List[RegularidadResumen] = Field(default_factory=list)
+    carreras: list[str]
+    legajo: str | None = None
+    datos_extra: dict[str, Any] = {}
+    documentacion: EstudianteAdminDocumentacion | None = None
+    condicion_calculada: str | None = None
+    curso_introductorio_aprobado: bool | None = None
+    libreta_entregada: bool | None = None
+    regularidades: list[RegularidadResumen] = Field(default_factory=list)
 
 
 class EstudianteAdminUpdateIn(Schema):
-    telefono: Optional[str] = None
-    domicilio: Optional[str] = None
-    estado_legajo: Optional[str] = Field(
-        default=None, pattern="^(COM|INC|PEN)$", description="COM, INC o PEN"
-    )
-    must_change_password: Optional[bool] = None
-    fecha_nacimiento: Optional[str] = None  # dd/mm/yyyy o yyyy-mm-dd
-    documentacion: Optional[EstudianteAdminDocumentacion] = None
-    anio_ingreso: Optional[str] = None
-    genero: Optional[str] = None
-    rol_extra: Optional[str] = None
-    observaciones: Optional[str] = None
-    cuil: Optional[str] = None
-    curso_introductorio_aprobado: Optional[bool] = None
-    libreta_entregada: Optional[bool] = None
+    telefono: str | None = None
+    domicilio: str | None = None
+    estado_legajo: str | None = Field(default=None, pattern="^(COM|INC|PEN)$", description="COM, INC o PEN")
+    must_change_password: bool | None = None
+    fecha_nacimiento: str | None = None  # dd/mm/yyyy o yyyy-mm-dd
+    documentacion: EstudianteAdminDocumentacion | None = None
+    anio_ingreso: str | None = None
+    genero: str | None = None
+    rol_extra: str | None = None
+    observaciones: str | None = None
+    cuil: str | None = None
+    curso_introductorio_aprobado: bool | None = None
+    libreta_entregada: bool | None = None
 
-EventoTipo = Literal['preinscripcion', 'inscripcion_materia', 'regularidad', 'mesa', 'tramite', 'nota']
+
+EventoTipo = Literal["preinscripcion", "inscripcion_materia", "regularidad", "mesa", "tramite", "nota"]
+
 
 class TrayectoriaEvento(Schema):
     id: str
     tipo: EventoTipo
     fecha: str
     titulo: str
-    subtitulo: Optional[str] = None
-    detalle: Optional[str] = None
-    estado: Optional[str] = None
-    profesorado_id: Optional[int] = None
-    profesorado_nombre: Optional[str] = None
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    subtitulo: str | None = None
+    detalle: str | None = None
+    estado: str | None = None
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
+
 
 class TrayectoriaMesa(Schema):
     id: int
@@ -315,24 +337,27 @@ class TrayectoriaMesa(Schema):
     fecha: str
     estado: str
     estado_display: str
-    aula: Optional[str] = None
-    nota: Optional[str] = None
+    aula: str | None = None
+    nota: str | None = None
+
 
 class MateriaSugerida(Schema):
     materia_id: int
     materia_nombre: str
     anio: int
     cuatrimestre: str
-    motivos: List[str] = Field(default_factory=list)
-    alertas: List[str] = Field(default_factory=list)
+    motivos: list[str] = Field(default_factory=list)
+    alertas: list[str] = Field(default_factory=list)
+
 
 class FinalHabilitado(Schema):
     materia_id: int
     materia_nombre: str
     regularidad_fecha: str
-    vigencia_hasta: Optional[str] = None
-    dias_restantes: Optional[int] = None
-    comentarios: List[str] = Field(default_factory=list)
+    vigencia_hasta: str | None = None
+    dias_restantes: int | None = None
+    comentarios: list[str] = Field(default_factory=list)
+
 
 class RegularidadVigenciaOut(Schema):
     materia_id: int
@@ -346,79 +371,132 @@ class RegularidadVigenciaOut(Schema):
     intentos_usados: int
     intentos_max: int
 
+
 class CarreraPlanResumen(Schema):
     id: int
-    resolucion: Optional[str] = None
+    resolucion: str | None = None
     vigente: bool = False
 
 
 class CarreraDetalleResumen(Schema):
     profesorado_id: int
     nombre: str
-    planes: List[CarreraPlanResumen] = Field(default_factory=list)
+    planes: list[CarreraPlanResumen] = Field(default_factory=list)
 
 
 class EstudianteResumen(Schema):
     dni: str
-    legajo: Optional[str] = None
+    legajo: str | None = None
     apellido_nombre: str
-    carreras: List[str] = Field(default_factory=list)
-    carreras_detalle: List[CarreraDetalleResumen] = Field(default_factory=list)
-    email: Optional[str] = None
-    telefono: Optional[str] = None
-    fecha_nacimiento: Optional[str] = None
-    lugar_nacimiento: Optional[str] = None
-    curso_introductorio: Optional[str] = None
-    promedio_general: Optional[str] = None
-    libreta_entregada: Optional[bool] = None
-    legajo_estado: Optional[str] = None
-    cohorte: Optional[str] = None
-    activo: Optional[bool] = None
-    materias_totales: Optional[int] = None
-    materias_aprobadas: Optional[int] = None
-    materias_regularizadas: Optional[int] = None
-    materias_en_curso: Optional[int] = None
-    fotoUrl: Optional[str] = None
+    carreras: list[str] = Field(default_factory=list)
+    carreras_detalle: list[CarreraDetalleResumen] = Field(default_factory=list)
+    email: str | None = None
+    telefono: str | None = None
+    fecha_nacimiento: str | None = None
+    lugar_nacimiento: str | None = None
+    curso_introductorio: str | None = None
+    promedio_general: str | None = None
+    libreta_entregada: bool | None = None
+    legajo_estado: str | None = None
+    cohorte: str | None = None
+    activo: bool | None = None
+    materias_totales: int | None = None
+    materias_aprobadas: int | None = None
+    materias_regularizadas: int | None = None
+    materias_en_curso: int | None = None
+    fotoUrl: str | None = None
+
 
 class RecomendacionesOut(Schema):
-    materias_sugeridas: List[MateriaSugerida] = Field(default_factory=list)
-    finales_habilitados: List[FinalHabilitado] = Field(default_factory=list)
-    alertas: List[str] = Field(default_factory=list)
+    materias_sugeridas: list[MateriaSugerida] = Field(default_factory=list)
+    finales_habilitados: list[FinalHabilitado] = Field(default_factory=list)
+    alertas: list[str] = Field(default_factory=list)
+
 
 class CartonEvento(Schema):
-    fecha: Optional[str] = None
-    condicion: Optional[str] = None
-    nota: Optional[str] = None
-    folio: Optional[str] = None
-    libro: Optional[str] = None
-    id_fila: Optional[int] = None
+    fecha: str | None = None
+    condicion: str | None = None
+    nota: str | None = None
+    folio: str | None = None
+    libro: str | None = None
+    id_fila: int | None = None
+
 
 class CartonMateria(Schema):
     materia_id: int
     materia_nombre: str
-    anio: Optional[int] = None
-    regimen: Optional[str] = None
-    regimen_display: Optional[str] = None
-    regularidad: Optional[CartonEvento] = None
-    final: Optional[CartonEvento] = None
+    anio: int | None = None
+    regimen: str | None = None
+    regimen_display: str | None = None
+    regularidad: CartonEvento | None = None
+    final: CartonEvento | None = None
+
 
 class CartonPlan(Schema):
     profesorado_id: int
     profesorado_nombre: str
     plan_id: int
     plan_resolucion: str
-    materias: List[CartonMateria] = Field(default_factory=list)
+    materias: list[CartonMateria] = Field(default_factory=list)
+
 
 class TrayectoriaOut(Schema):
     estudiante: EstudianteResumen
-    historial: List[TrayectoriaEvento] = Field(default_factory=list)
-    mesas: List[TrayectoriaMesa] = Field(default_factory=list)
-    regularidades: List[RegularidadResumen] = Field(default_factory=list)
+    historial: list[TrayectoriaEvento] = Field(default_factory=list)
+    mesas: list[TrayectoriaMesa] = Field(default_factory=list)
+    regularidades: list[RegularidadResumen] = Field(default_factory=list)
     recomendaciones: RecomendacionesOut
-    regularidades_vigencia: List[RegularidadVigenciaOut] = Field(default_factory=list)
-    aprobadas: List[int] = Field(default_factory=list)
-    regularizadas: List[int] = Field(default_factory=list)
-    inscriptas_actuales: List[int] = Field(default_factory=list)
-    carton: List[CartonPlan] = Field(default_factory=list)
+    regularidades_vigencia: list[RegularidadVigenciaOut] = Field(default_factory=list)
+    aprobadas: list[int] = Field(default_factory=list)
+    regularizadas: list[int] = Field(default_factory=list)
+    inscriptas_actuales: list[int] = Field(default_factory=list)
+    carton: list[CartonPlan] = Field(default_factory=list)
     updated_at: str
 
+
+class HorarioMateriaCelda(Schema):
+    materia_id: int
+    materia_nombre: str
+    comisiones: list[str] = Field(default_factory=list)
+    docentes: list[str] = Field(default_factory=list)
+    observaciones: str | None = None
+    regimen: str
+    cuatrimestre: str | None = None
+    es_cuatrimestral: bool = False
+
+
+class HorarioDia(Schema):
+    numero: int
+    nombre: str
+
+
+class HorarioFranja(Schema):
+    orden: int
+    desde: str
+    hasta: str
+
+
+class HorarioCelda(Schema):
+    dia_numero: int
+    franja_orden: int
+    dia: str
+    desde: str
+    hasta: str
+    materias: list[HorarioMateriaCelda] = Field(default_factory=list)
+
+
+class HorarioTabla(Schema):
+    key: str
+    profesorado_id: int
+    profesorado_nombre: str
+    plan_id: int
+    plan_resolucion: str | None = None
+    anio_plan: int
+    anio_plan_label: str
+    turno_id: int
+    turno_nombre: str
+    cuatrimestres: list[str] = Field(default_factory=list)
+    dias: list[HorarioDia] = Field(default_factory=list)
+    franjas: list[HorarioFranja] = Field(default_factory=list)
+    celdas: list[HorarioCelda] = Field(default_factory=list)
+    observaciones: str | None = None

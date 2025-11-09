@@ -1,18 +1,10 @@
 from __future__ import annotations
 
-import csv
-from datetime import datetime, date
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-
-import unicodedata
 
 from django.conf import settings
-from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
 
-from core.models import Estudiante, Profesorado
 from apps.primera_carga.services import process_estudiantes_csv
 
 

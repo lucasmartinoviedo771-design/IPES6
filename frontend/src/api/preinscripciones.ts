@@ -132,10 +132,14 @@ export async function listarPreinscripcionesAlumno(dni: string) {
   return data;
 }
 
-export async function agregarCarreraPreinscripcion(codigo: string, carreraId: number) {
+export async function agregarCarreraPreinscripcion(codigo: string, carreraId: number, anio?: number) {
+  const payload: { carrera_id: number; anio?: number } = { carrera_id: carreraId };
+  if (typeof anio === "number" && Number.isFinite(anio) && anio > 0) {
+    payload.anio = anio;
+  }
   const { data } = await client.post<ApiResponse<PreinscripcionDTO>>(
     `/preinscripciones/by-code/${encodeURIComponent(codigo)}/carreras`,
-    { carrera_id: carreraId },
+    payload,
   );
   return data;
 }

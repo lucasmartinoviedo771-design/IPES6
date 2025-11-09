@@ -3,7 +3,7 @@ import sys
 
 # Define file extensions to check and directories to ignore
 TEXT_EXTENSIONS = {'.py', '.tsx', '.ts', '.js', '.jsx', '.json', '.md', '.txt', '.html', '.css', '.csv', '.yml', '.yaml', '.toml', '.ini', '.cfg', '.editorconfig', '.gitignore'}
-IGNORE_DIRS = {'node_modules', '.venv', '.git', '__pycache__', 'dist', 'media'}
+IGNORE_DIRS = {'node_modules', '.venv', '.git', '__pycache__', 'dist', 'media', '.ruff_cache'}
 
 def find_non_utf8_files(start_path='.'):
     non_utf8_files = []

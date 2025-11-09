@@ -40,9 +40,10 @@ dayjs.extend(isSameOrBefore);
 
 type Ventana = VentanaDto;
 
-const LABEL_PERIODO: Record<"1C_ANUALES" | "2C", string> = {
-  "1C_ANUALES": "1º Cuatrimestre + Anuales",
-  "2C": "2º Cuatrimestre",
+const LABEL_PERIODO: Record<string, string> = {
+  "1C_ANUALES": "1er Cuatrimestre + Anuales",
+  "2C": "2do Cuatrimestre",
+  "1C": "1er Cuatrimestre",
 };
 
 const TYPE_CONFIG: Array<{
@@ -61,7 +62,7 @@ const TYPE_CONFIG: Array<{
     key: "MESAS_EXTRA",
     label: "Mesas de examen - Extraordinarias",
     category: "mesas",
-    description: "Mesas especiales o extraordinarias habilitadas por dirección.",
+    description: "Mesas especiales o extraordinarias habilitadas por direccion.",
   },
   {
     key: "MESAS_LIBRES",
@@ -73,38 +74,45 @@ const TYPE_CONFIG: Array<{
     key: "MATERIAS",
     label: "Inscripciones a Materias",
     category: "tramites",
-    description: "Períodos para que los estudiantes se inscriban a cursadas.",
+    description: "Periodos para que los estudiantes se inscriban a cursadas.",
   },
   {
     key: "COMISION",
-    label: "Cambios de Comisión",
+    label: "Cambios de Comision",
     category: "tramites",
-    description: "Gestiona solicitudes de cambio de comisión.",
+    description: "Gestiona solicitudes de cambio de comision.",
   },
   {
     key: "ANALITICOS",
-    label: "Pedidos de Analíticos",
+    label: "Pedidos de Analiticos",
     category: "tramites",
-    description: "Ventanas para solicitar constancias o analíticos.",
+    description: "Ventanas para solicitar constancias o analiticos.",
   },
   {
     key: "PREINSCRIPCION",
-    label: "Preinscripción",
+    label: "Preinscripcion",
     category: "tramites",
-    description: "Periodo de preinscripción inicial a la institución.",
+    description: "Periodo de preinscripcion inicial a la institucion.",
+  },
+  {
+    key: "CALENDARIO_CUATRIMESTRE",
+    label: "Calendario academico - Cuatrimestres",
+    category: "tramites",
+    description:
+      "Define las fechas de inicio y fin de los cuatrimestres. El segundo debe iniciar inmediatamente despues del primero.",
   },
 ];
 
 const CATEGORY_CONFIG = [
   {
     id: "tramites",
-    label: "Inscripciones y trámites",
+    label: "Inscripciones y tramites",
     helper: "Habilita los periodos que impactan directamente en los estudiantes.",
   },
   {
     id: "mesas",
     label: "Mesas de examen",
-    helper: "Configura las fechas de generación y cierre de las mesas finales.",
+    helper: "Configura las fechas de generacion y cierre de las mesas finales.",
   },
 ];
 
@@ -113,14 +121,373 @@ const TYPE_BY_CATEGORY = CATEGORY_CONFIG.reduce<Record<string, string[]>>((acc, 
   return acc;
 }, {});
 
+type CalendarPeriod = "1C" | "2C";
+const CALENDAR_PERIODS: CalendarPeriod[] = ["1C", "2C"];
+const CALENDAR_TYPE = "CALENDARIO_CUATRIMESTRE";
+const makeCalendarDraftKey = (period: CalendarPeriod) => `${CALENDAR_TYPE}:${period}`;
+
+function defaultDraft(tipo: string): Ventana {
+  return {
+    tipo,
+    activo: false,
+    desde: dayjs().format("YYYY-MM-DD"),
+    hasta: dayjs().add(7, "day").format("YYYY-MM-DD"),
+    periodo: tipo === CALENDAR_TYPE ? "1C" : "1C_ANUALES",
+  };
+}
+
+const defaultFirstCalendarDraft = (): Ventana => {
+  const base = defaultDraft(CALENDAR_TYPE);
+  const baseYear = dayjs().year();
+  const start = dayjs(`${baseYear}-03-01`);
+  const end = start.add(4, "month").endOf("month");
+  return {
+    ...base,
+    tipo: CALENDAR_TYPE,
+    periodo: "1C",
+    desde: start.format("YYYY-MM-DD"),
+    hasta: end.format("YYYY-MM-DD"),
+  };
+};
+
+const buildDefaultCalendarDraft = (period: CalendarPeriod, reference?: Ventana): Ventana => {
+  if (period === "1C") {
+    return defaultFirstCalendarDraft();
+  }
+  const base = defaultDraft(CALENDAR_TYPE);
+  const ref = reference ?? defaultFirstCalendarDraft();
+  const refEnd = dayjs(ref.hasta || ref.desde || dayjs().format("YYYY-MM-DD"));
+  const start = (refEnd.isValid() ? refEnd : dayjs()).add(1, "day");
+  const end = start.add(4, "month").endOf("month");
+  return {
+    ...base,
+    tipo: CALENDAR_TYPE,
+    periodo: "2C",
+    desde: start.format("YYYY-MM-DD"),
+    hasta: end.format("YYYY-MM-DD"),
+  };
+};
+
 const CATEGORY_FROM_TYPE = TYPE_CONFIG.reduce<Record<string, string>>((acc, type) => {
   acc[type.key] = type.category;
   return acc;
 }, {});
 
+type CalendarPanelProps = {
+  list: Ventana[];
+  drafts: Record<string, Ventana>;
+  setDrafts: React.Dispatch<React.SetStateAction<Record<string, Ventana>>>;
+  saving: Record<string, boolean>;
+  onSave: (ventana: Ventana) => void;
+  onEdit: (ventana: Ventana) => void;
+  notify: (message: string, options?: any) => void;
+  setExpandedPanel: (panel: string | null) => void;
+};
+
+const CalendarPanel: React.FC<CalendarPanelProps> = ({
+  list,
+  drafts,
+  setDrafts,
+  saving,
+  onSave,
+  onEdit,
+  notify,
+  setExpandedPanel,
+}) => {
+  const resolveDraft = (period: CalendarPeriod, state: Record<string, Ventana>): Ventana => {
+    const key = makeCalendarDraftKey(period);
+    if (state[key]) return state[key];
+    const existing = list.find((ventana) => (ventana.periodo ?? (period === "1C" ? "1C" : "2C")) === period);
+    if (existing) return { ...existing };
+    if (period === "2C") {
+      const first = state[makeCalendarDraftKey("1C")] ?? list.find((ventana) => (ventana.periodo ?? "1C") === "1C") ?? defaultFirstCalendarDraft();
+      return buildDefaultCalendarDraft("2C", first);
+    }
+    return defaultFirstCalendarDraft();
+  };
+
+  const getDraft = (period: CalendarPeriod): Ventana => resolveDraft(period, drafts);
+
+  const mergeDrafts = (updater: (current: Record<string, Ventana>) => Record<string, Ventana>) => {
+    setDrafts((prev) => updater({ ...prev }));
+  };
+
+  const updateDraft = (period: CalendarPeriod, patch: Partial<Ventana>) => {
+    mergeDrafts((state) => {
+      const updatedState = { ...state };
+      const current = resolveDraft(period, updatedState);
+      const nextDraft: Ventana = { ...current, ...patch, tipo: CALENDAR_TYPE, periodo: period };
+      updatedState[makeCalendarDraftKey(period)] = nextDraft;
+
+      if (period === "1C") {
+        const end = dayjs(nextDraft.hasta || nextDraft.desde);
+        if (end.isValid()) {
+          const counterpart = resolveDraft("2C", updatedState);
+          const nextStart = end.add(1, "day");
+          let updatedCounterpart: Ventana = { ...counterpart, tipo: CALENDAR_TYPE, periodo: "2C" };
+          if (!dayjs(counterpart.desde).isSame(nextStart, "day")) {
+            updatedCounterpart.desde = nextStart.format("YYYY-MM-DD");
+          }
+          if (!counterpart.hasta || dayjs(counterpart.hasta).isSameOrBefore(nextStart, "day")) {
+            updatedCounterpart.hasta = nextStart.add(4, "month").endOf("month").format("YYYY-MM-DD");
+          }
+          updatedState[makeCalendarDraftKey("2C")] = updatedCounterpart;
+        }
+      }
+
+      if (period === "2C") {
+        const start = dayjs(nextDraft.desde);
+        if (start.isValid()) {
+          const counterpart = resolveDraft("1C", updatedState);
+          const prevEnd = start.subtract(1, "day");
+          let updatedCounterpart: Ventana = { ...counterpart, tipo: CALENDAR_TYPE, periodo: "1C" };
+          if (!dayjs(counterpart.hasta).isSame(prevEnd, "day")) {
+            updatedCounterpart.hasta = prevEnd.format("YYYY-MM-DD");
+          }
+          if (!counterpart.desde || dayjs(counterpart.desde).isAfter(prevEnd, "day")) {
+            updatedCounterpart.desde = prevEnd.subtract(4, "month").startOf("month").format("YYYY-MM-DD");
+          }
+          updatedState[makeCalendarDraftKey("1C")] = updatedCounterpart;
+        }
+      }
+
+      return updatedState;
+    });
+  };
+
+  const handleSave = (period: CalendarPeriod) => {
+    const draft = getDraft(period);
+    const from = dayjs(draft.desde);
+    const to = dayjs(draft.hasta);
+
+    if (!from.isValid() || !to.isValid()) {
+      notify("Revisa las fechas: deben ser validas.", { variant: "warning" });
+      return;
+    }
+    if (!to.isAfter(from, "day")) {
+      notify("La fecha de fin debe ser posterior a la de inicio.", { variant: "warning" });
+      return;
+    }
+
+    const otherPeriod: CalendarPeriod = period === "1C" ? "2C" : "1C";
+    const otherDraft = getDraft(otherPeriod);
+
+    if (period === "1C") {
+      const expected = to.add(1, "day");
+      if (otherDraft.desde && !dayjs(otherDraft.desde).isSame(expected, "day")) {
+        notify("El segundo cuatrimestre debe comenzar el dia siguiente a que finaliza el primer cuatrimestre.", { variant: "error" });
+        return;
+      }
+    } else {
+      if (!otherDraft.hasta) {
+        notify("Defini primero la fecha de fin del primer cuatrimestre.", { variant: "warning" });
+        return;
+      }
+      const expected = dayjs(otherDraft.hasta).add(1, "day");
+      if (!dayjs(draft.desde).isSame(expected, "day")) {
+        notify("El segundo cuatrimestre debe comenzar el dia siguiente a que finaliza el primer cuatrimestre.", { variant: "error" });
+        return;
+      }
+    }
+
+    onSave({ ...draft, tipo: CALENDAR_TYPE, periodo: period });
+  };
+
+  const renderPeriodCard = (period: CalendarPeriod) => {
+    const draft = getDraft(period);
+    const history = list
+      .filter((ventana) => (ventana.periodo ?? period) === period)
+      .slice(0, 5);
+
+    return (
+      <Paper key={period} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {period === "1C" ? "1er Cuatrimestre" : "2do Cuatrimestre"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {period === "1C"
+                ? "Define el inicio y fin del primer cuatrimestre academico."
+                : "Inicia automaticamente al finalizar el primero. Ajusta la fecha de fin segun el calendario institucional."}
+            </Typography>
+          </Box>
+
+          <Grid container spacing={2} alignItems="flex-start">
+            <Grid item xs={12} md={6}>
+              <TextField
+                type="date"
+                label="Desde"
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                size="small"
+                value={draft.desde}
+                disabled={period === "2C"}
+                onChange={(event) => updateDraft(period, { desde: event.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                type="date"
+                label="Hasta"
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                size="small"
+                value={draft.hasta}
+                onChange={(event) => updateDraft(period, { hasta: event.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={!!draft.activo}
+                    onChange={(event) => updateDraft(period, { activo: event.target.checked })}
+                  />
+                }
+                label={draft.activo ? "Habilitado" : "Deshabilitado"}
+              />
+            </Grid>
+          </Grid>
+
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Button
+              variant="contained"
+              onClick={() => handleSave(period)}
+              disabled={!!saving[CALENDAR_TYPE]}
+            >
+              {saving[CALENDAR_TYPE] ? "Guardando..." : "Guardar"} {period === "1C" ? "1er Cuatrimestre" : "2do Cuatrimestre"}
+            </Button>
+          </Stack>
+
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Historial
+            </Typography>
+            {history.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Sin registros previos.
+              </Typography>
+            ) : (
+              <Stack spacing={1.5}>
+                {history.map((item) => {
+                  const state = classifyVentana(item);
+                  return (
+                    <Paper
+                      key={`${period}-${item.id ?? item.desde}`}
+                      variant="outlined"
+                      sx={{ p: 1.5, display: "flex", alignItems: "center", gap: 1 }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {formatRange(item)}
+                        </Typography>
+                        <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+                          <Chip size="small" label={state.label} color={state.color} />
+                          {item.activo ? (
+                            <Chip size="small" color="success" variant="outlined" label="Habilitado" />
+                          ) : (
+                            <Chip size="small" variant="outlined" label="Cerrado" />
+                          )}
+                        </Stack>
+                      </Box>
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="Editar">
+                          <span>
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<EditIcon fontSize="small" />}
+                              onClick={() => onEdit(item)}
+                            >
+                              Editar
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Usar estas fechas">
+                          <span>
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() => {
+                                mergeDrafts((state) => {
+                                  const nextState = { ...state };
+                                  nextState[makeCalendarDraftKey(period)] = { ...item };
+
+                                  if (period === "1C") {
+                                    const counterpart = resolveDraft("2C", nextState);
+                                    const end = dayjs(item.hasta || item.desde);
+                                    if (end.isValid()) {
+                                      const nextStart = end.add(1, "day").format("YYYY-MM-DD");
+                                      nextState[makeCalendarDraftKey("2C")] = {
+                                        ...counterpart,
+                                        tipo: CALENDAR_TYPE,
+                                        periodo: "2C",
+                                        desde: nextStart,
+                                        hasta:
+                                          dayjs(counterpart.hasta).isAfter(dayjs(nextStart), "day")
+                                            ? counterpart.hasta
+                                            : dayjs(nextStart).add(4, "month").endOf("month").format("YYYY-MM-DD"),
+                                      };
+                                    }
+                                  } else {
+                                    const counterpart = resolveDraft("1C", nextState);
+                                    const start = dayjs(item.desde);
+                                    if (start.isValid()) {
+                                      const prevEnd = start.subtract(1, "day").format("YYYY-MM-DD");
+                                      nextState[makeCalendarDraftKey("1C")] = {
+                                        ...counterpart,
+                                        tipo: CALENDAR_TYPE,
+                                        periodo: "1C",
+                                        hasta: prevEnd,
+                                      };
+                                    }
+                                  }
+
+                                  return nextState;
+                                });
+                                setExpandedPanel(CALENDAR_TYPE);
+                              }}
+                            >
+                              Usar
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        </Stack>
+      </Paper>
+    );
+  };
+
+  return (
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
+        Ajusta los periodos cuatrimestrales. El segundo cuatrimestre debe comenzar el dia posterior a la finalizacion del primero.
+      </Typography>
+      <Grid container spacing={2}>
+        {CALENDAR_PERIODS.map((period) => (
+          <Grid item xs={12} md={6} key={period}>
+            {renderPeriodCard(period)}
+          </Grid>
+        ))}
+      </Grid>
+    </Stack>
+  );
+};
 const formatRange = (ventana?: Ventana | null) => {
   if (!ventana) return "Sin ventana activa";
-  return `${dayjs(ventana.desde).format("DD/MM/YYYY")} → ${dayjs(ventana.hasta).format("DD/MM/YYYY")}`;
+  return `${dayjs(ventana.desde).format("DD/MM/YYYY")} -> ${dayjs(ventana.hasta).format("DD/MM/YYYY")}`;
+};
+
+const getPeriodoLabel = (periodo?: string | null) => {
+  if (!periodo) return "Sin periodo asignado";
+  return LABEL_PERIODO[periodo] ?? periodo;
 };
 
 const today = () => dayjs();
@@ -146,14 +513,6 @@ export default function HabilitarFechasPage() {
   const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editVentana, setEditVentana] = useState<Ventana | null>(null);
-
-  const defaultDraft = (tipo: string): Ventana => ({
-    tipo,
-    activo: false,
-    desde: dayjs().format("YYYY-MM-DD"),
-    hasta: dayjs().add(7, "day").format("YYYY-MM-DD"),
-    periodo: "1C_ANUALES",
-  });
 
   const loadVentanas = async () => {
     try {
@@ -260,6 +619,59 @@ export default function HabilitarFechasPage() {
     if (!config) return null;
 
     const list = ventanas[typeKey] ?? [];
+    const reference = list.find((ventana) => ventana.activo) ?? list[0];
+    const state = classifyVentana(reference);
+
+    if (typeKey === CALENDAR_TYPE) {
+      return (
+        <Accordion
+          key={typeKey}
+          disableGutters
+          elevation={0}
+          square
+          expanded={expandedPanel === typeKey}
+          onChange={(_, expanded) => setExpandedPanel(expanded ? typeKey : null)}
+          sx={{
+            border: "1px solid",
+            borderColor: expandedPanel === typeKey ? "primary.main" : "divider",
+            borderRadius: 2,
+            "&:not(:last-of-type)": {
+              mb: 2,
+            },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {config.label}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {reference ? formatRange(reference) : "Sin periodos configurados"}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip size="small" label={state.label} color={state.color} />
+              {reference?.activo && (
+                <Chip size="small" color="success" variant="outlined" label="Habilitado" />
+              )}
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails>
+            <CalendarPanel
+              list={list}
+              drafts={drafts}
+              setDrafts={setDrafts}
+              saving={saving}
+              onSave={upsertVentana}
+              onEdit={openEditDialog}
+              notify={enqueueSnackbar}
+              setExpandedPanel={setExpandedPanel}
+            />
+          </AccordionDetails>
+        </Accordion>
+      );
+    }
+
     const now = today();
 
     const baseDraft =
@@ -272,7 +684,7 @@ export default function HabilitarFechasPage() {
     const setLocalDraft = (patch: Partial<Ventana>) =>
       setDrafts((prev) => {
         let draftBase: Ventana = baseDraft;
-        if (patch.periodo && typeKey === "MATERIAS") {
+        if (patch.periodo && (typeKey === "MATERIAS" || typeKey === "CALENDARIO_CUATRIMESTRE")) {
           const candidato = list.find((item) => item.periodo === patch.periodo);
           if (candidato) {
             draftBase = { ...candidato };
@@ -302,9 +714,6 @@ export default function HabilitarFechasPage() {
     const historyItems = list
       .filter((ventana) => ventana.activo || dayjs(ventana.hasta).isSameOrAfter(now, "day"))
       .slice(0, 5);
-
-    const reference = list.find((ventana) => ventana.activo) ?? list[0];
-    const state = classifyVentana(reference);
 
     return (
       <Accordion
@@ -370,17 +779,17 @@ export default function HabilitarFechasPage() {
               {typeKey === "MATERIAS" && (
                 <Grid item xs={12} md={3}>
                   <FormControl fullWidth size="small">
-                    <InputLabel id={`periodo-${typeKey}`}>Período</InputLabel>
+                    <InputLabel id={`periodo-${typeKey}`}>Periodo</InputLabel>
                     <Select
                       labelId={`periodo-${typeKey}`}
-                      label="Período"
+                      label="Periodo"
                       value={currentDraft.periodo ?? "1C_ANUALES"}
                       onChange={(event) =>
                         setLocalDraft({ periodo: event.target.value as "1C_ANUALES" | "2C" })
                       }
                     >
-                      <MenuItem value="1C_ANUALES">1º Cuatrimestre + Anuales</MenuItem>
-                      <MenuItem value="2C">2º Cuatrimestre</MenuItem>
+                      <MenuItem value="1C_ANUALES">1er Cuatrimestre + Anuales</MenuItem>
+                      <MenuItem value="2C">2do Cuatrimestre</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -417,7 +826,7 @@ export default function HabilitarFechasPage() {
               </Typography>
               {historyItems.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  Todavía no hay registros para este tipo.
+                  Todavia no hay registros para este tipo.
                 </Typography>
               ) : (
                 <Stack spacing={1.5}>
@@ -440,12 +849,12 @@ export default function HabilitarFechasPage() {
                             ) : (
                               <Chip size="small" variant="outlined" label="Cerrado" />
                             )}
-                            {typeKey === "MATERIAS" && (
+                            {(typeKey === "MATERIAS" || typeKey === "CALENDARIO_CUATRIMESTRE") && (
                               <Chip
                                 size="small"
                                 variant="outlined"
                                 color="primary"
-                                label={LABEL_PERIODO[(item.periodo ?? "1C_ANUALES") as "1C_ANUALES" | "2C"]}
+                                label={getPeriodoLabel(item.periodo)}
                               />
                             )}
                           </Stack>
@@ -499,13 +908,13 @@ export default function HabilitarFechasPage() {
         Habilitar Fechas
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Definí y administrá los periodos de inscripción, trámites y mesas de examen. Activá una ventana
+        Define y administra los periodos de inscripcion, tramites y mesas de examen. Activa una ventana
         cuando quieras que quede disponible para los usuarios.
       </Typography>
 
       <Box sx={{ mb: 4 }}>
         <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-          Resumen rápido
+          Resumen rapido
         </Typography>
         <Grid container spacing={2}>
           {summaryItems.map((item) => (
@@ -563,7 +972,7 @@ export default function HabilitarFechasPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {
           CATEGORY_CONFIG.find((category) => category.id === selectedCategory)?.helper ??
-          "Seleccioná un periodo para editarlo."
+          "Selecciona un periodo para editarlo."
         }
       </Typography>
 

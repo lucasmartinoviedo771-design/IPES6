@@ -180,23 +180,11 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
 
 export const CartonTabPanel = ({ trayectoria, selectedPlanId: controlledSelectedId, onSelectPlan }: CartonTabPanelProps) => {
   const planes = trayectoria.carton ?? [];
-  const [internalSelectedId, setInternalSelectedId] = useState(() => (planes[0] ? String(planes[0].plan_id) : ''));
-
-  const selectedPlanId = controlledSelectedId ?? internalSelectedId;
-
-  useEffect(() => {
-    if (controlledSelectedId) return;
-    if (!planes.length) {
-      setInternalSelectedId('');
-      return;
-    }
-    setInternalSelectedId((prev) => {
-      if (prev && planes.some((plan) => String(plan.plan_id) === prev)) {
-        return prev;
-      }
-      return String(planes[0].plan_id);
-    });
-  }, [planes, controlledSelectedId]);
+  const [internalSelectedId, setInternalSelectedId] = useState(() => {
+    if (!planes.length) return '';
+    const initialId = planes[0] ? String(planes[0].plan_id) : '';
+    return initialId;
+  });
 
   const handleSelect = (value: string) => {
     if (onSelectPlan) {
@@ -206,6 +194,8 @@ export const CartonTabPanel = ({ trayectoria, selectedPlanId: controlledSelected
       setInternalSelectedId(value);
     }
   };
+
+  const selectedPlanId = controlledSelectedId ?? internalSelectedId;
 
   const selectedPlan = useMemo(() => {
     if (!planes.length) return undefined;

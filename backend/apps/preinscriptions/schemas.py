@@ -1,72 +1,77 @@
-from ninja import Schema, Field
-from typing import Optional
-from datetime import datetime, date
+from datetime import date, datetime
+
+from ninja import Field, Schema
+
 
 class AlumnoIn(Schema):
     dni: str
     nombres: str
     apellido: str
-    cuil: Optional[str] = None
+    cuil: str | None = None
     fecha_nacimiento: date
-    email: Optional[str] = None
-    telefono: Optional[str] = None
-    domicilio: Optional[str] = None
+    email: str | None = None
+    telefono: str | None = None
+    domicilio: str | None = None
+
 
 class AlumnoOut(Schema):
     dni: str
     nombres: str = Field(alias="user.first_name")
     apellido: str = Field(alias="user.last_name")
-    email: Optional[str] = None
-    telefono: Optional[str] = None
-    domicilio: Optional[str] = None
-    fecha_nacimiento: Optional[date] = None # Changed to date
+    email: str | None = None
+    telefono: str | None = None
+    domicilio: str | None = None
+    fecha_nacimiento: date | None = None  # Changed to date
+
 
 class CarreraOut(Schema):
     id: int
     nombre: str
 
+
 class PreinscripcionIn(Schema):
     carrera_id: int
-    foto_4x4_dataurl: Optional[str] = None
+    foto_4x4_dataurl: str | None = None
     alumno: AlumnoIn
-    captcha_token: Optional[str] = None
-    honeypot: Optional[str] = None
+    captcha_token: str | None = None
+    honeypot: str | None = None
 
     # Datos personales
-    nacionalidad: Optional[str] = None
-    estado_civil: Optional[str] = None
-    localidad_nac: Optional[str] = None
-    provincia_nac: Optional[str] = None
-    pais_nac: Optional[str] = None
+    nacionalidad: str | None = None
+    estado_civil: str | None = None
+    localidad_nac: str | None = None
+    provincia_nac: str | None = None
+    pais_nac: str | None = None
 
     # Contacto
-    tel_fijo: Optional[str] = None
-    emergencia_telefono: Optional[str] = None
-    emergencia_parentesco: Optional[str] = None
+    tel_fijo: str | None = None
+    emergencia_telefono: str | None = None
+    emergencia_parentesco: str | None = None
 
     # Secundario
-    sec_titulo: Optional[str] = None
-    sec_establecimiento: Optional[str] = None
-    sec_fecha_egreso: Optional[date] = None
-    sec_localidad: Optional[str] = None
-    sec_provincia: Optional[str] = None
-    sec_pais: Optional[str] = None
+    sec_titulo: str | None = None
+    sec_establecimiento: str | None = None
+    sec_fecha_egreso: date | None = None
+    sec_localidad: str | None = None
+    sec_provincia: str | None = None
+    sec_pais: str | None = None
 
     # Superiores (opcionales)
-    sup1_titulo: Optional[str] = None
-    sup1_establecimiento: Optional[str] = None
-    sup1_fecha_egreso: Optional[date] = None
+    sup1_titulo: str | None = None
+    sup1_establecimiento: str | None = None
+    sup1_fecha_egreso: date | None = None
 
     # Laborales
-    trabaja: Optional[bool] = None
-    empleador: Optional[str] = None
-    horario_trabajo: Optional[str] = None
-    domicilio_trabajo: Optional[str] = None
+    trabaja: bool | None = None
+    empleador: str | None = None
+    horario_trabajo: str | None = None
+    domicilio_trabajo: str | None = None
+
 
 class PreinscripcionUpdateIn(Schema):
-    carrera_id: Optional[int] = None
-    alumno: Optional[AlumnoIn] = None
-    datos_extra: Optional[dict] = None
+    carrera_id: int | None = None
+    alumno: AlumnoIn | None = None
+    datos_extra: dict | None = None
 
 
 class PreinscripcionOut(Schema):
@@ -78,3 +83,62 @@ class PreinscripcionOut(Schema):
     activa: bool
     alumno: AlumnoOut
     carrera: CarreraOut
+
+
+class ChecklistIn(Schema):
+    # Documentación personal
+    dni_legalizado: bool = False
+    fotos_4x4: bool = False
+    certificado_salud: bool = False
+    folios_oficio: int = 0
+
+    # Títulos secundarios (al menos una alternativa)
+    titulo_secundario_legalizado: bool = False
+    certificado_titulo_en_tramite: bool = False
+    analitico_legalizado: bool = False
+    certificado_alumno_regular_sec: bool = False
+
+    # Detalles de adeuda (solo si corresponde)
+    adeuda_materias: bool = False
+    adeuda_materias_detalle: str | None = ""
+    escuela_secundaria: str | None = ""
+
+    # Trayecto de certificación docente
+    es_certificacion_docente: bool = False
+    titulo_terciario_univ: bool = False
+    curso_introductorio_aprobado: bool = False
+
+
+class ChecklistOut(ChecklistIn):
+    estado_legajo: str = "PEN"
+
+
+ChecklistIn.model_rebuild()
+ChecklistOut.model_rebuild()
+
+class NuevaCarreraIn(Schema):
+    carrera_id: int
+    anio: int | None = None
+
+
+class RequisitoDocumentacionOut(Schema):
+    id: int
+    codigo: str
+    titulo: str
+    descripcion: str | None = None
+    categoria: str
+    categoria_display: str
+    obligatorio: bool
+    orden: int
+    activo: bool
+    personalizado: bool
+
+
+class RequisitoDocumentacionUpdateIn(Schema):
+    id: int
+    titulo: str | None = None
+    descripcion: str | None = None
+    obligatorio: bool | None = None
+    activo: bool | None = None
+    orden: int | None = None
+    personalizado: bool | None = None

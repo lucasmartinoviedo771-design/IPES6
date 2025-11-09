@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime, date
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, List
-import unicodedata
 import io
 import re
+import unicodedata
+from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from pathlib import Path
+from typing import Any
+from xml.sax.saxutils import escape
 
 from django.conf import settings
 from django.contrib.auth.models import Group, User
@@ -14,56 +16,49 @@ from django.core.files.base import ContentFile
 from django.core.management.base import CommandError
 from django.db import transaction
 from django.db.models import Max
-from django.utils import timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
-from xml.sax.saxutils import escape
-
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
+    Image,
+    Paragraph,
     SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
-    Paragraph,
-    Spacer,
-    Image,
 )
 
+from apps.alumnos.carga_notas_api import ALIAS_TO_SITUACION, _situaciones_para_formato
 from core.models import (
     Docente,
-    Estudiante,
-    Profesorado,
-    Materia,
-    InscripcionMateriaAlumno,
-    Regularidad,
-    PreinscripcionChecklist,
-    MesaExamen,
-    InscripcionMesa,
     EquivalenciaCurricular,
+    Estudiante,
+    InscripcionMateriaAlumno,
+    InscripcionMesa,
+    Materia,
+    MesaExamen,
     PlanDeEstudio,
-    StaffAsignacion,
     PlanillaRegularidad,
-    PlanillaRegularidadFila,
     PlanillaRegularidadDocente,
+    PlanillaRegularidadFila,
     PlanillaRegularidadHistorial,
+    PreinscripcionChecklist,
+    Profesorado,
+    Regularidad,
     RegularidadPlantilla,
-    RegularidadFormato,
 )
-from apps.alumnos.carga_notas_api import _situaciones_para_formato, ALIAS_TO_SITUACION
 from core.permissions import allowed_profesorados, ensure_profesorado_access
 
 
-def _to_bool(value: Optional[str]) -> bool:
+def _to_bool(value: str | None) -> bool:
     if value is None:
         return False
     val = value.strip().lower()
     return val in {"true", "1", "si", "sÃƒÆ’Ã‚Â­", "yes", "verdadero"}
 
 
-def _parse_date(value: str) -> Optional[date]:
+def _parse_date(value: str) -> date | None:
     value = value.strip()
     if not value:
         return None
@@ -72,9 +67,7 @@ def _parse_date(value: str) -> Optional[date]:
             return datetime.strptime(value, fmt).date()
         except ValueError:
             continue
-    raise CommandError(
-        f"Fecha con formato no reconocido: '{value}'. Se esperan formatos DD/MM/AAAA o AAAA-MM-DD."
-    )
+    raise CommandError(f"Fecha con formato no reconocido: '{value}'. Se esperan formatos DD/MM/AAAA o AAAA-MM-DD.")
 
 
 def _normalize_estado_legajo(value: str) -> str:
@@ -90,7 +83,7 @@ def _normalize_estado_legajo(value: str) -> str:
     return Estudiante.EstadoLegajo.PENDIENTE
 
 
-def _merge_datos_extra(base: Optional[dict], **values) -> dict:
+def _merge_datos_extra(base: dict | None, **values) -> dict:
     data = dict(base or {})
     for key, value in values.items():
         if value in (None, "", []):
@@ -99,7 +92,7 @@ def _merge_datos_extra(base: Optional[dict], **values) -> dict:
     return data
 
 
-def _normalize_header(value: Optional[str]) -> str:
+def _normalize_header(value: str | None) -> str:
     if value is None:
         return ""
     cleaned = value.replace("\ufeff", "")
@@ -112,7 +105,7 @@ def _normalize_label(value: str) -> str:
     return "".join((value or "").split()).lower()
 
 
-def _normalize_value(value: Optional[str]) -> str:
+def _normalize_value(value: str | None) -> str:
     if value is None:
         return ""
     cleaned = value.replace("\ufeff", "").strip()
@@ -132,7 +125,7 @@ class _atomic_rollback:
         return self._ctx.__exit__(exc_type, exc_val, exc_tb)
 
 
-def _normalize_alias(value: Optional[str]) -> str:
+def _normalize_alias(value: str | None) -> str:
     return (value or "").strip().upper()
 
 
@@ -146,7 +139,7 @@ FORMATO_SLUG_MAP = {
 }
 
 
-def _format_column_label(value: Optional[str]) -> str:
+def _format_column_label(value: str | None) -> str:
     if not value:
         return ""
     normalized = value.replace("Ãƒâ€šÃ‚Âº", "").replace("Ãƒâ€šÃ‚Â°", "")
@@ -156,11 +149,7 @@ def _format_column_label(value: Optional[str]) -> str:
 
 
 def _profesorado_acronym(profesorado: Profesorado) -> str:
-    normalized = (
-        unicodedata.normalize("NFKD", profesorado.nombre)
-        .encode("ascii", "ignore")
-        .decode("ascii")
-    )
+    normalized = unicodedata.normalize("NFKD", profesorado.nombre).encode("ascii", "ignore").decode("ascii")
     parts = [segment for segment in normalized.replace("-", " ").split() if segment]
     if not parts:
         return f"P{profesorado.id:02d}"
@@ -175,9 +164,7 @@ def _planilla_codigo(profesorado: Profesorado, fecha: date, numero: int) -> str:
 
 def _next_planilla_numero(profesorado_id: int, anio: int) -> int:
     ultimo = (
-        PlanillaRegularidad.objects.filter(
-            profesorado_id=profesorado_id, anio_academico=anio
-        )
+        PlanillaRegularidad.objects.filter(profesorado_id=profesorado_id, anio_academico=anio)
         .aggregate(Max("numero"))
         .get("numero__max")
     )
@@ -192,14 +179,8 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
     if alias_key in ALIAS_TO_SITUACION:
         return ALIAS_TO_SITUACION[alias_key]
 
-    allowed_aliases = {
-        _normalize_alias(item.get("alias", ""))
-        for item in _situaciones_para_formato(formato_slug)
-    }
-    allowed_codes = {
-        _normalize_alias(item.get("codigo", ""))
-        for item in _situaciones_para_formato(formato_slug)
-    }
+    allowed_aliases = {_normalize_alias(item.get("alias", "")) for item in _situaciones_para_formato(formato_slug)}
+    allowed_codes = {_normalize_alias(item.get("codigo", "")) for item in _situaciones_para_formato(formato_slug)}
 
     if alias_key in allowed_codes:
         return alias_key
@@ -214,12 +195,10 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
         if alias_key == _normalize_alias(code):
             return code
 
-    raise ValueError(
-        f"Situacion academica '{raw}' no es valida para el formato seleccionado."
-    )
+    raise ValueError(f"Situacion academica '{raw}' no es valida para el formato seleccionado.")
 
 
-def _regularidad_metadata_for_user(user: User) -> Dict:
+def _regularidad_metadata_for_user(user: User) -> dict:
     allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
     profes_qs = Profesorado.objects.filter(activo=True).order_by("nombre")
     if allowed is not None:
@@ -266,16 +245,12 @@ def _regularidad_metadata_for_user(user: User) -> Dict:
         )
 
     plantillas = []
-    plantillas_qs = RegularidadPlantilla.objects.select_related("formato").order_by(
-        "formato__nombre", "dictado"
-    )
+    plantillas_qs = RegularidadPlantilla.objects.select_related("formato").order_by("formato__nombre", "dictado")
     for plantilla in plantillas_qs:
         columnas_normalizadas = []
         for columna in plantilla.columnas or []:
             normalizada = dict(columna or {})
-            normalizada["label"] = _format_column_label(
-                normalizada.get("label") or normalizada.get("key") or ""
-            )
+            normalizada["label"] = _format_column_label(normalizada.get("label") or normalizada.get("key") or "")
             columnas_normalizadas.append(normalizada)
 
         plantillas.append(
@@ -331,7 +306,7 @@ def _regularidad_metadata_for_user(user: User) -> Dict:
     }
 
 
-def _limpiar_datos_fila(raw_datos: Optional[dict], columnas: List[dict]) -> dict:
+def _limpiar_datos_fila(raw_datos: dict | None, columnas: list[dict]) -> dict:
     if not raw_datos:
         return {}
     allowed_keys = {col.get("key") for col in columnas if col.get("key")}
@@ -346,7 +321,7 @@ def _limpiar_datos_fila(raw_datos: Optional[dict], columnas: List[dict]) -> dict
     return cleaned
 
 
-def _decimal_from_string(value: Optional[str]) -> Optional[Decimal]:
+def _decimal_from_string(value: str | None) -> Decimal | None:
     if value in (None, "", []):
         return None
     try:
@@ -355,7 +330,7 @@ def _decimal_from_string(value: Optional[str]) -> Optional[Decimal]:
         return None
 
 
-def _extraer_nota_practicos(columnas: List[dict], datos: dict) -> Optional[Decimal]:
+def _extraer_nota_practicos(columnas: list[dict], datos: dict) -> Decimal | None:
     if not datos:
         return None
     for col in columnas:
@@ -382,14 +357,8 @@ def _ensure_required_row_fields(row: dict) -> None:
         if row.get(field) in (None, "", []):
             missing.append(field)
     if missing:
-        raise ValueError(
-            f"Campos obligatorios faltantes en la fila {row.get('orden')}: {', '.join(missing)}."
-        )
+        raise ValueError(f"Campos obligatorios faltantes en la fila {row.get('orden')}: {', '.join(missing)}.")
 
-
-import io
-from decimal import Decimal
-from typing import List, Optional, Dict, Any, Tuple
 
 # -------------------------------------------------------------
 # FunciÃƒÆ’Ã‚Â³n Principal para la GeneraciÃƒÆ’Ã‚Â³n del PDF
@@ -407,7 +376,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         bottomMargin=36,
     )
     styles = getSampleStyleSheet()
-    elements: List = []
+    elements: list = []
 
     title_style = ParagraphStyle(
         "PlanillaTitle",
@@ -488,7 +457,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
             return default
         return str(value)
 
-    def _format_decimal_value(value: Optional[Decimal]) -> str:
+    def _format_decimal_value(value: Decimal | None) -> str:
         if value is None:
             return "-"
         try:
@@ -508,11 +477,11 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     def _resolve_logo(
         setting_name: str,
-        fallback_names: List[str],
+        fallback_names: list[str],
         placeholder: str,
         width: float = 60.0,
     ):
-        candidate_paths: List[Path] = []
+        candidate_paths: list[Path] = []
         configured = getattr(settings, setting_name, None)
         if configured:
             configured_path = Path(configured)
@@ -579,7 +548,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         "IPES",
     )
 
-    institutional_column: List[Any] = [
+    institutional_column: list[Any] = [
         Paragraph("IPES PAULO FREIRE", institutional_title_style),
         Paragraph("INSTITUTO PROVINCIAL DE EDUCACION SUPERIOR", institutional_style),
     ]
@@ -614,16 +583,14 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     docentes_qs = planilla.docentes.all().order_by("orden", "id")
     docente_principal = docentes_qs.filter(rol="P").first()
-    docente_nombre = _display(
-        docente_principal.nombre if docente_principal else "_______________________"
-    )
+    docente_nombre = _display(docente_principal.nombre if docente_principal else "_______________________")
 
-    if isinstance(planilla.fecha, (datetime, date)):
+    if isinstance(planilla.fecha, datetime | date):
         fecha_formateada = planilla.fecha.strftime("%d/%m/%Y")
     else:
         fecha_formateada = _display(planilla.fecha)
 
-    info_pairs: List[Tuple[str, Any, str, Any]] = [
+    info_pairs: list[tuple[str, Any, str, Any]] = [
         ("CODIGO", planilla.codigo, "PROFESORADO DE", planilla.profesorado.nombre),
         (
             "UNIDAD CURRICULAR",
@@ -680,9 +647,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     columnas_tp = [
         {
             "key": col.get("key"),
-            "label": _format_column_label(
-                col.get("label") or col.get("key") or ""
-            ).upper(),
+            "label": _format_column_label(col.get("label") or col.get("key") or "").upper(),
         }
         for col in columnas_raw
     ]
@@ -695,17 +660,17 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     situacion_idx = excepcion_idx + 1
     total_cols = situacion_idx + 1
 
-    headers_row1: List[Any] = [
+    headers_row1: list[Any] = [
         Paragraph("<b>N</b>", header_style),
         Paragraph("<b>ALUMNOS</b>", header_style),
         Paragraph("<b>DNI</b>", header_style),
     ]
-    headers_row2: List[Any] = ["", "", ""]
+    headers_row2: list[Any] = ["", "", ""]
 
-    single_row_columns: List[int] = []
-    group_ranges: List[Tuple[int, int]] = []
+    single_row_columns: list[int] = []
+    group_ranges: list[tuple[int, int]] = []
 
-    def _column_group(col: dict) -> Optional[str]:
+    def _column_group(col: dict) -> str | None:
         group = col.get("group") or col.get("group_label")
         if group:
             return str(group)
@@ -716,8 +681,8 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
             return "NOTA TP"
         return None
 
-    current_group: Optional[str] = None
-    current_start: Optional[int] = None
+    current_group: str | None = None
+    current_start: int | None = None
 
     for idx, columna in enumerate(columnas_tp):
         label = columna.get("label") or columna.get("key") or ""
@@ -758,7 +723,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         headers_row1.append(Paragraph(title, header_style))
         headers_row2.append("")
 
-    table_rows: List[List[Any]] = [headers_row1, headers_row2]
+    table_rows: list[list[Any]] = [headers_row1, headers_row2]
 
     filas_qs = planilla.filas.all().order_by("orden", "id")
     situacion_labels = dict(Regularidad.Situacion.choices)
@@ -767,7 +732,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         return Paragraph(escape(_display(value, default)), style)
 
     for fila in filas_qs:
-        row: List[Any] = [""] * total_cols
+        row: list[Any] = [""] * total_cols
         row[0] = _cell(fila.orden, body_center_style, "")
         row[1] = _cell(fila.apellido_nombre, body_left_style, "-")
         row[2] = _cell(fila.dni, body_center_style, "-")
@@ -789,7 +754,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     base_widths = [24.0, 190.0, 60.0]
     if tp_count == 0:
-        dynamic_widths: List[float] = []
+        dynamic_widths: list[float] = []
     elif tp_count <= 2:
         dynamic_widths = [36.0] * tp_count
     else:
@@ -848,9 +813,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
             leading=12,
             alignment=TA_LEFT,
         )
-        elements.append(
-            Paragraph(planilla.observaciones.replace("\n", "<br/>"), obs_style)
-        )
+        elements.append(Paragraph(planilla.observaciones.replace("\n", "<br/>"), obs_style))
         elements.append(Spacer(1, 12))
 
     profesor_docente = docentes_qs.filter(rol="P").first()
@@ -858,13 +821,9 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     if profesor_docente or bedel_docente:
         elements.append(Paragraph("Firmas:", section_heading_style))
-        profesor_nombre = _display(
-            profesor_docente.nombre if profesor_docente else "_______________________"
-        )
+        profesor_nombre = _display(profesor_docente.nombre if profesor_docente else "_______________________")
         profesor_dni = _display(profesor_docente.dni if profesor_docente else "-", "-")
-        bedel_nombre = _display(
-            bedel_docente.nombre if bedel_docente else "_______________________"
-        )
+        bedel_nombre = _display(bedel_docente.nombre if bedel_docente else "_______________________")
         bedel_dni = _display(bedel_docente.dni if bedel_docente else "-", "-")
 
         firmas_data = [
@@ -899,11 +858,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     referencias = planilla.plantilla.referencias or []
     if referencias:
-        elements.append(
-            Paragraph(
-                'Referencias de casillero "Situacion Academica":', section_heading_style
-            )
-        )
+        elements.append(Paragraph('Referencias de casillero "Situacion Academica":', section_heading_style))
         referencia_style = ParagraphStyle(
             "Referencias",
             parent=styles["BodyText"],
@@ -923,9 +878,8 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     return buffer.read()
 
 
-def obtener_regularidad_metadata(user: User) -> Dict:
-    """
-    Devuelve los metadatos necesarios para armar planillas manuales:
+def obtener_regularidad_metadata(user: User) -> dict:
+    """Devuelve los metadatos necesarios para armar planillas manuales:
     profesorados accesibles, plantillas disponibles y columnas/situaciones.
     """
     return _regularidad_metadata_for_user(user)
@@ -939,43 +893,37 @@ def crear_planilla_regularidad(
     plantilla_id: int,
     dictado: str,
     fecha: date,
-    folio: Optional[str] = "",
-    plan_resolucion: Optional[str] = "",
+    folio: str | None = "",
+    plan_resolucion: str | None = "",
     observaciones: str = "",
-    datos_adicionales: Optional[dict] = None,
-    docentes: Optional[List[dict]] = None,
-    filas: Optional[List[dict]] = None,
+    datos_adicionales: dict | None = None,
+    docentes: list[dict] | None = None,
+    filas: list[dict] | None = None,
     estado: str = "final",
     dry_run: bool = False,
-) -> Dict:
+) -> dict:
     ensure_profesorado_access(user, profesorado_id, role_filter={"bedel", "secretaria"})
 
     try:
         profesorado = Profesorado.objects.get(pk=profesorado_id)
     except Profesorado.DoesNotExist:
-        raise ValueError("El profesorado especificado no existe.")
+        raise ValueError("El profesorado especificado no existe.") from None
 
     try:
-        materia = Materia.objects.select_related(
-            "plan_de_estudio", "plan_de_estudio__profesorado"
-        ).get(pk=materia_id)
+        materia = Materia.objects.select_related("plan_de_estudio", "plan_de_estudio__profesorado").get(pk=materia_id)
     except Materia.DoesNotExist:
-        raise ValueError("La materia especificada no existe.")
+        raise ValueError("La materia especificada no existe.") from None
 
     if materia.plan_de_estudio.profesorado_id != profesorado.id:
         raise ValueError("La materia seleccionada no pertenece al profesorado elegido.")
 
     try:
-        plantilla = RegularidadPlantilla.objects.select_related("formato").get(
-            pk=plantilla_id
-        )
+        plantilla = RegularidadPlantilla.objects.select_related("formato").get(pk=plantilla_id)
     except RegularidadPlantilla.DoesNotExist:
-        raise ValueError("La plantilla indicada no existe.")
+        raise ValueError("La plantilla indicada no existe.") from None
 
     if plantilla.dictado != dictado:
-        raise ValueError(
-            "El dictado seleccionado no coincide con la plantilla elegida."
-        )
+        raise ValueError("El dictado seleccionado no coincide con la plantilla elegida.")
 
     anio_academico = fecha.year
     numero = _next_planilla_numero(profesorado.id, anio_academico)
@@ -990,7 +938,7 @@ def crear_planilla_regularidad(
         raise ValueError("Debe proporcionar al menos una fila de estudiantes.")
 
     atomic_ctx = transaction.atomic if not dry_run else _atomic_rollback
-    warnings: List[str] = []
+    warnings: list[str] = []
     regularidades_registradas = 0
 
     with atomic_ctx():
@@ -1049,31 +997,23 @@ def crear_planilla_regularidad(
             dni = _normalize_value(fila_data.get("dni"))
             if dni:
                 if dni in dnis_usados:
-                    raise ValueError(
-                        f"El DNI {dni} aparece mÃƒÆ’Ã‚Â¡s de una vez en la planilla."
-                    )
+                    raise ValueError(f"El DNI {dni} aparece mÃƒÆ’Ã‚Â¡s de una vez en la planilla.")
                 dnis_usados.add(dni)
             estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
 
-            situacion = _resolve_situacion(
-                fila_data.get("situacion", ""), formato_para_situaciones
-            )
+            situacion = _resolve_situacion(fila_data.get("situacion", ""), formato_para_situaciones)
             nota_final_raw = fila_data.get("nota_final")
             nota_final_decimal = None
             if nota_final_raw not in (None, "", []):
                 try:
-                    nota_final_decimal = Decimal(str(nota_final_raw)).quantize(
-                        Decimal("0.1")
-                    )
-                except (InvalidOperation, ValueError):
+                    nota_final_decimal = Decimal(str(nota_final_raw)).quantize(Decimal("0.1"))
+                except (InvalidOperation, ValueError) as e:
                     raise ValueError(
-                        f"La nota final de la fila {orden} debe ser un nÃƒÆ’Ã‚Âºmero vÃƒÆ’Ã‚Â¡lido."
-                    )
+                        f"La nota final de la fila {orden} debe ser un número válido."
+                    ) from e
             nota_final_entera = None
             if nota_final_decimal is not None:
-                nota_final_entera = int(
-                    nota_final_decimal.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-                )
+                nota_final_entera = int(nota_final_decimal.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
             asistencia_raw = fila_data.get("asistencia")
             if asistencia_raw in (None, "", []):
@@ -1081,9 +1021,7 @@ def crear_planilla_regularidad(
             else:
                 asistencia = int(asistencia_raw)
                 if asistencia < 0 or asistencia > 100:
-                    raise ValueError(
-                        f"La asistencia de la fila {orden} debe estar entre 0 y 100."
-                    )
+                    raise ValueError(f"La asistencia de la fila {orden} debe estar entre 0 y 100.")
 
             excepcion = fila_data.get("excepcion")
             excepcion_bool = bool(excepcion)
@@ -1092,7 +1030,7 @@ def crear_planilla_regularidad(
 
             datos_extra = _limpiar_datos_fila(fila_data.get("datos"), columnas)
 
-            fila_obj = PlanillaRegularidadFila.objects.create(
+            PlanillaRegularidadFila.objects.create(
                 planilla=planilla,
                 orden=orden,
                 estudiante=estudiante,
@@ -1110,13 +1048,12 @@ def crear_planilla_regularidad(
                 and nota_final_entera is not None
                 and nota_final_entera < 8
             ):
-                raise ValueError(
-                    f"La nota final debe ser >= 8 para registrar una promociÃƒÆ’Ã‚Â³n en la fila {orden}."
-                )
+                raise ValueError(f"La nota final debe ser >= 8 para registrar una promociÃƒÆ’Ã‚Â³n en la fila {orden}.")
 
             if not estudiante:
                 warnings.append(
-                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitiÃƒÆ’Ã‚Â³ el registro de regularidad."
+                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. "
+                    "Se omitió el registro de regularidad."
                 )
                 continue
 
@@ -1126,9 +1063,7 @@ def crear_planilla_regularidad(
                 Regularidad.Situacion.REGULAR,
             }:
                 try:
-                    checklist = PreinscripcionChecklist.objects.get(
-                        preinscripcion__alumno=estudiante
-                    )
+                    checklist = PreinscripcionChecklist.objects.get(preinscripcion__alumno=estudiante)
                     if not checklist.curso_introductorio_aprobado:
                         raise ValueError(
                             f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
@@ -1138,29 +1073,25 @@ def crear_planilla_regularidad(
                     raise ValueError(
                         f"El estudiante {estudiante.dni} no posee checklist de preinscripciÃƒÆ’Ã‚Â³n. "
                         f"No se puede registrar la situaciÃƒÆ’Ã‚Â³n '{situacion}' para una materia EDI."
-                    )
+                    ) from None
 
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
 
             inscripcion = (
-                InscripcionMateriaAlumno.objects.filter(
-                    estudiante=estudiante, materia=materia, anio=anio_academico
-                )
+                InscripcionMateriaAlumno.objects.filter(estudiante=estudiante, materia=materia, anio=anio_academico)
                 .order_by("-anio")
                 .first()
             )
             if inscripcion is None:
                 inscripcion = (
-                    InscripcionMateriaAlumno.objects.filter(
-                        estudiante=estudiante, materia=materia
-                    )
+                    InscripcionMateriaAlumno.objects.filter(estudiante=estudiante, materia=materia)
                     .order_by("-anio")
                     .first()
                 )
                 if inscripcion is None:
                     warnings.append(
-                        f"[Fila {orden}] No se encontrÃƒÆ’Ã‚Â³ inscripciÃƒÆ’Ã‚Â³n para {estudiante.dni} en {materia.nombre}. "
-                        "Se registrÃƒÆ’Ã‚Â³ la regularidad sin asociarla a una inscripciÃƒÆ’Ã‚Â³n."
+                        f"[Fila {orden}] No se encontró inscripción para {estudiante.dni} en {materia.nombre}. "
+                        "Se registró la regularidad sin asociarla a una inscripción."
                     )
 
             regularidad_defaults = {
@@ -1237,9 +1168,7 @@ REQUIRED_COLUMNS_ESTUDIANTES = {
 }
 
 
-def _get_profesorado_from_cache(
-    cache: Dict[str, Profesorado], nombre: str
-) -> Profesorado:
+def _get_profesorado_from_cache(cache: dict[str, Profesorado], nombre: str) -> Profesorado:
     target = _normalize_label(nombre)
     opciones = []
     for profesorado in Profesorado.objects.all():
@@ -1249,17 +1178,15 @@ def _get_profesorado_from_cache(
             cache[nombre] = profesorado
             return profesorado
     disponibles = ", ".join(nombre for _, nombre in opciones)
-    raise CommandError(
-        f"No se encontrÃƒÆ’Ã‚Â³ el profesorado '{nombre}'. Disponibles: {disponibles}"
-    )
+    raise CommandError(f"No se encontrÃƒÆ’Ã‚Â³ el profesorado '{nombre}'. Disponibles: {disponibles}")
 
 
 def _import_estudiante_record(
-    record: Dict[str, Any],
+    record: dict[str, Any],
     *,
     profesorado: Profesorado,
     alumno_group: Group,
-) -> Tuple[Estudiante, bool]:
+) -> tuple[Estudiante, bool]:
     dni = (record.get("dni") or record.get("DNI") or "").strip()
     if not dni:
         raise ValueError("El DNI es obligatorio.")
@@ -1273,9 +1200,7 @@ def _import_estudiante_record(
     is_active = True if raw_is_active in (None, "", [], {}) else _to_bool(str(raw_is_active))
 
     raw_must_change = record.get("must_change_password")
-    must_change = (
-        True if raw_must_change in (None, "", [], {}) else _to_bool(str(raw_must_change))
-    )
+    must_change = True if raw_must_change in (None, "", [], {}) else _to_bool(str(raw_must_change))
 
     raw_fecha = record.get("fecha_nacimiento") or record.get("fecha_nac")
     if isinstance(raw_fecha, date):
@@ -1288,7 +1213,7 @@ def _import_estudiante_record(
     telefono = (record.get("telefono") or record.get("telÃƒÆ’Ã‚Â©fono") or "").strip()
     domicilio = (record.get("domicilio") or "").strip()
     estado_legajo = (record.get("estado_legajo") or "").strip().upper()
-    anio_ingreso = (record.get("anio_ingreso") or "").strip()
+    anio_ingreso_val = (record.get("anio_ingreso") or "").strip()
     genero = (record.get("genero") or "").strip()
     rol_extra = (record.get("rol_extra") or "").strip()
     observaciones = (record.get("observaciones") or "").strip()
@@ -1332,6 +1257,13 @@ def _import_estudiante_record(
     if alumno_group not in user.groups.all():
         user.groups.add(alumno_group)
 
+    if not anio_ingreso_val:
+        raise ValueError("El campo anio_ingreso es obligatorio.")
+    try:
+        anio_ingreso_int = int(anio_ingreso_val)
+    except ValueError as exc:
+        raise ValueError(f"anio_ingreso inválido: {anio_ingreso_val}") from exc
+
     estudiante, student_created = Estudiante.objects.get_or_create(
         dni=dni,
         defaults={
@@ -1344,7 +1276,7 @@ def _import_estudiante_record(
             "legajo": legajo_valor or None,
             "datos_extra": _merge_datos_extra(
                 {},
-                anio_ingreso=anio_ingreso,
+                anio_ingreso=anio_ingreso_val,
                 genero=genero,
                 rol_extra=rol_extra,
                 observaciones=observaciones,
@@ -1380,7 +1312,7 @@ def _import_estudiante_record(
             updated_student = True
         merged_extra = _merge_datos_extra(
             estudiante.datos_extra,
-            anio_ingreso=anio_ingreso,
+            anio_ingreso=anio_ingreso_val,
             genero=genero,
             rol_extra=rol_extra,
             observaciones=observaciones,
@@ -1395,15 +1327,20 @@ def _import_estudiante_record(
     else:
         estudiante.save()
 
-    estudiante.carreras.add(profesorado)
+    cohorte_asignada = cohorte or str(anio_ingreso_int)
+    estudiante.asignar_profesorado(
+        profesorado,
+        anio_ingreso=anio_ingreso_int,
+        cohorte=cohorte_asignada,
+    )
     return estudiante, student_created
 
 
-def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
+def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> dict:
     """Procesa datos de estudiantes desde un CSV."""
     processed_count = 0
     skipped_count = 0
-    errors: List[str] = []
+    errors: list[str] = []
 
     f = io.StringIO(file_content)
     reader = csv.DictReader(f, delimiter=";")
@@ -1411,15 +1348,9 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
     headers = [_normalize_header(h) for h in raw_headers]
     normalized_headers = {_normalize_label(h) for h in headers}
 
-    missing = {
-        orig
-        for orig in REQUIRED_COLUMNS_ESTUDIANTES
-        if _normalize_label(orig) not in normalized_headers
-    }
+    missing = {orig for orig in REQUIRED_COLUMNS_ESTUDIANTES if _normalize_label(orig) not in normalized_headers}
     if missing:
-        errors.append(
-            f"El CSV no contiene las columnas requeridas: {', '.join(sorted(missing))}"
-        )
+        errors.append(f"El CSV no contiene las columnas requeridas: {', '.join(sorted(missing))}")
         return {
             "ok": False,
             "processed": processed_count,
@@ -1428,16 +1359,13 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
         }
 
     alumno_group, _ = Group.objects.get_or_create(name="alumno")
-    carreras_cache: Dict[str, Profesorado] = {}
+    carreras_cache: dict[str, Profesorado] = {}
     atomic_context = transaction.atomic if not dry_run else _atomic_rollback
 
     with atomic_context():
         for idx, raw_row in enumerate(reader, start=2):
             try:
-                normalized_row = {
-                    _normalize_header(k): _normalize_value(v)
-                    for k, v in raw_row.items()
-                }
+                normalized_row = {_normalize_header(k): _normalize_value(v) for k, v in raw_row.items()}
 
                 dni = normalized_row.get("DNI", "").strip()
                 if not dni:
@@ -1451,9 +1379,7 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
 
                 profesorado = carreras_cache.get(carrera_nombre)
                 if profesorado is None:
-                    profesorado = _get_profesorado_from_cache(
-                        carreras_cache, carrera_nombre
-                    )
+                    profesorado = _get_profesorado_from_cache(carreras_cache, carrera_nombre)
 
                 record = dict(normalized_row)
                 record["dni"] = dni
@@ -1475,7 +1401,7 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> Dict:
     }
 
 
-def crear_estudiante_manual(*, user: User, data: Dict[str, Any]) -> Dict[str, Any]:
+def crear_estudiante_manual(*, user: User, data: dict[str, Any]) -> dict[str, Any]:
     alumno_group, _ = Group.objects.get_or_create(name="alumno")
     profesorado_id = data.get("profesorado_id")
     if not profesorado_id:
@@ -1484,7 +1410,7 @@ def crear_estudiante_manual(*, user: User, data: Dict[str, Any]) -> Dict[str, An
     try:
         profesorado = Profesorado.objects.get(pk=profesorado_id)
     except Profesorado.DoesNotExist:
-        raise ValueError("Profesorado no encontrado.")
+        raise ValueError("Profesorado no encontrado.") from None
 
     record = dict(data)
     record.pop("profesorado_id", None)
@@ -1506,6 +1432,8 @@ def crear_estudiante_manual(*, user: User, data: Dict[str, Any]) -> Dict[str, An
         "created": created,
         "message": message,
     }
+
+
 REQUIRED_COLUMNS_FOLIOS_FINALES = {
     "DNI",
     "Materia",
@@ -1517,7 +1445,7 @@ REQUIRED_COLUMNS_FOLIOS_FINALES = {
 }
 
 
-def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict:
+def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> dict:
     processed_count = 0
     skipped_count = 0
     errors = []
@@ -1529,9 +1457,7 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict
 
     missing = REQUIRED_COLUMNS_FOLIOS_FINALES - set(headers)
     if missing:
-        errors.append(
-            f"El CSV no contiene las columnas requeridas: {', '.join(sorted(missing))}"
-        )
+        errors.append(f"El CSV no contiene las columnas requeridas: {', '.join(sorted(missing))}")
         return {
             "ok": False,
             "processed": processed_count,
@@ -1544,10 +1470,7 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict
     with atomic_context():
         for idx, raw_row in enumerate(reader, start=2):
             try:
-                normalized_row = {
-                    _normalize_header(k): _normalize_value(v)
-                    for k, v in raw_row.items()
-                }
+                normalized_row = {_normalize_header(k): _normalize_value(v) for k, v in raw_row.items()}
 
                 dni = normalized_row.get("DNI", "").strip()
                 if not dni:
@@ -1585,7 +1508,7 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict
                 try:
                     fecha_mesa = _parse_date(fecha_mesa_str)
                 except CommandError as e:
-                    raise ValueError(f"Fecha Mesa: {e}")
+                    raise ValueError(f"Fecha Mesa: {e}") from e
 
                 mesa_examen = MesaExamen.objects.filter(
                     materia=materia,
@@ -1595,7 +1518,8 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict
                 ).first()
                 if not mesa_examen:
                     raise ValueError(
-                        f"Mesa de examen para {materia.nombre} ({tipo_mesa_str}, {modalidad_mesa_str}) en {fecha_mesa_str} no encontrada."
+                        f"Mesa de examen para {materia.nombre} ({tipo_mesa_str}, {modalidad_mesa_str}) "
+                        f"en {fecha_mesa_str} no encontrada."
                     )
 
                 inscripcion_mesa = InscripcionMesa.objects.filter(
@@ -1605,7 +1529,8 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> Dict
 
                 if not inscripcion_mesa:
                     raise ValueError(
-                        f"InscripciÃƒÆ’Ã‚Â³n a mesa de examen para {estudiante.dni} en {materia.nombre} ({fecha_mesa_str}) no encontrada."
+                        f"Inscripción a mesa de examen para {estudiante.dni} en {materia.nombre} "
+                        f"({fecha_mesa_str}) no encontrada."
                     )
 
                 inscripcion_mesa.folio = folio
@@ -1634,7 +1559,7 @@ REQUIRED_COLUMNS_EQUIVALENCIAS = {
 }
 
 
-def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
+def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> dict:
     processed_count = 0
     skipped_count = 0
     errors = []
@@ -1646,9 +1571,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
 
     missing = REQUIRED_COLUMNS_EQUIVALENCIAS - set(headers)
     if missing:
-        errors.append(
-            f"El CSV no contiene las columnas requeridas: {', '.join(sorted(missing))}"
-        )
+        errors.append(f"El CSV no contiene las columnas requeridas: {', '.join(sorted(missing))}")
         return {
             "ok": False,
             "processed": processed_count,
@@ -1658,51 +1581,31 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
 
     atomic_context = transaction.atomic if not dry_run else _atomic_rollback
 
-    equivalencias_cache: Dict[str, EquivalenciaCurricular] = {}
+
 
     with atomic_context():
         for idx, raw_row in enumerate(reader, start=2):
             try:
-                normalized_row = {
-                    _normalize_header(k): _normalize_value(v)
-                    for k, v in raw_row.items()
-                }
+                normalized_row = {_normalize_header(k): _normalize_value(v) for k, v in raw_row.items()}
 
-                codigo_equivalencia = normalized_row.get(
-                    "Codigo Equivalencia", ""
-                ).strip()
-                nombre_equivalencia = normalized_row.get(
-                    "Nombre Equivalencia", ""
-                ).strip()
+                codigo_equivalencia = normalized_row.get("Codigo Equivalencia", "").strip()
+                nombre_equivalencia = normalized_row.get("Nombre Equivalencia", "").strip()
                 materia_nombre = normalized_row.get("Materia", "").strip()
                 anio_cursada_str = normalized_row.get("AÃƒÆ’Ã‚Â±o Cursada", "").strip()
-                plan_resolucion = normalized_row.get(
-                    "Plan de Estudio Resolucion", ""
-                ).strip()
+                plan_resolucion = normalized_row.get("Plan de Estudio Resolucion", "").strip()
 
-                if (
-                    not codigo_equivalencia
-                    or not materia_nombre
-                    or not anio_cursada_str
-                    or not plan_resolucion
-                ):
+                if not codigo_equivalencia or not materia_nombre or not anio_cursada_str or not plan_resolucion:
                     raise ValueError(
-                        "Codigo Equivalencia, Materia, AÃƒÆ’Ã‚Â±o Cursada y Plan de Estudio Resolucion son campos requeridos."
+                        "Codigo Equivalencia, Materia, Año Cursada y Plan de Estudio Resolucion son campos requeridos."
                     )
                 try:
                     anio_cursada = int(anio_cursada_str)
-                except ValueError:
-                    raise ValueError(
-                        f"AÃƒÆ’Ã‚Â±o Cursada '{anio_cursada_str}' no es un nÃƒÆ’Ã‚Âºmero vÃƒÆ’Ã‚Â¡lido."
-                    )
+                except ValueError as e:
+                    raise ValueError(f"Año Cursada '{anio_cursada_str}' no es un número válido.") from e
 
-                plan_de_estudio = PlanDeEstudio.objects.filter(
-                    resolucion=plan_resolucion
-                ).first()
+                plan_de_estudio = PlanDeEstudio.objects.filter(resolucion=plan_resolucion).first()
                 if not plan_de_estudio:
-                    raise ValueError(
-                        f"Plan de Estudio con resoluciÃƒÆ’Ã‚Â³n '{plan_resolucion}' no encontrado."
-                    )
+                    raise ValueError(f"Plan de Estudio con resoluciÃƒÆ’Ã‚Â³n '{plan_resolucion}' no encontrado.")
 
                 materia = Materia.objects.filter(
                     nombre=materia_nombre,
@@ -1711,7 +1614,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> Dict:
                 ).first()
                 if not materia:
                     raise ValueError(
-                        f"Materia '{materia_nombre}' ({anio_cursada}Ãƒâ€šÃ‚Â° aÃƒÆ’Ã‚Â±o, Plan {plan_resolucion}) no encontrada."
+                        f"Materia '{materia_nombre}' ({anio_cursada}° año, Plan {plan_resolucion}) no encontrada."
                     )
 
                 equivalencia, created = EquivalenciaCurricular.objects.get_or_create(

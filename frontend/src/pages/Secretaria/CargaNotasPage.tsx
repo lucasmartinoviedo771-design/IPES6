@@ -616,7 +616,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     try {
       await guardarPlanillaRegularidad(payload);
       enqueueSnackbar("Notas de regularidad guardadas correctamente.", { variant: "success" });
-      setDefaultFechaCierre(payload.fecha_cierre);
+      setDefaultFechaCierre(payload.fecha_cierre ?? "");
       setDefaultObservaciones(payload.observaciones_generales ?? "");
       await fetchPlanilla(payload.comision_id);
     } catch (error: any) {

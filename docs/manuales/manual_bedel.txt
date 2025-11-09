@@ -1,82 +1,60 @@
 Manual de uso - Rol Bedel
-================================
-Objetivo del rol
-El rol de Bedel es fundamental para el soporte a la gestión académica, con un foco en la administración de alumnos, el seguimiento de inscripciones y la gestión de la documentación.
+=========================
 
-Seguridad y acceso
-- Utiliza credenciales personales con contraseña robusta.
-- No compartas sesiones ni ejecutes acciones en nombre de terceros.
+Propósito del rol
+-----------------
+El equipo de bedelía es la primera línea de soporte para estudiantes y docentes. Controla documentación, administra mesas, colabora con la carga de notas y responde consultas mediante el portal.
 
-Responsabilidades clave
-- Gestión de preinscripciones: revisión, validación de datos, y cambio de estado (confirmación, observación, rechazo).
-- Soporte en la administración de la estructura académica: carreras, planes de estudio, materias y comisiones.
-- Carga de notas de mesas de examen y cursadas.
-- Gestión de la comunicación con estudiantes a través del sistema de mensajería.
+Acceso a módulos
+----------------
+- **Dashboard / Preinscripciones:** seguimiento rápido de solicitudes nuevas.
+- **Gestión > Confirmar** y **Secretaría > Confirmar Inscripción:** panel completo para validar datos y subir checklist documental.
+- **Secretaría > Comisiones, Mesas, Carga de Notas, Analíticos, Estudiantes y Habilitar Fechas:** subconjunto de pantallas habilitadas para actualizar información operativa.
+- **Portal de Alumnos:** ingreso a `/alumnos`, `/alumnos/mesa-examen`, `/alumnos/trayectoria` (solo consulta) y `/alumnos/certificado-regular` para asistir a los estudiantes en mostrador.
+- **Mensajes, Carreras, Reportes y Vistas:** comunicación institucional y consulta de indicadores.
+- **Primera Carga / Actas Primera Carga** y **Asistencia/Reportes** cuando se gestiona la cohorte inicial o se controlan firmas.
 
-Pantallas y modulos
-- Dashboard: Visión general de las preinscripciones.
-- Preinscripciones: Módulo para la formalización de inscripciones.
-- Secretaría: Acceso a partes de la configuración académica:
-  - Gestión de Profesorados, Planes, Materias, Correlatividades.
-  - Gestión de Comisiones, Mesas de examen y Carga de Notas.
-- Carreras, Reportes y Vistas globales: Para seguimiento y consulta.
-- Mensajes: Para comunicación con estudiantes y otros roles.
+Procedimientos clave
+--------------------
 
-Circuitos Administrativos
-================================
+1. Formalización de preinscripciones
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. Abrir `Preinscripciones`, filtrar por estado “Pendiente” y ubicar al aspirante (DNI o código PRE-XXXX).
+2. Ingresar con “Ver / Editar” para revisar datos personales, corregir errores y guardar.
+3. Desde el botón “Confirmar” o desde `Secretaría > Confirmar Inscripción`, completar el checklist documental marcando cada ítem recibido (DNI, analítico, fotos, certificados). 
+4. Definir el estado documental:
+   - **Regular:** toda la documentación obligatoria cargada.
+   - **Condicional:** falta algún documento; es obligatorio marcar “DDJJ / Nota compromiso”.
+5. Cambiar el estado de la preinscripción a **Confirmada**, **Observada** (requiere motivo) o **Rechazada**. El sistema registra al usuario que realizó la acción y notifica al aspirante.
 
-Nueva Preinscripción
--------------------------
-Este circuito permite a un aspirante o a un administrativo en su nombre completar el formulario de preinscripción a una carrera.
+2. Gestión de comisiones y horarios
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. Ingresar a `Secretaría > Comisiones`.
+2. Seleccionar la carrera/plan y usar “Nueva comisión” para cargar **materia**, **turno**, **docente** y **cupo**.
+3. Editar horarios desde la misma pantalla o completarlos en `Secretaría > Horarios` cuando se habilite (día, hora inicio/fin, aula). Esto evita superposiciones y permite responder consultas de alumnos.
 
-Acceso y Propósito:
-- El formulario es público y se accede desde la página principal del sistema.
-- Un bedel puede iniciarlo también desde el Dashboard > "Nueva Preinscripción".
-- El objetivo es recolectar todos los datos necesarios del aspirante de forma digital para formalizar su legajo.
+3. Administración de mesas y notas
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. `Secretaría > Mesas`: crear la mesa indicando **materia**, **tipo** (final, libre, extraordinaria), **fecha**, **tribunal** y **cupos**. Publicar para habilitar el formulario de alumnos.
+2. Controlar inscriptos con los filtros de la tabla o desde `Alumnos > Mesa de Examen` para verificar qué ven los estudiantes.
+3. Una vez tomada la mesa, abrir `Secretaría > Carga de Notas`, seleccionar la mesa y cargar **nota**, **condición** y observaciones por cada estudiante. Guardar sección por sección.
+4. Generar el acta oficial en `Secretaría > Actas Examen` (o en Primera Carga cuando corresponda), revisar totales y descargar el PDF para firmas.
 
-Pasos del Asistente:
-(Los pasos son idénticos al circuito de Secretaría y Admin)
-1.  Datos Personales
-2.  Contacto
-3.  Estudios
-4.  Carrera y Documentación
-5.  Confirmar y Enviar (con descarga de PDF)
+4. Certificados y trámites de alumnos
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. `Secretaría > Analíticos`: recibir pedidos provenientes de `/alumnos/pedido-analitico`. Al abrir uno, completar datos de emisión (número, destino, observaciones) y actualizar el estado.
+2. Para constancias rápidas, orientar al estudiante a `/alumnos/certificado-regular`; si no puede acceder, generar el PDF desde el mismo módulo y enviarlo por Mensajes.
+3. En `Secretaría > Estudiantes`, buscar por DNI y actualizar datos de contacto, estado documental u observaciones internas.
 
-Puntos Clave y Errores Comunes:
-- **Ventana de Preinscripción:** El formulario solo está disponible si una ventana de preinscripción está activa.
-- **Confirmación de la Preinscripción:** El envío de este formulario solo crea el registro. La confirmación final se hace desde el módulo de `Preinscripciones`.
+5. Comunicación y reportes
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. En `Mensajes` responder consultas y crear avisos masivos (por ejemplo, cambios de aula). Usar filtros por rol para dirigir la comunicación.
+2. `Reportes` permite descargar listados de inscriptos por comisión, mesas abiertas o documentación pendiente. Útil para reportar a dirección al cierre del día.
+3. `Vistas` ofrece gráficos listos para exponer en reuniones (cantidad de confirmaciones, regularidades próximas a vencer, etc.).
 
-Sistema de Mensajería
--------------------------
-Herramienta de comunicación interna para contactar a estudiantes y personal.
-
-Acceso y Propósito:
-- Se accede desde el menú lateral ("Mensajes").
-- Permite centralizar la comunicación y mantener un historial.
-
-Crear una Nueva Conversación:
-1.  Haz clic en "Nuevo mensaje".
-2.  Define un asunto y tema.
-3.  Añade destinatarios (búsqueda individual o por rol). Como Bedel, puedes enviar mensajes masivos a roles como "Estudiantes".
-4.  Escribe el mensaje y envíalo.
-
-Gestionar Conversaciones:
-- **Responder:** Puedes responder en conversaciones abiertas.
-- **Solicitar Cierre:** Si una consulta fue resuelta, puedes solicitar su cierre.
-
-Confirmación de Inscripciones (Formalización)
--------------------------------------------
-Este circuito es la tarea principal del Bedel para oficializar la inscripción de un aspirante.
-
-Acceso y Propósito:
-- Se accede desde el Dashboard > "Ver Preinscripciones".
-- El objetivo es validar los datos, verificar la documentación y cambiar el estado de la preinscripción.
-
-Proceso de Formalización:
-1.  **Seleccionar Preinscripción:** Haz clic en "Ver / Editar" en la preinscripción deseada.
-2.  **Revisión y Edición de Datos:** Corrige cualquier dato del formulario si es necesario.
-3.  **Checklist de Documentación:** Marca los documentos presentados por el aspirante. El estado documental ("Regular" o "Condicional") se actualiza automáticamente.
-4.  **Cambio de Estado:**
-    *   **Confirmar Inscripción:** Si la documentación es correcta, confirma la inscripción.
-    *   **Marcar Observada:** Si hay problemas, marca la preinscripción como observada y añade un motivo.
-    *   **Rechazar:** Si no es válida, recházala con un motivo.
+Buenas prácticas
+----------------
+- Registrar cada entrega documental en el checklist para evitar duplicar trabajo entre turnos.
+- Antes de cerrar una mesa, verificar que todas las notas estén cargadas y que el acta se haya descargado.
+- Utilizar el portal de alumnos como vista previa al asistir a cada estudiante; así confirmarás exactamente qué botón o mensaje ve en su pantalla.
+- Documentar incidencias en Mensajes o escalar a Secretaría/Admin cuando la acción exceda los permisos de bedelía.

@@ -1,6 +1,7 @@
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Needed by WeasyPrint on Windows to avoid GLib probing UWP handlers
@@ -14,19 +15,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # .../backend
 # Colocá el archivo .env en backend/.env (mismo nivel que manage.py)
 load_dotenv(BASE_DIR / ".env")
 
-RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '')
-RECAPTCHA_MIN_SCORE = float(os.getenv('RECAPTCHA_MIN_SCORE', '0.3'))
-PREINS_RATE_LIMIT_PER_HOUR = int(os.getenv('PREINS_RATE_LIMIT_PER_HOUR', '5'))
+RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
+RECAPTCHA_MIN_SCORE = float(os.getenv("RECAPTCHA_MIN_SCORE", "0.3"))
+PREINS_RATE_LIMIT_PER_HOUR = int(os.getenv("PREINS_RATE_LIMIT_PER_HOUR", "5"))
 
 # === Entorno ==============================================================
 DJANGO_ENV = os.getenv("DJANGO_ENV", "development").lower()
 IS_PROD = DJANGO_ENV == "production"
+
+
 # === Helpers para ENV ===================================================
 def env_bool(name: str, default: bool = False) -> bool:
     val = os.getenv(name)
     if val is None:
         return default
     return str(val).lower() in ("1", "true", "yes", "on")
+
 
 def env_list(name: str, default=None):
     if default is None:
@@ -36,15 +40,17 @@ def env_list(name: str, default=None):
         return default
     return [item.strip() for item in raw.split(",") if item.strip()]
 
+
 # === Seguridad / Debug ==================================================
-DEFAULT_DEBUG = False if IS_PROD else True
+DEFAULT_DEBUG = not IS_PROD
 DEBUG = env_bool("DEBUG", DEFAULT_DEBUG)
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     if IS_PROD:
         raise RuntimeError(
-            "SECRET_KEY no está configurada. Define la variable de entorno SECRET_KEY con un valor seguro en producción."
+            "SECRET_KEY no está configurada. "
+            "Define la variable de entorno SECRET_KEY con un valor seguro en producción."
         )
     SECRET_KEY = "dev-insecure-change-me"
 
@@ -62,20 +68,21 @@ CSRF_COOKIE_SECURE = not DEBUG
 
 # === Apps ===============================================================
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'corsheaders',
-    'core',
-    'apps.carreras',
-    'apps.preinscriptions',
-    'apps.alumnos',
-    'apps.guias',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "corsheaders",
+    "core",
+    "apps.carreras",
+    "apps.preinscriptions",
+    "apps.alumnos",
+    "apps.guias",
+    "apps.asistencia",
 ]
 
 # === Middleware =========================================================
@@ -132,28 +139,35 @@ USE_TZ = False
 
 # === Archivos estáticos / media ========================================
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"          # para collectstatic en prod
-STATICFILES_DIRS = [BASE_DIR / "static"]        # opcional (para assets locales)
+STATIC_ROOT = BASE_DIR / "staticfiles"  # para collectstatic en prod
+STATICFILES_DIRS = [BASE_DIR / "static"]  # opcional (para assets locales)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"                 # aquí se guardan las fotos/documentos
+MEDIA_ROOT = BASE_DIR / "media"  # aquí se guardan las fotos/documentos
 
 # Límite de subida (10 MB de ejemplo)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # === CORS ===============================================================
-CORS_ALLOW_ALL_ORIGINS = True
+
 
 # Si necesitás permitir todos los headers/metodos en dev:
 try:
     from corsheaders.defaults import default_headers
+
     CORS_ALLOW_HEADERS = list(default_headers)
 except ImportError:
     CORS_ALLOW_HEADERS = [
-    "accept", "accept-encoding", "authorization", "content-type", "origin",
-    "user-agent", "x-csrftoken", "x-requested-with"
-]
+        "accept",
+        "accept-encoding",
+        "authorization",
+        "content-type",
+        "origin",
+        "user-agent",
+        "x-csrftoken",
+        "x-requested-with",
+    ]
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 # --- fin CORS ---
@@ -162,7 +176,10 @@ CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 try:
     from corsheaders.defaults import default_headers, default_methods
 except Exception:
-    default_headers, default_methods = (), ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+    default_headers, default_methods = (
+        (),
+        ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
+    )
 
 FRONTEND_ORIGINS = env_list(
     "FRONTEND_ORIGINS",
@@ -193,7 +210,7 @@ LOGGING = {
 }
 
 # === Django 5 defaults ==================================================
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Política de contraseñas explícita
 AUTH_PASSWORD_VALIDATORS = [
@@ -216,7 +233,7 @@ AUTH_PASSWORD_VALIDATORS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",  # Bearer JWT
-        "rest_framework.authentication.SessionAuthentication",         # Para admin / sesión
+        "rest_framework.authentication.SessionAuthentication",  # Para admin / sesión
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.AllowAny",  # Ajustá a gusto a nivel vista
@@ -238,7 +255,7 @@ SIMPLE_JWT = {
 # === JWT Cookies ==========================================================
 JWT_ACCESS_COOKIE_NAME = "jwt_access_token"
 JWT_REFRESH_COOKIE_NAME = "jwt_refresh_token"
-JWT_COOKIE_PATH = "/api/" # Ruta donde las cookies JWT estarán disponibles
+JWT_COOKIE_PATH = "/api/"  # Ruta donde las cookies JWT estarán disponibles
 
 # Cookies/seguridad (ajustá para prod)
 SESSION_COOKIE_SAMESITE = "Lax"

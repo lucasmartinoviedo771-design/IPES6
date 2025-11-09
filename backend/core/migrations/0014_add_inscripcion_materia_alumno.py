@@ -5,24 +5,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0013_add_preinscripcion_checklist'),
+        ("core", "0013_add_preinscripcion_checklist"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='InscripcionMateriaAlumno',
+            name="InscripcionMateriaAlumno",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('anio', models.IntegerField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('estudiante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='inscripciones_materia', to='core.estudiante')),
-                ('materia', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='inscripciones_alumnos', to='core.materia')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("anio", models.IntegerField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "estudiante",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="inscripciones_materia",
+                        to="core.estudiante",
+                    ),
+                ),
+                (
+                    "materia",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="inscripciones_alumnos",
+                        to="core.materia",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-anio', '-created_at'],
-                'unique_together': {('estudiante', 'materia', 'anio')},
+                "ordering": ["-anio", "-created_at"],
+                "unique_together": {("estudiante", "materia", "anio")},
             },
         ),
     ]

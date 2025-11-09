@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0017_preinscripcion_datos_extra'),
+        ("core", "0017_preinscripcion_datos_extra"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='preinscripcion',
-            name='activa',
+            model_name="preinscripcion",
+            name="activa",
             field=models.BooleanField(default=True),
         ),
         migrations.AlterField(
-            model_name='estudiante',
-            name='fecha_nacimiento',
+            model_name="estudiante",
+            name="fecha_nacimiento",
             field=models.DateField(blank=True, null=True),
         ),
     ]

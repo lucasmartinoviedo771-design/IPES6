@@ -31,6 +31,7 @@ import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
 import InsightsIcon from "@mui/icons-material/Insights";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // Importar ícono de ayuda
 import UploadFileIcon from "@mui/icons-material/UploadFile"; // Importar ícono para Primera Carga
@@ -111,6 +112,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     "tutor",
     "coordinador"
   ]);
+  const canAsistenciaReportes = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
   const canAlumnoPortal = hasAnyRole(user, ["alumno"]);
   const canAlumnoPanel = hasAnyRole(user, [
     "admin",
@@ -123,7 +125,10 @@ export default function AppShell({ children }: PropsWithChildren) {
   ]);
   const canPrimeraCarga = hasAnyRole(user, ["admin", "secretaria", "bedel"]); // New role check
 
-  const canUseMessages = !!user && !hasAnyRole(user, ["preinscripciones"]);
+  const canUseMessages =
+    !!user &&
+    (!hasAnyRole(user, ["preinscripciones"]) ||
+      hasAnyRole(user, ["admin", "secretaria", "bedel"]));
 
 
   const { data: messageSummary } = useQuery({
@@ -146,7 +151,9 @@ export default function AppShell({ children }: PropsWithChildren) {
   useEffect(() => {
     try {
       localStorage.setItem("sidebarOpen", open ? "1" : "0");
-    } catch {}
+    } catch (error) {
+      console.warn("No se pudo persistir la preferencia del menú lateral", error);
+    }
   }, [open]);
 
   return (
@@ -243,7 +250,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/dashboard")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><DashboardIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><DashboardIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Dashboard" />
             </ListItemButton>
           )}
@@ -254,7 +261,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/preinscripciones")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><AssignmentIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><AssignmentIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Formalizar inscripción" />
             </ListItemButton>
           )}
@@ -265,7 +272,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/carreras")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><WorkspacesIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><WorkspacesIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Carreras" />
             </ListItemButton>
           )}
@@ -276,8 +283,19 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/reportes")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><BarChartIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><BarChartIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Reportes" />
+            </ListItemButton>
+          )}
+
+          {canAsistenciaReportes && (
+            <ListItemButton
+              selected={current.startsWith("/asistencia")}
+              onClick={() => navigate("/asistencia/reportes")}
+              sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><FactCheckIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Asistencia" />
             </ListItemButton>
           )}
 
@@ -287,11 +305,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/mensajes")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                <Badge color={badgeColor} badgeContent={unreadMessages} max={99}>
-                  <MailOutlineIcon fontSize="small" />
-                </Badge>
-              </ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36 }}><Badge color={badgeColor} badgeContent={unreadMessages} max={99}><MailOutlineIcon fontSize="small" sx={{ color: "#000000" }} /></Badge></ListItemIcon>
               <ListItemText primary="Mensajes" />
             </ListItemButton>
           )}
@@ -302,7 +316,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/vistas")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><InsightsIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><InsightsIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Vistas globales" />
             </ListItemButton>
           )}
@@ -313,7 +327,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/secretaria")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><SettingsIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Secretaría" />
             </ListItemButton>
           )}
@@ -324,7 +338,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/alumnos")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><SchoolIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><SchoolIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Alumnos" />
             </ListItemButton>
           )}
@@ -335,7 +349,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               onClick={() => navigate("/admin/primera-carga")}
               sx={{ borderRadius: 2, mx: 1, my: 0.5, "&.Mui-selected": { background: "#dfe3ce" } }}
             >
-              <ListItemIcon sx={{ minWidth: 36 }}><UploadFileIcon fontSize="small" /></ListItemIcon>
+              <ListItemIcon sx={{ minWidth: 36, color: "#000000" }}><UploadFileIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Primera Carga" />
             </ListItemButton>
           )}

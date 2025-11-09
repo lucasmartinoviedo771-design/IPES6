@@ -1,14 +1,13 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-REQUIRED_VARS = (
-    "SECRET_KEY",
-)
+REQUIRED_VARS = ("SECRET_KEY",)
 
 RATE_LIMIT_VARS = (
     "LOGIN_RATE_LIMIT_ATTEMPTS",
     "LOGIN_RATE_LIMIT_WINDOW_SECONDS",
 )
+
 
 class Command(BaseCommand):
     help = "Verifica que las variables de entorno críticas estén configuradas."

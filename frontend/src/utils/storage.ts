@@ -1,5 +1,5 @@
 export const saveJSON = (key: string, value: unknown) => {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* Ignored, localStorage operations can fail */ }
 };
 
 export const loadJSON = <T=any>(key: string, fallback: T): T => {
@@ -10,5 +10,5 @@ export const loadJSON = <T=any>(key: string, fallback: T): T => {
 };
 
 export const removeKey = (key: string) => {
-  try { localStorage.removeItem(key); } catch {}
+  try { localStorage.removeItem(key); } catch (e) { /* Ignored, localStorage operations can fail */ }
 };

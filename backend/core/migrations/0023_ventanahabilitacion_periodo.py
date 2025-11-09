@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("core", "0022_regularidad_asistencia_porcentaje_and_more"),
     ]

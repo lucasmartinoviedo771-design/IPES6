@@ -4,7 +4,6 @@ from django.conf import settings
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("core", "0033_planillas_regularidad"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

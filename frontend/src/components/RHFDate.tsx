@@ -1,6 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 
 export default function RHFDate({
   name,
@@ -10,8 +10,8 @@ export default function RHFDate({
 }: {
   name: string;
   label: string;
-  minDate?: any;
-  maxDate?: any;
+  minDate?: Dayjs | null;
+  maxDate?: Dayjs | null;
 }) {
   const { control } = useFormContext();
 
@@ -25,8 +25,8 @@ export default function RHFDate({
           format="DD/MM/YYYY"
           value={field.value ? dayjs(field.value) : null}         // <<--- siempre Dayjs
           onChange={(d) => field.onChange(d ? d.format("YYYY-MM-DD") : "")}
-          minDate={minDate}
-          maxDate={maxDate}
+          minDate={minDate ?? undefined}
+          maxDate={maxDate ?? undefined}
           slotProps={{
             textField: {
               fullWidth: true,

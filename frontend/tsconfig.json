@@ -20,7 +20,11 @@
       "@/*": [
         "src/*"
       ]
-    }
+    },
+    "types": [
+      "vitest/globals",
+      "vite/client"
+    ]
   },
   "include": [
     "src"

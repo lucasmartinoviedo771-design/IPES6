@@ -252,6 +252,78 @@ export async function obtenerCarrerasActivas(params?: { dni?: string }): Promise
   return data;
 }
 
+export async function descargarCertificadoRegular(params: {
+  profesorado_id: number;
+  plan_id: number;
+  dni?: string;
+}): Promise<Blob> {
+  const response = await client.get(`/alumnos/certificados/alumno-regular`, {
+    params,
+    responseType: "blob",
+  });
+  return response.data as Blob;
+}
+
+export type HorarioMateriaCeldaDTO = {
+  materia_id: number;
+  materia_nombre: string;
+  comisiones: string[];
+  docentes: string[];
+  observaciones?: string | null;
+  regimen: string;
+  cuatrimestre?: string | null;
+  es_cuatrimestral: boolean;
+};
+
+export type HorarioDiaDTO = {
+  numero: number;
+  nombre: string;
+};
+
+export type HorarioFranjaDTO = {
+  orden: number;
+  desde: string;
+  hasta: string;
+};
+
+export type HorarioCeldaDTO = {
+  dia_numero: number;
+  franja_orden: number;
+  dia: string;
+  desde: string;
+  hasta: string;
+  materias: HorarioMateriaCeldaDTO[];
+};
+
+export type HorarioTablaDTO = {
+  key: string;
+  profesorado_id: number;
+  profesorado_nombre: string;
+  plan_id: number;
+  plan_resolucion?: string | null;
+  anio_plan: number;
+  anio_plan_label: string;
+  turno_id: number;
+  turno_nombre: string;
+  cuatrimestres: string[];
+  dias: HorarioDiaDTO[];
+  franjas: HorarioFranjaDTO[];
+  celdas: HorarioCeldaDTO[];
+  observaciones?: string | null;
+};
+
+export async function obtenerHorarioAlumno(params?: {
+  profesorado_id?: number;
+  plan_id?: number;
+  turno_id?: number;
+  anio_plan?: number;
+  cuatrimestre?: string;
+  dni?: string;
+}): Promise<HorarioTablaDTO[]> {
+  const { data } = await client.get<HorarioTablaDTO[]>(`/alumnos/horarios`, { params });
+  return data;
+}
+
 export async function obtenerHistorialAlumno(params?: { dni?: string }): Promise<HistorialAlumnoDTO> {
   const { data } = await client.get<HistorialAlumnoDTO>(`/alumnos/historial`, { params });
   return data;
@@ -362,8 +434,28 @@ export type MesaPlanillaDTO = {
   alumnos: MesaPlanillaAlumnoDTO[];
 };
 
-export async function listarMesas(params?: MesaListadoParams): Promise<any[]> {
-  const { data } = await client.get<any[]>(`/alumnos/mesas`, { params });
+export type MesaMateriaResumenDTO = {
+  id: number;
+  nombre: string;
+};
+
+export type MesaListadoItemDTO = {
+  id: number;
+  materia_id: number;
+  materia_nombre?: string;
+  materia?: MesaMateriaResumenDTO;
+  tipo: "FIN" | "EXT";
+  modalidad: "REG" | "LIB";
+  fecha: string;
+  hora_desde?: string | null;
+  hora_hasta?: string | null;
+  aula?: string | null;
+  correlativas_aprob?: number[];
+  correlativas_regular?: number[];
+};
+
+export async function listarMesas(params?: MesaListadoParams): Promise<MesaListadoItemDTO[]> {
+  const { data } = await client.get<MesaListadoItemDTO[]>(`/alumnos/mesas`, { params });
   return data;
 }
 

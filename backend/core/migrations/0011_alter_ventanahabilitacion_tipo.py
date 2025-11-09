@@ -4,15 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0010_ventanahabilitacion'),
+        ("core", "0010_ventanahabilitacion"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='ventanahabilitacion',
-            name='tipo',
-            field=models.CharField(choices=[('INSCRIPCION', 'Inscripción (general)'), ('MESAS_FINALES', 'Mesas de examen - Finales'), ('MESAS_EXTRA', 'Mesas de examen - Extraordinarias'), ('MESAS_LIBRES', 'Mesas de examen - Libres'), ('MATERIAS', 'Inscripciones a Materias'), ('CARRERAS', 'Inscripciones a Carreras'), ('COMISION', 'Cambios de Comisión'), ('ANALITICOS', 'Pedidos de Analíticos'), ('PREINSCRIPCION', 'Preinscripción')], max_length=32),
+            model_name="ventanahabilitacion",
+            name="tipo",
+            field=models.CharField(
+                choices=[
+                    ("INSCRIPCION", "Inscripción (general)"),
+                    ("MESAS_FINALES", "Mesas de examen - Finales"),
+                    ("MESAS_EXTRA", "Mesas de examen - Extraordinarias"),
+                    ("MESAS_LIBRES", "Mesas de examen - Libres"),
+                    ("MATERIAS", "Inscripciones a Materias"),
+                    ("CARRERAS", "Inscripciones a Carreras"),
+                    ("COMISION", "Cambios de Comisión"),
+                    ("ANALITICOS", "Pedidos de Analíticos"),
+                    ("PREINSCRIPCION", "Preinscripción"),
+                ],
+                max_length=32,
+            ),
         ),
     ]

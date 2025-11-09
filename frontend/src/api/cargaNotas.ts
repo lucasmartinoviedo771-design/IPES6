@@ -129,7 +129,7 @@ export async function obtenerDatosCargaNotas(params: {
   anio?: number | null;
   cuatrimestre?: string | null;
 }) {
-  const query: Record<string, any> = { plan_id: params.plan_id };
+  const query: Record<string, number | string> = { plan_id: params.plan_id };
   if (params.materia_id) query.materia_id = params.materia_id;
   if (params.anio) query.anio = params.anio;
   if (params.cuatrimestre) query.cuatrimestre = params.cuatrimestre;

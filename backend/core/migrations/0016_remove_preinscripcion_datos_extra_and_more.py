@@ -4,19 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0015_add_preinscripcion_datos_extra'),
+        ("core", "0015_add_preinscripcion_datos_extra"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='preinscripcion',
-            name='datos_extra',
+            model_name="preinscripcion",
+            name="datos_extra",
         ),
         migrations.AddField(
-            model_name='preinscripcion',
-            name='created_at',
+            model_name="preinscripcion",
+            name="created_at",
             field=models.DateTimeField(auto_now_add=True, null=True),
         ),
     ]
