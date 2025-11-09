@@ -13,6 +13,7 @@ export const defaultValues: PreinscripcionForm = {
   provincia_nac: "",
   pais_nac: "",
   domicilio: "",
+  cohorte: "",
 
   // contacto
   email: "",

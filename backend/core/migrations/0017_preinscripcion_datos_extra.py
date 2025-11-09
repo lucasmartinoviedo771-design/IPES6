@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0016_remove_preinscripcion_datos_extra_and_more'),
+        ("core", "0016_remove_preinscripcion_datos_extra_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='preinscripcion',
-            name='datos_extra',
+            model_name="preinscripcion",
+            name="datos_extra",
             field=models.JSONField(blank=True, default=dict),
         ),
     ]

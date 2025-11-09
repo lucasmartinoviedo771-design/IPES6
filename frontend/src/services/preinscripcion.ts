@@ -120,7 +120,7 @@ export async function crearPreinscripcion(payload: any): Promise<PreinscripcionO
       console.error("[crearPreinscripcion][payload]", payload);
       try {
         console.error("[crearPreinscripcion][mapped]", mapToApiPayload(payload));
-      } catch {}
+      } catch (e) { /* Ignored, used for debugging purposes */ }
       console.error("[crearPreinscripcion][response]", err?.response?.status, err?.response?.data);
     }
     throw err;

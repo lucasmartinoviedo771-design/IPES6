@@ -5,76 +5,236 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0011_alter_ventanahabilitacion_tipo'),
+        ("core", "0011_alter_ventanahabilitacion_tipo"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='EquivalenciaCurricular',
+            name="EquivalenciaCurricular",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('codigo', models.CharField(max_length=32, unique=True)),
-                ('nombre', models.CharField(blank=True, max_length=255, null=True)),
-                ('materias', models.ManyToManyField(blank=True, related_name='equivalencias', to='core.materia')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("codigo", models.CharField(max_length=32, unique=True)),
+                ("nombre", models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "materias",
+                    models.ManyToManyField(
+                        blank=True, related_name="equivalencias", to="core.materia"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='MesaExamen',
+            name="MesaExamen",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('tipo', models.CharField(choices=[('PAR', 'Parcial'), ('FIN', 'Final'), ('LIB', 'Libre'), ('EXT', 'Extraordinaria')], max_length=3)),
-                ('fecha', models.DateField()),
-                ('hora_desde', models.TimeField(blank=True, null=True)),
-                ('hora_hasta', models.TimeField(blank=True, null=True)),
-                ('aula', models.CharField(blank=True, max_length=64, null=True)),
-                ('cupo', models.IntegerField(default=0)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('materia', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='mesas', to='core.materia')),
-                ('ventana', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='core.ventanahabilitacion')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "tipo",
+                    models.CharField(
+                        choices=[
+                            ("PAR", "Parcial"),
+                            ("FIN", "Final"),
+                            ("LIB", "Libre"),
+                            ("EXT", "Extraordinaria"),
+                        ],
+                        max_length=3,
+                    ),
+                ),
+                ("fecha", models.DateField()),
+                ("hora_desde", models.TimeField(blank=True, null=True)),
+                ("hora_hasta", models.TimeField(blank=True, null=True)),
+                ("aula", models.CharField(blank=True, max_length=64, null=True)),
+                ("cupo", models.IntegerField(default=0)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "materia",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="mesas",
+                        to="core.materia",
+                    ),
+                ),
+                (
+                    "ventana",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="core.ventanahabilitacion",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PedidoAnalitico',
+            name="PedidoAnalitico",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('motivo', models.CharField(choices=[('equivalencia', 'Pedido de equivalencia'), ('beca', 'Becas'), ('control', 'Control'), ('otro', 'Otro')], max_length=20)),
-                ('motivo_otro', models.CharField(blank=True, max_length=255, null=True)),
-                ('cohorte', models.IntegerField(blank=True, help_text='Año de ingreso (cohorte)', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('estudiante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pedidos_analitico', to='core.estudiante')),
-                ('profesorado', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='core.profesorado')),
-                ('ventana', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='pedidos_analitico', to='core.ventanahabilitacion')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "motivo",
+                    models.CharField(
+                        choices=[
+                            ("equivalencia", "Pedido de equivalencia"),
+                            ("beca", "Becas"),
+                            ("control", "Control"),
+                            ("otro", "Otro"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "motivo_otro",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "cohorte",
+                    models.IntegerField(
+                        blank=True, help_text="Año de ingreso (cohorte)", null=True
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "estudiante",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="pedidos_analitico",
+                        to="core.estudiante",
+                    ),
+                ),
+                (
+                    "profesorado",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="core.profesorado",
+                    ),
+                ),
+                (
+                    "ventana",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="pedidos_analitico",
+                        to="core.ventanahabilitacion",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='InscripcionMesa',
+            name="InscripcionMesa",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('estado', models.CharField(choices=[('INS', 'Inscripto'), ('CAN', 'Cancelado')], default='INS', max_length=3)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('estudiante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='inscripciones_mesa', to='core.estudiante')),
-                ('mesa', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='inscripciones', to='core.mesaexamen')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "estado",
+                    models.CharField(
+                        choices=[("INS", "Inscripto"), ("CAN", "Cancelado")],
+                        default="INS",
+                        max_length=3,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "estudiante",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="inscripciones_mesa",
+                        to="core.estudiante",
+                    ),
+                ),
+                (
+                    "mesa",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="inscripciones",
+                        to="core.mesaexamen",
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('mesa', 'estudiante')},
+                "unique_together": {("mesa", "estudiante")},
             },
         ),
         migrations.CreateModel(
-            name='Regularidad',
+            name="Regularidad",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('fecha_cierre', models.DateField()),
-                ('nota_final_cursada', models.IntegerField(blank=True, null=True)),
-                ('situacion', models.CharField(choices=[('PRO', 'Promocionado'), ('REG', 'Regular'), ('APR', 'Aprobado (sin final)'), ('DPA', 'Desaprobado por Parciales'), ('DTP', 'Desaprobado por Trabajos Prácticos'), ('LBI', 'Libre por Inasistencias'), ('LAT', 'Libre Antes de Tiempo')], max_length=3)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('estudiante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='regularidades', to='core.estudiante')),
-                ('materia', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='regularidades', to='core.materia')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("fecha_cierre", models.DateField()),
+                ("nota_final_cursada", models.IntegerField(blank=True, null=True)),
+                (
+                    "situacion",
+                    models.CharField(
+                        choices=[
+                            ("PRO", "Promocionado"),
+                            ("REG", "Regular"),
+                            ("APR", "Aprobado (sin final)"),
+                            ("DPA", "Desaprobado por Parciales"),
+                            ("DTP", "Desaprobado por Trabajos Prácticos"),
+                            ("LBI", "Libre por Inasistencias"),
+                            ("LAT", "Libre Antes de Tiempo"),
+                        ],
+                        max_length=3,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "estudiante",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="regularidades",
+                        to="core.estudiante",
+                    ),
+                ),
+                (
+                    "materia",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="regularidades",
+                        to="core.materia",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-fecha_cierre'],
-                'unique_together': {('estudiante', 'materia', 'fecha_cierre')},
+                "ordering": ["-fecha_cierre"],
+                "unique_together": {("estudiante", "materia", "fecha_cierre")},
             },
         ),
     ]

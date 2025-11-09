@@ -120,7 +120,7 @@ export default function CargarMateriasPage() {
     try {
       const key = `cm_filters_${currentPlanId ?? 'any'}`;
       localStorage.removeItem(key);
-    } catch {}
+    } catch (e) { /* Ignored, localStorage operations can fail in some environments */ }
   };
 
   // Persist/restore filters in localStorage (per plan)
@@ -136,7 +136,7 @@ export default function CargarMateriasPage() {
         setFilterRegimen(typeof f.regimen === 'string' ? f.regimen : '');
         setFilterTipoFormacion(typeof f.tipo_formacion === 'string' ? f.tipo_formacion : '');
       }
-    } catch {}
+    } catch (e) { /* Ignored, localStorage operations can fail in some environments */ }
   }, [currentPlanId]);
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function CargarMateriasPage() {
         tipo_formacion: filterTipoFormacion,
       };
       localStorage.setItem(key, JSON.stringify(payload));
-    } catch {}
+    } catch (e) { /* Ignored, localStorage operations can fail in some environments */ }
   }, [currentPlanId, filterNombre, filterAnio, filterFormato, filterRegimen, filterTipoFormacion]);
 
   const {

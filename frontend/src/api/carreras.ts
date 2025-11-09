@@ -36,3 +36,30 @@ export async function obtenerPlanCarrera(planId: number): Promise<PlanDetalle> {
   return data;
 }
 
+export async function listarPlanes(profesoradoId: number): Promise<PlanDetalle[]> {
+  const { data } = await client.get<PlanDetalle[]>(`/profesorados/${profesoradoId}/planes`);
+  return data;
+}
+
+export async function listarPlanesVigentes(): Promise<PlanDetalle[]> {
+  const profesorados = await fetchCarreras();
+  const allPlans = await Promise.all(profesorados.map((prof) => listarPlanes(prof.id)));
+  return allPlans.flat();
+}
+
+export interface RequisitoDocumentacion {
+  id: number;
+  codigo: string;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  obligatorio: boolean;
+  orden: number;
+  activo: boolean;
+}
+
+export async function apiListRequisitosDocumentacion(profesoradoId: number): Promise<RequisitoDocumentacion[]> {
+  const { data } = await client.get<RequisitoDocumentacion[]>(`/profesorados/${profesoradoId}/requisitos-documentacion`);
+  return data;
+}
+

@@ -1,39 +1,42 @@
 # backend/core/auth_api.py
-from ninja import Router
-from .auth_ninja import JWTAuth
-from pydantic import BaseModel
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from rest_framework_simplejwt.tokens import RefreshToken
+from django.http import JsonResponse
+from ninja import Router
 from ninja.errors import HttpError
+from pydantic import BaseModel
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from django.http import HttpResponse, JsonResponse
+from .auth_ninja import JWTAuth
 
 router = Router()  # <— IMPORTANTE
+
 
 class LoginIn(BaseModel):
     login: str
     password: str
 
+
 def _resolve_user_by_identifier(ident: str):
     User = get_user_model()
     ident = (ident or "").strip()
-    u = User.objects.filter(email__iexact=ident).first() or \
-        User.objects.filter(username__iexact=ident).first()
+    u = User.objects.filter(email__iexact=ident).first() or User.objects.filter(username__iexact=ident).first()
     if not u and ident.isdigit():
         u = User.objects.filter(username__iexact=ident).first()
         if not u:
             try:
                 from apps.personas.models import Perfil
+
                 p = Perfil.objects.filter(dni=ident).select_related("user").first()
                 if p and p.user:
                     u = p.user
             except Exception:
                 pass
     return u
+
 
 class UserOut(BaseModel):
     dni: str
@@ -44,10 +47,12 @@ class UserOut(BaseModel):
     must_change_password: bool = False
     must_complete_profile: bool = False
 
+
 class TokenOut(BaseModel):
     access: str
     refresh: str
     user: UserOut
+
 
 class Error(BaseModel):
     detail: str
@@ -62,12 +67,46 @@ class ChangePasswordIn(BaseModel):
     new_password: str
 
 
+class RefreshIn(BaseModel):
+    refresh: str
+
+
 def _must_complete_profile(user) -> bool:
     estudiante = getattr(user, "estudiante", None)
     if not estudiante:
         return False
     datos_extra = getattr(estudiante, "datos_extra", {}) or {}
     return not bool(datos_extra.get("perfil_actualizado"))
+
+
+def _serialize_user(user):
+    estudiante = getattr(user, "estudiante", None)
+    must_change = getattr(estudiante, "must_change_password", False)
+    must_complete_profile = _must_complete_profile(user)
+    return {
+        "dni": user.username,
+        "name": (user.get_full_name() or user.first_name or user.username),
+        "roles": list(user.groups.values_list("name", flat=True)),
+        "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
+        "must_change_password": bool(must_change),
+        "must_complete_profile": bool(must_complete_profile),
+    }
+
+
+def _set_access_cookie(response: JsonResponse, access_token: str):
+    access_token_lifetime = settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"]
+    cookie_kwargs = {
+        "key": settings.JWT_ACCESS_COOKIE_NAME,
+        "value": access_token,
+        "max_age": int(access_token_lifetime.total_seconds()),
+        "httponly": True,
+        "path": settings.JWT_COOKIE_PATH,
+    }
+    if not settings.DEBUG:
+        cookie_kwargs["secure"] = settings.SESSION_COOKIE_SECURE
+        cookie_kwargs["samesite"] = settings.SESSION_COOKIE_SAMESITE
+    response.set_cookie(**cookie_kwargs)
 
 
 def _client_identifier(request, login: str) -> str:
@@ -81,6 +120,7 @@ def _rate_limit_exceeded(cache_key: str) -> bool:
     limit = getattr(settings, "LOGIN_RATE_LIMIT_ATTEMPTS", 5)
     attempts = cache.get(cache_key)
     return attempts is not None and attempts >= limit
+
 
 @router.post("/login", response={200: TokenOut, 401: Error, 429: Error})
 def login(request, payload: LoginIn):
@@ -104,43 +144,16 @@ def login(request, payload: LoginIn):
     cache.delete(cache_key)
     refresh = RefreshToken.for_user(user)
 
-    # Prepare user data for response
-    estudiante = getattr(user, "estudiante", None)
-    must_change = getattr(estudiante, "must_change_password", False)
-    must_complete_profile = _must_complete_profile(user)
-    user_data = {
-        "dni": user.username,
-        "name": (user.get_full_name() or user.first_name or user.username),
-        "roles": list(user.groups.values_list("name", flat=True)),
-        "is_staff": user.is_staff,
-        "is_superuser": user.is_superuser,
-        "must_change_password": bool(must_change),
-        "must_complete_profile": bool(must_complete_profile),
-    }
-
-    # Create JSON response body
     response_body = {
+        "access": str(refresh.access_token),
         "refresh": str(refresh),
-        "user": user_data,
+        "user": _serialize_user(user),
     }
     response = JsonResponse(response_body)
-
-    access_token_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
-    cookie_kwargs = {
-        'key': settings.JWT_ACCESS_COOKIE_NAME,
-        'value': str(refresh.access_token),
-        'max_age': int(access_token_lifetime.total_seconds()),
-        'httponly': True,
-        'path': settings.JWT_COOKIE_PATH,
-    }
-
-    if not settings.DEBUG:
-        cookie_kwargs['secure'] = settings.SESSION_COOKIE_SECURE
-        cookie_kwargs['samesite'] = settings.SESSION_COOKIE_SAMESITE
-
-    response.set_cookie(**cookie_kwargs)
+    _set_access_cookie(response, str(refresh.access_token))
 
     return response
+
 
 @router.get("/profile", response={200: UserOut}, auth=JWTAuth())
 def profile(request):
@@ -182,8 +195,33 @@ def change_password(request, payload: ChangePasswordIn):
 
     return {"detail": "Contraseña actualizada correctamente."}
 
+
 @router.post("/logout")
 def logout(request):
     response = JsonResponse({"detail": "Sesión cerrada correctamente."})
     response.delete_cookie(key=settings.JWT_ACCESS_COOKIE_NAME, path=settings.JWT_COOKIE_PATH)
+    return response
+
+
+@router.post("/refresh", response={200: TokenOut, 401: Error})
+def refresh_token(request, payload: RefreshIn):
+    try:
+        incoming = RefreshToken(payload.refresh)
+    except Exception:
+        raise HttpError(401, "Refresh token invalido.")
+
+    user_id = incoming.get("user_id")
+    User = get_user_model()
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        raise HttpError(401, "Usuario no encontrado.")
+
+    new_refresh = RefreshToken.for_user(user)
+    response_body = {
+        "access": str(new_refresh.access_token),
+        "refresh": str(new_refresh),
+        "user": _serialize_user(user),
+    }
+    response = JsonResponse(response_body)
+    _set_access_cookie(response, str(new_refresh.access_token))
     return response

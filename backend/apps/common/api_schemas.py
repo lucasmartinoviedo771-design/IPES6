@@ -1,7 +1,9 @@
-from typing import Any, Optional
+from typing import Any
+
 from ninja import Schema
+
 
 class ApiResponse(Schema):
     ok: bool
-    message: Optional[str] = None
-    data: Optional[Any] = None
+    message: str | None = None
+    data: Any | None = None

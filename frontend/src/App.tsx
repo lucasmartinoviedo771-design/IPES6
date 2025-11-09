@@ -7,7 +7,6 @@ import { ProtectedRoute, PublicOnlyRoute } from '@/router/guards';
 import AppShell from '@/components/layout/AppShell';
 import PreinscripcionWizard from '@/components/preinscripcion/PreinscripcionWizard';
 
-import AlumnosPage from '@/pages/AlumnosPage';
 import CarrerasPage from '@/pages/CarrerasPage';
 import MateriaInscriptosPage from "@/pages/MateriaInscriptosPage";
 
@@ -42,6 +41,8 @@ import ErrorBoundary from "@/debug/ErrorBoundary";
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import ActaExamenPrimeraCargaPage from "@/pages/admin/ActaExamenPrimeraCargaPage";
 import ActaExamenPage from "@/pages/Secretaria/ActaExamenPage";
+import DocenteAsistenciaPage from "@/pages/Docentes/DocenteAsistenciaPage";
+import AsistenciaReportesPage from "@/pages/Secretaria/AsistenciaReportesPage";
 
 // Nuevas páginas de Alumnos
 import AlumnosIndex from "@/pages/Alumnos/Index";
@@ -49,9 +50,11 @@ import InscripcionMateriaPage from "@/pages/Alumnos/InscripcionMateriaPage";
 import CambioComisionPage from "@/pages/Alumnos/CambioComisionPage";
 import PedidoAnaliticoPage from "@/pages/Alumnos/PedidoAnaliticoPage";
 import TrayectoriaPage from "@/pages/Alumnos/TrayectoriaPage";
+import CertificadoRegularPage from "@/pages/Alumnos/CertificadoRegularPage";
 import InscripcionPreview from "@/pages/InscripcionPreview";
 import MensajesInboxPage from "@/pages/Mensajes/InboxPage";
 import CompletarPerfilPage from "@/pages/Alumnos/CompletarPerfilPage";
+import HorarioPage from "@/pages/Alumnos/HorarioPage";
 
 // Nueva página de Primera Carga
 import PrimeraCargaPage from '@/pages/admin/PrimeraCargaPage';
@@ -87,11 +90,11 @@ export default function App() {
         <Route element={<AppLayout />}>
             <Route index element={<Navigate to="/preinscripcion" replace />} />
             <Route path="/preinscripcion" element={preinscripcionElement} />
-            {false && <Route path="/preinscripcion/comprobante/:id" element={<div />} />}
             <Route path="/debug/inscripcion-preview" element={<InscripcionPreview />} />
 
             <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
             <Route path="/cambiar-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
+            <Route path="/docentes/asistencia" element={<DocenteAsistenciaPage />} />
 
             {/* Bloque protegido con AppShell (incluye alumnos y roles administrativos) */}
             <Route element={<ProtectedRoute roles={['preinscripciones','secretaria','admin','alumno','bedel','coordinador','tutor','jefes','jefa_aaee']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
@@ -125,6 +128,7 @@ export default function App() {
               <Route path="/secretaria/profesorado" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarProfesoradoPage /></ProtectedRoute>} />
               <Route path="/secretaria/profesorado/:profesoradoId/planes" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarPlanPage /></ProtectedRoute>} />
               <Route path="/secretaria/plan/:planId/materias" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarMateriasPage /></ProtectedRoute>} />
+              <Route path="/asistencia/reportes" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><AsistenciaReportesPage /></ProtectedRoute>} />
               <Route path="/secretaria/docentes" element={<ProtectedRoute roles={['secretaria','admin']}><CargarDocentesPage /></ProtectedRoute>} />
               <Route path="/secretaria/asignar-rol" element={<ProtectedRoute roles={['secretaria','admin']}><AsignarRolPage /></ProtectedRoute>} />
               <Route path="/secretaria/horarios" element={<ProtectedRoute roles={['secretaria','admin']}><ErrorBoundary><CargarHorarioPage /></ErrorBoundary></ProtectedRoute>} />
@@ -145,6 +149,8 @@ export default function App() {
               <Route path="/alumnos/pedido-analitico" element={<ProtectedRoute roles={['alumno','admin']}><PedidoAnaliticoPage /></ProtectedRoute>} />
               <Route path="/alumnos/mesa-examen" element={<ProtectedRoute roles={['alumno','admin']}><MesaExamenPage /></ProtectedRoute>} />
               <Route path="/alumnos/trayectoria" element={<ProtectedRoute roles={['alumno','admin', 'bedel', 'secretaria']}><TrayectoriaPage /></ProtectedRoute>} />
+              <Route path="/alumnos/certificado-regular" element={<ProtectedRoute roles={['alumno','admin','secretaria','bedel']}><CertificadoRegularPage /></ProtectedRoute>} />
+              <Route path="/alumnos/horarios" element={<ProtectedRoute roles={['alumno','admin']}><HorarioPage /></ProtectedRoute>} />
             </Route>
     
             {/* Ruta para Primera Carga (fuera del AppShell, pero protegida) */}

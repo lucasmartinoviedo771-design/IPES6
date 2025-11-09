@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional, Set
+from collections.abc import Iterable
 
 from django.contrib.auth.models import User
 from ninja.errors import HttpError
@@ -8,20 +8,28 @@ from ninja.errors import HttpError
 from .models import StaffAsignacion
 
 _LIMITED_ROLES = {"coordinador"}
-_UNRESTRICTED_ROLES = {"admin", "secretaria", "jefa_aaee", "consulta", "tutor", "jefes", "bedel"}
+_UNRESTRICTED_ROLES = {
+    "admin",
+    "secretaria",
+    "jefa_aaee",
+    "consulta",
+    "tutor",
+    "jefes",
+    "bedel",
+}
 
 
-def _ensure_authenticated(user: Optional[User]) -> User:
+def _ensure_authenticated(user: User | None) -> User:
     if not user or not user.is_authenticated:
         raise HttpError(401, "No autenticado")
     return user
 
 
-def _group_names(user: User) -> Set[str]:
+def _group_names(user: User) -> set[str]:
     return {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
 
 
-def ensure_roles(user: Optional[User], allowed_roles: Iterable[str]) -> None:
+def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
     user = _ensure_authenticated(user)
     if user.is_superuser or user.is_staff:
         return
@@ -31,7 +39,7 @@ def ensure_roles(user: Optional[User], allowed_roles: Iterable[str]) -> None:
         raise HttpError(403, "No tiene permisos suficientes para realizar esta acción.")
 
 
-def allowed_profesorados(user: Optional[User], role_filter: Optional[Iterable[str]] = None) -> Optional[Set[int]]:
+def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = None) -> set[int] | None:
     user = _ensure_authenticated(user)
     if user.is_superuser or user.is_staff:
         return None
@@ -50,7 +58,11 @@ def allowed_profesorados(user: Optional[User], role_filter: Optional[Iterable[st
     return ids
 
 
-def ensure_profesorado_access(user: Optional[User], profesorado_id: int, role_filter: Optional[Iterable[str]] = None) -> None:
+def ensure_profesorado_access(
+    user: User | None,
+    profesorado_id: int,
+    role_filter: Iterable[str] | None = None,
+) -> None:
     allowed = allowed_profesorados(user, role_filter=role_filter)
     if allowed is None:
         return

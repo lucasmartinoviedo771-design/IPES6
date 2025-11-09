@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("core", "0006_remove_materia_docente_titular_docente_dni_and_more"),
     ]

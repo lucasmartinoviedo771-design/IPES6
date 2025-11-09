@@ -15,7 +15,7 @@ async function tryEndpoints(): Promise<Carrera[]> {
       const { data } = await api.get(p);
       if (Array.isArray(data)) return data;
       if (data?.results) return data.results.map((r:any)=>({id:r.id, nombre:r.nombre}));
-    } catch (e) {
+    } catch (_error) {
       // sigue al siguiente endpoint
     }
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, TextField, Typography, Box, Alert, MenuItem, Select, FormControl, InputLabel, Grid, Paper, Stack } from '@mui/material';
-import { listarMesas, inscribirMesa, obtenerHistorialAlumno, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
+import { listarMesas, inscribirMesa, obtenerHistorialAlumno, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO, MesaListadoItemDTO } from '@/api/alumnos';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
 
@@ -12,7 +12,7 @@ const MesaExamenPage: React.FC = () => {
   const [modalidad, setModalidad] = useState<'REG'|'LIB'|''>('');
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
-  const [mesas, setMesas] = useState<any[]>([]);
+  const [mesas, setMesas] = useState<MesaListadoItemDTO[]>([]);
   const [historial, setHistorial] = useState<{ aprobadas:number[]; regularizadas:number[]; inscriptas_actuales:number[] }>({ aprobadas:[], regularizadas:[], inscriptas_actuales:[] });
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -35,16 +35,18 @@ const MesaExamenPage: React.FC = () => {
     setInfo(null);
   };
 
-  useEffect(()=>{
-    (async()=>{
-      try{
+  useEffect(() => {
+    (async () => {
+      try {
         const data = await fetchVentanas();
-        const v = (data||[]).filter((x)=> ['MESAS_FINALES','MESAS_EXTRA'].includes(x.tipo));
+        const v = (data || []).filter((x) => ['MESAS_FINALES', 'MESAS_EXTRA'].includes(x.tipo));
         setVentanas(v);
         if (v.length) setVentanaId(String(v[0].id));
-      }catch{}
+      } catch (error) {
+        console.warn("No se pudieron cargar las ventanas de mesas", error);
+      }
     })();
-  },[]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,16 +178,20 @@ const MesaExamenPage: React.FC = () => {
   ]);
 
   
-useEffect(()=>{ (async()=>{
-    try{
+useEffect(() => {
+  (async () => {
+    try {
       const h = await obtenerHistorialAlumno(canGestionar && dni ? { dni } : undefined);
       setHistorial({
         aprobadas: h.aprobadas || [],
         regularizadas: h.regularizadas || [],
         inscriptas_actuales: h.inscriptas_actuales || [],
       });
-    }catch{}
-  })(); }, [dni]);
+    } catch (error) {
+      console.warn("No se pudo obtener el historial del alumno", error);
+    }
+  })();
+}, [dni, canGestionar]);
 
   const onInscribir = async (mesaId:number)=>{
     try{
@@ -277,24 +283,24 @@ useEffect(()=>{ (async()=>{
 
       <Grid container spacing={1.5}>
         <>
-          {mesas.filter((m:any)=>{
-            const reqAPR:number[] = m.correlativas_aprob || [];
-            const tieneAPR = reqAPR.every((id)=> historial.aprobadas.includes(id));
+          {mesas.filter((mesa) => {
+            const reqAPR: number[] = mesa.correlativas_aprob || [];
+            const tieneAPR = reqAPR.every((id) => historial.aprobadas.includes(id));
             if (!tieneAPR) return false;
-            const materiaId = m.materia?.id ?? m.materia_id;
-            if (m.modalidad === 'REG') {
+            const materiaId = mesa.materia?.id ?? mesa.materia_id;
+            if (mesa.modalidad === 'REG') {
               return historial.regularizadas.includes(materiaId);
             }
             const estaRegular = historial.regularizadas.includes(materiaId);
             const cursando = historial.inscriptas_actuales.includes(materiaId);
             return !estaRegular && !cursando;
-          }).map((m:any)=> (
-            <Grid item xs={12} md={6} lg={4} key={m.id}>
+          }).map((mesa) => (
+            <Grid item xs={12} md={6} lg={4} key={mesa.id}>
               <Paper variant="outlined" sx={{ p:1.5 }}>
                 <Stack gap={0.5}>
-                  <Typography variant="subtitle2">{m.materia.nombre} - {m.tipo} ({m.modalidad === 'LIB' ? 'Libre' : 'Regular'})</Typography>
-                  <Typography variant="body2" color="text.secondary">{new Date(m.fecha).toLocaleDateString()} {m.hora_desde ? (m.hora_desde + (m.hora_hasta? ' - ' + m.hora_hasta : '')) : ''} - {m.aula || ''}</Typography>
-                  <Button size="small" variant="contained" onClick={()=>onInscribir(m.id)}>Inscribirme</Button>
+                  <Typography variant="subtitle2">{mesa.materia?.nombre ?? mesa.materia_nombre} - {mesa.tipo} ({mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'})</Typography>
+                  <Typography variant="body2" color="text.secondary">{new Date(mesa.fecha).toLocaleDateString()} {mesa.hora_desde ? (mesa.hora_desde + (mesa.hora_hasta? ' - ' + mesa.hora_hasta : '')) : ''} - {mesa.aula || ''}</Typography>
+                  <Button size="small" variant="contained" onClick={()=>onInscribir(mesa.id)}>Inscribirme</Button>
                 </Stack>
               </Paper>
             </Grid>

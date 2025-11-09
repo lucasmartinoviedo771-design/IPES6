@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-from typing import Iterable, Mapping, Sequence
-
 import unicodedata
+from collections.abc import Mapping, Sequence
 
 
 def _normalize(value: str) -> str:
     """Normalize strings to compare ignoring accents, dots, and extra spaces."""
-    cleaned = (
-        unicodedata.normalize("NFKD", value)
-        .encode("ascii", "ignore")
-        .decode("ascii")
-    )
+    cleaned = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     cleaned = cleaned.replace(".", " ").replace("-", " ").replace("_", " ")
     cleaned = cleaned.replace("º", "o").replace("°", "o")
     cleaned = "".join(char.lower() if char.isalnum() or char.isspace() else " " for char in cleaned)
@@ -158,7 +153,7 @@ def _build_allowed() -> list[dict[str, set[str]]]:
         compiled.append(
             {
                 "slug": _normalize(key),
-                "materias": { _normalize(alias) for aliases in materias for alias in aliases },
+                "materias": {_normalize(alias) for aliases in materias for alias in aliases},
             }
         )
     return compiled
@@ -206,4 +201,3 @@ def materias_libres_for_profesorado(profesorado_nombre: str | None) -> set[str]:
 def normalizer(value: str) -> str:
     """Expose normalizer for tests."""
     return _normalize(value)
-

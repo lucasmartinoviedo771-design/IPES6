@@ -1,70 +1,74 @@
 Manual de uso - Rol Estudiante
-================================
+==============================
 
-Introducción al Portal de Alumnos
-----------------------------------
-El Portal de Alumnos es tu centro de gestión académica. Al ingresar, verás un resumen de los próximos eventos y accesos directos a las funcionalidades más importantes.
+Portal de alumnos
+-----------------
+Al iniciar sesión verás la pantalla `/alumnos`, que resume:
+- **Próximos eventos:** fechas clave de inscripciones, mesas y trámites.
+- **Tarjetas de acceso rápido:** cada tarjeta abre un trámite distinto (Inscripción a Materias, Horario, Cambio de Comisión, Mesa de Examen, Trayectoria, Certificado Regular, Pedido de Analítico, etc.).
+- **Alertas contextuales:** si falta completar tu perfil o hay ventanas cerradas, el portal lo muestra antes de permitir la carga.
 
-- **Próximos eventos:** Te informa sobre las fechas de inscripción a materias, mesas de examen y otros procesos importantes.
-- **Accesos rápidos:** Te permite navegar a las diferentes secciones del portal.
+1. Completar o actualizar perfil
+--------------------------------
+1. En la tarjeta “Completar Perfil” o desde el mensaje superior haz clic para abrir `/alumnos/completar-perfil`.
+2. Revisa datos personales, domicilio, contacto y documentación básica.
+3. Completa los campos obligatorios (marcados con *) y guarda. Esta información alimenta todos los formularios posteriores.
 
-Gestión de Inscripciones
+2. Inscripción a materias
+-------------------------
+Ruta `/alumnos/inscripcion-materia`.
+1. El sistema valida que exista una ventana activa creada por Secretaría. Si no la hay, verás un aviso.
+2. Se muestran las materias habilitadas según tu plan y correlatividades. Usa los filtros por año o estado.
+3. Para inscribirte presiona “Inscribirme”. El sistema detecta superposiciones de horario antes de confirmar.
+4. En la pestaña “Inscriptas” puedes cancelar mientras la ventana siga abierta.
+5. Las materias bloqueadas aparecen con el motivo: correlativas pendientes, superposición, cupo lleno, etc.
+
+3. Horario personal
+-------------------
+Ruta `/alumnos/horarios`.
+1. Selecciona carrera/plan si tenés más de uno.
+2. Descarga tu grilla semanal en PDF o imagen para verificar aulas y docentes.
+
+4. Cambio de comisión
+---------------------
+Ruta `/alumnos/cambio-comision`.
+1. El sistema lista materias que no pudiste cursar por superposición o falta de cupo.
+2. Para cada una se ofrecen comisiones alternativas (de tu profesorado u otros equivalentes).
+3. Elige la comisión deseada y envía la solicitud. Bedelía recibe el pedido y actualiza tu inscripción cuando lo apruebe; recibirás una notificación en Mensajes.
+
+5. Mesa de examen
+-----------------
+Ruta `/alumnos/mesa-examen`.
+1. Selecciona el tipo de mesa (final, libre, extraordinaria) y el período.
+2. El listado solo incluye materias para las que cumplís requisitos (regularidad vigente, correlativas).
+3. Al inscribirte se genera un comprobante con fecha, tribunal y aula. Puedes cancelar dentro de la ventana habilitada.
+
+6. Trayectoria y seguimiento
+---------------------------
+Ruta `/alumnos/trayectoria`.
+1. Consulta tu historial completo (inscripciones, notas, trámites). 
+2. Revisa el “cartón” de la carrera para saber qué materias están aprobadas, regulares o pendientes.
+3. La sección “Recomendaciones” indica qué inscribir a continuación y cuándo vencen tus regularidades.
+
+7. Certificados y trámites
 --------------------------
+- **Certificado de Alumno Regular (`/alumnos/certificado-regular`):**
+  1. Selecciona el destino (trabajo, beca, etc.) y presiona “Generar PDF”.
+  2. El documento se descarga al instante; puedes solicitarlo las veces que necesites, siempre que estés activo.
+- **Pedido de Analítico (`/alumnos/pedido-analitico`):**
+  1. Completa motivo y destino.
+  2. Envía la solicitud; Secretaría la gestionará desde su módulo y podrás seguir el estado en esta misma pantalla.
 
-### Inscripción a Materias
-Esta sección te permite inscribirte a las materias de tu plan de estudio.
+8. Mensajería
+-------------
+Ruta `/mensajes`.
+1. Bandeja de entrada: verás todas tus conversaciones con Bedelía, Tutores, Coordinación y otros roles.
+2. “Nuevo mensaje”: elige el área destino, escribe tu consulta y envíala. No se pueden iniciar conversaciones con otros estudiantes.
+3. Adjunta archivos (PDF, imágenes) cuando envíes documentación.
+4. Mantén los hilos abiertos hasta que el problema esté resuelto; luego puedes marcarlos como cerrados.
 
-**¿Cómo funciona?**
-1.  **Acceso:** Ingresa desde el Portal de Alumnos > "Inscripción a Materias".
-2.  **Materias Habilitadas:** El sistema te mostrará una lista de las materias que puedes cursar, agrupadas por año. Para que una materia esté habilitada, debes cumplir con las correlatividades (materias previas aprobadas o regularizadas).
-3.  **Inscripción:** Haz clic en el botón "Inscribirme" en la materia que desees. El sistema verificará que no tengas superposición horaria con otras materias en las que ya estás inscripto.
-4.  **Materias Bloqueadas:** Si una materia no está disponible, se mostrará en la sección "Materias pendientes / no disponibles" con el motivo del bloqueo (ej. "Correlativas pendientes", "Superposición horaria").
-5.  **Cancelar Inscripción:** Durante el período de inscripción, puedes cancelar tu inscripción a una materia desde la sección "Materias ya inscriptas".
-
-### Cambio de Comisión por Superposición Horaria
-Si una materia que deseas cursar se superpone con otra, esta herramienta te ayuda a encontrar una solución.
-
-**¿Cómo funciona?**
-1.  **Acceso:** Ingresa desde el Portal de Alumnos > "Cambio de Comisión".
-2.  **Detección Automática:** El sistema detectará automáticamente las materias que no puedes cursar por superposición horaria.
-3.  **Alternativas:** Para cada materia bloqueada, te mostrará una lista de comisiones disponibles en otros profesorados que son equivalentes y no tienen conflicto horario.
-4.  **Solicitud:** Puedes solicitar la inscripción a una de estas comisiones alternativas. La solicitud quedará pendiente de aprobación por parte de Bedelía.
-
-### Inscripción a Mesas de Examen
-Desde aquí puedes inscribirte a las mesas de examen final, libre o extraordinarias.
-
-**¿Cómo funciona?**
-1.  **Acceso:** Ingresa desde el Portal de Alumnos > "Mesa de Examen".
-2.  **Filtros:** Puedes filtrar las mesas disponibles por tipo (Final, Extraordinaria), modalidad (Regular, Libre) y por período.
-3.  **Inscripción:** El sistema solo te mostrará las mesas a las que te puedes inscribir, verificando que cumplas con los requisitos (ej. tener la materia regularizada para un examen final).
-
-Seguimiento Académico
------------------------
-
-### Tu Trayectoria
-Esta es la sección más importante para seguir tu progreso en la carrera.
-
-**¿Qué encontrarás aquí?**
-- **Historial académico:** Un listado cronológico de todas tus acciones en el sistema (inscripciones, exámenes, etc.).
-- **Cartón:** Un plan de estudios interactivo donde puedes ver visualmente qué materias has aprobado, regularizado o estás cursando.
-- **Mesas y notas:** Un resumen de todas tus notas de exámenes y cursadas.
-- **Recomendaciones:** El sistema te sugiere qué materias podrías cursar a continuación y te alerta sobre regularidades que están por vencer.
-- **Caducidad regularidades:** Un detalle de las fechas en que vencen tus materias regularizadas.
-
-### Pedido de Certificado Analítico
-Si necesitas un certificado analítico de las materias que has cursado.
-
-**¿Cómo funciona?**
-1.  **Acceso:** Ingresa desde el Portal de Alumnos > "Pedido de Analítico".
-2.  **Solicitud:** Completa el motivo de tu solicitud y envíala. Este trámite solo está disponible durante las fechas que la institución habilita para ello.
-
-Comunicación
-------------
-
-### Sistema de Mensajería
-Es el canal oficial para comunicarte con Bedelía, Tutores, Coordinadores y otros roles administrativos.
-
-**¿Cómo funciona?**
-- **Bandeja de entrada:** Verás todas tus conversaciones.
-- **Nuevo Mensaje:** Puedes iniciar una nueva conversación para hacer consultas. No puedes comunicarte con otros estudiantes a través de este medio.
-- **Responder:** Puedes responder a los mensajes que recibas.
+Buenas prácticas
+----------------
+- Revisa los “Próximos eventos” al iniciar sesión para no perder ventanas.
+- Descarga los comprobantes (inscripción, mesas, certificados) y guárdalos en tu nube personal.
+- Si un botón aparece deshabilitado, verifica primero que haya ventana activa y que tengas datos completos en el perfil; si el problema continúa, contacta a Bedelía por Mensajes adjuntando captura.

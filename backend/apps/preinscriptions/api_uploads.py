@@ -1,24 +1,26 @@
-from ninja import Router, File
+import logging
+
+from django.db.models import Q
+from django.http import FileResponse
+from django.utils.text import get_valid_filename
+from ninja import File, Router
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
-from django.http import FileResponse, Http404
-from django.utils.text import get_valid_filename
-from django.db.models import Q
+
+from core.auth_ninja import JWTAuth
 
 from .models_uploads import PreinscripcionArchivo
 from .upload_utils import is_allowed
-
-import logging
-
-from core.auth_ninja import JWTAuth
 
 logger = logging.getLogger(__name__)
 
 router = Router(tags=["preinscripciones:archivos"])
 
+
 def require_auth(request):
     if not request.user.is_authenticated:
         raise HttpError(401, "No autenticado")
+
 
 @router.get("{pid}/documentos", auth=JWTAuth())
 def listar_documentos(request, pid: int, q: str | None = None):
@@ -40,13 +42,17 @@ def listar_documentos(request, pid: int, q: str | None = None):
     ]
     return {"count": len(items), "results": items}
 
+
 @router.post("{pid}/documentos", auth=JWTAuth())
-def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str = None):
+def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str = None):  # noqa: B008
     require_auth(request)
 
-    logger.info(f"Subiendo documento para preinscripción {pid}, tipo {tipo}, archivo {file.name}, tamaño {file.size}, content_type {file.content_type}")
+    logger.info(
+        f"Subiendo documento para preinscripción {pid}, tipo {tipo}, archivo {file.name}, "
+        f"tamaño {file.size}, content_type {file.content_type}"
+    )
 
-    ok, err = is_allowed(file.name, getattr(file, "content_type", "") or "", file.size)
+    ok, err = is_allowed(file, file.size)
     if not ok:
         logger.error(f"Archivo no permitido: {err}")
         raise HttpError(400, err or "Archivo no permitido")
@@ -66,9 +72,10 @@ def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str
         logger.info(f"Archivo guardado con id {obj.id}")
     except Exception as e:
         logger.exception("Error guardando archivo en la base de datos")
-        raise HttpError(500, "Error interno al guardar el archivo")
+        raise HttpError(500, "Error interno al guardar el archivo") from e
 
     return {"id": obj.id, "detail": "ok"}
+
 
 @router.delete("{pid}/documentos/{doc_id}", auth=JWTAuth())
 def borrar_documento(request, pid: int, doc_id: int):
@@ -76,11 +83,12 @@ def borrar_documento(request, pid: int, doc_id: int):
     try:
         obj = PreinscripcionArchivo.objects.get(id=doc_id, preinscripcion_id=pid)
     except PreinscripcionArchivo.DoesNotExist:
-        raise HttpError(404, "No encontrado")
+        raise HttpError(404, "No encontrado") from None
 
     obj.archivo.delete(save=False)
     obj.delete()
     return {"detail": "deleted"}
+
 
 @router.get("{pid}/documentos/{doc_id}/download", auth=JWTAuth())
 def descargar_documento(request, pid: int, doc_id: int):
@@ -88,7 +96,7 @@ def descargar_documento(request, pid: int, doc_id: int):
     try:
         obj = PreinscripcionArchivo.objects.get(id=doc_id, preinscripcion_id=pid)
     except PreinscripcionArchivo.DoesNotExist:
-        raise HttpError(404, "No encontrado")
+        raise HttpError(404, "No encontrado") from None
 
     if not obj.archivo:
         raise HttpError(404, "Archivo inexistente")

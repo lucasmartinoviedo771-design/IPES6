@@ -209,7 +209,7 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
       pdf.addImage(opts.studentPhotoDataUrl, fmt, photoX, photoY, PHOTO.w, PHOTO.h, "", "FAST");
     } catch (e) {
       // fallback sin compresión si falla FAST
-      try { pdf.addImage(opts.studentPhotoDataUrl, fmt, photoX, photoY, PHOTO.w, PHOTO.h); } catch {}
+      try { pdf.addImage(opts.studentPhotoDataUrl, fmt, photoX, photoY, PHOTO.w, PHOTO.h); } catch (e) { /* Ignored, fallback without compression */ }
     }
   } else {
     // placeholder

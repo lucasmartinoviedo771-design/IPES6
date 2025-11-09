@@ -2,31 +2,28 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import List, Optional, Dict
 
 from django.db import transaction
 from django.db.models import Max
 from django.utils.text import slugify
 from ninja import Router, Schema
+from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
 from core.models import (
+    ActaExamen,
+    ActaExamenAlumno,
+    ActaExamenDocente,
     Comision,
     Docente,
     InscripcionMateriaAlumno,
     Materia,
     PlanDeEstudio,
+    PreinscripcionChecklist,
     Profesorado,
     Regularidad,
-    PreinscripcionChecklist,
-    ActaExamen,
-    ActaExamenDocente,
-    ActaExamenAlumno,
 )
-
-
-
 
 carga_notas_router = Router(tags=["carga_notas"])
 
@@ -37,12 +34,12 @@ class RegularidadAlumnoOut(Schema):
     orden: int
     apellido_nombre: str
     dni: str
-    nota_tp: Optional[float] = None
-    nota_final: Optional[int] = None
-    asistencia: Optional[int] = None
+    nota_tp: float | None = None
+    nota_final: int | None = None
+    asistencia: int | None = None
     excepcion: bool = False
-    situacion: Optional[str] = None
-    observaciones: Optional[str] = None
+    situacion: str | None = None
+    observaciones: str | None = None
 
 
 class RegularidadPlanillaOut(Schema):
@@ -53,43 +50,43 @@ class RegularidadPlanillaOut(Schema):
     comision_codigo: str
     anio: int
     turno: str
-    situaciones: List[dict]
-    alumnos: List[RegularidadAlumnoOut]
+    situaciones: list[dict]
+    alumnos: list[RegularidadAlumnoOut]
 
 
 class RegularidadAlumnoIn(Schema):
     inscripcion_id: int
-    nota_tp: Optional[float] = None
-    nota_final: Optional[int] = None
-    asistencia: Optional[int] = None
+    nota_tp: float | None = None
+    nota_final: int | None = None
+    asistencia: int | None = None
     excepcion: bool = False
     situacion: str
-    observaciones: Optional[str] = None
+    observaciones: str | None = None
 
 
 class RegularidadCargaIn(Schema):
     comision_id: int
-    fecha_cierre: Optional[date] = None
-    alumnos: List[RegularidadAlumnoIn]
-    observaciones_generales: Optional[str] = None
+    fecha_cierre: date | None = None
+    alumnos: list[RegularidadAlumnoIn]
+    observaciones_generales: str | None = None
 
 
 class ActaDocenteIn(Schema):
     rol: str
-    docente_id: Optional[int] = None
+    docente_id: int | None = None
     nombre: str
-    dni: Optional[str] = None
+    dni: str | None = None
 
 
 class ActaAlumnoIn(Schema):
     numero_orden: int
-    permiso_examen: Optional[str] = None
+    permiso_examen: str | None = None
     dni: str
     apellido_nombre: str
-    examen_escrito: Optional[str] = None
-    examen_oral: Optional[str] = None
+    examen_escrito: str | None = None
+    examen_oral: str | None = None
     calificacion_definitiva: str
-    observaciones: Optional[str] = None
+    observaciones: str | None = None
 
 
 class ActaCreateIn(Schema):
@@ -98,13 +95,13 @@ class ActaCreateIn(Schema):
     materia_id: int
     fecha: date
     folio: str
-    libro: Optional[str] = None
-    observaciones: Optional[str] = None
-    docentes: List[ActaDocenteIn]
-    alumnos: List[ActaAlumnoIn]
-    total_aprobados: Optional[int] = None
-    total_desaprobados: Optional[int] = None
-    total_ausentes: Optional[int] = None
+    libro: str | None = None
+    observaciones: str | None = None
+    docentes: list[ActaDocenteIn]
+    alumnos: list[ActaAlumnoIn]
+    total_aprobados: int | None = None
+    total_desaprobados: int | None = None
+    total_ausentes: int | None = None
 
 
 class ActaCreateOut(Schema):
@@ -115,7 +112,7 @@ class ActaCreateOut(Schema):
 class ActaMetadataMateria(Schema):
     id: int
     nombre: str
-    anio_cursada: Optional[int] = None
+    anio_cursada: int | None = None
     plan_id: int
     plan_resolucion: str
 
@@ -123,25 +120,25 @@ class ActaMetadataMateria(Schema):
 class ActaMetadataPlan(Schema):
     id: int
     resolucion: str
-    materias: List[ActaMetadataMateria]
+    materias: list[ActaMetadataMateria]
 
 
 class ActaMetadataProfesorado(Schema):
     id: int
     nombre: str
-    planes: List[ActaMetadataPlan]
+    planes: list[ActaMetadataPlan]
 
 
 class ActaMetadataDocente(Schema):
     id: int
     nombre: str
-    dni: Optional[str] = None
+    dni: str | None = None
 
 
 class ActaMetadataOut(Schema):
-    profesorados: List[ActaMetadataProfesorado]
-    docentes: List[ActaMetadataDocente]
-    nota_opciones: List[Dict[str, str]]
+    profesorados: list[ActaMetadataProfesorado]
+    docentes: list[ActaMetadataDocente]
+    nota_opciones: list[dict[str, str]]
 
 
 FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB"}
@@ -149,12 +146,12 @@ FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB"}
 _VIRTUAL_COMISION_FACTOR = 10000
 
 
-def _virtual_comision_id(materia_id: int, anio: Optional[int]) -> int:
+def _virtual_comision_id(materia_id: int, anio: int | None) -> int:
     base = materia_id * _VIRTUAL_COMISION_FACTOR + (anio or 0)
     return -base
 
 
-def _split_virtual_comision_id(raw_id: int) -> tuple[int, Optional[int]]:
+def _split_virtual_comision_id(raw_id: int) -> tuple[int, int | None]:
     absolute = abs(raw_id)
     materia_id = absolute // _VIRTUAL_COMISION_FACTOR
     anio = absolute % _VIRTUAL_COMISION_FACTOR
@@ -172,8 +169,7 @@ def _nota_label(value: str) -> str:
 
 
 def _compute_acta_codigo(profesorado: Profesorado, anio: int, numero: int) -> str:
-    """
-    Genera un código estable para las actas.
+    """Genera un código estable para las actas.
 
     Prioriza un posible acrónimo definido en el modelo y cae en un slug del nombre
     (o en una marca basada en el identificador) cuando dicho atributo no existe.
@@ -181,9 +177,7 @@ def _compute_acta_codigo(profesorado: Profesorado, anio: int, numero: int) -> st
     lo tengan configurado.
     """
     prefix = (
-        getattr(profesorado, "acronimo", None)
-        or slugify(profesorado.nombre or "")
-        or f"P{profesorado.id}"
+        getattr(profesorado, "acronimo", None) or slugify(profesorado.nombre or "") or f"P{profesorado.id}"
     ).upper()
     return f"ACTA-{prefix}-{anio}-{numero:03d}"
 
@@ -212,20 +206,18 @@ def _clasificar_resultado(nota: str) -> str:
 
 
 def _acta_metadata() -> ActaMetadataOut:
-    profesorados_data: List[ActaMetadataProfesorado] = []
-    profesorados_qs = Profesorado.objects.order_by("nombre").prefetch_related(
-        "planes"
-    )
+    profesorados_data: list[ActaMetadataProfesorado] = []
+    profesorados_qs = Profesorado.objects.order_by("nombre").prefetch_related("planes")
 
     for profesorado in profesorados_qs:
-        planes_payload: List[ActaMetadataPlan] = []
+        planes_payload: list[ActaMetadataPlan] = []
         planes = (
             PlanDeEstudio.objects.filter(profesorado=profesorado)
             .order_by("resolucion", "id")
             .prefetch_related("materias")
         )
         for plan in planes:
-            materias_payload: List[ActaMetadataMateria] = []
+            materias_payload: list[ActaMetadataMateria] = []
             for materia in plan.materias.all().order_by("anio_cursada", "nombre"):
                 materias_payload.append(
                     ActaMetadataMateria(
@@ -256,9 +248,7 @@ def _acta_metadata() -> ActaMetadataOut:
         for doc in Docente.objects.order_by("apellido", "nombre", "id")
     ]
 
-    nota_options = [
-        {"value": value, "label": _nota_label(value)} for value in ACTA_NOTA_CHOICES
-    ]
+    nota_options = [{"value": value, "label": _nota_label(value)} for value in ACTA_NOTA_CHOICES]
 
     return ActaMetadataOut(
         profesorados=profesorados_data,
@@ -300,7 +290,10 @@ def crear_acta_examen(request, payload: ActaCreateIn):
 
     plan = materia.plan_de_estudio
     if plan.profesorado_id != profesorado.id:
-        return 400, ApiResponse(ok=False, message="La materia seleccionada no pertenece al profesorado indicado.")
+        return 400, ApiResponse(
+            ok=False,
+            message="La materia seleccionada no pertenece al profesorado indicado.",
+        )
 
     if not payload.alumnos:
         return 400, ApiResponse(ok=False, message="Debe ingresar al menos un alumno en el acta.")
@@ -328,7 +321,10 @@ def crear_acta_examen(request, payload: ActaCreateIn):
         categoria_counts[categoria] += 1
 
     if payload.total_aprobados is not None and payload.total_aprobados != categoria_counts["aprobado"]:
-        return 400, ApiResponse(ok=False, message="La cantidad de aprobados no coincide con las calificaciones cargadas.")
+        return 400, ApiResponse(
+            ok=False,
+            message="La cantidad de aprobados no coincide con las calificaciones cargadas.",
+        )
     if payload.total_desaprobados is not None and payload.total_desaprobados != categoria_counts["desaprobado"]:
         return 400, ApiResponse(
             ok=False,
@@ -364,7 +360,11 @@ def crear_acta_examen(request, payload: ActaCreateIn):
         )
 
         for idx, docente_data in enumerate(payload.docentes or [], start=1):
-            rol = docente_data.rol if docente_data.rol in dict(ActaExamenDocente.Rol.choices) else ActaExamenDocente.Rol.PRESIDENTE
+            rol = (
+                docente_data.rol
+                if docente_data.rol in dict(ActaExamenDocente.Rol.choices)
+                else ActaExamenDocente.Rol.PRESIDENTE
+            )
             docente_obj = None
             if docente_data.docente_id:
                 docente_obj = Docente.objects.filter(id=docente_data.docente_id).first()
@@ -487,16 +487,12 @@ _SITUACIONES = {
     ],
 }
 
-ALIAS_TO_SITUACION = {
-    item["alias"]: item["codigo"]
-    for items in _SITUACIONES.values()
-    for item in items
-}
+ALIAS_TO_SITUACION = {item["alias"]: item["codigo"] for items in _SITUACIONES.values() for item in items}
 
 SITUACION_TO_ALIAS = {v: k for k, v in ALIAS_TO_SITUACION.items()}
 
 
-def _situaciones_para_formato(formato: str) -> List[dict]:
+def _situaciones_para_formato(formato: str) -> list[dict]:
     if not formato:
         return _SITUACIONES["ASI"]
     formato_key = formato.upper()
@@ -507,19 +503,19 @@ def _situaciones_para_formato(formato: str) -> List[dict]:
     return _SITUACIONES["ASI"]
 
 
-def _alias_desde_situacion(codigo: str | None) -> Optional[str]:
+def _alias_desde_situacion(codigo: str | None) -> str | None:
     if not codigo:
         return None
-    return SITUACION_TO_ALIAS.get(codigo, None)
+    return SITUACION_TO_ALIAS.get(codigo)
 
 
 class MateriaOption(Schema):
     id: int
     nombre: str
     plan_id: int
-    anio: Optional[int] = None
-    cuatrimestre: Optional[str] = None
-    formato: Optional[str] = None
+    anio: int | None = None
+    cuatrimestre: str | None = None
+    formato: str | None = None
 
 
 class ComisionOption(Schema):
@@ -531,15 +527,14 @@ class ComisionOption(Schema):
     plan_id: int
     plan_resolucion: str
     anio: int
-    cuatrimestre: Optional[str] = None
+    cuatrimestre: str | None = None
     turno: str
     codigo: str
 
 
 class CargaNotasLookup(Schema):
-    materias: List[MateriaOption]
-    comisiones: List[ComisionOption]
-
+    materias: list[MateriaOption]
+    comisiones: list[ComisionOption]
 
 
 @carga_notas_router.get(
@@ -549,20 +544,16 @@ class CargaNotasLookup(Schema):
 )
 def listar_comisiones(
     request,
-    profesorado_id: Optional[int] = None,
-    materia_id: Optional[int] = None,
-    plan_id: Optional[int] = None,
-    anio: Optional[int] = None,
-    cuatrimestre: Optional[str] = None,
+    profesorado_id: int | None = None,
+    materia_id: int | None = None,
+    plan_id: int | None = None,
+    anio: int | None = None,
+    cuatrimestre: str | None = None,
 ):
     if not plan_id:
         return CargaNotasLookup(materias=[], comisiones=[])
 
-    plan = (
-        PlanDeEstudio.objects.select_related("profesorado")
-        .filter(id=plan_id)
-        .first()
-    )
+    plan = PlanDeEstudio.objects.select_related("profesorado").filter(id=plan_id).first()
     if not plan:
         return CargaNotasLookup(materias=[], comisiones=[])
 
@@ -590,7 +581,7 @@ def listar_comisiones(
         materias_qs = materias_qs.filter(id=materia_id)
     materias_qs = materias_qs.order_by("anio_cursada", "nombre")
 
-    materias_out: List[MateriaOption] = [
+    materias_out: list[MateriaOption] = [
         MateriaOption(
             id=m.id,
             nombre=m.nombre,
@@ -602,7 +593,7 @@ def listar_comisiones(
         for m in materias_qs
     ]
 
-    comisiones_out: List[ComisionOption] = []
+    comisiones_out: list[ComisionOption] = []
     for com in comisiones_qs:
         materia_obj = com.materia
         plan_obj = materia_obj.plan_de_estudio
@@ -623,9 +614,7 @@ def listar_comisiones(
             )
         )
 
-    inscripciones_libres = InscripcionMateriaAlumno.objects.filter(
-        materia__plan_de_estudio=plan, comision__isnull=True
-    )
+    inscripciones_libres = InscripcionMateriaAlumno.objects.filter(materia__plan_de_estudio=plan, comision__isnull=True)
     if materia_id:
         inscripciones_libres = inscripciones_libres.filter(materia_id=materia_id)
     if anio:
@@ -665,8 +654,8 @@ def listar_comisiones(
     return CargaNotasLookup(materias=materias_out, comisiones=comisiones_out)
 
 
-def _build_regularidad_alumnos(inscripciones) -> List[RegularidadAlumnoOut]:
-    alumnos: List[RegularidadAlumnoOut] = []
+def _build_regularidad_alumnos(inscripciones) -> list[RegularidadAlumnoOut]:
+    alumnos: list[RegularidadAlumnoOut] = []
     for idx, insc in enumerate(inscripciones, start=1):
         regularidad = (
             Regularidad.objects.filter(
@@ -682,9 +671,7 @@ def _build_regularidad_alumnos(inscripciones) -> List[RegularidadAlumnoOut]:
                 inscripcion_id=insc.id,
                 alumno_id=insc.estudiante_id,
                 orden=idx,
-                apellido_nombre=insc.estudiante.user.get_full_name()
-                if insc.estudiante.user_id
-                else "",
+                apellido_nombre=insc.estudiante.user.get_full_name() if insc.estudiante.user_id else "",
                 dni=insc.estudiante.dni,
                 nota_tp=float(regularidad.nota_trabajos_practicos)
                 if regularidad and regularidad.nota_trabajos_practicos is not None
@@ -706,9 +693,7 @@ def _build_regularidad_alumnos(inscripciones) -> List[RegularidadAlumnoOut]:
 def obtener_planilla_regularidad(request, comision_id: int):
     if comision_id >= 0:
         comision = (
-            Comision.objects.select_related(
-                "materia__plan_de_estudio__profesorado", "turno"
-            )
+            Comision.objects.select_related("materia__plan_de_estudio__profesorado", "turno")
             .filter(id=comision_id)
             .first()
         )
@@ -747,11 +732,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
 
     materia_id, anio_virtual = _split_virtual_comision_id(comision_id)
 
-    materia = (
-        Materia.objects.select_related("plan_de_estudio__profesorado")
-        .filter(id=materia_id)
-        .first()
-    )
+    materia = Materia.objects.select_related("plan_de_estudio__profesorado").filter(id=materia_id).first()
     if not materia:
         return 404, ApiResponse(
             ok=False,
@@ -809,18 +790,12 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
                 message="Materia no encontrada para la comision virtual.",
             )
     else:
-        comision = (
-            Comision.objects.select_related("materia")
-            .filter(id=payload.comision_id)
-            .first()
-        )
+        comision = Comision.objects.select_related("materia").filter(id=payload.comision_id).first()
         if not comision:
             return 404, ApiResponse(ok=False, message="Comision no encontrada.")
         materia = comision.materia
 
-    situaciones_validas = {
-        item["alias"] for item in _situaciones_para_formato(materia.formato)
-    }
+    situaciones_validas = {item["alias"] for item in _situaciones_para_formato(materia.formato)}
 
     if not payload.alumnos:
         return 400, ApiResponse(ok=False, message="No se enviaron alumnos para guardar.")
@@ -837,15 +812,9 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
 
             situacion_codigo = ALIAS_TO_SITUACION.get(alumno.situacion)
             if not situacion_codigo:
-                return 400, ApiResponse(
-                    ok=False, message=f"Situacion desconocida: {alumno.situacion}"
-                )
+                return 400, ApiResponse(ok=False, message=f"Situacion desconocida: {alumno.situacion}")
 
-            if (
-                alumno.situacion == "PROMOCION"
-                and alumno.nota_final is not None
-                and alumno.nota_final < 8
-            ):
+            if alumno.situacion == "PROMOCION" and alumno.nota_final is not None and alumno.nota_final < 8:
                 return 400, ApiResponse(
                     ok=False,
                     message="La nota final debe ser >= 8 para registrar PROMOCION.",
@@ -865,19 +834,13 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
             else:
                 inscripcion_qs = inscripcion_qs.filter(comision_id=comision.id)
 
-            inscripcion = (
-                inscripcion_qs.select_related("estudiante", "materia").first()
-            )
+            inscripcion = inscripcion_qs.select_related("estudiante", "materia").first()
 
             if not inscripcion:
                 if is_virtual:
-                    message = (
-                        f"Inscripcion {alumno.inscripcion_id} no corresponde a la materia sin comision."
-                    )
+                    message = f"Inscripcion {alumno.inscripcion_id} no corresponde a la materia sin comision."
                 else:
-                    message = (
-                        f"Inscripcion {alumno.inscripcion_id} no pertenece a la comision."
-                    )
+                    message = f"Inscripcion {alumno.inscripcion_id} no pertenece a la comision."
                 return 400, ApiResponse(ok=False, message=message)
 
             # --- NEW VALIDATION FOR EDI SUBJECTS AND INTRODUCTORY COURSE ---
@@ -885,13 +848,32 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
                 estudiante = inscripcion.estudiante
                 try:
                     checklist = PreinscripcionChecklist.objects.get(preinscripcion__alumno=estudiante)
-                    if not checklist.curso_introductorio_aprobado:
-                        if situacion_codigo in [Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.REGULAR]:
-                            raise HttpError(400, f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. La situación de la materia EDI '{materia.nombre}' no puede ser 'Aprobado', 'Promocionado' o 'Regular'. Debe ser 'Condicional' o similar.")
+                    if not checklist.curso_introductorio_aprobado and situacion_codigo in [
+                        Regularidad.Situacion.APROBADO,
+                        Regularidad.Situacion.PROMOCIONADO,
+                        Regularidad.Situacion.REGULAR,
+                    ]:
+                            raise HttpError(
+                                400,
+                                f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
+                                f"La situación de la materia EDI '{materia.nombre}' no puede ser 'Aprobado', "
+                                f"'Promocionado' o 'Regular'. Debe ser 'Condicional' o similar.",
+                            )
                 except PreinscripcionChecklist.DoesNotExist:
                     # If no checklist exists, assume introductory course is not approved for this validation
-                    if situacion_codigo in [Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.REGULAR]:
-                        raise HttpError(400, f"El estudiante {estudiante.dni} no tiene un checklist de preinscripción. La situación de la materia EDI '{materia.nombre}' no puede ser 'Aprobado', 'Promocionado' o 'Regular'.")
+                    if situacion_codigo in [
+                        Regularidad.Situacion.APROBADO,
+                        Regularidad.Situacion.PROMOCIONADO,
+                        Regularidad.Situacion.REGULAR,
+                    ]:
+                        raise HttpError(
+                            400,
+                            (
+                                f"El estudiante {estudiante.dni} no tiene un checklist de preinscripción. "
+                                f"La situación de la materia EDI '{materia.nombre}' no puede ser 'Aprobado', "
+                                f"'Promocionado' o 'Regular'."
+                            ),
+                        ) from None
             # --- END NEW VALIDATION ---
 
             Regularidad.objects.update_or_create(
@@ -900,9 +882,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
                     "estudiante": inscripcion.estudiante,
                     "materia": inscripcion.materia,
                     "fecha_cierre": fecha,
-                    "nota_trabajos_practicos": Decimal(str(alumno.nota_tp))
-                    if alumno.nota_tp is not None
-                    else None,
+                    "nota_trabajos_practicos": Decimal(str(alumno.nota_tp)) if alumno.nota_tp is not None else None,
                     "nota_final_cursada": alumno.nota_final,
                     "asistencia_porcentaje": alumno.asistencia,
                     "excepcion": alumno.excepcion,

@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class PreinscripcionArchivo(models.Model):
     class Meta:
         db_table = "core_preinscripcion_archivo"

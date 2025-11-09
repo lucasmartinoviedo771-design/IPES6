@@ -18,7 +18,6 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import { useQuery } from "@tanstack/react-query";
@@ -28,14 +27,14 @@ import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 import {
   AlumnoClaseListado,
-  CalendarioEvento,
   DocenteClasesResponse,
   DocenteClase,
   fetchAlumnoClases,
   fetchDocenteClases,
-  listCalendarioEventos,
 } from "@/api/asistencia";
-import { listarComisiones, ComisionDTO } from "@/api/comisiones";
+import { listarComisiones, listarMaterias, ComisionDTO, MateriaDTO } from "@/api/comisiones";
+import { fetchCarreras, listarPlanes, Carrera, PlanDetalle } from "@/api/carreras";
+import CalendarioEventosPanel from "@/components/asistencia/CalendarioEventosPanel";
 
 type Option = { id: number; label: string };
 type DateOption = { id: string; label: string };
@@ -75,60 +74,72 @@ const AsistenciaReportesPage = () => {
   const [alumnoResultados, setAlumnoResultados] = useState<AlumnoClaseListado[]>([]);
   const [cargandoAlumnos, setCargandoAlumnos] = useState(false);
 
-  const { data: comisiones, isLoading: comisionesLoading } = useQuery<ComisionDTO[]>({
-    queryKey: ["asistencia", "comisiones"],
-    queryFn: () => listarComisiones({}),
-    enabled: puedeVerEstudiantes,
+  const { data: profesoradosData, isLoading: profesoradosLoading } = useQuery<Carrera[]>({
+    queryKey: ["asistencia", "profesorados"],
+    queryFn: () => fetchCarreras(),
+    enabled: puedeVerEstudiantes || puedeVerDocentes,
     staleTime: 5 * 60 * 1000,
   });
 
   const profesoradoOptions = useMemo<Option[]>(() => {
-    if (!comisiones) return [];
-    const map = new Map<number, string>();
-    for (const item of comisiones) {
-      map.set(item.profesorado_id, item.profesorado_nombre);
-    }
-    return Array.from(map.entries())
-      .map(([id, label]) => ({ id, label }))
+    if (!profesoradosData) return [];
+    return profesoradosData
+      .map((prof) => ({ id: prof.id, label: prof.nombre }))
       .sort(ordenarPorLabel);
-  }, [comisiones]);
+  }, [profesoradosData]);
 
-  const planOptions = useMemo<Option[]>(() => {
-    if (!comisiones) return [];
-    const filtered = alumnoProfesorado ? comisiones.filter((c) => c.profesorado_id === alumnoProfesorado.id) : comisiones;
-    const map = new Map<number, string>();
-    for (const item of filtered) {
-      map.set(item.plan_id, item.plan_resolucion);
-    }
-    return Array.from(map.entries())
-      .map(([id, label]) => ({ id, label }))
+  const { data: alumnoPlanesData, isLoading: alumnoPlanesLoading } = useQuery<PlanDetalle[]>({
+    queryKey: ["asistencia", "planes", alumnoProfesorado?.id ?? 0],
+    queryFn: () => listarPlanes(alumnoProfesorado!.id),
+    enabled: puedeVerEstudiantes && !!alumnoProfesorado,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const alumnoPlanOptions = useMemo<Option[]>(() => {
+    if (!alumnoPlanesData) return [];
+    return alumnoPlanesData
+      .map((plan) => ({ id: plan.id, label: plan.resolucion }))
       .sort(ordenarPorLabel);
-  }, [comisiones, alumnoProfesorado]);
+  }, [alumnoPlanesData]);
+
+  const { data: alumnoMateriasData, isLoading: alumnoMateriasLoading } = useQuery<MateriaDTO[]>({
+    queryKey: ["asistencia", "materias", alumnoPlan?.id ?? 0],
+    queryFn: () => listarMaterias(alumnoPlan!.id),
+    enabled: puedeVerEstudiantes && !!alumnoPlan,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const {
+    data: alumnoComisionesData,
+    isLoading: alumnoComisionesLoading,
+  } = useQuery<ComisionDTO[]>({
+    queryKey: ["asistencia", "comisiones", alumnoProfesorado?.id ?? 0, alumnoPlan?.id ?? 0, alumnoMateria?.id ?? 0],
+    queryFn: () =>
+      listarComisiones({
+        profesorado_id: alumnoProfesorado?.id ?? undefined,
+        plan_id: alumnoPlan?.id ?? undefined,
+        materia_id: alumnoMateria?.id ?? undefined,
+      }),
+    enabled: puedeVerEstudiantes && !!alumnoProfesorado && !!alumnoPlan,
+    staleTime: 2 * 60 * 1000,
+  });
 
   const alumnoMateriaOptions = useMemo<Option[]>(() => {
-    if (!comisiones) return [];
-    let filtered = comisiones;
-    if (alumnoProfesorado) filtered = filtered.filter((c) => c.profesorado_id === alumnoProfesorado.id);
-    if (alumnoPlan) filtered = filtered.filter((c) => c.plan_id === alumnoPlan.id);
-    const map = new Map<number, string>();
-    for (const item of filtered) {
-      map.set(item.materia_id, item.materia_nombre);
-    }
-    return Array.from(map.entries())
-      .map(([id, label]) => ({ id, label }))
+    if (!alumnoMateriasData) return [];
+    return alumnoMateriasData
+      .map((materia) => ({ id: materia.id, label: materia.nombre }))
       .sort(ordenarPorLabel);
-  }, [comisiones, alumnoProfesorado, alumnoPlan]);
+  }, [alumnoMateriasData]);
 
   const alumnoComisionOptions = useMemo<Option[]>(() => {
-    if (!comisiones) return [];
-    let filtered = comisiones;
-    if (alumnoProfesorado) filtered = filtered.filter((c) => c.profesorado_id === alumnoProfesorado.id);
+    if (!alumnoComisionesData) return [];
+    let filtered = alumnoComisionesData;
     if (alumnoPlan) filtered = filtered.filter((c) => c.plan_id === alumnoPlan.id);
     if (alumnoMateria) filtered = filtered.filter((c) => c.materia_id === alumnoMateria.id);
     return filtered
       .map((c) => ({ id: c.id, label: `${c.materia_nombre} - ${c.codigo}` }))
       .sort(ordenarPorLabel);
-  }, [comisiones, alumnoProfesorado, alumnoPlan, alumnoMateria]);
+  }, [alumnoComisionesData, alumnoPlan, alumnoMateria]);
 
   useEffect(() => {
     setAlumnoPlan(null);
@@ -148,11 +159,11 @@ const AsistenciaReportesPage = () => {
   const handleBuscarAlumnos = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!puedeVerEstudiantes) {
-      enqueueSnackbar("No tenés permisos para consultar asistencia de estudiantes.", { variant: "warning" });
+      enqueueSnackbar("No tenes permisos para consultar asistencia de estudiantes.", { variant: "warning" });
       return;
     }
     if (!alumnoMateria && !alumnoComision) {
-      enqueueSnackbar("Seleccioná al menos una materia o comisión.", { variant: "info" });
+      enqueueSnackbar("Selecciona al menos una materia o comision.", { variant: "info" });
       return;
     }
     setCargandoAlumnos(true);
@@ -324,11 +335,11 @@ const AsistenciaReportesPage = () => {
   const ejecutarBusquedaDocente = useCallback(
     async (dni: string) => {
       if (!puedeVerDocentes) {
-        enqueueSnackbar("No tenés permisos para consultar asistencia de docentes.", { variant: "warning" });
+        enqueueSnackbar("No tenes permisos para consultar asistencia de docentes.", { variant: "warning" });
         return;
       }
       if (!dni) {
-        enqueueSnackbar("Ingresá un DNI de docente.", { variant: "info" });
+        enqueueSnackbar("Ingresa un DNI de docente.", { variant: "info" });
         return;
       }
       setCargandoDocente(true);
@@ -340,7 +351,7 @@ const AsistenciaReportesPage = () => {
         if (docenteDiaSemana !== "") {
           const dia = Number(docenteDiaSemana);
           if (Number.isNaN(dia) || dia < 0 || dia > 6) {
-            enqueueSnackbar("El día debe estar entre 0 y 6.", { variant: "warning" });
+            enqueueSnackbar("El dia debe estar entre 0 y 6.", { variant: "warning" });
             setCargandoDocente(false);
             return;
           }
@@ -390,11 +401,7 @@ const AsistenciaReportesPage = () => {
   }, [docenteClases, docenteProfesorado, docentePlan, docenteMateria, docenteComision, docenteFecha]);
 
   /* ---------------- Calendario ---------------- */
-  const { data: eventos, isLoading: eventosLoading } = useQuery<CalendarioEvento[]>({
-    queryKey: ["asistencia", "calendario", "activos"],
-    queryFn: () => listCalendarioEventos({ solo_activos: true }),
-  });
-
+  // Gestionado en CalendarioEventosPanel
   return (
     <Box sx={{ px: { xs: 1, md: 2 }, py: 1 }}>
       <Stack spacing={3}>
@@ -412,18 +419,37 @@ const AsistenciaReportesPage = () => {
             <Paper elevation={3} sx={{ p: 3, height: "100%" }}>
               <Stack spacing={2} height="100%">
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Chip icon={<SchoolIcon />} color="primary" label="Estudiantes" sx={{ fontWeight: 600 }} />
+                  <Chip
+                    icon={<SchoolIcon />}
+                    label="Estudiantes"
+                    sx={{
+                      fontWeight: 600,
+                      bgcolor: "primary.main",
+                      color: "common.white",
+                      "& .MuiChip-icon": { color: "common.white !important" },
+                    }}
+                  />
                   <Chip
                     icon={<ManageAccountsIcon />}
-                    label={puedeGestionarEstudiantes ? "Gestión habilitada" : "Gestión restringida"}
+                    label={puedeGestionarEstudiantes ? "Gestion habilitada" : "Gestion restringida"}
                     color={puedeGestionarEstudiantes ? "success" : "default"}
                     variant={puedeGestionarEstudiantes ? "filled" : "outlined"}
+                    sx={{
+                      "& .MuiChip-icon": {
+                        color: puedeGestionarEstudiantes ? "common.white !important" : undefined,
+                      },
+                    }}
                   />
                   <Chip
                     icon={<VisibilityIcon />}
                     label={puedeVerEstudiantes ? "Vista habilitada" : "Vista restringida"}
                     color={puedeVerEstudiantes ? "info" : "default"}
                     variant={puedeVerEstudiantes ? "filled" : "outlined"}
+                    sx={{
+                      "& .MuiChip-icon": {
+                        color: puedeVerEstudiantes ? "common.white !important" : undefined,
+                      },
+                    }}
                   />
                 </Stack>
 
@@ -432,54 +458,124 @@ const AsistenciaReportesPage = () => {
                     <Typography variant="subtitle1" fontWeight={600}>
                       Filtrar asistencia de estudiantes
                     </Typography>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Autocomplete
-                        options={profesoradoOptions}
-                        value={alumnoProfesorado}
-                        onChange={(_, value) => setAlumnoProfesorado(value)}
-                        loading={comisionesLoading}
-                        disabled={cargandoAlumnos || !puedeVerEstudiantes}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Profesorado"
-                            placeholder="Seleccioná un profesorado"
-                            InputProps={{
-                              ...params.InputProps,
-                              endAdornment: (
-                                <>
-                                  {comisionesLoading ? <CircularProgress color="inherit" size={16} /> : null}
-                                  {params.InputProps.endAdornment}
-                                </>
-                              ),
-                            }}
-                          />
-                        )}
-                      />
-                      <Autocomplete
-                        options={planOptions}
-                        value={alumnoPlan}
-                        onChange={(_, value) => setAlumnoPlan(value)}
-                        disabled={cargandoAlumnos || !puedeVerEstudiantes || planOptions.length === 0}
-                        renderInput={(params) => <TextField {...params} label="Plan" placeholder="Seleccioná un plan" />}
-                      />
-                    </Stack>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Autocomplete
-                        options={alumnoMateriaOptions}
-                        value={alumnoMateria}
-                        onChange={(_, value) => setAlumnoMateria(value)}
-                        disabled={cargandoAlumnos || !puedeVerEstudiantes || alumnoMateriaOptions.length === 0}
-                        renderInput={(params) => <TextField {...params} label="Materia" placeholder="Seleccioná una materia" />}
-                      />
-                      <Autocomplete
-                        options={alumnoComisionOptions}
-                        value={alumnoComision}
-                        onChange={(_, value) => setAlumnoComision(value)}
-                        disabled={cargandoAlumnos || !puedeVerEstudiantes || alumnoComisionOptions.length === 0}
-                        renderInput={(params) => <TextField {...params} label="Cátedra (comisión)" placeholder="Seleccioná una comisión" />}
-                      />
-                    </Stack>
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={profesoradoOptions}
+                          value={alumnoProfesorado}
+                          onChange={(_, value) => setAlumnoProfesorado(value)}
+                          loading={profesoradosLoading}
+                          disabled={cargandoAlumnos || !puedeVerEstudiantes}
+                          fullWidth
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Profesorado"
+                              placeholder="Selecciona un profesorado"
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {profesoradosLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {params.InputProps.endAdornment}
+                                  </>
+                                ),
+                              }}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={alumnoPlanOptions}
+                          value={alumnoPlan}
+                          onChange={(_, value) => setAlumnoPlan(value)}
+                          loading={alumnoPlanesLoading}
+                          disabled={cargandoAlumnos || !puedeVerEstudiantes || alumnoPlanOptions.length === 0}
+                          fullWidth
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Plan"
+                              placeholder="Selecciona un plan"
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {alumnoPlanesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {params.InputProps.endAdornment}
+                                  </>
+                                ),
+                              }}
+                            />
+                          )}
+                        />
+                      </Grid>
+                    </Grid>
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={alumnoMateriaOptions}
+                          value={alumnoMateria}
+                          onChange={(_, value) => setAlumnoMateria(value)}
+                          loading={alumnoMateriasLoading}
+                          disabled={
+                            cargandoAlumnos ||
+                            !puedeVerEstudiantes ||
+                            alumnoMateriaOptions.length === 0 ||
+                            alumnoMateriasLoading
+                          }
+                          fullWidth
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Materia"
+                              placeholder="Selecciona una materia"
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {alumnoMateriasLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {params.InputProps.endAdornment}
+                                  </>
+                                ),
+                              }}
+                            />
+                          )}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={alumnoComisionOptions}
+                          value={alumnoComision}
+                          onChange={(_, value) => setAlumnoComision(value)}
+                          loading={alumnoComisionesLoading}
+                          disabled={
+                            cargandoAlumnos ||
+                            !puedeVerEstudiantes ||
+                            alumnoComisionOptions.length === 0 ||
+                            alumnoComisionesLoading
+                          }
+                          fullWidth
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Catedra (comision)"
+                              placeholder="Selecciona una catedra"
+                              InputProps={{
+                                ...params.InputProps,
+                                endAdornment: (
+                                  <>
+                                    {alumnoComisionesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {params.InputProps.endAdornment}
+                                  </>
+                                ),
+                              }}
+                            />
+                          )}
+                        />
+                      </Grid>
+                    </Grid>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                       <TextField
                         label="Desde"
@@ -509,7 +605,7 @@ const AsistenciaReportesPage = () => {
                 <Divider />
 
                 {alumnoResultados.length === 0 ? (
-                  <Alert severity="info">Configurá los filtros y presioná “Consultar” para ver clases.</Alert>
+                  <Alert severity="info">Configura los filtros y presiona "Consultar" para ver clases.</Alert>
                 ) : (
                   <Stack spacing={1.5} sx={{ maxHeight: 260, overflowY: "auto" }}>
                     {alumnoResultados.map((item) => (
@@ -535,7 +631,7 @@ const AsistenciaReportesPage = () => {
                   <Stack direction="row" spacing={1} alignItems="center" color="warning.main" mt={1}>
                     <WarningAmberIcon fontSize="small" />
                     <Typography variant="caption">
-                      Tu rol no tiene acceso a este módulo. Contactá a Secretaría para habilitarlo.
+                      Tu rol no tiene acceso a este modulo. Contacta a Secretaria para habilitarlo.
                     </Typography>
                   </Stack>
                 )}
@@ -547,25 +643,44 @@ const AsistenciaReportesPage = () => {
             <Paper elevation={3} sx={{ p: 3, height: "100%" }}>
               <Stack spacing={2} height="100%">
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Chip icon={<GroupsIcon />} color="secondary" label="Docentes" sx={{ fontWeight: 600 }} />
+                  <Chip
+                    icon={<GroupsIcon />}
+                    label="Docentes"
+                    sx={{
+                      fontWeight: 600,
+                      bgcolor: "primary.main",
+                      color: "common.white",
+                      "& .MuiChip-icon": { color: "common.white !important" },
+                    }}
+                  />
                   <Chip
                     icon={<ManageAccountsIcon />}
-                    label={puedeGestionarDocentes ? "Gestión habilitada" : "Gestión restringida"}
+                    label={puedeGestionarDocentes ? "Gestion habilitada" : "Gestion restringida"}
                     color={puedeGestionarDocentes ? "success" : "default"}
                     variant={puedeGestionarDocentes ? "filled" : "outlined"}
+                    sx={{
+                      "& .MuiChip-icon": {
+                        color: puedeGestionarDocentes ? "common.white !important" : undefined,
+                      },
+                    }}
                   />
                   <Chip
                     icon={<VisibilityIcon />}
                     label={puedeVerDocentes ? "Vista habilitada" : "Vista restringida"}
                     color={puedeVerDocentes ? "info" : "default"}
                     variant={puedeVerDocentes ? "filled" : "outlined"}
+                    sx={{
+                      "& .MuiChip-icon": {
+                        color: puedeVerDocentes ? "common.white !important" : undefined,
+                      },
+                    }}
                   />
                 </Stack>
 
                 <Box component="form" onSubmit={handleBuscarDocente}>
                   <Stack spacing={1.5}>
                     <Typography variant="subtitle1" fontWeight={600}>
-                      Seleccioná al docente
+                      Selecciona al docente
                     </Typography>
                     <TextField
                       label="DNI del docente"
@@ -596,7 +711,7 @@ const AsistenciaReportesPage = () => {
                       />
                     </Stack>
                     <TextField
-                      label="Filtrar por día de semana (0=lunes ... 6=domingo)"
+                      label="Filtrar por dia de semana (0=lunes ... 6=domingo)"
                       value={docenteDiaSemana}
                       onChange={(event) => setDocenteDiaSemana(event.target.value)}
                       placeholder="Opcional"
@@ -621,46 +736,63 @@ const AsistenciaReportesPage = () => {
                     <Typography variant="subtitle1" fontWeight={600}>
                       Refinar resultados
                     </Typography>
-                    <Autocomplete
-                      options={docenteProfesOptions}
-                      value={docenteProfesorado}
-                      onChange={(_, value) => setDocenteProfesorado(value)}
-                      disabled={docenteProfesOptions.length === 0}
-                      renderInput={(params) => <TextField {...params} label="Profesorado" placeholder="Seleccioná un profesorado" />}
-                    />
-                    <Autocomplete
-                      options={docentePlanOptions}
-                      value={docentePlan}
-                      onChange={(_, value) => setDocentePlan(value)}
-                      disabled={docentePlanOptions.length === 0}
-                      renderInput={(params) => <TextField {...params} label="Plan" placeholder="Seleccioná un plan" />}
-                    />
-                    <Autocomplete
-                      options={docenteMateriaOptions}
-                      value={docenteMateria}
-                      onChange={(_, value) => setDocenteMateria(value)}
-                      disabled={docenteMateriaOptions.length === 0}
-                      renderInput={(params) => <TextField {...params} label="Materia" placeholder="Seleccioná una materia" />}
-                    />
-                    <Autocomplete
-                      options={docenteComisionOptions}
-                      value={docenteComision}
-                      onChange={(_, value) => setDocenteComision(value)}
-                      disabled={docenteComisionOptions.length === 0}
-                      renderInput={(params) => <TextField {...params} label="Cátedra (comisión)" placeholder="Seleccioná una cátedra" />}
-                    />
-                    <Autocomplete
-                      options={docenteFechaOptions}
-                      value={docenteFecha}
-                      onChange={(_, value) => setDocenteFecha(value)}
-                      disabled={docenteFechaOptions.length === 0}
-                      renderInput={(params) => <TextField {...params} label="Fecha" placeholder="Seleccioná una fecha" />}
-                    />
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={docenteProfesOptions}
+                          value={docenteProfesorado}
+                          onChange={(_, value) => setDocenteProfesorado(value)}
+                          disabled={docenteProfesOptions.length === 0}
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Profesorado" placeholder="Selecciona un profesorado" />}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={docentePlanOptions}
+                          value={docentePlan}
+                          onChange={(_, value) => setDocentePlan(value)}
+                          disabled={docentePlanOptions.length === 0}
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Plan" placeholder="Selecciona un plan" />}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={docenteMateriaOptions}
+                          value={docenteMateria}
+                          onChange={(_, value) => setDocenteMateria(value)}
+                          disabled={docenteMateriaOptions.length === 0}
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Materia" placeholder="Selecciona una materia" />}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={docenteComisionOptions}
+                          value={docenteComision}
+                          onChange={(_, value) => setDocenteComision(value)}
+                          disabled={docenteComisionOptions.length === 0}
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Catedra (comision)" placeholder="Selecciona una catedra" />}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Autocomplete
+                          options={docenteFechaOptions}
+                          value={docenteFecha}
+                          onChange={(_, value) => setDocenteFecha(value)}
+                          disabled={docenteFechaOptions.length === 0}
+                          fullWidth
+                          renderInput={(params) => <TextField {...params} label="Fecha" placeholder="Selecciona una fecha" />}
+                        />
+                      </Grid>
+                    </Grid>
                   </Stack>
                 )}
 
                 {docenteClasesFiltradas.length === 0 ? (
-                  <Alert severity="info">Ingresá un DNI y rango de fechas para ver las clases asignadas.</Alert>
+                  <Alert severity="info">Ingresa un DNI y rango de fechas para ver las clases asignadas.</Alert>
                 ) : (
                   <Stack spacing={1.5} sx={{ maxHeight: 260, overflowY: "auto" }}>
                     {docenteClasesFiltradas.map((clase) => (
@@ -676,7 +808,7 @@ const AsistenciaReportesPage = () => {
                             Profes.: {clase.profesorado_nombre ?? "-"} - Plan {clase.plan_resolucion ?? "-"}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            Puede marcar: {clase.puede_marcar ? "sí" : "no"} - Staff puede editar: {clase.editable_staff ? "sí" : "no"}
+                            Puede marcar: {clase.puede_marcar ? "si" : "no"} - Staff puede editar: {clase.editable_staff ? "si" : "no"}
                           </Typography>
                         </Stack>
                       </Paper>
@@ -688,7 +820,7 @@ const AsistenciaReportesPage = () => {
                   <Stack direction="row" spacing={1} alignItems="center" color="warning.main" mt={1}>
                     <WarningAmberIcon fontSize="small" />
                     <Typography variant="caption">
-                      Tu rol no tiene acceso a la asistencia docente. Coordiná con Secretaría para habilitarlo.
+                      Tu rol no tiene acceso a la asistencia docente. Coordina con Secretaria para habilitarlo.
                     </Typography>
                   </Stack>
                 )}
@@ -697,44 +829,11 @@ const AsistenciaReportesPage = () => {
           </Grid>
         </Grid>
 
-        <Paper elevation={1} sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Chip icon={<CalendarMonthIcon />} label="Calendario institucional" color="default" />
-              <Typography variant="body2" color="text.secondary">
-                Suspensiones, feriados y licencias vigentes para asistencia.
-              </Typography>
-            </Stack>
-
-            {eventosLoading ? (
-              <CircularProgress size={28} />
-            ) : !eventos || eventos.length === 0 ? (
-              <Alert severity="info">No hay eventos cargados para los proximos dias.</Alert>
-            ) : (
-              <Stack spacing={1.2} sx={{ maxHeight: 220, overflowY: "auto" }}>
-                {eventos.map((evento) => (
-                  <Paper key={evento.id} variant="outlined" sx={{ p: 1.5 }}>
-                    <Typography variant="subtitle2" fontWeight={600}>
-                      {evento.nombre} - {evento.tipo}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {dayjs(evento.fecha_desde).format("DD/MM/YYYY")} - {dayjs(evento.fecha_hasta).format("DD/MM/YYYY")}
-                      {evento.turno_nombre ? ` - Turno ${evento.turno_nombre}` : ""}
-                    </Typography>
-                    {evento.motivo && (
-                      <Typography variant="caption" color="text.secondary">
-                        {evento.motivo}
-                      </Typography>
-                    )}
-                  </Paper>
-                ))}
-              </Stack>
-            )}
-          </Stack>
-        </Paper>
+        <CalendarioEventosPanel canManage={puedeGestionarDocentes} />
       </Stack>
     </Box>
   );
 };
 
 export default AsistenciaReportesPage;
+

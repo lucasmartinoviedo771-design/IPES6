@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Dict, Iterable, List, Tuple, Type
+from collections.abc import Iterable
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.db.models import Model
 
+from apps.preinscriptions.models_uploads import PreinscripcionArchivo
 from core.models import (
     Conversation,
     Estudiante,
@@ -19,12 +20,10 @@ from core.models import (
     Regularidad,
     VentanaHabilitacion,
 )
-from apps.preinscriptions.models_uploads import PreinscripcionArchivo
 
 
 class Command(BaseCommand):
-    """
-    Removes operational data (students, preinscripciones, inscripciones, mesas, etc.)
+    """Removes operational data (students, preinscripciones, inscripciones, mesas, etc.)
     while keeping structural entities such as Profesorados, Planes, Materias,
     Correlatividades, Docentes and auth Groups.
     """
@@ -34,7 +33,7 @@ class Command(BaseCommand):
         "preservando la estructura académica. Utilice --dry-run para previsualizar y --force para ejecutar."
     )
 
-    TARGET_MODELS: Tuple[Tuple[str, Type[Model]], ...] = (
+    TARGET_MODELS: tuple[tuple[str, type[Model]], ...] = (
         ("preinscripcion_archivos", PreinscripcionArchivo),
         ("conversaciones", Conversation),
         ("mesas_examen", MesaExamen),
@@ -84,8 +83,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Limpieza finalizada correctamente."))
 
     # ------------------------------------------------------------------ helpers
-    def _collect_stats(self) -> Tuple[Dict[str, int], List[int]]:
-        stats: "OrderedDict[str, int]" = OrderedDict()
+    def _collect_stats(self) -> tuple[dict[str, int], list[int]]:
+        stats: OrderedDict[str, int] = OrderedDict()
         for label, model in self.TARGET_MODELS:
             stats[label] = model.objects.count()
         student_user_ids = list(Estudiante.objects.values_list("user_id", flat=True))
@@ -97,7 +96,7 @@ class Command(BaseCommand):
             return 0
         return User.objects.filter(id__in=list(user_ids)).count()
 
-    def _purge_data(self, student_user_ids: List[int]) -> None:
+    def _purge_data(self, student_user_ids: list[int]) -> None:
         # 1) PreinscripcionArchivo (no tiene FK real, se elimina primero).
         self._delete_queryset(PreinscripcionArchivo, "preinscripcion_archivos")
 
@@ -119,6 +118,6 @@ class Command(BaseCommand):
             deleted, _ = User.objects.filter(id__in=student_user_ids).delete()
             self.stdout.write(self.style.NOTICE(f"  • usuarios_alumno eliminados: {deleted}"))
 
-    def _delete_queryset(self, model: Type[Model], label: str) -> None:
+    def _delete_queryset(self, model: type[Model], label: str) -> None:
         deleted, _ = model.objects.all().delete()
         self.stdout.write(self.style.NOTICE(f"  • {label} eliminados: {deleted}"))

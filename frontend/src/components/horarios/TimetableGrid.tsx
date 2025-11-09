@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { client as axios } from '@/api/client';
 
 // ---- Port de "GRILLAS" del horarios_pack (40 min + recreos) ----
@@ -111,13 +111,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 
   const [bloques, setBloques] = useState<Bloque[]>([]);
   const [materias, setMaterias] = useState<Materia[]>([]);
-  // Ocupación separada para L-V y Sábado, y combinada
-  const [occupiedBlocksLV, setOccupiedBlocksLV] = useState<Set<number>>(new Set());
-  const [occupiedBlocksSab, setOccupiedBlocksSab] = useState<Set<number>>(new Set());
   const [occupiedBlocks, setOccupiedBlocks] = useState<Set<number>>(new Set());
-  // Turno y bloques de Sábado (independiente del turno seleccionado)
-  const [sabadoTurnoId, setSabadoTurnoId] = useState<number | null>(null);
-  const [sabadoBloques, setSabadoBloques] = useState<Bloque[]>([]);
 
   const daysOfWeek = [
     { id: 1, name: 'Lunes' },
@@ -126,6 +120,8 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
     { id: 4, name: 'Jueves' },
     { id: 5, name: 'Viernes' },
   ];
+
+  const sabadoBloques = useMemo(() => bloques.filter((b) => b.dia === 6), [bloques]);
 
   useEffect(() => {
     if (turnoId) {
@@ -136,24 +132,6 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
       setBloques([]);
     }
   }, [turnoId]);
-
-  // Cargar turno Sábado y sus bloques una sola vez
-  useEffect(() => {
-    // axios.get<{ id: number; nombre: string }[]>(`/turnos`)
-    //   .then(({ data }) => {
-    //     const findSab = (s: string) => {
-    //       const n = s.toLowerCase();
-    //       return n.includes('sábado') || n.includes('sabado') || n.includes('sab');
-    //     };
-    //     const sab = data.find(t => findSab(t.nombre));
-    //     if (sab) {
-    //       setSabadoTurnoId(sab.id);
-    //       return axios.get<Bloque[]>(`/turnos/${sab.id}/bloques`).then(r => setSabadoBloques(r.data));
-    //     }
-    //     return Promise.resolve();
-    //   })
-    //   .catch(e => console.error('Error fetching turno/bloques sábado:', e));
-  }, []);
 
   useEffect(() => {
     if (planId && anioCarrera) {
@@ -190,28 +168,16 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 
   useEffect(() => {
     if (anioCarrera && turnoId) {
-      axios.get<Bloque[]>(`/horarios/ocupacion`, { params: { anio_cursada: anioCarrera, turno_id: turnoId, cuatrimestre } })
-      .then(({data}) => setOccupiedBlocksLV(new Set(data.map(b => b.id))))
-      .catch(e => console.error('Error fetching ocupacion (L-V):', e));
+      axios
+        .get<Bloque[]>(`/horarios/ocupacion`, {
+          params: { anio_cursada: anioCarrera, turno_id: turnoId, cuatrimestre },
+        })
+        .then(({ data }) => setOccupiedBlocks(new Set(data.map((b) => b.id))))
+        .catch((e) => console.error("Error fetching ocupacion:", e));
     } else {
-      setOccupiedBlocksLV(new Set());
+      setOccupiedBlocks(new Set());
     }
   }, [anioCarrera, turnoId, cuatrimestre]);
-
-  useEffect(() => {
-    if (anioCarrera && sabadoTurnoId) {
-      axios.get<Bloque[]>(`/horarios/ocupacion`, { params: { anio_cursada: anioCarrera, turno_id: sabadoTurnoId, cuatrimestre } })
-      .then(({data}) => setOccupiedBlocksSab(new Set(data.map(b => b.id))))
-      .catch(e => console.error('Error fetching ocupacion (Sábado):', e));
-    } else {
-      setOccupiedBlocksSab(new Set());
-    }
-  }, [anioCarrera, sabadoTurnoId, cuatrimestre]);
-
-  useEffect(() => {
-    const merged = new Set<number>([...Array.from(occupiedBlocksLV), ...Array.from(occupiedBlocksSab)]);
-    setOccupiedBlocks(merged);
-  }, [occupiedBlocksLV, occupiedBlocksSab]);
 
   const selectedMateria = materias.find(m => m.id === selectedMateriaId) || null;
   const selectedCount = selectedBlocks.size;
@@ -294,7 +260,7 @@ let timeSlotsLV: string[] = [];
 let timeSlotsSab: string[] = [];
 if (hasBloques) {
   timeSlotsSab = Array.from(new Set(
-    bloques.filter(b => b.dia === 6).map(b => `${b.hora_desde}-${b.hora_hasta}`)
+    sabadoBloques.map(b => `${b.hora_desde}-${b.hora_hasta}`)
   )).sort();
 } else {
   const meta = GRILLAS.sabado;
@@ -313,9 +279,7 @@ if (hasBloques) {
   // Sábado visible (independiente del turno seleccionado)
   const timeSlotsSabDisplay: string[] = (sabadoBloques.length > 0)
     ? Array.from(new Set(
-        sabadoBloques
-          .filter(b => b.dia === 6)
-          .map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
+        sabadoBloques.map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
       )).sort()
     : (() => {
         const meta = GRILLAS.sabado;
@@ -329,9 +293,6 @@ if (hasBloques) {
         }
         return acc;
       })();
-
-  // Cantidad de filas a mostrar (máximo entre L-V y Sábado)
-  const rowCount = Math.max(timeSlotsLV.length, timeSlotsSabDisplay.length);
 
   return (
     <div>
@@ -348,85 +309,111 @@ if (hasBloques) {
             </tr>
           </thead>
           <tbody>
-  {timeSlotsLV.map((slot, idx) => (
-    <tr key={slot}>
-      {/* Hora (L–V) */}
-      <td className="timetable__hour">{slot}</td>
+            {Array.from(
+              { length: Math.max(timeSlotsLV.length, timeSlotsSabDisplay.length) },
+              (_, idx) => {
+                const slot = timeSlotsLV[idx] ?? "";
+                const slotSab = timeSlotsSabDisplay[idx] ?? "";
+                const [from, to] = slot ? slot.split("-") : ["", ""];
 
-      {/* Lunes a Viernes */}
-      {daysOfWeek.map((d) => {
-        const bloque = bloques.find(
-          b => b.dia === d.id && `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` === slot
-        );
+                return (
+                  <tr key={`${slot || "row"}-${idx}`}>
+                    <td className="timetable__hour">{slot}</td>
+                    {daysOfWeek.map((d) => {
+                      if (!slot) {
+                        return (
+                          <td
+                            key={`empty-${idx}-${d.id}`}
+                            className="timetable__cell timetable__cell--empty"
+                          />
+                        );
+                      }
 
-        // Detectar recreo: si viene marcado en backend o por hora exacta del turno
-        const recreoRanges = turnoKey && GRILLAS[turnoKey] ? GRILLAS[turnoKey].breaks : [];
-        const [from, to] = slot.split("-");
-        const isBreakByTime = recreoRanges.some(r => r.from === from && r.to === to);
-        const isRecreo = !!bloque?.es_recreo || isBreakByTime;
+                      const bloque = bloques.find(
+                        (b) =>
+                          b.dia === d.id &&
+                          `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` === slot,
+                      );
 
-        const isOccupied = bloque ? occupiedBlocks.has(bloque.id) : false;
-        const isSelected = bloque ? selectedBlocks.has(bloque.id) : false;
+                      const recreoRanges =
+                        turnoKey && GRILLAS[turnoKey] ? GRILLAS[turnoKey].breaks : [];
+                      const isBreakByTime = recreoRanges.some(
+                        (r) => r.from === from && r.to === to,
+                      );
+                      const isRecreo = !!bloque?.es_recreo || isBreakByTime;
 
-        const className = [
-          "timetable__cell",
-          isRecreo ? "timetable__cell--recreo" : "",
-          isOccupied ? "timetable__cell--ocupado" : "",
-          isSelected ? "timetable__cell--selected" : "",
-        ].join(" ");
+                      const isOccupied = bloque ? occupiedBlocks.has(bloque.id) : false;
+                      const isSelected = bloque ? selectedBlocks.has(bloque.id) : false;
 
-        return (
-          <td
-            key={`${slot}-${d.id}`}
-            className={className}
-            onClick={() => {
-              if (!bloque || isRecreo || isOccupied) return;
-              handleBlockClick(bloque.id);
-            }}
-            title={isRecreo ? "Recreo" : (isOccupied ? "Ocupado" : "Disponible")}
-            aria-disabled={!!(isRecreo || isOccupied)}
-          >
-            {isRecreo ? "Recreo" : (isOccupied ? "Ocupado" : "")}
-          </td>
-        );
-      })}
+                      const className = [
+                        "timetable__cell",
+                        isRecreo ? "timetable__cell--recreo" : "",
+                        isOccupied ? "timetable__cell--ocupado" : "",
+                        isSelected ? "timetable__cell--selected" : "",
+                      ].join(" ");
 
-      {/* Sábado (celdas) */}
-      {(() => {
-        const slotSab = timeSlotsSabDisplay[idx];
-        if (!slotSab) return <td className="timetable__cell timetable__cell--empty" />;
-        const bloqueSab = sabadoBloques.find(
-          b => b.dia === 6 && `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` === slotSab
-        );
-        const [fromS, toS] = slotSab.split("-");
-        const isBreakSab = !!bloqueSab?.es_recreo || GRILLAS.sabado.breaks.some(r => r.from === fromS && r.to === toS);
-        const isOccupiedSab = bloqueSab ? occupiedBlocks.has(bloqueSab.id) : false;
-        const isSelectedSab = bloqueSab ? selectedBlocks.has(bloqueSab.id) : false;
-        const classNameSab = [
-          "timetable__cell",
-          isBreakSab ? "timetable__cell--recreo" : "",
-          isOccupiedSab ? "timetable__cell--ocupado" : "",
-          isSelectedSab ? "timetable__cell--selected" : "",
-        ].join(" ");
-        return (
-          <td
-            className={classNameSab}
-            onClick={() => { if (!bloqueSab || isBreakSab || isOccupiedSab) return; handleBlockClick(bloqueSab.id); }}
-            title={isBreakSab ? "Recreo" : (isOccupiedSab ? "Ocupado" : "Disponible")}
-            aria-disabled={!!(isBreakSab || isOccupiedSab)}
-          >
-            {isBreakSab ? "Recreo" : (isOccupiedSab ? "Ocupado" : "")}
-          </td>
-        );
-      })()}
+                      return (
+                        <td
+                          key={`${slot}-${d.id}`}
+                          className={className}
+                          onClick={() => {
+                            if (!bloque || isRecreo || isOccupied) return;
+                            handleBlockClick(bloque.id);
+                          }}
+                          title={isRecreo ? "Recreo" : isOccupied ? "Ocupado" : "Disponible"}
+                          aria-disabled={!!(isRecreo || isOccupied)}
+                        >
+                          {isRecreo ? "Recreo" : isOccupied ? "Ocupado" : ""}
+                        </td>
+                      );
+                    })}
 
-      {/* Hora (Sábado) */}
-      <td className="timetable__hour">
-        {timeSlotsSabDisplay[idx] ?? ""}
-      </td>
-    </tr>
-  ))}
-</tbody>
+                    {(() => {
+                      if (!slotSab) {
+                        return (
+                          <td className="timetable__cell timetable__cell--empty" />
+                        );
+                      }
+                      const bloqueSab = sabadoBloques.find(
+                        (b) =>
+                          b.dia === 6 &&
+                          `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` === slotSab,
+                      );
+                      const [fromS, toS] = slotSab.split("-");
+                      const isBreakSab =
+                        !!bloqueSab?.es_recreo ||
+                        GRILLAS.sabado.breaks.some((r) => r.from === fromS && r.to === toS);
+                      const isOccupiedSab = bloqueSab ? occupiedBlocks.has(bloqueSab.id) : false;
+                      const isSelectedSab = bloqueSab ? selectedBlocks.has(bloqueSab.id) : false;
+                      const classNameSab = [
+                        "timetable__cell",
+                        isBreakSab ? "timetable__cell--recreo" : "",
+                        isOccupiedSab ? "timetable__cell--ocupado" : "",
+                        isSelectedSab ? "timetable__cell--selected" : "",
+                      ].join(" ");
+                      return (
+                        <td
+                          className={classNameSab}
+                          onClick={() => {
+                            if (!bloqueSab || isBreakSab || isOccupiedSab) return;
+                            handleBlockClick(bloqueSab.id);
+                          }}
+                          title={
+                            isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : "Disponible"
+                          }
+                          aria-disabled={!!(isBreakSab || isOccupiedSab)}
+                        >
+                          {isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : ""}
+                        </td>
+                      );
+                    })()}
+
+                    <td className="timetable__hour">{slotSab}</td>
+                  </tr>
+                );
+              },
+            )}
+          </tbody>
         </table>
       </div>
 

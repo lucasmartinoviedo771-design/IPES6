@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { client, apiPath } from "@/api/client"; // Removed setAuthToken, clearAuthToken
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { client, apiPath, setUnauthorizedHandler, storeTokens } from "@/api/client";
 
 export type User = {
   id?: number;
@@ -22,9 +22,13 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const KEEP_ALIVE_INTERVAL_MS = 2 * 60 * 1000;
+const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
+
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
+  const activityRef = useRef<number>(Date.now());
 
   const refreshProfile = async (): Promise<User | null> => {
     try {
@@ -44,14 +48,67 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     (async () => {
       try {
         await refreshProfile(); // Attempt to load profile, relies on browser sending cookie
-      } catch (err: any) {
-        // No valid session cookie found or profile request failed
+      } catch {
         setUser(null);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  useEffect(() => {
+    const updateActivity = () => {
+      activityRef.current = Date.now();
+    };
+    const events: Array<keyof WindowEventMap> = ["mousemove", "keydown", "click", "scroll"];
+    events.forEach((evt) => window.addEventListener(evt, updateActivity));
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, updateActivity));
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      storeTokens(null, null);
+      setUser(null);
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    };
+    setUnauthorizedHandler(handler);
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const intervalId = window.setInterval(async () => {
+      if (Date.now() - activityRef.current > ACTIVITY_WINDOW_MS) {
+        return;
+      }
+      let refreshToken: string | null = null;
+      try {
+        refreshToken = localStorage.getItem("refresh_token");
+      } catch {
+        refreshToken = null;
+      }
+      if (!refreshToken) {
+        return;
+      }
+      try {
+        const { data } = await client.post(apiPath("auth/refresh"), { refresh: refreshToken });
+        if (data?.access || data?.refresh) {
+          storeTokens(data?.access ?? null, data?.refresh ?? null);
+        }
+      } catch (err) {
+        console.warn("[Auth] keep-alive refresh failed", err);
+      }
+    }, KEEP_ALIVE_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [user]);
 
   const login = async (loginId: string, password: string) => {
     const id = String(loginId).trim();
@@ -66,6 +123,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     try {
       const { data } = await client.post(apiPath("auth/login"), payload);
       const u: User = data?.user ?? null;
+      if (data?.access || data?.refresh) {
+        storeTokens(data?.access ?? null, data?.refresh ?? null);
+      }
 
       if (!u) {
         return await refreshProfile();
@@ -96,6 +156,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     } catch (err: any) {
       console.error("Error during logout:", err); // Log error but still clear local state
     } finally {
+      storeTokens(null, null);
       setUser(null);
     }
   };
@@ -108,6 +169,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 };
 
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");

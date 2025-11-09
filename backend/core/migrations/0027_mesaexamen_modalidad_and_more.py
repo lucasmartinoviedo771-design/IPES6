@@ -26,56 +26,73 @@ def reverse_migrate_modalidad(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0026_alter_staffasignacion_options'),
+        ("core", "0026_alter_staffasignacion_options"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='mesaexamen',
-            name='modalidad',
-            field=models.CharField(choices=[('REG', 'Regular'), ('LIB', 'Libre')], default='REG', max_length=3),
+            model_name="mesaexamen",
+            name="modalidad",
+            field=models.CharField(
+                choices=[("REG", "Regular"), ("LIB", "Libre")],
+                default="REG",
+                max_length=3,
+            ),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='condicion',
-            field=models.CharField(blank=True, choices=[('APR', 'Aprobado'), ('DES', 'Desaprobado'), ('AUS', 'Ausente'), ('AUJ', 'Ausente justificado')], max_length=3, null=True),
+            model_name="inscripcionmesa",
+            name="condicion",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("APR", "Aprobado"),
+                    ("DES", "Desaprobado"),
+                    ("AUS", "Ausente"),
+                    ("AUJ", "Ausente justificado"),
+                ],
+                max_length=3,
+                null=True,
+            ),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='cuenta_para_intentos',
+            model_name="inscripcionmesa",
+            name="cuenta_para_intentos",
             field=models.BooleanField(default=True),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='fecha_resultado',
+            model_name="inscripcionmesa",
+            name="fecha_resultado",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='folio',
+            model_name="inscripcionmesa",
+            name="folio",
             field=models.CharField(blank=True, max_length=32, null=True),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='libro',
+            model_name="inscripcionmesa",
+            name="libro",
             field=models.CharField(blank=True, max_length=32, null=True),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='nota',
-            field=models.DecimalField(blank=True, decimal_places=1, max_digits=4, null=True),
+            model_name="inscripcionmesa",
+            name="nota",
+            field=models.DecimalField(
+                blank=True, decimal_places=1, max_digits=4, null=True
+            ),
         ),
         migrations.AddField(
-            model_name='inscripcionmesa',
-            name='observaciones',
+            model_name="inscripcionmesa",
+            name="observaciones",
             field=models.TextField(blank=True, null=True),
         ),
         migrations.RunPython(migrate_modalidad, reverse_migrate_modalidad),
         migrations.AlterField(
-            model_name='mesaexamen',
-            name='tipo',
-            field=models.CharField(choices=[('FIN', 'Final'), ('EXT', 'Extraordinaria')], max_length=3),
+            model_name="mesaexamen",
+            name="tipo",
+            field=models.CharField(
+                choices=[("FIN", "Final"), ("EXT", "Extraordinaria")], max_length=3
+            ),
         ),
     ]

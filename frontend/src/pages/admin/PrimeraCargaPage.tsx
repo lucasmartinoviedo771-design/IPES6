@@ -20,10 +20,15 @@ import {
   CircularProgress,
   Stack,
   MenuItem,
+  Divider,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { enqueueSnackbar } from 'notistack';
+
+import PersonAdd from '@mui/icons-material/PersonAdd';
+import FileCopy from '@mui/icons-material/FileCopy';
+import CompareArrows from '@mui/icons-material/CompareArrows';
 
 import {
   crearEstudianteInicial,
@@ -79,7 +84,7 @@ const UploadDialog: React.FC<UploadDialogProps> = ({
           URL.revokeObjectURL(errorUrl);
         }
       } else {
-        enqueueSnackbar(data.message || 'Error en la importaciÃ³n.', { variant: 'error' });
+        enqueueSnackbar(data.message || 'Error en la importación.', { variant: 'error' });
         if (data.data.errors && data.data.errors.length > 0) {
           const errorBlob = new Blob([data.data.errors.join('\n')], { type: 'text/plain' });
           const errorUrl = URL.createObjectURL(errorBlob);
@@ -331,7 +336,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
     mutation.mutate(payload);
   };
 
-  const isSaving = mutation.isLoading || checkingDni;
+  const isSaving = mutation.isPending || checkingDni;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -399,7 +404,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
                 <Controller
                   name="profesoradoId"
                   control={control}
-                  rules={{ required: 'SeleccionÃ¡ un profesorado.' }}
+                  rules={{ required: 'Seleccioná un profesorado.' }}
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -587,7 +592,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
           disabled={isSaving}
           startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : undefined}
         >
-          {checkingDni ? 'Verificando...' : mutation.isLoading ? 'Guardando...' : 'Guardar estudiante'}
+          {checkingDni ? 'Verificando...' : mutation.isPending ? 'Guardando...' : 'Guardar estudiante'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -600,70 +605,112 @@ const PrimeraCargaPage: React.FC = () => {
   const [openPlanillaDialog, setOpenPlanillaDialog] = useState(false);
   const [openEquivalenciasDialog, setOpenEquivalenciasDialog] = useState(false);
 
+  const iconBoxStyles = {
+    width: 64,
+    height: 64,
+    borderRadius: 1,
+    bgcolor: "primary.main",
+    color: "common.white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: theme => `0 10px 20px ${theme.palette.primary.main}33`,
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Primera Carga de Datos
-      </Typography>
-      <Typography variant="body1" color="text.secondary" mb={4}>
-        Utilice esta secciÃ³n para realizar cargas iniciales de informaciÃ³n histÃ³rica en el sistema.
-      </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Primera Carga de Datos
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Utilice esta sección para realizar cargas iniciales de información histórica en el sistema.
+        </Typography>
+      </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Carga de Estudiantes
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Registre estudiantes sin preinscripciÃ³n previa completando los datos disponibles.
-              </Typography>
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: "100%" }}>
+            <CardContent sx={{ height: "100%" }}>
+              <Stack spacing={3} sx={{ height: "100%" }}>
+                <Box
+                  sx={iconBoxStyles}
+                >
+                  <PersonAdd fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Carga de Estudiantes
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Registre estudiantes sin preinscripción previa completando los datos disponibles.
+                  </Typography>
+                </Box>
+                <Button variant="contained" fullWidth sx={{ mt: "auto" }} onClick={() => setOpenStudentDialog(true)}>
+                  Registrar estudiante
+                </Button>
+              </Stack>
             </CardContent>
-            <CardActions>
-              <Button size="small" onClick={() => setOpenStudentDialog(true)}>
-                Registrar estudiante
-              </Button>
-            </CardActions>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Carga de Regularidades
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Genera planillas para registrar regularidades o promociones histÃ³ricas.
-              </Typography>
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: "100%" }}>
+            <CardContent sx={{ height: "100%" }}>
+              <Stack spacing={3} sx={{ height: "100%" }}>
+                <Box
+                  sx={iconBoxStyles}
+                >
+                  <FileCopy fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Carga de Regularidades
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Genera plantillas para registrar regularidades o promociones históricas.
+                  </Typography>
+                </Box>
+                <Stack spacing={1.5} sx={{ mt: "auto" }}>
+                  <Button variant="outlined" fullWidth onClick={() => setOpenPlanillaDialog(true)}>
+                    Planilla de Regularidad
+                  </Button>
+                  <Button variant="contained" fullWidth onClick={() => navigate("/admin/primera-carga/actas-examen")}>
+                    Acta de Examen Final
+                  </Button>
+                </Stack>
+              </Stack>
             </CardContent>
-            <CardActions>
-              <Button size="small" onClick={() => setOpenPlanillaDialog(true)}>
-                Generar planilla
-              </Button>
-              <Button size="small" onClick={() => navigate('/admin/primera-carga/actas-examen')}>
-                Cargar acta de examen
-              </Button>
-            </CardActions>
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Carga de Equivalencias
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Registra de manera masiva las equivalencias curriculares entre espacios.
-              </Typography>
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: "100%" }}>
+            <CardContent sx={{ height: "100%" }}>
+              <Stack spacing={3} sx={{ height: "100%" }}>
+                <Box
+                  sx={iconBoxStyles}
+                >
+                  <CompareArrows fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Carga de Equivalencias
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Registra de manera masiva las equivalencias curriculares entre espacios.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  sx={{ mt: "auto" }}
+                  onClick={() => setOpenEquivalenciasDialog(true)}
+                >
+                  Cargar equivalencias
+                </Button>
+              </Stack>
             </CardContent>
-            <CardActions>
-              <Button size="small" onClick={() => setOpenEquivalenciasDialog(true)}>
-                Cargar equivalencias
-              </Button>
-            </CardActions>
           </Card>
         </Grid>
       </Grid>

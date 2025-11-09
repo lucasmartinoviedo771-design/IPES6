@@ -39,6 +39,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import ReplyIcon from "@mui/icons-material/Reply";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -214,10 +215,13 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
     setSelectedRoles((prev) =>
       prev.filter((role) => availableRoleOptions.some((option) => option.value === role)),
     );
-    if (availableRoleOptions.length === 0) {
+  }, [availableRoleOptions]);
+
+  useEffect(() => {
+    if (!selectedRoles.includes("alumno")) {
       setSelectedCarreras([]);
     }
-  }, [availableRoleOptions]);
+  }, [selectedRoles]);
 
   const mutation = useMutation({
     mutationFn: (payload: ConversationCreatePayload) => crearConversacion(payload),
@@ -251,6 +255,32 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
     body.trim().length > 0 &&
     (selectedUsers.length > 0 || selectedRoles.length > 0) &&
     !mutation.isPending;
+
+  const getErrorMessage = () => {
+    const err = mutation.error;
+    if (!err) return null;
+    if (isAxiosError(err)) {
+      const data = err.response?.data as any;
+      if (data?.detail) {
+        if (Array.isArray(data.detail)) {
+          return data.detail
+            .map((item: any) => {
+              const path = Array.isArray(item.loc)
+                ? item.loc.filter(Boolean).join(" \u203A ")
+                : "";
+              const message = item.msg || item.message || JSON.stringify(item);
+              return path ? `${path}: ${message}` : message;
+            })
+            .join(" | ");
+        }
+        if (typeof data.detail === "string") {
+          return data.detail;
+        }
+      }
+      if (typeof data === "string") return data;
+    }
+    return (err as Error).message || "No se pudo crear la conversación.";
+  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
@@ -308,7 +338,11 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
                   {searchResults.length === 0 && (
                     <ListItemText
                       primary="No se encontraron usuarios"
-                      primaryTypographyProps={{ variant: "body2", px: 2, py: 1.5 }}
+                      primaryTypographyProps={{
+                        component: "span",
+                        variant: "body2",
+                        sx: { px: 2, py: 1.5 },
+                      }}
                     />
                   )}
                   {searchResults.map((candidate) => {
@@ -323,10 +357,11 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
                         }}
                         disabled={already}
                       >
-                        <ListItemText
-                          primary={candidate.name}
-                          secondary={candidate.roles.join(", ")}
-                        />
+                      <ListItemText
+                        disableTypography
+                        primary={candidate.name}
+                        secondary={candidate.roles.join(", ")}
+                      />
                       </ListItemButton>
                     );
                   })}
@@ -409,7 +444,7 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
           fullWidth
         />
         {mutation.isError && (
-          <Alert severity="error">{(mutation.error as Error).message}</Alert>
+          <Alert severity="error">{getErrorMessage()}</Alert>
         )}
       </DialogContent>
       <DialogActions>
@@ -481,7 +516,9 @@ const MensajesInboxPage: React.FC = () => {
   const [replyBody, setReplyBody] = useState("");
   const [replyAttachment, setReplyAttachment] = useState<File | null>(null);
 
-  const canCreateMessages = user ? !hasAnyRole(user, ["preinscripciones"]) : false;
+  const canCreateMessages = user
+    ? !hasAnyRole(user, ["preinscripciones"]) || hasAnyRole(user, ["admin", "secretaria", "bedel"])
+    : false;
 
   const { data: summary } = useQuery<ConversationCountsDTO>({
     queryKey: ["mensajes", "resumen"],
@@ -678,6 +715,7 @@ const MensajesInboxPage: React.FC = () => {
                       }}
                     >
                       <ListItemText
+                        disableTypography
                         primary={
                           <Stack direction="row" justifyContent="space-between" alignItems="center">
                             <Typography variant="subtitle2" noWrap fontWeight={conversation.unread ? 700 : 500}>
@@ -869,3 +907,8 @@ const MensajesInboxPage: React.FC = () => {
 };
 
 export default MensajesInboxPage;
+
+
+
+
+

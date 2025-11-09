@@ -23,6 +23,11 @@ export const preinscripcionSchema = z.object({
   provincia_nac: z.string().min(2),
   pais_nac: z.string().min(2),
   domicilio: z.string().min(2),
+  cohorte: z
+    .string()
+    .trim()
+    .min(4, "Ingresá el año de cohorte (ej: 2025)")
+    .refine((value) => /^\d{4}$/.test(value.trim()), "El año debe tener cuatro dígitos"),
 
   // Contacto
   email: z.string().email(),

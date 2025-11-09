@@ -58,8 +58,16 @@ dependencies = [
     "python-dotenv>=1.1.1",
 ]
 
-[project.scripts]
-dev = "python manage.py runserver"
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.3.4",
+    "pytest-django==4.11.1",
+    "pytest-cov==5.0.0",
+    "model-bakery==1.18.0",
+    "freezegun==1.5.1",
+    "ruff==0.5.5",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -70,3 +78,54 @@ package = false   # ðŸ‘‰ clave: no intentes construir wheel del proyecto l
 # (opcional) configs de uv; NO pongas 'python =' acÃ¡
 # ejemplo:
 # python-preference = "only-managed"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps", "core"]
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade
+]
+ignore = [
+    "D", # Ignorar temporalmente las reglas de docstrings
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "apps"]
+
+[tool.ruff.format]
+quote-style = "double"
