@@ -27,6 +27,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { client as api } from "@/api/client";
 import { useParams } from "react-router-dom";
 import { toast } from "@/utils/toast";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 interface Materia {
   id: number;
@@ -285,16 +286,20 @@ export default function CargarMateriasPage() {
     }
   };
 
+  const heroTitle = `Cargar materias${profesorado?.nombre ? ` - ${profesorado.nombre}` : ""}`;
+  const heroSubtitle = planDeEstudio?.resolucion
+    ? `Plan ${planDeEstudio.resolucion}`
+    : isLoadingPlanDeEstudio
+    ? "Cargando plan seleccionado..."
+    : "Seleccioná un plan para comenzar.";
+
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>
-        Cargar Materias — {profesorado?.nombre || (isLoadingProfesorado ? '...': '')}
-        {planDeEstudio ? ` · ${planDeEstudio.resolucion}` : (isLoadingPlanDeEstudio ? '' : '')}
-      </Typography>
+    <Stack gap={3}>
+      <PageHero title={heroTitle} subtitle={heroSubtitle} />
 
       {false && (
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" mb={2}>Filtros</Typography>
+        <SectionTitlePill title="Filtros" />
         <Stack direction="row" spacing={2} mb={2} alignItems="center">
           <TextField
             size="small"
@@ -370,9 +375,7 @@ export default function CargarMateriasPage() {
       {/* moved filters block below create form */}
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          {editingMateria ? "Editar Materia" : "Crear Nueva Materia"}
-        </Typography>
+        <SectionTitlePill title={editingMateria ? "Editar materia" : "Crear nueva materia"} />
         <Box
           component="form"
           onSubmit={handleSubmit(onSubmit)}
@@ -515,7 +518,7 @@ export default function CargarMateriasPage() {
 
       {/* Filtros debajo del formulario */}
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" mb={2}>Filtros</Typography>
+        <SectionTitlePill title="Filtros" />
         <Stack direction="row" spacing={2} mb={2} alignItems="center">
           <TextField
             size="small"
@@ -587,9 +590,7 @@ export default function CargarMateriasPage() {
       </Paper>
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          Listado de Materias
-        </Typography>
+        <SectionTitlePill title="Listado de materias" />
         {isLoadingMaterias ? (
           <Typography>Cargando materias...</Typography>
         ) : (

@@ -11,6 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 type MockMateriaHabilitada = {
   id: number;
@@ -61,7 +62,7 @@ const mockData = {
     },
     {
       id: 111,
-      nombre: "Curriculum",
+      nombre: "Currículum",
       anio: 2,
       cuatrimestre: "C2",
       regularidad: "Regular",
@@ -97,18 +98,11 @@ export default function InscripcionPreview() {
   return (
     <Box sx={{ p: 4, bgcolor: "#f9f5ea", minHeight: "100vh" }}>
       <Stack spacing={3} maxWidth={1180} mx="auto">
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems="flex-start" spacing={1}>
-          <Box>
-            <Typography variant="h4" fontWeight={800}>Inscripción a Materias</Typography>
-            <Typography color="text.secondary">
-              Alumna: <strong>{mockData.alumno.nombre}</strong> • Plan: {mockData.alumno.plan}
-            </Typography>
-            <Typography color="text.secondary">
-              Ventana actual: <strong>{mockData.ventana.nombre}</strong> ({mockData.ventana.estado})
-            </Typography>
-          </Box>
-          <Chip color="primary" label={`Año académico ${mockData.alumno.anioCal}`} sx={{ fontWeight: 600 }} />
-        </Stack>
+        <PageHero
+          title="Inscripción a materias"
+          subtitle={`Alumna: ${mockData.alumno.nombre} · Plan: ${mockData.alumno.plan} · Ventana actual: ${mockData.ventana.nombre} (${mockData.ventana.estado})`}
+          actions={<Chip color="primary" label={`Año académico ${mockData.alumno.anioCal}`} sx={{ fontWeight: 600 }} />}
+        />
 
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid #e3d7bc", bgcolor: "#fff" }}>
           <Typography variant="h6" fontWeight={700} gutterBottom color="primary.dark">

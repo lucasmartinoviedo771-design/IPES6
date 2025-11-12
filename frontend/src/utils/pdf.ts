@@ -26,19 +26,53 @@ const S = {
   radius: 2.0,             // radio de tarjeta
 };
 
-const fmt = (v?: any) => (v === 0 || v ? String(v) : "—");
-const fmtDate = (s?: string) => (s ? dayjs(s).format("DD/MM/YYYY") : "—");
+const fmt = (v?: any) => (v === 0 || v ? String(v) : "-");
+const fmtDate = (s?: string) => (s ? dayjs(s).format("DD/MM/YYYY") : "-");
+const joinLocation = (...parts: (string | undefined)[]) => {
+  const value = parts
+    .map((part) => (part ?? "").trim())
+    .filter((part) => part.length > 0)
+    .join(", ");
+  return value || undefined;
+};
 
 export type PreinscripcionValues = {
-  apellido?: string; nombres?: string; dni?: string; cuil?: string;
-  fecha_nacimiento?: string; nacionalidad?: string; estado_civil?: string;
-  localidad_nac?: string; provincia_nac?: string; pais_nac?: string; domicilio?: string;
-  email?: string; tel_movil?: string; tel_fijo?: string;
-  emergencia_telefono?: string; emergencia_parentesco?: string;
-  trabaja?: boolean; empleador?: string; horario?: string; dom_trabajo?: string;
-  sec_titulo?: string; sec_establecimiento?: string; sec_fecha_egreso?: string;
-  sec_localidad?: string; sec_provincia?: string; sec_pais?: string;
-  sup1_titulo?: string; sup1_establecimiento?: string; sup1_fecha_egreso?: string;
+  apellido?: string;
+  nombres?: string;
+  dni?: string;
+  cuil?: string;
+  fecha_nacimiento?: string;
+  nacionalidad?: string;
+  estado_civil?: string;
+  localidad_nac?: string;
+  provincia_nac?: string;
+  pais_nac?: string;
+  domicilio?: string;
+  email?: string;
+  tel_movil?: string;
+  tel_fijo?: string;
+  emergencia_telefono?: string;
+  emergencia_parentesco?: string;
+  trabaja?: boolean;
+  empleador?: string;
+  horario_trabajo?: string;
+  domicilio_trabajo?: string;
+  sec_titulo?: string;
+  sec_establecimiento?: string;
+  sec_fecha_egreso?: string;
+  sec_localidad?: string;
+  sec_provincia?: string;
+  sec_pais?: string;
+  sup1_titulo?: string;
+  sup1_establecimiento?: string;
+  sup1_fecha_egreso?: string;
+  sup1_localidad?: string;
+  sup1_provincia?: string;
+  sup1_pais?: string;
+  cud_informado?: boolean;
+  condicion_salud_informada?: boolean;
+  condicion_salud_detalle?: string;
+  consentimiento_datos?: boolean;
 };
 
 export type DocsFlags = {
@@ -191,7 +225,7 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
   // ======= PERSONALES (con foto)
   const PHOTO = { w: 24, h: 30, pad: 1.5, gap: 6 }; // 24x30mm aprox carnet, ajustable
 
-  let close = cardStart("DATOS PERSONALES", 60, 8);
+  let close = cardStart("DATOS PERSONALES", 70, 8);
   /** coordenadas útiles del interior de la tarjeta */
   const innerX = M + 8;
   const innerRight = W - M - 8;
@@ -234,6 +268,13 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
     ],
     reserveRight
   );
+  if (v.cud_informado) {
+    lineField("CUD informado", "Si");
+  }
+  if (v.condicion_salud_informada) {
+    const detalle = v.condicion_salud_detalle || "Si";
+    lineField("Condicion / asistencia informada", detalle);
+  }
 
   // aseguramos que la tarjeta sea al menos tan alta como la foto
   y = Math.max(y, photoY + PHOTO.h) + 2;
@@ -260,11 +301,11 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
   twoCols(
     [
       ["¿Trabaja?", v.trabaja ? "Sí" : "No"],
-      ["Horario", v.horario],
+      ["Horario", v.horario_trabajo],
     ],
     [
       ["Empleador", v.empleador],
-      ["Domicilio de trabajo", v.dom_trabajo],
+      ["Domicilio de trabajo", v.domicilio_trabajo],
     ]
   );
   close();
@@ -280,7 +321,7 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
     ],
     [
       ["Establecimiento", v.sec_establecimiento],
-      ["Localidad", `${fmt(v.sec_localidad)}, ${fmt(v.sec_provincia)}, ${fmt(v.sec_pais)}`],
+      ["Localidad / Provincia / País", joinLocation(v.sec_localidad, v.sec_provincia, v.sec_pais)],
     ]
   );
   y += 1.5;
@@ -293,7 +334,7 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
     ],
     [
       ["Establecimiento", v.sup1_establecimiento],
-      ["", ""],
+      ["Localidad / Provincia / País", joinLocation(v.sup1_localidad, v.sup1_provincia, v.sup1_pais)],
     ]
   );
   close();
@@ -331,6 +372,15 @@ const cardStart = (title: string, estimateHeight: number, gapAfter = S.cardGap) 
   pdf.text("Observaciones / adeuda materias:", M + 8, y); y += 1.5;
   pdf.setDrawColor(LINE_GRAY); pdf.rect(M + 8, y, W - 2*M - 16, S.obsH);
   y += S.obsH + 6;
+
+  if (v.consentimiento_datos) {
+    const consentText =
+      "El/la aspirante otorgó su consentimiento expreso e informado para que los datos sensibles declarados se utilicen únicamente para garantizar soporte académico y accesibilidad.";
+    const lines = pdf.splitTextToSize(consentText, W - 2*M - 16) as string[];
+    pdf.setFont("helvetica", "italic"); pdf.setFontSize(F.text);
+    pdf.text(lines, M + 8, y);
+    y += lines.length * 4.2;
+  }
 
   // Firmas compactas
   const sigW = (W - 2*M - 16 - 10) / 2;

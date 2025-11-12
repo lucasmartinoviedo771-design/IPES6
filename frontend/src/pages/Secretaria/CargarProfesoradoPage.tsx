@@ -24,6 +24,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useNavigate } from "react-router-dom";
 import { client as api } from "@/api/client";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 interface Profesorado {
   id: number;
@@ -140,15 +141,14 @@ export default function CargarProfesoradoPage() {
   };
 
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>
-        Cargar Profesorado
-      </Typography>
+    <Stack gap={3}>
+      <PageHero
+        title="Cargar profesorado"
+        subtitle="Crear y administrar profesorados y cohortes"
+      />
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          {editingProfesorado ? "Editar Profesorado" : "Crear Nuevo Profesorado"}
-        </Typography>
+        <SectionTitlePill title={editingProfesorado ? "Editar profesorado" : "Crear nuevo profesorado"} />
         <Box
           component="form"
           onSubmit={handleSubmit(onSubmit)}
@@ -229,9 +229,7 @@ export default function CargarProfesoradoPage() {
       </Paper>
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          Listado de Profesorados
-        </Typography>
+        <SectionTitlePill title="Listado de profesorados" />
         {isLoading ? (
           <Typography>Cargando profesorados...</Typography>
         ) : (

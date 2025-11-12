@@ -38,6 +38,7 @@ import AttachmentIcon from "@mui/icons-material/Attachment";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import ReplyIcon from "@mui/icons-material/Reply";
+import { PageHero } from "@/components/ui/GradientTitles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import dayjs from "dayjs";
@@ -516,9 +517,7 @@ const MensajesInboxPage: React.FC = () => {
   const [replyBody, setReplyBody] = useState("");
   const [replyAttachment, setReplyAttachment] = useState<File | null>(null);
 
-  const canCreateMessages = user
-    ? !hasAnyRole(user, ["preinscripciones"]) || hasAnyRole(user, ["admin", "secretaria", "bedel"])
-    : false;
+  const canCreateMessages = user ? hasAnyRole(user, ["admin", "secretaria", "bedel"]) : false;
 
   const { data: summary } = useQuery<ConversationCountsDTO>({
     queryKey: ["mensajes", "resumen"],
@@ -622,35 +621,36 @@ const MensajesInboxPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h5" fontWeight={800}>
-          Mensajes
-        </Typography>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Tooltip title="Actualizar">
-            <IconButton size="small" onClick={() => refetchList()}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Badge
-            color={
-              summary?.sla_danger
-                ? "error"
-                : summary?.sla_warning
-                ? "warning"
-                : "primary"
-            }
-            badgeContent={summary?.unread ?? 0}
-          >
-            <MailOutlineIcon color="action" />
-          </Badge>
-          {canCreateMessages && (
-            <Button startIcon={<AddIcon />} variant="contained" onClick={() => setShowNewDialog(true)}>
-              Nuevo mensaje
-            </Button>
-          )}
-        </Stack>
-      </Stack>
+      <PageHero
+        title="Mensajes"
+        subtitle="Centro de comunicaciones y avisos internos"
+        actions={
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Tooltip title="Actualizar">
+              <IconButton size="small" onClick={() => refetchList()}>
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Badge
+              color={
+                summary?.sla_danger
+                  ? "error"
+                  : summary?.sla_warning
+                  ? "warning"
+                  : "primary"
+              }
+              badgeContent={summary?.unread ?? 0}
+            >
+              <MailOutlineIcon color="action" />
+            </Badge>
+            {canCreateMessages && (
+              <Button startIcon={<AddIcon />} variant="contained" onClick={() => setShowNewDialog(true)}>
+                Nuevo mensaje
+              </Button>
+            )}
+          </Stack>
+        }
+      />
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={4} lg={3}>

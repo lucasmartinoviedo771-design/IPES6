@@ -42,7 +42,7 @@ export function ProtectedRoute({
     ? hasAllRoles(user, roles)
     : hasAnyRole(user, roles);
 
-  return allowed ? children : <Navigate to={forbiddenTo} replace />;
+  return allowed ? children : <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
 }
 
 export function PublicOnlyRoute({

@@ -24,8 +24,14 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import dayjs from "dayjs";
 import { useAuth } from "@/context/AuthContext";
-import { alpha, SxProps, Theme } from "@mui/material/styles";
+import { SxProps, Theme } from "@mui/material/styles";
 import { listarPreinscripciones, PreinscripcionDTO } from "@/api/preinscripciones";
+import {
+  ICON_GRADIENT,
+  INSTITUTIONAL_GREEN,
+  INSTITUTIONAL_TERRACOTTA,
+  INSTITUTIONAL_TERRACOTTA_DARK,
+} from "@/styles/institutionalColors";
 
 type QuickAction = {
   title: string;
@@ -36,15 +42,25 @@ type QuickAction = {
   roles?: string[];
 };
 
+const TERRACOTTA = INSTITUTIONAL_TERRACOTTA;
+const TERRACOTTA_DARK = INSTITUTIONAL_TERRACOTTA_DARK;
+const OLIVE = INSTITUTIONAL_GREEN;
+const OLIVE_TINT = "rgba(125,127,110,0.25)";
+const TERRACOTTA_TINT = "rgba(183,105,78,0.15)";
+const STAT_PURPLE_GRADIENT = "linear-gradient(135deg,#7c3aed,#a855f7)";
+const STAT_GREEN_GRADIENT = "linear-gradient(135deg,#22c55e,#4ade80)";
+const STAT_AMBER_GRADIENT = "linear-gradient(135deg,#f59e0b,#f97316)";
+const STAT_PINK_GRADIENT = "linear-gradient(135deg,#fb7185,#f43f5e)";
+
 const CardBox = ({ children, sx = {} }: { children: React.ReactNode; sx?: SxProps<Theme> }) => (
   <Paper
     elevation={0}
     sx={{
       p: 3,
-      borderRadius: 4,
+      borderRadius: 3,
       backgroundColor: "#ffffff",
-      border: "1px solid #e2e8f0",
-      boxShadow: "0 18px 40px rgba(15,23,42,0.08)",
+      border: "1px solid rgba(125,127,110,0.2)",
+      boxShadow: "0 18px 40px rgba(15,23,42,0.06)",
       ...sx,
     }}
   >
@@ -52,28 +68,26 @@ const CardBox = ({ children, sx = {} }: { children: React.ReactNode; sx?: SxProp
   </Paper>
 );
 
-const StatCard = ({
-  title,
-  value,
-  subtitle,
-  icon,
-  color,
-}: {
+type StatCardProps = {
   title: string;
   value: number;
   subtitle?: string;
   icon: React.ReactNode;
-  color: string;
-}) => (
+  accent: string;
+  iconBg: string;
+  borderColor: string;
+};
+
+const StatCard = ({ title, value, subtitle, icon, accent, iconBg, borderColor }: StatCardProps) => (
   <Paper
     elevation={0}
     sx={{
       p: 3,
       minHeight: 150,
-      borderRadius: 4,
+      borderRadius: 3,
       background: "#fff",
-      border: "1px solid #e5e7eb",
-      boxShadow: "0 20px 50px rgba(15,23,42,0.08)",
+      border: `1px solid ${borderColor}`,
+      boxShadow: "0 20px 45px rgba(15,23,42,0.06)",
       display: "flex",
       flexDirection: "column",
       gap: 1.2,
@@ -81,25 +95,29 @@ const StatCard = ({
   >
     <Box
       sx={{
-        width: 48,
-        height: 48,
-        borderRadius: "16px",
-        backgroundColor: color,
+        width: 52,
+        height: 52,
+        borderRadius: 12,
+        background: iconBg,
         display: "grid",
         placeItems: "center",
         color: "#fff",
+        boxShadow: "0 18px 30px rgba(0,0,0,0.08)",
       }}
     >
       {icon}
     </Box>
-    <Typography variant="body2" sx={{ textTransform: "uppercase", letterSpacing: 0.8, color: "#0f172a" }}>
+    <Typography
+      variant="caption"
+      sx={{ textTransform: "uppercase", letterSpacing: 0.8, color: "#64748b", fontWeight: 600 }}
+    >
       {title}
     </Typography>
     <Typography variant="h4" fontWeight={700} color="#0f172a">
       {value}
     </Typography>
     {subtitle && (
-      <Typography variant="body2" color="#0f172a">
+      <Typography variant="body2" color="#475569">
         {subtitle}
       </Typography>
     )}
@@ -175,7 +193,14 @@ export default function DashboardPage() {
         variant={intent === "default" ? "outlined" : "filled"}
         label={estado}
         color={intent}
-        sx={{ borderRadius: 99 }}
+        sx={{
+          borderRadius: 999,
+          fontWeight: 600,
+          textTransform: "capitalize",
+          ...(intent === "default"
+            ? { borderColor: TERRACOTTA, color: TERRACOTTA }
+            : {}),
+        }}
       />
     );
   };
@@ -186,64 +211,79 @@ export default function DashboardPage() {
       value: metrics.total,
       subtitle: "Ciclo lectivo en curso",
       icon: <ScheduleIcon />,
-      color: "#4f46e5",
+      accent: "#4338ca",
+      iconBg: STAT_PURPLE_GRADIENT,
+      borderColor: "rgba(99,102,241,0.25)",
     },
     {
       title: "Confirmadas",
       value: metrics.confirmadas,
       subtitle: `${metrics.ratio}% del total`,
       icon: <CheckCircleIcon />,
-      color: "#10b981",
+      accent: "#0f9d58",
+      iconBg: STAT_GREEN_GRADIENT,
+      borderColor: "rgba(34,197,94,0.25)",
     },
     {
       title: "Pendientes",
       value: metrics.pendientes,
       subtitle: "Requieren revisión",
       icon: <ScheduleIcon />,
-      color: "#f59e0b",
+      accent: "#b45309",
+      iconBg: STAT_AMBER_GRADIENT,
+      borderColor: "rgba(245,158,11,0.25)",
     },
     {
       title: "Observadas",
       value: metrics.observadas,
       subtitle: "Necesitan corrección",
       icon: <WarningAmberIcon />,
-      color: "#f43f5e",
+      accent: "#be185d",
+      iconBg: STAT_PINK_GRADIENT,
+      borderColor: "rgba(244,114,182,0.3)",
     },
   ];
 
   return (
     <Stack spacing={3}>
-      <CardBox
+      <Box
         sx={{
-          background: "#ffffff",
-          color: "#0f172a",
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 30px 70px rgba(15,23,42,0.08)",
+          p: { xs: 3, md: 4 },
+          borderRadius: 4,
+          background: `linear-gradient(120deg, ${OLIVE} 0%, ${TERRACOTTA} 100%)`,
+          color: "#fff",
         }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={3} justifyContent="space-between">
-          <Box>
-            <Typography variant="caption" sx={{ letterSpacing: 3, textTransform: "uppercase", color: "#020617", fontSize: "0.95rem" }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={3} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
+          <Box sx={{ width: "100%" }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 800,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+                color: "#fff",
+              }}
+            >
               Panel principal
             </Typography>
-            <Typography variant="h3" fontWeight={700} mt={1} sx={{ color: "#020617" }}>
-              Hola {user?.name ?? user?.dni}, seguimos gestionando IPES6.
-            </Typography>
-            <Typography variant="body1" sx={{ color: "#020617", mt: 1.5, fontSize: "1.05rem" }}>
-              Visualizá indicadores clave, accedé a las preinscripciones y mantené actualizadas las cohortes desde un único
-              espacio.
+            <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.85)", mt: 0.5 }}>
+              Visualizá indicadores clave, accedé a las preinscripciones y mantené actualizadas las cohortes desde un único espacio.
             </Typography>
           </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" sx={{ width: { xs: "100%", md: "auto" } }}>
             <Button
               variant="outlined"
               onClick={() => navigate("/reportes")}
               sx={{
-                borderColor: "#cbd5f5",
-                color: "#1e1b4b",
+                borderColor: "rgba(255,255,255,0.4)",
+                color: "#fff",
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: 999,
+                px: 3,
+                backgroundColor: "rgba(255,255,255,0.08)",
+                "&:hover": { backgroundColor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.6)" },
               }}
             >
               Ver reportes
@@ -253,20 +293,21 @@ export default function DashboardPage() {
               onClick={() => navigate("/preinscripciones")}
               startIcon={<ScheduleIcon />}
               sx={{
-                backgroundColor: "#2563eb",
+                background: `linear-gradient(135deg, ${TERRACOTTA} 0%, ${TERRACOTTA_DARK} 100%)`,
                 color: "#fff",
                 textTransform: "none",
                 fontWeight: 700,
                 borderRadius: 999,
                 px: 3,
-                "&:hover": { backgroundColor: "#1d4ed8" },
+                boxShadow: "0 20px 40px rgba(183,105,78,0.35)",
+                "&:hover": { background: `linear-gradient(135deg, ${TERRACOTTA_DARK} 0%, ${TERRACOTTA_DARK} 100%)` },
               }}
             >
               Gestionar preinscripciones
             </Button>
           </Stack>
         </Stack>
-      </CardBox>
+      </Box>
 
       <Grid container spacing={2}>
         {statBlocks.map(stat => (
@@ -291,7 +332,13 @@ export default function DashboardPage() {
               <Button
                 startIcon={<AddIcon />}
                 variant="contained"
-                sx={{ textTransform: "none", borderRadius: 999 }}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 999,
+                  backgroundColor: TERRACOTTA,
+                  px: 3,
+                  "&:hover": { backgroundColor: TERRACOTTA_DARK },
+                }}
                 onClick={() => navigate("/preinscripcion")}
               >
                 Nueva preinscripción
@@ -304,26 +351,32 @@ export default function DashboardPage() {
                     elevation={0}
                     onClick={action.onClick}
                     sx={{
-                      borderRadius: 4,
+                      borderRadius: 5,
                       p: 2,
-                      border: "1px solid #eef2ff",
+                      border: `1px solid rgba(125,127,110,0.25)`,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 1.5,
                       transition: "all .2s ease",
-                      "&:hover": { boxShadow: "0 20px 45px rgba(15,23,42,0.08)", transform: "translateY(-2px)" },
+                      backgroundColor: "#fff",
+                      "&:hover": {
+                        boxShadow: "0 20px 45px rgba(15,23,42,0.08)",
+                        transform: "translateY(-2px)",
+                        borderColor: TERRACOTTA_TINT,
+                      },
                     }}
                   >
                     <Box
                       sx={{
                         width: 44,
                         height: 44,
-                        borderRadius: 2,
-                        backgroundColor: theme => alpha(theme.palette.primary.main, 0.12),
+                        borderRadius: 5,
+                        background: ICON_GRADIENT,
                         display: "grid",
                         placeItems: "center",
-                        color: "primary.main",
+                        color: "#fff",
+                        boxShadow: "0 12px 24px rgba(0,0,0,0.12)",
                       }}
                     >
                       {action.icon}
@@ -349,7 +402,11 @@ export default function DashboardPage() {
               <Typography variant="h6" fontWeight={700} color="#020617">
                 Preinscripciones recientes
               </Typography>
-              <Button size="small" sx={{ textTransform: "none" }} onClick={() => navigate("/preinscripciones")}>
+              <Button
+                size="small"
+                sx={{ textTransform: "none", color: TERRACOTTA, fontWeight: 600 }}
+                onClick={() => navigate("/preinscripciones")}
+              >
                 Ver todas
               </Button>
             </Stack>
@@ -363,21 +420,20 @@ export default function DashboardPage() {
                 <ListItem
                   key={r.codigo}
                   sx={{
-                    px: 0,
-                    mb: 1,
+                    px: 2,
+                    mb: 1.5,
                     borderRadius: 3,
-                    border: "1px solid #e2e8f0",
-                    pr: 1,
+                    border: "1px solid rgba(125,127,110,0.2)",
                     cursor: "pointer",
+                    backgroundColor: "#fff",
                   }}
                   secondaryAction={estadoChip(r.estado)}
                   onClick={() => navigate(`/gestion/confirmar?codigo=${encodeURIComponent(r.codigo)}`)}
                 >
                   <ListItemText
-                    sx={{ pl: 2 }}
                     primaryTypographyProps={{ fontWeight: 600, color: "#020617" }}
                     primary={`${r.alumno.apellido}, ${r.alumno.nombres} · ${r.carrera.nombre}`}
-                    secondaryTypographyProps={{ color: "#020617" }}
+                    secondaryTypographyProps={{ color: "#475569" }}
                     secondary={`${r.codigo} · ${dayjs(r.fecha).format("DD/MM/YYYY")}`}
                   />
                 </ListItem>
@@ -399,7 +455,13 @@ export default function DashboardPage() {
             <LinearProgress
               variant="determinate"
               value={metrics.total ? metrics.ratio : 0}
-              sx={{ mt: 2, height: 8, borderRadius: 999 }}
+              sx={{
+                mt: 2,
+                height: 8,
+                borderRadius: 5,
+                "& .MuiLinearProgress-bar": { backgroundColor: TERRACOTTA },
+                backgroundColor: TERRACOTTA_TINT,
+              }}
             />
             <Typography variant="body2" color="#020617" mt={1}>
               {metrics.ratio}% de las preinscripciones ya están confirmadas.
@@ -454,7 +516,12 @@ export default function DashboardPage() {
               <Button
                 fullWidth
                 variant="outlined"
-                sx={{ textTransform: "none", borderRadius: 2 }}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 999,
+                  borderColor: TERRACOTTA,
+                  color: TERRACOTTA,
+                }}
                 onClick={() => navigate("/preinscripciones")}
               >
                 Revisar pendientes
@@ -462,7 +529,12 @@ export default function DashboardPage() {
               <Button
                 fullWidth
                 variant="outlined"
-                sx={{ textTransform: "none", borderRadius: 2 }}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 999,
+                  borderColor: TERRACOTTA,
+                  color: TERRACOTTA,
+                }}
                 onClick={() => navigate("/reportes")}
               >
                 Descargar reportes
@@ -470,7 +542,12 @@ export default function DashboardPage() {
               <Button
                 fullWidth
                 variant="outlined"
-                sx={{ textTransform: "none", borderRadius: 2 }}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 999,
+                  borderColor: TERRACOTTA,
+                  color: TERRACOTTA,
+                }}
                 onClick={() => navigate("/carreras")}
               >
                 Actualizar cohortes

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -6,7 +6,6 @@ import {
   Paper,
   Stack,
   TextField,
-  Typography,
   InputAdornment,
   IconButton,
 } from "@mui/material";
@@ -15,15 +14,25 @@ import { enqueueSnackbar } from "notistack";
 import { changePassword } from "@/api/auth";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { PageHero } from "@/components/ui/GradientTitles";
+import { getDefaultHomeRoute, isOnlyStudent } from "@/utils/roles";
 
 const ChangePasswordPage: React.FC = () => {
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const redirectTo =
-    (location.state as any)?.from?.pathname && (location.state as any)?.from?.pathname !== "/cambiar-password"
-      ? (location.state as any)?.from?.pathname
-      : "/dashboard";
+  const rawFrom = (location.state as any)?.from?.pathname;
+
+  const defaultHome = useMemo(() => getDefaultHomeRoute(user), [user]);
+
+  const resolveDestination = (candidate: string | undefined, profileUser = user) => {
+    const base = getDefaultHomeRoute(profileUser);
+    let target = candidate && candidate !== "/cambiar-password" ? candidate : base;
+    if (isOnlyStudent(profileUser) && target && !target.startsWith("/alumnos")) {
+      target = base;
+    }
+    return target || base || "/alumnos";
+  };
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -54,11 +63,12 @@ const ChangePasswordPage: React.FC = () => {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      await refreshProfile();
+      const refreshed = await refreshProfile();
       enqueueSnackbar("Contraseña actualizada correctamente.", {
         variant: "success",
       });
-      navigate(redirectTo, { replace: true });
+      const destination = resolveDestination(rawFrom, refreshed);
+      navigate(destination, { replace: true });
     } catch (err: any) {
       const message =
         err?.response?.data?.detail ||
@@ -79,12 +89,16 @@ const ChangePasswordPage: React.FC = () => {
       sx={{ bgcolor: "background.default" }}
     >
       <Paper sx={{ p: 4, maxWidth: 420, width: "100%" }} elevation={4}>
-        <Typography variant="h5" fontWeight={700} gutterBottom>
-          Cambiar contraseña
-        </Typography>
-        <Typography color="text.secondary" mb={1}>
-          Por seguridad necesitas definir una contraseña nueva antes de continuar.
-        </Typography>
+        <PageHero
+          title="Cambiar contraseña"
+          subtitle="Por seguridad necesitás definir una contraseña nueva antes de continuar."
+          sx={{
+            width: "100%",
+            boxShadow: "none",
+            borderRadius: 3,
+            background: "linear-gradient(135deg, rgba(125,127,110,0.95), rgba(183,105,78,0.95))",
+          }}
+        />
         <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={2}>
             <TextField

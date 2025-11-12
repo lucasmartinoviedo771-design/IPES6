@@ -258,20 +258,73 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
           </Grid>
 
           <Box sx={{ mb: 4 }}>
-            <Box sx={sectionTitleStyles}>
-              <Typography variant="h6" component="h2">
-                Espacio Curricular
-              </Typography>
-            </Box>
             <TableContainer component={Paper} elevation={0} variant="outlined">
-              <Table size="small">
+              <Table
+                size="small"
+                sx={{
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                  '& th, & td': { border: '1px solid #000' },
+                }}
+              >
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                  <TableRow
+                    sx={{
+                      '& .MuiTableCell-root': {
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        py: 1,
+                        color: '#0f172a',
+                        borderTop: '1px solid #000',
+                        borderBottom: '1px solid #000',
+                      },
+                    }}
+                  >
+                    <TableCell
+                      colSpan={3}
+                      sx={{ backgroundColor: 'grey.100', borderLeft: '1px solid #000' }}
+                    />
+                    <TableCell
+                      colSpan={3}
+                      align="center"
+                      sx={{
+                        background: 'linear-gradient(120deg,#B7694E,#7D7F6E)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        letterSpacing: 1,
+                        textTransform: 'uppercase',
+                        borderLeft: '1px solid #000',
+                        borderRight: '1px solid #000',
+                      }}
+                    >
+                      Regular
+                    </TableCell>
+                    <TableCell
+                      colSpan={5}
+                      align="center"
+                      sx={{
+                        background: 'linear-gradient(120deg,#B7694E,#7D7F6E)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        letterSpacing: 1,
+                        textTransform: 'uppercase',
+                        borderRight: '1px solid #000',
+                      }}
+                    >
+                      Final
+                    </TableCell>
+                  </TableRow>
+                  <TableRow
+                    sx={{
+                      backgroundColor: 'grey.100',
+                      '& .MuiTableCell-root': { border: '1px solid #000' },
+                    }}
+                  >
                     <TableCell align="center">Año</TableCell>
                     <TableCell align="center">Cuat.</TableCell>
                     <TableCell>Espacio Curricular</TableCell>
                     <TableCell align="center">Fecha</TableCell>
-                    <TableCell align="center">Condición</TableCell>
+                    <TableCell align="center">Sit. Académica</TableCell>
                     <TableCell align="center">Nota</TableCell>
                     <TableCell align="center">Fecha</TableCell>
                     <TableCell align="center">Condición</TableCell>
@@ -302,7 +355,15 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                     }
 
                     return (
-                      <TableRow key={`${record.espacioCurricular}-${index}`} sx={{ borderBottom }}>
+                      <TableRow
+                        key={`${record.espacioCurricular}-${index}`}
+                        sx={{
+                          borderBottom,
+                          '& .MuiTableCell-root': {
+                            border: '1px solid #000',
+                          },
+                        }}
+                      >
                         {isFirstInGroup && (
                           <>
                             <TableCell rowSpan={rowSpan} align="center" sx={{ verticalAlign: 'middle' }}>
@@ -353,7 +414,7 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                       <TableCell>Cuat.</TableCell>
                       <TableCell>EDI</TableCell>
                       <TableCell>Fecha</TableCell>
-                      <TableCell>Condición</TableCell>
+                      <TableCell>Sit. Académica</TableCell>
                       <TableCell>Nota</TableCell>
                       <TableCell>Folio</TableCell>
                     </TableRow>

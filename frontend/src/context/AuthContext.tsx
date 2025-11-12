@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { client, apiPath, setUnauthorizedHandler, storeTokens } from "@/api/client";
 
 export type User = {
@@ -10,6 +11,7 @@ export type User = {
   is_superuser?: boolean;
   must_change_password?: boolean;
   must_complete_profile?: boolean;
+  email?: string;
 } | null;
 
 type AuthContextType = {
@@ -29,6 +31,15 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
   const activityRef = useRef<number>(Date.now());
+  const navigate = useNavigate();
+
+  const redirectToLogin = useCallback(() => {
+    storeTokens(null, null);
+    setUser(null);
+    if (window.location.pathname !== "/login") {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 
   const refreshProfile = async (): Promise<User | null> => {
     try {
@@ -68,16 +79,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-    const handler = () => {
-      storeTokens(null, null);
-      setUser(null);
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
-    };
-    setUnauthorizedHandler(handler);
+    setUnauthorizedHandler(redirectToLogin);
     return () => setUnauthorizedHandler(null);
-  }, []);
+  }, [redirectToLogin]);
 
   useEffect(() => {
     if (!user) {
@@ -103,6 +107,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         }
       } catch (err) {
         console.warn("[Auth] keep-alive refresh failed", err);
+        redirectToLogin();
       }
     }, KEEP_ALIVE_INTERVAL_MS);
     return () => {

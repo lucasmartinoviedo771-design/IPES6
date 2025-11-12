@@ -38,6 +38,13 @@ import {
 import { fetchEstudianteAdminDetail } from '@/api/alumnos';
 import { listarProfesorados, ProfesoradoDTO } from '@/api/cargaNotas';
 import PlanillaRegularidadDialog from './PlanillaRegularidadDialog';
+import { PageHero } from "@/components/ui/GradientTitles";
+import {
+  ICON_GRADIENT,
+  INSTITUTIONAL_TERRACOTTA,
+  INSTITUTIONAL_TERRACOTTA_DARK,
+  INSTITUTIONAL_GREEN,
+} from "@/styles/institutionalColors";
 
 type UploadDialogProps = {
   open: boolean;
@@ -608,29 +615,36 @@ const PrimeraCargaPage: React.FC = () => {
   const iconBoxStyles = {
     width: 64,
     height: 64,
-    borderRadius: 1,
-    bgcolor: "primary.main",
+    borderRadius: 14,
+    background: ICON_GRADIENT,
     color: "common.white",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: theme => `0 10px 20px ${theme.palette.primary.main}33`,
+    boxShadow: "0 18px 35px rgba(0,0,0,0.15)",
+  };
+
+  const cardStyles = {
+    height: "100%",
+    borderRadius: 14,
+    border: "1px solid rgba(125,127,110,0.25)",
+    boxShadow: "0 20px 40px rgba(15,23,42,0.08)",
+    backgroundColor: "#fff",
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Primera Carga de Datos
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Utilice esta sección para realizar cargas iniciales de información histórica en el sistema.
-        </Typography>
-      </Box>
+      <PageHero
+        title="Primera carga de datos"
+        subtitle="Utilizá esta sección para realizar cargas iniciales de información histórica en el sistema."
+        sx={{
+          background: `linear-gradient(120deg, ${INSTITUTIONAL_GREEN} 0%, ${INSTITUTIONAL_TERRACOTTA} 100%)`,
+        }}
+      />
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
-          <Card sx={{ height: "100%" }}>
+          <Card sx={cardStyles}>
             <CardContent sx={{ height: "100%" }}>
               <Stack spacing={3} sx={{ height: "100%" }}>
                 <Box
@@ -646,7 +660,17 @@ const PrimeraCargaPage: React.FC = () => {
                     Registre estudiantes sin preinscripción previa completando los datos disponibles.
                   </Typography>
                 </Box>
-                <Button variant="contained" fullWidth sx={{ mt: "auto" }} onClick={() => setOpenStudentDialog(true)}>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  sx={{
+                    mt: "auto",
+                    borderRadius: 999,
+                    backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                    "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                  }}
+                  onClick={() => setOpenStudentDialog(true)}
+                >
                   Registrar estudiante
                 </Button>
               </Stack>
@@ -655,7 +679,7 @@ const PrimeraCargaPage: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card sx={{ height: "100%" }}>
+          <Card sx={cardStyles}>
             <CardContent sx={{ height: "100%" }}>
               <Stack spacing={3} sx={{ height: "100%" }}>
                 <Box
@@ -672,10 +696,29 @@ const PrimeraCargaPage: React.FC = () => {
                   </Typography>
                 </Box>
                 <Stack spacing={1.5} sx={{ mt: "auto" }}>
-                  <Button variant="outlined" fullWidth onClick={() => setOpenPlanillaDialog(true)}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      borderColor: INSTITUTIONAL_TERRACOTTA,
+                      color: INSTITUTIONAL_TERRACOTTA,
+                      "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                    }}
+                    onClick={() => setOpenPlanillaDialog(true)}
+                  >
                     Planilla de Regularidad
                   </Button>
-                  <Button variant="contained" fullWidth onClick={() => navigate("/admin/primera-carga/actas-examen")}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                      "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                    }}
+                    onClick={() => navigate("/admin/primera-carga/actas-examen")}
+                  >
                     Acta de Examen Final
                   </Button>
                 </Stack>
@@ -685,7 +728,7 @@ const PrimeraCargaPage: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card sx={{ height: "100%" }}>
+          <Card sx={cardStyles}>
             <CardContent sx={{ height: "100%" }}>
               <Stack spacing={3} sx={{ height: "100%" }}>
                 <Box
@@ -704,7 +747,12 @@ const PrimeraCargaPage: React.FC = () => {
                 <Button
                   variant="contained"
                   fullWidth
-                  sx={{ mt: "auto" }}
+                  sx={{
+                    mt: "auto",
+                    borderRadius: 999,
+                    backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                    "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                  }}
                   onClick={() => setOpenEquivalenciasDialog(true)}
                 >
                   Cargar equivalencias

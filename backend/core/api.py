@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Case, CharField, Count, F, Prefetch, Q, Value, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import File, Form, Query, Router, Schema
+from ninja import File, Form, Query, Router, Schema, Field
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
 
@@ -67,13 +67,12 @@ ACADEMIC_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
 
 VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "alumno"}
 
-PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel", "preinscripciones"}
+PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel"}
 
 GLOBAL_OVERVIEW_ROLES = {
     "admin",
     "secretaria",
     "bedel",
-    "preinscripciones",
     "jefa_aaee",
     "jefes",
     "tutor",
@@ -103,7 +102,7 @@ ROLES_DIRECT_ALL = {
     "tutor",
     "bedel",
 }
-ROLES_FORBIDDEN_SENDER = {"preinscripciones"}
+ROLES_FORBIDDEN_SENDER = set()
 
 ROLE_STAFF_ASSIGNMENT = {
     "bedel": {"bedel"},
@@ -115,7 +114,6 @@ ALL_ROLES: set[str] = {
     "admin",
     "secretaria",
     "bedel",
-    "preinscripciones",
     "jefa_aaee",
     "jefes",
     "tutor",
@@ -131,7 +129,6 @@ ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
     "tutor": [],
     "bedel": [],
     "coordinador": [],
-    "preinscripciones": [],
     "consulta": [],
 }
 
@@ -168,6 +165,53 @@ def _get_user_for_docente(docente: Docente) -> User | None:
     return None
 
 
+def _ensure_user_for_docente(docente: Docente) -> tuple[User, bool, str | None]:
+    """
+    Garantiza que exista un usuario para el docente.
+    - Username: DNI
+    - Password inicial: pass + DNI
+    """
+    existing = _get_user_for_docente(docente)
+    if existing:
+        updated = False
+        update_fields: list[str] = []
+        email = docente.email or ""
+        first_name = docente.nombre or ""
+        last_name = docente.apellido or ""
+        if existing.email != email:
+            existing.email = email
+            update_fields.append("email")
+        if existing.first_name != first_name:
+            existing.first_name = first_name
+            update_fields.append("first_name")
+        if existing.last_name != last_name:
+            existing.last_name = last_name
+            update_fields.append("last_name")
+        if update_fields:
+            existing.save(update_fields=update_fields)
+        return existing, False, None
+
+    dni = (docente.dni or "").strip()
+    if not dni:
+        raise HttpError(400, "El docente no tiene DNI cargado; no podemos generar un usuario.")
+
+    username = dni
+    temp_password = f"pass{dni}"
+    user = User.objects.create_user(
+        username=username,
+        password=temp_password,
+        email=docente.email or "",
+        first_name=docente.nombre or "",
+        last_name=docente.apellido or "",
+    )
+    return user, True, temp_password
+
+
+def _ensure_docente_group(user: User):
+    group, _ = Group.objects.get_or_create(name="docente")
+    user.groups.add(group)
+
+
 def _user_display(user: User) -> str:
     full_name = (user.get_full_name() or "").strip()
     return full_name or user.get_username()
@@ -189,6 +233,21 @@ def _get_student(user: User) -> Estudiante | None:
         return user.estudiante
     except Estudiante.DoesNotExist:
         return None
+
+
+def _serialize_docente(docente: Docente, temp_password: str | None = None) -> "DocenteOut":
+    user = _get_user_for_docente(docente)
+    return DocenteOut(
+        id=docente.id,
+        nombre=docente.nombre,
+        apellido=docente.apellido,
+        dni=docente.dni,
+        email=docente.email,
+        telefono=docente.telefono,
+        cuil=docente.cuil,
+        usuario=user.username if user else None,
+        temp_password=temp_password,
+    )
 
 
 def _get_staff_for_student(student: Estudiante, role: str) -> set[User]:
@@ -377,7 +436,6 @@ def _primary_role(user: User) -> str | None:
         "coordinador",
         "tutor",
         "bedel",
-        "preinscripciones",
         "consulta",
         "docente",
         "alumno",
@@ -874,6 +932,7 @@ class DocenteRoleAssignOut(Schema):
     username: str
     role: str
     profesorados: list[int] | None = None
+    temp_password: str | None = None
 
 
 class DocenteOut(Schema):
@@ -884,6 +943,8 @@ class DocenteOut(Schema):
     email: str | None = None
     telefono: str | None = None
     cuil: str | None = None
+    usuario: str | None = None
+    temp_password: str | None = None
 
 
 # Schemas for Turno
@@ -994,8 +1055,8 @@ class HorarioCatedraDetalleOut(Schema):
 @router.get("/docentes", response=list[DocenteOut], auth=JWTAuth())
 def list_docentes(request):
     _ensure_structure_view(request.user)
-
-    return Docente.objects.all()
+    docentes = Docente.objects.all().order_by("apellido", "nombre")
+    return [_serialize_docente(docente) for docente in docentes]
 
 
 @router.post("/docentes", response=DocenteOut, auth=JWTAuth())
@@ -1004,7 +1065,10 @@ def create_docente(request, payload: DocenteIn):
 
     docente = Docente.objects.create(**payload.dict())
 
-    return docente
+    user, created_user, temp_password = _ensure_user_for_docente(docente)
+    _ensure_docente_group(user)
+
+    return _serialize_docente(docente, temp_password if created_user else None)
 
 
 @router.get("/docentes/{docente_id}", response=DocenteOut)
@@ -1013,7 +1077,7 @@ def get_docente(request, docente_id: int):
 
     docente = get_object_or_404(Docente, id=docente_id)
 
-    return docente
+    return _serialize_docente(docente)
 
 
 @router.put("/docentes/{docente_id}", response=DocenteOut, auth=JWTAuth())
@@ -1030,8 +1094,10 @@ def update_docente(request, docente_id: int, payload: DocenteIn):
             setattr(docente, attr, value)
 
     docente.save()
+    user, created_user, temp_password = _ensure_user_for_docente(docente)
+    _ensure_docente_group(user)
 
-    return docente
+    return _serialize_docente(docente, temp_password if created_user else None)
 
 
 @router.post("/docentes/{docente_id}/roles", response=DocenteRoleAssignOut, auth=JWTAuth())
@@ -1043,9 +1109,8 @@ def assign_role_to_docente(request, docente_id: int, payload: DocenteRoleAssignI
     assignable = _assignable_roles_for_user(request.user)
     if role not in assignable:
         raise HttpError(403, "No está autorizado para asignar este rol.")
-    user = _get_user_for_docente(docente)
-    if not user:
-        raise HttpError(404, "No encontramos un usuario asociado al docente.")
+    user, created_user, temp_password = _ensure_user_for_docente(docente)
+    _ensure_docente_group(user)
     group, _ = Group.objects.get_or_create(name=role)
     user.groups.add(group)
     profesorados_payload = payload.profesorados or []
@@ -1075,6 +1140,7 @@ def assign_role_to_docente(request, docente_id: int, payload: DocenteRoleAssignI
         username=user.username,
         role=role,
         profesorados=assigned_profesorados or None,
+        temp_password=temp_password if created_user else None,
     )
 
 
@@ -2920,7 +2986,9 @@ def delete_ventana(request, ventana_id: int):
 class MesaIn(Schema):
     materia_id: int
 
-    tipo: str  # 'PAR' | 'FIN' | 'LIB' | 'EXT'
+    tipo: str  # 'FIN' | 'EXT' | 'ESP'
+
+    modalidad: str = MesaExamen.Modalidad.REGULAR
 
     fecha: date
 
@@ -2933,6 +3001,19 @@ class MesaIn(Schema):
     cupo: int | None = 0
 
     ventana_id: int | None = None
+
+    docente_presidente_id: int | None = None
+
+    docente_vocal1_id: int | None = None
+
+    docente_vocal2_id: int | None = None
+
+
+class MesaDocenteOut(Schema):
+    rol: str
+    docente_id: int | None = None
+    nombre: str | None = None
+    dni: str | None = None
 
 
 class MesaOut(Schema):
@@ -2956,6 +3037,8 @@ class MesaOut(Schema):
 
     tipo: str
 
+    modalidad: str
+
     fecha: date
 
     hora_desde: str | None
@@ -2965,6 +3048,10 @@ class MesaOut(Schema):
     aula: str | None
 
     cupo: int
+
+    codigo: str | None = None
+
+    docentes: list[MesaDocenteOut] = Field(default_factory=list)
 
 
 @router.get("/mesas", response=list[MesaOut])
@@ -2977,6 +3064,7 @@ def list_mesas(
     anio: int | None = None,
     cuatrimestre: str | None = None,
     materia_id: int | None = None,
+    codigo: str | None = None,
 ):
     qs = (
         MesaExamen.objects.select_related("materia__plan_de_estudio__profesorado").all().order_by("fecha", "hora_desde")
@@ -3003,70 +3091,148 @@ def list_mesas(
     if materia_id:
         qs = qs.filter(materia_id=materia_id)
 
+    if codigo:
+        qs = qs.filter(codigo__icontains=codigo.strip())
+
     resultado: list[MesaOut] = []
 
     for mesa in qs:
-        materia = mesa.materia
-
-        plan = materia.plan_de_estudio if materia else None
-
-        profesorado = plan.profesorado if plan else None
-
-        resultado.append(
-            MesaOut(
-                id=mesa.id,
-                materia_id=materia.id if materia else 0,
-                materia_nombre=materia.nombre if materia else "",
-                profesorado_id=profesorado.id if profesorado else None,
-                profesorado_nombre=profesorado.nombre if profesorado else None,
-                plan_id=plan.id if plan else None,
-                plan_resolucion=plan.resolucion if plan else None,
-                anio_cursada=materia.anio_cursada if materia else None,
-                regimen=materia.regimen if materia else None,
-                tipo=mesa.tipo,
-                fecha=mesa.fecha,
-                hora_desde=mesa.hora_desde.isoformat() if mesa.hora_desde else None,
-                hora_hasta=mesa.hora_hasta.isoformat() if mesa.hora_hasta else None,
-                aula=mesa.aula or None,
-                cupo=mesa.cupo,
-            )
-        )
+        resultado.append(_serialize_mesa(mesa))
 
     return resultado
+
+
+def _mesa_docentes_payload(mesa: MesaExamen) -> list[MesaDocenteOut]:
+    docentes_info: list[MesaDocenteOut] = []
+    mapping = [
+        ("PRES", getattr(mesa, "docente_presidente", None)),
+        ("VOC1", getattr(mesa, "docente_vocal1", None)),
+        ("VOC2", getattr(mesa, "docente_vocal2", None)),
+    ]
+    for rol, docente in mapping:
+        if not docente:
+            continue
+        nombre = ", ".join(filter(None, [docente.apellido, docente.nombre])).strip(", ")
+        docentes_info.append(
+            MesaDocenteOut(
+                rol=rol,
+                docente_id=docente.id,
+                nombre=nombre or docente.email or "",
+                dni=docente.dni or "",
+            )
+        )
+    return docentes_info
+
+
+def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
+    materia = mesa.materia
+    plan = materia.plan_de_estudio if materia else None
+    profesorado = plan.profesorado if plan else None
+    return MesaOut(
+        id=mesa.id,
+        materia_id=materia.id if materia else 0,
+        materia_nombre=materia.nombre if materia else "",
+        profesorado_id=profesorado.id if profesorado else None,
+        profesorado_nombre=profesorado.nombre if profesorado else None,
+        plan_id=plan.id if plan else None,
+        plan_resolucion=plan.resolucion if plan else None,
+        anio_cursada=materia.anio_cursada if materia else None,
+        regimen=materia.regimen if materia else None,
+        tipo=mesa.tipo,
+        modalidad=mesa.modalidad,
+        fecha=mesa.fecha,
+        hora_desde=mesa.hora_desde.isoformat() if mesa.hora_desde else None,
+        hora_hasta=mesa.hora_hasta.isoformat() if mesa.hora_hasta else None,
+        aula=mesa.aula or None,
+        cupo=mesa.cupo,
+        codigo=mesa.codigo or "",
+        docentes=_mesa_docentes_payload(mesa),
+    )
+
+
+def _normalize_mesa_tipo(tipo: str) -> str:
+    valid = {choice for choice, _label in MesaExamen.Tipo.choices}
+    if tipo not in valid:
+        raise HttpError(400, "Tipo de mesa inválido.")
+    return tipo
+
+
+def _normalize_mesa_modalidad(modalidad: str) -> str:
+    valid = {choice for choice, _label in MesaExamen.Modalidad.choices}
+    if modalidad not in valid:
+        raise HttpError(400, "Modalidad de mesa inválida.")
+    return modalidad
+
+
+def _resolve_mesa_ventana(tipo: str, ventana_id: int | None) -> VentanaHabilitacion | None:
+    tipo = _normalize_mesa_tipo(tipo)
+    if tipo == MesaExamen.Tipo.ESPECIAL:
+        # Las mesas especiales no dependen de ventana
+        return None
+    if not ventana_id:
+        raise HttpError(400, "Debe seleccionar una ventana habilitada para este tipo de mesa.")
+    ventana = get_object_or_404(VentanaHabilitacion, id=ventana_id)
+    if tipo == MesaExamen.Tipo.FINAL and ventana.tipo != VentanaHabilitacion.Tipo.MESAS_FINALES:
+        raise HttpError(400, "La ventana seleccionada no corresponde a mesas ordinarias.")
+    if (
+        tipo == MesaExamen.Tipo.EXTRAORDINARIA
+        and ventana.tipo != VentanaHabilitacion.Tipo.MESAS_EXTRA
+    ):
+        raise HttpError(400, "La ventana seleccionada no corresponde a mesas extraordinarias.")
+    return ventana
 
 
 @router.post("/mesas", response=MesaOut)
 def crear_mesa(request, payload: MesaIn):
     mat = get_object_or_404(Materia, id=payload.materia_id)
+    tipo = _normalize_mesa_tipo(payload.tipo)
+    modalidad = _normalize_mesa_modalidad(payload.modalidad)
+    ventana_destino = _resolve_mesa_ventana(tipo, payload.ventana_id)
 
     mesa = MesaExamen.objects.create(
         materia=mat,
-        tipo=payload.tipo,
+        tipo=tipo,
+        modalidad=modalidad,
         fecha=payload.fecha,
         hora_desde=payload.hora_desde or None,
         hora_hasta=payload.hora_hasta or None,
         aula=payload.aula or None,
         cupo=payload.cupo or 0,
-        ventana_id=payload.ventana_id or None,
+        ventana=ventana_destino,
+        docente_presidente_id=payload.docente_presidente_id,
+        docente_vocal1_id=payload.docente_vocal1_id,
+        docente_vocal2_id=payload.docente_vocal2_id,
     )
 
-    return mesa
+    return _serialize_mesa(mesa)
 
 
 @router.put("/mesas/{mesa_id}", response=MesaOut)
 def actualizar_mesa(request, mesa_id: int, payload: MesaIn):
     mesa = get_object_or_404(MesaExamen, id=mesa_id)
+    tipo = _normalize_mesa_tipo(payload.tipo)
+    modalidad = _normalize_mesa_modalidad(payload.modalidad)
+    ventana_param = payload.ventana_id
+    if ventana_param is None and tipo != MesaExamen.Tipo.ESPECIAL:
+        ventana_param = mesa.ventana_id
+    ventana_destino = _resolve_mesa_ventana(tipo, ventana_param)
+
+    mesa.tipo = tipo
+    mesa.modalidad = modalidad
+    mesa.ventana = ventana_destino
 
     for k, v in payload.dict().items():
+        if k in {"tipo", "modalidad", "ventana_id"}:
+            continue
         if k == "materia_id":
             mesa.materia = get_object_or_404(Materia, id=v)
-
         elif hasattr(mesa, k):
             setattr(mesa, k, v)
 
     mesa.save()
 
-    return mesa
+    mesa.refresh_from_db()
+    return _serialize_mesa(mesa)
 
 
 @router.delete("/mesas/{mesa_id}", response={204: None})

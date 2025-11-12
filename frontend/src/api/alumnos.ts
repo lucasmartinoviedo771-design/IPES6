@@ -49,6 +49,91 @@ export const cancelarInscripcionMateria = (payload: CancelarInscripcionPayload) 
 export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia'|'beca'|'control'|'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
   client.post<GenericResponse>("/alumnos/pedido_analitico", payload).then(res => res.data);
 
+export type PedidoEquivalenciaMateriaPayload = {
+  id?: number;
+  nombre: string;
+  formato?: string;
+  anio_cursada?: string;
+};
+
+export type PedidoEquivalenciaPayload = {
+  tipo: 'ANEXO_A' | 'ANEXO_B';
+  ciclo_lectivo?: string;
+  profesorado_destino_id?: number;
+  profesorado_destino_nombre?: string;
+  plan_destino_id?: number;
+  plan_destino_resolucion?: string;
+  profesorado_origen_nombre?: string;
+  plan_origen_resolucion?: string;
+  establecimiento_origen?: string;
+  establecimiento_localidad?: string;
+  establecimiento_provincia?: string;
+  materias: PedidoEquivalenciaMateriaPayload[];
+};
+
+export type PedidoEquivalenciaMateriaDTO = {
+  id: number;
+  nombre: string;
+  formato?: string | null;
+  anio_cursada?: string | null;
+};
+
+export type PedidoEquivalenciaDTO = {
+  id: number;
+  tipo: 'ANEXO_A' | 'ANEXO_B';
+  estado: 'draft' | 'final';
+  estado_display: string;
+  ciclo_lectivo?: string | null;
+  profesorado_destino_id?: number | null;
+  profesorado_destino_nombre?: string | null;
+  plan_destino_id?: number | null;
+  plan_destino_resolucion?: string | null;
+  profesorado_origen_nombre?: string | null;
+  plan_origen_resolucion?: string | null;
+  establecimiento_origen?: string | null;
+  establecimiento_localidad?: string | null;
+  establecimiento_provincia?: string | null;
+  ventana_id: number;
+  ventana_label: string;
+  created_at: string;
+  updated_at: string;
+  bloqueado_en?: string | null;
+  puede_editar: boolean;
+  estudiante_dni: string;
+  estudiante_nombre?: string | null;
+  materias: PedidoEquivalenciaMateriaDTO[];
+};
+
+export async function listarPedidosEquivalencia(params: { dni?: string; estado?: 'draft' | 'final'; profesorado_id?: number; ventana_id?: number } = {}): Promise<PedidoEquivalenciaDTO[]> {
+  const { data } = await client.get<PedidoEquivalenciaDTO[]>("/alumnos/equivalencias/pedidos", { params });
+  return data;
+}
+
+export async function crearPedidoEquivalencia(payload: PedidoEquivalenciaPayload, params: { dni?: string } = {}): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.post<PedidoEquivalenciaDTO>("/alumnos/equivalencias/pedidos", payload, { params });
+  return data;
+}
+
+export async function actualizarPedidoEquivalencia(id: number, payload: PedidoEquivalenciaPayload): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.put<PedidoEquivalenciaDTO>(`/alumnos/equivalencias/pedidos/${id}`, payload);
+  return data;
+}
+
+export async function eliminarPedidoEquivalencia(id: number): Promise<ApiResponseDTO> {
+  const { data } = await client.delete<ApiResponseDTO>(`/alumnos/equivalencias/pedidos/${id}`);
+  return data;
+}
+
+export async function descargarNotaPedidoEquivalencia(id: number): Promise<Blob> {
+  const { data } = await client.post<Blob>(`/alumnos/equivalencias/pedidos/${id}/nota`, {}, { responseType: "blob" });
+  return data;
+}
+
+export async function exportarPedidosEquivalencia(params: { ventana_id?: number; profesorado_id?: number; estado?: 'draft' | 'final' } = {}): Promise<Blob> {
+  const { data } = await client.get<Blob>(`/alumnos/equivalencias/export`, { params, responseType: "blob" });
+  return data;
+}
+
 export const solicitarMesaExamen = (payload: MesaExamenPayload) =>
   client.post<GenericResponse>("/alumnos/mesa-examen", payload).then(res => res.data);
 
@@ -205,6 +290,8 @@ export type CartonMateriaDTO = {
   anio?: number | null;
   regimen?: string | null;
   regimen_display?: string | null;
+  formato?: string | null;
+  formato_display?: string | null;
   regularidad?: CartonEventoDTO | null;
   final?: CartonEventoDTO | null;
 };
@@ -391,7 +478,7 @@ export async function obtenerEquivalencias(materia_id: number): Promise<Equivale
 
 // Mesas de examen (alumno)
 type MesaListadoParams = {
-  tipo?: 'FIN' | 'EXT';
+  tipo?: 'FIN' | 'EXT' | 'ESP';
   modalidad?: 'REG' | 'LIB';
   ventana_id?: number;
   profesorado_id?: number;
@@ -444,7 +531,7 @@ export type MesaListadoItemDTO = {
   materia_id: number;
   materia_nombre?: string;
   materia?: MesaMateriaResumenDTO;
-  tipo: "FIN" | "EXT";
+  tipo: "FIN" | "EXT" | "ESP";
   modalidad: "REG" | "LIB";
   fecha: string;
   hora_desde?: string | null;
@@ -452,6 +539,7 @@ export type MesaListadoItemDTO = {
   aula?: string | null;
   correlativas_aprob?: number[];
   correlativas_regular?: number[];
+  codigo?: string | null;
 };
 
 export async function listarMesas(params?: MesaListadoParams): Promise<MesaListadoItemDTO[]> {

@@ -608,10 +608,10 @@ const InscripcionMateriaPage: React.FC = () => {
                   label="Año"
                   onChange={handleAnioChange}
                 >
-                  <MenuItem value="all">Todos los anios</MenuItem>
+                  <MenuItem value="all">Todos los años</MenuItem>
                   {aniosDisponibles.map((anio) => (
                     <MenuItem key={anio} value={String(anio)}>
-                      {`${anio} anio`}
+                      {`${anio} año`}
                     </MenuItem>
                   ))}
                 </Select>
@@ -696,7 +696,7 @@ const InscripcionMateriaPage: React.FC = () => {
               {habilitadasPorAnio.map(({ anio, items }) => (
                 <Box key={anio}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-                    {anio}º anio
+                    {anio}º año
                   </Typography>
                   <Box
                     sx={{

@@ -38,6 +38,7 @@ import {
   TurnoDTO,
   generarComisiones,
 } from "@/api/comisiones";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -256,14 +257,10 @@ const ComisionesPage: React.FC = () => {
 
   return (
     <Stack gap={3}>
-      <Box>
-        <Typography variant="h5" fontWeight={800}>
-          Gestion de Comisiones
-        </Typography>
-        <Typography color="text.secondary">
-          Generacion automatica y consulta de comisiones por plan y ciclo lectivo.
-        </Typography>
-      </Box>
+      <PageHero
+        title="Gestión de comisiones"
+        subtitle="Generación automática y consulta de comisiones por plan y ciclo lectivo."
+      />
 
       <Paper sx={{ p: 3 }}>
         <Stack gap={3}>

@@ -1,6 +1,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Box, Button, Stack, TextField, Typography, Paper } from "@mui/material";
+import { Button, Stack, TextField, Paper } from "@mui/material";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 export default function ConfirmarInscripcionPage() {
   const [sp, setSp] = useSearchParams();
@@ -9,10 +10,10 @@ export default function ConfirmarInscripcionPage() {
 
   return (
     <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>Confirmación de Preinscripción</Typography>
+      <PageHero title="Confirmación de Preinscripción" />
 
       {!codigo && (
-        <Paper sx={{ p:2 }}>
+        <Paper sx={{ p: 2 }}>
           <Stack direction="row" alignItems="center" gap={1}>
             <TextField
               size="small"
@@ -21,7 +22,9 @@ export default function ConfirmarInscripcionPage() {
               onChange={(e) => setSp({ codigo: e.target.value })}
             />
             <Button variant="contained">Abrir</Button>
-            <Button variant="text" onClick={() => navigate("/preinscripciones")}>Volver al listado</Button>
+            <Button variant="text" onClick={() => navigate("/preinscripciones")}>
+              Volver al listado
+            </Button>
           </Stack>
         </Paper>
       )}

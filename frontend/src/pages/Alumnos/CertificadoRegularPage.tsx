@@ -24,6 +24,7 @@ import {
   TrayectoriaCarreraDetalleDTO,
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type SelectValue = string;
 
@@ -143,13 +144,10 @@ useEffect(() => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Constancia de Alumno Regular
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Obten tu certificado de alumno regular en formato PDF. La constancia verifica que estas inscripto en el
-        ciclo lectivo vigente y detalla el anio que cursas segun tus materias confirmadas.
-      </Typography>
+      <PageHero
+        title="Constancia de alumno regular"
+        subtitle="Descargá el certificado oficial del ciclo vigente según tu cohorte"
+      />
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>

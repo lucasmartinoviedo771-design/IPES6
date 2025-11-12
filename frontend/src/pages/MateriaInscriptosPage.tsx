@@ -31,6 +31,7 @@ import {
   obtenerCarrera,
   obtenerPlanCarrera,
 } from "@/api/carreras";
+import { SectionTitlePill } from "@/components/ui/GradientTitles";
 
 const regimenLabel: Record<string, string> = {
   ANU: "Anual",
@@ -212,9 +213,7 @@ export default function MateriaInscriptosPage() {
             </Alert>
           ) : (
             <Stack spacing={1}>
-              <Typography variant="h4" fontWeight={800}>
-                {materiaNombre}
-              </Typography>
+              <SectionTitlePill title={materiaNombre ?? "Materia"} />
               <Typography color="text.secondary">
                 {[profesoradoNombre, planLabel].filter(Boolean).join(" · ")}
               </Typography>

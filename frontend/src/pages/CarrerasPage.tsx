@@ -30,12 +30,12 @@ import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
 import { fetchCarreras, Carrera } from "@/api/carreras";
 import { listarPlanes, PlanDTO } from "@/api/cargaNotas";
 import { listarMaterias, MateriaDTO } from "@/api/comisiones";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 const STAFF_ROLES = [
   "admin",
   "secretaria",
   "bedel",
-  "preinscripciones",
   "coordinador",
   "tutor",
   "jefes",
@@ -224,12 +224,11 @@ export default function CarrerasPage() {
     return (
       <Box sx={{ p: 4, maxWidth: 640, margin: "0 auto" }}>
         <Paper variant="outlined" sx={{ p: 3 }}>
-          <Typography variant="h5" fontWeight={700} gutterBottom>
-            Gestioná tus materias
-          </Typography>
-          <Typography paragraph color="text.secondary">
-            La información detallada de carreras está disponible para personal administrativo. Podés inscribirte o revisar tus materias desde el Portal de Alumnos.
-          </Typography>
+          <PageHero
+            title="Gestioná tus materias"
+            subtitle="La información detallada de carreras está disponible para personal administrativo. Podés inscribirte o revisar tus materias desde el Portal de Alumnos."
+            sx={{ width: "100%", boxShadow: "none", borderRadius: 3 }}
+          />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="flex-start">
             <Button variant="contained" onClick={() => navigate("/alumnos/inscripcion-materia")}>
               Ir a Inscripción de Materias
@@ -274,18 +273,14 @@ export default function CarrerasPage() {
   };
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#f7f4ea", minHeight: "100vh" }}>
+    <Box sx={{ p: 3, bgcolor: "#ffffff", minHeight: "100vh" }}>
       <Stack spacing={3} maxWidth={1200} mx="auto">
-        <Box>
-          <Typography variant="h4" fontWeight={800}>
-            Gestión de carreras
-          </Typography>
-          <Typography color="text.secondary">
-            Visualizá profesorados, planes vigentes y sus materias asociadas.
-          </Typography>
-        </Box>
+        <PageHero
+          title="Gestión de carreras"
+          subtitle="Visualizá profesorados, planes vigentes y sus materias asociadas."
+        />
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth size="small">
@@ -327,10 +322,8 @@ export default function CarrerasPage() {
           </Grid>
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-          <Typography variant="h6" fontWeight={700} gutterBottom>
-            Planes de estudio
-          </Typography>
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+          <SectionTitlePill title="Planes de estudio" />
           {planesQuery.isLoading ? (
             <Skeleton variant="rounded" height={120} />
           ) : planes.length === 0 ? (
@@ -368,10 +361,8 @@ export default function CarrerasPage() {
           )}
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-          <Typography variant="h6" fontWeight={700} gutterBottom>
-            Materias del plan
-          </Typography>
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+          <SectionTitlePill title="Materias del plan" />
           {typeof planId !== "number" && (
             <Alert severity="info">Seleccioná un plan para ver sus materias.</Alert>
           )}

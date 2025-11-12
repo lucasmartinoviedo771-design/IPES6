@@ -56,6 +56,7 @@ import {
 } from "@/api/alumnos";
 import RegularidadPlanillaEditor from "@/components/secretaria/RegularidadPlanillaEditor";
 import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -68,7 +69,7 @@ type FiltersState = {
 
 type FinalFiltersState = {
   ventanaId: string;
-  tipo: "FIN" | "EXT" | "";
+  tipo: "FIN" | "EXT" | "ESP" | "";
   modalidad: "REG" | "LIB" | "";
   profesoradoId: number | null;
   planId: number | null;
@@ -723,16 +724,14 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
 
   return (
     <Stack gap={3}>
-      <Box>
-        <Typography variant="h5" fontWeight={800}>
-          {isFinalsMode ? "Cargar finales" : "Carga de Notas - Regularidad y Promocion"}
-        </Typography>
-        <Typography color="text.secondary">
-          {isFinalsMode
+      <PageHero
+        title={isFinalsMode ? "Cargar finales" : "Carga de notas - Regularidad y Promoción"}
+        subtitle={
+          isFinalsMode
             ? "Gestioná las planillas y el acta manual de mesas finales."
-            : "Completa la planilla de regularidad al cierre del cuatrimestre o ciclo lectivo."}
-        </Typography>
-      </Box>
+            : "Completa la planilla de regularidad al cierre del cuatrimestre o ciclo lectivo."
+        }
+      />
 
       {!isFinalsMode && (
         <>
@@ -1047,8 +1046,9 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                   }
                 >
                   <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="FIN">Final</MenuItem>
+                  <MenuItem value="FIN">Ordinaria</MenuItem>
                   <MenuItem value="EXT">Extraordinaria</MenuItem>
+                  <MenuItem value="ESP">Especial</MenuItem>
                 </TextField>
                 <TextField
                   select
@@ -1237,7 +1237,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               {fecha} {horaDesde}
-                              {horaHasta ? ` - ${horaHasta}` : ""} | {mesa.modalidad === "LIB" ? "Libre" : "Regular"} | {mesa.tipo === "FIN" ? "Final" : "Extraordinaria"}
+                              {horaHasta ? ` - ${horaHasta}` : ""} | {mesa.modalidad === "LIB" ? "Libre" : "Regular"} | {mesa.tipo === "FIN" ? "Ordinaria" : mesa.tipo === "EXT" ? "Extraordinaria" : "Especial"}
                             </Typography>
                             <Stack direction="row" gap={1}>
                               <Button
@@ -1283,7 +1283,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                             {finalPlanilla.materia_nombre} - Mesa #{finalPlanilla.mesa_id}
                           </Typography>
                           <Typography color="text.secondary">
-                            {finalPlanilla.fecha ? new Date(finalPlanilla.fecha).toLocaleDateString() : "-"} - {finalPlanilla.tipo === "FIN" ? "Final" : "Extraordinaria"} - {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
+                            {finalPlanilla.fecha ? new Date(finalPlanilla.fecha).toLocaleDateString() : "-"} - {finalPlanilla.tipo === "FIN" ? "Ordinaria" : finalPlanilla.tipo === "EXT" ? "Extraordinaria" : "Especial"} - {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
                           </Typography>
                         </Box>
                         <Stack

@@ -26,6 +26,7 @@ import {
   fetchPerfilCompletar,
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type DocumentacionForm = {
   dni_legalizado: boolean;
@@ -237,14 +238,10 @@ export default function CompletarPerfilPage() {
     <Box py={3} px={{ xs: 1, md: 4 }}>
       <Paper elevation={1} sx={{ maxWidth: 960, margin: "0 auto", p: { xs: 2, md: 4 } }}>
         <Stack spacing={3}>
-          <Box>
-            <Typography variant="h5" fontWeight={700}>
-              Completa tu informacion
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Necesitamos estos datos para finalizar tu inscripcion. Revisa que todo este correcto antes de guardar.
-            </Typography>
-          </Box>
+          <PageHero
+            title="Completa tu información"
+            subtitle="Necesitamos estos datos para finalizar tu inscripción. Revisá que todo esté correcto antes de guardar."
+          />
 
           {detailQuery.isLoading && (
             <Box display="flex" justifyContent="center" py={6}>
