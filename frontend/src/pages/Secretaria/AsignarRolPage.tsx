@@ -7,7 +7,6 @@ import {
   Paper,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -17,12 +16,12 @@ import { fetchCarreras, Carrera } from "@/api/carreras";
 import { useAuth } from "@/context/AuthContext";
 import { asignarRolADocente } from "@/api/roles";
 import { toast } from "@/utils/toast";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 const ALL_ROLES = [
   "admin",
   "secretaria",
   "bedel",
-  "preinscripciones",
   "jefa_aaee",
   "jefes",
   "tutor",
@@ -36,7 +35,6 @@ const ROLE_ASSIGN_MATRIX: Record<string, string[]> = {
   admin: ALL_ROLES,
   secretaria: ALL_ROLES.filter((role) => role !== "admin"),
   bedel: [],
-  preinscripciones: [],
   jefa_aaee: ["bedel", "tutor", "coordinador"],
   jefes: [],
   tutor: [],
@@ -143,10 +141,11 @@ export default function AsignarRolPage() {
     (rolRequiereProfesorados && profesoradosSeleccionados.length === 0);
 
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>
-        Asignar Rol
-      </Typography>
+    <Stack gap={3}>
+      <PageHero
+        title="Asignar Rol"
+        subtitle="Gestioná permisos y responsabilidades del personal"
+      />
       <Paper sx={{ p: 2 }}>
         <Stack direction={{ xs: "column", sm: "row" }} gap={1.5}>
           <Autocomplete

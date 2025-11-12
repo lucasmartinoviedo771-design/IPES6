@@ -109,6 +109,15 @@ export type MesaResumenDTO = {
   hora_hasta?: string | null;
   aula?: string | null;
   cupo: number;
+  codigo?: string | null;
+  docentes?: MesaTribunalDocenteDTO[];
+};
+
+export type MesaTribunalDocenteDTO = {
+  rol: "PRES" | "VOC1" | "VOC2";
+  docente_id: number | null;
+  nombre: string | null;
+  dni: string | null;
 };
 
 export async function listarProfesorados() {
@@ -154,18 +163,30 @@ export async function guardarPlanillaRegularidad(payload: GuardarRegularidadPayl
 
 export async function listarMesasFinales(params?: {
   ventana_id?: number;
-  tipo?: "FIN" | "EXT";
+  tipo?: "FIN" | "EXT" | "ESP";
   modalidad?: "REG" | "LIB";
   profesorado_id?: number;
   plan_id?: number;
   anio?: number;
   cuatrimestre?: string;
   materia_id?: number;
+  codigo?: string;
 }) {
   const { data } = await client.get<MesaResumenDTO[]>("/mesas", {
     params,
   });
   return data;
+}
+
+export async function buscarMesaPorCodigo(codigo: string) {
+  const term = codigo.trim();
+  if (!term) {
+    return null;
+  }
+  const { data } = await client.get<MesaResumenDTO[]>("/mesas", {
+    params: { codigo: term },
+  });
+  return data?.[0] ?? null;
 }
 
 export type ActaNotaOption = {

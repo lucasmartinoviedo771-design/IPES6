@@ -4,11 +4,19 @@ import { listarMesas, inscribirMesa, obtenerHistorialAlumno, obtenerCarrerasActi
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
 
+const MESA_TIPO_LABEL: Record<string, string> = {
+  FIN: 'Ordinaria',
+  EXT: 'Extraordinaria',
+  ESP: 'Especial',
+};
+
+const getMesaTipoLabel = (tipo: string) => MESA_TIPO_LABEL[tipo] ?? tipo;
+
 const MesaExamenPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user:null }) as any;
   const canGestionar = !!user && (user.is_staff || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel'].includes((r||'').toLowerCase())));
   const [dni, setDni] = useState('');
-  const [tipo, setTipo] = useState<'FIN'|'EXT'|''>('');
+  const [tipo, setTipo] = useState<'FIN'|'EXT'|'ESP'|''>('');
   const [modalidad, setModalidad] = useState<'REG'|'LIB'|''>('');
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
@@ -198,7 +206,15 @@ useEffect(() => {
       const res = await inscribirMesa({ mesa_id: mesaId, dni: canGestionar ? (dni||undefined) : undefined });
       setInfo(res.message);
       setErr(null);
-    }catch(e:any){ setErr(e?.response?.data?.message || 'No se pudo inscribir'); setInfo(null); }
+    }catch(e:any){
+      const data = e?.response?.data;
+      let message = typeof data === 'string' ? data : data?.message || data?.detail || e?.message || 'No se pudo inscribir';
+      if (data?.faltantes?.length) {
+        message = `${message}: ${data.faltantes.join(', ')}`;
+      }
+      setErr(message);
+      setInfo(null);
+    }
   }
 
   return (
@@ -213,8 +229,9 @@ useEffect(() => {
           <InputLabel>Tipo</InputLabel>
           <Select label="Tipo" value={tipo} onChange={(e)=>setTipo(e.target.value as any)}>
             <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="FIN">Final</MenuItem>
+            <MenuItem value="FIN">Ordinaria</MenuItem>
             <MenuItem value="EXT">Extraordinaria</MenuItem>
+            <MenuItem value="ESP">Especial</MenuItem>
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -230,7 +247,7 @@ useEffect(() => {
           <Select label="Periodo" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)}>
             {ventanas.map((v)=> (
               <MenuItem key={v.id} value={String(v.id)}>
-                {new Date(v.desde).toLocaleDateString()} - {new Date(v.hasta).toLocaleDateString()} ({v.tipo === 'MESAS_FINALES' ? 'FINALES' : 'EXTRA'})
+                {new Date(v.desde).toLocaleDateString()} - {new Date(v.hasta).toLocaleDateString()} ({v.tipo === 'MESAS_FINALES' ? 'Ordinarias' : 'Extraordinarias'})
               </MenuItem>
             ))}
           </Select>
@@ -298,8 +315,13 @@ useEffect(() => {
             <Grid item xs={12} md={6} lg={4} key={mesa.id}>
               <Paper variant="outlined" sx={{ p:1.5 }}>
                 <Stack gap={0.5}>
-                  <Typography variant="subtitle2">{mesa.materia?.nombre ?? mesa.materia_nombre} - {mesa.tipo} ({mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'})</Typography>
+                  <Typography variant="subtitle2">{mesa.materia?.nombre ?? mesa.materia_nombre} - {getMesaTipoLabel(mesa.tipo)} ({mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'})</Typography>
                   <Typography variant="body2" color="text.secondary">{new Date(mesa.fecha).toLocaleDateString()} {mesa.hora_desde ? (mesa.hora_desde + (mesa.hora_hasta? ' - ' + mesa.hora_hasta : '')) : ''} - {mesa.aula || ''}</Typography>
+                  {mesa.codigo && (
+                    <Typography variant="caption" color="text.secondary">
+                      Código: {mesa.codigo}
+                    </Typography>
+                  )}
                   <Button size="small" variant="contained" onClick={()=>onInscribir(mesa.id)}>Inscribirme</Button>
                 </Stack>
               </Paper>

@@ -3,6 +3,7 @@ import { Stack, TextField, Typography, Paper, Grid, Divider, List, ListItem, Lis
 import { useQuery } from "@tanstack/react-query";
 import { listarPreinscripciones } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 export default function ConfirmarInscripcionSecretaria() {
   const [sp, setSp] = useSearchParams();
@@ -20,13 +21,16 @@ export default function ConfirmarInscripcionSecretaria() {
   // La confirmación y el manejo de documentación se realizan dentro de PreConfirmEditor
 
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>Formalizar inscripción</Typography>
+    <Stack gap={3}>
+      <PageHero
+        title="Formalizar inscripción"
+        subtitle="Busca al aspirante y completá la confirmación presencial"
+      />
 
       {!codigo && (
         <Paper sx={{ p:2 }}>
           <Stack gap={2}>
-            <Typography variant="subtitle1" fontWeight={700}>Buscar aspirante</Typography>
+            <SectionTitlePill title="Buscar aspirante" />
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={4}>
                 <TextField size="small" label="DNI" fullWidth value={dni} onChange={(e)=>setSp({ dni: e.target.value || "" })} />

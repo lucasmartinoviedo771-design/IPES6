@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+import csv
 
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
@@ -11,7 +12,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Router
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
@@ -40,6 +41,8 @@ from core.models import (
     Materia,
     MesaExamen,
     PedidoAnalitico,
+    PedidoEquivalencia,
+    PedidoEquivalenciaMateria,
     PlanDeEstudio,
     Preinscripcion,
     Profesorado,
@@ -47,6 +50,8 @@ from core.models import (
     VentanaHabilitacion,
 )
 from core.permissions import ensure_roles
+
+MESA_TIPOS_ORDINARIOS = (MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL)
 
 from .schemas import (
     CambioComisionIn,
@@ -84,6 +89,10 @@ from .schemas import (
     PedidoAnaliticoIn,
     PedidoAnaliticoItem,
     PedidoAnaliticoOut,
+    PedidoEquivalenciaMateriaIn,
+    PedidoEquivalenciaMateriaOut,
+    PedidoEquivalenciaOut,
+    PedidoEquivalenciaSaveIn,
     RecomendacionesOut,
     RegularidadResumen,
     RegularidadVigenciaOut,
@@ -95,6 +104,7 @@ from .schemas import (
 alumnos_router = Router(tags=["alumnos"], auth=JWTAuth())
 
 ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
+EQUIVALENCIAS_STAFF_ROLES = {"admin", "secretaria", "bedel"}
 DOCUMENTACION_FIELDS = {
     "dni_legalizado",
     "fotos_4x4",
@@ -110,6 +120,16 @@ DOCUMENTACION_FIELDS = {
     "es_certificacion_docente",
     "titulo_terciario_univ",
 }
+
+
+def _user_has_roles(user, roles: Iterable[str]) -> bool:
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    role_set = {role.lower() for role in roles}
+    user_groups = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    return bool(user_groups.intersection(role_set))
 
 
 def _ensure_admin(request):
@@ -131,6 +151,100 @@ def _ensure_estudiante_access(request, dni: str | None) -> None:
     solicitante = getattr(request.user, "estudiante", None)
     if solicitante and solicitante.dni != dni:
         ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
+
+
+def _can_manage_equivalencias(user) -> bool:
+    return _user_has_roles(user, EQUIVALENCIAS_STAFF_ROLES)
+
+
+def _get_equivalencia_window() -> VentanaHabilitacion | None:
+    today = timezone.now().date()
+    return (
+        VentanaHabilitacion.objects.filter(
+            tipo=VentanaHabilitacion.Tipo.EQUIVALENCIAS,
+            activo=True,
+            desde__lte=today,
+            hasta__gte=today,
+        )
+        .order_by("-desde")
+        .first()
+    )
+
+
+def _puede_editar_pedido_equivalencia(pedido: PedidoEquivalencia, user) -> bool:
+    if _can_manage_equivalencias(user):
+        return True
+    estudiante = getattr(user, "estudiante", None)
+    if not estudiante or estudiante.id != pedido.estudiante_id:
+        return False
+    return not pedido.esta_finalizado
+
+
+def _serialize_pedido_equivalencia(pedido: PedidoEquivalencia, user) -> PedidoEquivalenciaOut:
+    materias = [
+        PedidoEquivalenciaMateriaOut(
+            id=item.id,
+            nombre=item.nombre,
+            formato=item.formato or None,
+            anio_cursada=item.anio_cursada or None,
+        )
+        for item in pedido.materias.all()
+    ]
+    ventana_label = ""
+    if pedido.ventana_id:
+        desde = pedido.ventana.desde.strftime("%d/%m/%Y") if pedido.ventana.desde else ""
+        hasta = pedido.ventana.hasta.strftime("%d/%m/%Y") if pedido.ventana.hasta else ""
+        ventana_label = f"{pedido.ventana.get_tipo_display()} ({desde} - {hasta})"
+    estudiante_nombre = (
+        pedido.estudiante.user.get_full_name() if pedido.estudiante.user_id else None
+    )
+    return PedidoEquivalenciaOut(
+        id=pedido.id,
+        tipo=pedido.tipo,
+        estado=pedido.estado,
+        estado_display=pedido.get_estado_display(),
+        ciclo_lectivo=pedido.ciclo_lectivo or None,
+        profesorado_destino_id=pedido.profesorado_destino_id,
+        profesorado_destino_nombre=pedido.profesorado_destino_nombre or None,
+        plan_destino_id=pedido.plan_destino_id,
+        plan_destino_resolucion=pedido.plan_destino_resolucion or None,
+        profesorado_origen_nombre=pedido.profesorado_origen_nombre or None,
+        plan_origen_resolucion=pedido.plan_origen_resolucion or None,
+        establecimiento_origen=pedido.establecimiento_origen or None,
+        establecimiento_localidad=pedido.establecimiento_localidad or None,
+        establecimiento_provincia=pedido.establecimiento_provincia or None,
+        ventana_id=pedido.ventana_id,
+        ventana_label=ventana_label,
+        created_at=pedido.created_at.isoformat(),
+        updated_at=pedido.updated_at.isoformat(),
+        bloqueado_en=pedido.bloqueado_en.isoformat() if pedido.bloqueado_en else None,
+        puede_editar=_puede_editar_pedido_equivalencia(pedido, user),
+        estudiante_dni=pedido.estudiante.dni,
+        estudiante_nombre=estudiante_nombre,
+        materias=materias,
+    )
+
+
+def _sync_pedido_equivalencia_materias(
+    pedido: PedidoEquivalencia, materias: list[PedidoEquivalenciaMateriaIn]
+) -> None:
+    pedido.materias.all().delete()
+    bulk: list[PedidoEquivalenciaMateria] = []
+    for idx, materia in enumerate(materias):
+        nombre = (materia.nombre or "").strip()
+        if not nombre:
+            continue
+        bulk.append(
+            PedidoEquivalenciaMateria(
+                pedido=pedido,
+                nombre=nombre,
+                formato=(materia.formato or "").strip(),
+                anio_cursada=(materia.anio_cursada or "").strip(),
+                orden=idx,
+            )
+        )
+    if bulk:
+        PedidoEquivalenciaMateria.objects.bulk_create(bulk)
 
 
 def _parse_optional_date(value: str | None):
@@ -412,7 +526,7 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
     siguiente_llamado = (
         MesaExamen.objects.filter(
             materia=regularidad.materia,
-            tipo=MesaExamen.Tipo.FINAL,
+            tipo__in=MESA_TIPOS_ORDINARIOS,
             fecha__gte=limite_base,
         )
         .order_by("fecha")
@@ -425,7 +539,7 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
         estudiante=estudiante,
         estado=InscripcionMesa.Estado.INSCRIPTO,
         mesa__materia=regularidad.materia,
-        mesa__tipo=MesaExamen.Tipo.FINAL,
+        mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
         mesa__fecha__gte=regularidad.fecha_cierre,
         mesa__fecha__lte=limite,
     ).count()
@@ -923,6 +1037,7 @@ def listar_mesas_alumno(
                 "anio": m.materia.anio_cursada,
             },
             "tipo": m.tipo,
+            "codigo": m.codigo,
             "fecha": m.fecha.isoformat(),
             "hora_desde": str(m.hora_desde) if m.hora_desde else None,
             "hora_hasta": str(m.hora_hasta) if m.hora_hasta else None,
@@ -937,7 +1052,7 @@ def listar_mesas_alumno(
         if not solo_rendibles or not estudiante_para_rendir:
             out.append(row)
             continue
-        if m.tipo == MesaExamen.Tipo.FINAL:
+        if m.tipo in MESA_TIPOS_ORDINARIOS:
             legajo_ok = estudiante_para_rendir.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
             if not legajo_ok:
                 prof = m.materia.plan_de_estudio.profesorado if m.materia and m.materia.plan_de_estudio else None
@@ -970,7 +1085,7 @@ def listar_mesas_alumno(
 
             two_years = _add_years(reg.fecha_cierre, 2)
             next_call = (
-                MesaExamen.objects.filter(materia=m.materia, tipo=MesaExamen.Tipo.FINAL, fecha__gte=two_years)
+                MesaExamen.objects.filter(materia=m.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
                 .order_by("fecha")
                 .values_list("fecha", flat=True)
                 .first()
@@ -1018,8 +1133,8 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     if mesa.cupo and mesa.inscripciones.filter(estado=InscripcionMesa.Estado.INSCRIPTO).count() >= mesa.cupo:
         return 400, {"message": "Cupo completo"}
 
-    # Validaciones para Finales
-    if mesa.tipo == MesaExamen.Tipo.FINAL:
+    # Validaciones para mesas ordinarias/especiales
+    if mesa.tipo in MESA_TIPOS_ORDINARIOS:
         # 1) Legajo completo o excepción por 'Título en trámite'
         if est.estado_legajo != Estudiante.EstadoLegajo.COMPLETO:
             prof = mesa.materia.plan_de_estudio.profesorado if mesa.materia and mesa.materia.plan_de_estudio else None
@@ -1051,7 +1166,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
 
         two_years = _add_years(reg.fecha_cierre, 2)
         next_call = (
-            MesaExamen.objects.filter(materia=mesa.materia, tipo=MesaExamen.Tipo.FINAL, fecha__gte=two_years)
+            MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
             .order_by("fecha")
             .values_list("fecha", flat=True)
             .first()
@@ -1064,7 +1179,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
             estudiante=est,
             estado=InscripcionMesa.Estado.INSCRIPTO,
             mesa__materia=mesa.materia,
-            mesa__tipo=MesaExamen.Tipo.FINAL,
+            mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
             mesa__fecha__gte=reg.fecha_cierre,
             mesa__fecha__lte=allowed_until,
         ).count()
@@ -1625,7 +1740,7 @@ def trayectoria_alumno(request, dni: str | None = None):
                 ),
             }
         )
-        if mesa.tipo == MesaExamen.Tipo.FINAL and mesa.materia_id not in finales_map:
+        if mesa.tipo in MESA_TIPOS_ORDINARIOS and mesa.materia_id not in finales_map:
             finales_map[mesa.materia_id] = insc
 
     actas_finales_map: dict[int, ActaExamenAlumno] = {}
@@ -1779,6 +1894,8 @@ def trayectoria_alumno(request, dni: str | None = None):
                         anio=materia.anio_cursada,
                         regimen=materia.regimen,
                         regimen_display=materia.get_regimen_display(),
+                        formato=materia.formato,
+                        formato_display=materia.get_formato_display(),
                         regularidad=regularidad_evt,
                         final=final_evt,
                     )
@@ -2371,6 +2488,432 @@ def certificado_alumno_regular(
     return response
 
 
+@alumnos_router.get("/equivalencias/pedidos", response=list[PedidoEquivalenciaOut])
+def listar_pedidos_equivalencia(
+    request,
+    dni: str | None = None,
+    estado: str | None = None,
+    profesorado_id: int | None = None,
+    ventana_id: int | None = None,
+):
+    qs = (
+        PedidoEquivalencia.objects.select_related(
+            "ventana",
+            "profesorado_destino",
+            "estudiante__user",
+        )
+        .prefetch_related("materias")
+        .order_by("-updated_at")
+    )
+    if _can_manage_equivalencias(request.user):
+        if dni:
+            qs = qs.filter(estudiante__dni=dni)
+    else:
+        est = _resolve_estudiante(request, dni)
+        if not est:
+            return []
+        qs = qs.filter(estudiante=est)
+        if ventana_id is None:
+            ventana_actual = _get_equivalencia_window()
+            if ventana_actual:
+                qs = qs.filter(ventana=ventana_actual)
+    if ventana_id:
+        qs = qs.filter(ventana_id=ventana_id)
+    if profesorado_id:
+        qs = qs.filter(profesorado_destino_id=profesorado_id)
+    if estado:
+        qs = qs.filter(estado=estado.lower())
+    return [_serialize_pedido_equivalencia(item, request.user) for item in qs]
+
+
+@alumnos_router.post("/equivalencias/pedidos", response=PedidoEquivalenciaOut)
+def crear_pedido_equivalencia(request, payload: PedidoEquivalenciaSaveIn, dni: str | None = None):
+    _ensure_estudiante_access(request, dni)
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
+
+    ventana = _get_equivalencia_window()
+    if not ventana:
+        return 400, ApiResponse(ok=False, message="No hay periodo activo para pedido de equivalencias.")
+
+    destino_obj = None
+    destino_nombre = (payload.profesorado_destino_nombre or "").strip()
+    if payload.profesorado_destino_id:
+        destino_obj = Profesorado.objects.filter(id=payload.profesorado_destino_id).first()
+        if not destino_obj:
+            return 404, ApiResponse(ok=False, message="No se encontró el profesorado de destino.")
+        if not destino_nombre:
+            destino_nombre = destino_obj.nombre
+    if not destino_nombre:
+        return 400, ApiResponse(ok=False, message="Debe indicar el profesorado de destino.")
+
+    plan_destino_obj = None
+    plan_destino_resolucion = (payload.plan_destino_resolucion or "").strip()
+    if payload.plan_destino_id:
+        plan_destino_obj = PlanDeEstudio.objects.filter(id=payload.plan_destino_id).first()
+        if not plan_destino_obj:
+            return 404, ApiResponse(ok=False, message="No se encontró el plan seleccionado.")
+        if not plan_destino_resolucion:
+            plan_destino_resolucion = plan_destino_obj.resolucion
+
+    if payload.tipo == PedidoEquivalencia.Tipo.ANEXO_A and not (payload.profesorado_origen_nombre or "").strip():
+        return 400, ApiResponse(ok=False, message="Debe indicar el profesorado de origen.")
+    if payload.tipo == PedidoEquivalencia.Tipo.ANEXO_B and not (payload.establecimiento_origen or "").strip():
+        return 400, ApiResponse(ok=False, message="Debe indicar el establecimiento de origen.")
+
+    if not payload.materias:
+        return 400, ApiResponse(ok=False, message="Debes cargar al menos una materia.")
+
+    pedido = PedidoEquivalencia.objects.create(
+        estudiante=est,
+        ventana=ventana,
+        tipo=payload.tipo,
+        ciclo_lectivo=(payload.ciclo_lectivo or str(timezone.now().year)).strip(),
+        profesorado_destino=destino_obj,
+        profesorado_destino_nombre=destino_nombre,
+        plan_destino=plan_destino_obj,
+        plan_destino_resolucion=plan_destino_resolucion,
+        profesorado_origen_nombre=(payload.profesorado_origen_nombre or "").strip(),
+        plan_origen_resolucion=(payload.plan_origen_resolucion or "").strip(),
+        establecimiento_origen=(payload.establecimiento_origen or "").strip(),
+        establecimiento_localidad=(payload.establecimiento_localidad or "").strip(),
+        establecimiento_provincia=(payload.establecimiento_provincia or "").strip(),
+    )
+    _sync_pedido_equivalencia_materias(pedido, payload.materias)
+    pedido.refresh_from_db()
+    pedido.materias.all()  # load cache
+    return _serialize_pedido_equivalencia(pedido, request.user)
+
+
+@alumnos_router.put("/equivalencias/pedidos/{pedido_id}", response=PedidoEquivalenciaOut)
+def actualizar_pedido_equivalencia(request, pedido_id: int, payload: PedidoEquivalenciaSaveIn):
+    pedido = (
+        PedidoEquivalencia.objects.select_related(
+            "ventana",
+            "profesorado_destino",
+            "plan_destino",
+            "estudiante__user",
+        )
+        .prefetch_related("materias")
+        .filter(id=pedido_id)
+        .first()
+    )
+    if not pedido:
+        return 404, ApiResponse(ok=False, message="No se encontró el pedido.")
+
+    if not _puede_editar_pedido_equivalencia(pedido, request.user):
+        return 403, ApiResponse(ok=False, message="No tiene permisos para modificar este pedido.")
+
+    destino_obj = None
+    destino_nombre = (payload.profesorado_destino_nombre or "").strip()
+    if payload.profesorado_destino_id:
+        destino_obj = Profesorado.objects.filter(id=payload.profesorado_destino_id).first()
+        if not destino_obj:
+            return 404, ApiResponse(ok=False, message="No se encontró el profesorado de destino.")
+        if not destino_nombre:
+            destino_nombre = destino_obj.nombre
+    if not destino_nombre:
+        return 400, ApiResponse(ok=False, message="Debe indicar el profesorado de destino.")
+
+    plan_destino_obj = None
+    plan_destino_resolucion = (payload.plan_destino_resolucion or "").strip()
+    if payload.plan_destino_id:
+        plan_destino_obj = PlanDeEstudio.objects.filter(id=payload.plan_destino_id).first()
+        if not plan_destino_obj:
+            return 404, ApiResponse(ok=False, message="No se encontró el plan seleccionado.")
+        if not plan_destino_resolucion:
+            plan_destino_resolucion = plan_destino_obj.resolucion
+
+    if payload.tipo == PedidoEquivalencia.Tipo.ANEXO_A and not (payload.profesorado_origen_nombre or "").strip():
+        return 400, ApiResponse(ok=False, message="Debe indicar el profesorado de origen.")
+    if payload.tipo == PedidoEquivalencia.Tipo.ANEXO_B and not (payload.establecimiento_origen or "").strip():
+        return 400, ApiResponse(ok=False, message="Debe indicar el establecimiento de origen.")
+    if not payload.materias:
+        return 400, ApiResponse(ok=False, message="Debes cargar al menos una materia.")
+
+    pedido.tipo = payload.tipo
+    pedido.ciclo_lectivo = (payload.ciclo_lectivo or pedido.ciclo_lectivo or "").strip()
+    pedido.profesorado_destino = destino_obj
+    pedido.profesorado_destino_nombre = destino_nombre
+    pedido.plan_destino = plan_destino_obj
+    pedido.plan_destino_resolucion = plan_destino_resolucion
+    pedido.profesorado_origen_nombre = (payload.profesorado_origen_nombre or "").strip()
+    pedido.plan_origen_resolucion = (payload.plan_origen_resolucion or "").strip()
+    pedido.establecimiento_origen = (payload.establecimiento_origen or "").strip()
+    pedido.establecimiento_localidad = (payload.establecimiento_localidad or "").strip()
+    pedido.establecimiento_provincia = (payload.establecimiento_provincia or "").strip()
+    pedido.save(update_fields=[
+        "tipo",
+        "ciclo_lectivo",
+        "profesorado_destino",
+        "profesorado_destino_nombre",
+        "plan_destino",
+        "plan_destino_resolucion",
+        "profesorado_origen_nombre",
+        "plan_origen_resolucion",
+        "establecimiento_origen",
+        "establecimiento_localidad",
+        "establecimiento_provincia",
+        "updated_at",
+    ])
+    _sync_pedido_equivalencia_materias(pedido, payload.materias)
+    pedido.refresh_from_db()
+    pedido.materias.all()
+    return _serialize_pedido_equivalencia(pedido, request.user)
+
+
+@alumnos_router.delete("/equivalencias/pedidos/{pedido_id}", response=ApiResponse)
+def eliminar_pedido_equivalencia(request, pedido_id: int):
+    pedido = PedidoEquivalencia.objects.select_related("estudiante__user").filter(id=pedido_id).first()
+    if not pedido:
+        return 404, ApiResponse(ok=False, message="No se encontró el pedido.")
+    if not _puede_editar_pedido_equivalencia(pedido, request.user):
+        return 403, ApiResponse(ok=False, message="No tiene permisos para eliminar este pedido.")
+    pedido.delete()
+    return ApiResponse(ok=True, message="Pedido eliminado.")
+
+
+@alumnos_router.post("/equivalencias/pedidos/{pedido_id}/nota", auth=JWTAuth())
+def generar_nota_equivalencias(request, pedido_id: int):
+    pedido = (
+        PedidoEquivalencia.objects.select_related(
+            "estudiante__user",
+            "ventana",
+            "profesorado_destino",
+        )
+        .prefetch_related("materias")
+        .filter(id=pedido_id)
+        .first()
+    )
+    if not pedido:
+        return 404, ApiResponse(ok=False, message="No se encontró el pedido.")
+
+    if not _can_manage_equivalencias(request.user):
+        estudiante = getattr(request.user, "estudiante", None)
+        if not estudiante or estudiante.id != pedido.estudiante_id:
+            return 403, ApiResponse(ok=False, message="No tiene permisos para ver este pedido.")
+
+    if not pedido.materias.exists():
+        return 400, ApiResponse(ok=False, message="El pedido no tiene materias cargadas.")
+
+    today = timezone.now()
+    est = pedido.estudiante
+    destino_nombre = (
+        pedido.profesorado_destino_nombre
+        or (pedido.profesorado_destino.nombre if pedido.profesorado_destino_id else "")
+    )
+    ciclo_lectivo = pedido.ciclo_lectivo or str(today.year)
+    tipo = pedido.tipo
+    anexo_label = "ANEXO FORMULARIO A" if tipo == PedidoEquivalencia.Tipo.ANEXO_A else "ANEXO FORMULARIO B"
+    note_title = (
+        "Nota para solicitar equivalencias internas"
+        if tipo == PedidoEquivalencia.Tipo.ANEXO_A
+        else "Modelo de nota para solicitud de equivalencias"
+    )
+    if tipo == PedidoEquivalencia.Tipo.ANEXO_A:
+        paragraphs = _build_equivalencia_paragraphs_internas(
+            destino_nombre,
+            pedido.profesorado_origen_nombre,
+            pedido.plan_origen_resolucion,
+            ciclo_lectivo,
+        )
+    else:
+        paragraphs = _build_equivalencia_paragraphs_externas(
+            destino_nombre,
+            pedido.establecimiento_origen,
+            pedido.establecimiento_localidad,
+            pedido.establecimiento_provincia,
+            pedido.plan_destino_resolucion,
+            ciclo_lectivo,
+        )
+
+    materias_rows = [
+        {"nombre": m.nombre, "formato": m.formato, "anio": m.anio_cursada}
+        for m in pedido.materias.all()
+    ]
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="pedido_equivalencias_{est.dni}.pdf"'
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=40,
+    )
+
+    styles = getSampleStyleSheet()
+    anexo_style = ParagraphStyle(
+        "EquivalenciaAnexo",
+        parent=styles["Normal"],
+        alignment=TA_RIGHT,
+        fontSize=10,
+        textColor=colors.grey,
+        spaceAfter=4,
+    )
+    title_style = ParagraphStyle(
+        "EquivalenciaTitle",
+        parent=styles["Heading2"],
+        alignment=TA_CENTER,
+        fontSize=15,
+        leading=18,
+        spaceAfter=16,
+    )
+    body_style = ParagraphStyle(
+        "EquivalenciaBody",
+        parent=styles["Normal"],
+        alignment=TA_JUSTIFY,
+        fontSize=12,
+        leading=16,
+        firstLineIndent=28,
+        spaceAfter=12,
+    )
+    plain_body = ParagraphStyle(
+        "EquivalenciaBodyPlain",
+        parent=body_style,
+        firstLineIndent=0,
+    )
+    helper_style = ParagraphStyle(
+        "EquivalenciaHelper",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        alignment=TA_JUSTIFY,
+        textColor=colors.grey,
+        spaceAfter=10,
+    )
+    location_style = ParagraphStyle(
+        "EquivalenciaLocation",
+        parent=styles["Normal"],
+        alignment=TA_RIGHT,
+        fontSize=11,
+        leading=14,
+        spaceAfter=18,
+    )
+    motto_style = ParagraphStyle(
+        "EquivalenciaMotto",
+        parent=styles["Normal"],
+        alignment=TA_CENTER,
+        fontSize=8,
+        leading=10,
+        textColor=colors.grey,
+    )
+
+    mes_nombre = MONTH_NAMES.get(today.month, today.strftime("%B").lower())
+    fecha_linea = f"Río Grande, {today.day} de {mes_nombre} de {today.year}"
+
+    story: list = []
+    story.extend(_build_certificate_header(doc))
+    story.append(Paragraph(anexo_label, anexo_style))
+    story.append(Paragraph(note_title, title_style))
+    story.append(Paragraph(fecha_linea, location_style))
+    for texto in paragraphs:
+        story.append(Paragraph(texto, body_style))
+    story.append(Paragraph("Las materias que solicito se detallen son:", plain_body))
+    story.append(Spacer(1, 8))
+    story.append(_build_equivalencias_table(materias_rows))
+    story.append(Spacer(1, 6))
+    story.append(
+        Paragraph(
+            "Indique el nombre del espacio curricular tal cual figura en su analítico, "
+            "el formato (módulo, asignatura, taller, etc.) y el año de cursada.",
+            helper_style,
+        )
+    )
+    story.append(Paragraph("Sin otro particular, saludo atentamente.", body_style))
+    story.append(Spacer(1, 20))
+    story.append(_build_equivalencia_signature(est))
+    story.append(Spacer(1, 14))
+    story.append(
+        Paragraph(
+            "Las Islas Malvinas, Georgia, Sandwich del Sur y los Hielos Continentales, son y serán Argentinas",
+            motto_style,
+        )
+    )
+
+    doc.build(story)
+
+    if pedido.estado != PedidoEquivalencia.Estado.FINALIZADO:
+        pedido.estado = PedidoEquivalencia.Estado.FINALIZADO
+        pedido.bloqueado_en = timezone.now()
+        if getattr(request.user, "is_authenticated", False):
+            pedido.bloqueado_por = request.user
+        pedido.save(update_fields=["estado", "bloqueado_en", "bloqueado_por", "updated_at"])
+
+    return response
+
+
+@alumnos_router.get("/equivalencias/export")
+def exportar_pedidos_equivalencia(
+    request,
+    profesorado_id: int | None = None,
+    ventana_id: int | None = None,
+    estado: str | None = None,
+):
+    ensure_roles(request.user, EQUIVALENCIAS_STAFF_ROLES)
+    qs = (
+        PedidoEquivalencia.objects.select_related(
+            "profesorado_destino",
+            "ventana",
+            "estudiante__user",
+        )
+        .prefetch_related("materias")
+        .order_by("profesorado_destino_nombre", "estudiante__dni")
+    )
+    if profesorado_id:
+        qs = qs.filter(profesorado_destino_id=profesorado_id)
+    if ventana_id:
+        qs = qs.filter(ventana_id=ventana_id)
+    if estado:
+        qs = qs.filter(estado=estado.lower())
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="pedidos_equivalencias.csv"'
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "DNI",
+            "Estudiante",
+            "Tipo",
+            "Estado",
+            "Profesorado destino",
+            "Plan destino",
+            "Ciclo lectivo",
+            "Ventana",
+            "Fecha actualización",
+            "Materias solicitadas",
+        ]
+    )
+    for pedido in qs:
+        materias_txt = " | ".join(
+            f"{m.nombre} ({m.formato or '-'}) {m.anio_cursada or ''}".strip()
+            for m in pedido.materias.all()
+        )
+        ventana_label = ""
+        if pedido.ventana_id:
+            desde = pedido.ventana.desde.strftime("%d/%m/%Y") if pedido.ventana.desde else ""
+            hasta = pedido.ventana.hasta.strftime("%d/%m/%Y") if pedido.ventana.hasta else ""
+            ventana_label = f"{desde} - {hasta}"
+        writer.writerow(
+            [
+                pedido.estudiante.dni,
+                pedido.estudiante.user.get_full_name() if pedido.estudiante.user_id else "",
+                pedido.get_tipo_display(),
+                pedido.get_estado_display(),
+                pedido.profesorado_destino_nombre,
+                pedido.plan_destino_resolucion,
+                pedido.ciclo_lectivo,
+                ventana_label,
+                pedido.updated_at.strftime("%d/%m/%Y %H:%M"),
+                materias_txt,
+            ]
+        )
+
+    return response
+
+
 @alumnos_router.post("/pedido_analitico", response=PedidoAnaliticoOut)
 def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
     v = (
@@ -2478,7 +3021,7 @@ def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
 
     two_years = _add_years(reg.fecha_cierre, 2)
     next_call = (
-        MesaExamen.objects.filter(materia=materia, tipo=MesaExamen.Tipo.FINAL, fecha__gte=two_years)
+        MesaExamen.objects.filter(materia=materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
         .order_by("fecha")
         .values_list("fecha", flat=True)
         .first()
@@ -2489,7 +3032,7 @@ def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
         estudiante=est,
         estado=InscripcionMesa.Estado.INSCRIPTO,
         mesa__materia=materia,
-        mesa__tipo=MesaExamen.Tipo.FINAL,
+        mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
         mesa__fecha__gte=reg.fecha_cierre,
         mesa__fecha__lte=allowed_until,
     ).count()
@@ -2677,6 +3220,130 @@ def _build_certificate_header(doc: SimpleDocTemplate) -> list:
         )
     )
     return [header_table, Spacer(1, 12)]
+
+
+def _placeholder(value: str | None, fallback: str = "____________________") -> str:
+    if value:
+        stripped = value.strip()
+        if stripped:
+            return stripped
+    return fallback
+
+
+def _build_equivalencia_paragraphs_internas(
+    destino_nombre: str | None,
+    origen_nombre: str | None,
+    plan_origen: str | None,
+    ciclo_lectivo: str | None,
+) -> list[str]:
+    destino = _placeholder(destino_nombre)
+    origen = _placeholder(origen_nombre)
+    plan = _placeholder(plan_origen, "Resolución ____/____")
+    ciclo = _placeholder(ciclo_lectivo, "____")
+    return [
+        (
+            "Me dirijo a usted, a fin de solicitar el otorgamiento de equivalencias de las materias aprobadas "
+            f"de acuerdo al plan de estudios del profesorado <b>{origen}</b>, aprobado por Resolución Ministerial "
+            f"<b>{plan}</b>."
+        ),
+        (
+            "Motiva la presente solicitud el deseo de continuar mis estudios superiores en el profesorado "
+            f"<b>{destino}</b> del Instituto Provincial de Educación Superior \"Paulo Freire\" durante el ciclo "
+            f"lectivo <b>{ciclo}</b>."
+        ),
+    ]
+
+
+def _build_equivalencia_paragraphs_externas(
+    destino_nombre: str | None,
+    establecimiento: str | None,
+    localidad: str | None,
+    provincia: str | None,
+    plan_origen: str | None,
+    ciclo_lectivo: str | None,
+) -> list[str]:
+    destino = _placeholder(destino_nombre)
+    origen = _placeholder(establecimiento, "el establecimiento de origen")
+    ubicacion = ", ".join(filter(None, [_placeholder(localidad, ""), _placeholder(provincia, "")])).strip(", ")
+    ubicacion_line = f", sito en {ubicacion}" if ubicacion else ""
+    plan = _placeholder(plan_origen, "Resolución ____/____")
+    ciclo = _placeholder(ciclo_lectivo, "____")
+    return [
+        (
+            "Me dirijo a usted, a fin de solicitar el otorgamiento de equivalencias de las materias cursadas y "
+            f"aprobadas en <b>{origen}</b>{ubicacion_line}, según el plan de estudios aprobado por Resolución "
+            f"Ministerial <b>{plan}</b>."
+        ),
+        (
+            "Motiva la presente solicitud el deseo de continuar mis estudios superiores en el profesorado "
+            f"<b>{destino}</b> del Instituto Provincial de Educación Superior \"Paulo Freire\" durante el ciclo "
+            f"lectivo <b>{ciclo}</b>."
+        ),
+    ]
+
+
+def _build_equivalencias_table(materias: list[dict[str, str]]) -> Table:
+    header = ["Nombre del espacio curricular", "Formato", "Año de cursada"]
+    rows: list[list[str]] = [header]
+    total_rows = max(len(materias), 8)
+    for idx in range(total_rows):
+        data = materias[idx] if idx < len(materias) else {"nombre": "", "formato": "", "anio": ""}
+        rows.append(
+            [
+                data.get("nombre", ""),
+                data.get("formato", ""),
+                data.get("anio", ""),
+            ]
+        )
+
+    table = Table(rows, colWidths=[260, 120, 100])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f4f4f4")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("ALIGN", (0, 1), (0, -1), "LEFT"),
+                ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
+    return table
+
+
+def _build_equivalencia_signature(estudiante: Estudiante) -> Table:
+    styles = getSampleStyleSheet()
+    value_style = ParagraphStyle(
+        "EquivalenciaSignatureValue",
+        parent=styles["Normal"],
+        fontSize=11,
+    )
+    nombre = _placeholder(estudiante.user.get_full_name() if estudiante.user_id else estudiante.dni)
+    telefono = _placeholder(getattr(estudiante, "telefono", "") or "")
+    email = _placeholder(getattr(estudiante.user, "email", "") if estudiante.user_id else "")
+    data = [
+        ["Firma y aclaración (estudiante)", Paragraph(nombre, value_style)],
+        ["DNI", Paragraph(estudiante.dni, value_style)],
+        ["Teléfono de contacto", Paragraph(telefono, value_style)],
+        ["Correo electrónico", Paragraph(email, value_style)],
+    ]
+    table = Table(data, colWidths=[220, 260], hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    return table
 
 
 def _buscar_ventana_cuatrimestre(periodo: str, anio: int) -> VentanaHabilitacion | None:

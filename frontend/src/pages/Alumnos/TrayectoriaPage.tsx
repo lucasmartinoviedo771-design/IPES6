@@ -38,6 +38,7 @@ import {
   RegularidadResumenDTO,
 } from '@/api/alumnos';
 import { CartonTabPanel } from "@/features/alumnos/carton/CartonTabPanel";
+import { PageHero } from "@/components/ui/GradientTitles";
 import { useAuth } from '@/context/AuthContext';
 
 function a11yProps(index: number) {
@@ -241,25 +242,23 @@ const TrayectoriaPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} sx={{ mb: 2 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={800}>Trayectoria del estudiante</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Historial consolidado de inscripciones, cursadas, mesas y sugerencias de accion.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<RefreshIcon fontSize="small" />}
-            onClick={() => trayectoriaQ.refetch()}
-            disabled={trayectoriaQ.isFetching}
-          >
-            Actualizar
-          </Button>
-        </Stack>
-      </Stack>
+      <PageHero
+        title="Trayectoria del estudiante"
+        subtitle="Historial consolidado de inscripciones, cursadas, mesas y sugerencias de acción."
+        actions={
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RefreshIcon fontSize="small" />}
+              onClick={() => trayectoriaQ.refetch()}
+              disabled={trayectoriaQ.isFetching}
+            >
+              Actualizar
+            </Button>
+          </Stack>
+        }
+      />
 
       {canGestionar && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>

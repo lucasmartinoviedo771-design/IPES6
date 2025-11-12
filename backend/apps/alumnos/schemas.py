@@ -224,6 +224,60 @@ class PedidoAnaliticoItem(Schema):
     motivo_otro: str | None = None
 
 
+class PedidoEquivalenciaMateriaIn(Schema):
+    nombre: str = Field(..., min_length=1)
+    formato: str | None = None
+    anio_cursada: str | None = None
+
+
+class PedidoEquivalenciaSaveIn(Schema):
+    tipo: Literal["ANEXO_A", "ANEXO_B"]
+    ciclo_lectivo: str | None = None
+    profesorado_destino_id: int | None = None
+    profesorado_destino_nombre: str | None = None
+    plan_destino_id: int | None = None
+    plan_destino_resolucion: str | None = None
+    profesorado_origen_nombre: str | None = None
+    plan_origen_resolucion: str | None = None
+    establecimiento_origen: str | None = None
+    establecimiento_localidad: str | None = None
+    establecimiento_provincia: str | None = None
+    materias: list[PedidoEquivalenciaMateriaIn] = Field(default_factory=list)
+
+
+class PedidoEquivalenciaMateriaOut(Schema):
+    id: int
+    nombre: str
+    formato: str | None = None
+    anio_cursada: str | None = None
+
+
+class PedidoEquivalenciaOut(Schema):
+    id: int
+    tipo: Literal["ANEXO_A", "ANEXO_B"]
+    estado: Literal["draft", "final"]
+    estado_display: str
+    ciclo_lectivo: str | None = None
+    profesorado_destino_id: int | None = None
+    profesorado_destino_nombre: str | None = None
+    plan_destino_id: int | None = None
+    plan_destino_resolucion: str | None = None
+    profesorado_origen_nombre: str | None = None
+    plan_origen_resolucion: str | None = None
+    establecimiento_origen: str | None = None
+    establecimiento_localidad: str | None = None
+    establecimiento_provincia: str | None = None
+    ventana_id: int
+    ventana_label: str
+    created_at: str
+    updated_at: str
+    bloqueado_en: str | None = None
+    puede_editar: bool = False
+    estudiante_dni: str
+    estudiante_nombre: str | None = None
+    materias: list[PedidoEquivalenciaMateriaOut] = Field(default_factory=list)
+
+
 class RegularidadResumen(Schema):
     id: int
     materia_id: int
@@ -428,6 +482,8 @@ class CartonMateria(Schema):
     anio: int | None = None
     regimen: str | None = None
     regimen_display: str | None = None
+    formato: str | None = None
+    formato_display: str | None = None
     regularidad: CartonEvento | None = None
     final: CartonEvento | None = None
 

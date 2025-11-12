@@ -34,6 +34,7 @@ import {
   registrarDocenteDni,
 } from "@/api/asistencia";
 import { useAuth } from "@/context/AuthContext";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type TurnoId = "morning" | "afternoon" | "evening";
 
@@ -321,12 +322,17 @@ const DocenteAsistenciaPage = () => {
           {!authorized && !loading && (
             <Paper elevation={4} sx={{ p: 4, maxWidth: 420, mx: "auto" }}>
               <Stack spacing={2} component="form" onSubmit={handleLogin}>
-                <Typography variant="h5" fontWeight={700} textAlign="center">
-                  Acceso kiosco docente
-                </Typography>
-                <Typography variant="body2" color="text.secondary" textAlign="center">
-                  Solo usuarios autorizados (admin, secretaría o kiosco) pueden operar esta pantalla.
-                </Typography>
+                <PageHero
+                  title="Acceso kiosco docente"
+                  subtitle="Solo usuarios autorizados (admin, secretaría o kiosco) pueden operar esta pantalla."
+                  sx={{
+                    width: "100%",
+                    boxShadow: "none",
+                    borderRadius: 3,
+                    background: "linear-gradient(135deg, rgba(125,127,110,0.95), rgba(183,105,78,0.95))",
+                    textAlign: "center",
+                  }}
+                />
                 <TextField
                   label="Usuario"
                   value={credentials.username}

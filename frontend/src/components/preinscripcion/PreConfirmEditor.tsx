@@ -12,7 +12,7 @@ import {
 import { fetchCarreras } from "@/api/carreras";
 import {
   Box, Button, Chip, CircularProgress, Grid, MenuItem, Paper, Stack, TextField, Typography, Divider, Checkbox, FormControlLabel, Switch,
-  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, List, ListItemButton, ListItemText
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, List, ListItemButton, ListItemText, FormHelperText
 } from "@mui/material";
 import dayjs from "dayjs";
 import { enqueueSnackbar } from "notistack";
@@ -21,11 +21,21 @@ import { useNavigate } from "react-router-dom";
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues as formDefaults } from "./defaultValues";
 
+const toDisplayDate = (value: string): string => {
+  if (!value) return "";
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${day}/${month}/${year}`;
+  }
+  return value;
+};
+
 function EstadoChip({ estado }: { estado: PreinscripcionDTO["estado"] }) {
   const map: Record<string, "default" | "success" | "warning" | "error"> = {
     enviada: "default", observada: "warning", confirmada: "success", rechazada: "error", borrador: "default",
   };
-  return <Chip label={estado} color={map[estado] ?? "default"} size="small" sx={{ borderRadius: 99, textTransform: "capitalize" }} />;
+  return <Chip label={estado} color={map[estado] ?? "default"} size="small" sx={{ borderRadius: 2, textTransform: "capitalize" }} />;
 }
 
 function FotoPreviewBox({ dataUrl }: { dataUrl?: string }) {
@@ -163,7 +173,13 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     sanitized.email = String(alumnoDto?.email ?? sanitized.email ?? "");
     sanitized.tel_movil = String(alumnoDto?.telefono ?? sanitized.tel_movil ?? "");
     sanitized.domicilio = String(alumnoDto?.domicilio ?? sanitized.domicilio ?? "");
-    sanitized.fecha_nacimiento = String(alumnoDto?.fecha_nacimiento ?? sanitized.fecha_nacimiento ?? "");
+    const rawBirthDate =
+      alumnoDto?.fecha_nacimiento ??
+      (extra as any)?.fecha_nacimiento ??
+      sanitized.fecha_nacimiento ??
+      "";
+    sanitized.fecha_nacimiento = toDisplayDate(String(rawBirthDate));
+    sanitized.nacionalidad = String((extra as any)?.nacionalidad ?? sanitized.nacionalidad ?? "");
     sanitized.carrera_id = Number((data as any).carrera?.id ?? 0);
     const cohorteFallback = (extra as any)?.cohorte ?? (data as any)?.anio ?? formDefaults.cohorte ?? "";
     const cohorteResolved = cohorteFallback ? String(cohorteFallback) : String(new Date().getFullYear());
@@ -275,14 +291,18 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
   });
   const [adeudaDetalle, setAdeudaDetalle] = useState<{ materias: string; institucion: string }>({ materias: "", institucion: "" });
   const libretaEntregada = watch("libreta_entregada");
+  const condicionSaludActiva = watch("condicion_salud_informada");
+  useEffect(() => {
+    if (!condicionSaludActiva) {
+      setValue("condicion_salud_detalle", "", { shouldDirty: false });
+    }
+  }, [condicionSaludActiva, setValue]);
   // Estado completo (criterio similar al backend)
   // Requisitos generales + alguna alternativa de secundario
   const docsGeneralesOk = docs.dni_legalizado && docs.fotos_4x4 && docs.certificado_salud && docs.folios_oficio_ok;
-  const docsSecundarioOk =
-    docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado;
+  const tituloSecundarioPresentado = !!docs.titulo_secundario_legalizado;
 
-
-  const allDocs = !!(docsGeneralesOk && (docsSecundarioOk || docs.adeuda_materias));
+  const allDocs = !!(docsGeneralesOk && tituloSecundarioPresentado && !docs.adeuda_materias);
 
   const anyMainSelected = !!(docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado);
 
@@ -474,7 +494,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
               if (m) mRechazar.mutate(m);
             }}>Rechazar</Button>
             <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => {
-              const msg = "Esta seguro que quiere borrar la preinscripcion del estudiante? La baja sera logica (no fisica).";
+              const msg = "¿Está seguro que quiere borrar la preinscripción del estudiante? La baja será lógica (no física).";
               if (window.confirm(msg)) {
                 mDelete.mutate();
               }
@@ -638,7 +658,72 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
                 </Grid>
               </Grid>
             </Box>
-          </Stack>
+        </Stack>
+
+        <Divider sx={{ my:2 }} />
+        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Accesibilidad y datos sensibles</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="cud_informado"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={!!field.value} />}
+                  label="El/la aspirante informó que posee CUD"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Controller
+              name="condicion_salud_informada"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={!!field.value} />}
+                  label="Informó una condición de salud o ajuste requerido"
+                />
+              )}
+            />
+          </Grid>
+          {condicionSaludActiva && (
+            <Grid item xs={12}>
+              <Controller
+                name="condicion_salud_detalle"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    label="Detalle de la condición o apoyo requerido"
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+            </Grid>
+          )}
+          <Grid item xs={12}>
+            <Controller
+              name="consentimiento_datos"
+              control={control}
+              render={({ field, fieldState }) => (
+                <FormControl error={!!fieldState.error} component="fieldset" sx={{ alignItems: "flex-start" }}>
+                  <FormControlLabel
+                    control={<Checkbox {...field} checked={!!field.value} />}
+                    label="Consentimiento expreso e informado para tratar datos sensibles con fines de accesibilidad"
+                  />
+                  <FormHelperText>
+                    {fieldState.error?.message ?? "Debe estar aceptado antes de confirmar la inscripción."}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            />
+          </Grid>
+        </Grid>
 
         <Divider sx={{ my:2 }} />
         <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorado</Typography>
@@ -849,7 +934,12 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         <Divider sx={{ my: 2 }} />
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="body2">Estado documental:</Typography>
-          <Chip size="small" color={allDocs ? "success" : "warning"} label={allDocs ? "Regular" : "Condicional"} />
+          <Chip
+            size="small"
+            color={allDocs ? "success" : "warning"}
+            label={allDocs ? "Regular" : "Condicional"}
+            sx={{ borderRadius: 2 }}
+          />
         </Stack>
         <Divider sx={{ my: 2 }} />
         <Button sx={{ mb: 1 }} variant="outlined" onClick={() => mSaveChecklist.mutate()} disabled={mUpdate.isPending}>Guardar checklist</Button>

@@ -36,6 +36,9 @@ export const defaultValues: PreinscripcionForm = {
   sup1_titulo: "",
   sup1_establecimiento: "",
   sup1_fecha_egreso: "",
+  sup1_localidad: "",
+  sup1_provincia: "",
+  sup1_pais: "",
 
   // carrera
   carrera_id: 0,
@@ -64,5 +67,11 @@ export const defaultValues: PreinscripcionForm = {
   doc_foto4x4: false,
   doc_titulo_en_tramite: false,
   doc_otro: false,
+
+  // accesibilidad
+  cud_informado: false,
+  condicion_salud_informada: false,
+  condicion_salud_detalle: "",
+  consentimiento_datos: false,
 };
 

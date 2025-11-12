@@ -5,6 +5,7 @@ import {
   Card,
   CardContent,
   Stack,
+  Paper,
 } from "@mui/material";
 import {
   TrendingUp,
@@ -18,6 +19,12 @@ import {
   AccessTime,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import {
+  ICON_GRADIENT,
+  INSTITUTIONAL_GREEN,
+  INSTITUTIONAL_TERRACOTTA,
+} from "@/styles/institutionalColors";
 
 type EventCard = {
   title: string;
@@ -107,6 +114,12 @@ const sections: Section[] = [
         path: "/alumnos/pedido-analitico",
       },
       {
+        title: "Pedido de equivalencias",
+        subtitle: "Genera la nota (Anexo A/B) para tramitar equivalencias.",
+        icon: <Assignment />,
+        path: "/alumnos/pedido-equivalencias",
+      },
+      {
         title: "Mesa de Examen",
         subtitle: "Inscríbete a mesas de examen (plan tabla, finales, libres, ortográficas).",
         icon: <CalendarMonth />,
@@ -130,40 +143,37 @@ const sections: Section[] = [
 
 const squareCardStyles = {
   width: "100%",
-  aspectRatio: "4 / 3",
-  minHeight: 110,
-  cursor: "pointer",
-  borderRadius: 2,
-  border: theme => `1px solid ${theme.palette.divider}`,
+  minHeight: 130,
+  border: `1px solid rgba(125,127,110,0.3)`,
   display: "flex",
   flexDirection: "column",
   transition: "all 0.2s ease",
+  borderRadius: 10,
   "&:hover": {
     boxShadow: 6,
     transform: "translateY(-3px)",
-    borderColor: "primary.main",
+    borderColor: INSTITUTIONAL_TERRACOTTA,
   },
 };
 
 const iconWrapperStyles = {
-  width: 64,
-  height: 64,
-  borderRadius: 1,
-  bgcolor: "primary.main",
+  width: 48,
+  height: 48,
+  borderRadius: 8,
+  backgroundImage: ICON_GRADIENT,
   color: "common.white",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: 30,
-  boxShadow: theme => `0 10px 20px ${theme.palette.primary.main}33`,
+  fontSize: 24,
+  boxShadow: "0 10px 25px rgba(183,105,78,0.35)",
 };
 
 const eventCardStyles = {
   width: "100%",
-  aspectRatio: "4 / 3",
-  minHeight: 110,
-  borderRadius: 2,
-  border: theme => `1px solid ${theme.palette.divider}`,
+  minHeight: 140,
+  borderRadius: 10,
+  border: "1px solid rgba(255,255,255,0.4)",
   display: "flex",
   flexDirection: "column",
   transition: "all 0.2s ease",
@@ -174,79 +184,68 @@ export default function AlumnosIndex() {
 
   return (
     <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Estudiantes
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Acá puedes gestionar tus solicitudes y trámites del sistema.
-        </Typography>
-      </Box>
+      <PageHero
+        title="Estudiantes"
+        subtitle="Acá podés gestionar tus solicitudes y trámites del sistema."
+      />
 
-      <Box sx={{ mb: 4 }}>
-        <Card sx={{ bgcolor: "primary.main", color: "primary.contrastText" }}>
-          <CardContent>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-              <EventNote />
-              <Typography variant="h6" fontWeight={600}>
-                Próximos eventos
-              </Typography>
-            </Stack>
-            <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
-              Mantente al día con las fechas importantes del ciclo académico.
-            </Typography>
-
-            <Grid container spacing={2}>
-              {upcomingEvents.map(event => (
-                <Grid item xs={12} sm={6} md={2.4} lg={2.5} key={event.title} sx={{ display: "flex" }}>
-                  <Card
-                    onClick={() => event.path && navigate(event.path)}
-                    sx={{
-                      ...eventCardStyles,
-                      bgcolor: "rgba(255,255,255,0.95)",
-                      cursor: event.path ? "pointer" : "default",
-                      "&:hover": event.path
-                        ? {
-                            transform: "translateY(-3px)",
-                            boxShadow: 4,
-                            borderColor: "primary.main",
-                          }
-                        : undefined,
-                    }}
-                  >
-                    <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
-                      <Stack spacing={1.5}>
-                        <Box sx={iconWrapperStyles}>{event.icon}</Box>
-                      </Stack>
-                      <Typography variant="subtitle2" fontWeight={600} color="text.primary">
-                        {event.title}
-                      </Typography>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: "auto" }}>
-                        <AccessTime fontSize="small" color="action" />
-                        <Typography variant="caption" color="text.secondary">
-                          {event.date}
-                        </Typography>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </CardContent>
-        </Card>
-      </Box>
+      <Stack spacing={1.5} sx={{ mb: 4 }}>
+        <SectionTitlePill title="Próximos eventos" sx={{ mt: 3 }} />
+        <Typography variant="body2" color="text.secondary">
+          Mantenete al día con las fechas importantes del ciclo académico.
+        </Typography>
+        <Stack spacing={1}>
+          {upcomingEvents.map((event) => (
+            <Box
+              key={event.title}
+              onClick={() => event.path && navigate(event.path)}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                px: 2,
+                py: 1.5,
+                borderRadius: 2,
+                border: "1px solid rgba(125,127,110,0.25)",
+                cursor: event.path ? "pointer" : "default",
+                backgroundColor: "#fff",
+                transition: "transform 0.2s ease",
+                "&:hover": event.path ? { transform: "translateY(-1px)" } : {},
+              }}
+            >
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Box sx={{ ...iconWrapperStyles, width: 40, height: 40 }}>{event.icon}</Box>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    {event.title}
+                  </Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <AccessTime fontSize="small" sx={{ color: INSTITUTIONAL_TERRACOTTA }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {event.date}
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Stack>
+              {event.path && (
+                <Typography variant="caption" color={INSTITUTIONAL_TERRACOTTA}>
+                  Ver detalle →
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Stack>
+      </Stack>
 
       {sections.map(section => (
         <Box key={section.title} sx={{ mb: 4 }}>
-          <Typography variant="h6" fontWeight={600} gutterBottom>
-            {section.title}
-          </Typography>
+          <SectionTitlePill title={section.title} />
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             {section.subtitle}
           </Typography>
           <Grid container spacing={2}>
             {section.items.map(item => (
-              <Grid item xs={12} sm={6} md={2.4} lg={2.5} key={item.title} sx={{ display: "flex" }}>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={item.title} sx={{ display: "flex" }}>
                 <Card
                   variant="outlined"
                   onClick={() => navigate(item.path)}
@@ -254,15 +253,15 @@ export default function AlumnosIndex() {
                 >
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Stack spacing={1.5}>
-                      <Box sx={iconWrapperStyles}>{item.icon}</Box>
-                      <Box>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box sx={iconWrapperStyles}>{item.icon}</Box>
                         <Typography variant="subtitle2" fontWeight={600}>
                           {item.title}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {item.subtitle}
-                        </Typography>
-                      </Box>
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {item.subtitle}
+                      </Typography>
                     </Stack>
                   </CardContent>
                 </Card>

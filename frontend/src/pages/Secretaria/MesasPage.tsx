@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Stack, TextField, MenuItem, Grid, Paper, Button, Alert, FormGroup, FormControlLabel, Checkbox, FormLabel, FormControl, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import { Autocomplete, Box, Typography, Stack, TextField, MenuItem, Grid, Paper, Button, Alert, FormGroup, FormControlLabel, Checkbox, FormLabel, FormControl, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { listarPlanes, listarProfesorados, PlanDTO, ProfesoradoDTO } from '@/api/cargaNotas';
 import { obtenerMesaPlanilla, actualizarMesaPlanilla, MesaPlanillaAlumnoDTO, MesaPlanillaCondicionDTO } from '@/api/alumnos';
 import { listarMaterias } from '@/api/comisiones';
+import { listarDocentes, DocenteDTO } from '@/api/docentes';
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 const CUATRIMESTRE_LABEL: Record<string, string> = {
   ANU: 'Anual',
@@ -38,6 +40,15 @@ type Mesa = {
   hora_hasta?:string;
   aula?:string;
   cupo:number;
+  codigo?: string | null;
+  docentes?: MesaTribunalDocente[];
+};
+
+type MesaTribunalDocente = {
+  rol: 'PRES' | 'VOC1' | 'VOC2';
+  docente_id: number | null;
+  nombre: string | null;
+  dni: string | null;
 };
 
 type MateriaOption = {
@@ -48,18 +59,30 @@ type MateriaOption = {
   permiteLibre: boolean;
 };
 
-type MesaTipo = 'FIN' | 'EXT';
+type MesaTipo = 'FIN' | 'EXT' | 'ESP';
 
 type MesaModalidad = 'REG' | 'LIB';
 
 const MESA_TIPO_LABEL: Record<MesaTipo, string> = {
-  FIN: 'Final',
+  FIN: 'Ordinaria',
   EXT: 'Extraordinaria',
+  ESP: 'Especial',
 };
 
 const MESA_MODALIDAD_LABEL: Record<MesaModalidad, string> = {
   REG: 'Regulares',
   LIB: 'Libres',
+};
+
+const TRIBUNAL_ROL_LABEL: Record<MesaTribunalDocente['rol'], string> = {
+  PRES: 'Presidente',
+  VOC1: 'Vocal 1',
+  VOC2: 'Vocal 2',
+};
+
+const VENTANA_TIPO_LABEL: Record<string, string> = {
+  MESAS_FINALES: 'Mesas ordinarias',
+  MESAS_EXTRA: 'Mesas extraordinarias',
 };
 
 const getTipoLabel = (tipo: string) => MESA_TIPO_LABEL[(tipo as MesaTipo)] ?? tipo;
@@ -79,19 +102,34 @@ const ventanaTipoToMesaTipo = (ventana?: VentanaDto): MesaTipo | null => {
   }
 };
 
+const buildVentanaLabel = (ventana: VentanaDto) => {
+  const rango = `${new Date(ventana.desde).toLocaleDateString()} - ${new Date(ventana.hasta).toLocaleDateString()}`;
+  const tipo = VENTANA_TIPO_LABEL[ventana.tipo] ?? ventana.tipo.replace('MESAS_', '');
+  return `${rango} (${tipo})`;
+};
+
+const formatDocenteLabel = (docente?: DocenteDTO | null) => {
+  if (!docente) return '';
+  const partes = [];
+  if (docente.dni) partes.push(docente.dni);
+  partes.push(`${docente.apellido}, ${docente.nombre}`);
+  return partes.join(' - ');
+};
+
 export default function MesasPage(){
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
   const [tipo, setTipo] = useState('');
   const [modalidadFiltro, setModalidadFiltro] = useState('');
   const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
-    const [planesFiltro, setPlanesFiltro] = useState<PlanDTO[]>([]);
+  const [planesFiltro, setPlanesFiltro] = useState<PlanDTO[]>([]);
   const [planesNueva, setPlanesNueva] = useState<PlanDTO[]>([]);
   const [profesoradoFiltro, setProfesoradoFiltro] = useState<string>('');
   const [planFiltro, setPlanFiltro] = useState<string>('');
   const [anioFiltro, setAnioFiltro] = useState<string>('');
   const [cuatrimestreFiltro, setCuatrimestreFiltro] = useState<string>('');
   const [materiaFiltro, setMateriaFiltro] = useState<string>('');
+  const [codigoFiltro, setCodigoFiltro] = useState<string>('');
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [form, setForm] = useState<Partial<Mesa> & { ventana_id?: number }>({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
   const [ventanaNueva, setVentanaNueva] = useState<string>('');
@@ -101,7 +139,14 @@ export default function MesasPage(){
   const [cuatrimestreNueva, setCuatrimestreNueva] = useState<string>('');
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [materiasFiltro, setMateriasFiltro] = useState<MateriaOption[]>([]);
-  const [tiposSeleccionados, setTiposSeleccionados] = useState<MesaTipo[]>([]);
+  const [docentesLista, setDocentesLista] = useState<DocenteDTO[]>([]);
+  const [docentesLoading, setDocentesLoading] = useState(false);
+  const [mesaEspecial, setMesaEspecial] = useState(false);
+  const [tribunalDocentes, setTribunalDocentes] = useState<{ presidente: DocenteDTO | null; vocal1: DocenteDTO | null; vocal2: DocenteDTO | null }>({
+    presidente: null,
+    vocal1: null,
+    vocal2: null,
+  });
   const [modalidadesSeleccionadas, setModalidadesSeleccionadas] = useState<MesaModalidad[]>(['REG']);
   const [planillaModalOpen, setPlanillaModalOpen] = useState(false);
   const [planillaMesa, setPlanillaMesa] = useState<Mesa | null>(null);
@@ -144,6 +189,7 @@ export default function MesasPage(){
       if (planFiltro) params.plan_id = Number(planFiltro);
       if (anioFiltro) params.anio = Number(anioFiltro);
       if (cuatrimestreFiltro) params.cuatrimestre = cuatrimestreFiltro;
+      if (codigoFiltro.trim()) params.codigo = codigoFiltro.trim();
       const { data } = await api.get<Mesa[]>(`/mesas`, { params });
       const mesasObtenidas = data || [];
       const mesasFiltradas = modalidadFiltro ? mesasObtenidas.filter((m) => m.modalidad === modalidadFiltro) : mesasObtenidas;
@@ -155,6 +201,20 @@ export default function MesasPage(){
   };
   useEffect(()=>{ loadVentanas(); loadProfesorados(); },[]);
   useEffect(() => {
+    const loadDocentesLista = async () => {
+      setDocentesLoading(true);
+      try {
+        const data = await listarDocentes();
+        setDocentesLista(data);
+      } catch {
+        setDocentesLista([]);
+      } finally {
+        setDocentesLoading(false);
+      }
+    };
+    loadDocentesLista();
+  }, []);
+  useEffect(() => {
     if (ventanaId) {
       setVentanaNueva(ventanaId);
     } else {
@@ -162,41 +222,16 @@ export default function MesasPage(){
     }
   }, [ventanaId]);
 
-  const ventanasPorTipo = useMemo(() => {
-    const map: Record<MesaTipo, VentanaDto[]> = { FIN: [], EXT: [] };
-    ventanas.forEach((v) => {
-      const tipo = ventanaTipoToMesaTipo(v);
-      if (tipo) {
-        map[tipo].push(v);
-      }
-    });
-    return map;
-  }, [ventanas]);
-
   const ventanaSeleccionada = useMemo(() => {
     return ventanas.find((v) => String(v.id) === ventanaNueva) || null;
   }, [ventanas, ventanaNueva]);
 
   const tipoVentanaSeleccionada = ventanaTipoToMesaTipo(ventanaSeleccionada || undefined);
-
-    const handleToggleTipo = (tipo: MesaTipo, enabled: boolean) => {
-    setTiposSeleccionados((prev) => {
-      if (enabled) {
-        if (prev.includes(tipo)) {
-          return prev;
-        }
-        return [...prev, tipo];
-      }
-      const next = prev.filter((t) => t !== tipo);
-      return next;
-    });
-  };
+  const mesaTipoSeleccionado: MesaTipo | null = mesaEspecial ? 'ESP' : tipoVentanaSeleccionada;
+  const mesaTipoLabel = mesaTipoSeleccionado ? getTipoLabel(mesaTipoSeleccionado) : null;
 
   const handleToggleModalidad = (modalidad: MesaModalidad, enabled: boolean) => {
     setModalidadesSeleccionadas((prev) => {
-      if (modalidad === 'LIB' && enabled && !materiaPermiteLibres) {
-        return prev.filter((m) => m !== 'LIB');
-      }
       if (enabled) {
         return prev.includes(modalidad) ? prev : [...prev, modalidad];
       }
@@ -206,33 +241,26 @@ export default function MesasPage(){
   };
 
   useEffect(() => {
-    setTiposSeleccionados((prev) => {
-      const valid = prev.filter((tipo) => {
-        if (tipo === tipoVentanaSeleccionada) {
-          return true;
-        }
-        return (ventanasPorTipo[tipo] || []).length > 0;
-      });
-
-      const result: MesaTipo[] = [];
-      if (tipoVentanaSeleccionada) {
-        result.push(tipoVentanaSeleccionada);
+    if (mesaEspecial) {
+      if (ventanaNueva) {
+        setVentanaNueva('');
       }
-      valid.forEach((tipo) => {
-        if (!result.includes(tipo)) {
-          result.push(tipo);
-        }
-      });
+      return;
+    }
+    if (ventanaNueva && !ventanas.some((v) => String(v.id) === ventanaNueva)) {
+      setVentanaNueva(ventanas.length ? String(ventanas[0].id) : '');
+      return;
+    }
+    if (!ventanaNueva && ventanas.length) {
+      setVentanaNueva(String(ventanas[0].id));
+    }
+  }, [mesaEspecial, ventanas, ventanaNueva]);
 
-      if (!result.length && tipoVentanaSeleccionada) {
-        result.push(tipoVentanaSeleccionada);
-      }
-
-      const sameLength = result.length === prev.length;
-      const sameItems = sameLength && result.every((value, index) => value === prev[index]);
-      return sameItems ? prev : result;
-    });
-  }, [ventanasPorTipo, tipoVentanaSeleccionada]);
+  useEffect(() => {
+    if (ventanaId && !ventanas.some((v) => String(v.id) === ventanaId)) {
+      setVentanaId('');
+    }
+  }, [ventanaId, ventanas]);
 
   useEffect(()=>{
     if (!profesoradoFiltro){
@@ -281,6 +309,21 @@ export default function MesasPage(){
     };
     fetchPlanes();
   },[profesoradoNueva]);
+
+  useEffect(() => {
+    if (planNueva && !planesNueva.some((p) => String(p.id) === planNueva)) {
+      setPlanNueva('');
+      setMaterias([]);
+      setForm((f) => ({ ...f, materia_id: undefined }));
+    }
+  }, [planNueva, planesNueva]);
+
+  useEffect(() => {
+    if (planFiltro && !planesFiltro.some((p) => String(p.id) === planFiltro)) {
+      setPlanFiltro('');
+      setMateriaFiltro('');
+    }
+  }, [planFiltro, planesFiltro]);
   useEffect(()=>{
     if (!planFiltro){
       setMateriasFiltro([]);
@@ -334,7 +377,39 @@ export default function MesasPage(){
     };
     fetchMaterias();
   },[planNueva]);
-  useEffect(()=>{ loadMesas(); },[ventanaId, tipo, modalidadFiltro, materiaFiltro, profesoradoFiltro, planFiltro, anioFiltro, cuatrimestreFiltro]);
+
+  useEffect(() => {
+    if (form.materia_id && !materias.some((m) => m.id === form.materia_id)) {
+      setForm((f) => ({ ...f, materia_id: undefined }));
+    }
+  }, [form.materia_id, materias]);
+
+  useEffect(() => {
+    if (materiaFiltro && !materiasFiltroFiltradas.some((m) => String(m.id) === materiaFiltro)) {
+      setMateriaFiltro('');
+    }
+  }, [materiaFiltro, materiasFiltroFiltradas]);
+  useEffect(()=>{ loadMesas(); },[ventanaId, tipo, modalidadFiltro, materiaFiltro, profesoradoFiltro, planFiltro, anioFiltro, cuatrimestreFiltro, codigoFiltro]);
+
+  const resetTribunalDocentes = () => {
+    setTribunalDocentes({ presidente: null, vocal1: null, vocal2: null });
+  };
+
+  const handleTribunalChange = (rol: 'presidente' | 'vocal1' | 'vocal2', value: DocenteDTO | null) => {
+    setTribunalDocentes((prev) => ({
+      ...prev,
+      [rol]: value,
+    }));
+  };
+
+  const handleMesaEspecialChange = (checked: boolean) => {
+    setMesaEspecial(checked);
+    if (checked) {
+      setVentanaNueva('');
+    } else if (!ventanaNueva && ventanas.length) {
+      setVentanaNueva(String(ventanas[0].id));
+    }
+  };
 
   const materiasFiltradas = useMemo(() => {
     return materias
@@ -345,13 +420,6 @@ export default function MesasPage(){
     () => materias.find((m) => m.id === form.materia_id) ?? null,
     [materias, form.materia_id]
   );
-  const materiaPermiteLibres = Boolean(materiaSeleccionada?.permiteLibre);
-
-  useEffect(() => {
-    if (!materiaPermiteLibres && modalidadesSeleccionadas.includes('LIB')) {
-      setModalidadesSeleccionadas((prev) => prev.filter((modalidad) => modalidad !== 'LIB'));
-    }
-  }, [materiaPermiteLibres, modalidadesSeleccionadas]);
 
   const materiasFiltroFiltradas = useMemo(() => {
     return materiasFiltro
@@ -413,125 +481,56 @@ export default function MesasPage(){
     return base;
   }, [mesas]);
 
-const tiposAlternativosDisponibles = useMemo(() => {
-    return (Object.keys(MESA_TIPO_LABEL) as MesaTipo[])
-      .filter((tipo) => tipo !== tipoVentanaSeleccionada && (ventanasPorTipo[tipo] || []).length > 0);
-  }, [tipoVentanaSeleccionada, ventanasPorTipo]);
-
-  const guardar = async()=>{
-    if (!ventanaNueva) {
-      alert('Selecciona un periodo para la mesa.');
-      return;
-    }
-    if (!form.materia_id) {
-      alert('Selecciona la materia de la mesa.');
-      return;
-    }
-
-    const ventanaBase = ventanas.find((v) => String(v.id) === ventanaNueva) || null;
-    const tipoBase = ventanaTipoToMesaTipo(ventanaBase || undefined);
-
-    const tiposAcrear = (tiposSeleccionados.length ? tiposSeleccionados : tipoBase ? [tipoBase] : []);
-    if (!tiposAcrear.length) {
-      alert('Selecciona al menos un tipo de mesa disponible.');
-      return;
-    }
-
-    const modalidadesPermitidas = materiaPermiteLibres
-      ? modalidadesSeleccionadas
-      : modalidadesSeleccionadas.filter((modalidad) => modalidad !== 'LIB');
-    const modalidadesAcrear = modalidadesPermitidas.length ? modalidadesPermitidas : ['REG'];
-
-    const payloadBase: any = {
-      materia_id: form.materia_id,
-      fecha: form.fecha,
-      hora_desde: form.hora_desde || null,
-      hora_hasta: form.hora_hasta || null,
-      aula: form.aula || null,
-      cupo: typeof form.cupo === 'number' ? form.cupo : Number(form.cupo ?? 0),
-    };
-
-    const fechaMesa = form.fecha ? new Date(`${form.fecha}T00:00:00`) : null;
-
-    const resolveVentanaDestino = (mesaTipo: MesaTipo): number | undefined => {
-      if (mesaTipo === tipoBase && ventanaNueva) {
-        return Number(ventanaNueva);
-      }
-
-      const candidatas = ventanasPorTipo[mesaTipo] || [];
-      if (!candidatas.length) {
-        return undefined;
-      }
-
-      let posibles = [...candidatas];
-
-      if (ventanaBase) {
-        const mismasFechas = candidatas.filter(
-          (ventana) => ventana.desde === ventanaBase.desde && ventana.hasta === ventanaBase.hasta
-        );
-        if (mismasFechas.length) {
-          posibles = mismasFechas;
-        }
-
-        if (ventanaBase.periodo) {
-          const mismoPeriodo = posibles.filter((ventana) => ventana.periodo === ventanaBase.periodo);
-          if (mismoPeriodo.length) {
-            posibles = mismoPeriodo;
-          }
-        }
-      }
-
-      if (fechaMesa) {
-        const dentroDeRango = posibles.filter((ventana) => {
-          const desde = new Date(ventana.desde);
-          const hasta = new Date(ventana.hasta);
-          return fechaMesa >= desde && fechaMesa <= hasta;
-        });
-        if (dentroDeRango.length) {
-          posibles = dentroDeRango;
-        }
-      }
-
-      const destino = posibles[0] ?? candidatas[0];
-      return destino && destino.id !== undefined ? Number(destino.id) : undefined;
-    };
-
-    const faltantes: MesaTipo[] = [];
-
-    try {
-      for (const tipo of tiposAcrear) {
-        const ventanaDestinoId = resolveVentanaDestino(tipo);
-
-        if (!ventanaDestinoId) {
-          faltantes.push(tipo);
-          continue;
-        }
-
-        for (const modalidad of modalidadesAcrear) {
-          const payload = {
-            ...payloadBase,
-            tipo,
-            modalidad,
-            ventana_id: ventanaDestinoId,
-          };
-
-          await api.post(`/mesas`, payload);
-        }
-      }
-
-      if (faltantes.length) {
-        alert(`No se encontraron ventanas activas para: ${faltantes.map((t) => MESA_TIPO_LABEL[t]).join(', ')}`);
-      } else {
-        setForm({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
-        setTiposSeleccionados(tipoBase ? [tipoBase] : []);
-        setModalidadesSeleccionadas(['REG']);
-      }
-
-      await loadMesas();
-    } catch (error) {
-      console.error('No se pudieron crear las mesas', error);
-      alert('No se pudieron crear las mesas.');
-    }
+  const guardar = async()=>{
+    if (!form.materia_id) {
+      alert('Selecciona la materia de la mesa.');
+      return;
+    }
+
+    if (!mesaEspecial && !ventanaNueva) {
+      alert('Selecciona un periodo para la mesa.');
+      return;
+    }
+
+    const tipo = mesaTipoSeleccionado;
+    if (!tipo) {
+      alert('No se pudo determinar el tipo de mesa.');
+      return;
+    }
+
+    const modalidadesAcrear = modalidadesSeleccionadas.length ? modalidadesSeleccionadas : ['REG'];
+
+    const payloadBase: any = {
+      materia_id: form.materia_id,
+      fecha: form.fecha,
+      hora_desde: form.hora_desde || null,
+      hora_hasta: form.hora_hasta || null,
+      aula: form.aula || null,
+      cupo: typeof form.cupo === 'number' ? form.cupo : Number(form.cupo ?? 0),
+      docente_presidente_id: tribunalDocentes.presidente?.id ?? null,
+      docente_vocal1_id: tribunalDocentes.vocal1?.id ?? null,
+      docente_vocal2_id: tribunalDocentes.vocal2?.id ?? null,
+      ventana_id: mesaEspecial ? null : Number(ventanaNueva),
+    };
+
+    try {
+      for (const modalidad of modalidadesAcrear) {
+        const payload = {
+          ...payloadBase,
+          tipo,
+          modalidad,
+        };
+        await api.post(`/mesas`, payload);
+      }
+
+      setForm({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
+      setModalidadesSeleccionadas(['REG']);
+      resetTribunalDocentes();
+      await loadMesas();
+    } catch (error) {
+      console.error('No se pudieron crear las mesas', error);
+      alert('No se pudieron crear las mesas.');
+    }
   };
 
   const eliminar = async(id:number)=>{
@@ -671,10 +670,12 @@ const tiposAlternativosDisponibles = useMemo(() => {
 
   return (
     <Box sx={{ p:2 }}>
-      <Typography variant="h5" fontWeight={800}>Mesas de Examen</Typography>
-      <Typography variant="body2" color="text.secondary">ABM de mesas por periodo y tipo</Typography>
+      <PageHero
+        title="Mesas de examen"
+        subtitle="ABM de mesas ordinarias, extraordinarias y especiales"
+      />
 
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mt:3 }}>Nueva mesa</Typography>
+      <SectionTitlePill title="Nueva mesa" />
       <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ mt:1, flexWrap: 'wrap' }}>
         <TextField
           select
@@ -683,10 +684,12 @@ const tiposAlternativosDisponibles = useMemo(() => {
           value={ventanaNueva}
           onChange={(e)=>setVentanaNueva(e.target.value)}
           sx={{ minWidth: 220 }}
+          disabled={mesaEspecial}
+          helperText={mesaEspecial ? 'No aplica para mesas especiales.' : undefined}
         >
           <MenuItem value="">Seleccionar</MenuItem>
           {ventanas.map(v => (
-            <MenuItem key={v.id} value={String(v.id)}>{new Date(v.desde).toLocaleDateString()} - {new Date(v.hasta).toLocaleDateString()} ({v.tipo.replace('MESAS_','')})</MenuItem>
+            <MenuItem key={v.id} value={String(v.id)}>{buildVentanaLabel(v)}</MenuItem>
           ))}
         </TextField>
         <TextField
@@ -760,35 +763,26 @@ const tiposAlternativosDisponibles = useMemo(() => {
             <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>
           ))}
         </TextField>
-        <FormControl component="fieldset" sx={{ minWidth: 240 }}>
-          <FormLabel component="legend">Tipos de mesa</FormLabel>
-          <Stack direction="row" gap={1} sx={{ mt: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-            {tipoVentanaSeleccionada ? (
-              <Typography variant="body2">
-                Tipo principal: <strong>{MESA_TIPO_LABEL[tipoVentanaSeleccionada]}</strong>
-              </Typography>
-            ) : (
-              <Typography variant="body2" color="text.secondary">Selecciona un periodo para ver los tipos disponibles.</Typography>
-            )}
-          </Stack>
-          {tiposAlternativosDisponibles.length > 0 && (
-            <FormGroup row sx={{ mt: 0.5 }}>
-              {tiposAlternativosDisponibles.map((tipo) => (
-                <FormControlLabel
-                  key={tipo}
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={tiposSeleccionados.includes(tipo)}
-                      onChange={(e) => handleToggleTipo(tipo, e.target.checked)}
-                    />
-                  }
-                  label={MESA_TIPO_LABEL[tipo]}
-                />
-              ))}
-            </FormGroup>
-          )}
-        </FormControl>
+        <Box sx={{ minWidth: 240, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Typography variant="subtitle2" fontWeight={600}>Tipo de mesa</Typography>
+          <Typography variant="body2" color={mesaTipoLabel ? 'text.primary' : 'text.secondary'}>
+            {mesaEspecial
+              ? 'Especial (sin periodo definido)'
+              : mesaTipoLabel
+                ? `Tipo actual: ${mesaTipoLabel}`
+                : 'Selecciona un periodo para determinar el tipo.'}
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={mesaEspecial}
+                onChange={(e)=>handleMesaEspecialChange(e.target.checked)}
+              />
+            }
+            label="Crear como mesa especial (no requiere periodo)"
+          />
+        </Box>
         <FormControl component="fieldset" sx={{ minWidth: 220 }}>
           <FormLabel component="legend">Modalidades</FormLabel>
           <FormGroup row sx={{ mt: 0.5 }}>
@@ -800,24 +794,91 @@ const tiposAlternativosDisponibles = useMemo(() => {
                     size="small"
                     checked={modalidadesSeleccionadas.includes(modalidad)}
                     onChange={(e)=>handleToggleModalidad(modalidad, e.target.checked)}
-                    disabled={!materiaPermiteLibres && modalidad === 'LIB'}
-                    inputProps={
-                      !materiaPermiteLibres && modalidad === 'LIB'
-                        ? { title: 'Esta materia no tiene mesas libres habilitadas.' }
-                        : undefined
-                    }
                   />
                 }
                 label={MESA_MODALIDAD_LABEL[modalidad]}
               />
             ))}
           </FormGroup>
-          {!materiaPermiteLibres && materiaSeleccionada && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              La materia seleccionada se rinde solo en modalidad regular.
-            </Typography>
-          )}
         </FormControl>
+        <Box sx={{ minWidth: 280, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography variant="subtitle2" fontWeight={600}>Tribunal evaluador</Typography>
+          <Autocomplete
+            size="small"
+            options={docentesLista}
+            value={tribunalDocentes.presidente}
+            getOptionLabel={formatDocenteLabel}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            loading={docentesLoading}
+            onChange={(_event, value) => handleTribunalChange('presidente', value)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Titular / Presidente"
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {docentesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+          <Autocomplete
+            size="small"
+            options={docentesLista}
+            value={tribunalDocentes.vocal1}
+            getOptionLabel={formatDocenteLabel}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            loading={docentesLoading}
+            onChange={(_event, value) => handleTribunalChange('vocal1', value)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Vocal 1"
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {docentesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+          <Autocomplete
+            size="small"
+            options={docentesLista}
+            value={tribunalDocentes.vocal2}
+            getOptionLabel={formatDocenteLabel}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            loading={docentesLoading}
+            onChange={(_event, value) => handleTribunalChange('vocal2', value)}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Vocal 2"
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {docentesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        </Box>
         <TextField label="Fecha" size="small" type="date" value={form.fecha || ''} onChange={(e)=>setForm(f=>({...f, fecha: e.target.value}))} InputLabelProps={{ shrink:true }} />
         <TextField label="Hora desde" size="small" type="time" value={form.hora_desde || ''} onChange={(e)=>setForm(f=>({...f, hora_desde: e.target.value}))} InputLabelProps={{ shrink:true }} />
         <TextField label="Hora hasta" size="small" type="time" value={form.hora_hasta || ''} onChange={(e)=>setForm(f=>({...f, hora_hasta: e.target.value}))} InputLabelProps={{ shrink:true }} />
@@ -832,13 +893,14 @@ const tiposAlternativosDisponibles = useMemo(() => {
           <TextField select label="Periodo" size="small" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)} sx={{ minWidth: 220 }}>
             <MenuItem value="">Todos</MenuItem>
             {ventanas.map(v=> (
-              <MenuItem key={v.id} value={String(v.id)}>{new Date(v.desde).toLocaleDateString()} - {new Date(v.hasta).toLocaleDateString()} ({v.tipo.replace('MESAS_','_')})</MenuItem>
+              <MenuItem key={v.id} value={String(v.id)}>{buildVentanaLabel(v)}</MenuItem>
             ))}
           </TextField>
           <TextField select label="Tipo" size="small" value={tipo} onChange={(e)=>setTipo(e.target.value)} sx={{ minWidth: 160 }}>
             <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="FIN">Final</MenuItem>
+            <MenuItem value="FIN">Ordinaria</MenuItem>
             <MenuItem value="EXT">Extraordinaria</MenuItem>
+            <MenuItem value="ESP">Especial</MenuItem>
           </TextField>
           <TextField
             select
@@ -852,6 +914,14 @@ const tiposAlternativosDisponibles = useMemo(() => {
             <MenuItem value="REG">Regulares</MenuItem>
             <MenuItem value="LIB">Libres</MenuItem>
           </TextField>
+          <TextField
+            label="Código"
+            size="small"
+            value={codigoFiltro}
+            onChange={(e)=>setCodigoFiltro(e.target.value)}
+            sx={{ minWidth: 200 }}
+            placeholder="MESA-..."
+          />
           <TextField
             select
             label="Profesorado"
@@ -944,10 +1014,18 @@ const tiposAlternativosDisponibles = useMemo(() => {
                 <Stack gap={0.5}>
                   <Typography variant="subtitle2">#{m.id} - {tipoLabel} ({modalidadLabel}) - {fechaLabel}</Typography>
                   <Typography variant="body2" color="text.secondary">
+                    Código: {m.codigo || '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
                     {m.materia_nombre} (#{m.materia_id}) | {m.profesorado_nombre ?? 'Sin profesorado'} | Plan {m.plan_resolucion ?? '-'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Anio {m.anio_cursada ?? '-'} | {regimenLabel} | {`${horaDesde}${horaHasta ? ` - ${horaHasta}` : ''}${m.aula ? ` | ${m.aula}` : ''}`} | Cupo: {m.cupo}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tribunal: {m.docentes && m.docentes.length
+                      ? m.docentes.map((doc) => `${TRIBUNAL_ROL_LABEL[doc.rol] ?? doc.rol}: ${doc.nombre || 'Sin asignar'}`).join(' | ')
+                      : 'Sin designar'}
                   </Typography>
                   <Stack direction="row" gap={1}>
                     <Button

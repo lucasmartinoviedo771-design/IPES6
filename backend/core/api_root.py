@@ -28,6 +28,8 @@ if 'api' not in locals():
     api.add_router("/asistencia/alumnos", asistencia_alumnos_router)
     api.add_router("/asistencia/calendario", asistencia_calendario_router)
     api.add_router("/", guias_router)
+    from apps.metrics.api import router as metrics_router
+    api.add_router("/reportes", metrics_router)
     from apps.primera_carga.api import (
         primera_carga_router,
     )

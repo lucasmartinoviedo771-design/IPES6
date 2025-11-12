@@ -59,7 +59,7 @@ LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "5"))
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
 
 # Hosts permitidos (¡ajusta con tu dominio real!)
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]", "192.168.1.83"])
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])  # ej: http://localhost:5173, https://tu-dominio
 
 # Cookies seguras en prod
@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "apps.alumnos",
     "apps.guias",
     "apps.asistencia",
+    "apps.metrics",
 ]
 
 # === Middleware =========================================================
@@ -117,18 +118,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"  # o ASGI si usás Daphne/Uvicorn
 
-# === Base de datos (MySQL) =============================================
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": os.getenv("DB_NAME", "ipes6"),
-        "USER": os.getenv("DB_USER", "root"),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-        "PORT": os.getenv("DB_PORT", "3306"),
-        "OPTIONS": {"charset": "utf8mb4"},
+# === Base de datos =============================================================
+DB_ENGINE = os.getenv("DB_ENGINE", "mysql").lower()
+
+if DB_ENGINE == "sqlite":
+    SQLITE_NAME = os.getenv("SQLITE_NAME", "db.sqlite3")
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / SQLITE_NAME,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": os.getenv("DB_NAME", "ipes6"),
+            "USER": os.getenv("DB_USER", "root"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "3306"),
+            "OPTIONS": {"charset": "utf8mb4"},
+        }
+    }
 
 
 # === Internacionalización ==============================================
@@ -186,8 +198,12 @@ FRONTEND_ORIGINS = env_list(
     [
         "http://127.0.0.1:5173",
         "http://localhost:5173",
+        "http://192.168.1.83:5173",
     ],
 )
+if "http://192.168.1.83:5173" not in FRONTEND_ORIGINS:
+    FRONTEND_ORIGINS.append("http://192.168.1.83:5173")
+
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
@@ -292,3 +308,4 @@ else:
     SECURE_HSTS_SECONDS = 0
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+

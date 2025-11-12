@@ -52,3 +52,21 @@ export const isOnlyStudent = (user: User | null | undefined): boolean => {
   }
   return bag.has("alumno") && bag.size === 1;
 };
+
+export const getDefaultHomeRoute = (user: User | null | undefined): string => {
+  const bag = collectRoles(user);
+  if (!bag.size) {
+    return "/login";
+  }
+  const isStudentOnly = bag.has("alumno") && bag.size === 1;
+  if (isStudentOnly) {
+    return "/alumnos";
+  }
+  if (bag.has("secretaria") || bag.has("bedel") || bag.has("jefa_aaee")) {
+    return "/secretaria";
+  }
+  if (bag.has("admin")) {
+    return "/dashboard";
+  }
+  return "/alumnos";
+};

@@ -60,6 +60,9 @@ class PreinscripcionIn(Schema):
     sup1_titulo: str | None = None
     sup1_establecimiento: str | None = None
     sup1_fecha_egreso: date | None = None
+    sup1_localidad: str | None = None
+    sup1_provincia: str | None = None
+    sup1_pais: str | None = None
 
     # Laborales
     trabaja: bool | None = None

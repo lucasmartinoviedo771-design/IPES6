@@ -239,12 +239,10 @@ class JustificacionDetalle(models.Model):
             models.UniqueConstraint(
                 fields=["justificacion", "clase", "estudiante"],
                 name="unique_justificacion_clase_estudiante",
-                condition=models.Q(estudiante__isnull=False),
             ),
             models.UniqueConstraint(
                 fields=["justificacion", "clase", "docente"],
                 name="unique_justificacion_clase_docente",
-                condition=models.Q(docente__isnull=False),
             ),
         ]
 

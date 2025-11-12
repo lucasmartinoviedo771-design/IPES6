@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SearchIcon from "@mui/icons-material/Search";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { enqueueSnackbar } from "notistack";
 
@@ -30,6 +31,8 @@ import {
   ActaCreatePayload,
   ActaMetadataDTO,
   ActaMetadataDocente,
+  MesaResumenDTO,
+  buscarMesaPorCodigo,
   crearActaExamen,
   fetchActaMetadata,
 } from "@/api/cargaNotas";
@@ -40,6 +43,20 @@ const DOCENTE_ROLES = [
   { value: "VOC1", label: "Vocal 1" },
   { value: "VOC2", label: "Vocal 2" },
 ];
+
+const DOCENTE_ROL_LABEL: Record<string, string> = {
+  PRES: "Presidente",
+  VOC1: "Vocal 1",
+  VOC2: "Vocal 2",
+};
+
+const MESA_EXAMEN_TIPO_LABEL: Record<string, string> = {
+  FIN: "Ordinaria",
+  EXT: "Extraordinaria",
+  ESP: "Especial",
+};
+
+const getMesaTipoNombre = (tipo: string) => MESA_EXAMEN_TIPO_LABEL[tipo] ?? tipo;
 
 const ACTA_TIPOS = [
   { value: "REG", label: "Acta de alumnos regulares" },
@@ -115,12 +132,79 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const [docentes, setDocentes] = useState<DocenteState[]>(createEmptyDocentes);
   const [alumnos, setAlumnos] = useState<AlumnoState[]>([createEmptyAlumno(1)]);
   const [, setLoadingAlumnoDni] = useState<string | null>(null);
+  const [mesaCodigo, setMesaCodigo] = useState<string>("");
+  const [mesaBuscando, setMesaBuscando] = useState(false);
+  const [mesaBusquedaError, setMesaBusquedaError] = useState<string | null>(null);
+  const [mesaSeleccionada, setMesaSeleccionada] = useState<MesaResumenDTO | null>(null);
 
   const metadata = metadataQuery.data;
   const notaOptions = metadata?.nota_opciones ?? [];
 
   const profesorados = metadata?.profesorados ?? [];
   const docentesDisponibles = metadata?.docentes ?? [];
+
+  const applyMesaSeleccionada = (mesa: MesaResumenDTO) => {
+    if (mesa.profesorado_id) {
+      setProfesoradoId(String(mesa.profesorado_id));
+    }
+    if (mesa.plan_id) {
+      setPlanId(String(mesa.plan_id));
+    }
+    if (mesa.materia_id) {
+      setMateriaId(String(mesa.materia_id));
+    }
+    if (mesa.fecha) {
+      setFecha(dayjs(mesa.fecha).format("YYYY-MM-DD"));
+    }
+    if (mesa.modalidad === "LIB") {
+      setTipo("LIB");
+    } else if (mesa.modalidad === "REG") {
+      setTipo("REG");
+    }
+    if (mesa.docentes && mesa.docentes.length) {
+      setDocentes((prev) =>
+        prev.map((doc) => {
+          const remoto = mesa.docentes?.find((item) => item.rol === doc.rol);
+          if (!remoto) {
+            return doc;
+          }
+          return {
+            ...doc,
+            docente_id: remoto.docente_id ?? null,
+            nombre: remoto.nombre ?? "",
+            dni: remoto.dni ?? "",
+            inputValue: remoto.nombre ?? "",
+          };
+        })
+      );
+    }
+  };
+
+  const handleBuscarMesa = async () => {
+    const code = mesaCodigo.trim();
+    if (!code) {
+      setMesaBusquedaError("Ingresá un código de mesa.");
+      setMesaSeleccionada(null);
+      return;
+    }
+    setMesaBuscando(true);
+    setMesaBusquedaError(null);
+    try {
+      const encontrada = await buscarMesaPorCodigo(code);
+      if (!encontrada) {
+        setMesaSeleccionada(null);
+        setMesaBusquedaError("No se encontró una mesa con ese código.");
+        return;
+      }
+      setMesaSeleccionada(encontrada);
+      applyMesaSeleccionada(encontrada);
+    } catch (error) {
+      console.error("No se pudo buscar la mesa", error);
+      setMesaBusquedaError("No se pudo buscar la mesa. Intenta nuevamente.");
+    } finally {
+      setMesaBuscando(false);
+    }
+  };
   const docenteOptions = useMemo(
     () =>
       docentesDisponibles.map((doc) => {
@@ -387,6 +471,58 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
           {subtitle}
         </Typography>
       </Box>
+
+      <Paper variant="outlined" sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+          Asociar una mesa
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <TextField
+            label="Código de mesa (opcional)"
+            size="small"
+            value={mesaCodigo}
+            onChange={(event) => setMesaCodigo(event.target.value)}
+            placeholder="Ej: MESA-20251112-00010"
+            fullWidth
+          />
+          <Button
+            variant="contained"
+            onClick={handleBuscarMesa}
+            disabled={mesaBuscando}
+            startIcon={mesaBuscando ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
+          >
+            {mesaBuscando ? "Buscando..." : "Buscar"}
+          </Button>
+        </Stack>
+        {mesaBusquedaError && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {mesaBusquedaError}
+          </Alert>
+        )}
+        {mesaSeleccionada && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            <Stack spacing={0.5}>
+              <Typography variant="body2">
+                <strong>Código:</strong> {mesaSeleccionada.codigo || mesaSeleccionada.id} - {mesaSeleccionada.materia_nombre}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Tipo:</strong> {getMesaTipoNombre(mesaSeleccionada.tipo)} | <strong>Modalidad:</strong>{" "}
+                {mesaSeleccionada.modalidad === "LIB" ? "Libre" : "Regular"}
+              </Typography>
+              {mesaSeleccionada.docentes && mesaSeleccionada.docentes.length ? (
+                <Typography variant="body2">
+                  <strong>Tribunal:</strong>{" "}
+                  {mesaSeleccionada.docentes
+                    .map((doc) => `${DOCENTE_ROL_LABEL[doc.rol] ?? doc.rol}: ${doc.nombre || "Sin asignar"}`)
+                    .join(" | ")}
+                </Typography>
+              ) : (
+                <Typography variant="body2">Tribunal sin designar.</Typography>
+              )}
+            </Stack>
+          </Alert>
+        )}
+      </Paper>
 
       <Paper variant="outlined" sx={{ p: 3 }}>
         <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>

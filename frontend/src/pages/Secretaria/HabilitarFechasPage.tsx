@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
@@ -34,6 +34,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { client as axios } from "@/api/client";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import { useSnackbar } from "notistack";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -54,15 +55,15 @@ const TYPE_CONFIG: Array<{
 }> = [
   {
     key: "MESAS_FINALES",
-    label: "Mesas de examen - Finales",
+    label: "Mesas de examen - Ordinarias",
     category: "mesas",
-    description: "Ventanas para las mesas regulares de examen final.",
+    description: "Ventanas para las mesas ordinarias (antes denominadas finales).",
   },
   {
     key: "MESAS_EXTRA",
     label: "Mesas de examen - Extraordinarias",
     category: "mesas",
-    description: "Mesas especiales o extraordinarias habilitadas por direccion.",
+    description: "Ventanas para mesas extraordinarias habilitadas por dirección.",
   },
   {
     key: "MESAS_LIBRES",
@@ -74,13 +75,13 @@ const TYPE_CONFIG: Array<{
     key: "MATERIAS",
     label: "Inscripciones a Materias",
     category: "tramites",
-    description: "Periodos para que los estudiantes se inscriban a cursadas.",
+    description: "Períodos para que los estudiantes se inscriban a cursadas.",
   },
   {
     key: "COMISION",
-    label: "Cambios de Comision",
+    label: "Cambios de Comisión",
     category: "tramites",
-    description: "Gestiona solicitudes de cambio de comision.",
+    description: "Gestiona solicitudes de cambio de comisión.",
   },
   {
     key: "ANALITICOS",
@@ -89,30 +90,36 @@ const TYPE_CONFIG: Array<{
     description: "Ventanas para solicitar constancias o analiticos.",
   },
   {
-    key: "PREINSCRIPCION",
-    label: "Preinscripcion",
+    key: "EQUIVALENCIAS",
+    label: "Pedidos de Equivalencias",
     category: "tramites",
-    description: "Periodo de preinscripcion inicial a la institucion.",
+    description: "Periodos para cargar solicitudes de equivalencias curriculares.",
+  },
+  {
+    key: "PREINSCRIPCION",
+    label: "Preinscripción",
+    category: "tramites",
+    description: "Período de preinscripción inicial a la institución.",
   },
   {
     key: "CALENDARIO_CUATRIMESTRE",
-    label: "Calendario academico - Cuatrimestres",
+    label: "Calendario académico - Cuatrimestres",
     category: "tramites",
     description:
-      "Define las fechas de inicio y fin de los cuatrimestres. El segundo debe iniciar inmediatamente despues del primero.",
+      "Define las fechas de inicio y fin de los cuatrimestres. El segundo debe iniciar inmediatamente después del primero.",
   },
 ];
 
 const CATEGORY_CONFIG = [
   {
     id: "tramites",
-    label: "Inscripciones y tramites",
-    helper: "Habilita los periodos que impactan directamente en los estudiantes.",
+    label: "Inscripciones y trámites",
+    helper: "Habilita los períodos que impactan directamente en los estudiantes.",
   },
   {
     id: "mesas",
     label: "Mesas de examen",
-    helper: "Configura las fechas de generacion y cierre de las mesas finales.",
+    helper: "Configura las fechas de generación y cierre de las mesas finales.",
   },
 ];
 
@@ -261,7 +268,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
     const to = dayjs(draft.hasta);
 
     if (!from.isValid() || !to.isValid()) {
-      notify("Revisa las fechas: deben ser validas.", { variant: "warning" });
+      notify("Revisa las fechas: deben ser válidas.", { variant: "warning" });
       return;
     }
     if (!to.isAfter(from, "day")) {
@@ -275,17 +282,17 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
     if (period === "1C") {
       const expected = to.add(1, "day");
       if (otherDraft.desde && !dayjs(otherDraft.desde).isSame(expected, "day")) {
-        notify("El segundo cuatrimestre debe comenzar el dia siguiente a que finaliza el primer cuatrimestre.", { variant: "error" });
+        notify("El segundo cuatrimestre debe comenzar el día siguiente a que finaliza el primer cuatrimestre.", { variant: "error" });
         return;
       }
     } else {
       if (!otherDraft.hasta) {
-        notify("Defini primero la fecha de fin del primer cuatrimestre.", { variant: "warning" });
+        notify("Definí primero la fecha de fin del primer cuatrimestre.", { variant: "warning" });
         return;
       }
       const expected = dayjs(otherDraft.hasta).add(1, "day");
       if (!dayjs(draft.desde).isSame(expected, "day")) {
-        notify("El segundo cuatrimestre debe comenzar el dia siguiente a que finaliza el primer cuatrimestre.", { variant: "error" });
+        notify("El segundo cuatrimestre debe comenzar el día siguiente a que finaliza el primer cuatrimestre.", { variant: "error" });
         return;
       }
     }
@@ -308,8 +315,8 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {period === "1C"
-                ? "Define el inicio y fin del primer cuatrimestre academico."
-                : "Inicia automaticamente al finalizar el primero. Ajusta la fecha de fin segun el calendario institucional."}
+                ? "Define el inicio y fin del primer cuatrimestre académico."
+                : "Inicia automáticamente al finalizar el primero. Ajusta la fecha de fin según el calendario institucional."}
             </Typography>
           </Box>
 
@@ -468,7 +475,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({
   return (
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary">
-        Ajusta los periodos cuatrimestrales. El segundo cuatrimestre debe comenzar el dia posterior a la finalizacion del primero.
+        Ajusta los períodos cuatrimestrales. El segundo cuatrimestre debe comenzar el día posterior a la finalización del primero.
       </Typography>
       <Grid container spacing={2}>
         {CALENDAR_PERIODS.map((period) => (
@@ -511,6 +518,8 @@ export default function HabilitarFechasPage() {
   const [drafts, setDrafts] = useState<Record<string, Ventana>>({});
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORY_CONFIG[0].id);
   const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
+  const panelRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [pendingScrollKey, setPendingScrollKey] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editVentana, setEditVentana] = useState<Ventana | null>(null);
 
@@ -610,9 +619,21 @@ export default function HabilitarFechasPage() {
     const category = CATEGORY_FROM_TYPE[typeKey];
     if (category) {
       setSelectedCategory(category);
-      setExpandedPanel((prev) => (prev === typeKey ? prev : typeKey));
+      setExpandedPanel(typeKey);
+      setPendingScrollKey(typeKey);
     }
   };
+
+  useEffect(() => {
+    if (pendingScrollKey && expandedPanel === pendingScrollKey) {
+      const node = panelRefs.current[pendingScrollKey];
+      if (node) {
+        node.scrollIntoView({ behavior: "smooth", block: "start" });
+        (node as HTMLElement).focus?.();
+      }
+      setPendingScrollKey(null);
+    }
+  }, [expandedPanel, pendingScrollKey]);
 
   const renderTypePanel = (typeKey: string) => {
     const config = TYPE_CONFIG.find((item) => item.key === typeKey);
@@ -626,6 +647,10 @@ export default function HabilitarFechasPage() {
       return (
         <Accordion
           key={typeKey}
+          ref={(node) => {
+            panelRefs.current[typeKey] = node;
+          }}
+          tabIndex={-1}
           disableGutters
           elevation={0}
           square
@@ -646,7 +671,7 @@ export default function HabilitarFechasPage() {
                 {config.label}
               </Typography>
               <Typography variant="body2" color="text.secondary" noWrap>
-                {reference ? formatRange(reference) : "Sin periodos configurados"}
+                {reference ? formatRange(reference) : "Sin períodos configurados"}
               </Typography>
             </Box>
             <Stack direction="row" spacing={1} alignItems="center">
@@ -718,6 +743,10 @@ export default function HabilitarFechasPage() {
     return (
       <Accordion
         key={typeKey}
+        ref={(node) => {
+          panelRefs.current[typeKey] = node;
+        }}
+        tabIndex={-1}
         disableGutters
         elevation={0}
         square
@@ -738,7 +767,7 @@ export default function HabilitarFechasPage() {
               {config.label}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
-              {reference ? formatRange(reference) : "Sin periodos configurados"}
+              {reference ? formatRange(reference) : "Sin períodos configurados"}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -826,7 +855,7 @@ export default function HabilitarFechasPage() {
               </Typography>
               {historyItems.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  Todavia no hay registros para este tipo.
+                  Todavía no hay registros para este tipo.
                 </Typography>
               ) : (
                 <Stack spacing={1.5}>
@@ -904,18 +933,16 @@ export default function HabilitarFechasPage() {
 
   return (
     <Box className="center-page" sx={{ pb: 6 }}>
-      <Typography variant="h4" fontWeight={800} gutterBottom>
-        Habilitar Fechas
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Define y administra los periodos de inscripcion, tramites y mesas de examen. Activa una ventana
-        cuando quieras que quede disponible para los usuarios.
-      </Typography>
+      <PageHero
+        title="Habilitar fechas"
+        subtitle="Definí y administrá los períodos de inscripción, trámites y mesas de examen"
+      />
+
+      <Box sx={{ mt: 2 }}>
+        <SectionTitlePill title="Resumen rápido" sx={{ mt: 3 }} />
+      </Box>
 
       <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-          Resumen rapido
-        </Typography>
         <Grid container spacing={2}>
           {summaryItems.map((item) => (
             <Grid item xs={12} sm={6} md={4} key={item.key}>
@@ -940,7 +967,7 @@ export default function HabilitarFechasPage() {
                     {item.label}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {item.reference ? formatRange(item.reference) : "Sin periodos cargados"}
+                    {item.reference ? formatRange(item.reference) : "Sin períodos cargados"}
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Chip size="small" label={item.state.label} color={item.state.color} />
@@ -972,7 +999,7 @@ export default function HabilitarFechasPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {
           CATEGORY_CONFIG.find((category) => category.id === selectedCategory)?.helper ??
-          "Selecciona un periodo para editarlo."
+          "Selecciona un período para editarlo."
         }
       </Typography>
 

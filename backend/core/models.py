@@ -43,7 +43,6 @@ class Preinscripcion(models.Model):
         max_length=13,
         blank=True,
         null=True,
-        unique=True,
         validators=[
             RegexValidator(
                 r"^\d{2}-\d{8}-\d{1}",
@@ -516,6 +515,7 @@ class VentanaHabilitacion(models.Model):
         CARRERAS = "CARRERAS", "Inscripciones a Carreras"
         COMISION = "COMISION", "Cambios de Comision"
         ANALITICOS = "ANALITICOS", "Pedidos de Analiticos"
+        EQUIVALENCIAS = "EQUIVALENCIAS", "Pedidos de Equivalencias"
         PREINSCRIPCION = "PREINSCRIPCION", "Preinscripcion"
         CALENDARIO_CUATRIMESTRE = (
             "CALENDARIO_CUATRIMESTRE",
@@ -808,10 +808,98 @@ class PedidoAnalitico(models.Model):
         return f"Analítico {self.estudiante.dni} {self.created_at.date()} ({self.get_motivo_display()})"
 
 
+class PedidoEquivalencia(models.Model):
+    class Tipo(models.TextChoices):
+        ANEXO_A = "ANEXO_A", "Anexo A"
+        ANEXO_B = "ANEXO_B", "Anexo B"
+
+    class Estado(models.TextChoices):
+        BORRADOR = "draft", "Borrador"
+        FINALIZADO = "final", "Finalizado"
+
+    estudiante = models.ForeignKey(
+        "Estudiante",
+        on_delete=models.CASCADE,
+        related_name="pedidos_equivalencia",
+    )
+    ventana = models.ForeignKey(
+        VentanaHabilitacion,
+        on_delete=models.PROTECT,
+        related_name="pedidos_equivalencia",
+    )
+    tipo = models.CharField(max_length=16, choices=Tipo.choices)
+    ciclo_lectivo = models.CharField(max_length=16, blank=True, default="")
+    profesorado_destino = models.ForeignKey(
+        Profesorado,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pedidos_equivalencia_destino",
+    )
+    profesorado_destino_nombre = models.CharField(max_length=255)
+    plan_destino = models.ForeignKey(
+        PlanDeEstudio,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pedidos_equivalencia_destino",
+    )
+    plan_destino_resolucion = models.CharField(max_length=255, blank=True, default="")
+    profesorado_origen_nombre = models.CharField(max_length=255, blank=True, default="")
+    plan_origen_resolucion = models.CharField(max_length=255, blank=True, default="")
+    establecimiento_origen = models.CharField(max_length=255, blank=True, default="")
+    establecimiento_localidad = models.CharField(max_length=255, blank=True, default="")
+    establecimiento_provincia = models.CharField(max_length=255, blank=True, default="")
+    estado = models.CharField(
+        max_length=12,
+        choices=Estado.choices,
+        default=Estado.BORRADOR,
+    )
+    bloqueado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    bloqueado_en = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+
+    def __str__(self):
+        return f"Pedido {self.get_tipo_display()} - {self.estudiante.dni} ({self.get_estado_display()})"
+
+    @property
+    def esta_finalizado(self) -> bool:
+        return self.estado == self.Estado.FINALIZADO
+
+
+class PedidoEquivalenciaMateria(models.Model):
+    pedido = models.ForeignKey(
+        PedidoEquivalencia,
+        on_delete=models.CASCADE,
+        related_name="materias",
+    )
+    nombre = models.CharField(max_length=255)
+    formato = models.CharField(max_length=128, blank=True, default="")
+    anio_cursada = models.CharField(max_length=64, blank=True, default="")
+    orden = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["orden", "id"]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.formato or 'formato no indicado'})"
+
+
 class MesaExamen(models.Model):
     class Tipo(models.TextChoices):
-        FINAL = "FIN", "Final"
+        FINAL = "FIN", "Ordinaria"
         EXTRAORDINARIA = "EXT", "Extraordinaria"
+        ESPECIAL = "ESP", "Especial"
 
     class Modalidad(models.TextChoices):
         REGULAR = "REG", "Regular"
@@ -826,10 +914,46 @@ class MesaExamen(models.Model):
     aula = models.CharField(max_length=64, blank=True, null=True)
     cupo = models.IntegerField(default=0)
     ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.SET_NULL, null=True, blank=True)
+    codigo = models.CharField(max_length=40, unique=True, blank=True, null=True)
+    docente_presidente = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mesas_como_presidente",
+    )
+    docente_vocal1 = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mesas_como_vocal1",
+    )
+    docente_vocal2 = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mesas_como_vocal2",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Mesa {self.get_tipo_display()} {self.materia.nombre} {self.fecha}"
+
+    def _build_codigo(self) -> str:
+        fecha_ref = self.fecha or timezone.now().date()
+        return f"MESA-{fecha_ref.strftime('%Y%m%d')}-{self.id:05d}"
+
+    def save(self, *args, **kwargs):
+        was_blank_codigo = not self.codigo
+        super().save(*args, **kwargs)
+        if self.codigo and not was_blank_codigo:
+            return
+        if not self.codigo:
+            codigo = self._build_codigo()
+            type(self).objects.filter(pk=self.pk).update(codigo=codigo)
+            self.codigo = codigo
 
 
 class InscripcionMesa(models.Model):

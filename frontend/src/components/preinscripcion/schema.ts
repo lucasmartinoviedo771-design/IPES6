@@ -7,7 +7,7 @@ dayjs.extend(isSameOrBefore);
 const isIsoDate = (value: string) => dayjs(value, "YYYY-MM-DD", true).isValid();
 const notFuture = (value: string) => isIsoDate(value) && dayjs(value).isSameOrBefore(dayjs(), "day");
 
-export const preinscripcionSchema = z.object({
+const baseSchema = z.object({
   // Datos personales
   nombres: z.string().min(2, "Ingresa tu nombre completo"),
   apellido: z.string().min(2, "Ingresa tu apellido"),
@@ -25,9 +25,12 @@ export const preinscripcionSchema = z.object({
   domicilio: z.string().min(2),
   cohorte: z
     .string()
-    .trim()
-    .min(4, "Ingresá el año de cohorte (ej: 2025)")
-    .refine((value) => /^\d{4}$/.test(value.trim()), "El año debe tener cuatro dígitos"),
+    .optional()
+    .transform((value) => (value ?? "").trim())
+    .refine(
+      (value) => !value || /^\d{4}$/.test(value),
+      "Ingresá el año de cohorte (ej: 2025)",
+    ),
 
   // Contacto
   email: z.string().email(),
@@ -58,6 +61,19 @@ export const preinscripcionSchema = z.object({
     .or(z.literal(""))
     .refine((value) => !value || isIsoDate(value), "Fecha inválida (YYYY-MM-DD)")
     .refine((value) => !value || notFuture(value), "La fecha no puede ser futura"),
+  sup1_localidad: z.string().optional().or(z.literal("")),
+  sup1_provincia: z.string().optional().or(z.literal("")),
+  sup1_pais: z.string().optional().or(z.literal("")),
+
+  // Accesibilidad / datos sensibles
+  cud_informado: z.boolean().default(false),
+  condicion_salud_informada: z.boolean().default(false),
+  condicion_salud_detalle: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ?? "").trim()),
+  consentimiento_datos: z.boolean().default(false),
 
   // Carrera
   carrera_id: z.number().int().min(1, "Selecciona una carrera"),
@@ -86,6 +102,23 @@ export const preinscripcionSchema = z.object({
   doc_foto4x4: z.boolean().default(false),
   doc_titulo_en_tramite: z.boolean().default(false),
   doc_otro: z.boolean().default(false),
+});
+
+export const preinscripcionSchema = baseSchema.superRefine((values, ctx) => {
+  if (values.condicion_salud_informada && !values.condicion_salud_detalle) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["condicion_salud_detalle"],
+      message: "Indicá la condición o el apoyo que necesitás.",
+    });
+  }
+  if (!values.consentimiento_datos) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["consentimiento_datos"],
+      message: "Debés aceptar el consentimiento expreso para continuar.",
+    });
+  }
 });
 
 export type PreinscripcionForm = z.infer<typeof preinscripcionSchema>;

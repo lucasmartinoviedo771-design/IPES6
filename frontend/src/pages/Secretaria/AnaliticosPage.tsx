@@ -3,6 +3,7 @@ import { Box, Typography, Stack, Grid, Paper, TextField, MenuItem, Button, Alert
 import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { solicitarPedidoAnalitico, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type Pedido = { dni:string; apellido_nombre:string; profesorado?:string; cohorte?:number; fecha_solicitud:string; motivo?: string; motivo_otro?: string };
 
@@ -176,8 +177,10 @@ export default function AnaliticosPage(){
 
   return (
     <Box sx={{ p:2 }}>
-      <Typography variant="h5" fontWeight={800}>Pedidos de Analítico</Typography>
-      <Typography variant="body2" color="text.secondary">Seleccione un periodo para ver y descargar en PDF</Typography>
+      <PageHero
+        title="Pedidos de Analítico"
+        subtitle="Seleccione un periodo para ver y descargar en PDF"
+      />
       {error && <Alert severity="error" sx={{ mt:1 }}>{error}</Alert>}
       <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ mt:2 }}>
         <TextField select label="Periodo (Ventana)" size="small" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)} sx={{ minWidth: 260 }}>

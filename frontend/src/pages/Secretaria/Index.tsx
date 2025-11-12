@@ -21,6 +21,12 @@ import DateRangeIcon from "@mui/icons-material/DateRange";
 import GavelIcon from "@mui/icons-material/Gavel";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
+import {
+  ICON_GRADIENT,
+  INSTITUTIONAL_GREEN,
+  INSTITUTIONAL_TERRACOTTA,
+} from "@/styles/institutionalColors";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 type SectionItem = {
   title: string;
@@ -37,51 +43,52 @@ type Section = {
 const SectionCard: React.FC<SectionItem> = ({ title, subtitle, icon, path }) => {
   const navigate = useNavigate();
   return (
-    <Grid item xs={12} sm={6} md={2.4} lg={2.5} sx={{ display: "flex" }}>
+    <Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: "flex" }}>
       <Card
         onClick={() => navigate(path)}
         sx={{
           width: "100%",
-          aspectRatio: "4 / 3",
           minHeight: 110,
           cursor: "pointer",
-          borderRadius: 2,
-          border: theme => `1px solid ${theme.palette.divider}`,
-          display: "flex",
-          flexDirection: "column",
+          borderRadius: 10,
+          border: `1px solid ${INSTITUTIONAL_GREEN}55`,
+          backgroundColor: "#fff",
+          boxShadow: "0 10px 20px rgba(125,127,110,0.15)",
           transition: "all 0.2s ease",
           "&:hover": {
-            boxShadow: 6,
+            borderColor: INSTITUTIONAL_TERRACOTTA,
+            boxShadow: "0 15px 35px rgba(183,105,78,0.35)",
             transform: "translateY(-4px)",
           },
         }}
       >
-        <CardContent>
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                width: 64,
-                height: 64,
-                borderRadius: 1,
-                bgcolor: "primary.main",
-                color: "common.white",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 30,
-                boxShadow: theme => `0 10px 20px ${theme.palette.primary.main}33`,
-              }}
-            >
-              {icon}
-            </Box>
-            <Box>
-              <Typography variant="subtitle1" fontWeight={600}>
+        <CardContent sx={{ height: "100%", display: "flex" }}>
+          <Stack spacing={1.5} sx={{ width: "100%" }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Box
+                sx={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  backgroundImage: ICON_GRADIENT,
+                  color: "common.white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 30,
+                  boxShadow: "0 10px 20px rgba(183,105,78,0.55)",
+                  flexShrink: 0,
+                }}
+              >
+                {icon}
+              </Box>
+              <Typography variant="subtitle1" fontWeight={600} noWrap>
                 {title}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {subtitle}
-              </Typography>
-            </Box>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {subtitle}
+            </Typography>
           </Stack>
         </CardContent>
       </Card>
@@ -154,13 +161,13 @@ export default function SecretariaIndex() {
               title: "Planes de Estudio",
               subtitle: "Ver y cargar planes por profesorado.",
               icon: <MenuBookIcon />,
-              path: "/secretaria/planes",
+              path: "/secretaria/profesorado",
             },
             {
               title: "Materias",
               subtitle: "Gestionar materias dentro del plan.",
               icon: <ArticleIcon />,
-              path: "/secretaria/materias",
+              path: "/secretaria/profesorado",
             },
             {
               title: "Correlatividades",
@@ -191,6 +198,12 @@ export default function SecretariaIndex() {
                 subtitle: "Listar, crear por DNI y descargar PDF.",
                 icon: <MenuBookIcon />,
                 path: "/secretaria/analiticos",
+              },
+              {
+                title: "Pedidos de equivalencias",
+                subtitle: "Descargá notas o exportá el listado completo.",
+                icon: <SchoolIcon />,
+                path: "/secretaria/pedidos-equivalencias",
               },
             ]
           : []),
@@ -263,18 +276,14 @@ export default function SecretariaIndex() {
 
   return (
     <Stack gap={4}>
-      <Box>
-        <Typography variant="h5" fontWeight={800}>
-          Secretaría
-        </Typography>
-        <Typography color="text.secondary">Centro de operaciones agrupado por módulos</Typography>
-      </Box>
+      <PageHero
+        title="Secretaría"
+        subtitle="Centro de operaciones agrupado por módulos"
+      />
 
       {visibleSections.map((section) => (
         <Box key={section.title}>
-          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-            {section.title}
-          </Typography>
+          <SectionTitlePill title={section.title} />
           <Grid container spacing={2}>
             {section.items.map((item) => (
               <SectionCard key={item.title} {...item} />

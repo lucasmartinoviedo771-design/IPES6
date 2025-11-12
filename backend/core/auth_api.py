@@ -132,8 +132,12 @@ def login(request, payload: LoginIn):
         return 429, {"detail": "Demasiados intentos fallidos. Intenta nuevamente mas tarde."}
 
     u = _resolve_user_by_identifier(payload.login)
+    print(f"DEBUG: payload.login: {payload.login}")
+    print(f"DEBUG: Resolved user (u): {u}")
     username = u.username if u else payload.login
+    print(f"DEBUG: Username for authenticate: {username}")
     user = authenticate(request, username=username, password=payload.password)
+    print(f"DEBUG: Result of authenticate: {user}")
     if not user:
         attempts = cache.get(cache_key, 0) + 1
         cache.set(cache_key, attempts, timeout=window)

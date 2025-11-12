@@ -40,9 +40,17 @@ import { useQuery } from "@tanstack/react-query";
 import { obtenerResumenMensajes } from "@/api/mensajes";
 import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
 import UserGuideDisplay from "../guia/UserGuideDisplay"; // Importar componente de guía
+import ipesLogoFull from "@/assets/ipes-logo.png";
 import ipesLogoDark from "@/assets/ipes-logo-dark.png";
+import {
+  INSTITUTIONAL_GREEN,
+  INSTITUTIONAL_TERRACOTTA,
+  INSTITUTIONAL_TERRACOTTA_DARK,
+  SIDEBAR_GRADIENT,
+} from "@/styles/institutionalColors";
 
 const drawerWidth = 280;
+const collapsedDrawerWidth = 0;
 
 export default function AppShell({ children }: PropsWithChildren) {
   const { user, logout } = useAuth();
@@ -65,19 +73,17 @@ export default function AppShell({ children }: PropsWithChildren) {
     "admin",
     "secretaria",
     "bedel",
-    "preinscripciones",
     "jefa_aaee",
     "jefes",
     "tutor",
     "coordinador",
     "consulta"
   ]);
-  const canPreins = hasAnyRole(user, ["admin", "secretaria", "bedel", "preinscripciones"]);
+  const canPreins = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
   const canSeeCarreras = hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
-    "preinscripciones",
     "coordinador",
     "tutor",
     "jefes",
@@ -87,7 +93,6 @@ export default function AppShell({ children }: PropsWithChildren) {
     "admin",
     "secretaria",
     "bedel",
-    "preinscripciones",
     "jefa_aaee",
     "jefes",
     "tutor",
@@ -115,10 +120,7 @@ export default function AppShell({ children }: PropsWithChildren) {
   ]);
   const canPrimeraCarga = hasAnyRole(user, ["admin", "secretaria", "bedel"]); // New role check
 
-  const canUseMessages =
-    !!user &&
-    (!hasAnyRole(user, ["preinscripciones"]) ||
-      hasAnyRole(user, ["admin", "secretaria", "bedel"]));
+  const canUseMessages = !!user;
 
 
   const { data: messageSummary } = useQuery({
@@ -146,11 +148,11 @@ export default function AppShell({ children }: PropsWithChildren) {
     "& .MuiListItemIcon-root": { color: "inherit", minWidth: 32 },
     "& .MuiListItemText-primary": { fontWeight: 600, fontSize: 14 },
     "&.Mui-selected": {
-      backgroundColor: "rgba(255,255,255,0.15)",
-      boxShadow: "0 15px 35px rgba(0,0,0,0.45)",
+      backgroundColor: "rgba(183,105,78,0.35)",
+      boxShadow: "0 15px 35px rgba(125,127,110,0.45)",
     },
     "&:hover": {
-      backgroundColor: "rgba(255,255,255,0.1)",
+      backgroundColor: "rgba(125,127,110,0.25)",
     },
   };
 
@@ -175,8 +177,12 @@ export default function AppShell({ children }: PropsWithChildren) {
           color: "#0f172a",
           borderBottom: "1px solid #e2e8f0",
           zIndex: (t) => t.zIndex.drawer + 1,
-          ml: open ? `${drawerWidth}px` : "72px",
-          width: open ? `calc(100% - ${drawerWidth}px)` : "calc(100% - 72px)",
+          ml: { lg: open ? `${drawerWidth}px` : `${collapsedDrawerWidth}px` },
+          width: {
+            lg: open
+              ? `calc(100% - ${drawerWidth}px)`
+              : `calc(100% - ${collapsedDrawerWidth}px)`,
+          },
           transition: "margin 0.3s ease, width 0.3s ease",
         }}
       >
@@ -198,8 +204,8 @@ export default function AppShell({ children }: PropsWithChildren) {
           <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", gap: 1 }}>
             <Box
               component="img"
-              src={ipesLogoDark}
-              alt="IPES6"
+              src={ipesLogoFull}
+              alt="IPES"
               sx={{ height: 64, objectFit: "contain" }}
             />
           </Box>
@@ -249,7 +255,12 @@ export default function AppShell({ children }: PropsWithChildren) {
               <Button
                 component={Link}
                 to="/cambiar-password"
-                sx={{ textTransform: "none", fontWeight: 600, color: "#2563eb", borderRadius: 10 }}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  color: INSTITUTIONAL_TERRACOTTA,
+                  borderRadius: 10,
+                }}
               >
                 Cambiar contraseña
               </Button>
@@ -262,8 +273,8 @@ export default function AppShell({ children }: PropsWithChildren) {
                 textTransform: "none",
                 borderRadius: 10,
                 px: 3,
-                backgroundColor: "#2563eb",
-                "&:hover": { backgroundColor: "#1d4ed8" },
+                backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
               }}
             >
               Salir
@@ -287,12 +298,12 @@ export default function AppShell({ children }: PropsWithChildren) {
         variant="permanent"
         open={open}
         sx={{
-          width: drawerWidth,
+          width: open ? drawerWidth : collapsedDrawerWidth,
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: {
             width: drawerWidth,
             boxSizing: "border-box",
-            background: "linear-gradient(180deg,#050915 0%,#070d1f 60%,#050d20 100%)",
+            background: SIDEBAR_GRADIENT,
             borderRight: "1px solid rgba(255,255,255,0.08)",
             color: "#fff",
             paddingBottom: 3,
@@ -318,13 +329,13 @@ export default function AppShell({ children }: PropsWithChildren) {
                 component="img"
                 src={ipesLogoDark}
                 alt="IPES6"
-                sx={{ height: 60, objectFit: "contain" }}
+                sx={{ height: 45, objectFit: "contain" }}
               />
             </Box>
             <Typography variant="caption" sx={{ textTransform: "uppercase", letterSpacing: 3, color: "rgba(255,255,255,0.6)", display: "none" }}>
               Gestión educativa
             </Typography>
-            <Box sx={{ width: 56, height: 4, borderRadius: 10, backgroundColor: "#33ffcc", display: "none" }} />
+            <Box sx={{ width: 56, height: 4, borderRadius: 10, backgroundColor: INSTITUTIONAL_TERRACOTTA, display: "none" }} />
           </Box>
           <IconButton size="small" onClick={() => setOpen(false)} aria-label="Ocultar menú" sx={{ color: "#fff" }}>
             <ChevronLeftIcon fontSize="small" />
@@ -453,8 +464,8 @@ export default function AppShell({ children }: PropsWithChildren) {
             top: "50%",
             transform: "translateY(-50%)",
             zIndex: 1400,
-            backgroundColor: "#050915",
-            border: "1px solid rgba(255,255,255,0.1)",
+            backgroundColor: INSTITUTIONAL_GREEN,
+            border: "1px solid rgba(255,255,255,0.15)",
             borderLeft: "none",
             borderRadius: "0 10px 10px 0",
             boxShadow: 1,
@@ -474,10 +485,9 @@ export default function AppShell({ children }: PropsWithChildren) {
           minHeight: "100vh",
           backgroundColor: "#f1f3f9",
           transition: "margin 0.3s ease",
-          ml: { lg: open ? 0 : "72px" },
-          pt: 10,
+          pt: 1,
           px: { xs: 2, md: 4 },
-          pb: 4,
+          pb: 1,
         }}
       >
         <Toolbar sx={{ minHeight: 64 }} />

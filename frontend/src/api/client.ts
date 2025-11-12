@@ -1,6 +1,18 @@
 // src/api/client.ts
 import axios, { AxiosRequestConfig } from "axios";
 
+const fallbackBase = (() => {
+  if (typeof window === "undefined") {
+    return "http://localhost:8000/api";
+  }
+  const currentOrigin = window.location.origin;
+  const isLocalOrigin = /^(https?:\/\/)?(localhost|127\.0\.0\.1)/i.test(currentOrigin);
+  if (isLocalOrigin) {
+    return "http://localhost:8000/api";
+  }
+  return `${currentOrigin.replace(/\/$/, "")}/api`;
+})();
+
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
 
 export const client = axios.create({

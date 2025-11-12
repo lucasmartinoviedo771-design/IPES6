@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FormProvider, SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";
+import { FieldErrors, FormProvider, SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Button, Step, StepLabel, Stepper, Typography, Paper, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import Contacto from "./steps/Contacto";
 import EstudiosSecundarios from "./steps/EstudiosSecundarios";
 import EstudiosSuperiores from "./steps/EstudiosSuperiores";
 import DatosLaborales from "./steps/DatosLaborales";
+import AccesibilidadApoyos from "./steps/AccesibilidadApoyos";
 import CarreraDocumentacion from "./steps/CarreraDocumentacion";
 import Confirmacion from "./steps/Confirmacion";
 
@@ -30,6 +31,7 @@ const steps = [
   "Datos personales",
   "Contacto",
   "Estudios",
+  "Accesibilidad",
   "Carrera y Docs",
   "Confirmar y Enviar",
 ];
@@ -61,7 +63,14 @@ type SubmitState =
 
 export default function PreinscripcionWizard() {
   // const navigate = useNavigate();
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  let recaptchaContext: ReturnType<typeof useGoogleReCaptcha> | null = null;
+  try {
+    recaptchaContext = useGoogleReCaptcha();
+  } catch {
+    // El hook lanza si no existe provider; ignoramos en entornos sin reCAPTCHA
+    recaptchaContext = null;
+  }
+  const executeRecaptcha = recaptchaContext?.executeRecaptcha;
   const [honeypotValue, setHoneypotValue] = useState('');
   const [activeStep, setActiveStep] = useState(0);
   const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
@@ -139,7 +148,21 @@ export default function PreinscripcionWizard() {
     if (activeStep === steps.length - 1) setPdfDownloaded(false);
   }, [activeStep]);
 
-  const handleNext = () => setActiveStep((s) => s + 1);
+  const handleNext = async () => {
+    if (activeStep === 3) {
+      const consentGiven = form.getValues("consentimiento_datos");
+      const valid = await form.trigger(["condicion_salud_detalle", "consentimiento_datos"] as any, { shouldFocus: true });
+      if (!consentGiven) {
+        form.setError("consentimiento_datos", {
+          type: "manual",
+          message: "Debés aceptar el consentimiento expreso para continuar.",
+        });
+        return;
+      }
+      if (!valid) return;
+    }
+    setActiveStep((s) => Math.min(s + 1, steps.length - 1));
+  };
   const handleBack = () => setActiveStep((s) => s - 1);
 
   const onSubmit: SubmitHandler<PreinscripcionForm> = async (values) => {
@@ -149,11 +172,9 @@ export default function PreinscripcionWizard() {
       if (executeRecaptcha) {
         try {
           captchaToken = await executeRecaptcha("preinscripcion_submit");
-        } catch (captchaError) {
-          console.warn("No se pudo ejecutar reCAPTCHA", captchaError);
+        } catch {
+          /* ignored */
         }
-      } else {
-        console.warn("reCAPTCHA no está disponible, se envía sin token.");
       }
       const payload = buildPayload(values, captchaToken, honeypotValue);
       const response = await crearPreinscripcion(payload);
@@ -235,7 +256,7 @@ export default function PreinscripcionWizard() {
         name="website"
         style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}
       />
-      <Paper sx={{ p: 3, maxWidth: 900, mx: "auto" }}>
+      <Paper sx={{ p: 3, maxWidth: 900, mx: "auto", borderRadius: 5 }}>
         <Typography variant="h4" sx={{ mb: 2 }}>Preinscripción</Typography>
         <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
           {steps.map((label) => (
@@ -244,7 +265,7 @@ export default function PreinscripcionWizard() {
         </Stepper>
 
         {/* Contenido del paso */}
-        <Box sx={{ p: 2, border: "1px solid #eee", borderRadius: 2 }}>
+        <Box sx={{ p: 2.5, border: "1px solid #e5e7eb", borderRadius: 5 }}>
           {activeStep === 0 && <DatosPersonales />}
           {activeStep === 1 && <Contacto />}
           {activeStep === 2 && (
@@ -258,14 +279,15 @@ export default function PreinscripcionWizard() {
               </Box>
             </>
           )}
-          {activeStep === 3 && (
+          {activeStep === 3 && <AccesibilidadApoyos />}
+          {activeStep === 4 && (
             <CarreraDocumentacion
               carreras={carreras}
               isLoading={carrerasLoading}
               onFileChange={setPhotoFile}
             />
           )}
-          {activeStep === 4 && (
+          {activeStep === 5 && (
             submit.status !== "ok" ? 
             <Confirmacion carreraNombre={carreraNombre} onDownloaded={() => setPdfDownloaded(true)} /> : 
             <Alert severity="success">
@@ -284,19 +306,25 @@ export default function PreinscripcionWizard() {
               localStorage.removeItem(STORAGE_KEY);
               form.reset(defaultValues);
             }}
+            sx={{ borderRadius: 5 }}
           >
             Limpiar Formulario
           </Button>
           <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"}>
+            <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"} sx={{ borderRadius: 5 }}>
               Atrás
             </Button>
           {activeStep < steps.length - 1 ? (
-            <Button variant="contained" onClick={handleNext}>
+            <Button variant="contained" onClick={() => void handleNext()} sx={{ borderRadius: 5 }}>
               Siguiente
             </Button>
           ) : (
-            <Button variant="contained" onClick={handleSubmit} disabled={!pdfDownloaded || submit.status === "loading" || submit.status === "ok"}>
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={!pdfDownloaded || submit.status === "loading" || submit.status === "ok"}
+              sx={{ borderRadius: 5 }}
+            >
               {submit.status === "loading" ? <CircularProgress size={24} /> : "Enviar Preinscripción"}
             </Button>
           )}

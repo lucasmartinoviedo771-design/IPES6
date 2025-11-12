@@ -1,13 +1,17 @@
-import { Stack, Typography, Button } from "@mui/material";
+import { Stack, Button } from "@mui/material";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
+import { PageHero } from "@/components/ui/GradientTitles";
+import { getDefaultHomeRoute } from "@/utils/roles";
 
 export default function Forbidden() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const homeTarget = user ? getDefaultHomeRoute(user) : "/login";
 
   const handleLoginClick = async () => {
     if (loggingOut) return;
@@ -27,18 +31,27 @@ export default function Forbidden() {
     }
   };
 
+  const handleGoHome = () => {
+    navigate(homeTarget, { replace: true });
+  };
+
   return (
     <Stack alignItems="center" mt={10} spacing={3} px={2}>
-      <Typography variant="h4">403 - No autorizado</Typography>
-      <Typography color="text.secondary" textAlign="center" maxWidth={520}>
-        No tenes permisos para acceder a esta seccion. Inicia sesion con un
-        usuario habilitado o continua con la preinscripcion.
-      </Typography>
+      <PageHero
+        title="403 - No autorizado"
+        subtitle="No tenés permisos para acceder a esta sección. Iniciá sesión con un usuario habilitado o continuá con la preinscripción."
+        sx={{ width: "100%", maxWidth: 720, textAlign: "center" }}
+      />
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={2}
         alignItems="center"
       >
+        {user && (
+          <Button variant="contained" color="secondary" onClick={handleGoHome}>
+            Ir a mi panel
+          </Button>
+        )}
         <Button
           variant="contained"
           color="primary"

@@ -102,7 +102,7 @@ def _verify_recaptcha(token: str | None, remote_ip: str) -> bool:
 
 
 router = Router(tags=["preinscriptions"])
-PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "preinscripciones"}
+PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
 
 

@@ -68,7 +68,7 @@ const tipoOptions: Option[] = [
   { id: 1, label: "Feriado" },
   { id: 2, label: "Suspensión de actividades" },
   { id: 3, label: "Licencia institucional" },
-  { id: 4, label: "Feria / periodo sin asistencia" },
+  { id: 4, label: "Feria / período sin asistencia" },
 ];
 
 const tipoValueMap: Record<number, string> = {
@@ -82,12 +82,12 @@ const subtipoOptions: Record<string, Option[]> = {
   feriado: [
     { id: 1, label: "General" },
     { id: 2, label: "Feria académica / receso" },
-    { id: 3, label: "Periodo sin asistencia" },
+    { id: 3, label: "Período sin asistencia" },
     { id: 4, label: "Otro" },
   ],
   suspension: [
     { id: 1, label: "General" },
-    { id: 2, label: "Periodo sin asistencia" },
+    { id: 2, label: "Período sin asistencia" },
     { id: 3, label: "Otro" },
   ],
   licencia: [
@@ -98,7 +98,7 @@ const subtipoOptions: Record<string, Option[]> = {
   ],
   receso: [
     { id: 1, label: "Feria académica / receso" },
-    { id: 2, label: "Periodo sin asistencia" },
+    { id: 2, label: "Período sin asistencia" },
     { id: 3, label: "General" },
   ],
 };
@@ -531,7 +531,7 @@ const CalendarioEventosPanel = ({ canManage }: Props) => {
                     {...field}
                     label="Nombre del evento"
                     error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message || "Ej: Suspension por paro provincial"}
+                    helperText={fieldState.error?.message || "Ej: Suspensión por paro provincial"}
                     fullWidth
                   />
                 )}

@@ -46,6 +46,51 @@ export default function EstudiosSuperiores() {
       <Grid item xs={12} md={6}>
         <RHFDate name="sup1_fecha_egreso" label="Fecha de egreso" maxDate={dayjs()} />
       </Grid>
+      <Grid item xs={12} md={4}>
+        <Controller
+          name="sup1_localidad"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Localidad"
+              fullWidth
+              error={!!errors.sup1_localidad}
+              helperText={errors.sup1_localidad?.message}
+            />
+          )}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Controller
+          name="sup1_provincia"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Provincia"
+              fullWidth
+              error={!!errors.sup1_provincia}
+              helperText={errors.sup1_provincia?.message}
+            />
+          )}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Controller
+          name="sup1_pais"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="País"
+              fullWidth
+              error={!!errors.sup1_pais}
+              helperText={errors.sup1_pais?.message}
+            />
+          )}
+        />
+      </Grid>
     </Grid>
   );
 }

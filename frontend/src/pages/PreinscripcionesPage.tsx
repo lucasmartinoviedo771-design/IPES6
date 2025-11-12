@@ -9,7 +9,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Typography,
   Button,
   Chip,
   CircularProgress,
@@ -22,12 +21,14 @@ import {
   Divider,
   Alert,
   FormGroup,
+  Typography,
 } from "@mui/material";
 import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion, activarPreinscripcion, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import dayjs from "dayjs";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
   const norm = (estado || '').toLowerCase();
@@ -40,7 +41,7 @@ function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
   };
   const label = activa === false ? 'Borrada' : estado;
   const color = (activa === false ? 'error' : (map[norm] ?? 'default')) as any;
-  return <Chip label={label} color={color} size="small" sx={{ borderRadius: 99, textTransform: "capitalize" }} />;
+  return <Chip label={label} color={color} size="small" sx={{ borderRadius: 2, textTransform: "capitalize" }} />;
 }
 
 export default function PreinscripcionesPage() {
@@ -91,12 +92,13 @@ export default function PreinscripcionesPage() {
   };
 
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>
-        Gestión de Preinscripciones
-      </Typography>
+    <Stack gap={3}>
+      <PageHero
+        title="Gestión de Preinscripciones"
+        subtitle="Seguimiento completo de solicitudes, documentación y estados"
+      />
 
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: 2, borderRadius: 10 }}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <TextField
             label="Buscar (DNI, Apellido/Nombre, Código)"
@@ -104,9 +106,17 @@ export default function PreinscripcionesPage() {
             value={q}
             onChange={(e)=> setQ(e.target.value)}
             sx={{ minWidth: 360 }}
+            InputProps={{
+              sx: { borderRadius: 3 },
+            }}
           />
           <FormControlLabel control={<Checkbox size="small" checked={inclInactivas} onChange={(e)=> setInclInactivas(e.target.checked)} />} label="Incluir inactivas" />
-          <Button startIcon={<AddIcon/>} variant="contained" onClick={()=> navigate('/preinscripcion')}>
+          <Button
+            startIcon={<AddIcon/>}
+            variant="contained"
+            sx={{ borderRadius: 3 }}
+            onClick={()=> navigate('/preinscripcion')}
+          >
             Nueva Preinscripción
           </Button>
         </Stack>
@@ -184,7 +194,7 @@ export default function PreinscripcionesPage() {
 
       {/* Panel inline para Formalizar inscripción */}
       {codigoSel && (
-        <Paper sx={{ p:2 }}>
+        <Paper sx={{ p:2, borderRadius: 10 }}>
           <Stack gap={2}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h6" fontWeight={700}>Formalizar inscripción — {codigoSel}</Typography>

@@ -35,6 +35,7 @@ import {
 import { listarComisiones, listarMaterias, ComisionDTO, MateriaDTO } from "@/api/comisiones";
 import { fetchCarreras, listarPlanes, Carrera, PlanDetalle } from "@/api/carreras";
 import CalendarioEventosPanel from "@/components/asistencia/CalendarioEventosPanel";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type Option = { id: number; label: string };
 type DateOption = { id: string; label: string };
@@ -405,14 +406,10 @@ const AsistenciaReportesPage = () => {
   return (
     <Box sx={{ px: { xs: 1, md: 2 }, py: 1 }}>
       <Stack spacing={3}>
-        <Stack spacing={0.5}>
-          <Typography variant="h4" fontWeight={700}>
-            Reportes de asistencia
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Filtros rapidos para acompanar el seguimiento diario de estudiantes y docentes.
-          </Typography>
-        </Stack>
+        <PageHero
+          title="Reportes de asistencia"
+          subtitle="Filtros rápidos para acompañar el seguimiento diario de estudiantes y docentes"
+        />
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
@@ -436,7 +433,7 @@ const AsistenciaReportesPage = () => {
                     variant={puedeGestionarEstudiantes ? "filled" : "outlined"}
                     sx={{
                       "& .MuiChip-icon": {
-                        color: puedeGestionarEstudiantes ? "common.white !important" : undefined,
+                        color: "common.white !important",
                       },
                     }}
                   />
@@ -447,7 +444,7 @@ const AsistenciaReportesPage = () => {
                     variant={puedeVerEstudiantes ? "filled" : "outlined"}
                     sx={{
                       "& .MuiChip-icon": {
-                        color: puedeVerEstudiantes ? "common.white !important" : undefined,
+                        color: "common.white !important",
                       },
                     }}
                   />
@@ -660,7 +657,7 @@ const AsistenciaReportesPage = () => {
                     variant={puedeGestionarDocentes ? "filled" : "outlined"}
                     sx={{
                       "& .MuiChip-icon": {
-                        color: puedeGestionarDocentes ? "common.white !important" : undefined,
+                        color: "common.white !important",
                       },
                     }}
                   />
@@ -671,7 +668,7 @@ const AsistenciaReportesPage = () => {
                     variant={puedeVerDocentes ? "filled" : "outlined"}
                     sx={{
                       "& .MuiChip-icon": {
-                        color: puedeVerDocentes ? "common.white !important" : undefined,
+                        color: "common.white !important",
                       },
                     }}
                   />

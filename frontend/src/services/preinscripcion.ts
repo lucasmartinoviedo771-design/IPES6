@@ -82,6 +82,9 @@ function mapToApiPayload(v: any) {
     sup1_titulo: v.sup1_titulo || null,
     sup1_establecimiento: v.sup1_establecimiento || null,
     sup1_fecha_egreso: asDate(v.sup1_fecha_egreso),
+    sup1_localidad: v.sup1_localidad || null,
+    sup1_provincia: v.sup1_provincia || null,
+    sup1_pais: v.sup1_pais || null,
     // laborales
     trabaja: !!v.trabaja,
     empleador: v.empleador || null,
