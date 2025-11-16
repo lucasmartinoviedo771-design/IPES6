@@ -36,31 +36,31 @@ const CargarHorarioPage: React.FC = () => {
   const [selectedBlocks, setSelectedBlocks] = useState<Set<number>>(new Set());
   const [horarioCatedra, setHorarioCatedra] = useState<HorarioCatedraDTO | null>(null);
 
-  const handleFilterChange = (newFilters: any) => {
+  const handleFilterChange = useCallback((newFilters: any) => {
     setFilters(newFilters);
     setSelectedMateriaId(null);
     setHorasRequeridas(0);
     setHorasAsignadas(0);
     setSelectedBlocks(new Set());
     setHorarioCatedra(null);
-  };
+  }, []);
 
-  const handleMateriaChange = (materiaId: number | null) => {
+  const handleMateriaChange = useCallback((materiaId: number | null) => {
     setSelectedMateriaId(materiaId);
     setSelectedBlocks(new Set());
     setHorasAsignadas(0);
     setHorarioCatedra(null);
-  };
+  }, []);
 
-  const handleBlocksSelected = (count: number, blocks: Set<number>) => {
+  const handleBlocksSelected = useCallback((count: number, blocks: Set<number>) => {
     setHorasAsignadas(count);
     setSelectedBlocks(blocks);
-  };
+  }, []);
 
-  const handleClearSelection = () => {
+  const handleClearSelection = useCallback(() => {
     setSelectedBlocks(new Set());
     setHorasAsignadas(0);
-  };
+  }, []);
 
   const fetchHorario = useCallback(async () => {
     if (selectedMateriaId && filters.turnoId && filters.anioLectivo) {

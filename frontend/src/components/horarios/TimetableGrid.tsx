@@ -164,7 +164,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
       setMaterias([]);
       onMateriaChange(null);
     }
-  }, [planId, anioCarrera, cuatrimestre, onMateriaChange]);
+  }, [planId, anioCarrera, cuatrimestre]);
 
   useEffect(() => {
     if (anioCarrera && turnoId) {

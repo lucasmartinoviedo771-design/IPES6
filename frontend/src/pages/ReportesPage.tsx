@@ -18,7 +18,7 @@ function ResumenInscripcionesChart() {
             <Typography variant="h6" component="h2" gutterBottom>
                 Resumen de Preinscripciones por Profesorado
             </Typography>
-            <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+            <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="profesorado" />
@@ -47,7 +47,7 @@ function ResumenAcademicoChart() {
             <Typography variant="h6" component="h2" gutterBottom>
                 Resumen Académico por Profesorado
             </Typography>
-            <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+            <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="profesorado" />
@@ -77,7 +77,7 @@ function ResumenAsistenciaChart() {
             <Typography variant="h6" component="h2" gutterBottom>
                 Resumen de Asistencia por Profesorado
             </Typography>
-            <ResponsiveContainer width="100%" height="100%" minHeight={260}>
+            <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="profesorado" />

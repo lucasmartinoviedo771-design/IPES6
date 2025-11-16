@@ -21,7 +21,8 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
+import BackButton from "@/components/ui/BackButton";
+import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import {
   solicitarInscripcionMateria,
   cancelarInscripcionMateria,
@@ -133,6 +134,8 @@ const InscripcionMateriaPage: React.FC = () => {
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmInscripcionOpen, setConfirmInscripcionOpen] = useState(false);
+  const [materiaConfirmId, setMateriaConfirmId] = useState<number | null>(null);
 
   const normalizedDni = dniFiltro.trim();
   const shouldFetchInscriptas = !puedeGestionar || normalizedDni.length > 0;
@@ -335,15 +338,6 @@ const InscripcionMateriaPage: React.FC = () => {
     inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
   };
   const ventana = ventanaQ.data ?? null;
-  const inscripcionesData = inscripcionesQ.data ?? [];
-
-  const yaInscriptas = new Set<number>([...(historial.inscriptasActuales || []), ...seleccionadas]);
-  const periodo = (ventana?.periodo ?? "1C_ANUALES") as "1C_ANUALES" | "2C";
-  const esPeriodoHabilitado = (m: Materia) =>
-    periodo === "1C_ANUALES"
-      ? (m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C")
-      : m.cuatrimestre === "2C";
-
   const ventanaActiva = useMemo(() => {
     if (!ventana) return false;
     try {
@@ -355,6 +349,22 @@ const InscripcionMateriaPage: React.FC = () => {
       return Boolean(ventana?.activo);
     }
   }, [ventana]);
+  const puedeInscribirse = ventanaActiva;
+  const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
+
+  const inscripcionesData = inscripcionesQ.data ?? [];
+
+  const yaInscriptas = new Set<number>([...(historial.inscriptasActuales || []), ...seleccionadas]);
+  const esPeriodoHabilitado = (m: Materia) => {
+    if (!ventanaActiva || !periodo) return true;
+    if (periodo === "1C_ANUALES") {
+      return m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C";
+    }
+    if (periodo === "2C") {
+      return m.cuatrimestre === "2C";
+    }
+    return true;
+  };
 
   const materiaById = useMemo(() => {
     const map = new Map<number, Materia>();
@@ -541,11 +551,36 @@ const InscripcionMateriaPage: React.FC = () => {
     }
     return "Profesorado";
   }, [selectedCarreraId, materias, carrerasDisponibles]);
-  const periodoLabel = ventana?.periodo === "2C" ? "2º Cuatrimestre" : "1º Cuatrimestre + Anuales";
+  const periodoLabel = ventanaActiva
+    ? ventana?.periodo === "2C"
+      ? "2º Cuatrimestre"
+      : "1º Cuatrimestre + Anuales"
+    : "Sin ventana activa (se muestran todas las materias habilitadas por correlatividad)";
 
   const handleInscribir = (materiaId: number) => {
+    if (!puedeInscribirse) {
+      setErr("No hay una ventana de inscripción habilitada.");
+      return;
+    }
     if (mInscribir.isPending) return;
-    mInscribir.mutate(materiaId);
+    setMateriaConfirmId(materiaId);
+    setConfirmInscripcionOpen(true);
+  };
+
+  const confirmInscripcion = () => {
+    if (materiaConfirmId === null || mInscribir.isPending) return;
+    mInscribir.mutate(materiaConfirmId, {
+      onSettled: () => {
+        setConfirmInscripcionOpen(false);
+        setMateriaConfirmId(null);
+      },
+    });
+  };
+
+  const cancelInscripcionConfirm = () => {
+    if (mInscribir.isPending) return;
+    setConfirmInscripcionOpen(false);
+    setMateriaConfirmId(null);
   };
 
   const handleCancelar = (materiaId: number, inscripcionId?: number | null) => {
@@ -561,8 +596,10 @@ const InscripcionMateriaPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#f9f5ea", minHeight: "100vh" }}>
+    <>
+      <Box sx={{ p: 3, bgcolor: "#f9f5ea", minHeight: "100vh" }}>
       <Stack spacing={3} maxWidth={1180} mx="auto">
+        <BackButton fallbackPath="/alumnos" />
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={2}
@@ -576,8 +613,13 @@ const InscripcionMateriaPage: React.FC = () => {
             </Typography>
             {ventana?.desde && ventana?.hasta && (
               <Typography variant="body2" color="text.secondary">
-                Ventana: {new Date(ventana.desde).toLocaleDateString()} – {new Date(ventana.hasta).toLocaleDateString()}
+                Ventana: {new Date(ventana.desde).toLocaleDateString()} - {new Date(ventana.hasta).toLocaleDateString()}
               </Typography>
+            )}
+            {!puedeInscribirse && !ventanaQ.isLoading && (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                No hay una ventana de inscripción activa. Cuando se habilite vas a poder inscribirte desde aquí.
+              </Alert>
             )}
           </Box>
 
@@ -738,7 +780,11 @@ const InscripcionMateriaPage: React.FC = () => {
                                 size="small"
                                 sx={{ mt: 1 }}
                                 onClick={() => handleInscribir(materia.id)}
-                                disabled={mInscribir.isPending && pendingMateriaId === materia.id}
+                                disabled={
+                                  !puedeInscribirse ||
+                                  materia.status !== "habilitada" ||
+                                  (mInscribir.isPending && pendingMateriaId === materia.id)
+                                }
                               >
                                 Inscribirme
                               </Button>
@@ -869,6 +915,14 @@ const InscripcionMateriaPage: React.FC = () => {
         </Paper>
       </Stack>
     </Box>
+    <FinalConfirmationDialog
+      open={confirmInscripcionOpen}
+      onConfirm={confirmInscripcion}
+      onCancel={cancelInscripcionConfirm}
+      contextText="Nuevos Registros"
+      loading={mInscribir.isPending}
+    />
+    </>
   );
 };
 

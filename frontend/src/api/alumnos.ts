@@ -54,6 +54,7 @@ export type PedidoEquivalenciaMateriaPayload = {
   nombre: string;
   formato?: string;
   anio_cursada?: string;
+  nota?: string;
 };
 
 export type PedidoEquivalenciaPayload = {
@@ -76,6 +77,9 @@ export type PedidoEquivalenciaMateriaDTO = {
   nombre: string;
   formato?: string | null;
   anio_cursada?: string | null;
+  nota?: string | null;
+  resultado?: "pendiente" | "otorgada" | "rechazada" | null;
+  observaciones?: string | null;
 };
 
 export type PedidoEquivalenciaDTO = {
@@ -83,6 +87,8 @@ export type PedidoEquivalenciaDTO = {
   tipo: 'ANEXO_A' | 'ANEXO_B';
   estado: 'draft' | 'final';
   estado_display: string;
+  workflow_estado: 'draft' | 'pending_docs' | 'review' | 'titulos' | 'notified';
+  workflow_estado_display?: string;
   ciclo_lectivo?: string | null;
   profesorado_destino_id?: number | null;
   profesorado_destino_nombre?: string | null;
@@ -101,10 +107,75 @@ export type PedidoEquivalenciaDTO = {
   puede_editar: boolean;
   estudiante_dni: string;
   estudiante_nombre?: string | null;
+  requiere_tutoria?: boolean;
+  documentacion_presentada?: boolean;
+  documentacion_detalle?: string | null;
+  documentacion_cantidad?: number | null;
+  documentacion_registrada_en?: string | null;
+  evaluacion_observaciones?: string | null;
+  evaluacion_registrada_en?: string | null;
+  resultado_final?: 'pendiente' | 'otorgada' | 'denegada' | 'mixta';
+  titulos_documento_tipo?: 'ninguno' | 'nota' | 'disposicion' | 'ambos';
+  titulos_nota_numero?: string | null;
+  titulos_nota_fecha?: string | null;
+  titulos_disposicion_numero?: string | null;
+  titulos_disposicion_fecha?: string | null;
+  titulos_observaciones?: string | null;
+  titulos_registrado_en?: string | null;
+  timeline?: {
+    formulario_descargado_en?: string | null;
+    inscripcion_verificada_en?: string | null;
+    documentacion_registrada_en?: string | null;
+    evaluacion_registrada_en?: string | null;
+    titulos_registrado_en?: string | null;
+    notificado_en?: string | null;
+  } | null;
   materias: PedidoEquivalenciaMateriaDTO[];
 };
 
-export async function listarPedidosEquivalencia(params: { dni?: string; estado?: 'draft' | 'final'; profesorado_id?: number; ventana_id?: number } = {}): Promise<PedidoEquivalenciaDTO[]> {
+export type EquivalenciaMateriaPendienteDTO = {
+  id: number;
+  nombre: string;
+  anio: number;
+  plan_id: number;
+};
+
+export type EquivalenciaDisposicionDetalleDTO = {
+  id: number;
+  materia_id: number;
+  materia_nombre: string;
+  nota: string;
+};
+
+export type EquivalenciaDisposicionDTO = {
+  id: number;
+  origen: "primera_carga" | "secretaria";
+  numero_disposicion: string;
+  fecha_disposicion: string;
+  profesorado_id: number;
+  profesorado_nombre: string;
+  plan_id: number;
+  plan_resolucion: string;
+  observaciones?: string | null;
+  creado_por?: string | null;
+  creado_en: string;
+  detalles: EquivalenciaDisposicionDetalleDTO[];
+};
+
+export type EquivalenciaDisposicionPayload = {
+  dni: string;
+  profesorado_id: number;
+  plan_id: number;
+  numero_disposicion: string;
+  fecha_disposicion: string;
+  observaciones?: string | null;
+  detalles: Array<{
+    materia_id: number;
+    nota: string;
+  }>;
+};
+
+export async function listarPedidosEquivalencia(params: { dni?: string; estado?: 'draft' | 'final'; profesorado_id?: number; ventana_id?: number; workflow_estado?: string } = {}): Promise<PedidoEquivalenciaDTO[]> {
   const { data } = await client.get<PedidoEquivalenciaDTO[]>("/alumnos/equivalencias/pedidos", { params });
   return data;
 }
@@ -129,8 +200,78 @@ export async function descargarNotaPedidoEquivalencia(id: number): Promise<Blob>
   return data;
 }
 
+export async function enviarPedidoEquivalencia(id: number): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.post<PedidoEquivalenciaDTO>(`/alumnos/equivalencias/pedidos/${id}/enviar`);
+  return data;
+}
+
+export async function registrarDocumentacionEquivalencia(
+  id: number,
+  payload: { presentada: boolean; cantidad?: number | null; detalle?: string | null },
+): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.post<PedidoEquivalenciaDTO>(
+    `/alumnos/equivalencias/pedidos/${id}/documentacion`,
+    payload,
+  );
+  return data;
+}
+
+export async function registrarEvaluacionEquivalencia(
+  id: number,
+  payload: { materias: Array<{ id: number; resultado: 'otorgada' | 'rechazada'; observaciones?: string | null }>; observaciones?: string | null },
+): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.post<PedidoEquivalenciaDTO>(
+    `/alumnos/equivalencias/pedidos/${id}/evaluacion`,
+    payload,
+  );
+  return data;
+}
+
+export async function registrarTitulosEquivalencia(
+  id: number,
+  payload: { nota_numero?: string | null; nota_fecha?: string | null; disposicion_numero?: string | null; disposicion_fecha?: string | null; observaciones?: string | null },
+): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.post<PedidoEquivalenciaDTO>(
+    `/alumnos/equivalencias/pedidos/${id}/titulos`,
+    payload,
+  );
+  return data;
+}
+
+export async function notificarPedidoEquivalencia(id: number, payload: { mensaje?: string | null } = {}): Promise<PedidoEquivalenciaDTO> {
+  const { data } = await client.post<PedidoEquivalenciaDTO>(
+    `/alumnos/equivalencias/pedidos/${id}/notificar`,
+    payload,
+  );
+  return data;
+}
+
 export async function exportarPedidosEquivalencia(params: { ventana_id?: number; profesorado_id?: number; estado?: 'draft' | 'final' } = {}): Promise<Blob> {
   const { data } = await client.get<Blob>(`/alumnos/equivalencias/export`, { params, responseType: "blob" });
+  return data;
+}
+
+export async function fetchMateriasPendientesEquivalencia(params: { dni: string; profesorado_id: number; plan_id: number }): Promise<EquivalenciaMateriaPendienteDTO[]> {
+  const { data } = await client.get<EquivalenciaMateriaPendienteDTO[]>(
+    "/alumnos/equivalencias/disposiciones/materias",
+    { params },
+  );
+  return data;
+}
+
+export async function crearDisposicionEquivalencia(payload: EquivalenciaDisposicionPayload): Promise<EquivalenciaDisposicionDTO> {
+  const { data } = await client.post<EquivalenciaDisposicionDTO>(
+    "/alumnos/equivalencias/disposiciones",
+    payload,
+  );
+  return data;
+}
+
+export async function listarDisposicionesEquivalencia(params: { dni?: string } = {}): Promise<EquivalenciaDisposicionDTO[]> {
+  const { data } = await client.get<EquivalenciaDisposicionDTO[]>(
+    "/alumnos/equivalencias/disposiciones",
+    { params },
+  );
   return data;
 }
 
@@ -571,6 +712,35 @@ export async function actualizarMesaPlanilla(mesaId: number, payload: { alumnos:
   return data;
 }
 
+export type ConstanciaExamenDTO = {
+  inscripcion_id: number;
+  alumno: string;
+  dni: string;
+  materia: string;
+  materia_anio?: number | null;
+  profesorado?: string | null;
+  plan_resolucion?: string | null;
+  mesa_codigo?: string | null;
+  mesa_fecha: string;
+  mesa_hora_desde?: string | null;
+  mesa_hora_hasta?: string | null;
+  mesa_tipo: string;
+  mesa_modalidad: string;
+  condicion: string;
+  condicion_display: string;
+  nota?: string | null;
+  folio?: string | null;
+  libro?: string | null;
+  tribunal_presidente?: string | null;
+  tribunal_vocal1?: string | null;
+  tribunal_vocal2?: string | null;
+};
+
+export async function obtenerConstanciasExamen(params?: { dni?: string }): Promise<ConstanciaExamenDTO[]> {
+  const { data } = await client.get<ConstanciaExamenDTO[]>(`/alumnos/constancias-examen`, { params });
+  return data;
+}
+
 // --- Administración de estudiantes ---
 
 export interface EstudianteAdminDocumentacionDTO {
@@ -587,6 +757,7 @@ export interface EstudianteAdminDocumentacionDTO {
   escuela_secundaria?: string;
   es_certificacion_docente?: boolean;
   titulo_terciario_univ?: boolean;
+  incumbencia?: boolean;
 }
 
 export interface EstudianteAdminListItemDTO {

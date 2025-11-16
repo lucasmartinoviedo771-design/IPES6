@@ -27,6 +27,7 @@ class AlumnoOut(Schema):
 class CarreraOut(Schema):
     id: int
     nombre: str
+    es_certificacion_docente: bool | None = None
 
 
 class PreinscripcionIn(Schema):
@@ -109,6 +110,7 @@ class ChecklistIn(Schema):
     # Trayecto de certificación docente
     es_certificacion_docente: bool = False
     titulo_terciario_univ: bool = False
+    incumbencia: bool = False
     curso_introductorio_aprobado: bool = False
 
 

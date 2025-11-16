@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Typography, Alert, Stack, TextField, MenuItem, Button, Select, FormControl, InputLabel } from '@mui/material';
+import BackButton from '@/components/ui/BackButton';
 import { solicitarPedidoAnalitico, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
@@ -149,6 +150,7 @@ const PedidoAnaliticoPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <BackButton fallbackPath="/alumnos" />
       <Typography variant="h4" gutterBottom>Solicitud de Pedido de Analítico</Typography>
       <Typography variant="body1" paragraph>Completa el motivo del pedido. Si hay periodo activo podrás enviar la solicitud.</Typography>
       {!ventanaActiva && (<Alert severity="warning" sx={{ mb:2 }}>No hay periodo activo para pedido de analítico.</Alert>)}

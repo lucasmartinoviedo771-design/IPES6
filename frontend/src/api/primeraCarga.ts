@@ -1,4 +1,5 @@
 import api from './axios'; // Changed import
+import { EquivalenciaDisposicionDTO, EquivalenciaDisposicionPayload } from "@/api/alumnos";
 
 interface UploadResult {
   ok: boolean;
@@ -66,6 +67,16 @@ export const uploadEquivalencias = async (data: UploadData): Promise<UploadResul
     },
   });
   return response.data;
+};
+
+export const registrarDisposicionEquivalenciaPrimeraCarga = async (
+  payload: EquivalenciaDisposicionPayload,
+): Promise<EquivalenciaDisposicionDTO> => {
+  const { data } = await api.post<EquivalenciaDisposicionDTO>(
+    "/admin/primera-carga/equivalencias/disposiciones",
+    payload,
+  );
+  return data;
 };
 
 export interface RegularidadMetadataMateria {

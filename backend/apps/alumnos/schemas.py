@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any, Literal
 
 from ninja import Schema
@@ -85,6 +86,28 @@ class MesaResultadoIn(Schema):
 class MesaPlanillaUpdateIn(Schema):
     alumnos: list[MesaResultadoIn]
 
+class ConstanciaExamenItem(Schema):
+    inscripcion_id: int
+    alumno: str
+    dni: str
+    materia: str
+    materia_anio: int | None = None
+    profesorado: str | None = None
+    plan_resolucion: str | None = None
+    mesa_codigo: str | None = None
+    mesa_fecha: str
+    mesa_hora_desde: str | None = None
+    mesa_hora_hasta: str | None = None
+    mesa_tipo: str
+    mesa_modalidad: str
+    condicion: str
+    condicion_display: str
+    nota: str | None = None
+    folio: str | None = None
+    libro: str | None = None
+    tribunal_presidente: str | None = None
+    tribunal_vocal1: str | None = None
+    tribunal_vocal2: str | None = None
 
 # Regularidad (importación por planilla)
 class RegularidadRowIn(Schema):
@@ -137,6 +160,101 @@ class HistorialAlumno(Schema):
     aprobadas: list[int] = []
     regularizadas: list[int] = []
     inscriptas_actuales: list[int] = []
+
+
+class CursoIntroCohorteIn(Schema):
+    nombre: str | None = None
+    anio_academico: int
+    profesorado_id: int | None = None
+    turno_id: int | None = None
+    ventana_id: int | None = None
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
+    cupo: int | None = None
+    observaciones: str | None = None
+
+
+class CursoIntroCohorteOut(Schema):
+    id: int
+    nombre: str | None = None
+    anio_academico: int
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    turno_id: int | None = None
+    turno_nombre: str | None = None
+    ventana_id: int | None = None
+    ventana_tipo: str | None = None
+    fecha_inicio: str | None = None
+    fecha_fin: str | None = None
+    cupo: int | None = None
+    observaciones: str | None = None
+
+
+class CursoIntroRegistroOut(Schema):
+    id: int
+    estudiante_id: int
+    estudiante_nombre: str
+    estudiante_dni: str
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    cohorte_id: int | None = None
+    cohorte_nombre: str | None = None
+    turno_id: int | None = None
+    turno_nombre: str | None = None
+    resultado: str
+    resultado_display: str
+    asistencias_totales: int | None = None
+    nota_final: float | None = None
+    observaciones: str | None = None
+    es_historico: bool
+    resultado_at: str | None = None
+
+
+class CursoIntroRegistroIn(Schema):
+    cohorte_id: int | None = None
+    estudiante_id: int
+    profesorado_id: int | None = None
+    turno_id: int | None = None
+
+
+class CursoIntroAsistenciaIn(Schema):
+    asistencias_totales: int
+
+
+class CursoIntroCierreIn(Schema):
+    nota_final: float | None = None
+    asistencias_totales: int | None = None
+    resultado: str
+    observaciones: str | None = None
+
+
+class CursoIntroPendienteOut(Schema):
+    estudiante_id: int
+    estudiante_dni: str
+    estudiante_nombre: str
+    profesorados: list[dict]
+    anio_ingreso: int | None = None
+
+
+class CursoIntroVentanaOut(Schema):
+    id: int
+    desde: str
+    hasta: str
+    activo: bool
+    periodo: str | None = None
+
+
+class CursoIntroEstadoOut(Schema):
+    aprobado: bool
+    registro_actual: CursoIntroRegistroOut | None = None
+    cohortes_disponibles: list[CursoIntroCohorteOut] = Field(default_factory=list)
+    ventanas: list[CursoIntroVentanaOut] = Field(default_factory=list)
+
+
+class CursoIntroAutoInscripcionIn(Schema):
+    cohorte_id: int
+    profesorado_id: int | None = None
+    turno_id: int | None = None
 
 
 InscripcionEstado = Literal["CONF", "PEND", "RECH", "ANUL"]
@@ -228,6 +346,7 @@ class PedidoEquivalenciaMateriaIn(Schema):
     nombre: str = Field(..., min_length=1)
     formato: str | None = None
     anio_cursada: str | None = None
+    nota: str | None = None
 
 
 class PedidoEquivalenciaSaveIn(Schema):
@@ -250,6 +369,18 @@ class PedidoEquivalenciaMateriaOut(Schema):
     nombre: str
     formato: str | None = None
     anio_cursada: str | None = None
+    nota: str | None = None
+    resultado: Literal["pendiente", "otorgada", "rechazada"] | None = None
+    observaciones: str | None = None
+
+
+class PedidoEquivalenciaTimeline(Schema):
+    formulario_descargado_en: str | None = None
+    inscripcion_verificada_en: str | None = None
+    documentacion_registrada_en: str | None = None
+    evaluacion_registrada_en: str | None = None
+    titulos_registrado_en: str | None = None
+    notificado_en: str | None = None
 
 
 class PedidoEquivalenciaOut(Schema):
@@ -257,6 +388,8 @@ class PedidoEquivalenciaOut(Schema):
     tipo: Literal["ANEXO_A", "ANEXO_B"]
     estado: Literal["draft", "final"]
     estado_display: str
+    workflow_estado: Literal["draft", "pending_docs", "review", "titulos", "notified"]
+    workflow_estado_display: str
     ciclo_lectivo: str | None = None
     profesorado_destino_id: int | None = None
     profesorado_destino_nombre: str | None = None
@@ -275,7 +408,96 @@ class PedidoEquivalenciaOut(Schema):
     puede_editar: bool = False
     estudiante_dni: str
     estudiante_nombre: str | None = None
+    requiere_tutoria: bool = False
+    documentacion_presentada: bool = False
+    documentacion_detalle: str | None = None
+    documentacion_cantidad: int | None = None
+    documentacion_registrada_en: str | None = None
+    evaluacion_observaciones: str | None = None
+    evaluacion_registrada_en: str | None = None
+    resultado_final: Literal["pendiente", "otorgada", "denegada", "mixta"]
+    titulos_documento_tipo: Literal["ninguno", "nota", "disposicion", "ambos"]
+    titulos_nota_numero: str | None = None
+    titulos_nota_fecha: str | None = None
+    titulos_disposicion_numero: str | None = None
+    titulos_disposicion_fecha: str | None = None
+    titulos_observaciones: str | None = None
+    titulos_registrado_en: str | None = None
     materias: list[PedidoEquivalenciaMateriaOut] = Field(default_factory=list)
+    timeline: PedidoEquivalenciaTimeline | None = None
+
+
+class PedidoEquivalenciaDocumentacionIn(Schema):
+    presentada: bool
+    cantidad: int | None = None
+    detalle: str | None = None
+
+
+class PedidoEquivalenciaEvaluacionMateriaIn(Schema):
+    id: int
+    resultado: Literal["otorgada", "rechazada"]
+    observaciones: str | None = None
+
+
+class PedidoEquivalenciaEvaluacionIn(Schema):
+    materias: list[PedidoEquivalenciaEvaluacionMateriaIn]
+    observaciones: str | None = None
+
+
+class PedidoEquivalenciaTitulosIn(Schema):
+    nota_numero: str | None = None
+    nota_fecha: str | None = None
+    disposicion_numero: str | None = None
+    disposicion_fecha: str | None = None
+    observaciones: str | None = None
+
+
+class PedidoEquivalenciaNotificarIn(Schema):
+    mensaje: str | None = None
+
+
+class EquivalenciaDisposicionDetalleIn(Schema):
+    materia_id: int
+    nota: str
+
+
+class EquivalenciaDisposicionDetalleOut(Schema):
+    id: int
+    materia_id: int
+    materia_nombre: str
+    nota: str
+
+
+class EquivalenciaDisposicionCreateIn(Schema):
+    dni: str
+    profesorado_id: int
+    plan_id: int
+    numero_disposicion: str
+    fecha_disposicion: date
+    observaciones: str | None = None
+    detalles: list[EquivalenciaDisposicionDetalleIn]
+
+
+class EquivalenciaDisposicionOut(Schema):
+    id: int
+    origen: Literal["primera_carga", "secretaria"]
+    numero_disposicion: str
+    fecha_disposicion: str
+    profesorado_id: int
+    profesorado_nombre: str
+    plan_id: int
+    plan_resolucion: str
+    observaciones: str | None = None
+    creado_por: str | None = None
+    creado_en: str
+    detalles: list[EquivalenciaDisposicionDetalleOut] = Field(default_factory=list)
+
+
+class EquivalenciaMateriaPendiente(Schema):
+    id: int
+    nombre: str
+    anio: int
+    plan_id: int
 
 
 class RegularidadResumen(Schema):
@@ -309,6 +531,7 @@ class EstudianteAdminDocumentacion(Schema):
     escuela_secundaria: str | None = None
     es_certificacion_docente: bool | None = None
     titulo_terciario_univ: bool | None = None
+    incumbencia: bool | None = None
 
 
 class EstudianteAdminListItem(Schema):

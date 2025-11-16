@@ -29,7 +29,6 @@ export default [
     files: [
       "src/**/*.{js,mjs,cjs,ts,jsx,tsx}",
       "vite.config.ts",
-      "src/test/setupTests.ts",
     ],
     ...tsEslintPlugin.configs.disableTypeChecked,
     languageOptions: {
@@ -47,9 +46,6 @@ export default [
         ...globals.browser,
         ...globals.es2020,
         "React": "readonly",
-        "describe": "readonly",
-        "it": "readonly",
-        "expect": "readonly",
         "JSX": "readonly",
       },
     },

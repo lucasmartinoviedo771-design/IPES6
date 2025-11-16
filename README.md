@@ -27,16 +27,7 @@ El sistema está construido con una arquitectura moderna de dos componentes prin
 
 ## Instalación y Puesta en Marcha
 
-Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarrollo local.
-
-## Testing
-
-Se añadió una estructura básica de pruebas automatizadas para backend y frontend. Consulta `docs/testing/README.md` para:
-- Instalar dependencias opcionales (`pytest`, `vitest`) sin afectar el resto del stack.
-- Ejecutar suites (`python -m pytest`, `npm run test`) y generar cobertura.
-- Preparar fixtures/seed data y checklists manuales por rol.
-- Identificar con precisión todos los archivos que se pueden borrar para volver al estado anterior (sin pruebas).
-- Además, existe un workflow en `.github/workflows/tests.yml` que corre ambas suites automáticamente en cada push o PR a `main`/`develop`. Si necesitas desactivarlo, elimina ese archivo.
+Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarrollo local. El repositorio se encuentra limpio de artefactos de testing o archivos de prueba para simplificar la preparación hacia producción.
 
 ### Requisitos Previos
 

@@ -12,6 +12,8 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import BackButton from '@/components/ui/BackButton';
+import FinalConfirmationDialog from '@/components/ui/FinalConfirmationDialog';
 import {
   solicitarInscripcionMateria,
   obtenerMateriasPlanAlumno,
@@ -187,6 +189,7 @@ const CambioComisionPage: React.FC = () => {
     onSuccess: (res) => {
       setInfo(res?.message || 'Solicitud registrada.');
       setErr(null);
+      setSolicitudPendiente(null);
       queryClient.invalidateQueries({ queryKey: ['cc-inscriptas', normalizedDni] });
       queryClient.invalidateQueries({ queryKey: ['cc-materias', normalizedDni] });
       queryClient.invalidateQueries({ queryKey: ['cc-historial', normalizedDni] });
@@ -194,6 +197,7 @@ const CambioComisionPage: React.FC = () => {
     onError: (error) => {
       setErr(mensajeError(error));
       setInfo(null);
+      setSolicitudPendiente(null);
     },
   });
 
@@ -305,11 +309,45 @@ const CambioComisionPage: React.FC = () => {
     (!ventana.desde || new Date(ventana.desde) <= new Date()) &&
     (!ventana.hasta || new Date(ventana.hasta) >= new Date());
 
+  const [solicitudPendiente, setSolicitudPendiente] = React.useState<{
+    materiaId: number;
+    materiaNombre: string;
+    comisionId: number;
+    comisionLabel: string;
+    profesorado?: string;
+  } | null>(null);
   const [expandedMap, setExpandedMap] = React.useState<Record<number, boolean>>({});
   const toggleExpanded = React.useCallback(
     (id: number) => setExpandedMap((prev) => ({ ...prev, [id]: !prev[id] })),
     [],
   );
+
+  const abrirConfirmacionSolicitud = React.useCallback((materia: Materia, alternativa: AlternativaItem) => {
+    setSolicitudPendiente({
+      materiaId: materia.id,
+      materiaNombre: materia.nombre,
+      comisionId: alternativa.comision.id,
+      comisionLabel: alternativa.comision.codigo || String(alternativa.comision.id),
+      profesorado: alternativa.profesorado,
+    });
+  }, []);
+
+  const solicitudLoading = mSolicitar.isPending;
+
+  const confirmarSolicitud = React.useCallback(() => {
+    if (!solicitudPendiente) {
+      return;
+    }
+    mSolicitar.mutate({
+      materiaId: solicitudPendiente.materiaId,
+      comisionId: solicitudPendiente.comisionId,
+    });
+  }, [mSolicitar, solicitudPendiente]);
+
+  const cancelarSolicitud = React.useCallback(() => {
+    if (solicitudLoading) return;
+    setSolicitudPendiente(null);
+  }, [solicitudLoading]);
 
   const queryError =
     shouldFetch &&
@@ -327,7 +365,9 @@ const CambioComisionPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <>
+      <Box sx={{ p: 3 }}>
+        <BackButton fallbackPath={canGestionar ? '/secretaria' : '/alumnos'} />
       <Typography variant="h4" gutterBottom>
         Cambio de Comision
       </Typography>
@@ -431,9 +471,7 @@ const CambioComisionPage: React.FC = () => {
                       base={entrada}
                       otros={inscripcionesConHorario}
                       disabled={mSolicitar.isPending || !ventanaActiva}
-                      onSolicitar={(comisionId) =>
-                        mSolicitar.mutate({ materiaId: materia.id, comisionId })
-                      }
+                      onSolicitar={(alternativa) => abrirConfirmacionSolicitud(materia, alternativa)}
                     />
                   </Collapse>
                 </Stack>
@@ -442,7 +480,21 @@ const CambioComisionPage: React.FC = () => {
           })}
         </Stack>
       ) : null}
-    </Box>
+      </Box>
+      <FinalConfirmationDialog
+        open={!!solicitudPendiente}
+        onConfirm={confirmarSolicitud}
+        onCancel={cancelarSolicitud}
+        contextText={
+          solicitudPendiente
+            ? `solicitud de cambio de comisión para ${solicitudPendiente.materiaNombre} (Comisión ${solicitudPendiente.comisionLabel}${
+                solicitudPendiente.profesorado ? ` · ${solicitudPendiente.profesorado}` : ''
+              })`
+            : 'cambio de comisión'
+        }
+        loading={solicitudLoading}
+      />
+    </>
   );
 };
 
@@ -455,7 +507,7 @@ function Alternativas({
   base: MateriaBloqueada;
   otros: InscripcionConHorario[];
   disabled: boolean;
-  onSolicitar: (comisionId: number) => void;
+  onSolicitar: (alternativa: AlternativaItem) => void;
 }) {
   const [items, setItems] = React.useState<AlternativaItem[] | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -517,7 +569,7 @@ function Alternativas({
                   size="small"
                   variant="contained"
                   disabled={disabled}
-                  onClick={() => onSolicitar(alt.comision.id)}
+                  onClick={() => onSolicitar(alt)}
                 >
                   Solicitar inscripcion
                 </Button>

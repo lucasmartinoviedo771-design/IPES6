@@ -3,6 +3,8 @@ import { Button, TextField, Typography, Box, Alert, MenuItem, Select, FormContro
 import { listarMesas, inscribirMesa, obtenerHistorialAlumno, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO, MesaListadoItemDTO } from '@/api/alumnos';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
+import BackButton from '@/components/ui/BackButton';
+import FinalConfirmationDialog from '@/components/ui/FinalConfirmationDialog';
 
 const MESA_TIPO_LABEL: Record<string, string> = {
   FIN: 'Ordinaria',
@@ -28,6 +30,8 @@ const MesaExamenPage: React.FC = () => {
   const [carrerasLoading, setCarrerasLoading] = useState(false);
   const [selectedCarreraId, setSelectedCarreraId] = useState<string>('');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [pendingInscripcion, setPendingInscripcion] = useState<{ mesa: MesaListadoItemDTO } | null>(null);
+  const [inscribiendoId, setInscribiendoId] = useState<number | null>(null);
 
   const handleCarreraChange = (event: any) => {
     const value = String(event.target.value ?? '');
@@ -201,11 +205,24 @@ useEffect(() => {
   })();
 }, [dni, canGestionar]);
 
-  const onInscribir = async (mesaId:number)=>{
+  const handleOpenInscripcionConfirm = (mesa: MesaListadoItemDTO) => {
+    setPendingInscripcion({ mesa });
+  };
+
+  const handleCancelInscripcionConfirm = () => {
+    if (inscribiendoId !== null) return;
+    setPendingInscripcion(null);
+  };
+
+  const handleConfirmInscripcion = async () => {
+    if (!pendingInscripcion) return;
+    const mesaId = pendingInscripcion.mesa.id;
+    setInscribiendoId(mesaId);
     try{
       const res = await inscribirMesa({ mesa_id: mesaId, dni: canGestionar ? (dni||undefined) : undefined });
       setInfo(res.message);
       setErr(null);
+      setPendingInscripcion(null);
     }catch(e:any){
       const data = e?.response?.data;
       let message = typeof data === 'string' ? data : data?.message || data?.detail || e?.message || 'No se pudo inscribir';
@@ -214,11 +231,14 @@ useEffect(() => {
       }
       setErr(message);
       setInfo(null);
+    } finally {
+      setInscribiendoId(null);
     }
   }
 
   return (
     <Box sx={{ p: 3 }}>
+      <BackButton fallbackPath="/alumnos" />
       <Typography variant="h4" gutterBottom>Mesas de Examen</Typography>
       <Typography variant="body1" paragraph>Inscribite a mesas habilitadas. Evita superposición y respeta correlatividades.</Typography>
       {info && <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert>}
@@ -322,7 +342,7 @@ useEffect(() => {
                       Código: {mesa.codigo}
                     </Typography>
                   )}
-                  <Button size="small" variant="contained" onClick={()=>onInscribir(mesa.id)}>Inscribirme</Button>
+                   <Button size="small" variant="contained" onClick={()=>handleOpenInscripcionConfirm(mesa)} disabled={inscribiendoId === mesa.id}>Inscribirme</Button>
                 </Stack>
               </Paper>
             </Grid>
@@ -332,6 +352,17 @@ useEffect(() => {
           )}
         </>
       </Grid>
+      <FinalConfirmationDialog
+        open={Boolean(pendingInscripcion)}
+        onConfirm={handleConfirmInscripcion}
+        onCancel={handleCancelInscripcionConfirm}
+        contextText={
+          pendingInscripcion
+            ? `inscripción a la mesa de ${pendingInscripcion.mesa.materia?.nombre ?? pendingInscripcion.mesa.materia_nombre}`
+            : "inscripción seleccionada"
+        }
+        loading={inscribiendoId !== null}
+      />
     </Box>
   );
 };

@@ -28,6 +28,7 @@ import { client as api } from "@/api/client";
 import { useParams } from "react-router-dom";
 import { toast } from "@/utils/toast";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 interface Materia {
   id: number;
@@ -290,11 +291,15 @@ export default function CargarMateriasPage() {
   const heroSubtitle = planDeEstudio?.resolucion
     ? `Plan ${planDeEstudio.resolucion}`
     : isLoadingPlanDeEstudio
-    ? "Cargando plan seleccionado..."
-    : "Seleccioná un plan para comenzar.";
+      ? "Cargando plan seleccionado..."
+      : "Seleccion� un plan para comenzar.";
+  const backPath = planDeEstudio?.profesorado_id
+    ? `/secretaria/profesorado/${planDeEstudio.profesorado_id}/planes`
+    : "/secretaria/profesorado";
 
   return (
     <Stack gap={3}>
+      <BackButton fallbackPath={backPath} />
       <PageHero title={heroTitle} subtitle={heroSubtitle} />
 
       {false && (

@@ -36,7 +36,9 @@ import {
   crearActaExamen,
   fetchActaMetadata,
 } from "@/api/cargaNotas";
+import OralExamActaDialog, { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
 import { fetchEstudianteAdminDetail } from "@/api/alumnos";
+import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 
 const DOCENTE_ROLES = [
   { value: "PRES", label: "Presidente" },
@@ -131,11 +133,15 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const [observaciones, setObservaciones] = useState<string>("");
   const [docentes, setDocentes] = useState<DocenteState[]>(createEmptyDocentes);
   const [alumnos, setAlumnos] = useState<AlumnoState[]>([createEmptyAlumno(1)]);
+  const [oralActDrafts, setOralActDrafts] = useState<Record<string, OralActFormValues>>({});
+  const [oralDialogAlumno, setOralDialogAlumno] = useState<AlumnoState | null>(null);
   const [, setLoadingAlumnoDni] = useState<string | null>(null);
   const [mesaCodigo, setMesaCodigo] = useState<string>("");
   const [mesaBuscando, setMesaBuscando] = useState(false);
   const [mesaBusquedaError, setMesaBusquedaError] = useState<string | null>(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState<MesaResumenDTO | null>(null);
+  const [confirmActaOpen, setConfirmActaOpen] = useState(false);
+  const [pendingActaPayload, setPendingActaPayload] = useState<ActaCreatePayload | null>(null);
 
   const metadata = metadataQuery.data;
   const notaOptions = metadata?.nota_opciones ?? [];
@@ -228,6 +234,15 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 
   const materiasDisponibles = selectedPlan?.materias ?? [];
 
+  const selectedMateria = useMemo(
+    () => materiasDisponibles.find((m) => String(m.id) === materiaId),
+    [materiasDisponibles, materiaId],
+  );
+
+  const confirmActaContext = pendingActaPayload
+    ? `acta de examen de ${selectedMateria?.nombre ?? "la mesa seleccionada"}`
+    : "acta de examen final";
+
   useEffect(() => {
     if (selectedPlan && !selectedPlan.materias.some((m) => String(m.id) === materiaId)) {
       setMateriaId("");
@@ -264,6 +279,8 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       setFolio("");
       setLibro("");
       setObservaciones("");
+      setPendingActaPayload(null);
+      setConfirmActaOpen(false);
     },
     onError: (error: any) => {
       enqueueSnackbar(error?.response?.data?.message || "No se pudo generar el acta.", { variant: "error" });
@@ -284,6 +301,15 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const updateAlumno = (internoId: string, patch: Partial<AlumnoState>) => {
     setAlumnos((prev) => prev.map((item) => (item.internoId === internoId ? { ...item, ...patch } : item)));
   };
+
+  const tribunalInfo = useMemo(
+    () => ({
+      presidente: docentes.find((doc) => doc.rol === "PRES")?.nombre ?? "",
+      vocal1: docentes.find((doc) => doc.rol === "VOC1")?.nombre ?? "",
+      vocal2: docentes.find((doc) => doc.rol === "VOC2")?.nombre ?? "",
+    }),
+    [docentes],
+  );
 
   const handleAlumnoDniChange = async (internoId: string, dni: string) => {
     const numeric = dni.replace(/\D/g, "").slice(0, 8);
@@ -320,6 +346,18 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     setDocentes((prev) =>
       prev.map((doc, idx) => (idx === index ? { ...doc, ...patch } : doc)),
     );
+  };
+
+  const handleOpenOralActa = (alumno: AlumnoState) => {
+    setOralDialogAlumno(alumno);
+  };
+
+  const handleSaveOralActa = async (values: OralActFormValues) => {
+    if (!oralDialogAlumno) return;
+    setOralActDrafts((prev) => ({
+      ...prev,
+      [oralDialogAlumno.internoId]: values,
+    }));
   };
 
   const handleDocenteInputChange = (index: number, rawValue: string) => {
@@ -442,7 +480,19 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       }
     }
 
-    mutation.mutate(payload);
+    setPendingActaPayload(payload);
+    setConfirmActaOpen(true);
+  };
+
+  const handleConfirmActaSubmit = () => {
+    if (!pendingActaPayload) return;
+    mutation.mutate(pendingActaPayload);
+  };
+
+  const handleCancelActaSubmit = () => {
+    if (mutation.isPending) return;
+    setConfirmActaOpen(false);
+    setPendingActaPayload(null);
   };
 
   if (metadataQuery.isLoading) {
@@ -462,6 +512,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   }
 
   return (
+    <>
     <Stack spacing={3} sx={{ p: { xs: 1, md: 3 } }}>
       <Box>
         <Typography variant="h4" fontWeight={700}>
@@ -707,6 +758,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                 <TableCell>Examen oral</TableCell>
                 <TableCell>Calificación definitiva</TableCell>
                 <TableCell>Observaciones</TableCell>
+                <TableCell align="center">Acta oral</TableCell>
                 <TableCell align="center">Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -802,6 +854,11 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                     />
                   </TableCell>
                   <TableCell align="center">
+                    <Button variant="outlined" size="small" onClick={() => handleOpenOralActa(alumno)}>
+                      Acta oral
+                    </Button>
+                  </TableCell>
+                  <TableCell align="center">
                     <IconButton
                       color="error"
                       size="small"
@@ -840,6 +897,32 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
         </Button>
       </Stack>
     </Stack>
+    {oralDialogAlumno && (
+      <OralExamActaDialog
+        open
+        onClose={() => setOralDialogAlumno(null)}
+        alumnoNombre={oralDialogAlumno.apellido_nombre || "Alumno/a"}
+        alumnoDni={oralDialogAlumno.dni || "-"}
+        carrera={selectedProfesorado?.nombre ?? ""}
+        unidadCurricular={selectedMateria?.nombre ?? ""}
+        curso={mesaSeleccionada?.codigo ?? ""}
+        fechaMesa={fecha}
+        tribunal={tribunalInfo}
+        existingValues={oralActDrafts[oralDialogAlumno.internoId]}
+        defaultNota={oralDialogAlumno.calificacion_definitiva}
+        loading={false}
+        saving={false}
+        onSave={handleSaveOralActa}
+      />
+    )}
+    <FinalConfirmationDialog
+      open={confirmActaOpen}
+      onConfirm={handleConfirmActaSubmit}
+      onCancel={handleCancelActaSubmit}
+      contextText={confirmActaContext}
+      loading={mutation.isPending}
+    />
+    </>
   );
 };
 

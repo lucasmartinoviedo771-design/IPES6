@@ -264,6 +264,39 @@ export type ActaCreateResult = {
   codigo: string;
 };
 
+export type OralTopicDTO = {
+  tema: string;
+  score?: string | null;
+};
+
+export type ActaOralDTO = {
+  acta_numero?: string | null;
+  folio_numero?: string | null;
+  fecha?: string | null;
+  curso?: string | null;
+  nota_final?: string | null;
+  observaciones?: string | null;
+  temas_alumno: OralTopicDTO[];
+  temas_docente: OralTopicDTO[];
+};
+
+export type ActaOralListItemDTO = ActaOralDTO & {
+  inscripcion_id: number;
+  alumno: string;
+  dni: string;
+};
+
+export type GuardarActaOralPayload = {
+  acta_numero?: string | null;
+  folio_numero?: string | null;
+  fecha?: string | null;
+  curso?: string | null;
+  nota_final?: string | null;
+  observaciones?: string | null;
+  temas_alumno: OralTopicDTO[];
+  temas_docente: OralTopicDTO[];
+};
+
 export async function fetchActaMetadata(): Promise<ActaMetadataDTO> {
   const { data } = await client.get<ApiResponse<ActaMetadataDTO>>(
     "/alumnos/carga-notas/actas/metadata",
@@ -275,6 +308,35 @@ export async function crearActaExamen(payload: ActaCreatePayload) {
   const { data } = await client.post<ApiResponse<ActaCreateResult>>(
     "/alumnos/carga-notas/actas",
     payload,
+  );
+  return data;
+}
+
+export async function obtenerActaOral(
+  mesaId: number,
+  inscripcionId: number,
+): Promise<ActaOralDTO> {
+  const { data } = await client.get<ActaOralDTO>(
+    `/alumnos/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
+  );
+  return data;
+}
+
+export async function guardarActaOral(
+  mesaId: number,
+  inscripcionId: number,
+  payload: GuardarActaOralPayload,
+) {
+  const { data } = await client.post<ApiResponse<null>>(
+    `/alumnos/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
+    payload,
+  );
+  return data;
+}
+
+export async function listarActasOrales(mesaId: number): Promise<ActaOralListItemDTO[]> {
+  const { data } = await client.get<ActaOralListItemDTO[]>(
+    `/alumnos/carga-notas/mesas/${mesaId}/oral-actas`,
   );
   return data;
 }

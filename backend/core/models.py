@@ -13,6 +13,7 @@ class Profesorado(models.Model):
     duracion_anios = models.IntegerField(help_text="Duración de la carrera en años")
     activo = models.BooleanField(default=True)
     inscripcion_abierta = models.BooleanField(default=True)
+    es_certificacion_docente = models.BooleanField(default=False)
 
     def __str__(self):
         return self.nombre
@@ -293,6 +294,10 @@ class Estudiante(models.Model):
         default=False,
         help_text="Si está activo, el estudiante debe cambiar la contraseña al iniciar sesión.",
     )
+    curso_introductorio_aprobado = models.BooleanField(
+        default=False,
+        help_text="Indica si tiene aprobado el Curso Introductorio.",
+    )
     datos_extra = models.JSONField(default=dict, blank=True)
     documentacion_presentada = models.ManyToManyField(Documento, blank=True, related_name="estudiantes_que_presentaron")
 
@@ -371,6 +376,7 @@ class StaffAsignacion(models.Model):
         BEDEL = "bedel", "Bedel"
         COORDINADOR = "coordinador", "Coordinador"
         TUTOR = "tutor", "Tutor"
+        CURSO_INTRO = "curso_intro", "Curso Introductorio"
 
     user = models.ForeignKey(
         User,
@@ -510,13 +516,13 @@ class VentanaHabilitacion(models.Model):
         INSCRIPCION = "INSCRIPCION", "Inscripcion (general)"
         MESAS_FINALES = "MESAS_FINALES", "Mesas de examen - Finales"
         MESAS_EXTRA = "MESAS_EXTRA", "Mesas de examen - Extraordinarias"
-        MESAS_LIBRES = "MESAS_LIBRES", "Mesas de examen - Libres"
         MATERIAS = "MATERIAS", "Inscripciones a Materias"
         CARRERAS = "CARRERAS", "Inscripciones a Carreras"
         COMISION = "COMISION", "Cambios de Comision"
         ANALITICOS = "ANALITICOS", "Pedidos de Analiticos"
         EQUIVALENCIAS = "EQUIVALENCIAS", "Pedidos de Equivalencias"
         PREINSCRIPCION = "PREINSCRIPCION", "Preinscripcion"
+        CURSO_INTRODUCTORIO = "CURSO_INTRODUCTORIO", "Curso Introductorio"
         CALENDARIO_CUATRIMESTRE = (
             "CALENDARIO_CUATRIMESTRE",
             "Calendario academico - Cuatrimestres",
@@ -537,6 +543,114 @@ class VentanaHabilitacion(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} ({self.desde} - {self.hasta}) {'[ACTIVO]' if self.activo else ''}"
+
+
+class CursoIntroductorioCohorte(models.Model):
+    nombre = models.CharField(max_length=128, blank=True)
+    anio_academico = models.IntegerField()
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.SET_NULL,
+        related_name="curso_introductorio_cohortes",
+        null=True,
+        blank=True,
+    )
+    turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_cohortes")
+    ventana_inscripcion = models.ForeignKey(
+        VentanaHabilitacion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="curso_introductorio_cohortes",
+    )
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    cupo = models.PositiveIntegerField(null=True, blank=True)
+    observaciones = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cohortes_curso_intro_creadas",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cohortes_curso_intro_actualizadas",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-anio_academico", "-fecha_inicio", "-id"]
+        verbose_name = "Cohorte de Curso Introductorio"
+        verbose_name_plural = "Cohortes de Curso Introductorio"
+
+    def __str__(self):
+        base = self.nombre or f"Cohorte {self.anio_academico}"
+        if self.turno:
+            return f"{base} - {self.turno.nombre}"
+        return base
+
+
+class CursoIntroductorioRegistro(models.Model):
+    class Resultado(models.TextChoices):
+        PENDIENTE = "PEN", "Pendiente"
+        APROBADO = "APR", "Aprobado"
+        DESAPROBADO = "DES", "Desaprobado"
+        AUSENTE = "AUS", "Ausente"
+
+    cohorte = models.ForeignKey(
+        CursoIntroductorioCohorte,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registros",
+    )
+    estudiante = models.ForeignKey(
+        "Estudiante",
+        on_delete=models.CASCADE,
+        related_name="curso_introductorio_registros",
+    )
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="curso_introductorio_registros",
+    )
+    turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_registros")
+    inscripto_en = models.DateTimeField(auto_now_add=True)
+    asistencias_totales = models.PositiveIntegerField(null=True, blank=True)
+    nota_final = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    resultado = models.CharField(max_length=3, choices=Resultado.choices, default=Resultado.PENDIENTE)
+    observaciones = models.TextField(blank=True)
+    resultado_at = models.DateTimeField(null=True, blank=True)
+    resultado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="curso_introductorio_resultados",
+    )
+    es_historico = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-inscripto_en"]
+        verbose_name = "Registro Curso Introductorio"
+        verbose_name_plural = "Registros Curso Introductorio"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cohorte", "estudiante"],
+                name="unique_registro_cohorte_estudiante",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.estudiante.dni} - {self.get_resultado_display()}"
 
 
 class PreinscripcionChecklist(models.Model):
@@ -568,6 +682,7 @@ class PreinscripcionChecklist(models.Model):
     # Trayecto de certificación docente (requiere título terciario/universitario)
     es_certificacion_docente = models.BooleanField(default=False)
     titulo_terciario_univ = models.BooleanField(default=False)
+    incumbencia = models.BooleanField(default=False)
     curso_introductorio_aprobado = models.BooleanField(default=False)
 
     # Derivado
@@ -590,7 +705,7 @@ class PreinscripcionChecklist(models.Model):
         ]
 
         if self.es_certificacion_docente:
-            completos = all(docs_base + [self.titulo_terciario_univ])
+            completos = all(docs_base + [self.titulo_terciario_univ, self.incumbencia])
             return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
 
         # Vía secundaria: una (y solo una) de las tres alternativas
@@ -817,6 +932,25 @@ class PedidoEquivalencia(models.Model):
         BORRADOR = "draft", "Borrador"
         FINALIZADO = "final", "Finalizado"
 
+    class WorkflowEstado(models.TextChoices):
+        BORRADOR = "draft", "Borrador"
+        PENDIENTE_DOCUMENTACION = "pending_docs", "Pendiente de documentación"
+        EN_EVALUACION = "review", "En evaluación"
+        EN_TITULOS = "titulos", "En Títulos"
+        NOTIFICADO = "notified", "Notificado"
+
+    class ResultadoFinal(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        OTORGADA = "otorgada", "Otorgada"
+        DENEGADA = "denegada", "No otorgada"
+        MIXTA = "mixta", "Mixta"
+
+    class DocumentoTitulos(models.TextChoices):
+        NINGUNO = "ninguno", "Sin documentos"
+        NOTA = "nota", "Nota"
+        DISPOSICION = "disposicion", "Disposición"
+        AMBOS = "ambos", "Nota y Disposición"
+
     estudiante = models.ForeignKey(
         "Estudiante",
         on_delete=models.CASCADE,
@@ -863,6 +997,65 @@ class PedidoEquivalencia(models.Model):
         related_name="+",
     )
     bloqueado_en = models.DateTimeField(null=True, blank=True)
+    workflow_estado = models.CharField(
+        max_length=20,
+        choices=WorkflowEstado.choices,
+        default=WorkflowEstado.BORRADOR,
+    )
+    formulario_descargado_en = models.DateTimeField(null=True, blank=True)
+    inscripcion_verificada_en = models.DateTimeField(null=True, blank=True)
+    requiere_tutoria = models.BooleanField(default=False)
+    documentacion_presentada = models.BooleanField(default=False)
+    documentacion_detalle = models.CharField(max_length=255, blank=True, default="")
+    documentacion_cantidad = models.PositiveIntegerField(null=True, blank=True)
+    documentacion_registrada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    documentacion_registrada_en = models.DateTimeField(null=True, blank=True)
+    evaluacion_observaciones = models.CharField(max_length=255, blank=True, default="")
+    evaluacion_registrada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    evaluacion_registrada_en = models.DateTimeField(null=True, blank=True)
+    resultado_final = models.CharField(
+        max_length=16,
+        choices=ResultadoFinal.choices,
+        default=ResultadoFinal.PENDIENTE,
+    )
+    titulos_documento_tipo = models.CharField(
+        max_length=12,
+        choices=DocumentoTitulos.choices,
+        default=DocumentoTitulos.NINGUNO,
+    )
+    titulos_nota_numero = models.CharField(max_length=128, blank=True, default="")
+    titulos_nota_fecha = models.DateField(null=True, blank=True)
+    titulos_disposicion_numero = models.CharField(max_length=128, blank=True, default="")
+    titulos_disposicion_fecha = models.DateField(null=True, blank=True)
+    titulos_observaciones = models.CharField(max_length=255, blank=True, default="")
+    titulos_registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    titulos_registrado_en = models.DateTimeField(null=True, blank=True)
+    notificado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    notificado_en = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -878,6 +1071,11 @@ class PedidoEquivalencia(models.Model):
 
 
 class PedidoEquivalenciaMateria(models.Model):
+    class Resultado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        OTORGADA = "otorgada", "Otorgada"
+        RECHAZADA = "rechazada", "No otorgada"
+
     pedido = models.ForeignKey(
         PedidoEquivalencia,
         on_delete=models.CASCADE,
@@ -886,10 +1084,74 @@ class PedidoEquivalenciaMateria(models.Model):
     nombre = models.CharField(max_length=255)
     formato = models.CharField(max_length=128, blank=True, default="")
     anio_cursada = models.CharField(max_length=64, blank=True, default="")
+    nota = models.CharField(max_length=32, blank=True, default="")
     orden = models.PositiveIntegerField(default=0)
+    resultado = models.CharField(
+        max_length=16,
+        choices=Resultado.choices,
+        default=Resultado.PENDIENTE,
+    )
+    observaciones = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         ordering = ["orden", "id"]
+
+
+class EquivalenciaDisposicion(models.Model):
+    origen = models.CharField(
+        max_length=32,
+        choices=[("primera_carga", "Primera carga"), ("secretaria", "Secretaría")],
+    )
+    estudiante = models.ForeignKey(
+        "Estudiante",
+        on_delete=models.CASCADE,
+        related_name="equivalencia_disposiciones",
+    )
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.PROTECT,
+        related_name="equivalencia_disposiciones",
+    )
+    plan = models.ForeignKey(
+        PlanDeEstudio,
+        on_delete=models.PROTECT,
+        related_name="equivalencia_disposiciones",
+    )
+    numero_disposicion = models.CharField(max_length=64)
+    fecha_disposicion = models.DateField()
+    observaciones = models.CharField(max_length=255, blank=True, default="")
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creado_en"]
+        indexes = [
+            models.Index(fields=["estudiante", "profesorado", "numero_disposicion"]),
+        ]
+
+
+class EquivalenciaDisposicionDetalle(models.Model):
+    disposicion = models.ForeignKey(
+        EquivalenciaDisposicion,
+        on_delete=models.CASCADE,
+        related_name="detalles",
+    )
+    materia = models.ForeignKey(
+        Materia,
+        on_delete=models.PROTECT,
+        related_name="equivalencia_disposiciones",
+    )
+    nota = models.CharField(max_length=32)
+    observaciones = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        unique_together = [("disposicion", "materia")]
 
     def __str__(self):
         return f"{self.nombre} ({self.formato or 'formato no indicado'})"
@@ -981,6 +1243,30 @@ class InscripcionMesa(models.Model):
 
     class Meta:
         unique_together = ("mesa", "estudiante")
+
+
+class MesaActaOral(models.Model):
+    mesa = models.ForeignKey(MesaExamen, on_delete=models.CASCADE, related_name="actas_orales")
+    inscripcion = models.OneToOneField(
+        InscripcionMesa, on_delete=models.CASCADE, related_name="acta_oral"
+    )
+    acta_numero = models.CharField(max_length=64, blank=True, default="")
+    folio_numero = models.CharField(max_length=64, blank=True, default="")
+    fecha = models.DateField(null=True, blank=True)
+    curso = models.CharField(max_length=128, blank=True, default="")
+    nota_final = models.CharField(max_length=32, blank=True, default="")
+    observaciones = models.TextField(blank=True, default="")
+    temas_alumno = models.JSONField(default=list, blank=True)
+    temas_docente = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Acta de examen oral"
+        verbose_name_plural = "Actas de examen oral"
+
+    def __str__(self):
+        return f"Acta oral {self.acta_numero or self.inscripcion_id}"
 
 
 class Regularidad(models.Model):
@@ -1516,3 +1802,52 @@ class ConversationAudit(models.Model):
 
     def __str__(self):
         return f"{self.action} - conversacion {self.conversation_id}"
+
+
+class AuditLog(models.Model):
+    class Accion(models.TextChoices):
+        CREATE = "CREATE", "Create"
+        UPDATE = "UPDATE", "Update"
+        DELETE = "DELETE", "Delete"
+        LOGIN = "LOGIN", "Login"
+        LOGOUT = "LOGOUT", "Logout"
+        OTHER = "OTHER", "Other"
+
+    class TipoAccion(models.TextChoices):
+        CRUD = "CRUD", "CRUD"
+        AUTH = "AUTH", "Authentication"
+        SYSTEM = "SYSTEM", "System"
+        OTHER = "OTHER", "Other"
+
+    class Resultado(models.TextChoices):
+        OK = "OK", "Ok"
+        ERROR = "ERROR", "Error"
+
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
+    nombre_usuario = models.CharField(max_length=100, blank=True)
+    roles = models.JSONField(default=list, blank=True)
+    accion = models.CharField(max_length=16, choices=Accion.choices)
+    tipo_accion = models.CharField(max_length=16, choices=TipoAccion.choices)
+    detalle_accion = models.CharField(max_length=100, blank=True)
+    entidad_afectada = models.CharField(max_length=50, blank=True)
+    id_entidad = models.CharField(max_length=64, blank=True)
+    resultado = models.CharField(max_length=8, choices=Resultado.choices, default=Resultado.OK)
+    ip_origen = models.CharField(max_length=45, blank=True)
+    session_id = models.CharField(max_length=100, blank=True)
+    request_id = models.CharField(max_length=100, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "audit_log"
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["usuario"]),
+            models.Index(fields=["accion"]),
+            models.Index(fields=["tipo_accion"]),
+            models.Index(fields=["entidad_afectada", "id_entidad"]),
+            models.Index(fields=["request_id"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"[{self.timestamp}] {self.accion} {self.detalle_accion or ''} ({self.nombre_usuario or 'sistema'})"

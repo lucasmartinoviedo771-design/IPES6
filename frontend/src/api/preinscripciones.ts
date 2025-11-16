@@ -93,7 +93,7 @@ export interface PreinscripcionDTO {
     fecha_nacimiento?: string;
     cuil?: string;
   };
-  carrera: { id: number; nombre: string };
+  carrera: { id: number; nombre: string; es_certificacion_docente?: boolean };
   // ...otros campos que ya tengas
 }
 
@@ -178,6 +178,7 @@ export interface ChecklistDTO {
 
   es_certificacion_docente?: boolean;
   titulo_terciario_univ?: boolean;
+   incumbencia?: boolean;
   estado_legajo?: string;
   curso_introductorio_aprobado?: boolean;
 }
