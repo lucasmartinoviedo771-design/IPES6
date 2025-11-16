@@ -42,6 +42,14 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
     return map;
   }, [tabla.celdas]);
 
+  const anioLabel = tabla.anio_plan_label || "Horario de cursada";
+  const turnoNombre = tabla.turno_nombre ? tabla.turno_nombre.trim() : "";
+  const turnoLabel = turnoNombre
+    ? /\bturno\b/i.test(turnoNombre)
+      ? turnoNombre
+      : `Turno ${turnoNombre}`
+    : "Sin turno";
+
   const renderMateria = (materia: HorarioMateriaCeldaDTO, index: number) => {
     const key = `${materia.materia_id}-${index}`;
     return (
@@ -101,7 +109,8 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
         <Stack spacing={1} direction={{ xs: "column", md: "row" }} justifyContent="space-between">
           <Box>
             <Typography variant="h6">
-              {tabla.anio_plan_label} - Turno {tabla.turno_nombre || "Sin turno"}
+              {anioLabel}
+              {` - ${turnoLabel}`}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {tabla.profesorado_nombre} - Plan {tabla.plan_resolucion || tabla.plan_id}

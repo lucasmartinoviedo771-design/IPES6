@@ -1,5 +1,5 @@
 import { useForm, Controller } from "react-hook-form";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import {
 import dayjs from "dayjs";
 import { enqueueSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
+import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues as formDefaults } from "./defaultValues";
@@ -88,6 +89,8 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     certificado_alumno_regular_sec: false,
     adeuda_materias: false,
     curso_introductorio_aprobado: false,
+    titulo_terciario_univ: false,
+    incumbencia: false,
     // mirrors para compatibilidad con UI existente
     titulo_secundario: false,
     titulo_en_tramite: false,
@@ -216,6 +219,8 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       certificado_alumno_regular_sec: !!cl.certificado_alumno_regular_sec,
       adeuda_materias: !!cl.adeuda_materias,
       curso_introductorio_aprobado: !!cl.curso_introductorio_aprobado,
+      titulo_terciario_univ: !!cl.titulo_terciario_univ,
+      incumbencia: !!cl.incumbencia,
       // mirrors para la UI
       titulo_secundario: !!cl.titulo_secundario_legalizado,
       titulo_en_tramite: !!cl.certificado_titulo_en_tramite,
@@ -298,13 +303,60 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     }
   }, [condicionSaludActiva, setValue]);
   // Estado completo (criterio similar al backend)
-  // Requisitos generales + alguna alternativa de secundario
-  const docsGeneralesOk = docs.dni_legalizado && docs.fotos_4x4 && docs.certificado_salud && docs.folios_oficio_ok;
-  const tituloSecundarioPresentado = !!docs.titulo_secundario_legalizado;
+  const selectedCarreraId = Number(watch("carrera_id") || data?.carrera?.id || 0);
+  const selectedCarrera = useMemo(() => {
+    if (!selectedCarreraId) {
+      return (data as any)?.carrera;
+    }
+    const lista = (carrerasQ.data as any[]) || [];
+    return lista.find((c) => Number(c.id) === selectedCarreraId) || (data as any)?.carrera;
+  }, [selectedCarreraId, carrerasQ.data, data]);
+  const isCertificacionDocente = Boolean(
+    selectedCarrera?.es_certificacion_docente ||
+      (checklistQ.data as ChecklistDTO | undefined)?.es_certificacion_docente,
+  );
 
-  const allDocs = !!(docsGeneralesOk && tituloSecundarioPresentado && !docs.adeuda_materias);
+  useEffect(() => {
+    if (!isCertificacionDocente) {
+      setDocs((prev) => {
+        if (!prev.titulo_terciario_univ && !prev.incumbencia && !prev.certificado_alumno_regular_sec && !prev.adeuda_materias) {
+          return prev;
+        }
+        return {
+          ...prev,
+          titulo_terciario_univ: false,
+          incumbencia: false,
+          certificado_alumno_regular_sec: prev.certificado_alumno_regular_sec,
+          adeuda_materias: prev.adeuda_materias,
+        };
+      });
+    } else {
+      setDocs((prev) => ({
+        ...prev,
+        certificado_alumno_regular_sec: false,
+        adeuda_materias: false,
+      }));
+      setAdeudaDetalle({ materias: "", institucion: "" });
+    }
+  }, [isCertificacionDocente]);
 
-  const anyMainSelected = !!(docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado);
+  const docsGeneralesBase = docs.dni_legalizado && docs.fotos_4x4 && docs.certificado_salud && docs.folios_oficio_ok;
+  const docsGeneralesOk = docsGeneralesBase && (!isCertificacionDocente || docs.incumbencia);
+  const tituloSecundarioPresentado = isCertificacionDocente
+    ? !!docs.titulo_terciario_univ
+    : !!(
+        docs.titulo_secundario_legalizado ||
+        docs.certificado_titulo_en_tramite ||
+        docs.analitico_legalizado
+      );
+
+  const allDocs = isCertificacionDocente
+    ? !!(docsGeneralesOk && docs.titulo_terciario_univ)
+    : !!(docsGeneralesOk && tituloSecundarioPresentado && !docs.adeuda_materias);
+
+  const anyMainSelected = isCertificacionDocente
+    ? false
+    : !!(docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado);
 
   const alumnoDni = data?.alumno?.dni ?? "";
   const preinsAlumnoQ = useQuery({
@@ -371,6 +423,9 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     adeuda_materias_detalle: adeudaDetalle.materias,
     escuela_secundaria: adeudaDetalle.institucion,
     curso_introductorio_aprobado: !!docs.curso_introductorio_aprobado,
+    titulo_terciario_univ: !!docs.titulo_terciario_univ,
+    incumbencia: !!docs.incumbencia,
+    es_certificacion_docente: isCertificacionDocente,
   });
   const mConfirm = useMutation({
     mutationFn: async () => {
@@ -383,6 +438,26 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     },
     onError: () => enqueueSnackbar("No se pudo confirmar", { variant: "error" })
   });
+
+  const [confirmInscripcionOpen, setConfirmInscripcionOpen] = useState(false);
+
+  const handleConfirmInscripcionClick = () => {
+    if (!canConfirm || mUpdate.isPending) return;
+    setConfirmInscripcionOpen(true);
+  };
+
+  const executeConfirmInscripcion = () => {
+    mConfirm.mutate(undefined, {
+      onSettled: () => {
+        setConfirmInscripcionOpen(false);
+      },
+    });
+  };
+
+  const cancelConfirmInscripcion = () => {
+    if (mConfirm.isPending) return;
+    setConfirmInscripcionOpen(false);
+  };
 
   const mSaveChecklist = useMutation({
     mutationFn: async () => {
@@ -463,6 +538,74 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     setNuevaCarreraCohorte(fallback);
   };
 
+  type CriticalAction = { type: "observar" | "rechazar" | "eliminar"; reason?: string };
+  const [criticalAction, setCriticalAction] = useState<CriticalAction | null>(null);
+
+  const requestMotivo = (label: string): string | null => {
+    const value = window.prompt(label);
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+  };
+
+  const handleRequestObservada = () => {
+    const motivo = requestMotivo("Motivo de observaci�n:");
+    if (!motivo) return;
+    setCriticalAction({ type: "observar", reason: motivo });
+  };
+
+  const handleRequestRechazo = () => {
+    const motivo = requestMotivo("Motivo de rechazo:");
+    if (!motivo) return;
+    setCriticalAction({ type: "rechazar", reason: motivo });
+  };
+
+  const handleRequestEliminar = () => {
+    setCriticalAction({ type: "eliminar" });
+  };
+
+  const criticalActionLoading =
+    criticalAction?.type === "observar"
+      ? mObservar.isPending
+      : criticalAction?.type === "rechazar"
+        ? mRechazar.isPending
+        : criticalAction?.type === "eliminar"
+          ? mDelete.isPending
+          : false;
+
+  const executeCriticalAction = () => {
+    if (!criticalAction) return;
+    if (criticalAction.type === "observar" && criticalAction.reason) {
+      mObservar.mutate(criticalAction.reason, {
+        onSettled: () => setCriticalAction(null),
+      });
+      return;
+    }
+    if (criticalAction.type === "rechazar" && criticalAction.reason) {
+      mRechazar.mutate(criticalAction.reason, {
+        onSettled: () => setCriticalAction(null),
+      });
+      return;
+    }
+    if (criticalAction.type === "eliminar") {
+      mDelete.mutate(undefined, {
+        onSettled: () => setCriticalAction(null),
+      });
+    }
+  };
+
+  const cancelCriticalAction = () => {
+    if (criticalActionLoading) return;
+    setCriticalAction(null);
+  };
+
+  const criticalContextText = criticalAction
+    ? criticalAction.type === "observar"
+      ? `cambio de estado a Observada${criticalAction.reason ? ` (motivo: "${criticalAction.reason}")` : ""}`
+      : criticalAction.type === "rechazar"
+        ? `cambio de estado a Rechazada${criticalAction.reason ? ` (motivo: "${criticalAction.reason}")` : ""}`
+        : "eliminación permanente de esta preinscripción"
+    : "Cambios";
+
 
 
 
@@ -485,20 +628,9 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
             </Box>
           </Box>
           <Stack direction="row" gap={1}>
-            <Button variant="outlined" color="warning" onClick={() => {
-              const m = prompt("Motivo de observación:");
-              if (m) mObservar.mutate(m);
-            }}>Marcar Observada</Button>
-            <Button variant="outlined" color="error" onClick={() => {
-              const m = prompt("Motivo de rechazo:");
-              if (m) mRechazar.mutate(m);
-            }}>Rechazar</Button>
-            <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => {
-              const msg = "¿Está seguro que quiere borrar la preinscripción del estudiante? La baja será lógica (no física).";
-              if (window.confirm(msg)) {
-                mDelete.mutate();
-              }
-            }}>Eliminar</Button>
+            <Button variant="outlined" color="warning" onClick={handleRequestObservada}>Marcar Observada</Button>
+            <Button variant="outlined" color="error" onClick={handleRequestRechazo}>Rechazar</Button>
+            <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={handleRequestEliminar}>Eliminar</Button>
             {/* Boton Confirmar superior removido */}          </Stack>
         </Stack>
       </Paper>
@@ -879,31 +1011,60 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           <FormControlLabel control={<Checkbox checked={!!docs.certificado_salud} onChange={(_, c)=>setDocs(s=>({...s,certificado_salud:c}))} />} label="Certificado de Buena Salud" />
           <FormControlLabel control={<Checkbox checked={!!docs.curso_introductorio_aprobado} onChange={(_, c)=>{ setDocs(s=>({...s,curso_introductorio_aprobado:c})); setValue('curso_introductorio_aprobado', !!c, { shouldDirty: true }); }} />} label="Curso Introductorio Aprobado" />
           <FormControlLabel control={<Checkbox checked={!!libretaEntregada} onChange={(_, checked)=> setValue('libreta_entregada', checked, { shouldDirty: true })} />} label="Libreta entregada" />
+          {isCertificacionDocente && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={!!docs.incumbencia}
+                  onChange={(_, c) => setDocs((s) => ({ ...s, incumbencia: c }))}
+                />
+              }
+              label="Incumbencia"
+            />
+          )}
         </Stack>
 
         <Divider sx={{ my: 2 }} />
         <Typography variant="subtitle2" gutterBottom>Secundario</Typography>
         <Stack>
-          <FormControlLabel control={<Checkbox checked={!!docs.titulo_secundario} onChange={(_, c)=>pickSecundario('titulo_secundario', c)} />} label="Título secundario" />
-          <FormControlLabel control={<Checkbox checked={!!docs.titulo_en_tramite} onChange={(_, c)=>pickSecundario('titulo_en_tramite', c)} />} label="Certificado de título en trámite" />
-          <FormControlLabel control={<Checkbox checked={!!docs.analitico_legalizado} onChange={(_, c)=>pickSecundario('analitico_legalizado', c)} />} label="Fotocopia de analítico legalizada" />
-        </Stack>
-
-        <Divider sx={{ my: 2 }} />
-        <Stack>
-          <FormControlLabel control={<Checkbox checked={!!docs.certificado_alumno_regular_sec} onChange={(_, c)=>setDocs(s=>({...s,certificado_alumno_regular_sec:c}))} disabled={anyMainSelected} />} label="Certificado de alumno regular del secundario" />
-          <FormControlLabel control={<Checkbox checked={!!docs.adeuda_materias} onChange={(_, c)=>setDocs(s=>({...s,adeuda_materias:c}))} disabled={anyMainSelected} />} label="Si adeuda materias" />
-          {docs.adeuda_materias && (
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={8}>
-                <TextField label="Materias adeudadas" fullWidth value={adeudaDetalle.materias} onChange={(e)=>setAdeudaDetalle(d=>({...d,materias:e.target.value}))}/>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField label="Colegio o institución" fullWidth value={adeudaDetalle.institucion} onChange={(e)=>setAdeudaDetalle(d=>({...d,institucion:e.target.value}))}/>
-              </Grid>
-            </Grid>
+          {isCertificacionDocente ? (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={!!docs.titulo_terciario_univ}
+                  onChange={(_, c) => setDocs((s) => ({ ...s, titulo_terciario_univ: c }))}
+                />
+              }
+              label="Título terciario / universitario"
+            />
+          ) : (
+            <>
+              <FormControlLabel control={<Checkbox checked={!!docs.titulo_secundario} onChange={(_, c)=>pickSecundario('titulo_secundario', c)} />} label="Título secundario" />
+              <FormControlLabel control={<Checkbox checked={!!docs.titulo_en_tramite} onChange={(_, c)=>pickSecundario('titulo_en_tramite', c)} />} label="Certificado de título en trámite" />
+              <FormControlLabel control={<Checkbox checked={!!docs.analitico_legalizado} onChange={(_, c)=>pickSecundario('analitico_legalizado', c)} />} label="Fotocopia de analítico legalizada" />
+            </>
           )}
         </Stack>
+
+        {!isCertificacionDocente && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Stack>
+              <FormControlLabel control={<Checkbox checked={!!docs.certificado_alumno_regular_sec} onChange={(_, c)=>setDocs(s=>({...s,certificado_alumno_regular_sec:c}))} disabled={anyMainSelected} />} label="Certificado de alumno regular del secundario" />
+              <FormControlLabel control={<Checkbox checked={!!docs.adeuda_materias} onChange={(_, c)=>setDocs(s=>({...s,adeuda_materias:c}))} disabled={anyMainSelected} />} label="Si adeuda materias" />
+              {docs.adeuda_materias && (
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={8}>
+                    <TextField label="Materias adeudadas" fullWidth value={adeudaDetalle.materias} onChange={(e)=>setAdeudaDetalle(d=>({...d,materias:e.target.value}))}/>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField label="Colegio o institución" fullWidth value={adeudaDetalle.institucion} onChange={(e)=>setAdeudaDetalle(d=>({...d,institucion:e.target.value}))}/>
+                  </Grid>
+                </Grid>
+              )}
+            </Stack>
+          </>
+        )}
 
         <Divider sx={{ my: 2 }} />
         <Typography variant="subtitle2" gutterBottom>Foto 4x4</Typography>
@@ -947,7 +1108,13 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           control={<Checkbox checked={!!ddjjOk} onChange={(_, c)=> setDdjjOk(!!c)} disabled={allDocs} />}
           label="DDJJ / Nota compromiso"
         />
-        <Button sx={{ mt: 2 }} variant="contained" color="success" onClick={() => mConfirm.mutate()} disabled={!canConfirm || mUpdate.isPending}>
+        <Button
+          sx={{ mt: 2 }}
+          variant="contained"
+          color="success"
+          onClick={handleConfirmInscripcionClick}
+          disabled={!canConfirm || mUpdate.isPending}
+        >
           Confirmar Inscripción
         </Button>
       </Paper>
@@ -1032,6 +1199,20 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           </Button>
         </DialogActions>
       </Dialog>
+      <FinalConfirmationDialog
+        open={confirmInscripcionOpen}
+        onConfirm={executeConfirmInscripcion}
+        onCancel={cancelConfirmInscripcion}
+        loading={mConfirm.isPending}
+        contextText="Nuevos Registros"
+      />
+      <FinalConfirmationDialog
+        open={Boolean(criticalAction)}
+        onConfirm={executeCriticalAction}
+        onCancel={cancelCriticalAction}
+        loading={criticalActionLoading}
+        contextText={criticalContextText}
+      />
     </Stack>
   );
 }

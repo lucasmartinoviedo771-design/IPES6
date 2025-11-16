@@ -66,12 +66,6 @@ const TYPE_CONFIG: Array<{
     description: "Ventanas para mesas extraordinarias habilitadas por dirección.",
   },
   {
-    key: "MESAS_LIBRES",
-    label: "Mesas de examen - Libres",
-    category: "mesas",
-    description: "Mesas destinadas a estudiantes libres.",
-  },
-  {
     key: "MATERIAS",
     label: "Inscripciones a Materias",
     category: "tramites",
@@ -100,6 +94,12 @@ const TYPE_CONFIG: Array<{
     label: "Preinscripción",
     category: "tramites",
     description: "Período de preinscripción inicial a la institución.",
+  },
+  {
+    key: "CURSO_INTRODUCTORIO",
+    label: "Curso Introductorio",
+    category: "tramites",
+    description: "Habilita la inscripción al Curso Introductorio y sus cohortes.",
   },
   {
     key: "CALENDARIO_CUATRIMESTRE",

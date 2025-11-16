@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Box,
   Typography,
@@ -19,12 +20,15 @@ import {
   AccessTime,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import {
   ICON_GRADIENT,
   INSTITUTIONAL_GREEN,
   INSTITUTIONAL_TERRACOTTA,
 } from "@/styles/institutionalColors";
+import { useAuth } from "@/context/AuthContext";
+import { fetchCursoIntroEstado } from "@/api/cursoIntro";
 
 type EventCard = {
   title: string;
@@ -38,6 +42,8 @@ type SectionCard = {
   subtitle: string;
   icon: React.ReactNode;
   path: string;
+  status?: "success" | "info" | "warning";
+  disabled?: boolean;
 };
 
 type Section = {
@@ -72,7 +78,7 @@ const upcomingEvents: EventCard[] = [
   },
 ];
 
-const sections: Section[] = [
+const baseSections: Section[] = [
   {
     title: "Trayectoria",
     subtitle: "Explora tu historial de cursada, materias y seguimiento de inscripciones.",
@@ -137,6 +143,12 @@ const sections: Section[] = [
         icon: <VerifiedUser />,
         path: "/alumnos/certificado-regular",
       },
+      {
+        title: "Constancia de examen",
+        subtitle: "Descargá la constancia de la última mesa rendida.",
+        icon: <EventNote />,
+        path: "/alumnos/constancia-examen",
+      },
     ],
   },
 ];
@@ -181,6 +193,47 @@ const eventCardStyles = {
 
 export default function AlumnosIndex() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const roles = (user?.roles ?? []).map((role) => (role || "").toLowerCase());
+  const isStudent = roles.includes("alumno");
+  const { data: cursoIntroEstado } = useQuery({
+    queryKey: ["curso-intro", "estado"],
+    queryFn: fetchCursoIntroEstado,
+    staleTime: 60_000,
+    enabled: isStudent,
+  });
+
+  const sections = useMemo<Section[]>(() => {
+    if (!isStudent) {
+      return baseSections;
+    }
+    const subtitle = cursoIntroEstado
+      ? cursoIntroEstado.aprobado
+        ? "Curso introductorio aprobado."
+        : cursoIntroEstado.registro_actual
+          ? `Estado: ${cursoIntroEstado.registro_actual.resultado_display}`
+          : cursoIntroEstado.cohortes_disponibles.length
+            ? "Inscripciones abiertas."
+            : "Consultá el estado e inscribite."
+      : "Consultá el curso introductorio.";
+    const cursoIntroCard: SectionCard = {
+      title: "Curso Introductorio",
+      subtitle,
+      icon: <VerifiedUser />,
+      path: "/alumnos/curso-introductorio",
+      status: cursoIntroEstado?.aprobado ? "success" : undefined,
+      disabled: cursoIntroEstado?.aprobado ?? false,
+    };
+    return baseSections.map((section) => {
+      if (section.title !== "Inscripciones") {
+        return section;
+      }
+      return {
+        ...section,
+        items: [...section.items, cursoIntroCard],
+      };
+    });
+  }, [cursoIntroEstado, isStudent]);
 
   return (
     <Box>
@@ -244,29 +297,47 @@ export default function AlumnosIndex() {
             {section.subtitle}
           </Typography>
           <Grid container spacing={2}>
-            {section.items.map(item => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={item.title} sx={{ display: "flex" }}>
-                <Card
-                  variant="outlined"
-                  onClick={() => navigate(item.path)}
-                  sx={squareCardStyles}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Stack spacing={1.5}>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Box sx={iconWrapperStyles}>{item.icon}</Box>
-                        <Typography variant="subtitle2" fontWeight={600}>
-                          {item.title}
+            {section.items.map(item => {
+              const isDisabled = Boolean(item.disabled);
+              const cardSx = {
+                ...squareCardStyles,
+                ...(item.status === "success"
+                  ? {
+                      borderColor: "rgba(46,125,50,0.6)",
+                      backgroundColor: "#e8f5e9",
+                    }
+                  : {}),
+                cursor: item.path && !isDisabled ? "pointer" : "default",
+                opacity: isDisabled ? 0.85 : 1,
+              };
+              return (
+                <Grid item xs={12} sm={6} md={4} lg={3} key={item.title} sx={{ display: "flex" }}>
+                  <Card
+                    variant="outlined"
+                    onClick={() => {
+                      if (!isDisabled) {
+                        navigate(item.path);
+                      }
+                    }}
+                    sx={cardSx}
+                  >
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Stack spacing={1.5}>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Box sx={iconWrapperStyles}>{item.icon}</Box>
+                          <Typography variant="subtitle2" fontWeight={600}>
+                            {item.title}
+                          </Typography>
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          {item.subtitle}
                         </Typography>
                       </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.subtitle}
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         </Box>
       ))}

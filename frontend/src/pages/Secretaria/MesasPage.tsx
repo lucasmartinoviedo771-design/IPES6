@@ -384,6 +384,12 @@ export default function MesasPage(){
     }
   }, [form.materia_id, materias]);
 
+  const materiasFiltroFiltradas = useMemo(() => {
+    return materiasFiltro
+      .filter(m => !anioFiltro || m.anio === Number(anioFiltro))
+      .filter(m => !cuatrimestreFiltro || m.cuatrimestre === cuatrimestreFiltro);
+  }, [materiasFiltro, anioFiltro, cuatrimestreFiltro]);
+
   useEffect(() => {
     if (materiaFiltro && !materiasFiltroFiltradas.some((m) => String(m.id) === materiaFiltro)) {
       setMateriaFiltro('');
@@ -420,12 +426,6 @@ export default function MesasPage(){
     () => materias.find((m) => m.id === form.materia_id) ?? null,
     [materias, form.materia_id]
   );
-
-  const materiasFiltroFiltradas = useMemo(() => {
-    return materiasFiltro
-      .filter(m => !anioFiltro || m.anio === Number(anioFiltro))
-      .filter(m => !cuatrimestreFiltro || m.cuatrimestre === cuatrimestreFiltro);
-  }, [materiasFiltro, anioFiltro, cuatrimestreFiltro]);
 
   const availableAniosNueva = useMemo(() => {
     const valores = new Set<number>();
@@ -721,7 +721,7 @@ export default function MesasPage(){
         </TextField>
         <TextField
           select
-          label="Anio cursada"
+          label="Año cursada"
           size="small"
           value={anioNueva}
           onChange={(e)=>setAnioNueva(e.target.value)}
@@ -961,7 +961,7 @@ export default function MesasPage(){
         <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ flexWrap: 'wrap' }}>
           <TextField
             select
-            label="Anio cursada"
+            label="Año cursada"
             size="small"
             value={anioFiltro}
             onChange={(e)=>setAnioFiltro(e.target.value)}
@@ -1020,7 +1020,7 @@ export default function MesasPage(){
                     {m.materia_nombre} (#{m.materia_id}) | {m.profesorado_nombre ?? 'Sin profesorado'} | Plan {m.plan_resolucion ?? '-'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Anio {m.anio_cursada ?? '-'} | {regimenLabel} | {`${horaDesde}${horaHasta ? ` - ${horaHasta}` : ''}${m.aula ? ` | ${m.aula}` : ''}`} | Cupo: {m.cupo}
+                    Año {m.anio_cursada ?? '-'} | {regimenLabel} | {`${horaDesde}${horaHasta ? ` - ${horaHasta}` : ''}${m.aula ? ` | ${m.aula}` : ''}`} | Cupo: {m.cupo}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Tribunal: {m.docentes && m.docentes.length

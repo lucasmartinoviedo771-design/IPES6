@@ -14,23 +14,27 @@ type PageHeroProps = {
 };
 
 export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
+  const baseSx: SxProps<Theme> = {
+    p: { xs: 2, md: 3 },
+    borderRadius: 3,
+    background: `linear-gradient(120deg, #7D7F6E 0%, #B7694E 100%)`,
+    color: "#fff",
+    boxShadow: "0 25px 50px rgba(0,0,0,0.12)",
+    mb: { xs: 2, md: 3 },
+  };
+  const combinedSx: SxProps<Theme> = sx
+    ? Array.isArray(sx)
+      ? [baseSx, ...sx]
+      : [baseSx, sx]
+    : baseSx;
+
   return (
     <Stack
       direction={{ xs: "column", md: "row" }}
       justifyContent="space-between"
       alignItems={{ xs: "flex-start", md: "center" }}
       spacing={2}
-      sx={[
-        {
-          p: { xs: 2, md: 3 },
-          borderRadius: 3,
-          background: `linear-gradient(120deg, #7D7F6E 0%, #B7694E 100%)`,
-          color: "#fff",
-          boxShadow: "0 25px 50px rgba(0,0,0,0.12)",
-          mb: { xs: 2, md: 3 },
-        },
-        sx,
-      ]}
+      sx={combinedSx}
     >
       <Box>
         <Typography
@@ -80,23 +84,27 @@ type SectionTitleProps = {
 };
 
 export function SectionTitlePill({ title, sx }: SectionTitleProps) {
+  const baseSx: SxProps<Theme> = {
+    display: "inline-flex",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    px: 3,
+    py: 1,
+    borderRadius: 999,
+    background: TITLE_GRADIENT,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+    mt: 0,
+    mb: 2,
+  };
+  const combinedSx: SxProps<Theme> = sx
+    ? Array.isArray(sx)
+      ? [baseSx, ...sx]
+      : [baseSx, sx]
+    : baseSx;
+
   return (
     <Box
-      sx={[
-        {
-          display: "inline-flex",
-          alignSelf: "flex-start",
-          alignItems: "center",
-          px: 3,
-          py: 1,
-          borderRadius: 999,
-          background: TITLE_GRADIENT,
-          boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
-          mt: 0,
-          mb: 2,
-        },
-        sx,
-      ]}
+      sx={combinedSx}
     >
       <Typography
         variant="subtitle1"

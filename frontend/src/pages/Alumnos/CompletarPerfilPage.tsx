@@ -1,12 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
-  Checkbox,
+  Chip,
   CircularProgress,
   Divider,
-  FormControlLabel,
   Paper,
   Stack,
   TextField,
@@ -27,6 +26,7 @@ import {
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
 import { PageHero } from "@/components/ui/GradientTitles";
+import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 
 type DocumentacionForm = {
   dni_legalizado: boolean;
@@ -42,6 +42,7 @@ type DocumentacionForm = {
   escuela_secundaria: string;
   es_certificacion_docente: boolean;
   titulo_terciario_univ: boolean;
+  incumbencia: boolean;
 };
 
 type PerfilFormValues = {
@@ -64,25 +65,22 @@ function normalizeDocumentacion(detail?: EstudianteAdminDocumentacionDTO | null)
     certificado_titulo_en_tramite: Boolean(detail?.certificado_titulo_en_tramite),
     analitico_legalizado: Boolean(detail?.analitico_legalizado),
     certificado_alumno_regular_sec: Boolean(detail?.certificado_alumno_regular_sec),
-    adeuda_materias: Boolean(detail?.adeuda_materias),
-    adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
-    escuela_secundaria: detail?.escuela_secundaria ?? "",
-    es_certificacion_docente: Boolean(detail?.es_certificacion_docente),
-    titulo_terciario_univ: Boolean(detail?.titulo_terciario_univ),
-  };
+  adeuda_materias: Boolean(detail?.adeuda_materias),
+  adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
+  escuela_secundaria: detail?.escuela_secundaria ?? "",
+  es_certificacion_docente: Boolean(detail?.es_certificacion_docente),
+  titulo_terciario_univ: Boolean(detail?.titulo_terciario_univ),
+  incumbencia: Boolean(detail?.incumbencia),
+};
 }
-
-const MAIN_DOC_KEYS: Array<keyof DocumentacionForm> = [
-  "titulo_secundario_legalizado",
-  "certificado_titulo_en_tramite",
-  "analitico_legalizado",
-];
 
 export default function CompletarPerfilPage() {
   const { refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<PerfilFormValues | null>(null);
 
   const anioIngresoOptions = useMemo(() => {
     const start = 2010;
@@ -118,8 +116,7 @@ export default function CompletarPerfilPage() {
     },
   });
 
-  const { control, handleSubmit, reset, watch, setValue } = form;
-  const docValues = watch("documentacion");
+const { control, handleSubmit, reset } = form;
 
   const detailQuery = useQuery({
     queryKey: ["perfil-completar"],
@@ -159,6 +156,7 @@ export default function CompletarPerfilPage() {
         "adeuda_materias",
         "es_certificacion_docente",
         "titulo_terciario_univ",
+        "incumbencia",
       ].forEach((key) => {
         const current = (doc as Record<string, unknown>)[key];
         if (typeof current === "boolean") {
@@ -202,37 +200,44 @@ export default function CompletarPerfilPage() {
     },
   });
 
-  const handleMainDocChange = (target: typeof MAIN_DOC_KEYS[number]) => (_: unknown, checked: boolean) => {
-    MAIN_DOC_KEYS.forEach((key) => {
-      setValue(`documentacion.${key}` as const, key === target ? checked : false, { shouldDirty: true });
-    });
-    if (checked) {
-      setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
-      setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
-      setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
-      setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
-    }
-  };
-
-  const handleAdeudaChange = (_: unknown, checked: boolean) => {
-    setValue("documentacion.adeuda_materias" as const, checked, { shouldDirty: true });
-    if (!checked) {
-      setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
-      setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
-    }
-  };
-
-  const handleAlumnoRegularChange = (_: unknown, checked: boolean) => {
-    setValue("documentacion.certificado_alumno_regular_sec" as const, checked, { shouldDirty: true });
-  };
-
-  const anyMainSelected = MAIN_DOC_KEYS.some((key) => Boolean(docValues[key]));
-
   const onSubmit = (values: PerfilFormValues) => {
-    mutation.mutate(values);
+    setPendingValues(values);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmSave = () => {
+    if (!pendingValues) return;
+    mutation.mutate(pendingValues, {
+      onSettled: () => {
+        setConfirmOpen(false);
+        setPendingValues(null);
+      },
+    });
+  };
+
+  const handleCancelConfirm = () => {
+    if (mutation.isPending) {
+      return;
+    }
+    setConfirmOpen(false);
+    setPendingValues(null);
   };
 
   const detail: EstudianteAdminDetailDTO | undefined = detailQuery.data;
+  const docDetail = detail?.documentacion;
+  const docSummary = [
+    { label: "DNI legalizado", value: Boolean(docDetail?.dni_legalizado) },
+    { label: "Fotos 4x4", value: Boolean(docDetail?.fotos_4x4) },
+    { label: "Certificado de salud", value: Boolean(docDetail?.certificado_salud) },
+    { label: "Folios de oficio", value: Boolean(docDetail?.folios_oficio && Number(docDetail.folios_oficio) > 0) },
+    { label: "Título secundario legalizado", value: Boolean(docDetail?.titulo_secundario_legalizado) },
+    { label: "Certificado título en trámite", value: Boolean(docDetail?.certificado_titulo_en_tramite) },
+    { label: "Analítico legalizado", value: Boolean(docDetail?.analitico_legalizado) },
+    { label: "Constancia alumno regular", value: Boolean(docDetail?.certificado_alumno_regular_sec) },
+    { label: "Trayecto certificación docente", value: Boolean(docDetail?.es_certificacion_docente) },
+    { label: "Título terciario/universitario", value: Boolean(docDetail?.titulo_terciario_univ) },
+    { label: "Incumbencia", value: Boolean(docDetail?.incumbencia) },
+  ];
 
   return (
     <Box py={3} px={{ xs: 1, md: 4 }}>
@@ -341,157 +346,53 @@ export default function CompletarPerfilPage() {
                   />
 
                   <Box>
-                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                      Documentacion presentada
-                    </Typography>
-
-                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                      Documentos generales
-                    </Typography>
-                    <Stack direction="row" spacing={2} flexWrap="wrap">
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.dni_legalizado)}
-                            onChange={(_, checked) => setValue("documentacion.dni_legalizado" as const, checked, { shouldDirty: true })}
-                          />
-                        }
-                        label="DNI legalizado"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.fotos_4x4)}
-                            onChange={(_, checked) => setValue("documentacion.fotos_4x4" as const, checked, { shouldDirty: true })}
-                          />
-                        }
-                        label="Fotos 4x4"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.certificado_salud)}
-                            onChange={(_, checked) => setValue("documentacion.certificado_salud" as const, checked, { shouldDirty: true })}
-                          />
-                        }
-                        label="Certificado de salud"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.folios_oficio)}
-                            onChange={(_, checked) => setValue("documentacion.folios_oficio" as const, checked, { shouldDirty: true })}
-                          />
-                        }
-                        label="Folios oficio (3)"
-                      />
-                    </Stack>
-
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 2 }}>
-                      Titulo secundario
+                      Documentación registrada
                     </Typography>
-                    <Stack direction="row" spacing={2} flexWrap="wrap">
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.titulo_secundario_legalizado)}
-                            onChange={handleMainDocChange("titulo_secundario_legalizado")}
+                    <Stack
+                      spacing={1}
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 1,
+                        p: 2,
+                      }}
+                    >
+                      {docSummary.map((item) => (
+                        <Stack
+                          key={item.label}
+                          direction="row"
+                          alignItems="center"
+                          justifyContent="space-between"
+                        >
+                          <Typography variant="body2">{item.label}</Typography>
+                          <Chip
+                            size="small"
+                            color={item.value ? "success" : "default"}
+                            label={item.value ? "Presentado" : "Pendiente"}
                           />
-                        }
-                        label="Titulo secundario legalizado"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.certificado_titulo_en_tramite)}
-                            onChange={handleMainDocChange("certificado_titulo_en_tramite")}
-                          />
-                        }
-                        label="Certificado titulo en tramite"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.analitico_legalizado)}
-                            onChange={handleMainDocChange("analitico_legalizado")}
-                          />
-                        }
-                        label="Analitico legalizado"
-                      />
-                    </Stack>
-
-                    <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 2 }}>
-                      Complementarios
-                    </Typography>
-                    <Stack direction="row" spacing={2} flexWrap="wrap">
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.certificado_alumno_regular_sec)}
-                            onChange={handleAlumnoRegularChange}
-                            disabled={anyMainSelected}
-                          />
-                        }
-                        label="Constancia alumno regular"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.adeuda_materias)}
-                            onChange={handleAdeudaChange}
-                            disabled={anyMainSelected}
-                          />
-                        }
-                        label="Adeuda materias"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.es_certificacion_docente)}
-                            onChange={(_, checked) => setValue("documentacion.es_certificacion_docente" as const, checked, { shouldDirty: true })}
-                          />
-                        }
-                        label="Trayecto certificacion docente"
-                      />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(docValues.titulo_terciario_univ)}
-                            onChange={(_, checked) => setValue("documentacion.titulo_terciario_univ" as const, checked, { shouldDirty: true })}
-                          />
-                        }
-                        label="Titulo terciario o universitario"
-                      />
-                    </Stack>
-
-                    {docValues.adeuda_materias && (
-                      <Stack direction={{ xs: "column", md: "row" }} spacing={2} mt={1}>
-                        <Controller
-                          name="documentacion.adeuda_materias_detalle"
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              {...field}
-                              label="Detalle de materias adeudadas"
-                              size="small"
-                              fullWidth
-                            />
+                        </Stack>
+                      ))}
+                      {docDetail?.adeuda_materias && (
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>
+                            Declaró materias adeudadas
+                          </Typography>
+                          <Typography variant="body2">
+                            {docDetail.adeuda_materias_detalle || "Sin detalle"}
+                          </Typography>
+                          {docDetail.escuela_secundaria && (
+                            <Typography variant="body2" color="text.secondary">
+                              Escuela: {docDetail.escuela_secundaria}
+                            </Typography>
                           )}
-                        />
-                        <Controller
-                          name="documentacion.escuela_secundaria"
-                          control={control}
-                          render={({ field }) => (
-                            <TextField
-                              {...field}
-                              label="Escuela secundaria"
-                              size="small"
-                              fullWidth
-                            />
-                          )}
-                        />
-                      </Stack>
-                    )}
+                        </Box>
+                      )}
+                    </Stack>
+                    <Alert severity="info">
+                      La documentación se confirma exclusivamente con Secretaría. Si detectás un error en los datos,
+                      comunicate con el equipo administrativo.
+                    </Alert>
                   </Box>
 
                   <Stack direction="row" spacing={2} justifyContent="flex-end">
@@ -509,6 +410,13 @@ export default function CompletarPerfilPage() {
           )}
         </Stack>
       </Paper>
+      <FinalConfirmationDialog
+        open={confirmOpen}
+        onConfirm={handleConfirmSave}
+        onCancel={handleCancelConfirm}
+        contextText="Cambios"
+        loading={mutation.isPending}
+      />
     </Box>
   );
 }

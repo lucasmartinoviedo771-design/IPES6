@@ -176,6 +176,19 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
               </Typography>
             )}
           </Box>
+          <Typography
+            variant="body2"
+            color="error.main"
+            sx={{
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              mt: 1,
+              mb: 3,
+            }}
+          >
+            Registro académico sin validez administrativa. No tomar como documento definitivo de notas.
+          </Typography>
 
           <Paper variant="outlined" sx={{ p: 3, mb: 4, backgroundColor: 'grey.50' }}>
             <Grid container spacing={3}>
@@ -380,7 +393,15 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                         <TableCell align="center">
                           {record.tipo === 'regularidad' ? formatDateToDDMMYY(record.fecha) : '-'}
                         </TableCell>
-                        <TableCell align="center">{record.tipo === 'regularidad' ? record.condicion ?? '-' : '-'}</TableCell>
+                        <TableCell align="center">
+                          {record.tipo === 'regularidad'
+                            ? record.condicion
+                              ? record.condicion === "REGULAR"
+                                ? "En curso"
+                                : record.condicion
+                              : "-"
+                            : "-"}
+                        </TableCell>
                         <TableCell align="center" sx={{ fontWeight: 'medium' }}>
                           {record.tipo === 'regularidad' ? record.nota ?? '-' : '-'}
                         </TableCell>

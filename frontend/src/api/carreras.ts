@@ -6,6 +6,7 @@ export interface Carrera {
   activo: boolean;
   inscripcion_abierta: boolean;
   duracion_anios?: number;
+  es_certificacion_docente?: boolean;
 }
 
 export async function fetchCarreras(): Promise<Carrera[]> {

@@ -3,6 +3,15 @@ from datetime import date
 from ninja import File, Form, Router, Schema
 from ninja.files import UploadedFile
 
+from apps.alumnos.schemas import (
+    EquivalenciaDisposicionCreateIn,
+    EquivalenciaDisposicionOut,
+)
+from apps.alumnos.services.equivalencias_disposicion import (
+    registrar_disposicion_equivalencia,
+    resolver_contexto_equivalencia,
+    serialize_disposicion,
+)
 from apps.common.api_schemas import ApiResponse
 from apps.primera_carga.services import (
     crear_estudiante_manual,
@@ -127,6 +136,38 @@ def upload_equivalencias(request, file: UploadedFile = File(...), form: Equivale
         return 400, ApiResponse(ok=False, message="Importación de equivalencias con errores.", data=result)
     except Exception as exc:
         return 400, ApiResponse(ok=False, message=f"Error al procesar el archivo: {exc}")
+
+
+@primera_carga_router.post(
+    "/equivalencias/disposiciones",
+    response={200: EquivalenciaDisposicionOut, 400: ApiResponse, 403: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def registrar_disposicion_equivalencia_primera_carga(request, payload: EquivalenciaDisposicionCreateIn):
+    if not payload.detalles:
+        return 400, ApiResponse(ok=False, message="Debes cargar al menos una materia.")
+    try:
+        estudiante, profesorado, plan = resolver_contexto_equivalencia(
+            dni=payload.dni,
+            profesorado_id=payload.profesorado_id,
+            plan_id=payload.plan_id,
+        )
+        result = registrar_disposicion_equivalencia(
+            estudiante=estudiante,
+            profesorado=profesorado,
+            plan=plan,
+            numero_disposicion=payload.numero_disposicion.strip(),
+            fecha_disposicion=payload.fecha_disposicion,
+            observaciones=payload.observaciones or "",
+            detalles_payload=[detalle.dict() for detalle in payload.detalles],
+            origen="primera_carga",
+            usuario=request.user,
+            validar_correlatividades=False,
+        )
+        data = serialize_disposicion(result.disposicion, result.detalles)
+        return EquivalenciaDisposicionOut(**data)
+    except ValueError as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
 
 
 class RegularidadDocenteIn(Schema):

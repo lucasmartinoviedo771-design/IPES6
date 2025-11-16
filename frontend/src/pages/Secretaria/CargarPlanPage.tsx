@@ -29,6 +29,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "@/utils/toast";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 interface Profesorado {
   id: number;
@@ -195,6 +196,7 @@ export default function CargarPlanPage() {
 
   return (
     <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria/profesorado" />
       <PageHero
         title={heroTitle}
         subtitle="Gestioná resoluciones, vigencias y estados de cada plan."

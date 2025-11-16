@@ -11,6 +11,7 @@ from apps.asistencia.api import (
     docentes_router as asistencia_docentes_router,
     calendario_router as asistencia_calendario_router,
 )
+from apps.common.audit_api import router as audit_router
 
 if 'api' not in locals():
     api = NinjaAPI(title="IPES6 API")
@@ -34,6 +35,7 @@ if 'api' not in locals():
         primera_carga_router,
     )
     api.add_router("/admin/primera-carga", primera_carga_router)  # Montar el router de primera carga
+    api.add_router("/auditoria", audit_router)
 
     # (opcional) si tienes otros routers, puedes montarlos aquí también:
     from .api import router as core_router

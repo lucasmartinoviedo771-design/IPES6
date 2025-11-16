@@ -39,6 +39,7 @@ import {
 } from '@/api/alumnos';
 import { CartonTabPanel } from "@/features/alumnos/carton/CartonTabPanel";
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 import { useAuth } from '@/context/AuthContext';
 
 function a11yProps(index: number) {
@@ -242,6 +243,7 @@ const TrayectoriaPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 2 }}>
+      <BackButton fallbackPath="/alumnos" />
       <PageHero
         title="Trayectoria del estudiante"
         subtitle="Historial consolidado de inscripciones, cursadas, mesas y sugerencias de acción."

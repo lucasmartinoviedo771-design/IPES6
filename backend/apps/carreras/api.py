@@ -39,6 +39,7 @@ class ProfesoradoIn(Schema):
     duracion_anios: int
     activo: bool = True
     inscripcion_abierta: bool = True
+    es_certificacion_docente: bool = False
 
 
 class ProfesoradoOut(Schema):
@@ -47,6 +48,7 @@ class ProfesoradoOut(Schema):
     duracion_anios: int
     activo: bool
     inscripcion_abierta: bool
+    es_certificacion_docente: bool
 
 
 # Schemas for PlanDeEstudio

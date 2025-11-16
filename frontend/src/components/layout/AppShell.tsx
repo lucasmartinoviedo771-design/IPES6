@@ -33,8 +33,14 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // Importar ícono de ayuda
-import UploadFileIcon from "@mui/icons-material/UploadFile"; // Importar ícono para Primera Carga
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import GroupsIcon from "@mui/icons-material/Groups";
+import GavelIcon from "@mui/icons-material/Gavel";
+import Diversity3Icon from "@mui/icons-material/Diversity3";
+import ChecklistIcon from "@mui/icons-material/Checklist";
+import ArticleIcon from "@mui/icons-material/Article";
+import InsightsIcon from "@mui/icons-material/Insights";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { obtenerResumenMensajes } from "@/api/mensajes";
@@ -107,7 +113,23 @@ export default function AppShell({ children }: PropsWithChildren) {
     "tutor",
     "coordinador"
   ]);
+  const canBedeles = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "bedel",
+    "jefa_aaee",
+    "jefes",
+    "tutor",
+    "coordinador"
+  ]);
+  const canDocentesPanel = hasAnyRole(user, ["docente", "secretaria", "admin", "bedel"]);
+  const canTutoriasPanel = hasAnyRole(user, ["tutor", "secretaria", "admin", "bedel"]);
+  const canEquivalenciasPanel = hasAnyRole(user, ["equivalencias", "secretaria", "admin", "bedel"]);
+  const canTitulosPanel = hasAnyRole(user, ["titulos", "secretaria", "admin"]);
+  const canCoordinacionPanel = hasAnyRole(user, ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"]);
+  const canJefaturaPanel = hasAnyRole(user, ["jefes", "jefa_aaee", "secretaria", "admin"]);
   const canAsistenciaReportes = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const canCursoIntro = hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]);
   const canAlumnoPortal = hasAnyRole(user, ["alumno"]);
   const canAlumnoPanel = hasAnyRole(user, [
     "admin",
@@ -397,6 +419,17 @@ export default function AppShell({ children }: PropsWithChildren) {
             </ListItemButton>
           )}
 
+          {canCursoIntro && (
+            <ListItemButton
+              selected={current.startsWith("/secretaria/curso-introductorio")}
+              onClick={() => navigate("/secretaria/curso-introductorio")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><AssignmentIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Curso introductorio" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+
           {canUseMessages && (
             <ListItemButton
               selected={current.startsWith("/mensajes")}
@@ -420,6 +453,76 @@ export default function AppShell({ children }: PropsWithChildren) {
             >
               <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Secretaría" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canBedeles && (
+            <ListItemButton
+              selected={current.startsWith("/bedeles")}
+              onClick={() => navigate("/bedeles")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><GroupsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Bedeles" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canDocentesPanel && (
+            <ListItemButton
+              selected={current.startsWith("/docentes")}
+              onClick={() => navigate("/docentes")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><GavelIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Docentes" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canTutoriasPanel && (
+            <ListItemButton
+              selected={current.startsWith("/tutorias")}
+              onClick={() => navigate("/tutorias")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><Diversity3Icon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Tutorías" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canEquivalenciasPanel && (
+            <ListItemButton
+              selected={current.startsWith("/equivalencias")}
+              onClick={() => navigate("/equivalencias")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><ChecklistIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Equivalencias" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canTitulosPanel && (
+            <ListItemButton
+              selected={current.startsWith("/titulos")}
+              onClick={() => navigate("/titulos")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><ArticleIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Títulos" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canCoordinacionPanel && (
+            <ListItemButton
+              selected={current.startsWith("/coordinacion")}
+              onClick={() => navigate("/coordinacion")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><InsightsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Coordinación" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          {canJefaturaPanel && (
+            <ListItemButton
+              selected={current.startsWith("/jefatura")}
+              onClick={() => navigate("/jefatura")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><InsightsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Jefatura" primaryTypographyProps={{ sx: { color: "#fff" } }} />
             </ListItemButton>
           )}
 

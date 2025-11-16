@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -25,6 +26,7 @@ import {
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 type SelectValue = string;
 
@@ -144,10 +146,14 @@ useEffect(() => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <BackButton fallbackPath="/alumnos" />
       <PageHero
         title="Constancia de alumno regular"
         subtitle="Descargá el certificado oficial del ciclo vigente según tu cohorte"
       />
+      <Alert severity="warning" sx={{ mb: 2 }}>
+        Registro académico sin validez administrativa. No tomar como documento definitivo de notas.
+      </Alert>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>

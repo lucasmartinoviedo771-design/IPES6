@@ -7,6 +7,7 @@ import {
   CardContent,
   Chip,
   FormControl,
+  FormHelperText,
   Grid,
   IconButton,
   InputLabel,
@@ -17,12 +18,12 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import BackButton from "@/components/ui/BackButton";
 import DownloadIcon from "@mui/icons-material/Download";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
-import { isAxiosError } from "axios";
 import { useSnackbar } from "notistack";
 
 import { useAuth } from "@/context/AuthContext";
@@ -44,14 +45,17 @@ import {
   TrayectoriaDTO,
 } from "@/api/alumnos";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
+import { getErrorMessage } from "@/utils/errors";
 
 const FORMATO_OPTIONS = ["Asignatura", "Modulo", "Taller", "Seminario", "Laboratorio", "Otro"];
 const STAFF_ROLES = ["admin", "secretaria", "bedel"];
+const DNI_COMPLETO_LENGTH = 8;
 
 type MateriaRow = {
   nombre: string;
   formato: string;
   anio_cursada: string;
+  nota: string;
 };
 
 type FormType = "" | "ANEXO_A" | "ANEXO_B";
@@ -72,7 +76,7 @@ type FormState = {
   planOrigenResolucion: string;
 };
 
-const buildEmptyMateria = (): MateriaRow => ({ nombre: "", formato: "", anio_cursada: "" });
+const buildEmptyMateria = (): MateriaRow => ({ nombre: "", formato: "", anio_cursada: "", nota: "" });
 
 const buildInitialForm = (): FormState => ({
   tipo: "",
@@ -90,7 +94,14 @@ const buildInitialForm = (): FormState => ({
   planOrigenResolucion: "",
 });
 
-const preferPlan = (planes: PlanDetalle[]): PlanDetalle | null => {
+type PreferiblePlan = {
+  id: number;
+  vigente?: boolean | null;
+  anio_inicio?: number | null;
+  resolucion?: string | null;
+};
+
+const preferPlan = <T extends PreferiblePlan>(planes: T[]): T | null => {
   if (!planes.length) return null;
   const vigente = planes.find((plan) => plan.vigente);
   if (vigente) return vigente;
@@ -123,7 +134,8 @@ const PedidoEquivalenciasPage: React.FC = () => {
 
   const [dniManual, setDniManual] = useState("");
   const dniObjetivo = canGestionar ? dniManual.trim() : user?.dni ?? "";
-  const requiereDni = canGestionar && !dniObjetivo;
+  const requiereDni = canGestionar && dniObjetivo.length !== DNI_COMPLETO_LENGTH;
+  const dniParcial = canGestionar && dniObjetivo.length > 0 && dniObjetivo.length < DNI_COMPLETO_LENGTH;
 
   const selectedPedido = useMemo(() => pedidos.find((item) => item.id === selectedId) ?? null, [pedidos, selectedId]);
   const puedeEditar = selectedPedido ? selectedPedido.puede_editar : true;
@@ -149,13 +161,18 @@ const PedidoEquivalenciasPage: React.FC = () => {
         const activa = (data || []).find((item) => item.activo);
         setVentanaActiva(activa || null);
       })
-      .catch(() => setVentanaActiva(null));
-  }, []);
+      .catch((error) => {
+        setVentanaActiva(null);
+        enqueueSnackbar(getErrorMessage(error, "No se pudo verificar la ventana de equivalencias."), {
+          variant: "warning",
+        });
+      });
+  }, [enqueueSnackbar]);
 
   useEffect(() => {
     let cancelado = false;
     const load = async () => {
-      if (canGestionar && !dniObjetivo) {
+      if (requiereDni) {
         setCarrerasAlumno([]);
         return;
       }
@@ -165,9 +182,13 @@ const PedidoEquivalenciasPage: React.FC = () => {
         if (!cancelado) {
           setCarrerasAlumno(data || []);
         }
-      } catch {
+      } catch (error) {
         if (!cancelado) {
           setCarrerasAlumno([]);
+          enqueueSnackbar(
+            getErrorMessage(error, "No se pudieron obtener las carreras activas del estudiante."),
+            { variant: "warning" },
+          );
         }
       } finally {
         if (!cancelado) {
@@ -179,9 +200,9 @@ const PedidoEquivalenciasPage: React.FC = () => {
     return () => {
       cancelado = true;
     };
-  }, [canGestionar, dniObjetivo]);
+  }, [canGestionar, dniObjetivo, requiereDni, enqueueSnackbar]);
   const fetchPedidos = useCallback(async () => {
-    if (canGestionar && !dniObjetivo) {
+    if (requiereDni) {
       setPedidos([]);
       return [];
     }
@@ -192,16 +213,14 @@ const PedidoEquivalenciasPage: React.FC = () => {
       return data;
     } catch (error) {
       setPedidos([]);
-      if (isAxiosError(error)) {
-        enqueueSnackbar(error.response?.data?.message || error.message || "No se pudieron cargar los pedidos.", {
-          variant: "error",
-        });
-      }
+      enqueueSnackbar(getErrorMessage(error, "No se pudieron cargar los pedidos de equivalencia."), {
+        variant: "error",
+      });
       return [];
     } finally {
       setLoadingPedidos(false);
     }
-  }, [canGestionar, dniObjetivo, enqueueSnackbar]);
+  }, [canGestionar, dniObjetivo, requiereDni, enqueueSnackbar]);
 
   useEffect(() => {
     setSelectedId(null);
@@ -224,9 +243,13 @@ const PedidoEquivalenciasPage: React.FC = () => {
           setTrayectoria(data);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelado) {
           setTrayectoria(null);
+          enqueueSnackbar(
+            getErrorMessage(error, "No se pudo consultar la trayectoria académica del estudiante."),
+            { variant: "warning" },
+          );
         }
       })
       .finally(() => {
@@ -237,7 +260,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
     return () => {
       cancelado = true;
     };
-  }, [canGestionar, dniObjetivo, requiereDni]);
+  }, [canGestionar, dniObjetivo, requiereDni, enqueueSnackbar]);
 
   useEffect(() => {
     let cancelado = false;
@@ -267,9 +290,13 @@ const PedidoEquivalenciasPage: React.FC = () => {
           return { ...prev, planDestinoId: nextId, planDestinoResolucion: nextResol };
         });
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelado) {
           setPlanesDestino([]);
+          enqueueSnackbar(
+            getErrorMessage(error, "No se pudieron obtener los planes del profesorado destino."),
+            { variant: "warning" },
+          );
         }
       });
     return () => {
@@ -346,6 +373,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
         nombre: materia.materia_nombre,
         formato: materia.formato_display || materia.formato || "",
         anio_cursada: materia.anio ? String(materia.anio) : "",
+        nota: materia.final?.nota || materia.regularidad?.nota || "",
       }));
     if (autoMaterias.length) {
       setMaterias(autoMaterias);
@@ -380,6 +408,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
             nombre: item.nombre,
             formato: item.formato || "",
             anio_cursada: item.anio_cursada || "",
+            nota: item.nota || "",
           }))
         : [buildEmptyMateria()],
     );
@@ -437,6 +466,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
         nombre: item.nombre.trim(),
         formato: item.formato.trim() || undefined,
         anio_cursada: item.anio_cursada.trim() || undefined,
+        nota: item.nota.trim() || undefined,
       })),
   });
 
@@ -467,10 +497,9 @@ const PedidoEquivalenciasPage: React.FC = () => {
       setSelectedId(saved.id);
       hydrateForm(saved);
     } catch (error) {
-      const mensaje = isAxiosError(error)
-        ? error.response?.data?.message || error.response?.data?.detail || error.message
-        : "No se pudo guardar el pedido.";
-      enqueueSnackbar(mensaje, { variant: "error" });
+      enqueueSnackbar(getErrorMessage(error, "No se pudo guardar el pedido de equivalencia."), {
+        variant: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -494,10 +523,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
         hydrateForm(actualizado);
       }
     } catch (error) {
-      const mensaje = isAxiosError(error)
-        ? error.response?.data?.message || error.response?.data?.detail || error.message
-        : "No se pudo generar la nota.";
-      enqueueSnackbar(mensaje, { variant: "error" });
+      enqueueSnackbar(getErrorMessage(error, "No se pudo generar la nota."), { variant: "error" });
     } finally {
       setDescargando(false);
     }
@@ -513,16 +539,14 @@ const PedidoEquivalenciasPage: React.FC = () => {
       }
       enqueueSnackbar("Pedido eliminado.", { variant: "success" });
     } catch (error) {
-      const mensaje = isAxiosError(error)
-        ? error.response?.data?.message || error.response?.data?.detail || error.message
-        : "No se pudo eliminar el pedido.";
-      enqueueSnackbar(mensaje, { variant: "error" });
+      enqueueSnackbar(getErrorMessage(error, "No se pudo eliminar el pedido."), { variant: "error" });
     } finally {
       setEliminandoId(null);
     }
   };
   return (
     <Box sx={{ p: 3 }}>
+      <BackButton fallbackPath="/alumnos" />
       <PageHero
         title="Pedido de equivalencias"
         subtitle="Generá la nota oficial (Anexo A o B) y gestioná tus presentaciones ante Secretaría."
@@ -538,17 +562,21 @@ const PedidoEquivalenciasPage: React.FC = () => {
         <TextField
           label="DNI del estudiante"
           value={dniManual}
-          onChange={(event) => setDniManual(event.target.value)}
+          onChange={(event) => setDniManual(event.target.value.replace(/\D/g, ""))}
           fullWidth
           size="small"
           sx={{ maxWidth: 360, mb: 2 }}
-          helperText="Ingresá el DNI del estudiante para gestionar en su nombre."
+          helperText="Ingresá los 8 dígitos del DNI del estudiante para gestionar en su nombre."
+          inputProps={{ maxLength: DNI_COMPLETO_LENGTH, inputMode: "numeric", pattern: "[0-9]*" }}
+          error={dniParcial}
         />
       )}
 
       {requiereDni && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Ingresá un DNI válido para cargar o revisar los pedidos.
+          {dniObjetivo.length === 0
+            ? "Ingresá un DNI de 8 dígitos para cargar o revisar los pedidos."
+            : "Completá los 8 dígitos del DNI para continuar."}
         </Alert>
       )}
 
@@ -711,7 +739,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
                             setForm((prev) => ({
                               ...prev,
                               profesoradoDestinoId: value,
-                              profesoradoDestinoNombre: seleccionado?.nombre || prev.profesoradoDestinoNombre,
+                              profesoradoDestinoNombre: seleccionado?.nombre || "",
                             }));
                           }}
                         >
@@ -722,18 +750,10 @@ const PedidoEquivalenciasPage: React.FC = () => {
                             </MenuItem>
                           ))}
                         </Select>
+                        <FormHelperText>
+                          El nombre seleccionado se utilizará en la nota final.
+                        </FormHelperText>
                       </FormControl>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        label="Profesorado destino (visible en nota)"
-                        value={form.profesoradoDestinoNombre}
-                        onChange={(event) => setForm((prev) => ({ ...prev, profesoradoDestinoNombre: event.target.value }))}
-                        fullWidth
-                        size="small"
-                        disabled={datosDeshabilitados || !puedeEditar}
-                        helperText="Podés ajustar el nombre que figurará en la nota."
-                      />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
@@ -779,6 +799,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
                                 </MenuItem>
                               ))}
                             </Select>
+                            <FormHelperText>Se tomará como profesorado de origen acreditado.</FormHelperText>
                           </FormControl>
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -805,17 +826,10 @@ const PedidoEquivalenciasPage: React.FC = () => {
                                 </MenuItem>
                               ))}
                             </Select>
+                            <FormHelperText>
+                              Resolución seleccionada: {form.planOrigenResolucion || "—"}
+                            </FormHelperText>
                           </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                          <TextField
-                            label="Resolución del trayecto aprobado"
-                            value={form.planOrigenResolucion}
-                            fullWidth
-                            size="small"
-                            InputProps={{ readOnly: true }}
-                            disabled
-                          />
                         </Grid>
                       </>
                     )}
@@ -869,7 +883,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
                   <Stack spacing={1.5}>
                     {materias.map((materia, index) => (
                       <Grid container spacing={1} alignItems="center" key={`materia-${index}`}>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={5}>
                           <TextField
                             label="Nombre del espacio curricular"
                             value={materia.nombre}
@@ -897,11 +911,21 @@ const PedidoEquivalenciasPage: React.FC = () => {
                             ))}
                           </TextField>
                         </Grid>
-                        <Grid item xs={10} md={2}>
+                        <Grid item xs={6} md={2}>
                           <TextField
                             label="Año de cursada"
                             value={materia.anio_cursada}
                             onChange={(event) => handleMateriaChange(index, "anio_cursada", event.target.value)}
+                            size="small"
+                            fullWidth
+                            disabled={datosDeshabilitados || !puedeEditar}
+                          />
+                        </Grid>
+                        <Grid item xs={4} md={1}>
+                          <TextField
+                            label="Nota"
+                            value={materia.nota}
+                            onChange={(event) => handleMateriaChange(index, "nota", event.target.value)}
                             size="small"
                             fullWidth
                             disabled={datosDeshabilitados || !puedeEditar}

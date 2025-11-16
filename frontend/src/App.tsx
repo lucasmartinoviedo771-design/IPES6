@@ -18,6 +18,8 @@ import ChangePasswordPage from '@/pages/Auth/ChangePasswordPage';
 import PreinscripcionesPage from '@/pages/PreinscripcionesPage';
 import ReportesPage from '@/pages/ReportesPage';
 import SecretariaIndex from '@/pages/Secretaria/Index';
+import BedelesIndex from "@/pages/Bedeles/Index";
+import DocentesIndex from "@/pages/Docentes/Index";
 import CargarProfesoradoPage from '@/pages/Secretaria/CargarProfesoradoPage';
 import CargarPlanPage from '@/pages/Secretaria/CargarPlanPage';
 import CargarMateriasPage from '@/pages/Secretaria/CargarMateriasPage';
@@ -28,6 +30,7 @@ import MesasPage from '@/pages/Secretaria/MesasPage';
 import ConfirmarInscripcionSecretaria from "@/pages/Secretaria/ConfirmarInscripcion";
 import MesaExamenPage from '@/pages/Alumnos/MesaExamenPage';
 import PedidosEquivalenciasPage from "@/pages/Secretaria/PedidosEquivalenciasPage";
+import CursoIntroductorioPage from "@/pages/Secretaria/CursoIntroductorioPage";
 
 import EstudiantesAdminPage from "@/pages/Secretaria/EstudiantesAdminPage";
 
@@ -43,6 +46,11 @@ import ActaExamenPrimeraCargaPage from "@/pages/admin/ActaExamenPrimeraCargaPage
 import ActaExamenPage from "@/pages/Secretaria/ActaExamenPage";
 import DocenteAsistenciaPage from "@/pages/Docentes/DocenteAsistenciaPage";
 import AsistenciaReportesPage from "@/pages/Secretaria/AsistenciaReportesPage";
+import TutoriasIndex from "@/pages/Tutorias/Index";
+import EquivalenciasIndex from "@/pages/Equivalencias/Index";
+import TitulosIndex from "@/pages/Titulos/Index";
+import CoordinacionIndex from "@/pages/Coordinacion/Index";
+import JefaturaIndex from "@/pages/Jefatura/Index";
 
 // Nuevas páginas de Alumnos
 import AlumnosIndex from "@/pages/Alumnos/Index";
@@ -52,10 +60,12 @@ import PedidoAnaliticoPage from "@/pages/Alumnos/PedidoAnaliticoPage";
 import PedidoEquivalenciasPage from "@/pages/Alumnos/PedidoEquivalenciasPage";
 import TrayectoriaPage from "@/pages/Alumnos/TrayectoriaPage";
 import CertificadoRegularPage from "@/pages/Alumnos/CertificadoRegularPage";
+import ConstanciaExamenPage from "@/pages/Alumnos/ConstanciaExamenPage";
 import InscripcionPreview from "@/pages/InscripcionPreview";
 import MensajesInboxPage from "@/pages/Mensajes/InboxPage";
 import CompletarPerfilPage from "@/pages/Alumnos/CompletarPerfilPage";
 import HorarioPage from "@/pages/Alumnos/HorarioPage";
+import CursoIntroductorioAlumnoPage from "@/pages/Alumnos/CursoIntroductorioPage";
 
 // Nueva página de Primera Carga
 import PrimeraCargaPage from '@/pages/admin/PrimeraCargaPage';
@@ -98,7 +108,7 @@ export default function App() {
             <Route path="/docentes/asistencia" element={<DocenteAsistenciaPage />} />
 
             {/* Bloque protegido con AppShell (incluye alumnos y roles administrativos) */}
-            <Route element={<ProtectedRoute roles={['secretaria','admin','alumno','bedel','coordinador','tutor','jefes','jefa_aaee']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
+            <Route element={<ProtectedRoute roles={['secretaria','admin','alumno','bedel','coordinador','tutor','jefes','jefa_aaee','docente','equivalencias','titulos']}><AppShell><Outlet/></AppShell></ProtectedRoute>}>
               <Route path="/dashboard" element={<ProtectedRoute roles={['admin','secretaria','bedel','jefa_aaee','jefes','tutor','coordinador','consulta']}><DashboardPage /></ProtectedRoute>} />
               <Route path="/preinscripciones" element={<ProtectedRoute roles={['admin','secretaria','bedel']}><PreinscripcionesPage /></ProtectedRoute>} />
               {/* Alumnos: índice con tarjetas */}
@@ -125,6 +135,13 @@ export default function App() {
 
               <Route path="/gestion/confirmar" element={<ProtectedRoute roles={['bedel','secretaria','admin']}><ConfirmarInscripcionPage /></ProtectedRoute>} />
               <Route path="/secretaria" element={<ProtectedRoute roles={['secretaria','admin','bedel','jefa_aaee','jefes','tutor']}><SecretariaIndex /></ProtectedRoute>} />
+              <Route path="/bedeles" element={<ProtectedRoute roles={['secretaria','admin','bedel','jefa_aaee','jefes','tutor','coordinador']}><BedelesIndex /></ProtectedRoute>} />
+              <Route path="/docentes" element={<ProtectedRoute roles={['docente','secretaria','admin','bedel']}><DocentesIndex /></ProtectedRoute>} />
+              <Route path="/tutorias" element={<ProtectedRoute roles={['tutor','secretaria','admin','bedel']}><TutoriasIndex /></ProtectedRoute>} />
+              <Route path="/equivalencias" element={<ProtectedRoute roles={['equivalencias','secretaria','admin','bedel']}><EquivalenciasIndex /></ProtectedRoute>} />
+              <Route path="/titulos" element={<ProtectedRoute roles={['titulos','secretaria','admin']}><TitulosIndex /></ProtectedRoute>} />
+              <Route path="/coordinacion" element={<ProtectedRoute roles={['coordinador','jefes','jefa_aaee','secretaria','admin']}><CoordinacionIndex /></ProtectedRoute>} />
+              <Route path="/jefatura" element={<ProtectedRoute roles={['jefes','jefa_aaee','secretaria','admin']}><JefaturaIndex /></ProtectedRoute>} />
               <Route path="/secretaria/profesorado" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarProfesoradoPage /></ProtectedRoute>} />
               <Route path="/secretaria/profesorado/:profesoradoId/planes" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarPlanPage /></ProtectedRoute>} />
               <Route path="/secretaria/plan/:planId/materias" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargarMateriasPage /></ProtectedRoute>} />
@@ -139,6 +156,7 @@ export default function App() {
               <Route path="/secretaria/estudiantes" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><EstudiantesAdminPage /></ProtectedRoute>} />
               <Route path="/secretaria/mesas" element={<ProtectedRoute roles={['secretaria','bedel','admin','jefes','jefa_aaee']}><MesasPage /></ProtectedRoute>} />
               <Route path="/secretaria/pedidos-equivalencias" element={<ProtectedRoute roles={['secretaria','bedel','admin']}><PedidosEquivalenciasPage /></ProtectedRoute>} />
+              <Route path="/secretaria/curso-introductorio" element={<ProtectedRoute roles={['secretaria','bedel','admin','curso_intro']}><CursoIntroductorioPage /></ProtectedRoute>} />
               <Route path="/secretaria/correlatividades" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CorrelatividadesPage /></ProtectedRoute>} />
               <Route path="/secretaria/carga-notas" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><CargaNotasPage /></ProtectedRoute>} />
               <Route path="/secretaria/actas-examen" element={<ProtectedRoute roles={['secretaria','admin','bedel']}><ActaExamenPage /></ProtectedRoute>} />
@@ -152,7 +170,9 @@ export default function App() {
               <Route path="/alumnos/mesa-examen" element={<ProtectedRoute roles={['alumno','admin']}><MesaExamenPage /></ProtectedRoute>} />
               <Route path="/alumnos/trayectoria" element={<ProtectedRoute roles={['alumno','admin', 'bedel', 'secretaria']}><TrayectoriaPage /></ProtectedRoute>} />
               <Route path="/alumnos/certificado-regular" element={<ProtectedRoute roles={['alumno','admin','secretaria','bedel']}><CertificadoRegularPage /></ProtectedRoute>} />
+              <Route path="/alumnos/constancia-examen" element={<ProtectedRoute roles={['alumno','admin','secretaria','bedel']}><ConstanciaExamenPage /></ProtectedRoute>} />
               <Route path="/alumnos/horarios" element={<ProtectedRoute roles={['alumno','admin']}><HorarioPage /></ProtectedRoute>} />
+              <Route path="/alumnos/curso-introductorio" element={<ProtectedRoute roles={['alumno','admin','secretaria','bedel','curso_intro']}><CursoIntroductorioAlumnoPage /></ProtectedRoute>} />
             </Route>
     
             {/* Ruta para Primera Carga (fuera del AppShell, pero protegida) */}

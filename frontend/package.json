@@ -8,10 +8,7 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "lint": "eslint src/api src/context src/hooks src/test src/components/RHFDate.tsx src/components/RoleGate.tsx src/components/layout/AppShell.tsx src/pages/Alumnos/MesaExamenPage.tsx src/App.tsx vite.config.ts --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint src/api src/context src/hooks src/components/RHFDate.tsx src/components/RoleGate.tsx src/components/layout/AppShell.tsx src/pages/Alumnos/MesaExamenPage.tsx src/App.tsx vite.config.ts --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -45,16 +42,10 @@
     "zod": "^4.1.9"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.5.1",
-    "@testing-library/react": "^16.2.0",
-    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.2",
-    "@vitest/coverage-v8": "^4.0.7",
-    "jsdom": "^25.0.1",
     "typescript": "^5.5.4",
-    "vite": "^7.1.9",
-    "vitest": "^4.0.7"
+    "vite": "^7.1.9"
   }
 }

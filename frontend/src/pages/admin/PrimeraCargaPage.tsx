@@ -7,7 +7,6 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   Button,
   Dialog,
   DialogTitle,
@@ -20,7 +19,6 @@ import {
   CircularProgress,
   Stack,
   MenuItem,
-  Divider,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -33,11 +31,12 @@ import CompareArrows from '@mui/icons-material/CompareArrows';
 import {
   crearEstudianteInicial,
   EstudianteInicialPayload,
-  uploadEquivalencias,
+  registrarDisposicionEquivalenciaPrimeraCarga,
 } from '@/api/primeraCarga';
-import { fetchEstudianteAdminDetail } from '@/api/alumnos';
+import { EquivalenciaDisposicionPayload, fetchEstudianteAdminDetail } from '@/api/alumnos';
 import { listarProfesorados, ProfesoradoDTO } from '@/api/cargaNotas';
 import PlanillaRegularidadDialog from './PlanillaRegularidadDialog';
+import EquivalenciaDisposicionDialog from "@/components/equivalencias/EquivalenciaDisposicionDialog";
 import { PageHero } from "@/components/ui/GradientTitles";
 import {
   ICON_GRADIENT,
@@ -46,144 +45,8 @@ import {
   INSTITUTIONAL_GREEN,
 } from "@/styles/institutionalColors";
 
-type UploadDialogProps = {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  description: string;
-  uploadFunction: (data: { file: File; dry_run: boolean }) => Promise<any>;
-  exampleFileName: string;
-};
 
-const UploadDialog: React.FC<UploadDialogProps> = ({
-  open,
-  onClose,
-  title,
-  description,
-  uploadFunction,
-  exampleFileName,
-}) => {
-  const {
-    control,
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors },
-  } = useForm<{ file: FileList; dry_run: boolean }>({
-    defaultValues: { file: undefined as unknown as FileList, dry_run: false },
-  });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const mutation = useMutation({
-    mutationFn: uploadFunction,
-    onSuccess: (data) => {
-      if (data.ok) {
-        enqueueSnackbar(data.message, { variant: 'success' });
-        if (data.data.errors && data.data.errors.length > 0) {
-          const errorBlob = new Blob([data.data.errors.join('\n')], { type: 'text/plain' });
-          const errorUrl = URL.createObjectURL(errorBlob);
-          const a = document.createElement('a');
-          a.href = errorUrl;
-          a.download = `errores_${exampleFileName.replace('.csv', '')}_${new Date().toISOString()}.txt`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(errorUrl);
-        }
-      } else {
-        enqueueSnackbar(data.message || 'Error en la importación.', { variant: 'error' });
-        if (data.data.errors && data.data.errors.length > 0) {
-          const errorBlob = new Blob([data.data.errors.join('\n')], { type: 'text/plain' });
-          const errorUrl = URL.createObjectURL(errorBlob);
-          const a = document.createElement('a');
-          a.href = errorUrl;
-          a.download = `errores_${exampleFileName.replace('.csv', '')}_${new Date().toISOString()}.txt`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(errorUrl);
-        }
-      }
-      reset();
-      setSelectedFile(null);
-      onClose();
-    },
-    onError: (error: any) => {
-      enqueueSnackbar(error?.response?.data?.message || 'Error de red o servidor.', { variant: 'error' });
-    },
-  });
-
-  const onSubmit = (data: { file: FileList; dry_run: boolean }) => {
-    if (data.file?.length > 0) {
-      mutation.mutate({ file: data.file[0], dry_run: data.dry_run });
-    }
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setSelectedFile(event.target.files[0]);
-    } else {
-      setSelectedFile(null);
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          {description}
-        </Typography>
-        <Box component="form" onSubmit={handleSubmit(onSubmit)} id={`upload-form-${title}`} noValidate>
-          <Controller
-            name="file"
-            control={control}
-            rules={{ required: 'Debe seleccionar un archivo.' }}
-            render={({ field }) => (
-              <TextField
-                type="file"
-                fullWidth
-                margin="normal"
-                label="Seleccionar archivo CSV/Excel"
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ accept: '.csv' }}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  field.onChange(event.target.files);
-                  handleFileChange(event);
-                }}
-                error={!!errors.file}
-                helperText={errors.file?.message}
-              />
-            )}
-          />
-          <FormControlLabel
-            control={<Checkbox {...register('dry_run')} />}
-            label="Simular (no guardar cambios)"
-          />
-        </Box>
-        {mutation.isError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {(mutation.error as any)?.response?.data?.message || 'Error al procesar el archivo.'}
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={mutation.isPending}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          form={`upload-form-${title}`}
-          variant="contained"
-          disabled={mutation.isPending || !selectedFile}
-          startIcon={mutation.isPending ? <CircularProgress size={18} color="inherit" /> : undefined}
-        >
-          {mutation.isPending ? 'Procesando...' : 'Procesar'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 type StudentFormValues = {
   dni: string;
@@ -610,7 +473,11 @@ const PrimeraCargaPage: React.FC = () => {
   const navigate = useNavigate();
   const [openStudentDialog, setOpenStudentDialog] = useState(false);
   const [openPlanillaDialog, setOpenPlanillaDialog] = useState(false);
-  const [openEquivalenciasDialog, setOpenEquivalenciasDialog] = useState(false);
+  const [openDisposicionDialog, setOpenDisposicionDialog] = useState(false);
+
+  const handleRegistrarDisposicionPrimeraCarga = async (payload: EquivalenciaDisposicionPayload) => {
+    await registrarDisposicionEquivalenciaPrimeraCarga(payload);
+  };
 
   const iconBoxStyles = {
     width: 64,
@@ -738,10 +605,10 @@ const PrimeraCargaPage: React.FC = () => {
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>
-                    Carga de Equivalencias
+                    Equivalencias por disposición
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Registra de manera masiva las equivalencias curriculares entre espacios.
+                    Registrá disposiciones históricas sin validar correlatividades (solo primera carga).
                   </Typography>
                 </Box>
                 <Button
@@ -753,9 +620,9 @@ const PrimeraCargaPage: React.FC = () => {
                     backgroundColor: INSTITUTIONAL_TERRACOTTA,
                     "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
                   }}
-                  onClick={() => setOpenEquivalenciasDialog(true)}
+                  onClick={() => setOpenDisposicionDialog(true)}
                 >
-                  Cargar equivalencias
+                  Registrar equivalencias
                 </Button>
               </Stack>
             </CardContent>
@@ -765,13 +632,13 @@ const PrimeraCargaPage: React.FC = () => {
 
       <StudentManualDialog open={openStudentDialog} onClose={() => setOpenStudentDialog(false)} />
 
-      <UploadDialog
-        open={openEquivalenciasDialog}
-        onClose={() => setOpenEquivalenciasDialog(false)}
-        title="Cargar Equivalencias"
-        description="Suba un archivo CSV/Excel con las equivalencias curriculares."
-        uploadFunction={uploadEquivalencias}
-        exampleFileName="ejemplo_equivalencias.csv"
+      <EquivalenciaDisposicionDialog
+        open={openDisposicionDialog}
+        onClose={() => setOpenDisposicionDialog(false)}
+        title="Registrar equivalencias (Primera carga)"
+        submitLabel="Registrar equivalencias"
+        onSubmit={handleRegistrarDisposicionPrimeraCarga}
+        requiresCorrelatividades={false}
       />
 
       <PlanillaRegularidadDialog

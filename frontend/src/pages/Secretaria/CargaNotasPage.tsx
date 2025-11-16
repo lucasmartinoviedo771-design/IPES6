@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { isAxiosError } from "axios";
 import {
   Alert,
   Autocomplete,
@@ -32,17 +33,22 @@ import SearchIcon from "@mui/icons-material/Search";
 import { enqueueSnackbar } from "notistack";
 import { useSearchParams } from "react-router-dom";
 import {
+  ActaOralDTO,
   ComisionOptionDTO,
+  GuardarActaOralPayload,
   GuardarRegularidadPayload,
   MateriaOptionDTO,
   MesaResumenDTO,
   PlanDTO,
   ProfesoradoDTO,
   RegularidadPlanillaDTO,
+  guardarActaOral,
   guardarPlanillaRegularidad,
   listarMesasFinales,
   listarPlanes,
   listarProfesorados,
+  listarActasOrales,
+  obtenerActaOral,
   obtenerDatosCargaNotas,
   obtenerPlanillaRegularidad,
 } from "@/api/cargaNotas";
@@ -56,7 +62,10 @@ import {
 } from "@/api/alumnos";
 import RegularidadPlanillaEditor from "@/components/secretaria/RegularidadPlanillaEditor";
 import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
+import OralExamActaDialog, { OralActFormValues, OralActFormTopic } from "@/components/secretaria/OralExamActaDialog";
 import { PageHero } from "@/components/ui/GradientTitles";
+import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import { OralTopicScore, generarActaExamenOralPDF } from "@/utils/actaOralPdf";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -92,6 +101,19 @@ type FinalRowState = {
   observaciones: string;
 };
 
+type FinalPlanillaPayload = {
+  alumnos: {
+    inscripcion_id: number;
+    fecha_resultado: string | null;
+    condicion: string | null;
+    nota: number | null;
+    folio: string | null;
+    libro: string | null;
+    observaciones: string | null;
+    cuenta_para_intentos: boolean;
+  }[];
+};
+
 const cuatrimestreLabel: Record<string, string> = {
   PCU: "1º cuatrimestre",
   SCU: "2º cuatrimestre",
@@ -122,6 +144,8 @@ const CargaNotasPage: React.FC = () => {
   const [loadingComisiones, setLoadingComisiones] = useState(false);
   const [loadingPlanilla, setLoadingPlanilla] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [regularidadConfirmOpen, setRegularidadConfirmOpen] = useState(false);
+  const [regularidadPendingPayload, setRegularidadPendingPayload] = useState<GuardarRegularidadPayload | null>(null);
   const [defaultFechaCierre, setDefaultFechaCierre] = useState<string>(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -151,8 +175,16 @@ const [finalLoadingPlanilla, setFinalLoadingPlanilla] = useState(false);
 const [finalSaving, setFinalSaving] = useState(false);
 const [finalError, setFinalError] = useState<string | null>(null);
 const [finalSuccess, setFinalSuccess] = useState<string | null>(null);
+const [finalPermissionDenied, setFinalPermissionDenied] = useState(false);
 const [loadingFinalPlanes, setLoadingFinalPlanes] = useState(false);
 const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
+const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
+const [finalPendingPayload, setFinalPendingPayload] = useState<{ mesaId: number; payload: FinalPlanillaPayload } | null>(null);
+const [oralActDrafts, setOralActDrafts] = useState<Record<number, OralActFormValues>>({});
+const [oralDialogRow, setOralDialogRow] = useState<FinalRowState | null>(null);
+const [oralActaLoading, setOralActaLoading] = useState(false);
+const [oralActaSaving, setOralActaSaving] = useState(false);
+const [downloadingOralBatch, setDownloadingOralBatch] = useState(false);
 
   useEffect(() => {
     const loadProfesorados = async () => {
@@ -319,6 +351,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
       setFinalLoadingPlanilla(true);
       setFinalError(null);
       setFinalSuccess(null);
+      setFinalPermissionDenied(false);
       try {
         const data = await obtenerMesaPlanilla(finalSelectedMesaId);
         setFinalPlanilla(data);
@@ -327,11 +360,21 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
           data.alumnos.map<FinalRowState>((alumno) => mapAlumnoToFinalRow(alumno))
         );
         setFinalSearch("");
+        setFinalPermissionDenied(false);
       } catch (error) {
         setFinalPlanilla(null);
         setFinalCondiciones([]);
         setFinalRows([]);
-        setFinalError("No se pudo cargar la planilla de la mesa seleccionada.");
+        if (isAxiosError(error) && error.response?.status === 403) {
+          const message =
+            "Solo los docentes que integran el tribunal o el personal autorizado pueden cargar las notas de esta mesa.";
+          setFinalError(message);
+          setFinalPermissionDenied(true);
+          enqueueSnackbar(message, { variant: "warning" });
+        } else {
+          setFinalPermissionDenied(false);
+          setFinalError("No se pudo cargar la planilla de la mesa seleccionada.");
+        }
       } finally {
         setFinalLoadingPlanilla(false);
       }
@@ -370,6 +413,44 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     };
     loadFinalPlanes();
   }, [isFinalsMode, finalFilters.profesoradoId]);
+
+const selectedMesaResumen = useMemo(() => {
+  if (!finalSelectedMesaId) return null;
+  return finalMesas.find((mesa) => mesa.id === finalSelectedMesaId) ?? null;
+}, [finalSelectedMesaId, finalMesas]);
+
+const finalReadOnly = finalPermissionDenied;
+
+  const selectedMesaCursoLabel = useMemo(() => {
+    if (!selectedMesaResumen) return "";
+    const parts: string[] = [];
+    if (selectedMesaResumen.anio_cursada) {
+      parts.push(`A\u00f1o ${selectedMesaResumen.anio_cursada}`);
+    }
+    if (selectedMesaResumen.regimen) {
+      parts.push(selectedMesaResumen.regimen);
+    }
+    if (selectedMesaResumen.modalidad) {
+      parts.push(selectedMesaResumen.modalidad === "LIB" ? "Libre" : "Regular");
+    }
+    return parts.join(" \u00b7 ");
+  }, [selectedMesaResumen]);
+
+  useEffect(() => {
+    setOralActDrafts({});
+    setOralDialogRow(null);
+  }, [finalSelectedMesaId]);
+
+  const tribunalInfo = useMemo(() => {
+    const docentes = selectedMesaResumen?.docentes ?? [];
+    const findDoc = (rol: "PRES" | "VOC1" | "VOC2") =>
+      docentes.find((item) => item.rol === rol)?.nombre || null;
+    return {
+      presidente: findDoc("PRES"),
+      vocal1: findDoc("VOC1"),
+      vocal2: findDoc("VOC2"),
+    };
+  }, [selectedMesaResumen]);
 
   useEffect(() => {
     const planId = filters.planId;
@@ -612,7 +693,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     fetchPlanilla(filters.comisionId);
   }, [filters.comisionId, fetchPlanilla]);
 
-  const handleGuardarRegularidad = async (payload: GuardarRegularidadPayload) => {
+  const persistRegularidad = async (payload: GuardarRegularidadPayload) => {
     setSaving(true);
     try {
       await guardarPlanillaRegularidad(payload);
@@ -629,7 +710,28 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     }
   };
 
+  const handleGuardarRegularidad = async (payload: GuardarRegularidadPayload) => {
+    setRegularidadPendingPayload(payload);
+    setRegularidadConfirmOpen(true);
+  };
+
+  const confirmRegularidadSave = async () => {
+    if (!regularidadPendingPayload) return;
+    await persistRegularidad(regularidadPendingPayload);
+    setRegularidadPendingPayload(null);
+    setRegularidadConfirmOpen(false);
+  };
+
+  const cancelRegularidadConfirm = () => {
+    if (saving) return;
+    setRegularidadConfirmOpen(false);
+    setRegularidadPendingPayload(null);
+  };
+
   const handleFinalRowChange = (inscripcionId: number, patch: Partial<FinalRowState>) => {
+    if (finalReadOnly) {
+      return;
+    }
     setFinalRows((prev) =>
       prev.map((row) => {
         if (row.inscripcionId !== inscripcionId) {
@@ -662,31 +764,153 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
     }
   };
 
-  const handleGuardarFinalPlanilla = async () => {
+  const handleOpenOralActa = async (row: FinalRowState) => {
+    if (finalReadOnly) {
+      enqueueSnackbar(
+        "Solo los docentes del tribunal pueden gestionar las actas orales de esta mesa.",
+        { variant: "warning" },
+      );
+      return;
+    }
+    if (!finalSelectedMesaId) {
+      enqueueSnackbar("Selecciona una mesa para generar el acta oral.", { variant: "warning" });
+      return;
+    }
+    setOralDialogRow(row);
+    if (oralActDrafts[row.inscripcionId]) {
+      return;
+    }
+    setOralActaLoading(true);
+    try {
+      const data = await obtenerActaOral(finalSelectedMesaId, row.inscripcionId);
+      setOralActDrafts((prev) => ({
+        ...prev,
+        [row.inscripcionId]: mapActaOralDtoToFormValues(data),
+      }));
+    } catch (error) {
+      if (!isAxiosError(error) || error.response?.status !== 404) {
+        enqueueSnackbar("No se pudo cargar el acta oral.", { variant: "error" });
+      }
+    } finally {
+      setOralActaLoading(false);
+    }
+  };
+
+  const handleCloseOralActa = () => {
+    setOralDialogRow(null);
+  };
+
+  const handleSaveOralActa = async (values: OralActFormValues) => {
+    if (!oralDialogRow || !finalSelectedMesaId) {
+      enqueueSnackbar("Selecciona una mesa para registrar el acta oral.", { variant: "warning" });
+      throw new Error("Mesa no seleccionada");
+    }
+    if (finalReadOnly) {
+      enqueueSnackbar(
+        "Solo los docentes del tribunal pueden registrar actas orales para esta mesa.",
+        { variant: "warning" },
+      );
+      throw new Error("Sin permisos");
+    }
+    setOralActaSaving(true);
+    try {
+      await guardarActaOral(
+        finalSelectedMesaId,
+        oralDialogRow.inscripcionId,
+        mapFormValuesToOralPayload(values),
+      );
+      setOralActDrafts((prev) => ({
+        ...prev,
+        [oralDialogRow.inscripcionId]: values,
+      }));
+      enqueueSnackbar("Acta oral guardada correctamente.", { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar("No se pudo guardar el acta oral.", { variant: "error" });
+      throw error;
+    } finally {
+      setOralActaSaving(false);
+    }
+  };
+
+  const handleDownloadAllOralActas = async () => {
+    if (finalReadOnly) {
+      enqueueSnackbar(
+        "Solo los docentes del tribunal pueden descargar las actas orales de esta mesa.",
+        { variant: "warning" },
+      );
+      return;
+    }
+    if (!finalSelectedMesaId) {
+      enqueueSnackbar("Selecciona una mesa para descargar las actas orales.", { variant: "warning" });
+      return;
+    }
+    setDownloadingOralBatch(true);
+    try {
+      const actas = await listarActasOrales(finalSelectedMesaId);
+      if (!actas.length) {
+        enqueueSnackbar("No hay actas orales registradas para esta mesa.", { variant: "info" });
+        return;
+      }
+      const carrera = selectedMesaResumen?.profesorado_nombre ?? "";
+      const unidadCurricular = finalPlanilla?.materia_nombre ?? selectedMesaResumen?.materia_nombre ?? "";
+      const cursoLabel = selectedMesaCursoLabel;
+      actas.forEach((acta) => {
+        const temasAlumno = (acta.temas_alumno ?? []).map((item) => ({
+          tema: item.tema,
+          score: (item.score as OralTopicScore | undefined) || undefined,
+        }));
+        const temasDocente = (acta.temas_docente ?? []).map((item) => ({
+          tema: item.tema,
+          score: (item.score as OralTopicScore | undefined) || undefined,
+        }));
+        generarActaExamenOralPDF({
+          actaNumero: acta.acta_numero ?? undefined,
+          folioNumero: acta.folio_numero ?? undefined,
+          fecha: acta.fecha ?? undefined,
+          carrera,
+          unidadCurricular,
+          curso: acta.curso || cursoLabel,
+          alumno: `${acta.alumno} - DNI ${acta.dni}`,
+          tribunal: tribunalInfo,
+          temasElegidosAlumno: temasAlumno,
+          temasSugeridosDocente: temasDocente,
+          notaFinal: acta.nota_final ?? undefined,
+          observaciones: acta.observaciones ?? undefined,
+        });
+      });
+      enqueueSnackbar("Actas orales descargadas.", { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar("No se pudieron descargar las actas orales.", { variant: "error" });
+    } finally {
+      setDownloadingOralBatch(false);
+    }
+  };
+
+  const buildFinalPlanillaPayload = (): { mesaId: number; payload: FinalPlanillaPayload } | null => {
     if (!finalSelectedMesaId) {
       enqueueSnackbar("Selecciona una mesa para guardar las notas de finales.", { variant: "warning" });
-      return;
+      return null;
     }
     if (!finalRows.length) {
       enqueueSnackbar("No hay inscripciones para guardar.", { variant: "warning" });
-      return;
+      return null;
     }
 
     for (const row of finalRows) {
       if (!row.condicion) {
         enqueueSnackbar(`Falta seleccionar la condición de ${row.apellidoNombre}.`, { variant: "warning" });
-        return;
+        return null;
       }
       if (row.nota.trim() !== "") {
         const notaParse = Number.parseFloat(row.nota.replace(",", "."));
         if (Number.isNaN(notaParse)) {
           enqueueSnackbar(`La nota de ${row.apellidoNombre} no es válida.`, { variant: "warning" });
-          return;
+          return null;
         }
       }
     }
 
-    const payload = {
+    const payload: FinalPlanillaPayload = {
       alumnos: finalRows.map((row) => {
         const notaValor =
           row.nota.trim() === "" ? null : Number.parseFloat(row.nota.replace(",", "."));
@@ -703,27 +927,72 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
       }),
     };
 
+    return { mesaId: finalSelectedMesaId, payload };
+  };
+
+  const handleFinalSaveClick = () => {
+    if (finalPermissionDenied) {
+      enqueueSnackbar(
+        "Solo los docentes del tribunal o el personal autorizado pueden guardar la planilla de esta mesa.",
+        { variant: "warning" },
+      );
+      return;
+    }
+    const pending = buildFinalPlanillaPayload();
+    if (!pending) {
+      return;
+    }
+    setFinalPendingPayload(pending);
+    setFinalConfirmOpen(true);
+  };
+
+  const executeGuardarFinalPlanilla = async () => {
+    if (!finalPendingPayload) return;
+    const { mesaId, payload } = finalPendingPayload;
+
     setFinalSaving(true);
     setFinalError(null);
     setFinalSuccess(null);
     try {
-      await actualizarMesaPlanilla(finalSelectedMesaId, payload);
+      await actualizarMesaPlanilla(mesaId, payload);
       enqueueSnackbar("Planilla de finales guardada correctamente.", { variant: "success" });
       setFinalSuccess("Planilla guardada correctamente.");
-      const refreshed = await obtenerMesaPlanilla(finalSelectedMesaId);
-      setFinalPlanilla(refreshed);
-      setFinalCondiciones(refreshed.condiciones);
-      setFinalRows(refreshed.alumnos.map((alumno) => mapAlumnoToFinalRow(alumno)));
+      const refreshed = await obtenerMesaPlanilla(mesaId);
+      if (mesaId === finalSelectedMesaId) {
+        setFinalPlanilla(refreshed);
+        setFinalCondiciones(refreshed.condiciones);
+        setFinalRows(refreshed.alumnos.map((alumno) => mapAlumnoToFinalRow(alumno)));
+        setFinalPermissionDenied(false);
+      }
     } catch (error) {
-      setFinalError("No se pudieron guardar las notas de la mesa seleccionada.");
-      enqueueSnackbar("No se pudieron guardar las notas de la mesa.", { variant: "error" });
+      if (isAxiosError(error) && error.response?.status === 403) {
+        const message =
+          "Solo los docentes que integran el tribunal o el personal autorizado pueden guardar la planilla de esta mesa.";
+        setFinalError(message);
+        setFinalPermissionDenied(true);
+        enqueueSnackbar(message, { variant: "warning" });
+      } else {
+        setFinalPermissionDenied(false);
+        setFinalError("No se pudieron guardar las notas de la mesa seleccionada.");
+        enqueueSnackbar("No se pudieron guardar las notas de la mesa.", { variant: "error" });
+      }
     } finally {
       setFinalSaving(false);
+      setFinalConfirmOpen(false);
+      setFinalPendingPayload(null);
     }
   };
 
+  const cancelFinalConfirm = () => {
+    if (finalSaving) return;
+    setFinalConfirmOpen(false);
+    setFinalPendingPayload(null);
+  };
+
+
   return (
-    <Stack gap={3}>
+    <>
+      <Stack gap={3}>
       <PageHero
         title={isFinalsMode ? "Cargar finales" : "Carga de notas - Regularidad y Promoción"}
         subtitle={
@@ -1297,6 +1566,17 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                               {visibleFinalRows} de {totalFinalRows} inscripciones{hasFinalSearch ? " (filtrado)" : ""}
                             </Typography>
                           )}
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={handleDownloadAllOralActas}
+                            disabled={downloadingOralBatch || finalReadOnly}
+                            startIcon={
+                              downloadingOralBatch ? <CircularProgress size={14} color="inherit" /> : undefined
+                            }
+                          >
+                            {downloadingOralBatch ? "Descargando..." : "Actas orales"}
+                          </Button>
                           <TextField
                             size="small"
                             placeholder="Buscar por apellido o DNI"
@@ -1325,6 +1605,11 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                           />
                         </Stack>
                       </Box>
+                      {finalPermissionDenied && (
+                        <Alert severity="warning">
+                          Solo los docentes que integran el tribunal o el personal autorizado pueden modificar esta planilla.
+                        </Alert>
+                      )}
                       {totalFinalRows === 0 ? (
                         <Alert severity="info">No hay inscripciones registradas para esta mesa.</Alert>
                       ) : visibleFinalRows === 0 ? (
@@ -1343,6 +1628,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                 <TableCell>Folio</TableCell>
                                 <TableCell>Libro</TableCell>
                                 <TableCell>Observaciones</TableCell>
+                                <TableCell align="center">Acta oral</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -1361,6 +1647,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                       <Select
                                         value={row.condicion ?? ""}
                                         displayEmpty
+                                        disabled={finalReadOnly}
                                         onChange={(event) =>
                                           handleFinalRowChange(row.inscripcionId, {
                                             condicion: event.target.value ? String(event.target.value) : null,
@@ -1383,6 +1670,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                       size="small"
                                       type="number"
                                       value={row.nota}
+                                      disabled={finalReadOnly}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, { nota: event.target.value })
                                       }
@@ -1394,6 +1682,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                       size="small"
                                       type="date"
                                       value={row.fechaResultado}
+                                      disabled={finalReadOnly}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, { fechaResultado: event.target.value })
                                       }
@@ -1403,6 +1692,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                   <TableCell align="center">
                                     <Checkbox
                                       checked={row.cuentaParaIntentos}
+                                      disabled={finalReadOnly}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, {
                                           cuentaParaIntentos: event.target.checked,
@@ -1414,6 +1704,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                     <TextField
                                       size="small"
                                       value={row.folio}
+                                      disabled={finalReadOnly}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, { folio: event.target.value })
                                       }
@@ -1423,6 +1714,7 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                     <TextField
                                       size="small"
                                       value={row.libro}
+                                      disabled={finalReadOnly}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, { libro: event.target.value })
                                       }
@@ -1432,12 +1724,23 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                                     <TextField
                                       size="small"
                                       value={row.observaciones}
+                                      disabled={finalReadOnly}
                                       onChange={(event) =>
                                         handleFinalRowChange(row.inscripcionId, { observaciones: event.target.value })
                                       }
                                       multiline
                                       maxRows={3}
                                     />
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      disabled={finalReadOnly}
+                                      onClick={() => handleOpenOralActa(row)}
+                                    >
+                                      Acta oral
+                                    </Button>
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -1449,8 +1752,8 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
                       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}>
                         <Button
                           variant="contained"
-                          onClick={handleGuardarFinalPlanilla}
-                          disabled={finalSaving || finalRows.length === 0}
+                          onClick={handleFinalSaveClick}
+                          disabled={finalReadOnly || finalSaving || finalRows.length === 0}
                         >
                           {finalSaving ? "Guardando..." : "Guardar planilla"}
                         </Button>
@@ -1485,10 +1788,94 @@ const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
         </Stack>
       )}
     </Stack>
+    <FinalConfirmationDialog
+      open={regularidadConfirmOpen}
+      onConfirm={confirmRegularidadSave}
+      onCancel={cancelRegularidadConfirm}
+      contextText="Nuevos Registros"
+      loading={saving}
+    />
+    <FinalConfirmationDialog
+      open={finalConfirmOpen}
+      onConfirm={executeGuardarFinalPlanilla}
+      onCancel={cancelFinalConfirm}
+      contextText="Nuevos Registros"
+      loading={finalSaving}
+    />
+    {oralDialogRow && (
+      <OralExamActaDialog
+        open
+        onClose={handleCloseOralActa}
+        alumnoNombre={oralDialogRow.apellidoNombre}
+        alumnoDni={oralDialogRow.dni}
+        carrera={selectedMesaResumen?.profesorado_nombre ?? ""}
+        unidadCurricular={finalPlanilla?.materia_nombre ?? selectedMesaResumen?.materia_nombre ?? ""}
+        curso={selectedMesaCursoLabel}
+        fechaMesa={finalPlanilla?.fecha ?? selectedMesaResumen?.fecha ?? null}
+        tribunal={tribunalInfo}
+        existingValues={oralActDrafts[oralDialogRow.inscripcionId]}
+        defaultNota={oralDialogRow.nota}
+        loading={oralActaLoading && !oralActDrafts[oralDialogRow.inscripcionId]}
+        saving={oralActaSaving}
+        onSave={handleSaveOralActa}
+      />
+    )}
+    </>
   );
 };
 
 export default CargaNotasPage;
+
+const createTopicRow = (tema = "", score?: string | null): OralActFormTopic => ({
+  id: `${Date.now()}-${Math.random()}`,
+  tema,
+  score: (score as OralTopicScore | "") || "",
+});
+
+const ensureTopicRowsFromApi = (
+  topics: ActaOralDTO["temas_alumno"] | undefined,
+  min: number,
+): OralActFormTopic[] => {
+  const rows = (topics ?? []).map((item) => createTopicRow(item.tema ?? "", item.score ?? null));
+  while (rows.length < min) {
+    rows.push(createTopicRow());
+  }
+  return rows;
+};
+
+function mapActaOralDtoToFormValues(dto: ActaOralDTO): OralActFormValues {
+  return {
+    actaNumero: dto.acta_numero ?? "",
+    folioNumero: dto.folio_numero ?? "",
+    fecha: dto.fecha ?? "",
+    curso: dto.curso ?? "",
+    notaFinal: dto.nota_final ?? "",
+    observaciones: dto.observaciones ?? "",
+    temasAlumno: ensureTopicRowsFromApi(dto.temas_alumno, 3),
+    temasDocente: ensureTopicRowsFromApi(dto.temas_docente, 4),
+  };
+}
+
+function mapFormValuesToOralPayload(values: OralActFormValues): GuardarActaOralPayload {
+  const normalize = (rows: OralActFormTopic[]) =>
+    rows
+      .filter((row) => row.tema.trim())
+      .map((row) => ({
+        tema: row.tema.trim(),
+        score: row.score || null,
+      }));
+
+  return {
+    acta_numero: values.actaNumero || null,
+    folio_numero: values.folioNumero || null,
+    fecha: values.fecha || null,
+    curso: values.curso || null,
+    nota_final: values.notaFinal || null,
+    observaciones: values.observaciones || null,
+    temas_alumno: normalize(values.temasAlumno),
+    temas_docente: normalize(values.temasDocente),
+  };
+}
 
 
 

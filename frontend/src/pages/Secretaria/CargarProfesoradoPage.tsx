@@ -25,6 +25,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useNavigate } from "react-router-dom";
 import { client as api } from "@/api/client";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 
 interface Profesorado {
   id: number;
@@ -32,6 +33,7 @@ interface Profesorado {
   duracion_anios: number;
   activo: boolean;
   inscripcion_abierta: boolean;
+  es_certificacion_docente: boolean;
 }
 
 interface ProfesoradoFormInput {
@@ -39,6 +41,7 @@ interface ProfesoradoFormInput {
   duracion_anios: number;
   activo: boolean;
   inscripcion_abierta: boolean;
+  es_certificacion_docente: boolean;
 }
 
 export default function CargarProfesoradoPage() {
@@ -46,6 +49,11 @@ export default function CargarProfesoradoPage() {
   const navigate = useNavigate();
   const [editingProfesorado, setEditingProfesorado] =
     useState<Profesorado | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState<{
+    mode: "create" | "update";
+    payload: ProfesoradoFormInput;
+    target?: Profesorado | null;
+  } | null>(null);
 
   const {
     control,
@@ -59,6 +67,7 @@ export default function CargarProfesoradoPage() {
       duracion_anios: 0,
       activo: true,
       inscripcion_abierta: true,
+      es_certificacion_docente: false,
     },
   });
 
@@ -82,6 +91,7 @@ export default function CargarProfesoradoPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profesorados"] });
       reset();
+      setPendingSubmit(null);
     },
   });
 
@@ -101,6 +111,7 @@ export default function CargarProfesoradoPage() {
       queryClient.invalidateQueries({ queryKey: ["profesorados"] });
       setEditingProfesorado(null);
       reset();
+      setPendingSubmit(null);
     },
   });
 
@@ -118,11 +129,17 @@ export default function CargarProfesoradoPage() {
   });
 
   const onSubmit = (data: ProfesoradoFormInput) => {
-
     if (editingProfesorado) {
-      updateProfesoradoMutation.mutate({ ...editingProfesorado, ...data });
+      setPendingSubmit({
+        mode: "update",
+        payload: data,
+        target: editingProfesorado,
+      });
     } else {
-      createProfesoradoMutation.mutate(data);
+      setPendingSubmit({
+        mode: "create",
+        payload: data,
+      });
     }
   };
 
@@ -132,6 +149,7 @@ export default function CargarProfesoradoPage() {
     setValue("duracion_anios", profesorado.duracion_anios);
     setValue("activo", profesorado.activo);
     setValue("inscripcion_abierta", profesorado.inscripcion_abierta);
+    setValue("es_certificacion_docente", profesorado.es_certificacion_docente);
   };
 
   const handleDeleteClick = (profesoradoId: number) => {
@@ -140,7 +158,34 @@ export default function CargarProfesoradoPage() {
     }
   };
 
+  const isSaving = pendingSubmit
+    ? pendingSubmit.mode === "update"
+      ? updateProfesoradoMutation.isPending
+      : createProfesoradoMutation.isPending
+    : false;
+
+  const confirmContext = pendingSubmit
+    ? pendingSubmit.mode === "update"
+      ? `actualización del profesorado "${pendingSubmit.target?.nombre ?? pendingSubmit.payload.nombre}"`
+      : `alta del nuevo profesorado "${pendingSubmit.payload.nombre}"`
+    : "alta del profesorado";
+
+  const handleConfirmSubmit = () => {
+    if (!pendingSubmit) return;
+    if (pendingSubmit.mode === "update" && pendingSubmit.target) {
+      updateProfesoradoMutation.mutate({ ...pendingSubmit.target, ...pendingSubmit.payload });
+    } else if (pendingSubmit.mode === "create") {
+      createProfesoradoMutation.mutate(pendingSubmit.payload);
+    }
+  };
+
+  const handleCancelConfirm = () => {
+    if (isSaving) return;
+    setPendingSubmit(null);
+  };
+
   return (
+    <>
     <Stack gap={3}>
       <PageHero
         title="Cargar profesorado"
@@ -209,6 +254,18 @@ export default function CargarProfesoradoPage() {
               />
             }
             label="Inscripción Abierta"
+          />
+          <FormControlLabel
+            control={
+              <Controller
+                name="es_certificacion_docente"
+                control={control}
+                render={({ field }) => (
+                  <Switch {...field} checked={field.value} />
+                )}
+              />
+            }
+            label="Certificación docente"
           />
           <Button type="submit" variant="contained">
             {editingProfesorado ? "Actualizar" : "Guardar"}
@@ -289,5 +346,13 @@ export default function CargarProfesoradoPage() {
         )}
       </Paper>
     </Stack>
+    <FinalConfirmationDialog
+      open={Boolean(pendingSubmit)}
+      onConfirm={handleConfirmSubmit}
+      onCancel={handleCancelConfirm}
+      contextText={confirmContext}
+      loading={isSaving}
+    />
+    </>
   );
 }
