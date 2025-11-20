@@ -1,49 +1,23 @@
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import DateRangeIcon from "@mui/icons-material/DateRange";
-import GavelIcon from "@mui/icons-material/Gavel";
-import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
-import SchoolIcon from "@mui/icons-material/School";
-
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 
 const sections: RoleDashboardSection[] = [
   {
     title: "Supervisión académica",
     items: [
-      {
-        title: "Habilitar / controlar fechas",
-        subtitle: "Autoriza periodos de inscripción, mesas y trámites especiales.",
-        icon: <DateRangeIcon />,
-        path: "/secretaria/habilitar-fechas",
-      },
-      {
-        title: "Pedidos de equivalencias",
-        subtitle: "Revisa el avance del circuito y desbloquea casos excepcionales.",
-        icon: <SchoolIcon />,
-        path: "/secretaria/pedidos-equivalencias",
-      },
-      {
-        title: "Actas y notas",
-        subtitle: "Consulta el estado de planillas y actas finales.",
-        icon: <GavelIcon />,
-        path: "/secretaria/carga-notas",
-      },
+      DASHBOARD_ITEMS.HABILITAR_FECHAS,
+      DASHBOARD_ITEMS.EQUIV_LISTADO_GENERAL,
+      DASHBOARD_ITEMS.ACTAS_Y_NOTAS_GENERAL,
     ],
   },
   {
     title: "Informes y comunicación",
     items: [
+      DASHBOARD_ITEMS.REPORTES,
       {
-        title: "Reportes institucionales",
-        subtitle: "Tableros y exportaciones para reuniones de gestión.",
-        icon: <AssessmentIcon />,
-        path: "/reportes",
-      },
-      {
+        ...DASHBOARD_ITEMS.MENSAJES,
         title: "Mensajes y avisos",
         subtitle: "Canal oficial para comunicados a equipos y estudiantes.",
-        icon: <MarkEmailUnreadIcon />,
-        path: "/mensajes",
       },
     ],
   },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -134,6 +134,13 @@ export default function DashboardPage() {
   type EstadoNormalizado = Lowercase<PreinscripcionDTO['estado']>;
   const normalizeEstado = (estado: PreinscripcionDTO['estado']) => estado.toLowerCase() as EstadoNormalizado;
 
+  const can = useCallback((roles?: string[]) => {
+    if (!roles || roles.length === 0) return true;
+    if (user?.is_superuser) return true;
+    const userRoles = (user?.roles || []).map((r) => r.toLowerCase().trim());
+    return roles.some((role) => userRoles.includes(role.toLowerCase().trim()));
+  }, [user]);
+
   useEffect(() => {
     const canViewStats = can(['admin', 'secretaria', 'bedel', 'preinscripciones']);
 
@@ -158,15 +165,7 @@ export default function DashboardPage() {
         // Opcional: mostrar un estado de error en la UI
       });
     }
-  }, [user]);
-
-
-  const can = (roles?: string[]) => {
-    if (!roles || roles.length === 0) return true;
-    if (user?.is_superuser) return true;
-    const u = (user?.roles || []).map(r => r.toLowerCase().trim());
-    return roles.some(r => u.includes(r.toLowerCase().trim()));
-  };
+  }, [can]);
 
   const rawActions: QuickAction[] = [
     { title: "Nueva preinscripción", description: "Crear una nueva preinscripción", icon: <AddIcon />, onClick: () => navigate("/preinscripcion"), variant: "contained" },

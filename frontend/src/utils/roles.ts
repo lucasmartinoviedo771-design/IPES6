@@ -2,11 +2,23 @@ import { User } from "@/context/AuthContext";
 
 type Role = string;
 
+let globalRoleOverride: string | null = null;
+
+export const setGlobalRoleOverride = (role: string | null) => {
+  globalRoleOverride = role ? role.toLowerCase().trim() : null;
+};
+
+export const getGlobalRoleOverride = () => globalRoleOverride;
+
 const normalizeRoles = (roles?: string[] | null) =>
   (roles ?? []).map((r) => r.toLowerCase().trim()).filter(Boolean);
 
 const collectRoles = (user: User | null | undefined): Set<string> => {
   const set = new Set<string>();
+  if (globalRoleOverride) {
+    set.add(globalRoleOverride);
+    return set;
+  }
   if (!user) {
     return set;
   }

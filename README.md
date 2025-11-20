@@ -6,6 +6,19 @@ El sistema está construido con una arquitectura moderna de dos componentes prin
 
 ---
 
+## Dashboards por rol
+
+Las tarjetas que se muestran en cada panel de rol se definen de forma centralizada en `frontend/src/components/roles/dashboardItems.tsx`. Ese catálogo mantiene los títulos, descripciones, iconos y rutas para todos los accesos reutilizables (Bedeles, Tutorías, Coordinación, etc.).
+
+Cuando necesites sumar una tarjeta nueva:
+
+1. Agregá la entrada en `dashboardItems.tsx` exportando `DASHBOARD_ITEMS.MI_NUEVA_CARD`.
+2. Desde el `Index.tsx` del rol que corresponda, importá `DASHBOARD_ITEMS` y referenciá la clave dentro del arreglo `sections` que consume `RoleDashboard`.
+
+De esta manera evitamos duplicar texto y rutas cuando una misma tarjeta aplica a múltiples roles.
+
+---
+
 ## Tecnologías Utilizadas
 
 -   **Backend**:

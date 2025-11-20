@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -18,7 +18,6 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { getDefaultHomeRoute, isOnlyStudent } from "@/utils/roles";
 import ipesLogoDark from "@/assets/ipes-logo-dark.png";
 import sigedFirma from "@/assets/siged-firma.png";
-import { storeTokens } from "@/api/client";
 import { PageHero } from "@/components/ui/GradientTitles";
 
 const GoogleGlyph = () => (
@@ -53,21 +52,18 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => {
-    // Asegura que no queden tokens viejos que disparen refrescos infinitos
-    storeTokens(null, null);
-  }, []);
   const googleLoginUrl =
     import.meta.env.VITE_GOOGLE_LOGIN_URL ||
     ((import.meta.env.VITE_API_BASE || "").replace(/\/api\/?$/, "") || window.location.origin) +
       "/auth/google/login/";
+
+  const hasGoogleEndpoint = !!import.meta.env.VITE_GOOGLE_LOGIN_URL;
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
 
-  const hasGoogleEndpoint = !!import.meta.env.VITE_GOOGLE_LOGIN_URL;
   const handleGoogleLogin = () => {
     if (hasGoogleEndpoint) {
       window.location.href = googleLoginUrl;
@@ -117,12 +113,7 @@ export default function LoginPage() {
     >
       <Stack spacing={4} alignItems="center" sx={{ width: "100%", maxWidth: 420 }}>
         <Stack spacing={1.5} alignItems="center">
-          <Box
-            component="img"
-            src={ipesLogoDark}
-            alt="IPES6"
-            sx={{ height: 96, objectFit: "contain" }}
-          />
+          <Box component="img" src={ipesLogoDark} alt="IPES Paulo Freire" sx={{ height: 96, objectFit: "contain" }} />
         </Stack>
 
         <Paper
@@ -146,6 +137,11 @@ export default function LoginPage() {
                 boxShadow: "none",
                 borderRadius: 3,
                 background: "linear-gradient(135deg, rgba(125,127,110,0.95), rgba(183,105,78,0.95))",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
               }}
             />
             <form onSubmit={handleSubmit}>
@@ -174,8 +170,16 @@ export default function LoginPage() {
                     },
                   }}
                 >
-                  {hasGoogleEndpoint ? "Continuar con Google" : "Próximamente · Google"}
+                  {hasGoogleEndpoint ? "Continuar con Google" : "Próximamente - Google"}
                 </Button>
+                {hasGoogleEndpoint && (
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "rgba(255,255,255,0.7)", display: "block", textAlign: "center" }}
+                  >
+                    Solo pueden ingresar cuentas institucionales ya cargadas en el sistema.
+                  </Typography>
+                )}
 
                 <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
                   {hasGoogleEndpoint ? "o ingresá con usuario" : "Ingresá con usuario"}

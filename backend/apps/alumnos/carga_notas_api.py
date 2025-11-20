@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 from django.db import transaction
 from django.db.models import Max
+from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Router, Schema, Field
 from ninja.errors import HttpError
@@ -26,9 +28,45 @@ from core.models import (
     PreinscripcionChecklist,
     Profesorado,
     Regularidad,
+    RegularidadPlanillaLock,
 )
 
 carga_notas_router = Router(tags=["carga_notas"])
+
+
+def _format_user_display(user) -> str | None:
+    if not user or not getattr(user, "is_authenticated", False):
+        return None
+    full_name = (user.get_full_name() or "").strip()
+    if full_name:
+        return full_name
+    username = getattr(user, "username", None)
+    if username:
+        return username
+    return None
+
+
+def _user_has_privileged_planilla_access(user) -> bool:
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    group_names = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    return bool(group_names.intersection({"admin", "secretaria"}))
+
+
+def _regularidad_lock_for_scope(
+    *,
+    comision: Comision | None = None,
+    materia: Materia | None = None,
+    anio_virtual: int | None = None,
+):
+    qs = RegularidadPlanillaLock.objects.select_related("cerrado_por")
+    if comision:
+        return qs.filter(comision=comision).first()
+    if materia is not None and anio_virtual is not None:
+        return qs.filter(comision__isnull=True, materia=materia, anio_virtual=anio_virtual).first()
+    return None
 
 
 class RegularidadAlumnoOut(Schema):
@@ -48,11 +86,25 @@ class RegularidadAlumnoOut(Schema):
 class RegularidadPlanillaOut(Schema):
     materia_id: int
     materia_nombre: str
+    materia_anio: int | None = None
     formato: str
+    regimen: str | None = None
     comision_id: int
     comision_codigo: str
     anio: int
     turno: str
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    plan_id: int | None = None
+    plan_resolucion: str | None = None
+    docentes: list[str] = Field(default_factory=list)
+    fecha_cierre: date | None = None
+    esta_cerrada: bool = False
+    cerrada_en: str | None = None
+    cerrada_por: str | None = None
+    puede_editar: bool = True
+    puede_cerrar: bool = True
+    puede_reabrir: bool = False
     situaciones: list[dict]
     alumnos: list[RegularidadAlumnoOut]
 
@@ -72,6 +124,11 @@ class RegularidadCargaIn(Schema):
     fecha_cierre: date | None = None
     alumnos: list[RegularidadAlumnoIn]
     observaciones_generales: str | None = None
+
+
+class RegularidadCierreIn(Schema):
+    comision_id: int
+    accion: Literal["cerrar", "reabrir"]
 
 
 class ActaDocenteIn(Schema):
@@ -711,14 +768,33 @@ def _build_regularidad_alumnos(inscripciones) -> list[RegularidadAlumnoOut]:
     return alumnos
 
 
+def _docente_to_string(docente: Docente | None) -> str | None:
+    if not docente:
+        return None
+    apellido = (docente.apellido or "").strip()
+    nombre = (docente.nombre or "").strip()
+    if apellido and nombre:
+        return f"{apellido}, {nombre}"
+    return apellido or nombre or None
+
+
+def _max_regularidad_fecha(inscripciones) -> date | None:
+    inscripcion_ids = [insc.id for insc in inscripciones if getattr(insc, "id", None)]
+    if not inscripcion_ids:
+        return None
+    aggregate = Regularidad.objects.filter(inscripcion_id__in=inscripcion_ids).aggregate(max_fecha=Max("fecha_cierre"))
+    return aggregate.get("max_fecha")
+
+
 @carga_notas_router.get(
     "/regularidad",
     response={200: RegularidadPlanillaOut, 400: ApiResponse, 404: ApiResponse},
 )
 def obtener_planilla_regularidad(request, comision_id: int):
+    can_override_lock = _user_has_privileged_planilla_access(request.user)
     if comision_id >= 0:
         comision = (
-            Comision.objects.select_related("materia__plan_de_estudio__profesorado", "turno")
+            Comision.objects.select_related("materia__plan_de_estudio__profesorado", "turno", "docente")
             .filter(id=comision_id)
             .first()
         )
@@ -726,8 +802,11 @@ def obtener_planilla_regularidad(request, comision_id: int):
             return 404, ApiResponse(ok=False, message="Comision no encontrada.")
 
         situaciones = _situaciones_para_formato(comision.materia.formato)
+        materia = comision.materia
+        plan = materia.plan_de_estudio if materia else None
+        profesorado = plan.profesorado if plan else None
 
-        inscripciones = (
+        inscripciones_qs = (
             InscripcionMateriaAlumno.objects.filter(
                 comision_id=comision.id,
                 anio=comision.anio_lectivo,
@@ -740,17 +819,37 @@ def obtener_planilla_regularidad(request, comision_id: int):
             )
         )
 
+        inscripciones = list(inscripciones_qs)
         alumnos = _build_regularidad_alumnos(inscripciones)
         turno_nombre = comision.turno.nombre if comision.turno else ""
+        fecha_cierre = _max_regularidad_fecha(inscripciones)
+        docente_principal = _docente_to_string(comision.docente)
+        docentes = [docente_principal] if docente_principal else []
+        lock = _regularidad_lock_for_scope(comision=comision)
+        esta_cerrada = lock is not None
 
         return RegularidadPlanillaOut(
             materia_id=comision.materia_id,
             materia_nombre=comision.materia.nombre,
+            materia_anio=materia.anio_cursada if materia else None,
             formato=comision.materia.formato,
+            regimen=materia.regimen if materia else None,
             comision_id=comision.id,
             comision_codigo=comision.codigo,
             anio=comision.anio_lectivo,
             turno=turno_nombre,
+            profesorado_id=profesorado.id if profesorado else None,
+            profesorado_nombre=profesorado.nombre if profesorado else None,
+            plan_id=plan.id if plan else None,
+            plan_resolucion=plan.resolucion if plan else None,
+            docentes=docentes,
+            fecha_cierre=fecha_cierre,
+            esta_cerrada=esta_cerrada,
+            cerrada_en=lock.cerrado_en.isoformat() if lock else None,
+            cerrada_por=_format_user_display(lock.cerrado_por),
+            puede_editar=(not esta_cerrada) or can_override_lock,
+            puede_cerrar=not esta_cerrada,
+            puede_reabrir=esta_cerrada and can_override_lock,
             situaciones=situaciones,
             alumnos=alumnos,
         )
@@ -766,7 +865,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
 
     situaciones = _situaciones_para_formato(materia.formato)
 
-    inscripciones = (
+    inscripciones_qs = (
         InscripcionMateriaAlumno.objects.filter(
             materia_id=materia.id,
             comision__isnull=True,
@@ -779,18 +878,39 @@ def obtener_planilla_regularidad(request, comision_id: int):
         )
     )
     if anio_virtual is not None:
-        inscripciones = inscripciones.filter(anio=anio_virtual)
+        inscripciones_qs = inscripciones_qs.filter(anio=anio_virtual)
 
+    inscripciones = list(inscripciones_qs)
     alumnos = _build_regularidad_alumnos(inscripciones)
+    fecha_cierre = _max_regularidad_fecha(inscripciones)
+    plan = materia.plan_de_estudio
+    profesorado = plan.profesorado if plan else None
+    lock_anio = anio_virtual if anio_virtual is not None else 0
+    lock = _regularidad_lock_for_scope(materia=materia, anio_virtual=lock_anio)
+    esta_cerrada = lock is not None
 
     return RegularidadPlanillaOut(
         materia_id=materia.id,
         materia_nombre=materia.nombre,
+        materia_anio=materia.anio_cursada,
         formato=materia.formato,
+        regimen=materia.regimen,
         comision_id=comision_id,
         comision_codigo="Sin comision",
         anio=anio_virtual if anio_virtual is not None else date.today().year,
         turno="Sin turno",
+        profesorado_id=profesorado.id if profesorado else None,
+        profesorado_nombre=profesorado.nombre if profesorado else None,
+        plan_id=plan.id if plan else None,
+        plan_resolucion=plan.resolucion if plan else None,
+        docentes=[],
+        fecha_cierre=fecha_cierre,
+        esta_cerrada=esta_cerrada,
+        cerrada_en=lock.cerrado_en.isoformat() if lock else None,
+        cerrada_por=_format_user_display(lock.cerrado_por),
+        puede_editar=(not esta_cerrada) or can_override_lock,
+        puede_cerrar=not esta_cerrada,
+        puede_reabrir=esta_cerrada and can_override_lock,
         situaciones=situaciones,
         alumnos=alumnos,
     )
@@ -805,6 +925,8 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
     comision = None
     materia = None
     anio_virtual = None
+    lock = None
+    can_override_lock = _user_has_privileged_planilla_access(request.user)
 
     if is_virtual:
         materia_id, anio_virtual = _split_virtual_comision_id(payload.comision_id)
@@ -814,11 +936,20 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
                 ok=False,
                 message="Materia no encontrada para la comision virtual.",
             )
+        lock_key = anio_virtual if anio_virtual is not None else 0
+        lock = _regularidad_lock_for_scope(materia=materia, anio_virtual=lock_key)
     else:
         comision = Comision.objects.select_related("materia").filter(id=payload.comision_id).first()
         if not comision:
             return 404, ApiResponse(ok=False, message="Comision no encontrada.")
         materia = comision.materia
+        lock = _regularidad_lock_for_scope(comision=comision)
+
+    if lock and not can_override_lock:
+        return 403, ApiResponse(
+            ok=False,
+            message="La planilla ya fue cerrada. Solo secretaría o admin pueden modificarla.",
+        )
 
     situaciones_validas = {item["alias"] for item in _situaciones_para_formato(materia.formato)}
 
@@ -917,6 +1048,57 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
             )
 
     return ApiResponse(ok=True, message="Notas de regularidad guardadas correctamente.")
+
+
+@carga_notas_router.post(
+    "/regularidad/cierre",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
+def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn):
+    is_virtual = payload.comision_id < 0
+    comision: Comision | None = None
+    materia: Materia | None = None
+    anio_virtual: int | None = None
+    lock = None
+
+    if is_virtual:
+        materia_id, anio_virtual = _split_virtual_comision_id(payload.comision_id)
+        materia = Materia.objects.filter(id=materia_id).first()
+        if not materia:
+            return 404, ApiResponse(ok=False, message="Materia no encontrada para el cierre solicitado.")
+        lock_key = anio_virtual if anio_virtual is not None else 0
+        lock = _regularidad_lock_for_scope(materia=materia, anio_virtual=lock_key)
+    else:
+        comision = Comision.objects.filter(id=payload.comision_id).first()
+        if not comision:
+            return 404, ApiResponse(ok=False, message="Comision no encontrada.")
+        lock = _regularidad_lock_for_scope(comision=comision)
+
+    accion = payload.accion.lower()
+    can_override = _user_has_privileged_planilla_access(request.user)
+
+    if accion == "cerrar":
+        if lock:
+            return ApiResponse(ok=True, message="La planilla ya se encontraba cerrada.")
+        RegularidadPlanillaLock.objects.create(
+            comision=comision,
+            materia=None if comision else materia,
+            anio_virtual=None if comision else (anio_virtual if anio_virtual is not None else 0),
+            cerrado_por=request.user if getattr(request.user, "is_authenticated", False) else None,
+        )
+        return ApiResponse(ok=True, message="Planilla cerrada correctamente.")
+
+    if accion == "reabrir":
+        if not can_override:
+            return 403, ApiResponse(
+                ok=False,
+                message="Solo secretaría o admin pueden reabrir una planilla cerrada.",
+            )
+        if lock:
+            lock.delete()
+        return ApiResponse(ok=True, message="Planilla reabierta correctamente.")
+
+    return 400, ApiResponse(ok=False, message="Accion de cierre no reconocida.")
 
 
 def _get_inscripcion_mesa_or_404(mesa_id: int, inscripcion_id: int) -> InscripcionMesa:

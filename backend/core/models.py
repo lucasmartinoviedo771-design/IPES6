@@ -1198,6 +1198,14 @@ class MesaExamen(models.Model):
         blank=True,
         related_name="mesas_como_vocal2",
     )
+    planilla_cerrada_en = models.DateTimeField(null=True, blank=True)
+    planilla_cerrada_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mesas_planillas_cerradas",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -1508,6 +1516,47 @@ class PlanillaRegularidadHistorial(models.Model):
 
     def __str__(self) -> str:
         return f"{self.planilla.codigo} - {self.get_accion_display()} ({self.created_at:%Y-%m-%d %H:%M})"
+
+
+class RegularidadPlanillaLock(models.Model):
+    comision = models.OneToOneField(
+        Comision,
+        on_delete=models.CASCADE,
+        related_name="regularidad_lock",
+        null=True,
+        blank=True,
+    )
+    materia = models.ForeignKey(
+        Materia,
+        on_delete=models.CASCADE,
+        related_name="regularidad_locks",
+        null=True,
+        blank=True,
+    )
+    anio_virtual = models.IntegerField(null=True, blank=True)
+    cerrado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="regularidad_planillas_cerradas",
+    )
+    cerrado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["materia", "anio_virtual"], name="uniq_regularidad_lock_materia_anio"),
+            models.CheckConstraint(
+                condition=models.Q(comision__isnull=False)
+                | (models.Q(materia__isnull=False) & models.Q(anio_virtual__isnull=False)),
+                name="regularidad_lock_scope_defined",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        if self.comision:
+            return f"Cierre regularidad comision {self.comision_id}"
+        return f"Cierre regularidad materia {self.materia_id} ({self.anio_virtual})"
 
 
 class ActaExamen(models.Model):

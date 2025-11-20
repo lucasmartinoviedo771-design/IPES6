@@ -18,6 +18,9 @@ load_dotenv(BASE_DIR / ".env")
 RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
 RECAPTCHA_MIN_SCORE = float(os.getenv("RECAPTCHA_MIN_SCORE", "0.3"))
 PREINS_RATE_LIMIT_PER_HOUR = int(os.getenv("PREINS_RATE_LIMIT_PER_HOUR", "5"))
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
 
 # === Entorno ==============================================================
 DJANGO_ENV = os.getenv("DJANGO_ENV", "development").lower()
@@ -209,27 +212,6 @@ if "http://192.168.1.83:5173" not in FRONTEND_ORIGINS:
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
-CSRF_TRUSTED_ORIGINS = FRONTEND_ORIGINS
-CORS_ALLOW_HEADERS = list(default_headers)
-CORS_ALLOW_METHODS = list(default_methods)
-
-# === Logging (mínimo útil) =============================================
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "console": {"class": "logging.StreamHandler"},
-    },
-    "root": {"handlers": ["console"], "level": "INFO"},
-    "loggers": {
-        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
-    },
-}
-
-# === Django 5 defaults ==================================================
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# Política de contraseñas explícita
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",

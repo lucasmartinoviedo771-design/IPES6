@@ -1,31 +1,13 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import ChecklistIcon from "@mui/icons-material/Checklist";
-import InsightsIcon from "@mui/icons-material/Insights";
-
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 
 const sections: RoleDashboardSection[] = [
   {
     title: "Evaluación y dictamen",
     items: [
-      {
-        title: "Bandeja de pedidos",
-        subtitle: "Accede a los anexos A/B pendientes para emitir el dictamen.",
-        icon: <ChecklistIcon />,
-        path: "/secretaria/pedidos-equivalencias?workflow=review",
-      },
-      {
-        title: "Disposiciones registradas",
-        subtitle: "Consulta o descarga las disposiciones emitidas para cada estudiante.",
-        icon: <ArticleIcon />,
-        path: "/secretaria/pedidos-equivalencias?view=disposiciones",
-      },
-      {
-        title: "Reportes de equivalencias",
-        subtitle: "Analiza métricas y exporta listados para reuniones o auditorías.",
-        icon: <InsightsIcon />,
-        path: "/reportes",
-      },
+      DASHBOARD_ITEMS.EQUIV_BANDEJA_REVIEW,
+      DASHBOARD_ITEMS.EQUIV_DISPOSICIONES,
+      DASHBOARD_ITEMS.EQUIV_REPORTES,
     ],
   },
 ];

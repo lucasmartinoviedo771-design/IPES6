@@ -32,11 +32,11 @@ export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
     <Stack
       direction={{ xs: "column", md: "row" }}
       justifyContent="space-between"
-      alignItems={{ xs: "flex-start", md: "center" }}
+      alignItems="center" // Changed to center for all screen sizes
       spacing={2}
       sx={combinedSx}
     >
-      <Box>
+      <Box sx={{ textAlign: "center" }}> {/* Added textAlign: 'center' here */}
         <Typography
           variant="h5"
           sx={{

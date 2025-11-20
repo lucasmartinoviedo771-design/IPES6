@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -107,6 +108,7 @@ const PedidosEquivalenciasPage: React.FC = () => {
   const isEquivalencias = isAdmin || roles.includes("equivalencias");
   const isTitulos = isAdmin || roles.includes("titulos");
   const { data: profesorados = [] } = useCatalogoCarreras();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -149,7 +151,39 @@ const PedidosEquivalenciasPage: React.FC = () => {
   const [notificarSaving, setNotificarSaving] = useState(false);
   const [enviandoId, setEnviandoId] = useState<number | null>(null);
   const [refreshToggle, setRefreshToggle] = useState(0);
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
   const triggerRefresh = useCallback(() => setRefreshToggle((prev) => prev + 1), []);
+
+  useEffect(() => {
+    const workflowParam = searchParams.get("workflow") ?? "";
+    const estadoParam = (searchParams.get("estado") as EstadoFiltro | null) ?? "";
+    const dniParam = searchParams.get("dni") ?? "";
+    const profesoradoParam = searchParams.get("profesoradoId") ?? "";
+    const ventanaParam = searchParams.get("ventanaId") ?? "";
+    if (workflowParam || estadoParam || dniParam || profesoradoParam || ventanaParam) {
+      setFilters((prev) => ({
+        ...prev,
+        workflow: workflowParam || prev.workflow,
+        estado: estadoParam || prev.estado,
+        dni: dniParam || prev.dni,
+        profesoradoId: profesoradoParam || prev.profesoradoId,
+        ventanaId: ventanaParam || prev.ventanaId,
+      }));
+    }
+    setFiltersHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const params = new URLSearchParams();
+    if (filters.workflow) params.set("workflow", filters.workflow);
+    if (filters.estado) params.set("estado", filters.estado);
+    if (filters.dni) params.set("dni", filters.dni);
+    if (filters.profesoradoId) params.set("profesoradoId", filters.profesoradoId);
+    if (filters.ventanaId) params.set("ventanaId", filters.ventanaId);
+    setSearchParams(params, { replace: true });
+  }, [filters, filtersHydrated, setSearchParams]);
 
   const fetchDisposiciones = useCallback(async () => {
     setLoadingDisposiciones(true);

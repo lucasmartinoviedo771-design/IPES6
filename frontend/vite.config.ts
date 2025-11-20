@@ -17,5 +17,23 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // Aumentamos el límite a 2100 kB para que no muestre el warning por el chunk 'vendor'
+    chunkSizeWarningLimit: 2100,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
+        },
+      },
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setupTests.ts',
+  },
 })
 

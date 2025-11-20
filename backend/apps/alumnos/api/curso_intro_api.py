@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import AnonymousUser, User
 from django.db.models import Q
 from django.utils import timezone
@@ -533,7 +535,10 @@ def curso_intro_registrar_asistencia(request, registro_id: int, payload: CursoIn
         raise HttpError(404, "Registro no encontrado.")
     _ci_ensure_profesorado_access(request.user, registro.profesorado_id)
     before_snapshot = _ci_registro_audit_snapshot(registro)
-    registro.asistencias_totales = payload.asistencias_totales
+    asistencias = payload.asistencias_totales
+    if asistencias < 0 or asistencias > 100:
+        raise HttpError(400, "La asistencia debe estar entre 0 y 100.")
+    registro.asistencias_totales = asistencias
     registro.save(update_fields=["asistencias_totales"])
     log_action_from_request(
         request,
@@ -564,8 +569,18 @@ def curso_intro_cerrar_registro(request, registro_id: int, payload: CursoIntroCi
         raise HttpError(404, "Registro no encontrado.")
     _ci_ensure_profesorado_access(request.user, registro.profesorado_id)
     before_snapshot = _ci_registro_audit_snapshot(registro)
-    registro.nota_final = payload.nota_final
-    registro.asistencias_totales = payload.asistencias_totales
+    nota_value = payload.nota_final
+    if nota_value is not None:
+        if nota_value < 1 or nota_value > 10:
+            raise HttpError(400, "La nota debe estar entre 1 y 10.")
+        registro.nota_final = Decimal(str(nota_value)).quantize(Decimal("0.01"))
+    else:
+        registro.nota_final = None
+    asistencias = payload.asistencias_totales
+    if asistencias is not None:
+        if asistencias < 0 or asistencias > 100:
+            raise HttpError(400, "La asistencia debe estar entre 0 y 100.")
+    registro.asistencias_totales = asistencias
     registro.resultado = payload.resultado
     registro.observaciones = payload.observaciones or ""
     registro.resultado_at = timezone.now()

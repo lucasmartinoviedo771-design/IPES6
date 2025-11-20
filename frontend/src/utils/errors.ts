@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import { AppError } from "@/api/client";
 
 const tryString = (input: unknown): string | null => {
   if (!input) return null;
@@ -7,7 +8,7 @@ const tryString = (input: unknown): string | null => {
     return trimmed ? trimmed : null;
   }
   if (typeof input === "object") {
-    const maybe = (input as { message?: unknown; detail?: unknown; error?: unknown });
+    const maybe = input as { message?: unknown; detail?: unknown; error?: unknown };
     return tryString(maybe.message) ?? tryString(maybe.detail) ?? tryString(maybe.error);
   }
   return null;
@@ -22,6 +23,9 @@ const extractFromObject = (data: Record<string, unknown>): string | null => {
 };
 
 export const getErrorMessage = (error: unknown, fallback = "Ocurrió un error inesperado.") => {
+  if (error instanceof AppError) {
+    return error.message;
+  }
   if (isAxiosError(error)) {
     const data = error.response?.data;
     if (typeof data === "string") {

@@ -55,6 +55,7 @@ interface RegularidadPlanillaEditorProps {
   defaultObservaciones?: string;
   saving: boolean;
   onSave: (payload: GuardarRegularidadPayload) => Promise<void>;
+  readOnly?: boolean;
 }
 
 const mapAlumnoToFormRow = (alumno: RegularidadAlumnoDTO): RegularidadFilaForm => ({
@@ -92,6 +93,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
   defaultObservaciones,
   saving,
   onSave,
+  readOnly = false,
 }) => {
   const {
     control,
@@ -174,6 +176,9 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
   };
 
   const onSubmit = handleSubmit(async (values) => {
+    if (readOnly) {
+      return;
+    }
     const alumnos: GuardarRegularidadPayload["alumnos"] = [];
 
     for (const fila of values.filas) {
@@ -259,6 +264,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                 label="Fecha de cierre"
                 InputLabelProps={{ shrink: true }}
                 sx={{ width: { xs: "100%", md: 220 } }}
+                disabled={readOnly}
               />
             )}
           />
@@ -274,6 +280,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                 maxRows={3}
                 fullWidth
                 placeholder="Opcional"
+                disabled={readOnly}
               />
             )}
           />
@@ -331,6 +338,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                           size="small"
                           inputMode="decimal"
                           placeholder="-"
+                          disabled={readOnly}
                         />
                       )}
                     />
@@ -345,6 +353,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                           size="small"
                           inputMode="numeric"
                           placeholder="-"
+                          disabled={readOnly}
                         />
                       )}
                     />
@@ -359,6 +368,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                           size="small"
                           inputMode="numeric"
                           placeholder="-"
+                          disabled={readOnly}
                         />
                       )}
                     />
@@ -373,6 +383,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                           size="small"
                           select
                           required
+                          disabled={readOnly}
                         >
                           <MenuItem value="">
                             <em>Seleccionar</em>
@@ -395,6 +406,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                           {...excepcionField}
                           checked={!!excepcionField.value}
                           onChange={(event) => excepcionField.onChange(event.target.checked)}
+                          disabled={readOnly}
                         />
                       )}
                     />
@@ -409,6 +421,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                           size="small"
                           placeholder="Opcional"
                           fullWidth
+                          disabled={readOnly}
                         />
                       )}
                     />
@@ -444,7 +457,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
             size="large"
             startIcon={<SaveIcon />}
             onClick={onSubmit}
-            disabled={saving || !filas.length || (!isDirty && !saving)}
+            disabled={readOnly || saving || !filas.length || (!isDirty && !saving)}
           >
             {saving ? "Guardando..." : "Guardar planilla"}
           </Button>

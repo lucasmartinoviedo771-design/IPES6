@@ -1,6 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { client, apiPath, setUnauthorizedHandler, storeTokens } from "@/api/client";
+import { client, apiPath, setUnauthorizedHandler, requestSessionRefresh } from "@/api/client";
+import { setGlobalRoleOverride } from "@/utils/roles";
 
 export type User = {
   id?: number;
@@ -20,6 +21,9 @@ type AuthContextType = {
   login: (loginId: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<User | null>;
+  roleOverride: string | null;
+  setRoleOverride: (role: string | null) => void;
+  availableRoleOptions: Array<{ value: string; label: string }>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,11 +34,17 @@ const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
+  const [roleOverride, setRoleOverrideState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("roleOverride") || null;
+    } catch {
+      return null;
+    }
+  });
   const activityRef = useRef<number>(Date.now());
   const navigate = useNavigate();
 
   const redirectToLogin = useCallback(() => {
-    storeTokens(null, null);
     setUser(null);
     if (window.location.pathname !== "/login") {
       navigate("/login", { replace: true });
@@ -58,7 +68,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   useEffect(() => {
     (async () => {
       try {
-        await refreshProfile(); // Attempt to load profile, relies on browser sending cookie
+        await refreshProfile();
       } catch {
         setUser(null);
       } finally {
@@ -91,20 +101,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       if (Date.now() - activityRef.current > ACTIVITY_WINDOW_MS) {
         return;
       }
-      let refreshToken: string | null = null;
       try {
-        refreshToken = localStorage.getItem("refresh_token");
-      } catch {
-        refreshToken = null;
-      }
-      if (!refreshToken) {
-        return;
-      }
-      try {
-        const { data } = await client.post(apiPath("auth/refresh"), { refresh: refreshToken });
-        if (data?.access || data?.refresh) {
-          storeTokens(data?.access ?? null, data?.refresh ?? null);
-        }
+        await requestSessionRefresh();
       } catch (err) {
         console.warn("[Auth] keep-alive refresh failed", err);
         redirectToLogin();
@@ -113,7 +111,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [user]);
+  }, [user, redirectToLogin]);
 
   const login = async (loginId: string, password: string) => {
     const id = String(loginId).trim();
@@ -128,21 +126,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     try {
       const { data } = await client.post(apiPath("auth/login"), payload);
       const u: User = data?.user ?? null;
-      if (data?.access || data?.refresh) {
-        storeTokens(data?.access ?? null, data?.refresh ?? null);
-      }
 
       if (!u) {
-        return await refreshProfile();
+        // If initial login response doesn't have user, try refreshing profile
+        const refreshedUser = await refreshProfile();
+        console.log("[AuthContext] User after login (refreshed):", refreshedUser); // DIAGNOSTIC LOG
+        return refreshedUser;
       }
 
+      // Set the user from the login response first
       setUser(u);
-      try {
-        await refreshProfile();
-      } catch (refreshError) {
-        console.warn("[Auth] refresh after login failed", refreshError);
-      }
-      return u;
+
+      // Then immediately refresh the profile to get full details
+      const refreshedUser = await refreshProfile();
+      return refreshedUser; // Ensure login always returns the fully refreshed user
     } catch (err: any) {
       const status = err?.response?.status;
       const msg =
@@ -161,13 +158,114 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     } catch (err: any) {
       console.error("Error during logout:", err); // Log error but still clear local state
     } finally {
-      storeTokens(null, null);
       setUser(null);
+      setRoleOverride(null);
     }
   };
 
+  const computeAvailableRoles = (currentUser: User | null): Array<{ value: string; label: string }> => {
+    if (!currentUser) return [];
+    const ROLE_LABELS: Record<string, string> = {
+      admin: "Administrador",
+      secretaria: "Secretaría",
+      bedel: "Bedelía",
+      docente: "Docentes",
+      tutor: "Tutorías",
+      coordinador: "Coordinación",
+      jefes: "Jefatura",
+      jefa_aaee: "Jefa A.A.E.E.",
+      consulta: "Consulta",
+      alumno: "Alumno/a",
+      equivalencias: "Equipo de equivalencias",
+      titulos: "Títulos",
+      curso_intro: "Curso Introductorio",
+    };
+    const normalized = new Set(
+      (currentUser.roles ?? [])
+        .map((role) => (role || "").toLowerCase().trim())
+        .filter(Boolean),
+    );
+    const admin = normalized.has("admin");
+    if (admin) {
+      [
+        "admin",
+        "secretaria",
+        "bedel",
+        "docente",
+        "tutor",
+        "coordinador",
+        "jefes",
+        "jefa_aaee",
+        "consulta",
+        "alumno",
+        "equivalencias",
+        "titulos",
+        "curso_intro",
+      ].forEach((role) => normalized.add(role));
+    }
+    return Array.from(normalized)
+      .sort()
+      .map((role) => ({ value: role, label: ROLE_LABELS[role] ?? role }));
+  };
+
+  const availableRoleOptions = useMemo(() => computeAvailableRoles(user), [user]);
+
+  const setRoleOverride = (role: string | null) => {
+    const normalized = role ? role.toLowerCase().trim() : null;
+    setRoleOverrideState(normalized);
+    try {
+      if (normalized) {
+        localStorage.setItem("roleOverride", normalized);
+      } else {
+        localStorage.removeItem("roleOverride");
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setGlobalRoleOverride(null);
+      setRoleOverrideState(null);
+      try {
+        localStorage.removeItem("roleOverride");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (!roleOverride) {
+      setGlobalRoleOverride(null);
+      return;
+    }
+    const validRole = availableRoleOptions.some((option) => option.value === roleOverride);
+    if (!validRole) {
+      setGlobalRoleOverride(null);
+      setRoleOverrideState(null);
+      try {
+        localStorage.removeItem("roleOverride");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    setGlobalRoleOverride(roleOverride);
+  }, [user, roleOverride, availableRoleOptions]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refreshProfile,
+        roleOverride,
+        setRoleOverride,
+        availableRoleOptions,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

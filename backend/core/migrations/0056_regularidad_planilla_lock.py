@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="regularidadplanillalock",
             constraint=models.CheckConstraint(
-                check=models.Q(comision__isnull=False)
+                condition=models.Q(comision__isnull=False)
                 | (models.Q(materia__isnull=False) & models.Q(anio_virtual__isnull=False)),
                 name="regularidad_lock_scope_defined",
             ),

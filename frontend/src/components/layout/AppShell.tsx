@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar,
@@ -19,7 +19,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -42,10 +46,12 @@ import ChecklistIcon from "@mui/icons-material/Checklist";
 import ArticleIcon from "@mui/icons-material/Article";
 import InsightsIcon from "@mui/icons-material/Insights";
 import { useAuth } from "@/context/AuthContext";
+import { ErrorBoundary } from "react-error-boundary";
 import { useQuery } from "@tanstack/react-query";
 import { obtenerResumenMensajes } from "@/api/mensajes";
-import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
-import UserGuideDisplay from "../guia/UserGuideDisplay"; // Importar componente de guía
+import { getDefaultHomeRoute, hasAnyRole, isOnlyStudent } from "@/utils/roles";
+import UserGuideDisplay from "../guia/UserGuideDisplay";
+import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback";
 import ipesLogoFull from "@/assets/ipes-logo.png";
 import ipesLogoDark from "@/assets/ipes-logo-dark.png";
 import {
@@ -57,9 +63,42 @@ import {
 
 const drawerWidth = 280;
 const collapsedDrawerWidth = 0;
+const ROLE_NAV_MAP: Record<string, string[]> = {
+  admin: [],
+  secretaria: [
+    "dashboard",
+    "preinscripciones",
+    "carreras",
+    "reportes",
+    "asistencia",
+    "cursoIntro",
+    "mensajes",
+    "secretaria",
+    "bedeles",
+    "docentes",
+    "tutorias",
+    "equivalencias",
+    "titulos",
+    "coordinacion",
+    "jefatura",
+    "alumnos",
+    "primeraCarga",
+  ],
+  bedel: ["bedeles", "mensajes", "alumnos", "asistencia", "cursoIntro"],
+  docente: ["docentes", "mensajes"],
+  tutor: ["tutorias", "mensajes", "alumnos", "equivalencias", "reportes", "cursoIntro"],
+  coordinador: ["coordinacion", "mensajes", "alumnos", "reportes", "cursoIntro"],
+  jefes: ["jefatura", "mensajes", "reportes"],
+  jefa_aaee: ["jefatura", "mensajes", "reportes"],
+  consulta: ["dashboard", "reportes", "mensajes"],
+  alumno: ["alumnos", "mensajes"],
+  equivalencias: ["equivalencias", "mensajes"],
+  titulos: ["titulos", "mensajes"],
+  curso_intro: ["cursoIntro", "mensajes"],
+};
 
 export default function AppShell({ children }: PropsWithChildren) {
-  const { user, logout } = useAuth();
+  const { user, logout, roleOverride, setRoleOverride, availableRoleOptions } = useAuth();
   const [open, setOpen] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem("sidebarOpen");
@@ -75,7 +114,19 @@ export default function AppShell({ children }: PropsWithChildren) {
   const current = useMemo(() => loc.pathname, [loc.pathname]);
 
   const studentOnly = isOnlyStudent(user);
-  const dashboardVisible = hasAnyRole(user, [
+  const allowedNavSet = useMemo(() => {
+    if (!roleOverride) return null;
+    const entries = ROLE_NAV_MAP[roleOverride];
+    if (!entries || entries.length === 0) {
+      return null;
+    }
+    return new Set(entries);
+  }, [roleOverride]);
+  const isNavAllowed = (key: string, defaultValue: boolean) => {
+    if (!allowedNavSet) return defaultValue;
+    return allowedNavSet.has(key);
+  };
+  const dashboardVisible = isNavAllowed("dashboard", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -84,9 +135,9 @@ export default function AppShell({ children }: PropsWithChildren) {
     "tutor",
     "coordinador",
     "consulta"
-  ]);
-  const canPreins = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canSeeCarreras = hasAnyRole(user, [
+  ]));
+  const canPreins = isNavAllowed("preinscripciones", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
+  const canSeeCarreras = isNavAllowed("carreras", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -94,8 +145,8 @@ export default function AppShell({ children }: PropsWithChildren) {
     "tutor",
     "jefes",
     "jefa_aaee"
-  ]);
-  const canSeeReportes = hasAnyRole(user, [
+  ]));
+  const canSeeReportes = isNavAllowed("reportes", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -103,8 +154,8 @@ export default function AppShell({ children }: PropsWithChildren) {
     "jefes",
     "tutor",
     "coordinador"
-  ]);
-  const canSecretaria = hasAnyRole(user, [
+  ]));
+  const canSecretaria = isNavAllowed("secretaria", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -112,8 +163,8 @@ export default function AppShell({ children }: PropsWithChildren) {
     "jefes",
     "tutor",
     "coordinador"
-  ]);
-  const canBedeles = hasAnyRole(user, [
+  ]));
+  const canBedeles = isNavAllowed("bedeles", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -121,17 +172,17 @@ export default function AppShell({ children }: PropsWithChildren) {
     "jefes",
     "tutor",
     "coordinador"
-  ]);
-  const canDocentesPanel = hasAnyRole(user, ["docente", "secretaria", "admin", "bedel"]);
-  const canTutoriasPanel = hasAnyRole(user, ["tutor", "secretaria", "admin", "bedel"]);
-  const canEquivalenciasPanel = hasAnyRole(user, ["equivalencias", "secretaria", "admin", "bedel"]);
-  const canTitulosPanel = hasAnyRole(user, ["titulos", "secretaria", "admin"]);
-  const canCoordinacionPanel = hasAnyRole(user, ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"]);
-  const canJefaturaPanel = hasAnyRole(user, ["jefes", "jefa_aaee", "secretaria", "admin"]);
-  const canAsistenciaReportes = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canCursoIntro = hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]);
-  const canAlumnoPortal = hasAnyRole(user, ["alumno"]);
-  const canAlumnoPanel = hasAnyRole(user, [
+  ]));
+  const canDocentesPanel = isNavAllowed("docentes", hasAnyRole(user, ["docente", "secretaria", "admin", "bedel"]));
+  const canTutoriasPanel = isNavAllowed("tutorias", hasAnyRole(user, ["tutor", "secretaria", "admin", "bedel"]));
+  const canEquivalenciasPanel = isNavAllowed("equivalencias", hasAnyRole(user, ["equivalencias", "secretaria", "admin", "bedel"]));
+  const canTitulosPanel = isNavAllowed("titulos", hasAnyRole(user, ["titulos", "secretaria", "admin"]));
+  const canCoordinacionPanel = isNavAllowed("coordinacion", hasAnyRole(user, ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"]));
+  const canJefaturaPanel = isNavAllowed("jefatura", hasAnyRole(user, ["jefes", "jefa_aaee", "secretaria", "admin"]));
+  const canAsistenciaReportes = isNavAllowed("asistencia", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
+  const canCursoIntro = isNavAllowed("cursoIntro", hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]));
+  const canAlumnoPortal = isNavAllowed("alumnos", hasAnyRole(user, ["alumno"]));
+  const canAlumnoPanel = isNavAllowed("alumnos", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -139,10 +190,48 @@ export default function AppShell({ children }: PropsWithChildren) {
     "jefes",
     "jefa_aaee",
     "coordinador"
-  ]);
-  const canPrimeraCarga = hasAnyRole(user, ["admin", "secretaria", "bedel"]); // New role check
+  ]));
+  const canPrimeraCarga = isNavAllowed("primeraCarga", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
+  const baseRoleCount = useMemo(
+    () =>
+      new Set(
+        (user?.roles ?? [])
+          .map((role) => (role || "").toLowerCase().trim())
+          .filter((role) => role.length > 0),
+      ).size,
+    [user],
+  );
 
-  const canUseMessages = !!user;
+  const showRoleSwitcher = availableRoleOptions.length > baseRoleCount;
+  const roleHomeMap: Record<string, string> = {
+    admin: "/dashboard",
+    secretaria: "/secretaria",
+    bedel: "/bedeles",
+    docente: "/docentes",
+    tutor: "/tutorias",
+    coordinador: "/coordinacion",
+    jefes: "/jefatura",
+    jefa_aaee: "/jefatura",
+    consulta: "/dashboard",
+    alumno: "/alumnos",
+    equivalencias: "/equivalencias",
+    titulos: "/titulos",
+    curso_intro: "/secretaria/curso-introductorio",
+  };
+  const previousRoleRef = useRef<string | null>(roleOverride);
+  useEffect(() => {
+    if (!user) return;
+    if (previousRoleRef.current === roleOverride) return;
+    previousRoleRef.current = roleOverride;
+    if (roleOverride) {
+      const destination = roleHomeMap[roleOverride] ?? "/dashboard";
+      navigate(destination, { replace: true });
+    } else {
+      navigate(getDefaultHomeRoute(user), { replace: true });
+    }
+  }, [roleOverride, user, navigate]);
+
+  const canUseMessages = isNavAllowed("mensajes", !!user);
 
 
   const { data: messageSummary } = useQuery({
@@ -246,6 +335,37 @@ export default function AppShell({ children }: PropsWithChildren) {
                 <HelpOutlineIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+            {showRoleSwitcher && (
+              <FormControl
+                size="small"
+                variant="outlined"
+                sx={{
+                  minWidth: 220,
+                  "& .MuiInputBase-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#f8fafc",
+                  },
+                }}
+              >
+                <InputLabel id="role-switcher-label">Rol activo</InputLabel>
+                <Select
+                  labelId="role-switcher-label"
+                  label="Rol activo"
+                  value={roleOverride ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value as string;
+                    setRoleOverride(value ? value : null);
+                  }}
+                >
+                  <MenuItem value="">Roles originales</MenuItem>
+                  {availableRoleOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             {canUseMessages && (
               <Tooltip title="Mensajes">
                 <IconButton
@@ -293,6 +413,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               startIcon={<LogoutIcon fontSize="small" />}
               sx={{
                 textTransform: "none",
+                fontWeight: 600,
                 borderRadius: 10,
                 px: 3,
                 backgroundColor: INSTITUTIONAL_TERRACOTTA,
@@ -594,19 +715,21 @@ export default function AppShell({ children }: PropsWithChildren) {
         }}
       >
         <Toolbar sx={{ minHeight: 64 }} />
-        <Box
-          key={current}
-          sx={{
-            minHeight: "70vh",
-            borderRadius: 4,
-            backgroundColor: "#ffffff",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 25px 60px rgba(15,23,42,0.08)",
-            p: { xs: 2, md: 4 },
-          }}
-        >
-          {children}
-        </Box>
+        <ErrorBoundary FallbackComponent={ErrorBoundaryFallback} resetKeys={[current]}>
+          <Box
+            key={current}
+            sx={{
+              minHeight: "70vh",
+              borderRadius: 4,
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 25px 60px rgba(15,23,42,0.08)",
+              p: { xs: 2, md: 4 },
+            }}
+          >
+            {children}
+          </Box>
+        </ErrorBoundary>
       </Box>
     </Box>
   );

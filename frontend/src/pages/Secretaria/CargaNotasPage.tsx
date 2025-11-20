@@ -44,6 +44,7 @@ import {
   RegularidadPlanillaDTO,
   guardarActaOral,
   guardarPlanillaRegularidad,
+  gestionarCierreRegularidad,
   listarMesasFinales,
   listarPlanes,
   listarProfesorados,
@@ -55,6 +56,7 @@ import {
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import {
   actualizarMesaPlanilla,
+  gestionarMesaPlanillaCierre,
   MesaPlanillaAlumnoDTO,
   MesaPlanillaCondicionDTO,
   MesaPlanillaDTO,
@@ -146,6 +148,7 @@ const CargaNotasPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [regularidadConfirmOpen, setRegularidadConfirmOpen] = useState(false);
   const [regularidadPendingPayload, setRegularidadPendingPayload] = useState<GuardarRegularidadPayload | null>(null);
+  const [regularidadCierreLoading, setRegularidadCierreLoading] = useState(false);
   const [defaultFechaCierre, setDefaultFechaCierre] = useState<string>(() =>
     new Date().toISOString().slice(0, 10)
   );
@@ -180,6 +183,7 @@ const [loadingFinalPlanes, setLoadingFinalPlanes] = useState(false);
 const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
 const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
 const [finalPendingPayload, setFinalPendingPayload] = useState<{ mesaId: number; payload: FinalPlanillaPayload } | null>(null);
+const [finalCierreLoading, setFinalCierreLoading] = useState(false);
 const [oralActDrafts, setOralActDrafts] = useState<Record<number, OralActFormValues>>({});
 const [oralDialogRow, setOralDialogRow] = useState<FinalRowState | null>(null);
 const [oralActaLoading, setOralActaLoading] = useState(false);
@@ -339,26 +343,17 @@ const [downloadingOralBatch, setDownloadingOralBatch] = useState(false);
     observaciones: alumno.observaciones ?? "",
   });
 
-  useEffect(() => {
-    if (!isFinalsMode) {
-      return;
-    }
-    if (!finalSelectedMesaId) {
-      return;
-    }
-
-    const loadPlanillaFinal = async () => {
+  const fetchFinalPlanilla = useCallback(
+    async (mesaId: number) => {
       setFinalLoadingPlanilla(true);
       setFinalError(null);
       setFinalSuccess(null);
       setFinalPermissionDenied(false);
       try {
-        const data = await obtenerMesaPlanilla(finalSelectedMesaId);
+        const data = await obtenerMesaPlanilla(mesaId);
         setFinalPlanilla(data);
         setFinalCondiciones(data.condiciones);
-        setFinalRows(
-          data.alumnos.map<FinalRowState>((alumno) => mapAlumnoToFinalRow(alumno))
-        );
+        setFinalRows(data.alumnos.map((alumno) => mapAlumnoToFinalRow(alumno)));
         setFinalSearch("");
         setFinalPermissionDenied(false);
       } catch (error) {
@@ -378,10 +373,16 @@ const [downloadingOralBatch, setDownloadingOralBatch] = useState(false);
       } finally {
         setFinalLoadingPlanilla(false);
       }
-    };
+    },
+    [enqueueSnackbar]
+  );
 
-    loadPlanillaFinal();
-  }, [isFinalsMode, finalSelectedMesaId]);
+  useEffect(() => {
+    if (!isFinalsMode || !finalSelectedMesaId) {
+      return;
+    }
+    fetchFinalPlanilla(finalSelectedMesaId);
+  }, [isFinalsMode, finalSelectedMesaId, fetchFinalPlanilla]);
 
   useEffect(() => {
     if (!isFinalsMode) {
@@ -419,7 +420,7 @@ const selectedMesaResumen = useMemo(() => {
   return finalMesas.find((mesa) => mesa.id === finalSelectedMesaId) ?? null;
 }, [finalSelectedMesaId, finalMesas]);
 
-const finalReadOnly = finalPermissionDenied;
+const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.puede_editar : false);
 
   const selectedMesaCursoLabel = useMemo(() => {
     if (!selectedMesaResumen) return "";
@@ -666,6 +667,7 @@ const finalReadOnly = finalPermissionDenied;
     () => filteredComisiones.find((c) => c.id === filters.comisionId) || null,
     [filteredComisiones, filters.comisionId]
   );
+  const regularidadReadOnly = planilla ? !planilla.puede_editar : false;
 
   const fetchPlanilla = useCallback(
     async (comisionId: number) => {
@@ -720,6 +722,24 @@ const finalReadOnly = finalPermissionDenied;
     await persistRegularidad(regularidadPendingPayload);
     setRegularidadPendingPayload(null);
     setRegularidadConfirmOpen(false);
+  };
+
+  const handleRegularidadCierre = async (accion: "cerrar" | "reabrir") => {
+    if (!selectedComision) return;
+    setRegularidadCierreLoading(true);
+    try {
+      await gestionarCierreRegularidad(selectedComision.id, accion);
+      enqueueSnackbar(
+        accion === "cerrar" ? "Planilla cerrada correctamente." : "Planilla reabierta correctamente.",
+        { variant: "success" }
+      );
+      await fetchPlanilla(selectedComision.id);
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "No se pudo actualizar el estado de cierre.";
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setRegularidadCierreLoading(false);
+    }
   };
 
   const cancelRegularidadConfirm = () => {
@@ -989,6 +1009,25 @@ const finalReadOnly = finalPermissionDenied;
     setFinalPendingPayload(null);
   };
 
+  const handleFinalPlanillaCierre = async (accion: "cerrar" | "reabrir") => {
+    if (!finalSelectedMesaId) return;
+    setFinalCierreLoading(true);
+    try {
+      await gestionarMesaPlanillaCierre(finalSelectedMesaId, accion);
+      enqueueSnackbar(
+        accion === "cerrar" ? "Planilla cerrada correctamente." : "Planilla reabierta correctamente.",
+        { variant: "success" }
+      );
+      await fetchFinalPlanilla(finalSelectedMesaId);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "No se pudo actualizar el estado de cierre de la planilla.";
+      enqueueSnackbar(message, { variant: "error" });
+    } finally {
+      setFinalCierreLoading(false);
+    }
+  };
+
 
   return (
     <>
@@ -1247,15 +1286,51 @@ const finalReadOnly = finalPermissionDenied;
                 <CircularProgress />
               </Paper>
             ) : planilla ? (
-              <RegularidadPlanillaEditor
-                comisionId={selectedComision.id}
-                planilla={planilla}
-                situaciones={planilla.situaciones}
-                defaultFechaCierre={defaultFechaCierre}
-                defaultObservaciones={defaultObservaciones}
-                saving={saving}
-                onSave={handleGuardarRegularidad}
-              />
+              <Stack spacing={2}>
+                {planilla.esta_cerrada ? (
+                  <Alert severity={planilla.puede_editar ? "info" : "warning"}>
+                    Planilla cerrada el{" "}
+                    {planilla.cerrada_en ? new Date(planilla.cerrada_en).toLocaleString("es-AR") : "fecha desconocida"}
+                    {planilla.cerrada_por ? ` por ${planilla.cerrada_por}` : ""}.
+                    {!planilla.puede_editar && " Solo secretaría o admin pueden editarla o reabrirla."}
+                  </Alert>
+                ) : (
+                  <Alert severity="info">
+                    Cuando finalices la carga, cerrá la planilla para bloquear nuevas ediciones.
+                  </Alert>
+                )}
+                <RegularidadPlanillaEditor
+                  comisionId={selectedComision.id}
+                  planilla={planilla}
+                  situaciones={planilla.situaciones}
+                  defaultFechaCierre={defaultFechaCierre}
+                  defaultObservaciones={defaultObservaciones}
+                  saving={saving}
+                  onSave={handleGuardarRegularidad}
+                  readOnly={regularidadReadOnly}
+                />
+                <Box display="flex" justifyContent="flex-end" gap={1} flexWrap="wrap">
+                  {planilla.puede_cerrar && (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      onClick={() => handleRegularidadCierre("cerrar")}
+                      disabled={regularidadCierreLoading}
+                    >
+                      {regularidadCierreLoading ? "Cerrando..." : "Cerrar planilla"}
+                    </Button>
+                  )}
+                  {planilla.puede_reabrir && (
+                    <Button
+                      variant="contained"
+                      onClick={() => handleRegularidadCierre("reabrir")}
+                      disabled={regularidadCierreLoading}
+                    >
+                      {regularidadCierreLoading ? "Actualizando..." : "Reabrir planilla"}
+                    </Button>
+                  )}
+                </Box>
+              </Stack>
             ) : (
               <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
                 <Typography color="text.secondary">
@@ -1604,6 +1679,41 @@ const finalReadOnly = finalPermissionDenied;
                             }}
                           />
                         </Stack>
+                      </Box>
+                      {finalPlanilla.esta_cerrada ? (
+                        <Alert severity={finalPlanilla.puede_editar ? "info" : "warning"}>
+                          Planilla cerrada el{" "}
+                          {finalPlanilla.cerrada_en
+                            ? new Date(finalPlanilla.cerrada_en).toLocaleString("es-AR")
+                            : "fecha desconocida"}
+                          {finalPlanilla.cerrada_por ? ` por ${finalPlanilla.cerrada_por}` : ""}.
+                          {!finalPlanilla.puede_editar && " Solo secretaría o admin pueden editarla o reabrirla."}
+                        </Alert>
+                      ) : (
+                        <Alert severity="info">
+                          Cuando confirmes las notas, cerrá la planilla para bloquear nuevas ediciones.
+                        </Alert>
+                      )}
+                      <Box display="flex" justifyContent="flex-end" gap={1} flexWrap="wrap">
+                        {finalPlanilla.puede_cerrar && (
+                          <Button
+                            variant="outlined"
+                            color="warning"
+                            onClick={() => handleFinalPlanillaCierre("cerrar")}
+                            disabled={finalCierreLoading}
+                          >
+                            {finalCierreLoading ? "Cerrando..." : "Cerrar planilla"}
+                          </Button>
+                        )}
+                        {finalPlanilla.puede_reabrir && (
+                          <Button
+                            variant="contained"
+                            onClick={() => handleFinalPlanillaCierre("reabrir")}
+                            disabled={finalCierreLoading}
+                          >
+                            {finalCierreLoading ? "Actualizando..." : "Reabrir planilla"}
+                          </Button>
+                        )}
                       </Box>
                       {finalPermissionDenied && (
                         <Alert severity="warning">

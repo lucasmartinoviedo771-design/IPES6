@@ -170,12 +170,7 @@ const InscripcionMateriaPage: React.FC = () => {
     setSelectedPlanId(event.target.value);
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDniFiltro(dniInput.trim());
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [dniInput]);
+
 
   useEffect(() => {
     setInfo(null);
@@ -630,11 +625,22 @@ const InscripcionMateriaPage: React.FC = () => {
                   label="DNI del estudiante"
                   size="small"
                   value={dniInput}
-                  onChange={(e) => setDniInput(e.target.value.replace(/\D+/g, ""))}
-                  onBlur={() => setDniFiltro(dniInput.trim())}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D+/g, "");
+                    if (value.length <= 8) {
+                      setDniInput(value);
+                    }
+                  }}
                   sx={{ maxWidth: 240, bgcolor: "#fff" }}
-                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
                 />
+                <Button
+                  variant="contained"
+                  onClick={() => setDniFiltro(dniInput.trim())}
+                  disabled={dniInput.length < 7}
+                >
+                  Buscar
+                </Button>
                 <Typography variant="caption" color="text.secondary">
                   Bedel/Secretaría/Admin: filtrá por DNI para gestionar inscripciones de un alumno.
                 </Typography>
