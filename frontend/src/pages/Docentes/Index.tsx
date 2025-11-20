@@ -1,49 +1,31 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import DescriptionIcon from "@mui/icons-material/Description";
-import GavelIcon from "@mui/icons-material/Gavel";
-import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
-import ScheduleIcon from "@mui/icons-material/Schedule";
-
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 
 const sections: RoleDashboardSection[] = [
   {
     title: "Actas y calificaciones",
     items: [
       {
-        title: "Planillas de regularidad",
+        ...DASHBOARD_ITEMS.REGULARIDAD_CARGA,
         subtitle: "Completa o revisa las planillas de cursada habilitadas.",
-        icon: <ArticleIcon />,
-        path: "/secretaria/carga-notas?tab=regularidad",
       },
       {
-        title: "Actas finales (tribunal)",
+        ...DASHBOARD_ITEMS.ACTAS_FINALES,
         subtitle: "Carga las notas finales de la mesa en la que integrás el tribunal.",
-        icon: <GavelIcon />,
-        path: "/secretaria/carga-notas?tab=finales&scope=finales",
       },
-      {
-        title: "Acta manual / extraordinaria",
-        subtitle: "Genera un acta manual cuando se requiere un circuito especial.",
-        icon: <DescriptionIcon />,
-        path: "/secretaria/actas-examen",
-      },
+      DASHBOARD_ITEMS.ACTA_MANUAL,
     ],
   },
   {
     title: "Operativa diaria",
     items: [
       {
-        title: "Control de asistencia docente",
+        ...DASHBOARD_ITEMS.DOCENTE_ASISTENCIA,
         subtitle: "Registra o consulta tu asistencia en el campus.",
-        icon: <ScheduleIcon />,
-        path: "/docentes/asistencia",
       },
       {
-        title: "Mensajes institucionales",
+        ...DASHBOARD_ITEMS.MENSAJES,
         subtitle: "Comunicate con Secretaría o con tus estudiantes.",
-        icon: <MarkEmailUnreadIcon />,
-        path: "/mensajes",
       },
     ],
   },

@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from apps.common.api_schemas import ApiResponse
+
+from ..schemas import EstudianteAdminDetail, EstudianteAdminUpdateIn
+from .helpers import _apply_estudiante_updates, _build_admin_detail, _resolve_estudiante
+from .router import alumnos_router
+
+
+@alumnos_router.get(
+    "/perfil/completar",
+    response={200: EstudianteAdminDetail, 404: ApiResponse},
+)
+def alumno_get_perfil_completar(request):
+    est = _resolve_estudiante(request)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
+    return _build_admin_detail(est)
+
+
+@alumnos_router.put(
+    "/perfil/completar",
+    response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
+)
+def alumno_update_perfil_completar(request, payload: EstudianteAdminUpdateIn):
+    est = _resolve_estudiante(request)
+    if not est:
+        return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
+
+    updated, error = _apply_estudiante_updates(
+        est,
+        payload,
+        allow_estado_legajo=False,
+        allow_force_password=False,
+        mark_profile_complete=True,
+    )
+    if not updated and error:
+        status_code, api_resp = error
+        return status_code, api_resp
+
+    return _build_admin_detail(est)

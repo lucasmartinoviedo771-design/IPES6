@@ -61,11 +61,25 @@ export type SituacionOptionDTO = {
 export type RegularidadPlanillaDTO = {
   materia_id: number;
   materia_nombre: string;
+  materia_anio?: number | null;
   formato: string;
+  regimen?: string | null;
   comision_id: number;
   comision_codigo: string;
   anio: number;
   turno: string;
+  profesorado_id?: number | null;
+  profesorado_nombre?: string | null;
+  plan_id?: number | null;
+  plan_resolucion?: string | null;
+  docentes: string[];
+  fecha_cierre?: string | null;
+  esta_cerrada: boolean;
+  cerrada_en?: string | null;
+  cerrada_por?: string | null;
+  puede_editar: boolean;
+  puede_cerrar: boolean;
+  puede_reabrir: boolean;
   situaciones: SituacionOptionDTO[];
   alumnos: RegularidadAlumnoDTO[];
 };
@@ -158,6 +172,14 @@ export async function obtenerPlanillaRegularidad(comisionId: number) {
 
 export async function guardarPlanillaRegularidad(payload: GuardarRegularidadPayload) {
   const { data } = await client.post("/alumnos/carga-notas/regularidad", payload);
+  return data;
+}
+
+export async function gestionarCierreRegularidad(comisionId: number, accion: "cerrar" | "reabrir") {
+  const { data } = await client.post<ApiResponse<null>>("/alumnos/carga-notas/regularidad/cierre", {
+    comision_id: comisionId,
+    accion,
+  });
   return data;
 }
 

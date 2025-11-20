@@ -1,4 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
+import { Box, CircularProgress } from "@mui/material";
+
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole, hasAllRoles } from "@/utils/roles";
 
@@ -20,7 +22,13 @@ export function ProtectedRoute({
   const { user, loading } = useAuth();
   const loc = useLocation();
 
-  if (loading) return null; // o un spinner
+  if (loading) {
+    return (
+      <Box display="flex" alignItems="center" justifyContent="center" minHeight="60vh">
+        <CircularProgress size={32} />
+      </Box>
+    );
+  }
 
   // No autenticado → al login, preservando "from"
   if (!user) return <Navigate to={redirectTo} replace state={{ from: loc }} />;
@@ -53,6 +61,8 @@ export function PublicOnlyRoute({
   redirectTo?: string;
 }) {
   const { user, loading } = useAuth();
-  if (loading) return null; // o spinner
+  if (loading) {
+    return children;
+  }
   return user ? <Navigate to={redirectTo} replace /> : children;
 }

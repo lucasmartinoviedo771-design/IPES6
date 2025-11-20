@@ -3,6 +3,7 @@ import { fetchGuiaUsuario } from "@/api/guias";
 import { Box, CircularProgress, Typography, Paper, Alert, List, ListItemButton, ListItemText } from "@mui/material";
 import { useAuth } from "@/context/AuthContext";
 import { useMemo } from "react";
+import DOMPurify from "dompurify";
 
 const slugify = (text: string) =>
   text
@@ -20,18 +21,18 @@ const UserGuideDisplay = () => {
   });
 
   const { titles, contentWithIds } = useMemo(() => {
-    if (!data?.manual) return { titles: [], contentWithIds: '' };
+    if (!data?.manual) return { titles: [], contentWithIds: "" };
 
-    const lines = data.manual.split('\n');
+    const lines = data.manual.split("\n");
     const titles: { text: string; slug: string }[] = [];
-    let htmlContent = '';
+    let htmlContent = "";
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmedLine = line.trim();
       
       if (trimmedLine === '') {
-        htmlContent += '<br />';
+        htmlContent += "<br />";
         continue;
       }
 
@@ -59,7 +60,8 @@ const UserGuideDisplay = () => {
       }
     }
 
-    return { titles, contentWithIds: htmlContent };
+    const sanitized = typeof window === "undefined" ? htmlContent : DOMPurify.sanitize(htmlContent);
+    return { titles, contentWithIds: sanitized };
   }, [data?.manual]);
 
   if (isLoading || authLoading) {

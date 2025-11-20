@@ -1,50 +1,24 @@
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import LinkIcon from "@mui/icons-material/Link";
-import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
-import ScheduleIcon from "@mui/icons-material/Schedule";
-
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 
 const sections: RoleDashboardSection[] = [
   {
-    title: "Planificación académica",
+    title: "Seguimiento de cohortes",
     items: [
+      DASHBOARD_ITEMS.TRAJECTORY,
+      DASHBOARD_ITEMS.CURSO_INTRO_PENDIENTES,
       {
-        title: "Horarios y comisiones",
-        subtitle: "Organiza las comisiones y publica horarios oficiales.",
-        icon: <ScheduleIcon />,
-        path: "/secretaria/horarios",
-      },
-      {
-        title: "Mesas de examen",
-        subtitle: "Coordina mesas ordinarias, extraordinarias y especiales.",
-        icon: <CalendarMonthIcon />,
-        path: "/secretaria/mesas",
-      },
-      {
-        title: "Planes y correlatividades",
-        subtitle: "Revisa requisitos académicos y solicita ajustes.",
-        icon: <LinkIcon />,
-        path: "/secretaria/correlatividades",
+        ...DASHBOARD_ITEMS.ANALYTICOS,
+        subtitle: "Seguimiento de solicitudes sin intervenir en la carga.",
       },
     ],
   },
   {
-    title: "Seguimiento e informes",
+    title: "Herramientas de apoyo",
     items: [
-      {
-        title: "Reportes y tableros",
-        subtitle: "Analiza indicadores de cursada, mesas y equivalencias.",
-        icon: <AssessmentIcon />,
-        path: "/reportes",
-      },
-      {
-        title: "Mensajes institucionales",
-        subtitle: "Comparte novedades con equipos docentes o estudiantes.",
-        icon: <MarkEmailUnreadIcon />,
-        path: "/mensajes",
-      },
+      DASHBOARD_ITEMS.HORARIOS_PUBLICADOS,
+      DASHBOARD_ITEMS.REPORTES,
+      DASHBOARD_ITEMS.MENSAJES,
     ],
   },
 ];

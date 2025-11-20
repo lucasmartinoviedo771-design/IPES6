@@ -65,11 +65,29 @@ class MesaPlanillaOut(Schema):
     mesa_id: int
     materia_id: int
     materia_nombre: str
+    materia_anio: int | None = None
+    regimen: str | None = None
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    plan_id: int | None = None
+    plan_resolucion: str | None = None
     tipo: str
     modalidad: str
     fecha: str
+    hora_desde: str | None = None
+    hora_hasta: str | None = None
+    mesa_codigo: str | None = None
+    tribunal_presidente: str | None = None
+    tribunal_vocal1: str | None = None
+    tribunal_vocal2: str | None = None
     condiciones: list[dict[str, object]]
     alumnos: list[MesaResultadoAlumno]
+    esta_cerrada: bool = False
+    cerrada_en: str | None = None
+    cerrada_por: str | None = None
+    puede_editar: bool = True
+    puede_cerrar: bool = True
+    puede_reabrir: bool = False
 
 
 class MesaResultadoIn(Schema):
@@ -85,6 +103,10 @@ class MesaResultadoIn(Schema):
 
 class MesaPlanillaUpdateIn(Schema):
     alumnos: list[MesaResultadoIn]
+
+
+class MesaPlanillaCierreIn(Schema):
+    accion: Literal["cerrar", "reabrir"]
 
 class ConstanciaExamenItem(Schema):
     inscripcion_id: int
@@ -218,12 +240,12 @@ class CursoIntroRegistroIn(Schema):
 
 
 class CursoIntroAsistenciaIn(Schema):
-    asistencias_totales: int
+    asistencias_totales: int = Field(ge=0, le=100)
 
 
 class CursoIntroCierreIn(Schema):
-    nota_final: float | None = None
-    asistencias_totales: int | None = None
+    nota_final: float | None = Field(default=None, ge=1, le=10)
+    asistencias_totales: int | None = Field(default=None, ge=0, le=100)
     resultado: str
     observaciones: str | None = None
 
@@ -573,6 +595,7 @@ class EstudianteAdminDetail(Schema):
 
 
 class EstudianteAdminUpdateIn(Schema):
+    email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None
     estado_legajo: str | None = Field(default=None, pattern="^(COM|INC|PEN)$", description="COM, INC o PEN")

@@ -7,11 +7,13 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Q  # Importar Q
+from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
+from core.models import VentanaHabilitacion
 from core.permissions import ensure_profesorado_access, ensure_roles
 
 from .schemas import (
@@ -38,6 +40,21 @@ def convert_dates_to_iso(data_dict):
 
 
 logger = logging.getLogger(__name__)
+
+
+def _ventana_preinscripcion_activa():
+    """Retorna la ventana de preinscripción activa (si existe)."""
+    hoy = timezone.now().date()
+    return (
+        VentanaHabilitacion.objects.filter(
+            tipo=VentanaHabilitacion.Tipo.PREINSCRIPCION,
+            desde__lte=hoy,
+            hasta__gte=hoy,
+            activo=True,
+        )
+        .order_by("-desde")
+        .first()
+    )
 
 
 def _client_ip(request) -> str:
@@ -215,6 +232,13 @@ def crear_o_actualizar(request, payload: PreinscripcionIn):
     _check_rate_limit(request)
     if payload.honeypot:
         raise HttpError(400, "Solicitud inválida.")
+    ventana_activa = _ventana_preinscripcion_activa()
+    if not ventana_activa:
+        raise HttpError(
+            403,
+            "El período de preinscripción no está habilitado actualmente. "
+            "Consultá las fechas publicadas por la institución.",
+        )
     remote_ip = _client_ip(request)
     if not _verify_recaptcha(getattr(payload, "captcha_token", None), remote_ip):
         raise HttpError(400, "No pudimos validar el reCAPTCHA. Intentá nuevamente.")
@@ -347,6 +371,15 @@ def _get_pre_by_codigo(codigo: str) -> 'Preinscripcion':
     return pre
 
 
+def _sync_curso_intro_flag(estudiante, nuevo_valor: bool | None):
+    if nuevo_valor is None:
+        return
+    aprobado = bool(nuevo_valor)
+    if estudiante.curso_introductorio_aprobado != aprobado:
+        estudiante.curso_introductorio_aprobado = aprobado
+        estudiante.save(update_fields=["curso_introductorio_aprobado"])
+
+
 @router.get("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
 def get_checklist(request, pre_id: int):
     from core.models import Preinscripcion, PreinscripcionChecklist
@@ -356,6 +389,8 @@ def get_checklist(request, pre_id: int):
         raise HttpError(404, "Preinscripción no encontrada")
     cl = getattr(pre, "checklist", None) or PreinscripcionChecklist(preinscripcion=pre)
     data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
+    if pre.alumno.curso_introductorio_aprobado:
+        data["curso_introductorio_aprobado"] = True
     data["estado_legajo"] = cl.estado_legajo or cl.calcular_estado()
     return data
 
@@ -372,7 +407,10 @@ def put_checklist(request, pre_id: int, payload: ChecklistIn):
     for k, v in payload.dict().items():
         setattr(cl, k, v)
     cl.save()
+    _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
     data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
+    if pre.alumno.curso_introductorio_aprobado:
+        data["curso_introductorio_aprobado"] = True
     data["estado_legajo"] = cl.estado_legajo
     return data
 
@@ -395,6 +433,7 @@ def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = Non
         for k, v in payload.dict().items():
             setattr(cl, k, v)
         cl.save()
+        _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
 
     # Asegurar relación alumno-carrera
     cohorte_val = str(pre.anio) if pre.anio else None

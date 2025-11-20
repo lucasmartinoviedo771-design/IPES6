@@ -655,11 +655,29 @@ export type MesaPlanillaDTO = {
   mesa_id: number;
   materia_id: number;
   materia_nombre: string;
+  materia_anio?: number | null;
+  regimen?: string | null;
+  profesorado_id?: number | null;
+  profesorado_nombre?: string | null;
+  plan_id?: number | null;
+  plan_resolucion?: string | null;
   tipo: string;
   modalidad: string;
   fecha: string;
+  hora_desde?: string | null;
+  hora_hasta?: string | null;
+  mesa_codigo?: string | null;
+  tribunal_presidente?: string | null;
+  tribunal_vocal1?: string | null;
+  tribunal_vocal2?: string | null;
   condiciones: MesaPlanillaCondicionDTO[];
   alumnos: MesaPlanillaAlumnoDTO[];
+  esta_cerrada: boolean;
+  cerrada_en?: string | null;
+  cerrada_por?: string | null;
+  puede_editar: boolean;
+  puede_cerrar: boolean;
+  puede_reabrir: boolean;
 };
 
 export type MesaMateriaResumenDTO = {
@@ -709,6 +727,11 @@ export async function actualizarMesaPlanilla(mesaId: number, payload: { alumnos:
   cuenta_para_intentos?: boolean | null;
 }> }): Promise<ApiResponseDTO> {
   const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/planilla`, payload);
+  return data;
+}
+
+export async function gestionarMesaPlanillaCierre(mesaId: number, accion: "cerrar" | "reabrir"): Promise<ApiResponseDTO> {
+  const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/planilla/cierre`, { accion });
   return data;
 }
 

@@ -12,9 +12,11 @@ from apps.asistencia.api import (
     calendario_router as asistencia_calendario_router,
 )
 from apps.common.audit_api import router as audit_router
+from apps.common.errors import register_error_handlers
 
 if 'api' not in locals():
     api = NinjaAPI(title="IPES6 API")
+    register_error_handlers(api)
     api.get("/health")(health)  # Health endpoint
 
     # ⬇ importa el router del módulo de preinscripciones

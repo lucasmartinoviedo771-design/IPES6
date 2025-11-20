@@ -13,7 +13,7 @@ const GRILLAS: Record<string, Grilla> = {
     end:   "12:45",
     breaks: [
       { from: "09:05", to: "09:15" },
-      { from: "10:35", to: "10:45" },
+      { from: "10:35", to: "10:40" },
     ],
   },
   tarde: {
@@ -43,6 +43,25 @@ const GRILLAS: Record<string, Grilla> = {
 };
 
 const BLOCK_MIN = 40;
+
+type TurnoKey = "manana" | "tarde" | "vespertino";
+
+const normalizeTurnoNombre = (value?: string | null) =>
+  (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const turnoKeyFromMeta = (tid: number | null | undefined, nombre?: string | null): TurnoKey | null => {
+  const normalized = normalizeTurnoNombre(nombre);
+  if (normalized.includes("manan") || normalized.includes("man")) return "manana";
+  if (normalized.includes("tard")) return "tarde";
+  if (normalized.includes("vesp") || normalized.includes("noch")) return "vespertino";
+  if (tid === 1) return "manana";
+  if (tid === 2) return "tarde";
+  if (tid === 3) return "vespertino";
+  return null;
+};
 
 function parseHM(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
@@ -91,6 +110,7 @@ interface TimetableGridProps {
   anioCarrera: number | null;
   cuatrimestre: 1 | 2 | null;
   turnoId: number | null;
+  turnoNombre?: string | null;
   onMateriaChange: (materiaId: number | null) => void;
   selectedMateriaId: number | null;
   onBlocksSelected: (count: number, blocks: Set<number>) => void;
@@ -100,16 +120,18 @@ interface TimetableGridProps {
   onGuardar: () => void;
   onExportar: () => void;
   setHorasRequeridas: (horas: number) => void;
+  onBloquesChange?: (bloques: Bloque[]) => void;
 }
 
 const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
-  const { 
-    profesoradoId, planId, anioCarrera, cuatrimestre, turnoId, 
-    onMateriaChange, selectedMateriaId, onBlocksSelected, 
-    selectedBlocks, setHorasRequeridas, onClear, onDuplicar, onGuardar, onExportar 
+  const {
+    profesoradoId, planId, anioCarrera, cuatrimestre, turnoId, turnoNombre,
+    onMateriaChange, selectedMateriaId, onBlocksSelected,
+    selectedBlocks, setHorasRequeridas, onClear, onDuplicar, onGuardar, onExportar, onBloquesChange
   } = props;
 
   const [bloques, setBloques] = useState<Bloque[]>([]);
+  const [bloquesReady, setBloquesReady] = useState(false);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [occupiedBlocks, setOccupiedBlocks] = useState<Set<number>>(new Set());
 
@@ -125,13 +147,25 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 
   useEffect(() => {
     if (turnoId) {
-      axios.get<Bloque[]>(`/turnos/${turnoId}/bloques`)
-        .then(response => setBloques(response.data))
-        .catch(error => console.error('Error fetching bloques:', error));
+      setBloquesReady(false);
+      axios
+        .get<Bloque[]>(`/turnos/${turnoId}/bloques`)
+        .then((response) => {
+          setBloques(response.data);
+          onBloquesChange?.(response.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching bloques:", error);
+          setBloques([]);
+          onBloquesChange?.([]);
+        })
+        .finally(() => setBloquesReady(true));
     } else {
       setBloques([]);
+      onBloquesChange?.([]);
+      setBloquesReady(false);
     }
-  }, [turnoId]);
+  }, [turnoId, onBloquesChange]);
 
   useEffect(() => {
     if (planId && anioCarrera) {
@@ -222,16 +256,12 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
     onBlocksSelected(newSelection.size, newSelection);
   };
 
-  // Mapear tu turnoId → clave de GRILLAS (ajustá según tus IDs reales)
-function turnoKeyFromId(tid: number | null | undefined): "manana"|"tarde"|"vespertino"|"sabado"|null {
-  if (!tid) return null;
-  // ejemplo: 1=mañana, 2=tarde, 3=vespertino, 4=sábado
-  return tid === 1 ? "manana" : tid === 2 ? "tarde" : tid === 3 ? "vespertino" : tid === 4 ? "sabado" : null;
-}
-const turnoKey = turnoKeyFromId(turnoId);
+  const turnoNombreEfectivo = bloques[0]?.turno_nombre ?? turnoNombre ?? null;
+  const turnoKey = turnoKeyFromMeta(turnoId, turnoNombreEfectivo);
 
 // Si el backend envía `bloques`, seguimos usándolos; si no, generamos la grilla del turno
-const hasBloques = bloques.length > 0;
+const hasBloques = bloquesReady && bloques.length > 0;
+const canUseFallback = bloquesReady && !hasBloques && turnoKey;
 
 // L–V (usa grilla del turno M/T/V si no hay datos del backend)
 let timeSlotsLV: string[] = [];
@@ -241,7 +271,7 @@ let timeSlotsLV: string[] = [];
       .filter(b => b.dia >= 1 && b.dia <= 5)
       .map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
   )).sort();
-} else if (turnoKey && GRILLAS[turnoKey] && turnoKey !== "sabado") {
+} else if (canUseFallback && turnoKey && GRILLAS[turnoKey]) {
   const meta = GRILLAS[turnoKey];
   let cur = parseHM(meta.start);
   const end = parseHM(meta.end);
@@ -262,7 +292,7 @@ if (hasBloques) {
   timeSlotsSab = Array.from(new Set(
     sabadoBloques.map(b => `${b.hora_desde}-${b.hora_hasta}`)
   )).sort();
-} else {
+} else if (canUseFallback) {
   const meta = GRILLAS.sabado;
   let cur = parseHM(meta.start);
   const end = parseHM(meta.end);
@@ -277,11 +307,12 @@ if (hasBloques) {
 }
 
   // Sábado visible (independiente del turno seleccionado)
-  const timeSlotsSabDisplay: string[] = (sabadoBloques.length > 0)
-    ? Array.from(new Set(
-        sabadoBloques.map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
-      )).sort()
-    : (() => {
+  const timeSlotsSabDisplay: string[] = sabadoBloques.length > 0
+    ? Array.from(
+        new Set(sabadoBloques.map((b) => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)),
+      ).sort()
+    : canUseFallback
+    ? (() => {
         const meta = GRILLAS.sabado;
         let cur = parseHM(meta.start);
         const end = parseHM(meta.end);
@@ -292,7 +323,8 @@ if (hasBloques) {
           cur = nx;
         }
         return acc;
-      })();
+      })()
+    : [];
 
   return (
     <div>

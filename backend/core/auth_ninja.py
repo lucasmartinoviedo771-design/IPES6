@@ -2,10 +2,12 @@ from functools import wraps  # Import wraps
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from ninja.errors import HttpError  # Import HttpError
 from ninja.security.base import AuthBase
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import UntypedToken
+
+from apps.common.constants import AppErrorCode
+from apps.common.errors import AppError
 
 User = get_user_model()
 
@@ -47,7 +49,7 @@ def ensure_roles(required_roles: list[str]):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
             if not request.user or not request.user.is_authenticated:
-                raise HttpError(401, "Unauthorized")
+                raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
 
             user_roles = {name.lower() for name in request.user.groups.values_list("name", flat=True)}
             if request.user.is_superuser or request.user.is_staff:
@@ -56,7 +58,7 @@ def ensure_roles(required_roles: list[str]):
             required = {role.lower() for role in required_roles}
 
             if not user_roles.intersection(required):
-                raise HttpError(403, "Forbidden")
+                raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para realizar esta acción.")
             return func(request, *args, **kwargs)
 
         return wrapper

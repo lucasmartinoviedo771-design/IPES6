@@ -3,7 +3,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from django.contrib.auth.models import User
-from ninja.errors import HttpError
+
+from apps.common.constants import AppErrorCode
+from apps.common.errors import AppError
 
 from .models import StaffAsignacion
 
@@ -21,7 +23,7 @@ _UNRESTRICTED_ROLES = {
 
 def _ensure_authenticated(user: User | None) -> User:
     if not user or not user.is_authenticated:
-        raise HttpError(401, "No autenticado")
+        raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
     return user
 
 
@@ -36,7 +38,7 @@ def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
     allowed = {role.lower() for role in allowed_roles}
     groups = _group_names(user)
     if not groups.intersection(allowed):
-        raise HttpError(403, "No tiene permisos suficientes para realizar esta acción.")
+        raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos suficientes para realizar esta acción.")
 
 
 def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = None) -> set[int] | None:
@@ -68,4 +70,4 @@ def ensure_profesorado_access(
         return
     if profesorado_id in allowed:
         return
-    raise HttpError(403, "No tiene permisos sobre este profesorado.")
+    raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos sobre este profesorado.")

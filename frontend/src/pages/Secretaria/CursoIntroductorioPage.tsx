@@ -122,6 +122,7 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
   const [cohorteForm, setCohorteForm] = useState<CohorteFormState>(() => buildCohorteForm());
   const [editingCohorteId, setEditingCohorteId] = useState<number | null>(null);
   const [savingCohorte, setSavingCohorte] = useState(false);
+  const [creatingCohortesTurnos, setCreatingCohortesTurnos] = useState(false);
 
   const [pendientesProfesoradoId, setPendientesProfesoradoId] = useState("");
   const [pendientes, setPendientes] = useState<CursoIntroPendienteDTO[]>([]);
@@ -153,6 +154,7 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
 
   const puedeGestionarCohortes = hasAnyRole(user, ["admin", "secretaria"]);
   const puedeGestionarRegistros = hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]);
+  const cohorteAccionBloqueada = savingCohorte || creatingCohortesTurnos;
 
   const loadProfesorados = useCallback(async () => {
     try {
@@ -246,10 +248,14 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
 
   const cohorteOptions = useMemo(
     () =>
-      cohortes.map((cohorte) => ({
-        value: cohorte.id,
-        label: cohorte.nombre || `Cohorte ${cohorte.anio_academico}`,
-      })),
+      cohortes.map((cohorte) => {
+        const baseLabel = cohorte.nombre || `Cohorte ${cohorte.anio_academico}`;
+        const turnoLabel = cohorte.turno_nombre || "Sin turno fijo";
+        return {
+          value: cohorte.id,
+          label: `${baseLabel} · ${turnoLabel}`,
+        };
+      }),
     [cohortes],
   );
 
@@ -286,22 +292,31 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
     setCohorteForm(buildCohorteForm());
   };
 
-  const handleGuardarCohorte = async () => {
+  const buildCohortePayload = (): CursoIntroCohortePayload => ({
+    nombre: cohorteForm.nombre.trim() || undefined,
+    anio_academico: Number(cohorteForm.anio_academico),
+    profesorado_id: cohorteForm.profesorado_id ? Number(cohorteForm.profesorado_id) : undefined,
+    turno_id: cohorteForm.turno_id ? Number(cohorteForm.turno_id) : undefined,
+    ventana_id: cohorteForm.ventana_id ? Number(cohorteForm.ventana_id) : undefined,
+    fecha_inicio: cohorteForm.fecha_inicio || undefined,
+    fecha_fin: cohorteForm.fecha_fin || undefined,
+    cupo: cohorteForm.cupo ? Number(cohorteForm.cupo) : undefined,
+    observaciones: cohorteForm.observaciones.trim() || undefined,
+  });
+
+  const ensureCohorteBaseValida = () => {
     if (!cohorteForm.anio_academico.trim()) {
       enqueueSnackbar("Indicá el año académico de la cohorte.", { variant: "warning" });
+      return false;
+    }
+    return true;
+  };
+
+  const handleGuardarCohorte = async () => {
+    if (!ensureCohorteBaseValida()) {
       return;
     }
-    const payload: CursoIntroCohortePayload = {
-      nombre: cohorteForm.nombre.trim() || undefined,
-      anio_academico: Number(cohorteForm.anio_academico),
-      profesorado_id: cohorteForm.profesorado_id ? Number(cohorteForm.profesorado_id) : undefined,
-      turno_id: cohorteForm.turno_id ? Number(cohorteForm.turno_id) : undefined,
-      ventana_id: cohorteForm.ventana_id ? Number(cohorteForm.ventana_id) : undefined,
-      fecha_inicio: cohorteForm.fecha_inicio || undefined,
-      fecha_fin: cohorteForm.fecha_fin || undefined,
-      cupo: cohorteForm.cupo ? Number(cohorteForm.cupo) : undefined,
-      observaciones: cohorteForm.observaciones.trim() || undefined,
-    };
+    const payload = buildCohortePayload();
     setSavingCohorte(true);
     try {
       if (editingCohorteId) {
@@ -317,6 +332,37 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
       enqueueSnackbar(getErrorMessage(error, "No se pudo guardar la cohorte."), { variant: "error" });
     } finally {
       setSavingCohorte(false);
+    }
+  };
+
+  const handleCrearCohortesTodosTurnos = async () => {
+    if (editingCohorteId) {
+      return;
+    }
+    if (!ensureCohorteBaseValida()) {
+      return;
+    }
+    const turnosDisponibles = turnos.filter((turno) => Boolean(turno.id));
+    if (!turnosDisponibles.length) {
+      enqueueSnackbar("No hay turnos configurados para generar cohortes.", { variant: "warning" });
+      return;
+    }
+    const basePayload = buildCohortePayload();
+    setCreatingCohortesTurnos(true);
+    try {
+      for (const turno of turnosDisponibles) {
+        await crearCursoIntroCohorte({ ...basePayload, turno_id: turno.id });
+      }
+      enqueueSnackbar(
+        `Se crearon cohortes para ${turnosDisponibles.length} turno${turnosDisponibles.length > 1 ? "s" : ""}.`,
+        { variant: "success" },
+      );
+      cerrarDialogoCohorte();
+      loadCohortes();
+    } catch (error) {
+      enqueueSnackbar(getErrorMessage(error, "No se pudieron crear las cohortes."), { variant: "error" });
+    } finally {
+      setCreatingCohortesTurnos(false);
     }
   };
 
@@ -379,8 +425,12 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
   const handleGuardarAsistencia = async () => {
     if (!registroSeleccionado) return;
     const total = Number(asistenciaValor);
-    if (Number.isNaN(total)) {
-      enqueueSnackbar("Ingresá la cantidad de asistencias.", { variant: "warning" });
+    if (Number.isNaN(total) || !Number.isInteger(total)) {
+      enqueueSnackbar("La asistencia debe ser un número entero.", { variant: "warning" });
+      return;
+    }
+    if (total < 0 || total > 100) {
+      enqueueSnackbar("La asistencia debe estar entre 0 y 100.", { variant: "warning" });
       return;
     }
     setGuardandoAsistencia(true);
@@ -428,8 +478,16 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
       enqueueSnackbar("La nota ingresada no es válida.", { variant: "warning" });
       return;
     }
+    if (nota !== undefined && (nota < 1 || nota > 10)) {
+      enqueueSnackbar("La nota debe estar entre 1 y 10.", { variant: "warning" });
+      return;
+    }
     if (asistencias !== undefined && Number.isNaN(asistencias)) {
       enqueueSnackbar("La asistencia ingresada no es válida.", { variant: "warning" });
+      return;
+    }
+    if (asistencias !== undefined && (!Number.isInteger(asistencias) || asistencias < 0 || asistencias > 100)) {
+      enqueueSnackbar("La asistencia debe ser un número entero entre 0 y 100.", { variant: "warning" });
       return;
     }
     setGuardandoCierre(true);
@@ -877,7 +935,12 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
         </DialogContent>
         <DialogActions>
           <Button onClick={cerrarDialogoCohorte}>Cancelar</Button>
-          <Button variant="contained" onClick={handleGuardarCohorte} disabled={savingCohorte}>
+          {!editingCohorteId && (
+            <Button onClick={handleCrearCohortesTodosTurnos} disabled={cohorteAccionBloqueada}>
+              {creatingCohortesTurnos ? "Creando..." : "Crear para todos los turnos"}
+            </Button>
+          )}
+          <Button variant="contained" onClick={handleGuardarCohorte} disabled={cohorteAccionBloqueada}>
             {savingCohorte ? "Guardando..." : "Guardar"}
           </Button>
         </DialogActions>
@@ -954,6 +1017,8 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
           <TextField
             label="Asistencias registradas"
             type="number"
+            inputProps={{ min: 0, max: 100, step: 1 }}
+            helperText="Porcentaje entre 0 y 100"
             value={asistenciaValor}
             onChange={(event) => setAsistenciaValor(event.target.value)}
             fullWidth
@@ -975,6 +1040,8 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
             <TextField
               label="Nota final"
               type="number"
+              inputProps={{ min: 1, max: 10, step: 0.1 }}
+              helperText="Valor entre 1 y 10"
               value={cierreForm.nota_final}
               onChange={(event) => setCierreForm((prev) => ({ ...prev, nota_final: event.target.value }))}
               fullWidth
@@ -982,6 +1049,8 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
             <TextField
               label="Asistencias"
               type="number"
+              inputProps={{ min: 0, max: 100, step: 1 }}
+              helperText="Porcentaje entre 0 y 100"
               value={cierreForm.asistencias_totales}
               onChange={(event) => setCierreForm((prev) => ({ ...prev, asistencias_totales: event.target.value }))}
               fullWidth
