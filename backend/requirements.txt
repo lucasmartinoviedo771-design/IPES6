@@ -36,7 +36,9 @@ charset-normalizer==3.4.3
     #   reportlab
     #   requests
 colorama==0.4.6
-    # via qrcode
+    # via
+    #   pytest
+    #   qrcode
 cryptography==45.0.7
     # via
     #   ipes6-backend (pyproject.toml)
@@ -46,7 +48,7 @@ cssselect2==0.8.0
     # via
     #   svglib
     #   weasyprint
-django==5.2.6
+django==5.2.8
     # via
     #   ipes6-backend (pyproject.toml)
     #   django-cors-headers
@@ -73,6 +75,8 @@ fonttools==4.59.2
     # via
     #   ipes6-backend (pyproject.toml)
     #   weasyprint
+gunicorn==22.0.0
+    # via ipes6-backend (pyproject.toml)
 html5lib==1.1
     # via ipes6-backend (pyproject.toml)
 idna==3.10
@@ -80,6 +84,8 @@ idna==3.10
     #   ipes6-backend (pyproject.toml)
     #   email-validator
     #   requests
+iniconfig==2.3.0
+    # via pytest
 lxml==6.0.1
     # via
     #   ipes6-backend (pyproject.toml)
@@ -89,12 +95,18 @@ oscrypto==1.3.0
     # via
     #   ipes6-backend (pyproject.toml)
     #   pyhanko-certvalidator
+packaging==25.0
+    # via
+    #   gunicorn
+    #   pytest
 pillow==11.3.0
     # via
     #   ipes6-backend (pyproject.toml)
     #   qrcode
     #   reportlab
     #   weasyprint
+pluggy==1.6.0
+    # via pytest
 pycparser==2.23
     # via cffi
 pydantic==2.11.9
@@ -125,9 +137,17 @@ pyphen==0.17.2
     # via
     #   ipes6-backend (pyproject.toml)
     #   weasyprint
+pytest==8.3.4
+    # via
+    #   ipes6-backend (pyproject.toml)
+    #   pytest-django
+pytest-django==4.9.0
+    # via ipes6-backend (pyproject.toml)
 python-bidi==0.6.6
     # via ipes6-backend (pyproject.toml)
 python-dotenv==1.2.1
+    # via ipes6-backend (pyproject.toml)
+python-magic==0.4.27
     # via ipes6-backend (pyproject.toml)
 pyyaml==6.0.3
     # via pyhanko

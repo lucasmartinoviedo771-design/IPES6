@@ -1,138 +1,60 @@
 # Sistema de Gestión Académica - IPES Paulo Freire
 
-Este proyecto es un sistema integral de gestión académica para el IPES Paulo Freire, diseñado para manejar desde la preinscripción de nuevos alumnos hasta la gestión de cursadas, notas y trámites administrativos.
+Sistema integral para preinscripción, cursadas, notas y trámites administrativos del IPES Paulo Freire. Consta de un backend Django expuesto vía API Ninja y un frontend React/Vite con UI MUI.
 
-El sistema está construido con una arquitectura moderna de dos componentes principales: un backend robusto hecho en Django y un frontend interactivo desarrollado con React.
+## Arquitectura
+- Backend: Django 5.2.8, Django Ninja, MySQL, JWT en cookies HTTP-only + CSRF, generación de PDFs (WeasyPrint, ReportLab).
+- Frontend: React 18 + Vite 7, TypeScript, MUI, TanStack Query, React Hook Form + Zod, React Router.
+- Gestión de dependencias backend con `uv`; frontend con `npm`.
 
----
+## Requisitos
+- Python 3.11+
+- Node.js 18+
+- UV (`pip install uv`)
+- MySQL en ejecución
+- Git
+
+## Puesta en marcha
+
+### Backend (Django)
+1) `cd backend`
+2) Copia y ajusta el entorno: `copy Original.env .env` (o usa `ENV_TEMPLATE.md` como guía para credenciales y secretos).
+3) Instala dependencias: `uv pip sync requirements.txt`
+4) Migra la base: `uv run python manage.py migrate`
+5) (Opcional) Chequea variables críticas: `uv run python manage.py check_env`
+6) (Opcional) Crea superusuario: `uv run python manage.py createsuperuser`
+7) Ejecuta el servidor: `uv run python manage.py runserver` → http://127.0.0.1:8000
+
+### Frontend (React/Vite)
+1) `cd frontend`
+2) Instala dependencias: `npm ci` (o `npm install`)
+3) Variables locales en `.env.local`:
+   ```
+   VITE_API_BASE=http://localhost:8000/api
+   ```
+4) Levanta el dev server: `npm run dev` → http://localhost:5173
 
 ## Dashboards por rol
+Las tarjetas de cada panel están centralizadas en `frontend/src/components/roles/dashboardItems.tsx`. Ahí se definen títulos, descripciones, iconos y rutas reutilizables (Bedeles, Tutorías, Coordinación, etc.).
 
-Las tarjetas que se muestran en cada panel de rol se definen de forma centralizada en `frontend/src/components/roles/dashboardItems.tsx`. Ese catálogo mantiene los títulos, descripciones, iconos y rutas para todos los accesos reutilizables (Bedeles, Tutorías, Coordinación, etc.).
+Para sumar una tarjeta:
+1. Agrega la entrada en `dashboardItems.tsx` exportando `DASHBOARD_ITEMS.MI_NUEVA_CARD`.
+2. En el `Index.tsx` del rol, importa `DASHBOARD_ITEMS` y referencia la clave en el arreglo `sections` que consume `RoleDashboard`.
 
-Cuando necesites sumar una tarjeta nueva:
+## Scripts útiles
+- Backend: `uv run pytest`, `uv run python manage.py check_env`, `uv run python manage.py runserver`.
+- Frontend: `npm run dev`, `npm run build`, `npm run lint`, `npm test`.
 
-1. Agregá la entrada en `dashboardItems.tsx` exportando `DASHBOARD_ITEMS.MI_NUEVA_CARD`.
-2. Desde el `Index.tsx` del rol que corresponda, importá `DASHBOARD_ITEMS` y referenciá la clave dentro del arreglo `sections` que consume `RoleDashboard`.
+## Mantenimiento reciente
+- Migración a Vite 7 y reorganización de rutas en `frontend/src/router`.
+- APIs frontend centralizadas en `frontend/src/api` y dashboards compartidos por rol.
+- Autenticación reforzada con cookies HTTP-only + CSRF.
+- `requirements.txt` regenerado con `uv pip compile` para alinear dependencias con `pyproject.toml`.
 
-De esta manera evitamos duplicar texto y rutas cuando una misma tarjeta aplica a múltiples roles.
+## Contenedores (Docker)
+- Backend: `backend/Dockerfile` y `backend/docker-compose.yml` para levantar API + MySQL localmente (ajusta variables del compose antes de subir).
+- Frontend: `frontend/Dockerfile` y `frontend/nginx.conf` para servir el build estático detrás de Nginx.
+- Flujo sugerido: construir imágenes desde `backend/` y `frontend/` tras generar `.env` y `npm run build`; luego orquestar con compose o tu stack de despliegue.
 
----
-
-## Tecnologías Utilizadas
-
--   **Backend**:
-    -   Python 3.11+
-    -   Django 5+
-    -   Django Ninja (para una API REST de alto rendimiento)
-    -   UV (como gestor de entorno virtual y paquetes)
-    -   MySQL (Base de datos)
-
--   **Frontend**:
-    -   React 18+ (con Vite)
-    -   TypeScript
-    -   Material-UI (MUI) para la interfaz de usuario
-    -   React Hook Form & Zod para formularios y validación
-    -   TanStack Query para la gestión de datos y cache
-    -   React Router para la navegación en la aplicación
-
----
-
-## Instalación y Puesta en Marcha
-
-Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarrollo local. El repositorio se encuentra limpio de artefactos de testing o archivos de prueba para simplificar la preparación hacia producción.
-
-### Requisitos Previos
-
--   **Node.js**: Versión 18 o superior.
--   **Python**: Versión 3.11 o superior.
--   **UV**: Un instalador de paquetes de Python. Si no lo tienes, instálalo globalmente con `pip install uv`.
--   **Git**: Sistema de control de versiones.
--   **MySQL**: Una base de datos MySQL activa.
-
-### 1. Backend (Servidor Django)
-
-1.  **Clona el repositorio y navega a la carpeta del backend:**
-    ```bash
-    git clone <URL_DEL_REPOSITORIO>
-    cd IPES6/backend
-    ```
-
-2.  **Crea el entorno virtual e instala las dependencias:**
-    Este comando usa `uv` para crear un entorno virtual y sincronizarlo con las dependencias del proyecto.
-    ```bash
-    uv pip sync requirements.txt
-    ```
-
-3.  **Configura la base de datos:**
-    Crea un archivo `.env` en la carpeta `backend/` y configúralo con tus credenciales de MySQL. Puedes usar este template:
-    ```env
-    SECRET_KEY=django-insecure-una-clave-muy-secreta
-    DEBUG=True
-    DB_NAME=ipes_db
-    DB_USER=root
-    DB_PASSWORD=tu_contraseña
-    DB_HOST=127.0.0.1
-    DB_PORT=3306
-    ```
-
-4.  **Aplica las migraciones de la base de datos:**
-    ```bash
-    uv run python manage.py migrate
-    ```
-
-5.  **Verifica las variables de entorno críticas (opcional pero recomendado):**
-    ```bash
-    uv run python manage.py check_env
-    ```
-
-6.  **Crea un superusuario (opcional):**
-    Para acceder al panel de administrador de Django (`/admin`):
-    ```bash
-    uv run python manage.py createsuperuser
-    ```
-
-6.  **Inicia el servidor del backend:**
-    ```bash
-    uv run python manage.py runserver
-    ```
-    El servidor estará activo en `http://127.0.0.1:8000`.
-
-### 2. Frontend (Aplicación React)
-
-1.  **Abre una nueva terminal y navega a la carpeta del frontend:**
-    ```bash
-    cd IPES6/frontend
-    ```
-
-2.  **Instala las dependencias:**
-    ```bash
-    npm install
-    ```
-
-3.  **Configura la variable de entorno:**
-    Crea un archivo `.env.local` en `frontend/` para indicarle a la aplicación dónde encontrar la API del backend.
-    ```env
-    VITE_API_BASE=http://localhost:8000/api
-    ```
-
-4.  **Inicia el servidor de desarrollo:**
-    ```bash
-    npm run dev
-    ```
-    La aplicación estará disponible en `http://localhost:5173`.
-
----
-
-## Mantenimiento Reciente
-
--   **Actualización de Dependencias del Backend**: Se ha regenerado el archivo `requirements.txt` para asegurar que todas las dependencias del proyecto estén actualizadas y consistentes.
--   **Corrección de Codificación de Caracteres**: Se solucionaron errores de codificación (UTF-8) en múltiples componentes del frontend, asegurando la correcta visualización de acentos y caracteres especiales en toda la aplicación.
--   **Actualización de Dependencias**: Se actualizó el archivo `requirements.txt` para reflejar el estado actual de las dependencias del backend.
--   **Mejoras de Seguridad en Autenticación**: Se migró el almacenamiento del token JWT a cookies HTTP-only, se implementó protección CSRF en el frontend y se endurecieron las configuraciones de seguridad del backend, mejorando la resiliencia contra ataques XSS.
-
----
-
-## Autores
-
--   Oviedo Lucas
+## Autor
+- Oviedo Lucas
