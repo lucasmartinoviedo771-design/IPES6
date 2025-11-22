@@ -84,6 +84,9 @@ export default function LoginPage() {
       } else {
         const defaultHome = getDefaultHomeRoute(loggedUser);
         let target = from ?? defaultHome;
+        if (target === "/preinscripcion") {
+          target = defaultHome;
+        }
         if (isOnlyStudent(loggedUser) && target && !target.startsWith("/alumnos")) {
           target = defaultHome;
         }

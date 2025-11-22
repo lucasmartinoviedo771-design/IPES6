@@ -18,26 +18,8 @@ export default defineConfig({
     },
   },
   build: {
-    // Aumentamos el límite a 2100 kB para que no muestre el warning por el chunk 'vendor'
+    // Volvemos al splitting por defecto de Vite para evitar ciclos entre chunks (react-vendor/vendor).
     chunkSizeWarningLimit: 2100,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('@mui')) {
-              return 'mui-vendor';
-            }
-            if (id.includes('@tanstack') || id.includes('axios') || id.includes('zod')) {
-              return 'core-vendor';
-            }
-            return 'vendor';
-          }
-        },
-      },
-    },
   },
   test: {
     globals: true,

@@ -80,5 +80,17 @@ export const getDefaultHomeRoute = (user: User | null | undefined): string => {
   if (bag.has("admin")) {
     return "/dashboard";
   }
-  return "/alumnos";
+  if (bag.has("docente")) {
+    return "/dashboard";
+  }
+  if (bag.has("coordinador")) {
+    return "/dashboard";
+  }
+  if (bag.has("tutor")) {
+    return "/dashboard";
+  }
+  if (bag.has("jefes")) {
+    return "/dashboard";
+  }
+  return "/dashboard";
 };

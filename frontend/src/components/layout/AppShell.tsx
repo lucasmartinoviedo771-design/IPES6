@@ -99,6 +99,7 @@ const ROLE_NAV_MAP: Record<string, string[]> = {
 
 export default function AppShell({ children }: PropsWithChildren) {
   const { user, logout, roleOverride, setRoleOverride, availableRoleOptions } = useAuth();
+  console.log("[AppShell] Rendering. User:", user, "RoleOverride:", roleOverride);
   const [open, setOpen] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem("sidebarOpen");

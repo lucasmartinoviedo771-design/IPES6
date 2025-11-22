@@ -29,6 +29,8 @@ import {
 } from "@/styles/institutionalColors";
 import { useAuth } from "@/context/AuthContext";
 import { fetchCursoIntroEstado } from "@/api/cursoIntro";
+import { fetchMisAlertas } from "@/api/reportes";
+import { Alert, AlertTitle } from "@mui/material";
 
 type EventCard = {
   title: string;
@@ -196,6 +198,7 @@ export default function AlumnosIndex() {
   const { user } = useAuth();
   const roles = (user?.roles ?? []).map((role) => (role || "").toLowerCase());
   const isStudent = roles.includes("alumno");
+  
   const { data: cursoIntroEstado } = useQuery({
     queryKey: ["curso-intro", "estado"],
     queryFn: fetchCursoIntroEstado,
@@ -203,7 +206,15 @@ export default function AlumnosIndex() {
     enabled: isStudent,
   });
 
+  const { data: alertas } = useQuery({
+    queryKey: ["mis-alertas"],
+    queryFn: fetchMisAlertas,
+    staleTime: 60_000,
+    enabled: isStudent,
+  });
+
   const sections = useMemo<Section[]>(() => {
+    // ... existing memo logic ...
     if (!isStudent) {
       return baseSections;
     }
@@ -241,6 +252,25 @@ export default function AlumnosIndex() {
         title="Estudiantes"
         subtitle="Acá podés gestionar tus solicitudes y trámites del sistema."
       />
+
+      {alertas && alertas.length > 0 && (
+        <Stack spacing={2} sx={{ mb: 4, mt: 2 }}>
+           <Alert severity="error" variant="filled" sx={{ borderRadius: 2 }}>
+             <AlertTitle>Atención: Problemas con correlatividades</AlertTitle>
+             Tenés materias cursando con regularidades de correlativas vencidas o inválidas.
+           </Alert>
+           {alertas.map((alerta, index) => (
+             <Paper key={index} sx={{ p: 2, borderLeft: "6px solid #d32f2f", bgcolor: "#fff5f5" }}>
+               <Typography variant="subtitle1" fontWeight="bold" color="error.main">
+                 {alerta.materia_actual}
+               </Typography>
+               <Typography variant="body2">
+                 La correlativa <strong>{alerta.materia_correlativa}</strong> presenta el siguiente problema: <em>{alerta.motivo}</em>.
+               </Typography>
+             </Paper>
+           ))}
+        </Stack>
+      )}
 
       <Stack spacing={1.5} sx={{ mb: 4 }}>
         <SectionTitlePill title="Próximos eventos" sx={{ mt: 3 }} />

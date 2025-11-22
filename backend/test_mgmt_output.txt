@@ -1,0 +1,32 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\acer\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+django: version: 5.2.6, settings: config.settings (from env)
+rootdir: C:\proyectos\IPES6\backend
+configfile: pytest.ini
+plugins: django-4.11.1
+collecting ... collected 4 items
+
+tests/test_preinscriptions_management.py::test_update_preinscripcion_data PASSED [ 25%]
+tests/test_preinscriptions_management.py::test_manage_checklist PASSED   [ 50%]
+tests/test_preinscriptions_management.py::test_reactivate_preinscripcion PASSED [ 75%]
+tests/test_preinscriptions_management.py::test_add_career_to_student PASSED [100%]
+
+============================== warnings summary ===============================
+tests/test_preinscriptions_management.py::test_update_preinscripcion_data
+tests/test_preinscriptions_management.py::test_update_preinscripcion_data
+tests/test_preinscriptions_management.py::test_update_preinscripcion_data
+  C:\Users\acer\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+tests/test_preinscriptions_management.py::test_manage_checklist
+tests/test_preinscriptions_management.py::test_manage_checklist
+  C:\proyectos\IPES6\backend\apps\preinscriptions\api.py:391: PydanticDeprecatedSince20: The `__fields__` attribute is deprecated, use `model_fields` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
+
+tests/test_preinscriptions_management.py::test_manage_checklist
+  C:\proyectos\IPES6\backend\apps\preinscriptions\api.py:411: PydanticDeprecatedSince20: The `__fields__` attribute is deprecated, use `model_fields` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 4 passed, 6 warnings in 53.83s ========================

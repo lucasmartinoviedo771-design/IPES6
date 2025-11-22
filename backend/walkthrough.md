@@ -1,24 +1,21 @@
-# Walkthrough: Mejoras y Dockerización IPES6
+# Walkthrough: Dockerización IPES6
 
-Se han realizado tareas de limpieza, optimización y estandarización del entorno de desarrollo/producción mediante Docker.
+Se ha completado la configuración de Docker para el proyecto, permitiendo levantar todo el entorno (Backend, Frontend, Base de Datos) de manera orquestada.
 
 ## Cambios Realizados
 
-### 1. Limpieza de Código
-- **Eliminado**: `frontend/src/api/axios.ts` (redundante, se usa `client.ts`).
-- **Validación**: Se confirmaron las versiones de dependencias en `pyproject.toml` y `package.json`.
+### 1. Frontend
+- **Nginx**: Se creó `frontend/nginx.conf` para servir la aplicación React y manejar el enrutamiento SPA (redirigiendo todo a `index.html`).
+- **Dockerfile**: Se actualizó para copiar la configuración de Nginx.
 
-### 2. Dockerización
-Se crearon los archivos necesarios para levantar todo el stack (Backend + Frontend + Base de Datos) con un solo comando.
-
-- **Backend**: `backend/Dockerfile` (Python 3.11 slim + uv + gunicorn).
-- **Frontend**: `frontend/Dockerfile` (Node build -> Nginx serve).
-- **Orquestación**: `backend/docker-compose.yml` (define servicios `backend`, `frontend`, `db`).
-
-### 3. Configuraciones de Producción
-- **Logging**: Se mejoró `settings.py` para tener logs estructurados en consola (ideal para Docker/AWS/Azure).
-- **Vite Build**: Se optimizó `vite.config.ts` para dividir el código en chunks (`react-vendor`, `mui-vendor`, etc.), mejorando la carga inicial.
-- **Documentación**: Se creó `backend/ENV_TEMPLATE.md` con la lista de variables de entorno requeridas.
+### 2. Orquestación
+- **Docker Compose**: Se creó `backend/docker-compose.yml`.
+    - **Ubicación**: Se colocó en la carpeta `backend` debido a restricciones de acceso a la raíz, pero está configurado para funcionar correctamente desde allí.
+    - **Servicios**:
+        - `db`: MySQL 8.0 (Puerto 3307 para evitar conflictos).
+        - `backend`: Django + Gunicorn (Puerto 8000).
+        - `frontend`: Nginx (Puerto 8080 -> 80 interno).
+    - **Variables de Entorno**: Se configuraron `FRONTEND_ORIGINS` y credenciales de base de datos directamente en el compose para asegurar conectividad.
 
 ## Cómo correr el proyecto con Docker
 
@@ -28,19 +25,18 @@ Desde la carpeta `backend/`:
     ```bash
     docker-compose up --build
     ```
-    *(Esto puede tardar unos minutos la primera vez mientras descarga imágenes y compila)*.
+    *(Esto puede tardar unos minutos la primera vez)*.
 
 2.  **Acceder a la aplicación**:
-    - Frontend: [http://localhost](http://localhost) (Puerto 80)
-    - Backend API: [http://localhost:8000/api](http://localhost:8000/api)
-    - Admin Django: [http://localhost:8000/admin](http://localhost:8000/admin)
+    - **Frontend**: [http://localhost:8080](http://localhost:8080)
+    - **Backend API**: [http://localhost:8000/api](http://localhost:8000/api)
+    - **Admin Django**: [http://localhost:8000/admin](http://localhost:8000/admin)
 
 3.  **Detener servicios**:
     ```bash
     docker-compose down
     ```
 
-## Verificación
-- [x] `docker-compose build` debería ejecutarse sin errores.
-- [x] Los logs del backend deberían mostrar formato estructurado.
-- [x] El build del frontend debería generar múltiples archivos `.js` en `dist/assets` (vendor splitting).
+## Notas Importantes
+- El frontend corre en el puerto **8080** en modo Docker, diferente al 5173 de desarrollo.
+- La base de datos de Docker se expone en el puerto **3307**.

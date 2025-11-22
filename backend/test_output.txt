@@ -1,0 +1,93 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\acer\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+django: version: 5.2.6, settings: config.settings (from env)
+rootdir: C:\proyectos\IPES6\backend
+configfile: pytest.ini
+plugins: django-4.11.1
+collecting ... collected 33 items
+
+apps/alumnos/tests/test_curso_intro_api.py::test_curso_intro_auto_inscripcion_crea_registro_activo PASSED [  3%]
+apps/alumnos/tests/test_curso_intro_api.py::test_curso_intro_auto_inscripcion_rechaza_cohorte_fuera_de_ventana PASSED [  6%]
+apps/alumnos/tests/test_curso_intro_api.py::test_curso_intro_registrar_asistencia_actualiza_porcentaje PASSED [  9%]
+apps/alumnos/tests/test_curso_intro_api.py::test_curso_intro_registrar_asistencia_valida_rango PASSED [ 12%]
+apps/alumnos/tests/test_curso_intro_api.py::test_curso_intro_cierre_aprueba_registro_y_bandera_estudiante PASSED [ 15%]
+apps/alumnos/tests/test_curso_intro_api.py::test_curso_intro_cierre_rechaza_nota_fuera_de_rango PASSED [ 18%]
+apps/alumnos/tests/test_equivalencias_disposicion.py::test_resolver_contexto_equivalencia_requires_student_enrollment PASSED [ 21%]
+apps/alumnos/tests/test_equivalencias_disposicion.py::test_registrar_disposicion_generates_detail_and_acta PASSED [ 24%]
+apps/alumnos/tests/test_equivalencias_disposicion.py::test_registrar_disposicion_with_materia_from_other_plan_raises PASSED [ 27%]
+apps/alumnos/tests/test_inscripciones_api.py::test_inscripcion_materia_success_creates_record PASSED [ 30%]
+apps/alumnos/tests/test_inscripciones_api.py::test_inscripcion_materia_rejects_missing_correlativas PASSED [ 33%]
+apps/alumnos/tests/test_inscripciones_api.py::test_cancelar_inscripcion_materia_changes_state PASSED [ 36%]
+apps/alumnos/tests/test_regularidad_planilla_api.py::test_guardar_planilla_regularidad_creates_regularidad_records FAILED [ 39%]
+apps/alumnos/tests/test_regularidad_planilla_api.py::test_guardar_planilla_regularidad_rejects_unknown_inscripcion PASSED [ 42%]
+apps/alumnos/tests/test_regularidad_planilla_api.py::test_gestionar_regularidad_cierre_creates_lock_and_reopen PASSED [ 45%]
+apps/preinscriptions/tests/test_helpers.py::test_ventana_preinscripcion_activa_returns_latest PASSED [ 48%]
+apps/preinscriptions/tests/test_helpers.py::test_check_rate_limit_blocks_after_threshold PASSED [ 51%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_crear_preinscripcion_exitoso PASSED [ 54%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_crear_preinscripcion_rechaza_sin_ventana_activa PASSED [ 57%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_confirmar_por_codigo_actualiza_estado_y_flags PASSED [ 60%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_observar_y_rechazar_cambian_estado PASSED [ 63%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_eliminar_y_activar_togglea_activa_y_estado PASSED [ 66%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_agregar_carrera_crea_nueva_preinscripcion_y_bloquea_duplicado PASSED [ 69%]
+apps/preinscriptions/tests/test_preinscripciones_api.py::test_listar_por_alumno_devuelve_historico_ordered PASSED [ 72%]
+core/tests/test_regularidad_lock.py::test_regularidad_lock_requires_complete_scope PASSED [ 75%]
+tests/test_preinscriptions.py::test_create_preinscripcion PASSED         [ 78%]
+tests/test_preinscriptions.py::test_list_preinscripciones PASSED         [ 81%]
+tests/test_preinscriptions.py::test_get_preinscripcion_by_code PASSED    [ 84%]
+tests/test_preinscriptions.py::test_confirm_preinscripcion PASSED        [ 87%]
+tests/test_preinscriptions.py::test_reject_preinscripcion PASSED         [ 90%]
+tests/test_preinscriptions.py::test_observe_preinscripcion PASSED        [ 93%]
+tests/test_preinscriptions.py::test_change_carrera PASSED                [ 96%]
+tests/test_preinscriptions.py::test_delete_preinscripcion PASSED         [100%]
+
+================================== FAILURES ===================================
+________ test_guardar_planilla_regularidad_creates_regularidad_records ________
+
+    @pytest.mark.django_db
+    def test_guardar_planilla_regularidad_creates_regularidad_records():
+        staff = User.objects.create(username="staff", is_staff=True)
+        estudiante = Estudiante.objects.create(user=User.objects.create(username="alumno1"), dni="4000")
+        materia = _create_materia()
+        comision = Comision.objects.create(materia=materia, anio_lectivo=2024, codigo="COM-1", turno_id=1)
+        inscripcion = InscripcionMateriaAlumno.objects.create(
+            estudiante=estudiante,
+            materia=materia,
+            comision=comision,
+            anio=2024,
+        )
+    
+        alumno_payload = carga_notas_api.RegularidadAlumnoIn(
+            inscripcion_id=inscripcion.id,
+            situacion="APROBADO",
+            nota_tp=8.5,
+            nota_final=9,
+            asistencia=90,
+            excepcion=False,
+            observaciones="",
+        )
+        payload = carga_notas_api.RegularidadCargaIn(
+            comision_id=comision.id,
+            fecha_cierre=date(2024, 6, 30),
+            alumnos=[alumno_payload],
+            observaciones_generales=None,
+        )
+    
+        request = SimpleNamespace(user=staff)
+        status, response = carga_notas_api.guardar_planilla_regularidad(request, payload)
+    
+>       assert status == 200
+E       assert 400 == 200
+
+apps\alumnos\tests\test_regularidad_planilla_api.py:77: AssertionError
+============================== warnings summary ===============================
+..\..\..\Users\acer\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:323
+..\..\..\Users\acer\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:323
+..\..\..\Users\acer\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:323
+  C:\Users\acer\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED apps/alumnos/tests/test_regularidad_planilla_api.py::test_guardar_planilla_regularidad_creates_regularidad_records
+============= 1 failed, 32 passed, 3 warnings in 67.91s (0:01:07) =============

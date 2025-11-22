@@ -3643,7 +3643,7 @@ def close_conversation(request, conversation_id: int):
     return SimpleOk()
 
 
-@router.get("/mensajes/resumen", response=ConversationCountsOut, auth=JWTAuth())
+@router.get("/mensajes/resumen/", response=ConversationCountsOut, auth=JWTAuth())
 def conversations_summary(request):
     user = request.user
     qs = (

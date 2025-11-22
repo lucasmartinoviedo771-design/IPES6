@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, Button, Step, StepLabel, Stepper, Typography, Paper, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 // import { useNavigate } from "react-router-dom";
 
@@ -26,6 +28,9 @@ import CarreraDocumentacion from "./steps/CarreraDocumentacion";
 import Confirmacion from "./steps/Confirmacion";
 
 const STORAGE_KEY = "preinscripcion_form_data";
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 
 const steps = [
   "Datos personales",

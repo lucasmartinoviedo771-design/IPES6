@@ -55,7 +55,7 @@ export const crearInscripcion = (preId: number, carreraId: number, periodo = "20
   client.post(`/inscripciones`, { preinscripcion: preId, carrera: carreraId, periodo }).then(r => r.data);
 
 export const listarCarreras = () =>
-  client.get(`/carreras`).then(r => r.data);
+  client.get(`/carreras/`).then(r => r.data);
 
 export const listarPreinscripciones = (params: { q?: string; limit?: number; offset?: number; include_inactivas?: boolean }) =>
   client.get<PreinscripcionDTO[] | { results: PreinscripcionDTO[] }>("/preinscripciones/", { params }).then(r => (Array.isArray(r.data) ? { results: r.data } : r.data));
@@ -178,7 +178,7 @@ export interface ChecklistDTO {
 
   es_certificacion_docente?: boolean;
   titulo_terciario_univ?: boolean;
-   incumbencia?: boolean;
+  incumbencia?: boolean;
   estado_legajo?: string;
   curso_introductorio_aprobado?: boolean;
 }
@@ -217,7 +217,7 @@ export const apiUploadPreDoc = async (preId: number, tipo: string, file: File) =
   const form = new FormData();
   form.append('file', file);
   const { data } = await client.post(`/preinscripciones/${preId}/documentos?tipo=${tipo}`, form, {
-    headers: { 
+    headers: {
       'Content-Type': 'multipart/form-data',
       Authorization: `Bearer ${token}`,
     },

@@ -1,4 +1,4 @@
-import api from './axios'; // Changed import
+import { api } from './client';
 import { EquivalenciaDisposicionDTO, EquivalenciaDisposicionPayload } from "@/api/alumnos";
 
 interface UploadResult {

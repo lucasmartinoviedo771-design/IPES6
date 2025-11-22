@@ -34,6 +34,7 @@ const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
+  const [bootstrapped, setBootstrapped] = useState(false); // evita doble fetch inicial
   const [roleOverride, setRoleOverrideState] = useState<string | null>(() => {
     try {
       return localStorage.getItem("roleOverride") || null;
@@ -52,30 +53,49 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   }, [navigate]);
 
   const refreshProfile = async (): Promise<User | null> => {
+    console.log("[Auth] refreshProfile called");
     try {
-      const { data } = await client.get(apiPath("auth/profile"));
+      console.log("[Auth] Sending GET to auth/profile/");
+      const { data } = await client.get(apiPath("auth/profile/"));
+      console.log("[Auth] Received profile data:", data);
       setUser(data);
       return data;
     } catch (err: any) {
-      // If profile fetch fails, it means the cookie is invalid or missing
+      console.error("[Auth] refreshProfile failed:", err);
       setUser(null);
-      // No need to clear local storage or set auth header manually
       throw err;
     }
   };
 
-  // Bootstrap: Check for existing session via cookie
+  // Bootstrap: Check for existing session via cookie (solo una vez)
   useEffect(() => {
+    let mounted = true;
     (async () => {
+      console.log("[Auth] Bootstrap effect starting. Bootstrapped:", bootstrapped);
       try {
-        await refreshProfile();
-      } catch {
+        if (!bootstrapped) {
+          console.log("[Auth] Awaiting refreshProfile with timeout...");
+          // Race refreshProfile with a timeout
+          await Promise.race([
+            refreshProfile(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+          ]);
+          console.log("[Auth] refreshProfile completed.");
+        }
+      } catch (e) {
+        console.error("[Auth] Bootstrap error or timeout:", e);
+        // alert("Error de carga inicial: " + String(e)); // Uncomment for extreme debugging
         setUser(null);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          console.log("[Auth] Bootstrap finally block. Setting loading=false.");
+          setBootstrapped(true);
+          setLoading(false);
+        }
       }
     })();
-  }, []);
+    return () => { mounted = false; };
+  }, [bootstrapped]);
 
   useEffect(() => {
     const updateActivity = () => {
@@ -124,23 +144,21 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     };
 
     try {
-      const { data } = await client.post(apiPath("auth/login"), payload);
+      console.log("[Auth] Attempting login for:", id);
+      const { data } = await client.post(apiPath("auth/login/"), payload);
+      console.log("[Auth] Login response data:", data);
       const u: User = data?.user ?? null;
 
       if (!u) {
-        // If initial login response doesn't have user, try refreshing profile
-        const refreshedUser = await refreshProfile();
-        console.log("[AuthContext] User after login (refreshed):", refreshedUser); // DIAGNOSTIC LOG
-        return refreshedUser;
+        console.error("[Auth] Login response missing user data");
+        throw new Error("La respuesta del servidor no contiene datos de usuario.");
       }
 
-      // Set the user from the login response first
+      console.log("[Auth] Setting user state:", u);
       setUser(u);
-
-      // Then immediately refresh the profile to get full details
-      const refreshedUser = await refreshProfile();
-      return refreshedUser; // Ensure login always returns the fully refreshed user
+      return u;
     } catch (err: any) {
+      console.error("[Auth] Login failed:", err);
       const status = err?.response?.status;
       const msg =
         err?.response?.data?.detail ||
@@ -154,7 +172,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const logout = async () => {
     try {
-      await client.post(apiPath("auth/logout")); // Call backend logout endpoint to clear cookie
+      await client.post(apiPath("auth/logout/")); // Call backend logout endpoint to clear cookie
     } catch (err: any) {
       console.error("Error during logout:", err); // Log error but still clear local state
     } finally {

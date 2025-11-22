@@ -357,6 +357,18 @@ woff = [
 ]
 
 [[package]]
+name = "gunicorn"
+version = "22.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/88/e2f93c5738a4c1f56a458fc7a5b1676fc31dcdbb182bef6b40a141c17d66/gunicorn-22.0.0.tar.gz", hash = "sha256:4a0b436239ff76fb33f11c07a16482c521a7e09c1ce3cc293c2330afe01bec63", size = 3639760, upload-time = "2024-04-16T22:58:19.218Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/29/97/6d610ae77b5633d24b69c2ff1ac3044e0e565ecbd1ec188f02c45073054c/gunicorn-22.0.0-py3-none-any.whl", hash = "sha256:350679f91b24062c86e386e198a15438d53a7a8207235a78ba1b53df4c4378d9", size = 84443, upload-time = "2024-04-16T22:58:15.233Z" },
+]
+
+[[package]]
 name = "html5lib"
 version = "1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -409,6 +421,7 @@ dependencies = [
     { name = "dnspython" },
     { name = "email-validator" },
     { name = "fonttools" },
+    { name = "gunicorn" },
     { name = "html5lib" },
     { name = "idna" },
     { name = "lxml" },
@@ -426,6 +439,7 @@ dependencies = [
     { name = "pytest-django" },
     { name = "python-bidi" },
     { name = "python-dotenv" },
+    { name = "python-magic" },
     { name = "qrcode", extra = ["pil"] },
     { name = "reportlab" },
     { name = "requests" },
@@ -464,6 +478,7 @@ requires-dist = [
     { name = "dnspython", specifier = "==2.8.0" },
     { name = "email-validator", specifier = "==2.3.0" },
     { name = "fonttools", specifier = "==4.59.2" },
+    { name = "gunicorn", specifier = "==22.0.0" },
     { name = "html5lib", specifier = "==1.1" },
     { name = "idna", specifier = "==3.10" },
     { name = "lxml", specifier = "==6.0.1" },
@@ -481,6 +496,7 @@ requires-dist = [
     { name = "pytest-django", specifier = "==4.9.0" },
     { name = "python-bidi", specifier = "==0.6.6" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
+    { name = "python-magic", specifier = "==0.4.27" },
     { name = "qrcode", extras = ["pil"] },
     { name = "reportlab", specifier = "==4.4.3" },
     { name = "requests", specifier = "==2.32.5" },
@@ -834,6 +850,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f6/b0/4bc07ccd3572a2f9df7e6782f52b0c6c90dcbb803ac4a167702d7d0dfe1e/python_dotenv-1.1.1.tar.gz", hash = "sha256:a8a6399716257f45be6a007360200409fce5cda2661e3dec71d23dc15f6189ab", size = 41978, upload-time = "2025-06-24T04:21:07.341Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5f/ed/539768cf28c661b5b068d66d96a2f155c4971a5d55684a514c1a0e0dec2f/python_dotenv-1.1.1-py3-none-any.whl", hash = "sha256:31f23644fe2602f88ff55e1f5c79ba497e01224ee7737937930c448e4d0e24dc", size = 20556, upload-time = "2025-06-24T04:21:06.073Z" },
+]
+
+[[package]]
+name = "python-magic"
+version = "0.4.27"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/db/0b3e28ac047452d079d375ec6798bf76a036a08182dbb39ed38116a49130/python-magic-0.4.27.tar.gz", hash = "sha256:c1ba14b08e4a5f5c31a302b7721239695b2f0f058d125bd5ce1ee36b9d9d3c3b", size = 14677, upload-time = "2022-06-07T20:16:59.508Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/73/9f872cb81fc5c3bb48f7227872c28975f998f3e7c2b1c16e95e6432bbb90/python_magic-0.4.27-py2.py3-none-any.whl", hash = "sha256:c212960ad306f700aa0d01e5d7a325d20548ff97eb9920dcd29513174f0294d3", size = 13840, upload-time = "2022-06-07T20:16:57.763Z" },
 ]
 
 [[package]]

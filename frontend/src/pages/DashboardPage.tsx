@@ -32,6 +32,8 @@ import {
   INSTITUTIONAL_TERRACOTTA,
   INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
+import { useQuery } from "@tanstack/react-query";
+import { fetchCorrelativasCaidas } from "@/api/reportes";
 
 type QuickAction = {
   title: string;
@@ -127,6 +129,7 @@ const StatCard = ({ title, value, subtitle, icon, accent, iconBg, borderColor }:
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  console.log("[Dashboard] Rendering DashboardPage. User:", user);
 
   const [metrics, setMetrics] = useState({ total: 0, confirmadas: 0, pendientes: 0, observadas: 0, rechazadas: 0, ratio: 0 });
   const [recientes, setRecientes] = useState<PreinscripcionDTO[]>([]);
@@ -140,6 +143,12 @@ export default function DashboardPage() {
     const userRoles = (user?.roles || []).map((r) => r.toLowerCase().trim());
     return roles.some((role) => userRoles.includes(role.toLowerCase().trim()));
   }, [user]);
+
+  const { data: correlativasCaidas } = useQuery({
+    queryKey: ["correlativas-caidas"],
+    queryFn: () => fetchCorrelativasCaidas(),
+    enabled: can(["admin", "secretaria"]),
+  });
 
   useEffect(() => {
     const canViewStats = can(['admin', 'secretaria', 'bedel', 'preinscripciones']);
@@ -233,13 +242,13 @@ export default function DashboardPage() {
       borderColor: "rgba(245,158,11,0.25)",
     },
     {
-      title: "Observadas",
-      value: metrics.observadas,
-      subtitle: "Necesitan corrección",
+      title: "Correlativas Caídas",
+      value: correlativasCaidas?.length || 0,
+      subtitle: "Alumnos con problemas",
       icon: <WarningAmberIcon />,
-      accent: "#be185d",
-      iconBg: STAT_PINK_GRADIENT,
-      borderColor: "rgba(244,114,182,0.3)",
+      accent: "#ef4444",
+      iconBg: "linear-gradient(135deg, #ef4444, #b91c1c)",
+      borderColor: "rgba(239, 68, 68, 0.25)",
     },
   ];
 
