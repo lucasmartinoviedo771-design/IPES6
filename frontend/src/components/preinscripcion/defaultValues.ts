@@ -13,6 +13,7 @@ export const defaultValues: PreinscripcionForm = {
   provincia_nac: "",
   pais_nac: "",
   domicilio: "",
+  cohorte: "",
 
   // contacto
   email: "",
@@ -35,13 +36,42 @@ export const defaultValues: PreinscripcionForm = {
   sup1_titulo: "",
   sup1_establecimiento: "",
   sup1_fecha_egreso: "",
+  sup1_localidad: "",
+  sup1_provincia: "",
+  sup1_pais: "",
 
   // carrera
   carrera_id: 0,
+
+  // formalización
+  curso_introductorio_aprobado: false,
+  libreta_entregada: false,
+
+  // foto
+  foto_dataUrl: undefined,
+  fotoW: undefined,
+  fotoH: undefined,
 
   // laborales (se mantienen del esquema anterior)
   trabaja: false,
   empleador: "",
   horario_trabajo: "",
   domicilio_trabajo: "",
+
+  // documentación (checkboxes)
+  doc_dni: false,
+  doc_secundario: false,
+  doc_constancia_cuil: false,
+  doc_cert_trabajo: false,
+  doc_buenasalud: false,
+  doc_foto4x4: false,
+  doc_titulo_en_tramite: false,
+  doc_otro: false,
+
+  // accesibilidad
+  cud_informado: false,
+  condicion_salud_informada: false,
+  condicion_salud_detalle: "",
+  consentimiento_datos: false,
 };
+

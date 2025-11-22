@@ -1,6 +1,7 @@
 # apps/carreras/views.py
-from django.http import JsonResponse
 from django.db import connection
+from django.http import JsonResponse
+
 
 def carreras_json(request):
     """Fallback sin NinjaAPI: GET /api/carreras -> [{id, nombre}] desde core_profesorado"""

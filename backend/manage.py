@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
+
 import os
 import sys
+
+# Keep GLib from probing UWP handlers when WeasyPrint loads on Windows
+os.environ["GIO_USE_VFS"] = "local"
+os.environ.setdefault("GIO_USE_VOLUME_MONITOR", "local")
 
 
 def main():

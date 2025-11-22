@@ -1,5 +1,11 @@
 /* place for custom styles */
 
+body {
+  background-color: #f1f3f9;
+  color: #0f172a;
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+}
+
 /* 216 x 340 mm ≈ 8.5 x 13.39 in; a ~96dpi ≈ 816 x 1286 px */
 .pdf-oficio {
   width: 816px;

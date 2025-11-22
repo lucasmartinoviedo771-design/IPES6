@@ -1,4 +1,4 @@
-console.log("[Contacto] render v2 (con emergencia)");
+
 import { Controller, useFormContext } from "react-hook-form";
 import { TextField, Grid, Typography, Box } from "@mui/material";
 import { PreinscripcionForm } from "../schema";

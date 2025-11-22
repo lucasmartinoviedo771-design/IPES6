@@ -20,6 +20,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { client as api } from "@/api/client";
 import { toast } from "@/utils/toast";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 interface Docente {
   id: number;
@@ -29,6 +30,8 @@ interface Docente {
   email: string | null;
   telefono: string | null;
   cuil: string | null;
+  usuario?: string | null;
+  temp_password?: string | null;
 }
 
 interface DocenteFormInput {
@@ -70,19 +73,18 @@ export default function CargarDocentesPage() {
     },
   });
 
-  const createDocenteMutation = useMutation<
-    Docente,
-    Error,
-    DocenteFormInput
-  >({
+  const createDocenteMutation = useMutation<Docente, Error, DocenteFormInput>({
     mutationFn: async (newDocente) => {
       const response = await api.post("/docentes", newDocente);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (docenteCreado) => {
       queryClient.invalidateQueries({ queryKey: ["docentes"] });
       reset();
       toast.success("Docente creado exitosamente");
+      if (docenteCreado?.temp_password) {
+        toast.info(`Usuario generado: ${docenteCreado.usuario} / ${docenteCreado.temp_password}`);
+      }
     },
     onError: (error: any) => {
       console.error("Docente POST error:", error.response?.data);
@@ -90,11 +92,7 @@ export default function CargarDocentesPage() {
     },
   });
 
-  const updateDocenteMutation = useMutation<
-    Docente,
-    Error,
-    DocenteFormInput
-  >({
+  const updateDocenteMutation = useMutation<Docente, Error, Docente>({
     mutationFn: async (updatedDocente) => {
       const response = await api.put(
         `/docentes/${updatedDocente.id}`,
@@ -102,11 +100,14 @@ export default function CargarDocentesPage() {
       );
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (docenteActualizado) => {
       queryClient.invalidateQueries({ queryKey: ["docentes"] });
       setEditingDocente(null);
       reset();
       toast.success("Docente actualizado exitosamente");
+      if (docenteActualizado?.temp_password) {
+        toast.info(`Usuario generado: ${docenteActualizado.usuario} / ${docenteActualizado.temp_password}`);
+      }
     },
     onError: (error: any) => {
       console.error("Docente PUT error:", error.response?.data);
@@ -157,15 +158,14 @@ export default function CargarDocentesPage() {
   };
 
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>
-        Cargar Docentes
-      </Typography>
+    <Stack gap={3}>
+      <PageHero
+        title="Cargar docentes"
+        subtitle="Alta, edición y baja de perfiles docentes del sistema"
+      />
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          {editingDocente ? "Editar Docente" : "Crear Nuevo Docente"}
-        </Typography>
+        <SectionTitlePill title={editingDocente ? "Editar docente" : "Crear nuevo docente"} />
         <Box
           component="form"
           onSubmit={handleSubmit(onSubmit)}
@@ -278,8 +278,8 @@ export default function CargarDocentesPage() {
         {isLoadingDocentes ? (
           <Typography>Cargando docentes...</Typography>
         ) : (
-          <TableContainer>
-            <Table size="small">
+          <TableContainer sx={{ maxHeight: 520 }}>
+            <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
@@ -289,6 +289,7 @@ export default function CargarDocentesPage() {
                   <TableCell>Email</TableCell>
                   <TableCell>Teléfono</TableCell>
                   <TableCell>CUIL</TableCell>
+                  <TableCell>Usuario</TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -302,6 +303,7 @@ export default function CargarDocentesPage() {
                     <TableCell>{docente.email || "-"}</TableCell>
                     <TableCell>{docente.telefono || "-"}</TableCell>
                     <TableCell>{docente.cuil || "-"}</TableCell>
+                    <TableCell>{docente.usuario || "-"}</TableCell>
                     <TableCell>
                       <IconButton
                         size="small"
@@ -327,3 +329,4 @@ export default function CargarDocentesPage() {
     </Stack>
   );
 }
+

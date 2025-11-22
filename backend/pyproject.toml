@@ -7,9 +7,12 @@ authors = [
 ]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "Django==5.2.6",
+    "Django==5.2.8",
     "django-ninja==1.4.3",
     "django-cors-headers==4.8.0",
+    "djangorestframework==3.15.2",
+    "djangorestframework-simplejwt==5.3.1",
+    "gunicorn==22.0.0",
     "pymysql", # Recommended for Windows
     "reportlab==4.4.3",
     "qrcode[pil]",
@@ -22,6 +25,7 @@ dependencies = [
     "pyhanko==0.31.0",
     "pyhanko-certvalidator==0.29.0",
     "pypdf==6.0.0",
+    "python-magic==0.4.27",
     "pyphen==0.17.2",
     "python-bidi==0.6.6",
     "arabic-reshaper==3.0.0",
@@ -54,17 +58,68 @@ dependencies = [
     "asgiref==3.9.1",
     "sqlparse==0.5.3",
     "python-dotenv>=1.1.1",
+    "pytest==8.3.4",
+    "pytest-django==4.9.0",
 ]
 
-[project.scripts]
-dev = "python manage.py runserver"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv]
-package = false   # 👈 clave: no intentes construir wheel del proyecto local
-# (opcional) configs de uv; NO pongas 'python =' acá
+package = false   # ðŸ‘‰ clave: no intentes construir wheel del proyecto local
+# (opcional) configs de uv; NO pongas 'python =' acÃ¡
 # ejemplo:
 # python-preference = "only-managed"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps", "core"]
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade
+]
+ignore = [
+    "D", # Ignorar temporalmente las reglas de docstrings
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "apps"]
+
+[tool.ruff.format]
+quote-style = "double"

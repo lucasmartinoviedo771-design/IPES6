@@ -1,12 +1,18 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { client, apiPath, setAuthToken, clearAuthToken } from "@/api/client";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { client, apiPath, setUnauthorizedHandler, requestSessionRefresh } from "@/api/client";
+import { setGlobalRoleOverride } from "@/utils/roles";
 
 export type User = {
+  id?: number;
   dni: string;
   name?: string;
   roles?: string[];
   is_staff?: boolean;
   is_superuser?: boolean;
+  must_change_password?: boolean;
+  must_complete_profile?: boolean;
+  email?: string;
 } | null;
 
 type AuthContextType = {
@@ -14,42 +20,122 @@ type AuthContextType = {
   loading: boolean;
   login: (loginId: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<User | null>;
+  roleOverride: string | null;
+  setRoleOverride: (role: string | null) => void;
+  availableRoleOptions: Array<{ value: string; label: string }>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const KEEP_ALIVE_INTERVAL_MS = 2 * 60 * 1000;
+const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
+
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
+  const [bootstrapped, setBootstrapped] = useState(false); // evita doble fetch inicial
+  const [roleOverride, setRoleOverrideState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("roleOverride") || null;
+    } catch {
+      return null;
+    }
+  });
+  const activityRef = useRef<number>(Date.now());
+  const navigate = useNavigate();
 
-  // Bootstrap: si hay token en localStorage, configuro el header y traigo /auth/profile
+  const redirectToLogin = useCallback(() => {
+    setUser(null);
+    if (window.location.pathname !== "/login") {
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
+
+  const refreshProfile = async (): Promise<User | null> => {
+    console.log("[Auth] refreshProfile called");
+    try {
+      console.log("[Auth] Sending GET to auth/profile/");
+      const { data } = await client.get(apiPath("auth/profile/"));
+      console.log("[Auth] Received profile data:", data);
+      setUser(data);
+      return data;
+    } catch (err: any) {
+      console.error("[Auth] refreshProfile failed:", err);
+      setUser(null);
+      throw err;
+    }
+  };
+
+  // Bootstrap: Check for existing session via cookie (solo una vez)
   useEffect(() => {
+    let mounted = true;
     (async () => {
+      console.log("[Auth] Bootstrap effect starting. Bootstrapped:", bootstrapped);
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setUser(null);
-          setLoading(false);
-          return;
+        if (!bootstrapped) {
+          console.log("[Auth] Awaiting refreshProfile with timeout...");
+          // Race refreshProfile with a timeout
+          await Promise.race([
+            refreshProfile(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+          ]);
+          console.log("[Auth] refreshProfile completed.");
         }
-        setAuthToken(token); // pone Authorization: Bearer <token> en el cliente
-        const { data } = await client.get(apiPath("auth/profile"));
-        setUser(data);
-      } catch (err: any) {
-        // Token inválido/expirado o endpoint aún no disponible -> limpio
-        clearAuthToken();
-        localStorage.removeItem("token");
+      } catch (e) {
+        console.error("[Auth] Bootstrap error or timeout:", e);
+        // alert("Error de carga inicial: " + String(e)); // Uncomment for extreme debugging
         setUser(null);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          console.log("[Auth] Bootstrap finally block. Setting loading=false.");
+          setBootstrapped(true);
+          setLoading(false);
+        }
       }
     })();
+    return () => { mounted = false; };
+  }, [bootstrapped]);
+
+  useEffect(() => {
+    const updateActivity = () => {
+      activityRef.current = Date.now();
+    };
+    const events: Array<keyof WindowEventMap> = ["mousemove", "keydown", "click", "scroll"];
+    events.forEach((evt) => window.addEventListener(evt, updateActivity));
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, updateActivity));
+    };
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(redirectToLogin);
+    return () => setUnauthorizedHandler(null);
+  }, [redirectToLogin]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const intervalId = window.setInterval(async () => {
+      if (Date.now() - activityRef.current > ACTIVITY_WINDOW_MS) {
+        return;
+      }
+      try {
+        await requestSessionRefresh();
+      } catch (err) {
+        console.warn("[Auth] keep-alive refresh failed", err);
+        redirectToLogin();
+      }
+    }, KEEP_ALIVE_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [user, redirectToLogin]);
 
   const login = async (loginId: string, password: string) => {
     const id = String(loginId).trim();
     const payload = {
-      // Mandamos todas las variantes para ser compatibles con el backend
       login: id,
       username: id,
       dni: id,
@@ -58,30 +144,21 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     };
 
     try {
-      const { data } = await client.post(apiPath("auth/login"), payload);
-      // Esperamos { access, user }
-      const access: string | undefined = data?.access;
+      console.log("[Auth] Attempting login for:", id);
+      const { data } = await client.post(apiPath("auth/login/"), payload);
+      console.log("[Auth] Login response data:", data);
       const u: User = data?.user ?? null;
 
-      if (!access) {
-        throw new Error("Respuesta inválida del servidor: falta el token.");
-      }
-
-      // Persisto token y configuro header
-      localStorage.setItem("token", access);
-      setAuthToken(access);
-
-      // Si no vino el user, lo traigo de /auth/profile
       if (!u) {
-        const me = await client.get(apiPath("auth/profile"));
-        setUser(me.data);
-        return me.data;
+        console.error("[Auth] Login response missing user data");
+        throw new Error("La respuesta del servidor no contiene datos de usuario.");
       }
 
+      console.log("[Auth] Setting user state:", u);
       setUser(u);
       return u;
     } catch (err: any) {
-      // Mensaje de error amigable
+      console.error("[Auth] Login failed:", err);
       const status = err?.response?.status;
       const msg =
         err?.response?.data?.detail ||
@@ -95,22 +172,125 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const logout = async () => {
     try {
-      // Si tenés endpoint de logout en el backend, buenísimo (opcional):
-      await client.post(apiPath("auth/logout")).catch(() => {});
+      await client.post(apiPath("auth/logout/")); // Call backend logout endpoint to clear cookie
+    } catch (err: any) {
+      console.error("Error during logout:", err); // Log error but still clear local state
     } finally {
-      clearAuthToken();
-      localStorage.removeItem("token");
       setUser(null);
+      setRoleOverride(null);
     }
   };
 
+  const computeAvailableRoles = (currentUser: User | null): Array<{ value: string; label: string }> => {
+    if (!currentUser) return [];
+    const ROLE_LABELS: Record<string, string> = {
+      admin: "Administrador",
+      secretaria: "Secretaría",
+      bedel: "Bedelía",
+      docente: "Docentes",
+      tutor: "Tutorías",
+      coordinador: "Coordinación",
+      jefes: "Jefatura",
+      jefa_aaee: "Jefa A.A.E.E.",
+      consulta: "Consulta",
+      alumno: "Alumno/a",
+      equivalencias: "Equipo de equivalencias",
+      titulos: "Títulos",
+      curso_intro: "Curso Introductorio",
+    };
+    const normalized = new Set(
+      (currentUser.roles ?? [])
+        .map((role) => (role || "").toLowerCase().trim())
+        .filter(Boolean),
+    );
+    const admin = normalized.has("admin");
+    if (admin) {
+      [
+        "admin",
+        "secretaria",
+        "bedel",
+        "docente",
+        "tutor",
+        "coordinador",
+        "jefes",
+        "jefa_aaee",
+        "consulta",
+        "alumno",
+        "equivalencias",
+        "titulos",
+        "curso_intro",
+      ].forEach((role) => normalized.add(role));
+    }
+    return Array.from(normalized)
+      .sort()
+      .map((role) => ({ value: role, label: ROLE_LABELS[role] ?? role }));
+  };
+
+  const availableRoleOptions = useMemo(() => computeAvailableRoles(user), [user]);
+
+  const setRoleOverride = (role: string | null) => {
+    const normalized = role ? role.toLowerCase().trim() : null;
+    setRoleOverrideState(normalized);
+    try {
+      if (normalized) {
+        localStorage.setItem("roleOverride", normalized);
+      } else {
+        localStorage.removeItem("roleOverride");
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setGlobalRoleOverride(null);
+      setRoleOverrideState(null);
+      try {
+        localStorage.removeItem("roleOverride");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    if (!roleOverride) {
+      setGlobalRoleOverride(null);
+      return;
+    }
+    const validRole = availableRoleOptions.some((option) => option.value === roleOverride);
+    if (!validRole) {
+      setGlobalRoleOverride(null);
+      setRoleOverrideState(null);
+      try {
+        localStorage.removeItem("roleOverride");
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    setGlobalRoleOverride(roleOverride);
+  }, [user, roleOverride, availableRoleOptions]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refreshProfile,
+        roleOverride,
+        setRoleOverride,
+        availableRoleOptions,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");

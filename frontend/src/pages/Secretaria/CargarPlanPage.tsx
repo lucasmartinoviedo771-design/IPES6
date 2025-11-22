@@ -28,6 +28,8 @@ import { client as api } from "@/api/client";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "@/utils/toast";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 interface Profesorado {
   id: number;
@@ -188,17 +190,20 @@ export default function CargarPlanPage() {
     return profesorados?.find((p) => p.id === id)?.nombre || "Desconocido";
   };
 
+  const heroTitle = currentProfesoradoId
+    ? `Cargar plan de estudio - ${getProfesoradoName(currentProfesoradoId)}`
+    : "Cargar plan de estudio";
+
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>
-        Cargar Plan de Estudio
-        {currentProfesoradoId && ` para ${getProfesoradoName(currentProfesoradoId)}`}
-      </Typography>
+    <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria/profesorado" />
+      <PageHero
+        title={heroTitle}
+        subtitle="Gestioná resoluciones, vigencias y estados de cada plan."
+      />
 
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" mb={2}>
-          {editingPlan ? "Editar Plan" : "Crear Nuevo Plan"}
-        </Typography>
+        <SectionTitlePill title={editingPlan ? "Editar plan" : "Crear nuevo plan"} />
         <Box
           component="form"
           onSubmit={handleSubmit(onSubmit)}
@@ -269,14 +274,15 @@ export default function CargarPlanPage() {
           <Controller
             name="anio_fin"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Año de Fin (opcional)"
-                type="number"
-                error={!!errors.anio_fin}
-                helperText={errors.anio_fin?.message}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              value={field.value ?? ""}
+              size="small"
+              label="Año de Fin (opcional)"
+              type="number"
+              error={!!errors.anio_fin}
+              helperText={errors.anio_fin?.message}
               />
             )}
           />
@@ -312,9 +318,7 @@ export default function CargarPlanPage() {
 
       {currentProfesoradoId && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" mb={2}>
-            Planes de Estudio
-          </Typography>
+          <SectionTitlePill title="Planes de estudio" />
           {isLoadingPlanes ? (
             <Typography>Cargando planes...</Typography>
           ) : (

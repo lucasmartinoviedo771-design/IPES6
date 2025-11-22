@@ -26,10 +26,10 @@ async function imageUrlToDataUrl(url: string): Promise<string> {
   });
 }
 
-export default function Confirmacion({ carreraNombre }: { carreraNombre: string }) {
+export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraNombre: string; onDownloaded?: () => void }) {
   const { watch } = useFormContext<PreinscripcionForm>();
   const v = watch();
-  const [docs, setDocs] = React.useState<DocsFlags>({});
+  const [docs, setDocs] = useState<DocsFlags>({});
   const [logos, setLogos] = useState<{left?: string, right?: string}>({});
   const [qrDataUrl, setQrDataUrl] = useState<string | undefined>();
 
@@ -63,6 +63,23 @@ export default function Confirmacion({ carreraNombre }: { carreraNombre: string 
         <Row label="Provincia de nacimiento" value={v.provincia_nac} />
         <Row label="País de nacimiento" value={v.pais_nac} />
         <Row label="Domicilio" value={v.domicilio} />
+        {(v.cud_informado || v.condicion_salud_informada) && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" sx={{ mb: 2 }}>Accesibilidad y apoyos</Typography>
+            {v.cud_informado && <Row label="CUD informado" value="Sí" />}
+            {v.condicion_salud_informada && (
+              <>
+                <Row label="Condición/Asistencia informada" value="Sí" />
+                <Row label="Detalle" value={v.condicion_salud_detalle} />
+              </>
+            )}
+          </>
+        )}
+        <Row
+          label="Consentimiento expreso"
+          value={v.consentimiento_datos ? "Aceptado" : "Falta aceptar"}
+        />
 
         <Divider sx={{ my: 2 }} />
         <Typography variant="h6" sx={{ mb: 2 }}>Contacto</Typography>
@@ -86,37 +103,38 @@ export default function Confirmacion({ carreraNombre }: { carreraNombre: string 
         <Row label="Título" value={v.sup1_titulo} />
         <Row label="Establecimiento" value={v.sup1_establecimiento} />
         <Row label="Fecha de egreso" value={v.sup1_fecha_egreso} />
+        <Row label="Localidad" value={v.sup1_localidad} />
+        <Row label="Provincia" value={v.sup1_provincia} />
+        <Row label="País" value={v.sup1_pais} />
 
         <Divider sx={{ my: 2 }} />
         <Typography variant="h6" sx={{ mb: 2 }}>Inscripción</Typography>
         <Row label="Carrera" value={carreraNombre} />
 
         <Divider sx={{ my: 2 }} />
-        <Typography variant="h6" sx={{ mb: 2 }}>Documentación a presentar</Typography>
-        <Grid container spacing={1}>
-          <Grid item xs={12} md={6}>
-            <FormControlLabel control={<Checkbox name="dni" checked={docs.dni} onChange={handleDocChange} />} label="Fotocopia DNI" />
-            <FormControlLabel control={<Checkbox name="analitico" checked={docs.analitico} onChange={handleDocChange} />} label="Fotocopia analítico" />
-            <FormControlLabel control={<Checkbox name="fotos" checked={docs.fotos} onChange={handleDocChange} />} label="2 fotos 4x4" />
-            <FormControlLabel control={<Checkbox name="titulo" checked={docs.titulo} onChange={handleDocChange} />} label="Título secundario" />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControlLabel control={<Checkbox name="alumnoRegular" checked={docs.alumnoRegular} onChange={handleDocChange} />} label="Cert. alumno regular" />
-            <FormControlLabel control={<Checkbox name="tituloTramite" checked={docs.tituloTramite} onChange={handleDocChange} />} label="Cert. título en trámite" />
-            <FormControlLabel control={<Checkbox name="salud" checked={docs.salud} onChange={handleDocChange} />} label="Cert. buena salud" />
-            <FormControlLabel control={<Checkbox name="folios" checked={docs.folios} onChange={handleDocChange} />} label="3 folios oficio" />
-          </Grid>
-        </Grid>
+        <Typography variant="h6" sx={{ mb: 2 }}>Descargue el PDF para continuar</Typography>
+        <Typography variant="body2" color="text.secondary">
+          
+        </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+      <Box sx={{ display: "flex", gap: 2, mt: 2, alignItems: 'center' }}>
         <Button
           variant="outlined"
-          onClick={() => generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: v.foto_dataUrl, fotoW: v.fotoW, fotoH: v.fotoH })}
+          onClick={() => {
+            const photoUrl = (v as any).foto_dataUrl || (v as any).foto_4x4_dataurl;
+            generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: photoUrl });
+            onDownloaded && onDownloaded();
+          }}
         >
           Descargar PDF
         </Button>
+        <Typography variant="body2" color="text.secondary">
+          Para finalizar, primero debe descargar el formulario de preinscripción.
+        </Typography>
       </Box>
     </Box>
   );
 }
+
+

@@ -1,14 +1,14 @@
-import { Grid, TextField, FormControlLabel, Switch } from "@mui/material";
+import { FormControlLabel, Grid, Switch, TextField } from "@mui/material";
 import { Controller, useFormContext } from "react-hook-form";
-import { PreinscripcionSchema } from "../schema"; // ajusta la ruta si difiere
+
+import { PreinscripcionForm } from "../schema";
 
 export default function DatosLaborales() {
-  const ctx = useFormContext<PreinscripcionSchema>();
-  console.log("[DatosLaborales] ctx?", ctx);
-
-  // ⬇️ CLAVE: sacar formState desde el context
-  const { control, watch, formState: { errors, isSubmitting } } =
-    useFormContext<PreinscripcionSchema>();
+  const {
+    control,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useFormContext<PreinscripcionForm>();
 
   const trabaja = watch("trabaja");
 
@@ -20,7 +20,7 @@ export default function DatosLaborales() {
           control={control}
           render={({ field }) => (
             <FormControlLabel
-              control={<Switch {...field} checked={!!field.value} disabled={isSubmitting} />}
+              control={<Switch {...field} checked={Boolean(field.value)} disabled={isSubmitting} />}
               label="¿Trabaja actualmente?"
             />
           )}
@@ -44,7 +44,6 @@ export default function DatosLaborales() {
               )}
             />
           </Grid>
-
           <Grid item xs={12} md={6}>
             <Controller
               name="horario_trabajo"
@@ -60,7 +59,6 @@ export default function DatosLaborales() {
               )}
             />
           </Grid>
-
           <Grid item xs={12}>
             <Controller
               name="domicilio_trabajo"

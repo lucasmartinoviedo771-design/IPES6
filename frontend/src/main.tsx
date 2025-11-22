@@ -1,4 +1,5 @@
 // src/main.tsx
+console.log('[App] inicio de main.tsx');
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -23,6 +24,7 @@ dayjs.locale("es");
 
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { SnackbarProvider } from "notistack";
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 
 window.addEventListener("error", (e) => {
   console.error("[window.onerror]", e.message, e.error);
@@ -35,6 +37,15 @@ const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
+const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const AppContent = recaptchaKey ? (
+  <GoogleReCaptchaProvider reCaptchaKey={recaptchaKey}>
+    <App />
+  </GoogleReCaptchaProvider>
+) : (
+  <App />
+);
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
@@ -44,14 +55,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
               <ThemeProvider theme={theme}>
                 <CssBaseline />
-                <SnackbarProvider
-                  maxSnack={4}
-                  autoHideDuration={4000}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                >
-                  <ToastBridge />
-                  <App />
-                </SnackbarProvider>
+                  <SnackbarProvider
+                    maxSnack={4}
+                    autoHideDuration={4000}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                  >
+                    <ToastBridge />
+                    {AppContent}
+                  </SnackbarProvider>
               </ThemeProvider>
             </LocalizationProvider>
           </AuthProvider>
