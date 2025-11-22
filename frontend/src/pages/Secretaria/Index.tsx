@@ -1,40 +1,128 @@
-import { Grid, Paper, Typography, Stack, Button } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import SchoolIcon from "@mui/icons-material/School";
-import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import ArticleIcon from "@mui/icons-material/Article";
-import PersonIcon from "@mui/icons-material/Person";
+import { Box, Grid, Stack } from "@mui/material";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
-import EventNoteIcon from "@mui/icons-material/EventNote";
+import EventIcon from "@mui/icons-material/Event";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
+import DateRangeIcon from "@mui/icons-material/DateRange";
+import { useAuth } from "@/context/AuthContext";
+import { hasAnyRole } from "@/utils/roles";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import SectionCard, {
+  SectionCardProps,
+} from "@/components/secretaria/SectionCard";
 
-const CardLink = ({ icon, title, to }: { icon: React.ReactNode; title: string; to: string }) => {
-  const nav = useNavigate();
-  return (
-    <Paper
-      onClick={() => nav(to)}
-      sx={{ p:2, display:"flex", gap:1.5, alignItems:"center", cursor:"pointer",
-        borderRadius:3, transition:"all .1s", "&:hover":{ boxShadow:"0 8px 24px rgba(0,0,0,.06)", transform:"translateY(-2px)" } }}
-      elevation={0}
-    >
-      {icon}
-      <Typography fontWeight={700}>{title}</Typography>
-    </Paper>
-  );
+type Section = {
+  title: string;
+  items: SectionCardProps[];
 };
 
-export default function SecretariaIndex(){
+export default function SecretariaIndex() {
+  const { user } = useAuth();
+
+  const canManageDocentes = hasAnyRole(user, ["admin", "secretaria"]);
+  const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]);
+  const canManageHorarios = hasAnyRole(user, ["admin", "secretaria"]);
+  const canManageMesas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const canManageCatDoc = hasAnyRole(user, ["admin", "secretaria"]);
+  const canManageVentanas = hasAnyRole(user, [
+    "admin",
+    "secretaria",
+    "jefa_aaee",
+  ]);
+
+  const sections: Section[] = [
+    {
+      title: "Usuarios y roles",
+      items: [
+        ...(canManageDocentes
+          ? [
+              {
+                title: "Cargar docentes",
+                subtitle: "Alta y edición de docentes del sistema.",
+                icon: <PersonAddIcon />,
+                path: "/secretaria/docentes",
+              },
+            ]
+          : []),
+        ...(canAssignRoles
+          ? [
+              {
+                title: "Asignar roles",
+                subtitle: "Gestioná permisos y roles de usuarios.",
+                icon: <AssignmentIndIcon />,
+                path: "/secretaria/asignar-rol",
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      title: "Gestión académica - Secretaría",
+      items: [
+        ...(canManageHorarios
+          ? [
+              {
+                title: "Cargar horario",
+                subtitle: "Armar y publicar horarios de cursada.",
+                icon: <EventIcon />,
+                path: "/secretaria/horarios",
+              },
+            ]
+          : []),
+        ...(canManageMesas
+          ? [
+              {
+                title: "Mesas de examen",
+                subtitle: "Crear y gestionar mesas según el período.",
+                icon: <CalendarMonthIcon />,
+                path: "/secretaria/mesas",
+              },
+            ]
+          : []),
+        ...(canManageCatDoc
+          ? [
+              {
+                title: "Cátedra - Docente",
+                subtitle: "Asignar docentes a cátedras y comisiones.",
+                icon: <RecordVoiceOverIcon />,
+                path: "/secretaria/catedra-docente",
+              },
+            ]
+          : []),
+        ...(canManageVentanas
+          ? [
+              {
+                title: "Habilitar fechas",
+                subtitle: "Configurar períodos y fechas clave.",
+                icon: <DateRangeIcon />,
+                path: "/secretaria/habilitar-fechas",
+              },
+            ]
+          : []),
+      ],
+    },
+  ];
+
+  const visibleSections = sections.filter((section) => section.items.length > 0);
+
   return (
-    <Stack gap={2}>
-      <Typography variant="h5" fontWeight={800}>Secretaría</Typography>
-      <Typography color="text.secondary">Centro de operaciones: altas y administración</Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={4}><CardLink icon={<SchoolIcon />} title="Cargar Profesorado" to="/secretaria/profesorado" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><CardLink icon={<LibraryBooksIcon />} title="Cargar Plan" to="/secretaria/plan" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><CardLink icon={<ArticleIcon />} title="Cargar Materias" to="/secretaria/materias" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><CardLink icon={<PersonIcon />} title="Cargar Docentes" to="/secretaria/docentes" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><CardLink icon={<AssignmentIndIcon />} title="Asignar Rol" to="/secretaria/asignar-rol" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><CardLink icon={<EventNoteIcon />} title="Cargar Horario" to="/secretaria/horarios" /></Grid>
-      </Grid>
+    <Stack gap={4}>
+      <PageHero
+        title="Secretaría"
+        subtitle="Centro de operaciones agrupado por módulos"
+      />
+
+      {visibleSections.map((section) => (
+        <Box key={section.title}>
+          <SectionTitlePill title={section.title} />
+          <Grid container spacing={2}>
+            {section.items.map((item) => (
+              <SectionCard key={item.title} {...item} />
+            ))}
+          </Grid>
+        </Box>
+      ))}
     </Stack>
   );
 }

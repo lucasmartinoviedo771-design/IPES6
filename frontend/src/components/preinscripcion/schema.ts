@@ -1,19 +1,18 @@
-import { z } from "zod";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import { z } from "zod";
+
 dayjs.extend(isSameOrBefore);
 
-const isIsoDate = (s: string) =>
-  dayjs(s, "YYYY-MM-DD", true).isValid();
-const notFuture = (s: string) =>
-  isIsoDate(s) && dayjs(s).isSameOrBefore(dayjs(), "day");
+const isIsoDate = (value: string) => dayjs(value, "YYYY-MM-DD", true).isValid();
+const notFuture = (value: string) => isIsoDate(value) && dayjs(value).isSameOrBefore(dayjs(), "day");
 
-export const preinscripcionSchema = z.object({
+const baseSchema = z.object({
   // Datos personales
-  nombres: z.string().min(2),
-  apellido: z.string().min(2),
-  dni: z.string().min(6),
-  cuil: z.string().min(11),
+  nombres: z.string().min(2, "Ingresa tu nombre completo"),
+  apellido: z.string().min(2, "Ingresa tu apellido"),
+  dni: z.string().min(6, "DNI demasiado corto"),
+  cuil: z.string().min(11, "CUIL incompleto"),
   fecha_nacimiento: z
     .string()
     .refine(isIsoDate, "Fecha inválida (YYYY-MM-DD)")
@@ -24,13 +23,21 @@ export const preinscripcionSchema = z.object({
   provincia_nac: z.string().min(2),
   pais_nac: z.string().min(2),
   domicilio: z.string().min(2),
+  cohorte: z
+    .string()
+    .optional()
+    .transform((value) => (value ?? "").trim())
+    .refine(
+      (value) => !value || /^\d{4}$/.test(value),
+      "Ingresá el año de cohorte (ej: 2025)",
+    ),
 
   // Contacto
   email: z.string().email(),
-  tel_movil: z.string().min(6),
+  tel_movil: z.string().min(6, "Teléfono móvil inválido"),
   tel_fijo: z.string().optional().or(z.literal("")),
 
-  // NUEVO: contacto de emergencia (requeridos por la DB)
+  // Contacto de emergencia
   emergencia_telefono: z.string().min(6, "Teléfono de emergencia requerido"),
   emergencia_parentesco: z.string().min(2, "Parentesco requerido"),
 
@@ -41,7 +48,6 @@ export const preinscripcionSchema = z.object({
     .string()
     .refine(isIsoDate, "Fecha inválida (YYYY-MM-DD)")
     .refine(notFuture, "La fecha no puede ser futura"),
-  // NUEVOS: ubicación del secundario (NOT NULL en DB)
   sec_localidad: z.string().min(2),
   sec_provincia: z.string().min(2),
   sec_pais: z.string().min(2),
@@ -53,13 +59,30 @@ export const preinscripcionSchema = z.object({
     .string()
     .optional()
     .or(z.literal(""))
-    .refine((s) => !s || isIsoDate(s), "Fecha inválida (YYYY-MM-DD)")
-    .refine((s) => !s || notFuture(s), "La fecha no puede ser futura"),
+    .refine((value) => !value || isIsoDate(value), "Fecha inválida (YYYY-MM-DD)")
+    .refine((value) => !value || notFuture(value), "La fecha no puede ser futura"),
+  sup1_localidad: z.string().optional().or(z.literal("")),
+  sup1_provincia: z.string().optional().or(z.literal("")),
+  sup1_pais: z.string().optional().or(z.literal("")),
+
+  // Accesibilidad / datos sensibles
+  cud_informado: z.boolean().default(false),
+  condicion_salud_informada: z.boolean().default(false),
+  condicion_salud_detalle: z
+    .string()
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => (value ?? "").trim()),
+  consentimiento_datos: z.boolean().default(false),
 
   // Carrera
-  carrera_id: z.number().int().positive(),
+  carrera_id: z.number().int().min(1, "Selecciona una carrera"),
 
-  // (Laborales: se mantienen del esquema anterior)
+  // Formalización
+  curso_introductorio_aprobado: z.boolean().default(false),
+  libreta_entregada: z.boolean().default(false),
+
+  // Laborales
   trabaja: z.boolean().default(false),
   empleador: z.string().optional().or(z.literal("")),
   horario_trabajo: z.string().optional().or(z.literal("")),
@@ -71,14 +94,33 @@ export const preinscripcionSchema = z.object({
   fotoH: z.number().optional(),
 
   // Checklist de documentación
-  doc_dni: z.boolean().optional(),
-  doc_secundario: z.boolean().optional(),
-  doc_constancia_cuil: z.boolean().optional(),
-  doc_cert_trabajo: z.boolean().optional(),
-  doc_buenasalud: z.boolean().optional(),
-  doc_foto4x4: z.boolean().optional(),
-  doc_titulo_en_tramite: z.boolean().optional(),
-  doc_otro: z.boolean().optional(),
+  doc_dni: z.boolean().default(false),
+  doc_secundario: z.boolean().default(false),
+  doc_constancia_cuil: z.boolean().default(false),
+  doc_cert_trabajo: z.boolean().default(false),
+  doc_buenasalud: z.boolean().default(false),
+  doc_foto4x4: z.boolean().default(false),
+  doc_titulo_en_tramite: z.boolean().default(false),
+  doc_otro: z.boolean().default(false),
+});
+
+export const preinscripcionSchema = baseSchema.superRefine((values, ctx) => {
+  if (values.condicion_salud_informada && !values.condicion_salud_detalle) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["condicion_salud_detalle"],
+      message: "Indicá la condición o el apoyo que necesitás.",
+    });
+  }
+  if (!values.consentimiento_datos) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["consentimiento_datos"],
+      message: "Debés aceptar el consentimiento expreso para continuar.",
+    });
+  }
 });
 
 export type PreinscripcionForm = z.infer<typeof preinscripcionSchema>;
+export type PreinscripcionSchema = PreinscripcionForm;
+

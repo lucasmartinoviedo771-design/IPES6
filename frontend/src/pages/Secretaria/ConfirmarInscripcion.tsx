@@ -1,0 +1,90 @@
+import { useSearchParams } from "react-router-dom";
+import { Stack, TextField, Typography, Paper, Grid, Divider, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { listarPreinscripciones } from "@/api/preinscripciones";
+import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+
+export default function ConfirmarInscripcionSecretaria() {
+  const [sp, setSp] = useSearchParams();
+  const codigo = sp.get("codigo") || "";
+  const dni = sp.get("dni") || "";
+  const nombre = sp.get("q") || "";
+
+  const query = (codigo || dni || nombre).trim();
+  const { data } = useQuery({
+    queryKey: ["preins-busq-sec", query],
+    queryFn: () => listarPreinscripciones({ q: query || undefined, limit: 20, offset: 0 }),
+    
+  });
+
+  // La confirmación y el manejo de documentación se realizan dentro de PreConfirmEditor
+
+  return (
+    <Stack gap={3}>
+      <PageHero
+        title="Formalizar inscripción"
+        subtitle="Busca al aspirante y completá la confirmación presencial"
+      />
+
+      {!codigo && (
+        <Paper sx={{ p:2 }}>
+          <Stack gap={2}>
+            <SectionTitlePill title="Buscar aspirante" />
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={4}>
+                <TextField size="small" label="DNI" fullWidth value={dni} onChange={(e)=>setSp({ dni: e.target.value || "" })} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField size="small" label="Apellido y Nombre" fullWidth value={nombre} onChange={(e)=>setSp({ q: e.target.value || "" })} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField size="small" label="Código PRE-..." fullWidth value={codigo} onChange={(e)=>setSp({ codigo: e.target.value || "" })} />
+              </Grid>
+            </Grid>
+            <Divider />
+            <Typography variant="body2" color="text.secondary">Resultados</Typography>
+            {/* Selector rápido de preinscripto */}
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={6} lg={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="sel-preins">Seleccionar preinscripto</InputLabel>
+                  <Select
+                    labelId="sel-preins"
+                    label="Seleccionar preinscripto"
+                    value=""
+                    onChange={(e)=> setSp({ codigo: String(e.target.value) })}
+                    disabled={!data?.results || data.results.length === 0}
+                  >
+                    {(data?.results || []).map((p: any) => (
+                      <MenuItem key={p.codigo} value={p.codigo}>
+                        {[p.alumno.apellido, p.alumno.nombres ?? p.alumno.nombre ?? ""].filter(Boolean).join(", ")} — {p.codigo}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            <List>
+              {data?.results?.map((p: any) => (
+                <ListItem key={p.codigo} button onClick={() => setSp({ codigo: p.codigo })}>
+                  <ListItemText primary={[p.alumno.apellido, p.alumno.nombres ?? p.alumno.nombre ?? ""].filter(Boolean).join(", ")} secondary={`DNI ${p.alumno.dni} • ${p.codigo} • ${p.carrera?.nombre || ''}`} />
+                </ListItem>
+              ))}
+              {!data?.results && <Typography variant="body2" color="text.secondary">Ingrese un criterio de búsqueda.</Typography>}
+              {data?.results && data.results.length === 0 && <Typography variant="body2" color="text.secondary">Sin resultados.</Typography>}
+            </List>
+          </Stack>
+        </Paper>
+      )}
+
+      {codigo && (
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <PreConfirmEditor codigo={codigo} />
+          </Grid>
+        </Grid>
+      )}
+    </Stack>
+  );
+}

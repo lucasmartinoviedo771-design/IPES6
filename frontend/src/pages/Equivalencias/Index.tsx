@@ -1,0 +1,23 @@
+import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
+
+const sections: RoleDashboardSection[] = [
+  {
+    title: "Evaluación y dictamen",
+    items: [
+      DASHBOARD_ITEMS.EQUIV_BANDEJA_REVIEW,
+      DASHBOARD_ITEMS.EQUIV_DISPOSICIONES,
+      DASHBOARD_ITEMS.EQUIV_REPORTES,
+    ],
+  },
+];
+
+export default function EquivalenciasIndex() {
+  return (
+    <RoleDashboard
+      title="Equipo de equivalencias"
+      subtitle="Accesos directos para evaluar pedidos y emitir disposiciones."
+      sections={sections}
+    />
+  );
+}

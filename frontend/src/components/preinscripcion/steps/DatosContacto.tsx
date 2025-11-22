@@ -1,9 +1,12 @@
 import { Grid, TextField } from "@mui/material";
 import { Controller, useFormContext } from "react-hook-form";
-import { PreinscripcionSchema } from "../schema";
+import { PreinscripcionForm } from "../schema";
 
 export default function DatosContacto() {
-  const { control, formState: { errors } } = useFormContext<PreinscripcionSchema>();
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<PreinscripcionForm>();
 
   return (
     <Grid container spacing={2}>
@@ -29,7 +32,7 @@ export default function DatosContacto() {
           render={({ field }) => (
             <TextField
               {...field}
-              label="Teléfono Móvil"
+              label="Teléfono móvil"
               fullWidth
               error={!!errors.tel_movil}
               helperText={errors.tel_movil?.message}
@@ -39,15 +42,15 @@ export default function DatosContacto() {
       </Grid>
       <Grid item xs={12} md={6}>
         <Controller
-          name="telefono_fijo"
+          name="tel_fijo"
           control={control}
           render={({ field }) => (
             <TextField
               {...field}
-              label="Teléfono Fijo"
+              label="Teléfono fijo"
               fullWidth
-              error={!!errors.telefono_fijo}
-              helperText={errors.telefono_fijo?.message}
+              error={!!errors.tel_fijo}
+              helperText={errors.tel_fijo?.message}
             />
           )}
         />

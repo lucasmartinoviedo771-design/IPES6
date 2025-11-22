@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { client as axios } from '@/api/client';
+import { Grid, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 
 interface Profesorado {
   id: number;
@@ -16,6 +18,13 @@ interface Turno {
   nombre: string;
 }
 
+interface Materia {
+  id: number;
+  nombre: string;
+  horas_semana: number;
+  regimen: string;
+}
+
 interface HorarioFiltersProps {
   profesoradoId: number | null;
   planId: number | null;
@@ -23,6 +32,7 @@ interface HorarioFiltersProps {
   anioCarrera: number | null;
   cuatrimestre: 1 | 2 | null;
   turnoId: number | null;
+  selectedMateriaId: number | null;
   onChange: (filters: {
     profesoradoId: number | null;
     planId: number | null;
@@ -31,86 +41,215 @@ interface HorarioFiltersProps {
     cuatrimestre: 1 | 2 | null;
     turnoId: number | null;
   }) => void;
+  onMateriaChange: (materiaId: number | null) => void;
 }
 
 const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
-  const { profesoradoId, planId, anioLectivo, anioCarrera, cuatrimestre, turnoId, onChange } = props;
+  const { profesoradoId, planId, anioLectivo, anioCarrera, cuatrimestre, turnoId, selectedMateriaId, onChange, onMateriaChange } = props;
   const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [materias, setMaterias] = useState<Materia[]>([]);
 
   const aniosLectivos = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
   useEffect(() => {
-    axios.get<Profesorado[]>('/profesorados/').then(response => setProfesorados(response.data));
-    axios.get<Turno[]>('/turnos').then(response => setTurnos(response.data));
+    const fetchInitialData = async () => {
+      try {
+        const [profesoradosRes, turnosRes] = await Promise.all([
+          axios.get<Profesorado[]>('/profesorados/'),
+          axios.get<Turno[]>('/turnos')
+        ]);
+        setProfesorados(profesoradosRes.data);
+        setTurnos(turnosRes.data);
+      } catch (error) {
+        console.error('Error fetching initial filter data:', error);
+      }
+    };
+
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
     if (profesoradoId) {
-      axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data));
+      axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data)).catch(error => {
+        console.error('Error fetching planes:', error);
+        setPlanes([]);
+      });
     } else {
       setPlanes([]);
     }
   }, [profesoradoId]);
 
-  const handleChange = (field: string, value: any) => {
-    const newFilters = { ...props, [field]: value };
-    if (field === 'profesoradoId') {
-      newFilters.planId = null;
+  // Cargar materias cuando haya plan y año de carrera. Filtrar por cuatrimestre: ANU o PCU/SCU según corresponda
+  useEffect(() => {
+    if (planId && anioCarrera) {
+      axios
+        .get<Materia[]>(`/planes/${planId}/materias`, { params: { anio_cursada: anioCarrera } })
+        .then(({ data }) => {
+          const normalize = (s: string) => (s || '').toUpperCase().trim();
+          const filtered = cuatrimestre
+            ? data.filter((m) => {
+                const reg = normalize(m.regimen);
+                const regCuatri = cuatrimestre === 1 ? 'PCU' : 'SCU';
+                return reg === 'ANU' || reg === regCuatri;
+              })
+            : data;
+          setMaterias(filtered);
+        })
+        .catch(() => setMaterias([]));
+    } else {
+      setMaterias([]);
+      onMateriaChange(null);
     }
-    onChange(newFilters);
+  }, [planId, anioCarrera, cuatrimestre, onMateriaChange]);
+
+  const handleChange = (field: string, value: any) => {
+    const base = {
+      profesoradoId,
+      planId,
+      anioLectivo,
+      anioCarrera,
+      cuatrimestre,
+      turnoId,
+    } as const;
+
+    const next: any = { ...base, [field]: value };
+
+    if (field === 'profesoradoId') {
+      next.planId = null;
+      onMateriaChange(null);
+    }
+    if (field === 'planId' || field === 'anioCarrera' || field === 'cuatrimestre') {
+      onMateriaChange(null);
+    }
+
+    onChange(next);
+  };
+
+  const onSel = (field: keyof HorarioFiltersProps, ev: SelectChangeEvent<string>) => {
+    const raw = ev.target.value;
+    const v = raw === '' ? null : Number(raw);
+    handleChange(field as string, Number.isNaN(v) ? null : v);
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Profesorado</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={profesoradoId ?? ''} onChange={(e) => handleChange('profesoradoId', Number(e.target.value) || null)}>
-          <option value="">Seleccione</option>
-          {profesorados.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Plan de Estudio</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={planId ?? ''} onChange={(e) => handleChange('planId', Number(e.target.value) || null)} disabled={!profesoradoId}>
-          <option value="">Seleccione</option>
-          {planes.map(p => <option key={p.id} value={p.id}>{p.resolucion}</option>)}
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Año Lectivo</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={anioLectivo ?? ''} onChange={(e) => handleChange('anioLectivo', Number(e.target.value) || null)}>
-          <option value="">Seleccione</option>
-          {aniosLectivos.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Año (carrera)</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={anioCarrera ?? ''} onChange={(e) => handleChange('anioCarrera', e.target.value ? Number(e.target.value) : null)}>
-          <option value="">Seleccione año</option>
-          <option value="1">1.º año</option>
-          <option value="2">2.º año</option>
-          <option value="3">3.º año</option>
-          <option value="4">4.º año</option>
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Cuatrimestre</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={cuatrimestre ?? ''} onChange={(e) => handleChange('cuatrimestre', e.target.value ? Number(e.target.value) as 1 | 2 : null)}>
-          <option value="">Seleccione</option>
-          <option value="1">1.º cuatrimestre</option>
-          <option value="2">2.º cuatrimestre</option>
-        </select>
-      </div>
-      <div className="flex flex-col">
-        <label className="block text-sm font-medium text-gray-700">Turno</label>
-        <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value={turnoId ?? ''} onChange={(e) => handleChange('turnoId', Number(e.target.value) || null)}>
-          <option value="">Seleccione</option>
-          {turnos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-        </select>
-      </div>
-    </div>
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Profesorado</InputLabel>
+          <Select
+            label="Profesorado"
+            value={profesoradoId !== null ? String(profesoradoId) : ''}
+            onChange={(e) => onSel('profesoradoId', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {profesorados.map((p) => (
+              <MenuItem key={p.id} value={String(p.id)}>{p.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small" disabled={!profesoradoId}>
+          <InputLabel>Plan de Estudio</InputLabel>
+          <Select
+            label="Plan de Estudio"
+            value={planId !== null ? String(planId) : ''}
+            onChange={(e) => onSel('planId', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {planes.map((p) => (
+              <MenuItem key={p.id} value={String(p.id)}>{p.resolucion}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Año Lectivo</InputLabel>
+          <Select
+            label="Año Lectivo"
+            value={anioLectivo !== null ? String(anioLectivo) : ''}
+            onChange={(e) => onSel('anioLectivo', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {aniosLectivos.map((year) => (
+              <MenuItem key={year} value={String(year)}>{year}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Año (carrera)</InputLabel>
+          <Select
+            label="Año (carrera)"
+            value={anioCarrera !== null ? String(anioCarrera) : ''}
+            onChange={(e) => onSel('anioCarrera', e)}
+          >
+            <MenuItem value="">Seleccione año</MenuItem>
+            <MenuItem value="1">1.º año</MenuItem>
+            <MenuItem value="2">2.º año</MenuItem>
+            <MenuItem value="3">3.º año</MenuItem>
+            <MenuItem value="4">4.º año</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Cuatrimestre</InputLabel>
+          <Select
+            label="Cuatrimestre"
+            value={cuatrimestre !== null ? String(cuatrimestre) : ''}
+            onChange={(e) => onSel('cuatrimestre', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            <MenuItem value="1">1.º cuatrimestre</MenuItem>
+            <MenuItem value="2">2.º cuatrimestre</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Turno</InputLabel>
+          <Select
+            label="Turno"
+            value={turnoId !== null ? String(turnoId) : ''}
+            onChange={(e) => onSel('turnoId', e)}
+          >
+            <MenuItem value="">Seleccione</MenuItem>
+            {turnos.map((t) => (
+              <MenuItem key={t.id} value={String(t.id)}>{t.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+
+      {/* Materia al final (última selección) */}
+      <Grid item xs={12} md={6}>
+        <FormControl fullWidth size="small" disabled={!planId || !anioCarrera}>
+          <InputLabel>Materia</InputLabel>
+          <Select
+            label="Materia"
+            value={selectedMateriaId !== null ? String(selectedMateriaId) : ''}
+            onChange={(e) => onMateriaChange(e.target.value === '' ? null : Number(e.target.value))}
+          >
+            <MenuItem value="">Seleccione Materia</MenuItem>
+            {materias.map((m) => (
+              <MenuItem key={m.id} value={String(m.id)}>
+                {m.nombre} ({m.regimen}) - {m.horas_semana} hs
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Grid>
+    </Grid>
   );
 };
 

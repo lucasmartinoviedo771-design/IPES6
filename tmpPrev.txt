@@ -1,0 +1,146 @@
+import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+  Button,
+  Chip,
+  CircularProgress,
+  Stack,
+  TextField,
+  IconButton,
+} from "@mui/material";
+import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion } from "@/api/preinscripciones";
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import AddIcon from '@mui/icons-material/Add';
+import dayjs from "dayjs";
+
+function EstadoChip({ estado }: { estado: string }) {
+  const map: Record<string, "default" | "success" | "warning" | "error"> = {
+    enviada: "default",
+    observada: "warning",
+    confirmada: "success",
+    rechazada: "error",
+    borrador: "default",
+  };
+  return <Chip label={estado} color={map[estado] ?? "default"} size="small" sx={{ borderRadius: 99, textTransform: "capitalize" }} />;
+}
+
+export default function PreinscripcionesPage() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [q, setQ] = React.useState("");
+  const { data, isLoading, isError, refetch } = useQuery<{ results: PreinscripcionDTO[] }>({
+    queryKey: ["preinscripciones", q],
+    queryFn: () => listarPreinscripciones({ q }),
+  });
+
+  const onDelete = async (id: number) => {
+    if (!confirm("¿Eliminar la preinscripción seleccionada?")) return;
+    try {
+      await eliminarPreinscripcion(id);
+      await qc.invalidateQueries({ queryKey: ["preinscripciones"] });
+      refetch();
+    } catch (e) {
+      alert("No se pudo eliminar");
+    }
+  };
+
+  return (
+    <Stack gap={2}>
+      <Typography variant="h5" fontWeight={800}>
+        Gestión de Preinscripciones
+      </Typography>
+
+      <Paper sx={{ p: 2 }}>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+          <TextField
+            label="Buscar (DNI, Apellido/Nombre, Código)"
+            size="small"
+            value={q}
+            onChange={(e)=> setQ(e.target.value)}
+            sx={{ minWidth: 360 }}
+          />
+          <Button startIcon={<AddIcon/>} variant="contained" onClick={()=> navigate('/preinscripcion')}>
+            Nueva Preinscripción
+          </Button>
+        </Stack>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Código</TableCell>
+                <TableCell>Nombre Completo</TableCell>
+                <TableCell>Profesorado</TableCell>
+                <TableCell>Fecha</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <CircularProgress />
+                  </TableCell>
+                </TableRow>
+              )}
+              {isError && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <Typography color="error">Error al cargar las preinscripciones.</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+              {data?.results && data.results.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <Typography color="text.secondary">No se encontraron preinscripciones.</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+              {data?.results && data.results.map((p) => (
+                <TableRow key={p.id} hover>
+                  <TableCell>{p.codigo}</TableCell>
+                  <TableCell>{p.alumno.apellido}, {p.alumno.nombre}</TableCell>
+                  <TableCell>{p.carrera.nombre}</TableCell>
+                  <TableCell>{dayjs(p.fecha).format("DD/MM/YYYY HH:mm")}</TableCell>
+                  <TableCell>
+                    <EstadoChip estado={p.estado} />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button
+                        size="small"
+                        onClick={() => navigate(`/gestion/confirmar?codigo=${p.codigo}`)}
+                      >
+                        Ver / Editar
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate(`/preinscripcion/comprobante/${p.id}`)}
+                      >
+                        PDF (local)
+                      </Button>
+                      <IconButton size="small" onClick={()=> onDelete(p.id)} color="error" title="Eliminar">
+                        <DeleteIcon fontSize="small"/>
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Stack>
+  );
+}

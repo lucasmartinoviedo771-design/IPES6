@@ -5,6 +5,7 @@ export type Carrera = { id: number; nombre: string };
 
 async function tryEndpoints(): Promise<Carrera[]> {
   const paths = [
+    "/profesorados?vigentes=true",        // API principal actual
     "/carreras?vigentes=true",            // Ninja montado en raiz
     "/preinscriptions/carreras?vigentes=true", // Ninja montado bajo preinscriptions
     "/carreras",                          // Django fallback (este patch)
@@ -15,7 +16,7 @@ async function tryEndpoints(): Promise<Carrera[]> {
       const { data } = await api.get(p);
       if (Array.isArray(data)) return data;
       if (data?.results) return data.results.map((r:any)=>({id:r.id, nombre:r.nombre}));
-    } catch (e) {
+    } catch (_error) {
       // sigue al siguiente endpoint
     }
   }

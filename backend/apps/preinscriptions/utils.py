@@ -1,16 +1,15 @@
 # apps/preinscriptions/utils.py
-from typing import Optional, Union
 from datetime import datetime
 
+
 def make_codigo(
-    pre: Optional[object] = None,
-    pre_id: Optional[int] = None,
-    alumno_dni: Optional[str] = None,
-    carrera_id: Optional[Union[int, str]] = None,
-    created_at: Optional[datetime] = None,
+    pre: object | None = None,
+    pre_id: int | None = None,
+    alumno_dni: str | None = None,
+    carrera_id: int | str | None = None,
+    created_at: datetime | None = None,
 ) -> str:
-    """
-    Genera un código legible y estable para la preinscripción.
+    """Genera un código legible y estable para la preinscripción.
 
     Prioridad:
       1) si viene un objeto pre con .id -> PRE-000123

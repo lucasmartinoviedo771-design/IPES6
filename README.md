@@ -1,123 +1,135 @@
-# Proyecto IPES6 - Sistema de Preinscripción
+# Sistema de Gestión Académica - IPES Paulo Freire
 
-Sistema de preinscripción para el IPES6, dividido en un backend de Django y un frontend de React.
+Este proyecto es un sistema integral de gestión académica para el IPES Paulo Freire, diseñado para manejar desde la preinscripción de nuevos alumnos hasta la gestión de cursadas, notas y trámites administrativos.
+
+El sistema está construido con una arquitectura moderna de dos componentes principales: un backend robusto hecho en Django y un frontend interactivo desarrollado con React.
+
+---
+
+## Dashboards por rol
+
+Las tarjetas que se muestran en cada panel de rol se definen de forma centralizada en `frontend/src/components/roles/dashboardItems.tsx`. Ese catálogo mantiene los títulos, descripciones, iconos y rutas para todos los accesos reutilizables (Bedeles, Tutorías, Coordinación, etc.).
+
+Cuando necesites sumar una tarjeta nueva:
+
+1. Agregá la entrada en `dashboardItems.tsx` exportando `DASHBOARD_ITEMS.MI_NUEVA_CARD`.
+2. Desde el `Index.tsx` del rol que corresponda, importá `DASHBOARD_ITEMS` y referenciá la clave dentro del arreglo `sections` que consume `RoleDashboard`.
+
+De esta manera evitamos duplicar texto y rutas cuando una misma tarjeta aplica a múltiples roles.
+
+---
 
 ## Tecnologías Utilizadas
 
 -   **Backend**:
-    -   Python
-    -   Django + Django Ninja (para la API REST)
-    -   UV (para gestión de dependencias y entorno virtual)
+    -   Python 3.11+
+    -   Django 5+
+    -   Django Ninja (para una API REST de alto rendimiento)
+    -   UV (como gestor de entorno virtual y paquetes)
     -   MySQL (Base de datos)
 
 -   **Frontend**:
-    -   React + Vite
+    -   React 18+ (con Vite)
     -   TypeScript
-    -   Material-UI (MUI) para componentes de UI
-    -   React Hook Form + Zod (para gestión y validación de formularios)
-    -   TanStack Query (para gestión de estado del servidor)
-    -   Day.js (para manejo de fechas)
-    -   React Router (para enrutamiento)
+    -   Material-UI (MUI) para la interfaz de usuario
+    -   React Hook Form & Zod para formularios y validación
+    -   TanStack Query para la gestión de datos y cache
+    -   React Router para la navegación en la aplicación
 
 ---
 
-## Requisitos Previos
+## Instalación y Puesta en Marcha
 
--   **Node.js** (v18+ recomendado)
--   **Python** (v3.11+ recomendado)
--   **UV**: Instalador de paquetes y gestor de entorno virtual de Python. Si no lo tienes, instálalo con `pip install uv`.
--   **MySQL**: Una instancia de base deatos MySQL en ejecución.
+Sigue estos pasos para configurar y ejecutar el proyecto en un entorno de desarrollo local. El repositorio se encuentra limpio de artefactos de testing o archivos de prueba para simplificar la preparación hacia producción.
 
----
+### Requisitos Previos
 
-## Configuración y Ejecución
+-   **Node.js**: Versión 18 o superior.
+-   **Python**: Versión 3.11 o superior.
+-   **UV**: Un instalador de paquetes de Python. Si no lo tienes, instálalo globalmente con `pip install uv`.
+-   **Git**: Sistema de control de versiones.
+-   **MySQL**: Una base de datos MySQL activa.
 
-### 1. Backend (Django)
+### 1. Backend (Servidor Django)
 
-1.  **Navega a la carpeta del backend:**
+1.  **Clona el repositorio y navega a la carpeta del backend:**
     ```bash
-    cd backend
+    git clone <URL_DEL_REPOSITORIO>
+    cd IPES6/backend
     ```
 
-2.  **Configura el entorno virtual e instala dependencias:**
-    El siguiente comando creará un entorno virtual y luego instalará las dependencias de `requirements.txt`.
+2.  **Crea el entorno virtual e instala las dependencias:**
+    Este comando usa `uv` para crear un entorno virtual y sincronizarlo con las dependencias del proyecto.
     ```bash
     uv pip sync requirements.txt
     ```
 
-3.  **Configura las variables de entorno:**
-    Crea un archivo `.env` en la raíz de la carpeta `backend/`. Puedes usar el siguiente template (ajusta los valores de tu base de datos):
+3.  **Configura la base de datos:**
+    Crea un archivo `.env` en la carpeta `backend/` y configúralo con tus credenciales de MySQL. Puedes usar este template:
     ```env
-    SECRET_KEY=tu-clave-secreta-aqui
+    SECRET_KEY=django-insecure-una-clave-muy-secreta
     DEBUG=True
-
-    # Configuración de la Base de Datos
     DB_NAME=ipes_db
-    DB_USER=ipes_user
-    DB_PASSWORD=tu_password_de_db
+    DB_USER=root
+    DB_PASSWORD=tu_contraseña
     DB_HOST=127.0.0.1
     DB_PORT=3306
     ```
 
-4.  **Aplica las migraciones:**
-    Esto creará las tablas necesarias en tu base de datos.
+4.  **Aplica las migraciones de la base de datos:**
     ```bash
     uv run python manage.py migrate
     ```
 
-5.  **Crea un Superusuario (Opcional):**
-    Para acceder al panel de administración de Django, necesitarás un superusuario.
+5.  **Verifica las variables de entorno críticas (opcional pero recomendado):**
+    ```bash
+    uv run python manage.py check_env
+    ```
+
+6.  **Crea un superusuario (opcional):**
+    Para acceder al panel de administrador de Django (`/admin`):
     ```bash
     uv run python manage.py createsuperuser
     ```
-    Sigue las instrucciones para crear tu usuario.
 
-6.  **Ejecuta el servidor de desarrollo:**
+6.  **Inicia el servidor del backend:**
     ```bash
     uv run python manage.py runserver
     ```
-    El backend estará disponible en `http://127.0.0.1:8000`.
+    El servidor estará activo en `http://127.0.0.1:8000`.
 
-### 2. Frontend (React)
+### 2. Frontend (Aplicación React)
 
-1.  **Navega a la carpeta del frontend:**
+1.  **Abre una nueva terminal y navega a la carpeta del frontend:**
     ```bash
-    cd frontend
+    cd IPES6/frontend
     ```
 
-2.  **Instala las dependencias de Node.js:**
+2.  **Instala las dependencias:**
     ```bash
     npm install
     ```
 
-3.  **Configura las variables de entorno:**
-    Crea un archivo `.env.local` en la raíz de la carpeta `frontend/` con la siguiente variable, apuntando a tu backend:
+3.  **Configura la variable de entorno:**
+    Crea un archivo `.env.local` en `frontend/` para indicarle a la aplicación dónde encontrar la API del backend.
     ```env
-    VITE_API_BASE=http://127.0.0.1:8000/api
+    VITE_API_BASE=http://localhost:8000/api
     ```
 
-4.  **Ejecuta el servidor de desarrollo:**
+4.  **Inicia el servidor de desarrollo:**
     ```bash
     npm run dev
     ```
-    La aplicación frontend estará disponible en `http://localhost:5173`.
+    La aplicación estará disponible en `http://localhost:5173`.
 
 ---
 
-## Características Implementadas
+## Mantenimiento Reciente
 
--   **Formulario de Preinscripción Desacoplado**: El registro de postulantes es un proceso autocontenido que no requiere la creación de usuarios en el sistema, simplificando el flujo inicial.
--   **Gestión de Carreras (Profesorados)**: API completo (CRUD) para crear, listar, actualizar y activar/desactivar las carreras ofrecidas.
--   **Gestión de Planes de Estudio**: API completo (CRUD) para crear, listar, actualizar y desactivar/reactivar planes de estudio.
--   **Asociación Profesorado-Plan**: Gestión de la relación entre profesorados y planes, incluyendo la marcación del plan vigente para nuevas inscripciones.
--   **Gestión de Archivos de Preinscripción**: Endpoints para subir, listar, borrar y descargar documentos asociados a una preinscripción.
--   **Autenticación JWT**: Endpoints de `login` y `perfil` de usuario protegidos con JSON Web Tokens para futuras áreas seguras.
--   **Validación Robusta**: Validación de datos en tiempo real y por paso, utilizando Zod.
--   **Máscaras de Entrada**: Campos de DNI, CUIL y teléfono con máscaras para facilitar la carga de datos.
--   **Selector de Fechas**: Implementación de un `DatePicker` con localización en español.
--   **Autoguardado de Borrador**: El progreso del formulario se guarda automáticamente en `localStorage` para evitar la pérdida de datos.
--   **API RESTful**: Endpoints claros y definidos con Django Ninja para gestionar preinscripciones y documentos.
--   **Generación de PDF**: Endpoint para generar un comprobante de preinscripción en formato PDF.
+-   **Actualización de Dependencias del Backend**: Se ha regenerado el archivo `requirements.txt` para asegurar que todas las dependencias del proyecto estén actualizadas y consistentes.
+-   **Corrección de Codificación de Caracteres**: Se solucionaron errores de codificación (UTF-8) en múltiples componentes del frontend, asegurando la correcta visualización de acentos y caracteres especiales en toda la aplicación.
+-   **Actualización de Dependencias**: Se actualizó el archivo `requirements.txt` para reflejar el estado actual de las dependencias del backend.
+-   **Mejoras de Seguridad en Autenticación**: Se migró el almacenamiento del token JWT a cookies HTTP-only, se implementó protección CSRF en el frontend y se endurecieron las configuraciones de seguridad del backend, mejorando la resiliencia contra ataques XSS.
 
 ---
 
