@@ -1,0 +1,155 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.0.1, pluggy-1.6.0 -- C:\Users\acer\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+django: version: 5.2.6, settings: config.settings (from env)
+rootdir: C:\proyectos\IPES6\backend
+configfile: pytest.ini
+plugins: django-4.11.1
+collecting ... collected 6 items
+
+tests/test_subject_enrollment_errors.py::test_enrollment_schedule_conflict PASSED [ 16%]
+tests/test_subject_enrollment_errors.py::test_enrollment_missing_correlatives PASSED [ 33%]
+tests/test_subject_enrollment_errors.py::test_enrollment_edi_without_intro FAILED [ 50%]
+tests/test_subject_enrollment_errors.py::test_enrollment_wrong_semester_window FAILED [ 66%]
+tests/test_subject_enrollment_errors.py::test_enrollment_correct_semester_window PASSED [ 83%]
+tests/test_subject_enrollment_errors.py::test_enrollment_no_active_window FAILED [100%]
+
+================================== FAILURES ===================================
+______________________ test_enrollment_edi_without_intro ______________________
+
+client = <django.test.client.Client object at 0x000001A0F06089E0>
+setup_error_scenarios = {'auth_headers': {'HTTP_AUTHORIZATION': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZ...nte': <Estudiante: Student Error (DNI: 22222222)>, 'plan': <PlanDeEstudio: Profesorado de Error - Plan RES-ERROR>, ...}
+
+    def test_enrollment_edi_without_intro(client, setup_error_scenarios):
+        # Create a generic active window
+        today = datetime.now().date()
+        VentanaHabilitacion.objects.create(
+            tipo=VentanaHabilitacion.Tipo.MATERIAS,
+            desde=today - timedelta(days=1),
+            hasta=today + timedelta(days=10),
+            activo=True,
+            periodo='1C_ANUALES'
+        )
+    
+        # EDI Subject
+        materia_edi = Materia.objects.create(
+            plan_de_estudio=setup_error_scenarios['plan'],
+            nombre='EDI 1',
+            anio_cursada=1,
+            horas_semana=4,
+            formato=Materia.FormatoMateria.ASIGNATURA,
+            regimen=Materia.TipoCursada.ANUAL,
+            tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL
+        )
+    
+        # Ensure student has NOT approved intro course (default)
+        assert not setup_error_scenarios['estudiante'].curso_introductorio_aprobado
+    
+        payload = {"materia_id": materia_edi.id}
+        response = client.post(
+            '/api/alumnos/inscripcion-materia',
+            data=payload,
+            content_type='application/json',
+            **setup_error_scenarios['auth_headers']
+        )
+    
+        # This assertion is expected to FAIL if the validation is missing
+>       assert response.status_code == 400, "Should block EDI enrollment if Intro Course is not approved"
+E       AssertionError: Should block EDI enrollment if Intro Course is not approved
+E       assert 200 == 400
+E        +  where 200 = <HttpResponse status_code=200, "application/json; charset=utf-8">.status_code
+
+tests\test_subject_enrollment_errors.py:190: AssertionError
+____________________ test_enrollment_wrong_semester_window ____________________
+
+client = <django.test.client.Client object at 0x000001A0F2DBEBA0>
+setup_error_scenarios = {'auth_headers': {'HTTP_AUTHORIZATION': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZ...nte': <Estudiante: Student Error (DNI: 22222222)>, 'plan': <PlanDeEstudio: Profesorado de Error - Plan RES-ERROR>, ...}
+
+    def test_enrollment_wrong_semester_window(client, setup_error_scenarios):
+        # Create an active window for 1st Semester + Annuals
+        today = datetime.now().date()
+        VentanaHabilitacion.objects.create(
+            tipo=VentanaHabilitacion.Tipo.MATERIAS,
+            desde=today - timedelta(days=1),
+            hasta=today + timedelta(days=10),
+            activo=True,
+            periodo='1C_ANUALES'
+        )
+    
+        # Subject 2nd Semester (Should be blocked)
+        materia_2c = Materia.objects.create(
+            plan_de_estudio=setup_error_scenarios['plan'],
+            nombre='Materia 2C',
+            anio_cursada=1,
+            horas_semana=4,
+            formato=Materia.FormatoMateria.ASIGNATURA,
+            regimen=Materia.TipoCursada.SEGUNDO_CUATRIMESTRE,
+            tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL
+        )
+    
+        payload = {"materia_id": materia_2c.id}
+        response = client.post(
+            '/api/alumnos/inscripcion-materia',
+            data=payload,
+            content_type='application/json',
+            **setup_error_scenarios['auth_headers']
+        )
+    
+        # This assertion is expected to FAIL if the validation is missing
+>       assert response.status_code == 400, "Should block enrollment for 2nd semester subject when window is 1C_ANUALES"
+E       AssertionError: Should block enrollment for 2nd semester subject when window is 1C_ANUALES
+E       assert 200 == 400
+E        +  where 200 = <HttpResponse status_code=200, "application/json; charset=utf-8">.status_code
+
+tests\test_subject_enrollment_errors.py:223: AssertionError
+______________________ test_enrollment_no_active_window _______________________
+
+client = <django.test.client.Client object at 0x000001A0F2E2FFE0>
+setup_error_scenarios = {'auth_headers': {'HTTP_AUTHORIZATION': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZ...nte': <Estudiante: Student Error (DNI: 22222222)>, 'plan': <PlanDeEstudio: Profesorado de Error - Plan RES-ERROR>, ...}
+
+    def test_enrollment_no_active_window(client, setup_error_scenarios):
+        # Ensure NO active window exists
+        VentanaHabilitacion.objects.all().delete()
+    
+        # Subject
+        materia = Materia.objects.create(
+            plan_de_estudio=setup_error_scenarios['plan'],
+            nombre='Materia Test',
+            anio_cursada=1,
+            horas_semana=4,
+            formato=Materia.FormatoMateria.ASIGNATURA,
+            regimen=Materia.TipoCursada.ANUAL,
+            tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL
+        )
+    
+        payload = {"materia_id": materia.id}
+        response = client.post(
+            '/api/alumnos/inscripcion-materia',
+            data=payload,
+            content_type='application/json',
+            **setup_error_scenarios['auth_headers']
+        )
+    
+        # This assertion is expected to FAIL if the system allows enrollment without a window
+>       assert response.status_code == 400, "Should block enrollment if NO window is active"
+E       AssertionError: Should block enrollment if NO window is active
+E       assert 200 == 400
+E        +  where 200 = <HttpResponse status_code=200, "application/json; charset=utf-8">.status_code
+
+tests\test_subject_enrollment_errors.py:282: AssertionError
+-------------------------- Captured stderr teardown ---------------------------
+Destroying test database for alias 'default'...
+
+============================== warnings summary ===============================
+tests/test_subject_enrollment_errors.py::test_enrollment_schedule_conflict
+tests/test_subject_enrollment_errors.py::test_enrollment_schedule_conflict
+tests/test_subject_enrollment_errors.py::test_enrollment_schedule_conflict
+  C:\Users\acer\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_subject_enrollment_errors.py::test_enrollment_edi_without_intro
+FAILED tests/test_subject_enrollment_errors.py::test_enrollment_wrong_semester_window
+FAILED tests/test_subject_enrollment_errors.py::test_enrollment_no_active_window
+================== 3 failed, 3 passed, 3 warnings in 54.64s ===================

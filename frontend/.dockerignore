@@ -3,7 +3,6 @@ dist
 build
 .git
 .gitignore
-.env
 .env.local
 .env.*
 npm-debug.log*

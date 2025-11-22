@@ -20,6 +20,9 @@ NO incluyas secretos reales aquí. Usa este template para crear tu archivo `.env
 | `FRONTEND_ORIGINS` | Orígenes permitidos para CORS/CSRF | `https://ipes6.com,https://www.ipes6.com` |
 | `RECAPTCHA_SECRET_KEY` | Secret Key de Google reCAPTCHA v3 | `***` |
 | `RECAPTCHA_MIN_SCORE` | Score mínimo para aprobar (0.0 - 1.0) | `0.5` |
+| `GOOGLE_CLIENT_ID` | Client ID de Google OAuth | `xxx.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Client Secret de Google OAuth | `***` |
+| `GOOGLE_REDIRECT_URI` | URI de redirección para OAuth | `http://localhost:8000/api/auth/google/callback` |
 
 ## Frontend (Build Time)
 

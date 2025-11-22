@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Box, CircularProgress, Typography, Paper, Grid } from '@mui/material';
+import { Box, CircularProgress, Typography, Paper, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { PageHero } from "@/components/ui/GradientTitles";
 import { obtenerResumenInscripciones, obtenerResumenAcademico, obtenerResumenAsistencia } from '@/api/metrics';
+import { fetchCorrelativasCaidas } from "@/api/reportes";
 
 function ResumenInscripcionesChart() {
     const { data, isLoading, isError, error } = useQuery({
@@ -91,6 +92,53 @@ function ResumenAsistenciaChart() {
     );
 }
 
+function ReporteCorrelativasCaidas() {
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: ['correlativas-caidas'],
+        queryFn: () => fetchCorrelativasCaidas(),
+    });
+
+    if (isLoading) return <CircularProgress />;
+    if (isError) return <Typography color="error">Error: {error.message}</Typography>;
+    if (!data || data.length === 0) return (
+        <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Alumnos con Correlativas Caídas</Typography>
+            <Typography>No se encontraron alumnos con problemas de correlatividad.</Typography>
+        </Paper>
+    );
+
+    return (
+        <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6" component="h2" gutterBottom color="error">
+                Alumnos con Correlativas Caídas ({data.length})
+            </Typography>
+            <TableContainer sx={{ maxHeight: 400 }}>
+                <Table size="small" stickyHeader>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>DNI</TableCell>
+                            <TableCell>Apellido y Nombre</TableCell>
+                            <TableCell>Materia Actual</TableCell>
+                            <TableCell>Correlativa Caída</TableCell>
+                            <TableCell>Motivo</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {data.map((row, index) => (
+                            <TableRow key={index} hover>
+                                <TableCell>{row.dni}</TableCell>
+                                <TableCell>{row.apellido_nombre}</TableCell>
+                                <TableCell>{row.materia_actual}</TableCell>
+                                <TableCell sx={{ color: 'error.main', fontWeight: 'bold' }}>{row.materia_correlativa}</TableCell>
+                                <TableCell>{row.motivo}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        </Paper>
+    );
+}
 
 export default function ReportesPage() {
     return (
@@ -100,6 +148,9 @@ export default function ReportesPage() {
                 subtitle="Visualizá indicadores institucionales en tiempo real"
             />
             <Grid container spacing={3}>
+                <Grid item xs={12}>
+                    <ReporteCorrelativasCaidas />
+                </Grid>
                 <Grid item xs={12}>
                     <ResumenInscripcionesChart />
                 </Grid>

@@ -789,6 +789,7 @@ def _max_regularidad_fecha(inscripciones) -> date | None:
 @carga_notas_router.get(
     "/regularidad",
     response={200: RegularidadPlanillaOut, 400: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth(),
 )
 def obtener_planilla_regularidad(request, comision_id: int):
     can_override_lock = _user_has_privileged_planilla_access(request.user)
@@ -846,7 +847,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
             fecha_cierre=fecha_cierre,
             esta_cerrada=esta_cerrada,
             cerrada_en=lock.cerrado_en.isoformat() if lock else None,
-            cerrada_por=_format_user_display(lock.cerrado_por),
+            cerrada_por=_format_user_display(lock.cerrado_por) if lock else None,
             puede_editar=(not esta_cerrada) or can_override_lock,
             puede_cerrar=not esta_cerrada,
             puede_reabrir=esta_cerrada and can_override_lock,
@@ -918,7 +919,8 @@ def obtener_planilla_regularidad(request, comision_id: int):
 
 @carga_notas_router.post(
     "/regularidad",
-    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth(),
 )
 def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
     is_virtual = payload.comision_id < 0
@@ -944,6 +946,15 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
             return 404, ApiResponse(ok=False, message="Comision no encontrada.")
         materia = comision.materia
         lock = _regularidad_lock_for_scope(comision=comision)
+
+        if not can_override_lock:
+            # Verify if the user is the assigned teacher
+            if not comision.docente:
+                 return 403, ApiResponse(ok=False, message="La comisión no tiene docente asignado. Solo admin puede editar.")
+            
+            user_dni = getattr(request.user, "username", "")
+            if comision.docente.dni != user_dni:
+                 return 403, ApiResponse(ok=False, message="No tienes permiso para editar esta comisión.")
 
     if lock and not can_override_lock:
         return 403, ApiResponse(

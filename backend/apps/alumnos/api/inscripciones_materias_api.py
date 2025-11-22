@@ -12,6 +12,7 @@ from core.models import (
     InscripcionMateriaAlumno,
     Materia,
     Regularidad,
+    VentanaHabilitacion,
 )
 
 from ..schemas import (
@@ -77,6 +78,31 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         return 404, ApiResponse(ok=False, message="Materia no encontrada")
 
     anio_actual = datetime.now().year
+
+    # 2. Validar Ventana de Inscripción Activa
+    hoy = timezone.now().date()
+    ventana = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.MATERIAS,
+        activo=True,
+        desde__lte=hoy,
+        hasta__gte=hoy
+    ).first()
+
+    if not ventana:
+        return 400, ApiResponse(ok=False, message="No hay un periodo de inscripción a materias activo en este momento.")
+
+    # 3. Validar Periodo (Cuatrimestre)
+    if ventana.periodo:
+        allowed_regimens = []
+        if ventana.periodo == '1C_ANUALES':
+            allowed_regimens = [Materia.TipoCursada.ANUAL, Materia.TipoCursada.PRIMER_CUATRIMESTRE]
+        elif ventana.periodo == '1C':
+            allowed_regimens = [Materia.TipoCursada.PRIMER_CUATRIMESTRE]
+        elif ventana.periodo == '2C':
+            allowed_regimens = [Materia.TipoCursada.SEGUNDO_CUATRIMESTRE]
+        
+        if mat.regimen not in allowed_regimens:
+             return 400, ApiResponse(ok=False, message=f"La materia {mat.nombre} no corresponde al periodo de inscripción habilitado.")
 
     req_reg = list(
         _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list(

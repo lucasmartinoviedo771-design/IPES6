@@ -16,6 +16,7 @@ from core.models import (
     Preinscripcion,
     Profesorado,
     Regularidad,
+    InscripcionMateriaAlumno,
 )
 
 from ..schemas import InscripcionMesaIn, InscripcionMesaOut, MesaExamenIn, MesaExamenOut
@@ -183,7 +184,11 @@ def listar_mesas_alumno(
     return out
 
 
-@alumnos_router.post("/inscribir_mesa", response=InscripcionMesaOut, auth=JWTAuth())
+@alumnos_router.post(
+    "/inscribir_mesa",
+    response={200: dict, 400: dict, 404: dict},
+    auth=JWTAuth(),
+)
 def inscribir_mesa(request, payload: InscripcionMesaIn):
     _ensure_estudiante_access(request, payload.dni)
     est = _resolve_estudiante(request, payload.dni)
@@ -193,62 +198,142 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     if not mesa:
         return 404, {"message": "Mesa no encontrada"}
 
-    if mesa.tipo in MESA_TIPOS_ORDINARIOS:
-        legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
-        if not legajo_ok:
-            prof = mesa.materia.plan_de_estudio.profesorado if mesa.materia and mesa.materia.plan_de_estudio else None
-            pre = (
-                (
-                    Preinscripcion.objects.filter(alumno=est, carrera=prof)
-                    .order_by("-anio", "-id")
-                    .first()
+    # --- Logic for REGULAR tables ---
+    if mesa.modalidad == MesaExamen.Modalidad.REGULAR:
+        if mesa.tipo in MESA_TIPOS_ORDINARIOS:
+            legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
+            if not legajo_ok:
+                prof = mesa.materia.plan_de_estudio.profesorado if mesa.materia and mesa.materia.plan_de_estudio else None
+                pre = (
+                    (
+                        Preinscripcion.objects.filter(alumno=est, carrera=prof)
+                        .order_by("-anio", "-id")
+                        .first()
+                    )
+                    if prof
+                    else None
                 )
-                if prof
-                else None
+                cl = getattr(pre, "checklist", None) if pre else None
+                if not (cl and cl.certificado_titulo_en_tramite):
+                    return 400, {
+                        "message": "Legajo condicional/pending: no puede rendir Final. Debe tener legajo completo.",
+                    }
+
+            reg = Regularidad.objects.filter(estudiante=est, materia=mesa.materia).order_by("-fecha_cierre").first()
+            if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
+                if reg and reg.situacion in (
+                    Regularidad.Situacion.PROMOCIONADO,
+                    Regularidad.Situacion.APROBADO,
+                ):
+                    return 400, {"message": "Materia ya aprobada/promocionada: no requiere final."}
+                return 400, {"message": "No posee regularidad vigente en la materia para rendir como REGULAR."}
+
+            def _add_years(d: date, years: int) -> date:
+                try:
+                    return d.replace(year=d.year + years)
+                except ValueError:
+                    return d.replace(month=2, day=28, year=d.year + years)
+
+            two_years = _add_years(reg.fecha_cierre, 2)
+            next_call = (
+                MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
+                .order_by("fecha")
+                .values_list("fecha", flat=True)
+                .first()
             )
-            cl = getattr(pre, "checklist", None) if pre else None
-            if not (cl and cl.certificado_titulo_en_tramite):
-                return 400, {
-                    "message": "Legajo condicional/pending: no puede rendir Final. Debe tener legajo completo.",
-                }
+            allowed_until = next_call or two_years
+            if mesa.fecha > allowed_until:
+                return 400, {"message": "Venció la vigencia de regularidad (2 años y un llamado). Debe recursar."}
 
-        reg = Regularidad.objects.filter(estudiante=est, materia=mesa.materia).order_by("-fecha_cierre").first()
-        if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
-            if reg and reg.situacion in (
-                Regularidad.Situacion.PROMOCIONADO,
-                Regularidad.Situacion.APROBADO,
-            ):
-                return 400, {"message": "Materia ya aprobada/promocionada: no requiere final."}
-            return 400, {"message": "No posee regularidad vigente en la materia."}
+            intentos = InscripcionMesa.objects.filter(
+                estudiante=est,
+                estado=InscripcionMesa.Estado.INSCRIPTO,
+                mesa__materia=mesa.materia,
+                mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
+                mesa__fecha__gte=reg.fecha_cierre,
+                mesa__fecha__lte=allowed_until,
+            ).count()
+            if intentos >= 3:
+                return 400, {"message": "Ya usaste 3 llamados de final dentro de la vigencia. Debe recursar."}
 
-        def _add_years(d: date, years: int) -> date:
-            try:
-                return d.replace(year=d.year + years)
-            except ValueError:
-                return d.replace(month=2, day=28, year=d.year + years)
+            req_ids = list(
+                _correlatividades_qs(
+                    mesa.materia,
+                    Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR,
+                    est,
+                ).values_list("materia_correlativa_id", flat=True)
+            )
+            if req_ids:
+                faltan = []
+                regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
+                latest: dict[int, Regularidad] = {}
+                for r in regs:
+                    latest.setdefault(r.materia_id, r)
+                for mid in req_ids:
+                    r = latest.get(mid)
+                    if not r or r.situacion not in (
+                        Regularidad.Situacion.APROBADO,
+                        Regularidad.Situacion.PROMOCIONADO,
+                    ):
+                        m = Materia.objects.filter(id=mid).first()
+                        faltan.append(m.nombre if m else f"Materia {mid}")
+                if faltan:
+                    return 400, {
+                        "message": "Correlativas sin aprobar para rendir final",
+                        "faltantes": faltan,
+                    }
 
-        two_years = _add_years(reg.fecha_cierre, 2)
-        next_call = (
-            MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
-            .order_by("fecha")
-            .values_list("fecha", flat=True)
-            .first()
-        )
-        allowed_until = next_call or two_years
-        if mesa.fecha > allowed_until:
-            return 400, {"message": "Venció la vigencia de regularidad (2 años y un llamado). Debe recursar."}
+    # --- Logic for LIBRE tables ---
+    elif mesa.modalidad == MesaExamen.Modalidad.LIBRE:
+        # 1. Check if already approved/promoted
+        reg_aprobada = Regularidad.objects.filter(
+            estudiante=est, 
+            materia=mesa.materia,
+            situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO]
+        ).exists()
+        if reg_aprobada:
+            return 400, {"message": "Materia ya aprobada/promocionada: no requiere final."}
 
-        intentos = InscripcionMesa.objects.filter(
+        # 2. Check if currently enrolled (Cursando) -> Cannot take as Libre
+        # Assuming 'anio' matches current academic year or active enrollment
+        current_year = date.today().year
+        is_enrolled = InscripcionMateriaAlumno.objects.filter(
             estudiante=est,
-            estado=InscripcionMesa.Estado.INSCRIPTO,
-            mesa__materia=mesa.materia,
-            mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
-            mesa__fecha__gte=reg.fecha_cierre,
-            mesa__fecha__lte=allowed_until,
-        ).count()
-        if intentos >= 3:
-            return 400, {"message": "Ya usaste 3 llamados de final dentro de la vigencia. Debe recursar."}
+            materia=mesa.materia,
+            anio=current_year,
+            estado__in=[InscripcionMateriaAlumno.Estado.CONFIRMADA, InscripcionMateriaAlumno.Estado.PENDIENTE]
+        ).exists()
+        
+        if is_enrolled:
+             return 400, {"message": "Estás cursando la materia actualmente. No puedes rendir libre."}
 
+        # 3. Check if currently Regular -> Cannot take as Libre (must take as Regular)
+        # We check for VALID regularity
+        reg = Regularidad.objects.filter(estudiante=est, materia=mesa.materia).order_by("-fecha_cierre").first()
+        if reg and reg.situacion == Regularidad.Situacion.REGULAR:
+             # Check if expired
+            def _add_years(d: date, years: int) -> date:
+                try:
+                    return d.replace(year=d.year + years)
+                except ValueError:
+                    return d.replace(month=2, day=28, year=d.year + years)
+
+            two_years = _add_years(reg.fecha_cierre, 2)
+            next_call = (
+                MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
+                .order_by("fecha")
+                .values_list("fecha", flat=True)
+                .first()
+            )
+            allowed_until = next_call or two_years
+            
+            if mesa.fecha <= allowed_until:
+                 # Regularity is still valid
+                 return 400, {"message": "Tienes regularidad vigente. Debes inscribirte en una mesa REGULAR, no LIBRE."}
+
+        # 4. Check correlatives for Libre
+        # Usually Libre requires same correlatives as Regular for taking final? 
+        # Or maybe stricter? Assuming same 'APROBADA_PARA_RENDIR' requirement.
         req_ids = list(
             _correlatividades_qs(
                 mesa.materia,
@@ -272,7 +357,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                     faltan.append(m.nombre if m else f"Materia {mid}")
             if faltan:
                 return 400, {
-                    "message": "Correlativas sin aprobar para rendir final",
+                    "message": "Correlativas sin aprobar para rendir libre",
                     "faltantes": faltan,
                 }
 

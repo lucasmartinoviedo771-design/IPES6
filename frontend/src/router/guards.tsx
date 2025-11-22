@@ -21,11 +21,13 @@ export function ProtectedRoute({
 }: ProtectedProps) {
   const { user, loading } = useAuth();
   const loc = useLocation();
+  console.log("[ProtectedRoute] Check. Path:", loc.pathname, "User:", user?.dni, "Loading:", loading);
 
   if (loading) {
     return (
-      <Box display="flex" alignItems="center" justifyContent="center" minHeight="60vh">
-        <CircularProgress size={32} />
+      <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", gap: 2 }}>
+        <CircularProgress />
+        <div style={{ fontFamily: "sans-serif", color: "#666" }}>Cargando sesión...</div>
       </Box>
     );
   }
@@ -53,16 +55,17 @@ export function ProtectedRoute({
   return allowed ? children : <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
 }
 
+import { getDefaultHomeRoute } from "@/utils/roles";
+
 export function PublicOnlyRoute({
   children,
-  redirectTo = "/alumnos",
 }: {
   children: JSX.Element;
-  redirectTo?: string;
 }) {
   const { user, loading } = useAuth();
   if (loading) {
     return children;
   }
+  const redirectTo = getDefaultHomeRoute(user);
   return user ? <Navigate to={redirectTo} replace /> : children;
 }

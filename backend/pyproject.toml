@@ -12,6 +12,7 @@ dependencies = [
     "django-cors-headers==4.8.0",
     "djangorestframework==3.15.2",
     "djangorestframework-simplejwt==5.3.1",
+    "gunicorn==22.0.0",
     "pymysql", # Recommended for Windows
     "reportlab==4.4.3",
     "qrcode[pil]",
@@ -24,6 +25,7 @@ dependencies = [
     "pyhanko==0.31.0",
     "pyhanko-certvalidator==0.29.0",
     "pypdf==6.0.0",
+    "python-magic==0.4.27",
     "pyphen==0.17.2",
     "python-bidi==0.6.6",
     "arabic-reshaper==3.0.0",

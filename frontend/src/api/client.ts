@@ -15,7 +15,7 @@ const fallbackBase = (() => {
 })();
 
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
-const REFRESH_ENDPOINT = "auth/refresh";
+const REFRESH_ENDPOINT = "auth/refresh/";
 
 export interface ErrorResponse {
   error_code: string;

@@ -142,7 +142,7 @@ def _rate_limit_exceeded(cache_key: str) -> bool:
     return attempts is not None and attempts >= limit
 
 
-@router.post("/login", response={200: TokenOut, 401: ErrorResponse, 429: ErrorResponse})
+@router.post("/login/", response={200: TokenOut, 401: ErrorResponse, 429: ErrorResponse})
 def login(request, payload: LoginIn):
     cache_key = _client_identifier(request, payload.login)
     window = getattr(settings, "LOGIN_RATE_LIMIT_WINDOW_SECONDS", 300)
@@ -180,7 +180,7 @@ def login(request, payload: LoginIn):
     return response
 
 
-@router.get("/profile", response={200: UserOut, 401: ErrorResponse}, auth=JWTAuth())
+@router.get("/profile/", response={200: UserOut, 401: ErrorResponse}, auth=JWTAuth())
 def profile(request):
     if not request.user or not request.user.is_authenticated:
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
@@ -196,7 +196,7 @@ def profile(request):
     }
 
 
-@router.post("/change-password", response={200: Message, 400: ErrorResponse}, auth=JWTAuth())
+@router.post("/change-password/", response={200: Message, 400: ErrorResponse}, auth=JWTAuth())
 def change_password(request, payload: ChangePasswordIn):
     user = request.user
     if not user or not user.is_authenticated:
@@ -226,14 +226,14 @@ def change_password(request, payload: ChangePasswordIn):
     return {"detail": "ContraseÃ±a actualizada correctamente."}
 
 
-@router.post("/logout")
+@router.post("/logout/")
 def logout(request):
     response = JsonResponse({"detail": "Sesión cerrada correctamente."})
     _clear_jwt_cookies(response)
     return response
 
 
-@router.post("/refresh", response={200: TokenOut, 401: ErrorResponse})
+@router.post("/refresh/", response={200: TokenOut, 401: ErrorResponse})
 def refresh_token(request, payload: RefreshIn | None = None):
     token_value = None
     if payload and payload.refresh:
@@ -279,14 +279,13 @@ def google_login(request):
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
-        "prompt": "consent",
         "include_granted_scopes": "true",
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
     return HttpResponseRedirect(url)
 
 
-@router.get("/google/callback", response={200: TokenOut, 401: ErrorResponse, 403: ErrorResponse})
+@router.get("/google/callback", response={302: None, 401: ErrorResponse, 403: ErrorResponse})
 def google_callback(request, code: str | None = None, error: str | None = None):
     if error:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, f"Google OAuth error: {error}")
@@ -345,12 +344,16 @@ def google_callback(request, code: str | None = None, error: str | None = None):
         )
 
     refresh = RefreshToken.for_user(user)
-    response_body = {
-        "access": str(refresh.access_token),
-        "refresh": str(refresh),
-        "user": _serialize_user(user),
-    }
-    response = JsonResponse(response_body)
+    # response_body = {
+    #     "access": str(refresh.access_token),
+    #     # "refresh": str(refresh),
+    #     "user": _serialize_user(user),
+    # }
+    # response = JsonResponse(response_body)
+    
+    # Redireccionar al frontend
+    response = HttpResponseRedirect(settings.FRONTEND_URL + "/auth/callback")
+    
     _set_access_cookie(response, str(refresh.access_token))
     _set_refresh_cookie(response, str(refresh))
     return response

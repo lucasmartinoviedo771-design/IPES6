@@ -205,6 +205,8 @@ FRONTEND_ORIGINS = env_list(
         "http://192.168.1.83:5173",
     ],
 )
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 if "http://192.168.1.83:5173" not in FRONTEND_ORIGINS:
     FRONTEND_ORIGINS.append("http://192.168.1.83:5173")
 
