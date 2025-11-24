@@ -72,7 +72,7 @@ IPES6 se alinea con el plan estratégico del instituto: digitalizar procesos, ac
 
 ### Base de datos
 - Desarrollo: SQLite, para simplificar la instalación local y pruebas.
-- Producción: MySQL/MariaDB (configurable vía variables de entorno); soporta réplicas de solo lectura.
+- Producción: MySQL/MariaDB en contenedor Docker (configurable vía variables de entorno); soporta réplicas de solo lectura.
 - Backups programados y posibilidad de exportar a formatos abiertos (CSV/ODS).
 
 ### Compatibilidad y requisitos mínimos
