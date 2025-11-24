@@ -1,0 +1,645 @@
+
+
+=== PAGINA 1 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+1 
+ 
+MINISTERIO DE EDUCACIÓN 
+ 
+ 
+INSTITUTO PROVINCIAL DE EDUCACIÓN SUPERIOR: 
+“PAULO FREIRE” 
+ 
+ 
+ 
+ 
+ 
+ 
+PROPUESTA SOFTWARE 
+ “SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE” 
+CICLO LECTIVO- 2025/2026- 
+Oviedo Lucas Martín
+
+
+
+=== PAGINA 2 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+2 
+ 
+Río Grande, 02 de marzo de 2025 
+ 
+ 
+Sra. Rectora 
+IPES “Paulo Freire”  
+Lic. Alicia Mabel Olguín  
+S____ / ____D 
+ 
+Estimada Rectora 
+ 
+Tengo el agrado de dirigirme a usted a fin de informarle que me he postulado en el 
+marco de la Convocatoria “Desarrollo de Software – Gestión de Estudiantes 2025”, presentando el 
+proyecto “SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE – Sistema Integral de Gestión 
+de Estudiantes del I.P.E.S. ‘Paulo Freire’”. 
+Desde hace varios años me desempeño en esta institución en tareas de secretaría y 
+bedelía, lo que me ha permitido conocer en profundidad los procesos administrativos y las necesidades 
+reales que atraviesan la gestión de estudiantes. A partir de esa experiencia, y motivado por el deseo de 
+mejorar y modernizar nuestro trabajo cotidiano, fui desarrollando distintas herramientas informáticas 
+internas, antecedente directo del proyecto que hoy presento. 
+Considero que SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE  
+representa una oportunidad concreta para optimizar la gestión de la información estudiantil, reducir la 
+carga administrativa y brindar datos más confiables y oportunos al equipo directivo. Se trata de un 
+sistema pensado y construido desde adentro del instituto, alineado con sus objetivos y particularidades, 
+y técnicamente preparado para crecer y adaptarse a futuras necesidades. 
+En caso de que la propuesta resulte seleccionada, me comprometo a continuar 
+trabajando con la misma predisposición y compromiso que he demostrado en estos años, acompañando 
+la implementación del sistema, capacitando al personal que lo requiera y realizando las mejoras que 
+surjan de la práctica cotidiana, con el fin de brindar un mejor servicio a esta prestigiosa institución. 
+Sin otro particular, y agradeciendo de antemano la atención dispensada a mi 
+postulación y al proyecto que la acompaña, saludo a usted muy atentamente. 
+ 
+ 
+ 
+Oviedo Lucas Martín 
+DNI 28.126.358
+
+
+
+=== PAGINA 3 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+3 
+ 
+ 
+Índice del Proyecto 
+  
+1. PRESENTACIÓN DEL PROYECTO 
+2. FUNDAMENTACIÓN: Por qué necesitamos SIED SISTEMA INTEGRAL DE ESTUDIANTES Y 
+DOCENTE 
+a. Diagnóstico de la situación actual 
+b. Justificación del enfoque técnico elegido (explicado de forma sencilla) 
+c. Ventajas prácticas frente a la organización existente 
+d. Vinculación con los objetivos institucionales 
+3. TIPO DE PROGRAMA PROPUESTO: ¿Qué es SIED SISTEMA INTEGRAL DE ESTUDIANTES Y 
+DOCENTE? 
+a. Funcionamiento de la parte de usuario (Frontend) 
+b. Funcionamiento del servidor central (Backend) 
+c. La base de datos (dónde se guarda la información) 
+4. ASPECTOS TÉCNICOS: La ingeniería detrás del sistema 
+a. Herramientas y lenguajes clave 
+b. Arquitectura por capas: de la base al usuario 
+c. Mantenimiento, escalabilidad y seguridad 
+5. ALCANCES DEL SOFTWARE: Qué tareas podemos automatizar 
+a. Áreas cubiertas (Preinscripciones, Legajos, etc.) 
+b. Próximos pasos y mejoras futuras 
+6. CRONOGRAMA TENTATIVO 
+7. PRESUPUESTO ESTIMATIVO 
+8. PROTOTIPO / DEMO DEL PROGRAMA 
+9. CIERRE Y CONCLUSIONES
+
+
+
+=== PAGINA 4 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+4 
+ 
+PRESENTACIÓN DEL PROYECTO  
+ 
+El presente proyecto propone SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE, una 
+moderna aplicación web diseñada para unificar y facilitar la gestión administrativa y académica de 
+nuestros estudiantes. 
+Esta iniciativa surge de la experiencia directa en secretaría y bedelía, donde hemos identificado el 
+esfuerzo y los riesgos de trabajar con información dispersa en planillas de cálculo, formularios de 
+papel y sistemas que no se "hablan" entre sí. SIED SISTEMA INTEGRAL DE ESTUDIANTES Y 
+DOCENTE resuelve esto: integra todos esos procesos en un único lugar, ofreciendo una plataforma 
+accesible y confiable desde cualquier puesto de trabajo autorizado. 
+Se presenta como una herramienta ya avanzada en su desarrollo, lista para ser el motor de la 
+modernización de la gestión y el soporte clave para la toma de decisiones institucionales. 
+ 
+FUNDAMENTACIÓN: 
+ ¿Por qué necesitamos SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE? 
+Diagnóstico de la situación actual 
+Actualmente, la gestión de la información estudiantil en el instituto depende de: Planillas electrónicas 
+(Excel), Formularios en papel y Sistemas parciales o no integrados. 
+Este esquema, si bien funcional, genera problemas concretos que consumen tiempo y recursos: 
+Duplicidad de Carga: El mismo dato debe ingresarse varias veces en distintos lugares. 
+Riesgo de Errores: La transcripción manual inevitablemente lleva a datos desactualizados o con fallas. 
+Demoras: Emitir una constancia o un informe consolidado toma más tiempo del necesario. 
+Dificultad de Análisis: Es complejo obtener una visión completa de la trayectoria de un estudiante. 
+Sobrecarga: El personal de secretaría y bedelía dedica valioso tiempo a tareas repetitivas. 
+SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE es nuestra respuesta directa: centraliza 
+la información en una única "fuente de la verdad" y automatiza las tareas rutinarias. 
+Justificación del enfoque técnico elegido (Lenguaje sencillo) 
+Hemos optado por desarrollar SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE como una 
+"aplicación web completa" (técnicamente, una arquitectura full -stack), usando las siguientes 
+herramientas:
+
+
+
+=== PAGINA 5 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+5 
+ 
+Componente 
+Nombre 
+Técnico 
+Explicación sencilla 
+Beneficio 
+Práctico 
+Interfaz (Lo que 
+ves) 
+React + 
+TypeScript 
+Es como hacer que 
+el sistema funcione 
+en tu navegador de 
+internet (Chrome, 
+Firefox), sin tener 
+que instalar nada 
+complicado en cada 
+computadora. 
+Fácil Acceso 
+y cero 
+instalaciones 
+en los 
+equipos del 
+instituto. 
+Lógica Central 
+(El Cerebro) 
+Django 
+(Python) 
+con API 
+REST 
+Es la parte que 
+organiza y procesa 
+la información en el 
+servidor. El lenguaje 
+Python es robusto y 
+eficiente para 
+gestionar las reglas 
+de negocio (ej. 
+validación de 
+correlatividades). 
+Sistema 
+Sólido, 
+confiable y 
+fácil de 
+mantener y 
+hacer crecer. 
+Almacenamiento 
+(El Archivador) 
+Base de 
+datos 
+MySQL 
+Es el lugar seguro 
+donde se guardan 
+absolutamente todos 
+los datos de los 
+estudiantes, de 
+forma organizada, 
+indexada y lista para 
+consultas rápidas. 
+Información 
+segura, 
+rápida y lista 
+para generar 
+informes en 
+tiempo real. 
+ 
+Ventajas prácticas frente a la organización administrativa existente 
+El sistema SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE ofrece ventajas directas para 
+el trabajo diario: 
+Adiós a la Doble Carga: Los datos se ingresan una sola vez y quedan validados para todo el sistema. 
+Informes al Instante: Los tiempos de espera para generar listados, constancias o informes se reducen 
+de horas a segundos.
+
+
+
+=== PAGINA 6 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+6 
+ 
+Datos Confiables: La información está centralizada, actualizada en tiempo real y es la misma para 
+todos. 
+Trazabilidad Mejorada: Podemos reconstruir el historial académico de cualquier estudiante con un solo 
+clic. 
+Transparencia: Facilita la respuesta a requerimientos de supervisión. 
+Vinculación con necesidades y objetivos institucionales 
+SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE se alinea directamente con la visión del 
+instituto de: 
+Modernizar la Gestión: Pasar del papel y las planillas a una plataforma digital profesional. 
+Acompañar al Estudiante: Tener información oportuna para apoyar las trayectorias académicas. 
+Optimizar el Trabajo: Liberar al personal administrativo de tareas repetitivas para que se concentre en 
+el análisis y el acompañamiento pedagógico. 
+ 
+TIPO DE PROGRAMA PROPUESTO: ¿Qué es SIED SISTEMA INTEGRAL DE ESTUDIANTES Y 
+DOCENTE? 
+La Interfaz del Usuario (Frontend) 
+Denominación: SPA (Single Page Application). 
+¿Qué significa? El sistema funciona como una aplicación moderna de teléfono o de escritorio, pero 
+dentro de tu navegador. Al hacer clic en una sección, solo se actualiza esa parte de la pantalla, 
+haciendo el sistema más rápido y ágil al usar. 
+Herramientas clave: React y TypeScript. Esto asegura que la interfaz sea robusta y tenga menos 
+errores. 
+El Servidor Central (Backend) 
+Función: Es el cerebro del sistema, donde reside la lógica para gestionar los legajos, calcular 
+asistencias o verificar preinscripciones. 
+Herramientas clave: Python y el framework Django. Son tecnologías de código abierto y ampliamente 
+conocidas, lo que garantiza la estabilidad, la seguridad y la facilidad para realizar futuras mejoras sin 
+depender de licencias costosas. 
+El Archivador Digital (Base de datos) 
+Motor principal: MySQL en contenedor Docker. 
+Función: Motor de almacenamiento de datos confiable para este tipo de sistemas; se ejecuta aislado y configurable por variables de entorno.
+
+
+
+=== PAGINA 7 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+7 
+ 
+Herramientas clave: El esquema se define con migraciones de Django y el servicio se orquesta con Docker/Compose (sin MySQL Workbench en el flujo estándar). Esto permite mantener consultas complejas sin afectar la estabilidad del sistema. 
+ 
+ASPECTOS TÉCNICOS: La ingeniería detrás del sistema  
+Herramientas y bibliotecas clave (Una mirada a las tecnologías) 
+El proyecto utiliza un conjunto de herramientas modernas y bien probadas para asegurar un desarrollo 
+de calidad y una fácil mantenibilidad: 
+Componente Herramientas Clave Uso/Valor para el proyecto 
+Lógica 
+(Backend) 
+Django, Python 
+Gestión de usuarios, permisos, generación de 
+PDF (constancias, informes) y reglas de negocio. 
+Interfaz 
+(Frontend) 
+React 18, Vite, 
+Tailwind/Chakra UI 
+Desarrollo de componentes reutilizables, 
+experiencia de usuario fluida y validaciones 
+instantáneas en el formulario. 
+Conexión 
+(API) 
+TanStack Query 
+Asegura que la interfaz siempre muestre datos 
+recientes y notifica al usuario si la conexión tiene 
+problemas. 
+Arquitectura por capas (El flujo de trabajo organizado) 
+SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE está construido por capas. Piense en 
+ello como una cocina profesional: cada persona (capa) tiene un trabajo claro y específico, lo que hace 
+el proceso más eficiente y fácil de revisar. 
+Capa de Datos (El Almacén): La base de datos MySQL, organizada para almacenar de forma eficiente. 
+Capa de Negocio (El Chef): El código en Django que aplica las reglas del instituto (ej. si un estudiante 
+puede o no inscribirse a una materia). 
+Capa de Presentación (El Mesero): La interfaz en React que le muestra los datos al usuario en el 
+navegador de una forma clara y fácil de entender. 
+Escalabilidad y Seguridad (Preparados para el futuro) 
+Seguridad: El acceso al sistema se realiza por roles (Secretaría, Bedelía, Rectorado), garantizando 
+que cada usuario solo vea y edite lo que le corresponde. Usamos Tokens de Acceso (JWT) con fecha 
+de expiración para una conexión segura.
+
+
+
+=== PAGINA 8 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+8 
+ 
+Mantenimiento: El sistema está diseñado para facilitar las copias de seguridad periódicas de la base 
+de datos, el activo más valioso de la institución. 
+ 
+ALCANCES DEL SOFTWARE: Qué tareas podemos automatizar  
+SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE comienza resolviendo los puntos de 
+mayor carga administrativa y ofrece un camino claro para incorporar futuras necesidades. 
+Áreas cubiertas (Módulos iniciales de impacto) 
+Preinscripciones: 
+Formulario web guiado y amigable para aspirantes. 
+Generación automática de comprobantes y listados. 
+Registro de la documentación pendiente por carrera. 
+Gestión de Estudiantes (Legajos Centralizados): 
+Alta, baja y modificación de datos desde un único punto. 
+Asignación a carreras, cohortes y comisiones. 
+Historial académico básico y unificado. 
+Reportes e Informes Básicos: 
+Generación instantánea de listados filtrados por carrera, cohorte o comisión. 
+Capacidad de exportación a PDF y a Excel/CSV. 
+Perspectivas de actualización y mejora futura (Una herramienta viva) 
+El sistema está diseñado para crecer con el instituto, planificando a futuro: 
+Ampliar el módulo de asistencia para toda la institución. 
+Incorporar indicadores para monitorear la permanencia y el egreso. 
+Integrar notificaciones automáticas (ej. correos a estudiantes o docentes). 
+Facilitar la integración con sistemas de gestión educativa provinciales/jurisdiccionales. 
+ 
+CRONOGRAMA TENTATIVO DE IMPLEMENTACIÓN 
+Dado que el desarrollo de SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE ya cuenta con 
+un 90% de avance, el cronograma se centra en la etapa crítica de pruebas, capacitación y puesta en 
+marcha.
+
+
+
+=== PAGINA 9 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+9 
+ 
+Fase Tarea Principal 
+Duración 
+Estimada 
+Valor/Foco Pedagógico 
+1. Pruebas y 
+Ajustes 
+Pruebas internas 
+rigurosas con datos 
+reales. Corrección de 
+errores detectados. 
+4 a 6 
+Semanas 
+Garantizar la 
+confiabilidad del dato 
+antes de la puesta en 
+producción. 
+2. Capacitación a 
+Usuarios 
+Jornadas de formación 
+práctica para 
+Secretaría, Bedelía, 
+Coordinación y 
+Rectorado. 
+2 a 3 
+Jornadas 
+Empoderar al personal 
+con el uso del nuevo 
+sistema y asegurar una 
+transición suave. 
+3. 
+Implementación 
+Progresiva 
+Puesta en marcha 
+oficial. Iniciar por los 
+módulos de 
+Preinscripciones y 
+Legajos. 
+4 a 6 
+Semanas 
+Acompañamiento 
+cercano y soporte en la 
+etapa inicial para 
+resolver dudas al 
+instante. 
+ 
+CIERRE Y CONCLUSIONES 
+SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE se presenta como una herramienta 
+estratégica para el I.P.E.S. “Paulo Freire” porque transforma procesos fragmentados en un sistema 
+único, eficiente y confiable. 
+El éxito del proyecto se basa en la combinación de: 
+Un desarrollo muy avanzado (casi listo para usar). 
+Una arquitectura técnica moderna (React, Django y MySQL) que garantiza un futuro sin ataduras. 
+Un diseño nacido del conocimiento real de nuestra secretaría y bedelía. 
+En síntesis, SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE es más que un programa; 
+es una estrategia de modernización de la gestión de estudiantes. Su objetivo final no es solo 
+digitalizar, sino mejorar la calidad de la información y, con ello, la toma de decisiones en el I.P.E.S. 
+“Paulo Freire”.
+
+
+
+=== PAGINA 10 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+10 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+2) ESTRUCTURA DE PRESENTACIÓN (POWERPOINT / CANVA) 
+Te propongo algo de 10–12 diapositivas. 
+Slide 1 – Portada 
+• Título: “SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE – Sistema Integral de Gestión de 
+Estudiantes” 
+• Subtítulo: “Convocatoria Desarrollo de Software – Gestión de Estudiantes 2025” 
+• Nombre: Oviedo Lucas Martín 
+• Imagen: Logo del IPES / captura general del sistema. 
+ 
+Slide 2 – Quién soy 
+• “Oviedo Lucas Martín” 
+• Años de experiencia en secretaría/bedelía. 
+• Experiencia desarrollando herramientas informáticas internas. 
+ 
+Slide 3 – Problema actual 
+• Texto breve: datos dispersos, planillas, papel, sistemas parciales. 
+• Bullets: 
+o Doble carga de datos. 
+o Errores y demoras. 
+o Dificultad para obtener informes. 
+• Imagen sugerida: foto simbólica de papeles/planillas o ninguno (simple). 
+ 
+Slide 4 – Qué es SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE 
+• “Aplicación web para gestionar estudiantes de punta a punta.” 
+• Módulos: preinscripciones, legajos, carreras/comisiones, asistencia inicial, reportes. 
+• Imagen: captura de la pantalla principal / dashboard. 
+ 
+Slide 5 – Objetivos del sistema 
+• Optimizar la gestión académica y administrativa. 
+• Reducir errores y tiempos de carga. 
+• Centralizar datos en una base confiable. 
+• Mejorar la información para la toma de decisiones. 
+ 
+Slide 6 – Arquitectura técnica (simple) 
+• Frontend: React + TypeScript. 
+• Backend: Django (API REST). 
+• BD: MySQL (MySQL Workbench). 
+• Imagen: diagrama simple de “Usuario → Navegador → API → Base de datos”. 
+ 
+Slide 7 – Funcionalidades clave (con capturas)
+
+
+
+=== PAGINA 11 ===
+Provincia de Tierra del Fuego, Antártida 
+e Islas del Atlántico Sur 
+Ministerio de Educación 
+I.P.E.S. “Paulo Freire” 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+“Las Islas Malvinas, Georgias y Sándwich del Sur y los Hielos Continentales son y Serán Argentinas 
+11 
+ 
+• Preinscripciones (wizard). 
+o Imagen: captura del formulario de preinscripción. 
+• Legajos de estudiantes. 
+o Imagen: ficha de estudiante. 
+ 
+Slide 8 – Reportes y asistencia 
+• Listados por carrera/cohorte. 
+• Exportación a PDF / Excel. 
+• Módulo de asistencia inicial. 
+• Imagen: captura de listado o reporte / pantalla de asistencia. 
+ 
+Slide 9 – Seguridad y roles 
+• Usuarios y perfiles (secretaría, bedelía, coordinación, administrador). 
+• Control de acceso. 
+• Backups de la base de datos. 
+ 
+Slide 10 – Estado actual y cronograma 
+• Desarrollo: ~90 % completo. 
+• Qué falta: pruebas, capacitación, implementación progresiva. 
+• Cronograma: 12–16 semanas para completar todas las fases. 
+• Imagen: mini línea de tiempo (Fase 1→5). 
+ 
+Slide 11 – Beneficios para el IPES 
+• Menos tiempo en tareas repetitivas. 
+• Información más confiable y accesible. 
+• Herramienta a medida, desarrollada desde adentro de la institución. 
+ 
+Slide 12 – Cierre 
+• Frase de síntesis: “SIED SISTEMA INTEGRAL DE ESTUDIANTES Y DOCENTE moderniza la gestión de 
+estudiantes del I.P.E.S. ‘Paulo Freire’ con una herramienta propia, escalable y sostenible.” 
+• “Quedo a disposición para la demo y preguntas.”
