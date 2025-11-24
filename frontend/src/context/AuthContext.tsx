@@ -56,7 +56,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     console.log("[Auth] refreshProfile called");
     try {
       console.log("[Auth] Sending GET to auth/profile/");
-      const { data } = await client.get(apiPath("auth/profile/"));
+      // Agregamos timestamp para evitar caché 301 persistente en navegadores
+      const { data } = await client.get(apiPath(`auth/profile/?_t=${Date.now()}`));
       console.log("[Auth] Received profile data:", data);
       setUser(data);
       return data;

@@ -29,7 +29,7 @@ import {
 } from "@/styles/institutionalColors";
 import { useAuth } from "@/context/AuthContext";
 import { fetchCursoIntroEstado } from "@/api/cursoIntro";
-import { fetchMisAlertas } from "@/api/reportes";
+import { getMisAlertas, CorrelativaCaidaItem } from "@/api/reportes";
 import { Alert, AlertTitle } from "@mui/material";
 
 type EventCard = {
@@ -198,19 +198,22 @@ export default function AlumnosIndex() {
   const { user } = useAuth();
   const roles = (user?.roles ?? []).map((role) => (role || "").toLowerCase());
   const isStudent = roles.includes("alumno");
+  const isAdmin = user?.is_superuser || roles.some(r => ['admin', 'secretaria', 'bedel'].includes(r));
   
   const { data: cursoIntroEstado } = useQuery({
     queryKey: ["curso-intro", "estado"],
     queryFn: fetchCursoIntroEstado,
     staleTime: 60_000,
-    enabled: isStudent,
+    enabled: isStudent && !isAdmin,
+    retry: false,
   });
 
-  const { data: alertas } = useQuery({
+  const { data: alertas } = useQuery<CorrelativaCaidaItem[]>({
     queryKey: ["mis-alertas"],
-    queryFn: fetchMisAlertas,
+    queryFn: getMisAlertas,
     staleTime: 60_000,
-    enabled: isStudent,
+    enabled: isStudent && !isAdmin,
+    retry: false,
   });
 
   const sections = useMemo<Section[]>(() => {

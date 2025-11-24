@@ -50,6 +50,7 @@ export type RegularidadAlumnoDTO = {
   excepcion: boolean;
   situacion: string | null;
   observaciones: string | null;
+  correlativas_caidas: string[];
 };
 
 export type SituacionOptionDTO = {

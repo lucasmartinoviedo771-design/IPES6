@@ -20,6 +20,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +74,48 @@ type MateriasTableProps = {
 };
 
 const MateriasTable: React.FC<MateriasTableProps> = ({ materias, loading, onVerInscriptos }) => {
+  type MateriaSortKey = "anio" | "nombre" | "cuatrimestre" | "formato" | "tipo_formacion";
+  const [orderBy, setOrderBy] = useState<MateriaSortKey>("anio");
+  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("asc");
+
+  const sortedMaterias = useMemo(() => {
+    const copy = [...materias];
+    copy.sort((a, b) => {
+      const getValue = (m: MateriaDTO): string | number => {
+        switch (orderBy) {
+          case "anio":
+            return m.anio_cursada ?? 0;
+          case "nombre":
+            return m.nombre || "";
+          case "cuatrimestre":
+            return regimenLabel[m.regimen] ?? m.regimen ?? "";
+          case "formato":
+            return formatoLabel[m.formato] ?? m.formato ?? "";
+          case "tipo_formacion":
+            return tipoFormacionLabel[m.tipo_formacion] ?? m.tipo_formacion ?? "";
+          default:
+            return "";
+        }
+      };
+      const va = getValue(a);
+      const vb = getValue(b);
+      if (typeof va === "number" && typeof vb === "number") {
+        return orderDirection === "asc" ? va - vb : vb - va;
+      }
+      const sa = String(va).toLowerCase();
+      const sb = String(vb).toLowerCase();
+      if (sa === sb) return 0;
+      const comp = sa > sb ? 1 : -1;
+      return orderDirection === "asc" ? comp : -comp;
+    });
+    return copy;
+  }, [materias, orderBy, orderDirection]);
+
+  const handleSort = (column: MateriaSortKey) => {
+    setOrderBy(column);
+    setOrderDirection((prev) => (orderBy === column ? (prev === "asc" ? "desc" : "asc") : "asc"));
+  };
+
   if (loading) {
     return (
       <Box>
@@ -96,16 +139,56 @@ const MateriasTable: React.FC<MateriasTableProps> = ({ materias, loading, onVerI
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Año</TableCell>
-            <TableCell>Materia</TableCell>
-            <TableCell>Cuatrimestre</TableCell>
-            <TableCell>Formato</TableCell>
-            <TableCell>Tipo de formación</TableCell>
+            <TableCell sortDirection={orderBy === "anio" ? orderDirection : false}>
+              <TableSortLabel
+                active={orderBy === "anio"}
+                direction={orderBy === "anio" ? orderDirection : "asc"}
+                onClick={() => handleSort("anio")}
+              >
+                Año
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sortDirection={orderBy === "nombre" ? orderDirection : false}>
+              <TableSortLabel
+                active={orderBy === "nombre"}
+                direction={orderBy === "nombre" ? orderDirection : "asc"}
+                onClick={() => handleSort("nombre")}
+              >
+                Materia
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sortDirection={orderBy === "cuatrimestre" ? orderDirection : false}>
+              <TableSortLabel
+                active={orderBy === "cuatrimestre"}
+                direction={orderBy === "cuatrimestre" ? orderDirection : "asc"}
+                onClick={() => handleSort("cuatrimestre")}
+              >
+                Cuatrimestre
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sortDirection={orderBy === "formato" ? orderDirection : false}>
+              <TableSortLabel
+                active={orderBy === "formato"}
+                direction={orderBy === "formato" ? orderDirection : "asc"}
+                onClick={() => handleSort("formato")}
+              >
+                Formato
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sortDirection={orderBy === "tipo_formacion" ? orderDirection : false}>
+              <TableSortLabel
+                active={orderBy === "tipo_formacion"}
+                direction={orderBy === "tipo_formacion" ? orderDirection : "asc"}
+                onClick={() => handleSort("tipo_formacion")}
+              >
+                Tipo de formación
+              </TableSortLabel>
+            </TableCell>
             <TableCell align="right">Inscriptos</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {materias.map((materia) => (
+          {sortedMaterias.map((materia) => (
             <TableRow key={materia.id} hover>
               <TableCell>{materia.anio_cursada ?? "-"}</TableCell>
               <TableCell>{materia.nombre}</TableCell>

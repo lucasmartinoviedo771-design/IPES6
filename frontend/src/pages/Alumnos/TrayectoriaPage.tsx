@@ -112,6 +112,8 @@ const TrayectoriaPage: React.FC = () => {
   const trayectoriaQ = useQuery<TrayectoriaDTO>({
     queryKey,
     queryFn: () => obtenerTrayectoriaAlumno(canGestionar ? ((dniQuery || '').trim() ? { dni: (dniQuery || '').trim() } : undefined) : undefined),
+    enabled: canGestionar ? !!dniQuery : true,
+    retry: false,
   });
 
   const trayectoria = trayectoriaQ.data;

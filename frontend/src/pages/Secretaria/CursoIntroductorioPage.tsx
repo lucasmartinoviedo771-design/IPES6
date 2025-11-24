@@ -32,6 +32,7 @@ import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 import { getErrorMessage } from "@/utils/errors";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 import { listarProfesorados, ProfesoradoDTO } from "@/api/cargaNotas";
 import { listarTurnos, TurnoDTO } from "@/api/comisiones";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
@@ -510,6 +511,7 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
 
   return (
     <Box sx={{ p: 3 }}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Curso introductorio"
         subtitle="Gestioná cohortes, asistencias y resultados del Curso Introductorio."

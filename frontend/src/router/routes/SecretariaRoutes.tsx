@@ -23,6 +23,7 @@ const lazyPage = (importer: () => Promise<{ default: React.ComponentType<any> }>
 const SecretariaIndex = lazyPage(() => import("@/pages/Secretaria/Index"));
 const BedelesIndex = lazyPage(() => import("@/pages/Bedeles/Index"));
 const DocentesIndex = lazyPage(() => import("@/pages/Docentes/Index"));
+const DocentesMisMateriasPage = lazyPage(() => import("@/pages/Docentes/MisMateriasPage"));
 const TutoriasIndex = lazyPage(() => import("@/pages/Tutorias/Index"));
 const EquivalenciasIndex = lazyPage(() => import("@/pages/Equivalencias/Index"));
 const TitulosIndex = lazyPage(() => import("@/pages/Titulos/Index"));
@@ -66,6 +67,7 @@ const analiticosRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "jef
 const mesasRoles: string[] = ["secretaria", "bedel", "admin", "jefes", "jefa_aaee"];
 const secretariaTutorRoles: string[] = ["secretaria", "bedel", "admin", "tutor"];
 const cursoIntroRoles: string[] = ["secretaria", "bedel", "admin", "curso_intro", "coordinador", "tutor"];
+const docentesConsultaRoles: string[] = ["docente", "admin", "secretaria", "bedel"];
 
 export const buildSecretariaRoutes = () => (
   <>
@@ -77,6 +79,9 @@ export const buildSecretariaRoutes = () => (
     </Route>
     <Route element={<ProtectedRoute roles={docentesRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/docentes" element={<DocentesIndex />} />
+    </Route>
+    <Route element={<ProtectedRoute roles={docentesConsultaRoles}><Outlet /></ProtectedRoute>}>
+      <Route path="/docentes/mis-materias" element={<DocentesMisMateriasPage />} />
     </Route>
     <Route element={<ProtectedRoute roles={tutoriaRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/tutorias" element={<TutoriasIndex />} />

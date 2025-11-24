@@ -36,6 +36,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCorrelativasCaidas } from "@/api/reportes";
 import AdminCorrelativasWidget from "@/components/dashboard/AdminCorrelativasWidget";
 import StudentAlerts from "@/components/dashboard/StudentAlerts";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type QuickAction = {
   title: string;
@@ -259,32 +260,11 @@ export default function DashboardPage() {
       {/* Alertas para alumnos (solo se muestran si hay problemas) */}
       <StudentAlerts />
 
-      <Box
-        sx={{
-          p: { xs: 3, md: 4 },
-          borderRadius: 4,
-          background: `linear-gradient(120deg, ${OLIVE} 0%, ${TERRACOTTA} 100%)`,
-          color: "#fff",
-        }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} spacing={3} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
-          <Box sx={{ width: "100%" }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 800,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                color: "#fff",
-              }}
-            >
-              Panel principal
-            </Typography>
-            <Typography variant="body1" sx={{ color: "rgba(255,255,255,0.85)", mt: 0.5 }}>
-              Visualizá indicadores clave, accedé a las preinscripciones y mantené actualizadas las cohortes desde un único espacio.
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" sx={{ width: { xs: "100%", md: "auto" } }}>
+      <PageHero
+        title="Panel principal"
+        subtitle="Visualizá indicadores clave, accedé a las preinscripciones y mantené actualizadas las cohortes desde un único espacio."
+        actions={
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
             <Button
               variant="outlined"
               onClick={() => navigate("/reportes")}
@@ -319,8 +299,11 @@ export default function DashboardPage() {
               Gestionar preinscripciones
             </Button>
           </Stack>
-        </Stack>
-      </Box>
+        }
+        sx={{
+          background: `linear-gradient(120deg, ${OLIVE} 0%, ${TERRACOTTA} 100%)`,
+        }}
+      />
 
       <Grid container spacing={2}>
         {statBlocks.map(stat => (

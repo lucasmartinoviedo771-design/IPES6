@@ -32,11 +32,11 @@ export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
     <Stack
       direction={{ xs: "column", md: "row" }}
       justifyContent="space-between"
-      alignItems="center" // Changed to center for all screen sizes
+      alignItems={{ xs: "flex-start", md: "center" }}
       spacing={2}
       sx={combinedSx}
     >
-      <Box sx={{ textAlign: "center" }}> {/* Added textAlign: 'center' here */}
+      <Box sx={{ textAlign: "left" }}>
         <Typography
           variant="h5"
           sx={{
@@ -49,7 +49,13 @@ export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
           {title}
         </Typography>
         {subtitle && (
-          <Typography sx={{ color: "rgba(255,255,255,0.85)" }}>
+          <Typography
+            sx={{
+              color: "rgba(255,255,255,0.9)",
+              fontSize: { xs: "0.95rem", md: "1rem" },
+              fontWeight: 400,
+            }}
+          >
             {subtitle}
           </Typography>
         )}
@@ -120,4 +126,3 @@ export function SectionTitlePill({ title, sx }: SectionTitleProps) {
     </Box>
   );
 }
-

@@ -230,10 +230,16 @@ const DocenteAsistenciaPage = () => {
         setFeedback(null);
       }
     } catch (err) {
-      const message =
-        isAxiosError(err) && err.response
-          ? err.response.data?.detail || err.response.data?.message || "No se pudo cargar la información del docente."
-          : "No se pudo cargar la información del docente.";
+      let message = "No se pudo cargar la información del docente.";
+      if (isAxiosError(err) && err.response) {
+        const status = err.response.status;
+        const detail = err.response.data?.detail || err.response.data?.message;
+        if (status === 404) {
+          message = "El docente no existe en nuestros registros. Por favor, comunicate con Secretaría.";
+        } else if (detail) {
+          message = detail;
+        }
+      }
       mostrarFeedback({ severity: "error", message }, true);
     } finally {
       setLoadingDocente(false);

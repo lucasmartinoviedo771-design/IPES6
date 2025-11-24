@@ -7,6 +7,7 @@ import { obtenerMesaPlanilla, actualizarMesaPlanilla, MesaPlanillaAlumnoDTO, Mes
 import { listarMaterias } from '@/api/comisiones';
 import { listarDocentes, DocenteDTO } from '@/api/docentes';
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 const CUATRIMESTRE_LABEL: Record<string, string> = {
   ANU: 'Anual',
@@ -481,56 +482,105 @@ export default function MesasPage(){
     return base;
   }, [mesas]);
 
-  const guardar = async()=>{
-    if (!form.materia_id) {
-      alert('Selecciona la materia de la mesa.');
-      return;
-    }
-
-    if (!mesaEspecial && !ventanaNueva) {
-      alert('Selecciona un periodo para la mesa.');
-      return;
-    }
-
-    const tipo = mesaTipoSeleccionado;
-    if (!tipo) {
-      alert('No se pudo determinar el tipo de mesa.');
-      return;
-    }
-
+  const guardar = async()=>{
+
+    if (!form.materia_id) {
+
+      alert('Selecciona la materia de la mesa.');
+
+      return;
+
+    }
+
+
+
+    if (!mesaEspecial && !ventanaNueva) {
+
+      alert('Selecciona un periodo para la mesa.');
+
+      return;
+
+    }
+
+
+
+    const tipo = mesaTipoSeleccionado;
+
+    if (!tipo) {
+
+      alert('No se pudo determinar el tipo de mesa.');
+
+      return;
+
+    }
+
+
+
     const modalidadesAcrear = modalidadesSeleccionadas.length ? modalidadesSeleccionadas : ['REG'];
-
-    const payloadBase: any = {
-      materia_id: form.materia_id,
-      fecha: form.fecha,
-      hora_desde: form.hora_desde || null,
-      hora_hasta: form.hora_hasta || null,
-      aula: form.aula || null,
-      cupo: typeof form.cupo === 'number' ? form.cupo : Number(form.cupo ?? 0),
-      docente_presidente_id: tribunalDocentes.presidente?.id ?? null,
-      docente_vocal1_id: tribunalDocentes.vocal1?.id ?? null,
-      docente_vocal2_id: tribunalDocentes.vocal2?.id ?? null,
-      ventana_id: mesaEspecial ? null : Number(ventanaNueva),
-    };
-
-    try {
-      for (const modalidad of modalidadesAcrear) {
-        const payload = {
-          ...payloadBase,
-          tipo,
-          modalidad,
-        };
-        await api.post(`/mesas`, payload);
-      }
-
-      setForm({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
-      setModalidadesSeleccionadas(['REG']);
-      resetTribunalDocentes();
-      await loadMesas();
-    } catch (error) {
-      console.error('No se pudieron crear las mesas', error);
-      alert('No se pudieron crear las mesas.');
-    }
+
+
+    const payloadBase: any = {
+
+      materia_id: form.materia_id,
+
+      fecha: form.fecha,
+
+      hora_desde: form.hora_desde || null,
+
+      hora_hasta: form.hora_hasta || null,
+
+      aula: form.aula || null,
+
+      cupo: typeof form.cupo === 'number' ? form.cupo : Number(form.cupo ?? 0),
+
+      docente_presidente_id: tribunalDocentes.presidente?.id ?? null,
+
+      docente_vocal1_id: tribunalDocentes.vocal1?.id ?? null,
+
+      docente_vocal2_id: tribunalDocentes.vocal2?.id ?? null,
+
+      ventana_id: mesaEspecial ? null : Number(ventanaNueva),
+
+    };
+
+
+
+    try {
+
+      for (const modalidad of modalidadesAcrear) {
+
+        const payload = {
+
+          ...payloadBase,
+
+          tipo,
+
+          modalidad,
+
+        };
+
+        await api.post(`/mesas`, payload);
+
+      }
+
+
+
+      setForm({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
+
+      setModalidadesSeleccionadas(['REG']);
+
+      resetTribunalDocentes();
+
+      await loadMesas();
+
+    } catch (error) {
+
+      console.error('No se pudieron crear las mesas', error);
+
+      alert('No se pudieron crear las mesas.');
+
+    }
+
   };
 
   const eliminar = async(id:number)=>{
@@ -670,6 +720,7 @@ export default function MesasPage(){
 
   return (
     <Box sx={{ p:2 }}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Mesas de examen"
         subtitle="ABM de mesas ordinarias, extraordinarias y especiales"

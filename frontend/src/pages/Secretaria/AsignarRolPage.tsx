@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 import { asignarRolADocente } from "@/api/roles";
 import { toast } from "@/utils/toast";
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 const ALL_ROLES = [
   "admin",
@@ -142,6 +143,7 @@ export default function AsignarRolPage() {
 
   return (
     <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Asignar Rol"
         subtitle="Gestioná permisos y responsabilidades del personal"

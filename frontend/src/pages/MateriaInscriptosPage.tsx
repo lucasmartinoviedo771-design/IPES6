@@ -32,6 +32,7 @@ import {
   obtenerPlanCarrera,
 } from "@/api/carreras";
 import { SectionTitlePill } from "@/components/ui/GradientTitles";
+import { useAuth } from "@/context/AuthContext";
 
 const regimenLabel: Record<string, string> = {
   ANU: "Anual",
@@ -118,6 +119,13 @@ export default function MateriaInscriptosPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { profesoradoId, planId, materiaId } = useParams();
+  const { user } = useAuth();
+
+  const roles = React.useMemo(
+    () => new Set((user?.roles ?? []).map((r) => (r || "").toLowerCase().trim())),
+    [user],
+  );
+  const isDocente = roles.has("docente");
 
   const materiaIdNumber = Number(materiaId);
   const planIdNumber = Number(planId);
@@ -133,13 +141,13 @@ export default function MateriaInscriptosPage() {
   const materiaQuery = useQuery<MateriaDetalleDTO>({
     queryKey: ["materias", "detalle", materiaIdNumber],
     queryFn: () => obtenerMateria(materiaIdNumber),
-    enabled: hasValidMateriaId,
+    enabled: hasValidMateriaId && !isDocente,
   });
 
   const planQuery = useQuery<PlanDetalle>({
     queryKey: ["carreras", "plan", planIdNumber],
     queryFn: () => obtenerPlanCarrera(planIdNumber),
-    enabled: hasValidPlanId,
+    enabled: hasValidPlanId && !isDocente,
   });
 
   const profesorIdForQuery =
@@ -149,7 +157,7 @@ export default function MateriaInscriptosPage() {
   const carreraQuery = useQuery<CarreraDetalle>({
     queryKey: ["carreras", "detalle", profesorIdForQuery],
     queryFn: () => obtenerCarrera(profesorIdForQuery!),
-    enabled: Number.isInteger(profesorIdForQuery ?? NaN),
+    enabled: Number.isInteger(profesorIdForQuery ?? NaN) && !isDocente,
   });
 
   const inscriptosQuery = useQuery<MateriaInscriptoDTO[]>({
@@ -171,10 +179,10 @@ export default function MateriaInscriptosPage() {
     state.profesoradoNombre ?? carreraDetalle?.nombre ?? null;
 
   const loadingSummary =
-    materiaQuery.isLoading || planQuery.isLoading || carreraQuery.isLoading;
+    !isDocente && (materiaQuery.isLoading || planQuery.isLoading || carreraQuery.isLoading);
 
   const summaryError =
-    materiaQuery.isError || planQuery.isError || carreraQuery.isError;
+    !isDocente && (materiaQuery.isError || planQuery.isError || carreraQuery.isError);
 
   if (!hasValidMateriaId || !hasValidPlanId) {
     return (

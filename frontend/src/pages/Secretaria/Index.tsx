@@ -11,6 +11,7 @@ import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import SectionCard, {
   SectionCardProps,
 } from "@/components/secretaria/SectionCard";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 
 type Section = {
   title: string;
@@ -30,6 +31,7 @@ export default function SecretariaIndex() {
     "secretaria",
     "jefa_aaee",
   ]);
+  const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
   const sections: Section[] = [
     {
@@ -87,6 +89,14 @@ export default function SecretariaIndex() {
                 subtitle: "Asignar docentes a cátedras y comisiones.",
                 icon: <RecordVoiceOverIcon />,
                 path: "/secretaria/catedra-docente",
+              },
+            ]
+          : []),
+        ...(canManageNotas
+          ? [
+              {
+                ...DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES,
+                subtitle: "Consulta comisiones asignadas (vista docente).",
               },
             ]
           : []),

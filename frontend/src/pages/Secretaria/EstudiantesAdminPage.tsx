@@ -48,6 +48,7 @@ import {
 } from "@/api/alumnos";
 import { fetchCarreras } from "@/api/carreras";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import BackButton from "@/components/ui/BackButton";
 
 type EstadoLegajo = "COM" | "INC" | "PEN" | "";
 
@@ -418,6 +419,7 @@ export default function EstudiantesAdminPage() {
 
   return (
     <Box p={2} display="flex" flexDirection="column" gap={2}>
+      <BackButton fallbackPath="/secretaria" />
       <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
         <TextField
           label="Buscar estudiante"

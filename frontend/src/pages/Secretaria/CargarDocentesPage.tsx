@@ -21,6 +21,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { client as api } from "@/api/client";
 import { toast } from "@/utils/toast";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 interface Docente {
   id: number;
@@ -159,6 +160,7 @@ export default function CargarDocentesPage() {
 
   return (
     <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Cargar docentes"
         subtitle="Alta, edición y baja de perfiles docentes del sistema"

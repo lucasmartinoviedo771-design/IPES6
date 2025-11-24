@@ -4,6 +4,7 @@ import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { solicitarPedidoAnalitico, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 type Pedido = { dni:string; apellido_nombre:string; profesorado?:string; cohorte?:number; fecha_solicitud:string; motivo?: string; motivo_otro?: string };
 
@@ -177,6 +178,7 @@ export default function AnaliticosPage(){
 
   return (
     <Box sx={{ p:2 }}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Pedidos de Analítico"
         subtitle="Seleccione un periodo para ver y descargar en PDF"
