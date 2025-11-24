@@ -22,6 +22,7 @@ from core.models import (
     Profesorado,
     Regularidad,
 )
+from apps.alumnos.services.cursada import estudiante_tiene_materia_aprobada
 
 
 @dataclass
@@ -192,13 +193,14 @@ def registrar_disposicion_equivalencia(
     )
 
     detalles: list[EquivalenciaDisposicionDetalle] = []
-    aprobadas_ids = _materias_aprobadas_ids(estudiante, plan)
+
 
     for payload in detalles_payload:
         materia = Materia.objects.filter(id=payload["materia_id"], plan_de_estudio=plan).first()
         if not materia:
             raise ValueError("La materia seleccionada no pertenece al plan indicado.")
-        if materia.id in aprobadas_ids:
+        
+        if estudiante_tiene_materia_aprobada(estudiante, materia):
             raise ValueError(f"La materia {materia.nombre} ya figura como aprobada.")
         nota = (payload.get("nota") or "").strip()
         if not nota:
@@ -229,7 +231,7 @@ def registrar_disposicion_equivalencia(
             nota=nota,
             usuario=usuario,
         )
-        aprobadas_ids.add(materia.id)
+
 
     return EquivalenciaDisposicionResult(disposicion=dispo, detalles=detalles)
 

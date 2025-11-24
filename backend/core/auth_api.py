@@ -267,6 +267,7 @@ def refresh_token(request, payload: RefreshIn | None = None):
 
 
 @router.get("/google/login")
+@router.get("/google/login/")
 def google_login(request):
     client_id = getattr(settings, "GOOGLE_CLIENT_ID", "") or ""
     redirect_uri = getattr(settings, "GOOGLE_REDIRECT_URI", "") or ""
@@ -286,6 +287,7 @@ def google_login(request):
 
 
 @router.get("/google/callback", response={302: None, 401: ErrorResponse, 403: ErrorResponse})
+@router.get("/google/callback/", response={302: None, 401: ErrorResponse, 403: ErrorResponse})
 def google_callback(request, code: str | None = None, error: str | None = None):
     if error:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, f"Google OAuth error: {error}")
@@ -340,7 +342,7 @@ def google_callback(request, code: str | None = None, error: str | None = None):
         raise AppError(
             403,
             AppErrorCode.AUTHENTICATION_FAILED,
-            "Tu cuenta de Google no esta habilitada en el sistema. Usa tu correo institucional o pedi acceso al administrador.",
+            "Tu cuenta de Google no esta habilitada en el sistema. Usa tu usuario y contrasena o pedi acceso al administrador.",
         )
 
     refresh = RefreshToken.for_user(user)

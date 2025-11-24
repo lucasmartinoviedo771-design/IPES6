@@ -47,7 +47,9 @@ from core.models import (
     Profesorado,
     Regularidad,
     RegularidadPlantilla,
+    User,
 )
+from apps.alumnos.services.cursada import estudiante_tiene_materia_aprobada
 from core.permissions import allowed_profesorados, ensure_profesorado_access
 
 
@@ -1067,13 +1069,22 @@ def crear_planilla_regularidad(
                     if not checklist.curso_introductorio_aprobado:
                         raise ValueError(
                             f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
-                            f"No se puede registrar la situaciÃƒÆ’Ã‚Â³n '{situacion}' para una materia EDI."
+                            f"No se puede registrar la situación '{situacion}' para una materia EDI."
                         )
                 except PreinscripcionChecklist.DoesNotExist:
                     raise ValueError(
-                        f"El estudiante {estudiante.dni} no posee checklist de preinscripciÃƒÆ’Ã‚Â³n. "
-                        f"No se puede registrar la situaciÃƒÆ’Ã‚Â³n '{situacion}' para una materia EDI."
+                        f"El estudiante {estudiante.dni} no posee checklist de preinscripción. "
+                        f"No se puede registrar la situación '{situacion}' para una materia EDI."
                     ) from None
+
+            # Validación: Evitar duplicados de aprobados
+            if situacion in {Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO}:
+                if estudiante_tiene_materia_aprobada(estudiante, materia):
+                    warnings.append(
+                        f"[Fila {orden}] El estudiante {estudiante.dni} ya tiene aprobada la materia {materia.nombre}. "
+                        "Se omitió el registro de la promoción/aprobación."
+                    )
+                    continue
 
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
 
