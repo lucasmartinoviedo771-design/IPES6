@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { client as api } from '@/api/client';
 import HorarioFilters from '@/components/horarios/HorarioFilters';
 import TimetableGrid from '@/components/horarios/TimetableGrid';
+import BackButton from "@/components/ui/BackButton";
 
 type MateriaDTO = {
   id: number;
@@ -210,6 +211,7 @@ const CargarHorarioPage: React.FC = () => {
 
   return (
     <div className="center-page">
+      <BackButton fallbackPath="/secretaria" sx={{ mb: 2 }} />
       <h1 className="text-3xl font-extrabold mb-1">Armar Horarios de Cátedra</h1>
       <p className="text-gray-600 mb-6">
         Seleccioná una materia y un turno para definir los bloques horarios que ocupará la cátedra.

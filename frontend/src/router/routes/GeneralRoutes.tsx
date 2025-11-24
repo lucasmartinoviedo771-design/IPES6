@@ -9,7 +9,7 @@ import MateriaInscriptosPage from "@/pages/MateriaInscriptosPage";
 import ReportesPage from "@/pages/ReportesPage";
 import ConfirmarInscripcionPage from "@/pages/ConfirmarInscripcionPage";
 
-const managementRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta"];
+const managementRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente"];
 const preinscripcionesRoles: string[] = ["admin", "secretaria", "bedel"];
 const mensajesRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "alumno"];
 const confirmacionRoles: string[] = ["bedel", "secretaria", "admin"];

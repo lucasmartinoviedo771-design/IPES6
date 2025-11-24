@@ -3,6 +3,7 @@ import { client as axios } from '@/api/client';
 import { Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, IconButton, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
 import HorarioFilters from '@/components/horarios/HorarioFilters';
 import EditIcon from '@mui/icons-material/Edit';
+import BackButton from "@/components/ui/BackButton";
 
 type Materia = { id: number; nombre: string; horas_semana: number; regimen: string; anio_cursada: number };
 type Docente = { id: number; apellido?: string; nombre?: string; dni: string };
@@ -75,6 +76,7 @@ export default function CatedraDocentePage() {
 
   return (
     <div className="center-page">
+      <BackButton fallbackPath="/secretaria" sx={{ mb: 2 }} />
       <h1 className="text-3xl font-extrabold mb-1">Cátedra - Docente</h1>
       <p className="text-gray-600 mb-6">Asigna docentes (titulares, interinos y suplentes) a cada espacio curricular.</p>
 

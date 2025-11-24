@@ -16,8 +16,10 @@ import {
   TextField,
   Typography,
   MenuItem,
+  Tooltip,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { enqueueSnackbar } from "notistack";
 
@@ -39,6 +41,7 @@ type RegularidadFilaForm = {
   excepcion: boolean;
   situacion: string;
   observaciones: string;
+  correlativasCaidas: string[];
 };
 
 type RegularidadFormValues = {
@@ -69,6 +72,7 @@ const mapAlumnoToFormRow = (alumno: RegularidadAlumnoDTO): RegularidadFilaForm =
   excepcion: alumno.excepcion,
   situacion: alumno.situacion ?? "",
   observaciones: alumno.observaciones ?? "",
+  correlativasCaidas: alumno.correlativas_caidas ?? [],
 });
 
 const toIsoDate = (value?: string): string => {
@@ -319,12 +323,32 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
                       name={`filas.${index}.apellidoNombre`}
                       control={control}
                       render={({ field: nameField }) => (
-                        <TextField
-                          {...nameField}
-                          size="small"
-                          fullWidth
-                          inputProps={{ readOnly: true }}
-                        />
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <TextField
+                            {...nameField}
+                            size="small"
+                            fullWidth
+                            inputProps={{ readOnly: true }}
+                          />
+                          {filas[index]?.correlativasCaidas?.length > 0 && (
+                            <Tooltip
+                              title={
+                                <Box>
+                                  <Typography variant="subtitle2" color="inherit">
+                                    Correlativas Caídas:
+                                  </Typography>
+                                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                                    {filas[index].correlativasCaidas.map((msg, i) => (
+                                      <li key={i}>{msg}</li>
+                                    ))}
+                                  </ul>
+                                </Box>
+                              }
+                            >
+                              <WarningAmberIcon color="error" />
+                            </Tooltip>
+                          )}
+                        </Box>
                       )}
                     />
                   </TableCell>

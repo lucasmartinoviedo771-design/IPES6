@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import BackButton from "@/components/ui/BackButton";
 import { isAxiosError } from "axios";
 import {
   Alert,
@@ -31,7 +33,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import { enqueueSnackbar } from "notistack";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ActaOralDTO,
   ComisionOptionDTO,
@@ -138,6 +140,7 @@ const CargaNotasPage: React.FC = () => {
   const [allComisiones, setAllComisiones] = useState<ComisionOptionDTO[]>([]);
   const [planilla, setPlanilla] = useState<RegularidadPlanillaDTO | null>(null);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const scope = searchParams.get("scope");
   const isFinalsMode = scope === "finales";
 
@@ -1030,14 +1033,15 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
 
 
   return (
-    <>
+    <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: "#f5f5f5", minHeight: "100vh" }}>
+      <BackButton fallbackPath="/secretaria" sx={{ mb: 2 }} />
       <Stack gap={3}>
       <PageHero
-        title={isFinalsMode ? "Cargar finales" : "Carga de notas - Regularidad y Promoción"}
+        title={isFinalsMode ? "Actas de Examen Final" : "Carga de Notas"}
         subtitle={
           isFinalsMode
-            ? "Gestioná las planillas y el acta manual de mesas finales."
-            : "Completa la planilla de regularidad al cierre del cuatrimestre o ciclo lectivo."
+            ? "Gestioná las mesas de examen, inscribí alumnos y cargá las notas finales."
+            : "Gestioná las notas de regularidad y promoción de las comisiones."
         }
       />
 
@@ -1930,7 +1934,7 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
         onSave={handleSaveOralActa}
       />
     )}
-    </>
+    </Box>
   );
 };
 

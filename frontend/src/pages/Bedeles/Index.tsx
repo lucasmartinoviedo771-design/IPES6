@@ -2,7 +2,6 @@ import { useMemo } from "react";
 
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
-import type { SectionCardProps } from "@/components/secretaria/SectionCard";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 
@@ -16,18 +15,6 @@ export default function BedelesIndex() {
   const canManageEquivalencias = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
   const canCursoIntro = hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]);
   const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-
-  const cursoIntroItems = useMemo<SectionCardProps[]>(
-    () =>
-      canCursoIntro
-        ? [
-            DASHBOARD_ITEMS.CURSO_INTRO_PANEL,
-            DASHBOARD_ITEMS.CURSO_INTRO_LISTADO,
-            DASHBOARD_ITEMS.CURSO_INTRO_PENDIENTES,
-          ]
-        : [],
-    [canCursoIntro],
-  );
 
   const sections: RoleDashboardSection[] = useMemo(
     () => [
@@ -47,21 +34,29 @@ export default function BedelesIndex() {
           : [],
       },
       {
-        title: "Gestión académica - Bedeles",
+        title: "Gestión académica",
         items: [
           ...(canFormalize ? [DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION] : []),
           ...(canManageAnaliticos ? [DASHBOARD_ITEMS.ANALYTICOS] : []),
           ...(canManageEquivalencias ? [DASHBOARD_ITEMS.EQUIV_LISTADO_GENERAL] : []),
-          ...cursoIntroItems,
+          ...(canManageStructure ? [DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES] : []),
         ],
       },
+      ...(canCursoIntro
+        ? [
+            {
+              title: "Gestión académica - CI",
+              items: [DASHBOARD_ITEMS.CURSO_INTRO_PANEL],
+            } satisfies RoleDashboardSection,
+          ]
+        : []),
       {
         title: "Carga de notas",
         items: canManageNotas
           ? [
               DASHBOARD_ITEMS.REGULARIDAD_CARGA,
               DASHBOARD_ITEMS.ACTAS_FINALES,
-              DASHBOARD_ITEMS.EQUIV_DISPOSICIONES,
+              DASHBOARD_ITEMS.EQUIV_CARGA_VALIDADA,
             ]
           : [],
       },
@@ -73,7 +68,7 @@ export default function BedelesIndex() {
       canManageNotas,
       canManageStudents,
       canManageStructure,
-      cursoIntroItems,
+      canCursoIntro,
     ],
   );
 

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Box, CircularProgress, Typography, Paper, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Box, CircularProgress, Typography, Paper, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button } from '@mui/material';
+import BackButton from '@/components/ui/BackButton';
 import { PageHero } from "@/components/ui/GradientTitles";
 import { obtenerResumenInscripciones, obtenerResumenAcademico, obtenerResumenAsistencia } from '@/api/metrics';
-import { fetchCorrelativasCaidas } from "@/api/reportes";
+import { getCorrelativasCaidas, CorrelativaCaidaItem } from "@/api/reportes";
 
 function ResumenInscripcionesChart() {
     const { data, isLoading, isError, error } = useQuery({
@@ -93,9 +94,9 @@ function ResumenAsistenciaChart() {
 }
 
 function ReporteCorrelativasCaidas() {
-    const { data, isLoading, isError, error } = useQuery({
+    const { data, isLoading, isError, error } = useQuery<CorrelativaCaidaItem[]>({
         queryKey: ['correlativas-caidas'],
-        queryFn: () => fetchCorrelativasCaidas(),
+        queryFn: () => getCorrelativasCaidas(),
     });
 
     if (isLoading) return <CircularProgress />;
@@ -124,7 +125,7 @@ function ReporteCorrelativasCaidas() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {data.map((row, index) => (
+                        {data.map((row: CorrelativaCaidaItem, index: number) => (
                             <TableRow key={index} hover>
                                 <TableCell>{row.dni}</TableCell>
                                 <TableCell>{row.apellido_nombre}</TableCell>
@@ -143,6 +144,7 @@ function ReporteCorrelativasCaidas() {
 export default function ReportesPage() {
     return (
         <Box sx={{ flexGrow: 1 }}>
+            <BackButton sx={{ mb: 2 }} />
             <PageHero
                 title="Reportes y estadísticas"
                 subtitle="Visualizá indicadores institucionales en tiempo real"

@@ -27,6 +27,12 @@ const sections: RoleDashboardSection[] = [
         ...DASHBOARD_ITEMS.MENSAJES,
         subtitle: "Comunicate con Secretaría o con tus estudiantes.",
       },
+      {
+        title: "Mis comisiones",
+        subtitle: "Consulta las materias asignadas y los inscriptos.",
+        icon: DASHBOARD_ITEMS.MATERIAS_ABM.icon,
+        path: "/docentes/mis-materias",
+      },
     ],
   },
 ];

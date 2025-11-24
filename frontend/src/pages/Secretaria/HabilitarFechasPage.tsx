@@ -35,6 +35,7 @@ import { client as axios } from "@/api/client";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import { useSnackbar } from "notistack";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -933,6 +934,7 @@ export default function HabilitarFechasPage() {
 
   return (
     <Box className="center-page" sx={{ pb: 6 }}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Habilitar fechas"
         subtitle="Definí y administrá los períodos de inscripción, trámites y mesas de examen"

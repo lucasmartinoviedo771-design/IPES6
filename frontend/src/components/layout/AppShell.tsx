@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar,
@@ -24,6 +24,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Stack,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -52,6 +53,7 @@ import { obtenerResumenMensajes } from "@/api/mensajes";
 import { getDefaultHomeRoute, hasAnyRole, isOnlyStudent } from "@/utils/roles";
 import UserGuideDisplay from "../guia/UserGuideDisplay";
 import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback";
+import BackButton from "@/components/ui/BackButton";
 import ipesLogoFull from "@/assets/ipes-logo.png";
 import ipesLogoDark from "@/assets/ipes-logo-dark.png";
 import {
@@ -113,6 +115,19 @@ export default function AppShell({ children }: PropsWithChildren) {
   const navigate = useNavigate();
 
   const current = useMemo(() => loc.pathname, [loc.pathname]);
+  const [hasPageBack, setHasPageBack] = useState(false);
+
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    const detect = () => {
+      const pageBack = document.querySelector("[data-back-button='page']");
+      setHasPageBack(!!pageBack);
+    };
+    detect();
+    const observer = new MutationObserver(() => detect());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [current]);
 
   const studentOnly = isOnlyStudent(user);
   const allowedNavSet = useMemo(() => {
@@ -728,7 +743,16 @@ export default function AppShell({ children }: PropsWithChildren) {
               p: { xs: 2, md: 4 },
             }}
           >
-            {children}
+            <Stack spacing={{ xs: 2, md: 3 }}>
+              {!hasPageBack && (
+                <BackButton
+                  scope="global"
+                  fallbackPath={user ? getDefaultHomeRoute(user) : "/"}
+                  sx={{ mb: 0 }}
+                />
+              )}
+              {children}
+            </Stack>
           </Box>
         </ErrorBoundary>
       </Box>

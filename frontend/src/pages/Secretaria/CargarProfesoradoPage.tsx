@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import { client as api } from "@/api/client";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import BackButton from "@/components/ui/BackButton";
 
 interface Profesorado {
   id: number;
@@ -187,6 +188,7 @@ export default function CargarProfesoradoPage() {
   return (
     <>
     <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Cargar profesorado"
         subtitle="Crear y administrar profesorados y cohortes"
@@ -265,7 +267,7 @@ export default function CargarProfesoradoPage() {
                 )}
               />
             }
-            label="Certificación docente"
+            label="Requiere título superior e incumbencias"
           />
           <Button type="submit" variant="contained">
             {editingProfesorado ? "Actualizar" : "Guardar"}

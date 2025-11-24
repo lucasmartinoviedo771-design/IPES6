@@ -36,6 +36,7 @@ import { listarComisiones, listarMaterias, ComisionDTO, MateriaDTO } from "@/api
 import { fetchCarreras, listarPlanes, Carrera, PlanDetalle } from "@/api/carreras";
 import CalendarioEventosPanel from "@/components/asistencia/CalendarioEventosPanel";
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 type Option = { id: number; label: string };
 type DateOption = { id: string; label: string };
@@ -406,6 +407,7 @@ const AsistenciaReportesPage = () => {
   return (
     <Box sx={{ px: { xs: 1, md: 2 }, py: 1 }}>
       <Stack spacing={3}>
+        <BackButton fallbackPath="/secretaria" />
         <PageHero
           title="Reportes de asistencia"
           subtitle="Filtros rápidos para acompañar el seguimiento diario de estudiantes y docentes"

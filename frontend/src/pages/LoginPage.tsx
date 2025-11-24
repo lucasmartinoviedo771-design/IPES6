@@ -52,22 +52,18 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const googleLoginUrl =
-    import.meta.env.VITE_GOOGLE_LOGIN_URL ||
-    ((import.meta.env.VITE_API_BASE || "").replace(/\/api\/?$/, "") || window.location.origin) +
-      "/auth/google/login/";
+  // Keep the URL configurable and avoid the trailing slash that returned 404
+  const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "/api/auth/google/login";
 
-  const hasGoogleEndpoint = !!import.meta.env.VITE_GOOGLE_LOGIN_URL;
-
+  const hasGoogleEndpoint = true;
+  
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
 
   const handleGoogleLogin = () => {
-    if (hasGoogleEndpoint) {
-      window.location.href = googleLoginUrl;
-    }
+    window.location.href = googleLoginUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,6 +75,9 @@ export default function LoginPage() {
         return;
       }
       const loggedUser = await login(loginId, password);
+      // Limpiar password del estado local tras login exitoso (aunque se desmonte)
+      setPassword(""); 
+      
       if (loggedUser?.must_change_password) {
         navigate("/cambiar-password", { replace: true, state: { from: { pathname: from } } });
       } else {
@@ -99,6 +98,9 @@ export default function LoginPage() {
       const msg = err?.message || err?.response?.data?.detail || "Credenciales inválidas.";
       setError(msg);
       console.warn("[Login] error:", err);
+      // Limpiar password en error también si se desea, pero suele ser molesto. 
+      // El usuario pidió "borrar la contraseña... cuando pone mal la contraseña".
+      setPassword("");
     }
   };
 
@@ -147,12 +149,12 @@ export default function LoginPage() {
                 textAlign: "center",
               }}
             />
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} autoComplete="off">
               <Stack spacing={2.5}>
                 <Button
                   variant="contained"
                   fullWidth
-                  disabled={!hasGoogleEndpoint}
+                  // disabled={!hasGoogleEndpoint} // Quitamos disabled para que siempre intente si hay URL
                   onClick={handleGoogleLogin}
                   startIcon={<GoogleGlyph />}
                   sx={{
@@ -163,36 +165,36 @@ export default function LoginPage() {
                     color: "#fff",
                     border: "1px solid rgba(255,255,255,0.12)",
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 24px rgba(0,0,0,0.45)",
-                    opacity: hasGoogleEndpoint ? 1 : 0.5,
+                    // opacity: hasGoogleEndpoint ? 1 : 0.5,
                     "&:hover": {
-                      backgroundColor: hasGoogleEndpoint ? "rgba(15,22,40,0.95)" : "rgba(9,13,28,0.9)",
-                      borderColor: hasGoogleEndpoint ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.12)",
+                      backgroundColor: "rgba(15,22,40,0.95)",
+                      borderColor: "rgba(255,255,255,0.3)",
                     },
                     "& .MuiButton-startIcon": {
                       marginRight: 1.5,
                     },
                   }}
                 >
-                  {hasGoogleEndpoint ? "Continuar con Google" : "Próximamente - Google"}
+                  Continuar con Google
                 </Button>
-                {hasGoogleEndpoint && (
+                
                   <Typography
                     variant="caption"
                     sx={{ color: "rgba(255,255,255,0.7)", display: "block", textAlign: "center" }}
                   >
                     Solo pueden ingresar cuentas institucionales ya cargadas en el sistema.
                   </Typography>
-                )}
+                
 
                 <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
-                  {hasGoogleEndpoint ? "o ingresá con usuario" : "Ingresá con usuario"}
+                  o ingresá con usuario
                 </Divider>
 
                 <TextField
                   label="DNI o usuario"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  autoComplete="username"
+                  autoComplete="off"
                   required
                   fullWidth
                   variant="filled"
@@ -212,7 +214,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  autoComplete="new-password" // A veces 'off' no basta, 'new-password' es más agresivo
                   required
                   fullWidth
                   variant="filled"

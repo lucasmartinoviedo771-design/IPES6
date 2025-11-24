@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 
 import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, Grid, InputLabel, MenuItem, Select, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, TextField, Typography } from '@mui/material';
+import BackButton from "@/components/ui/BackButton";
 
 
 import Autocomplete from '@mui/material/Autocomplete';
@@ -1537,6 +1538,7 @@ export default function CorrelatividadesPage() {
 
 
 
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Correlatividades"
         subtitle="Definí las correlatividades y requisitos entre materias."

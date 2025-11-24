@@ -39,6 +39,7 @@ import {
   generarComisiones,
 } from "@/api/comisiones";
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -257,6 +258,7 @@ const ComisionesPage: React.FC = () => {
 
   return (
     <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Gestión de comisiones"
         subtitle="Generación automática y consulta de comisiones por plan y ciclo lectivo."

@@ -19,6 +19,7 @@ import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import HourglassBottomIcon from "@mui/icons-material/HourglassBottom";
+import WorkspacesIcon from "@mui/icons-material/Workspaces";
 
 import type { SectionCardProps } from "@/components/secretaria/SectionCard";
 
@@ -167,6 +168,12 @@ export const DASHBOARD_ITEMS = {
     icon: <DescriptionIcon />,
     path: "/secretaria/actas-examen",
   },
+  EQUIV_CARGA_VALIDADA: {
+    title: "Carga de equivalencias",
+    subtitle: "Registra equivalencias validando correlatividades y pendientes.",
+    icon: <AssignmentTurnedInIcon />,
+    path: "/secretaria/pedidos-equivalencias?workflow=titulos",
+  },
   DOCENTE_ASISTENCIA: {
     title: "Control de asistencia docente",
     subtitle: "Registrá o consultá tu asistencia en el campus.",
@@ -190,6 +197,12 @@ export const DASHBOARD_ITEMS = {
     subtitle: "Analizá métricas y exportá listados para auditorías.",
     icon: <InsightsIcon />,
     path: "/reportes",
+  },
+  DOCENTE_MIS_COMISIONES: {
+    title: "Mis comisiones",
+    subtitle: "Consulta las materias asignadas y sus inscriptos.",
+    icon: <WorkspacesIcon />,
+    path: "/docentes/mis-materias",
   },
 } satisfies Record<string, SectionCardProps>;
 

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listarPreinscripciones } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 export default function ConfirmarInscripcionSecretaria() {
   const [sp, setSp] = useSearchParams();
@@ -22,6 +23,7 @@ export default function ConfirmarInscripcionSecretaria() {
 
   return (
     <Stack gap={3}>
+      <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Formalizar inscripción"
         subtitle="Busca al aspirante y completá la confirmación presencial"
