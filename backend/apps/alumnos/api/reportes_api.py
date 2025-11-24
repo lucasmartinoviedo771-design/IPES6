@@ -22,7 +22,7 @@ class CorrelativaCaidaItem(Schema):
     materia_correlativa: str
     motivo: str
 
-def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None) -> List[dict]:
+def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, materia_id: int | None = None) -> List[dict]:
     qs = InscripcionMateriaAlumno.objects.select_related(
         "estudiante__user", "materia__plan_de_estudio"
     ).filter(
@@ -32,6 +32,9 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None) 
     
     if estudiante:
         qs = qs.filter(estudiante=estudiante)
+        
+    if materia_id:
+        qs = qs.filter(materia_id=materia_id)
 
     reporte = []
     materia_names = {}

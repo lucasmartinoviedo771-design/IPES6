@@ -12,13 +12,17 @@ from ninja import Router, Schema, Field
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth
+from apps.alumnos.api.reportes_api import _check_correlativas_caidas
+from apps.alumnos.services.cursada import estudiante_tiene_materia_aprobada
+from core.permissions import ensure_profesorado_access
+from core.auth_ninja import JWTAuth, ensure_roles
 from core.models import (
     ActaExamen,
     ActaExamenAlumno,
     ActaExamenDocente,
     Comision,
     Docente,
+    Estudiante,
     InscripcionMateriaAlumno,
     InscripcionMesa,
     Materia,
@@ -32,6 +36,30 @@ from core.models import (
 )
 
 carga_notas_router = Router(tags=["carga_notas"])
+
+
+def _normalized_user_roles(user) -> set[str]:
+    if not user or not getattr(user, "is_authenticated", False):
+        return set()
+    roles = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        roles.add("admin")
+    return roles
+
+
+def _docente_from_user(user) -> Docente | None:
+    if not user or not getattr(user, "is_authenticated", False):
+        return None
+    lookup = Q()
+    username = (getattr(user, "username", "") or "").strip()
+    if username:
+        lookup |= Q(dni__iexact=username)
+    email = (getattr(user, "email", "") or "").strip()
+    if email:
+        lookup |= Q(email__iexact=email)
+    if not lookup:
+        return None
+    return Docente.objects.filter(lookup).first()
 
 
 def _format_user_display(user) -> str | None:
@@ -52,7 +80,7 @@ def _user_has_privileged_planilla_access(user) -> bool:
     if user.is_superuser or user.is_staff:
         return True
     group_names = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
-    return bool(group_names.intersection({"admin", "secretaria"}))
+    return bool(group_names.intersection({"admin", "secretaria", "bedel"}))
 
 
 def _regularidad_lock_for_scope(
@@ -81,6 +109,7 @@ class RegularidadAlumnoOut(Schema):
     excepcion: bool = False
     situacion: str | None = None
     observaciones: str | None = None
+    correlativas_caidas: list[str] = Field(default_factory=list)
 
 
 class RegularidadPlanillaOut(Schema):
@@ -342,7 +371,9 @@ def _acta_metadata() -> ActaMetadataOut:
 @carga_notas_router.get(
     "/actas/metadata",
     response={200: ApiResponse},
+    auth=JWTAuth(),
 )
+@ensure_roles(["admin", "secretaria", "bedel"])
 def obtener_acta_metadata(request):
     data = _acta_metadata()
     return ApiResponse(
@@ -355,7 +386,9 @@ def obtener_acta_metadata(request):
 @carga_notas_router.post(
     "/actas",
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth(),
 )
+@ensure_roles(["admin", "secretaria", "bedel"])
 def crear_acta_examen(request, payload: ActaCreateIn):
     if payload.tipo not in dict(ActaExamen.Tipo.choices):
         return 400, ApiResponse(ok=False, message="Tipo de acta inválido.")
@@ -395,6 +428,16 @@ def crear_acta_examen(request, payload: ActaCreateIn):
             return 400, ApiResponse(ok=False, message=f"Valor inválido en examen escrito para {alumno.dni}.")
         if alumno.examen_oral and alumno.examen_oral not in ACTA_NOTA_CHOICES:
             return 400, ApiResponse(ok=False, message=f"Valor inválido en examen oral para {alumno.dni}.")
+        
+        # Validación: Evitar duplicados de aprobados
+        if _clasificar_resultado(alumno.calificacion_definitiva) == "aprobado":
+            estudiante = Estudiante.objects.filter(dni=alumno.dni).first()
+            if estudiante and estudiante_tiene_materia_aprobada(estudiante, materia):
+                return 400, ApiResponse(
+                    ok=False,
+                    message=f"El alumno {alumno.dni} ya tiene aprobada la materia {materia.nombre}. No se puede cargar otra nota de aprobación.",
+                )
+
         alumnos_payload.append(alumno)
 
     categoria_counts = {"aprobado": 0, "desaprobado": 0, "ausente": 0}
@@ -642,6 +685,9 @@ def listar_comisiones(
     if profesorado_id and profesorado_id != plan.profesorado_id:
         return CargaNotasLookup(materias=[], comisiones=[])
 
+    roles = _normalized_user_roles(request.user)
+    docente_profile = _docente_from_user(request.user) if "docente" in roles else None
+
     comisiones_qs = (
         Comision.objects.select_related(
             "materia__plan_de_estudio__profesorado",
@@ -651,6 +697,9 @@ def listar_comisiones(
         .order_by("-anio_lectivo", "materia__nombre", "codigo")
     )
 
+    if docente_profile:
+        comisiones_qs = comisiones_qs.filter(docente=docente_profile)
+
     if materia_id:
         comisiones_qs = comisiones_qs.filter(materia_id=materia_id)
     if anio:
@@ -659,6 +708,8 @@ def listar_comisiones(
         comisiones_qs = comisiones_qs.filter(materia__regimen=cuatrimestre)
 
     materias_qs = Materia.objects.filter(plan_de_estudio=plan)
+    if docente_profile:
+        materias_qs = materias_qs.filter(comision__docente=docente_profile).distinct()
     if materia_id:
         materias_qs = materias_qs.filter(id=materia_id)
     materias_qs = materias_qs.order_by("anio_cursada", "nombre")
@@ -696,47 +747,68 @@ def listar_comisiones(
             )
         )
 
-    inscripciones_libres = InscripcionMateriaAlumno.objects.filter(materia__plan_de_estudio=plan, comision__isnull=True)
-    if materia_id:
-        inscripciones_libres = inscripciones_libres.filter(materia_id=materia_id)
-    if anio:
-        inscripciones_libres = inscripciones_libres.filter(anio=anio)
-    if cuatrimestre:
-        inscripciones_libres = inscripciones_libres.filter(materia__regimen=cuatrimestre)
+    if not docente_profile:
+        inscripciones_libres = InscripcionMateriaAlumno.objects.filter(materia__plan_de_estudio=plan, comision__isnull=True)
+        if materia_id:
+            inscripciones_libres = inscripciones_libres.filter(materia_id=materia_id)
+        if anio:
+            inscripciones_libres = inscripciones_libres.filter(anio=anio)
+        if cuatrimestre:
+            inscripciones_libres = inscripciones_libres.filter(materia__regimen=cuatrimestre)
 
-    libres_distintos = inscripciones_libres.values(
-        "materia_id",
-        "materia__nombre",
-        "materia__regimen",
-        "materia__formato",
-        "anio",
-    ).distinct()
+        libres_distintos = inscripciones_libres.values(
+            "materia_id",
+            "materia__nombre",
+            "materia__regimen",
+            "materia__formato",
+            "anio",
+        ).distinct()
 
-    for row in libres_distintos:
-        materia_row_id = row["materia_id"]
-        materia_nombre = row["materia__nombre"]
-        regimen = row["materia__regimen"]
-        anio_row = row["anio"]
-        comisiones_out.append(
-            ComisionOption(
-                id=_virtual_comision_id(materia_row_id, anio_row),
-                materia_id=materia_row_id,
-                materia_nombre=materia_nombre,
-                profesorado_id=plan.profesorado_id,
-                profesorado_nombre=plan.profesorado.nombre,
-                plan_id=plan.id,
-                plan_resolucion=plan.resolucion,
-                anio=anio_row or 0,
-                cuatrimestre=regimen,
-                turno="Sin turno",
-                codigo="Sin comision",
+        for row in libres_distintos:
+            materia_row_id = row["materia_id"]
+            materia_nombre = row["materia__nombre"]
+            regimen = row["materia__regimen"]
+            anio_row = row["anio"]
+            comisiones_out.append(
+                ComisionOption(
+                    id=_virtual_comision_id(materia_row_id, anio_row),
+                    materia_id=materia_row_id,
+                    materia_nombre=materia_nombre,
+                    profesorado_id=plan.profesorado_id,
+                    profesorado_nombre=plan.profesorado.nombre,
+                    plan_id=plan.id,
+                    plan_resolucion=plan.resolucion,
+                    anio=anio_row or 0,
+                    cuatrimestre=regimen,
+                    turno="Sin turno",
+                    codigo="Sin comision",
+                )
             )
-        )
 
     return CargaNotasLookup(materias=materias_out, comisiones=comisiones_out)
 
 
 def _build_regularidad_alumnos(inscripciones) -> list[RegularidadAlumnoOut]:
+    if not inscripciones:
+        return []
+
+    # Detectar materia y año para buscar correlativas caídas
+    first_insc = inscripciones[0]
+    materia_id = first_insc.materia_id
+    anio_cursada = first_insc.anio
+    
+    # Buscar problemas de correlatividad para todos los alumnos de esta lista
+    caidas_report = _check_correlativas_caidas(anio_cursada, materia_id=materia_id)
+    
+    # Map: estudiante_id -> lista de mensajes
+    caidas_map = {}
+    for item in caidas_report:
+        est_id = item["estudiante_id"]
+        if est_id not in caidas_map:
+            caidas_map[est_id] = []
+        msg = f"{item['materia_correlativa']}: {item['motivo']}"
+        caidas_map[est_id].append(msg)
+
     alumnos: list[RegularidadAlumnoOut] = []
     for idx, insc in enumerate(inscripciones, start=1):
         regularidad = (
@@ -763,6 +835,7 @@ def _build_regularidad_alumnos(inscripciones) -> list[RegularidadAlumnoOut]:
                 excepcion=regularidad.excepcion if regularidad else False,
                 situacion=alias,
                 observaciones=regularidad.observaciones if regularidad else None,
+                correlativas_caidas=caidas_map.get(insc.estudiante_id, []),
             )
         )
     return alumnos
@@ -791,6 +864,7 @@ def _max_regularidad_fecha(inscripciones) -> date | None:
     response={200: RegularidadPlanillaOut, 400: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
+@ensure_roles(["admin", "secretaria", "bedel", "docente"])
 def obtener_planilla_regularidad(request, comision_id: int):
     can_override_lock = _user_has_privileged_planilla_access(request.user)
     if comision_id >= 0:
@@ -922,6 +996,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
+@ensure_roles(["admin", "secretaria", "bedel", "docente"])
 def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
     is_virtual = payload.comision_id < 0
     comision = None
@@ -1064,7 +1139,9 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
 @carga_notas_router.post(
     "/regularidad/cierre",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth(),
 )
+@ensure_roles(["admin", "secretaria", "bedel", "docente"])
 def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn):
     is_virtual = payload.comision_id < 0
     comision: Comision | None = None

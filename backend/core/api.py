@@ -140,6 +140,21 @@ def _normalized_user_roles(user: User) -> set[str]:
     return roles
 
 
+def _docente_from_user(user) -> Docente | None:
+    if not user or not user.is_authenticated:
+        return None
+    lookup = Q()
+    username = (getattr(user, "username", "") or "").strip()
+    if username:
+        lookup |= Q(dni__iexact=username)
+    email = (getattr(user, "email", "") or "").strip()
+    if email:
+        lookup |= Q(email__iexact=email)
+    if not lookup:
+        return None
+    return Docente.objects.filter(lookup).first()
+
+
 def _assignable_roles_for_user(user: User) -> set[str]:
     if user.is_superuser or user.is_staff:
         return set(ALL_ROLES)
@@ -751,11 +766,26 @@ def list_inscriptos_materia(
 ):
     materia = get_object_or_404(Materia, id=materia_id)
 
-    _ensure_structure_view(request.user, materia.plan_de_estudio.profesorado_id)
+    roles = _normalized_user_roles(request.user)
+    docente_profile = _docente_from_user(request.user)
+
+    solo_docente = False
+    if "docente" in roles:
+        if not docente_profile:
+            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes comisiones asignadas.")
+        asignado = Comision.objects.filter(materia_id=materia_id, docente=docente_profile).exists()
+        if not asignado:
+            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes comisiones asignadas a esta materia.")
+        solo_docente = True
+    else:
+        _ensure_structure_view(request.user, materia.plan_de_estudio.profesorado_id)
 
     inscripciones = InscripcionMateriaAlumno.objects.select_related("estudiante__user", "comision").filter(
         materia_id=materia_id
     )
+
+    if solo_docente:
+        inscripciones = inscripciones.filter(comision__docente=docente_profile)
 
     if anio is not None:
         inscripciones = inscripciones.filter(anio=anio)
@@ -1653,7 +1683,7 @@ def _codigo_from_index(index: int) -> str:
     return result
 
 
-@router.get("/comisiones", response=list[ComisionOut])
+@router.get("/comisiones", response=list[ComisionOut], auth=JWTAuth())
 def list_comisiones(
     request,
     profesorado_id: int | None = None,
@@ -1663,15 +1693,27 @@ def list_comisiones(
     turno_id: int | None = None,
     estado: str | None = None,
 ):
-    _ensure_academic_view(request.user)
+    roles = _normalized_user_roles(request.user)
+    docente_profile = _docente_from_user(request.user)
 
-    qs = Comision.objects.select_related(
-        "materia__plan_de_estudio__profesorado",
-        "turno",
-        "docente",
-    )
+    if "docente" in roles:
+        if not docente_profile:
+            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes comisiones asignadas.")
+        qs = Comision.objects.select_related(
+            "materia__plan_de_estudio__profesorado",
+            "turno",
+            "docente",
+        ).filter(docente=docente_profile)
+    else:
+        _ensure_academic_view(request.user)
 
-    qs = _restrict_comisiones_queryset(request.user, qs)
+        qs = Comision.objects.select_related(
+            "materia__plan_de_estudio__profesorado",
+            "turno",
+            "docente",
+        )
+
+        qs = _restrict_comisiones_queryset(request.user, qs)
 
     if profesorado_id:
         qs = qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)

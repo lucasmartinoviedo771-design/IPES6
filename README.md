@@ -55,6 +55,7 @@ Para sumar una tarjeta:
 - Backend: `backend/Dockerfile` y `backend/docker-compose.yml` para levantar API + MySQL localmente (ajusta variables del compose antes de subir).
 - Frontend: `frontend/Dockerfile` y `frontend/nginx.conf` para servir el build estático detrás de Nginx.
 - Flujo sugerido: construir imágenes desde `backend/` y `frontend/` tras generar `.env` y `npm run build`; luego orquestar con compose o tu stack de despliegue.
+- Setup guiado para Windows 11 + Docker Desktop: `docs/DOCKER_WINDOWS.md`.
 
 ## Autor
 - Oviedo Lucas
