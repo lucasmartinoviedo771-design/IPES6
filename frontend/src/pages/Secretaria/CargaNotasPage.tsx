@@ -1037,11 +1037,11 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
       <BackButton fallbackPath="/secretaria" sx={{ mb: 2 }} />
       <Stack gap={3}>
       <PageHero
-        title={isFinalsMode ? "Actas de Examen Final" : "Carga de Notas"}
+        title={isFinalsMode ? "Actas de Examen Final" : "Planilla de Regularidad"}
         subtitle={
           isFinalsMode
             ? "Gestioná las mesas de examen, inscribí alumnos y cargá las notas finales."
-            : "Gestioná las notas de regularidad y promoción de las comisiones."
+            : "Gestioná la planilla de regularidad y promoción de las comisiones."
         }
       />
 
