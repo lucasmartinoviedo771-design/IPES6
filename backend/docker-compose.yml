@@ -5,15 +5,23 @@ services:
     image: mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     environment:
-      MYSQL_DATABASE: ipes1_prueba
-      MYSQL_ROOT_PASSWORD: REDACTED
-      MYSQL_USER: ipes_user
-      MYSQL_PASSWORD: REDACTED
+      MYSQL_DATABASE: ${DB_NAME:-ipes6}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-REDACTED}
+      MYSQL_USER: ${DB_USER:-ipes_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-REDACTED}
     volumes:
       - db_data:/var/lib/mysql
     ports:
       - "3307:3306" # Expose on 3307 to avoid conflict with local MySQL
+    env_file:
+      - .env
 
   backend:
     build:
@@ -23,26 +31,26 @@ services:
     env_file:
       - .env
     command: /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_ENV: ${DJANGO_ENV:-production}
+      DEBUG: ${DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-ipes6}
+      DB_USER: ${DB_USER:-ipes_user}
+      DB_PASSWORD: ${DB_PASSWORD:-REDACTED}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.118.140.124}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
       - "8000:8000"
-    environment:
-      # Apunta al MySQL local con datos reales
-      - DB_HOST=host.docker.internal
-      - DB_PORT=3306
-      - DB_NAME=ipes1_prueba
-      - DB_USER=root
-      - DB_PASSWORD=REDACTED_PASSWORD
-      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
-      - DEBUG=1
-      - DJANGO_ENV=development
-      - JWT_COOKIE_PATH=/
-      - SECRET_KEY=change_me_in_production
-      - FRONTEND_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
-    depends_on:
-      - db
 
   frontend:
     build:
@@ -59,8 +67,8 @@ volumes:
   static_volume:
   media_volume:
 
-    # NOTE:
-    # This file is placed in the 'backend' directory.
-    # To run it:
-    # cd backend
-    # docker-compose up --build
+# NOTE:
+# This file is placed in the 'backend' directory.
+# To run it:
+# cd backend
+# docker-compose up --build

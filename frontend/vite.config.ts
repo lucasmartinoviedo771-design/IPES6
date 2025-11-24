@@ -11,7 +11,18 @@ const __dirname = dirname(__filename);
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, host: 'localhost', hmr: { host: 'localhost' } },
+  server: {
+    port: 5173,
+    host: true,
+    hmr: { host: 'localhost' },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
