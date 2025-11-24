@@ -1124,10 +1124,10 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
                 </Grid>
                 <Grid item xs={12} md={6} lg={4}>
                   <FormControl fullWidth>
-                    <InputLabel id="anio-select">Ano lectivo</InputLabel>
+                    <InputLabel id="anio-select">Año lectivo</InputLabel>
                     <Select
                       labelId="anio-select"
-                      label="Ano lectivo"
+                      label="Año lectivo"
                       value={filters.anio ?? ""}
                       onChange={(event) =>
                         setFilters((prev) => ({

@@ -201,7 +201,7 @@ const ComisionesPage: React.FC = () => {
     }
 
     if (!filters.anioLectivo.trim()) {
-      enqueueSnackbar("Ingresa el anio lectivo.", { variant: "warning" });
+      enqueueSnackbar("Ingresá el año lectivo.", { variant: "warning" });
       return;
     }
 
@@ -215,7 +215,7 @@ const ComisionesPage: React.FC = () => {
 
     const anio = Number(filters.anioLectivo);
     if (Number.isNaN(anio)) {
-      enqueueSnackbar("El anio lectivo debe ser numerico.", {
+      enqueueSnackbar("El año lectivo debe ser numérico.", {
         variant: "warning",
       });
       return;
@@ -395,7 +395,7 @@ const ComisionesPage: React.FC = () => {
 
             <Grid item xs={12} md={6} lg={4}>
               <TextField
-                label="Anio lectivo"
+                label="Año lectivo"
                 value={filters.anioLectivo}
                 onChange={(event) =>
                   setFilters((prev) => ({
