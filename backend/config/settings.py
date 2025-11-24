@@ -270,14 +270,15 @@ CSRF_USE_SESSIONS = False
 # === Seguridad en producción ============================================
 if IS_PROD:
     # Redirección a HTTPS + HSTS
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SECURE_HSTS_SECONDS = 31536000  # 1 año
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
     # Cookies seguras
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Cookies seguras (solo si usamos SSL)
+    SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
 
     # X-Frame, X-Content-Type, etc.
     X_FRAME_OPTIONS = "DENY"
