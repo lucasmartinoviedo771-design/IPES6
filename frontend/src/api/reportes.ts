@@ -1,4 +1,4 @@
-import { client } from "@/api/client";
+import client from "./client";
 
 export interface CorrelativaCaidaItem {
     estudiante_id: number;
@@ -9,13 +9,13 @@ export interface CorrelativaCaidaItem {
     motivo: string;
 }
 
-export const fetchCorrelativasCaidas = async (anio?: number): Promise<CorrelativaCaidaItem[]> => {
+export const getCorrelativasCaidas = async (anio?: number): Promise<CorrelativaCaidaItem[]> => {
     const params = anio ? { anio } : {};
     const response = await client.get<CorrelativaCaidaItem[]>("/alumnos/reportes/correlativas-caidas", { params });
     return response.data;
 };
 
-export const fetchMisAlertas = async (): Promise<CorrelativaCaidaItem[]> => {
+export const getMisAlertas = async (): Promise<CorrelativaCaidaItem[]> => {
     const response = await client.get<CorrelativaCaidaItem[]>("/alumnos/me/alertas");
     return response.data;
 };

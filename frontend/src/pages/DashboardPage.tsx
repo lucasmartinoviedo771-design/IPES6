@@ -33,7 +33,9 @@ import {
   INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
 import { useQuery } from "@tanstack/react-query";
-import { fetchCorrelativasCaidas } from "@/api/reportes";
+import { getCorrelativasCaidas } from "@/api/reportes";
+import AdminCorrelativasWidget from "@/components/dashboard/AdminCorrelativasWidget";
+import StudentAlerts from "@/components/dashboard/StudentAlerts";
 
 type QuickAction = {
   title: string;
@@ -146,7 +148,7 @@ export default function DashboardPage() {
 
   const { data: correlativasCaidas } = useQuery({
     queryKey: ["correlativas-caidas"],
-    queryFn: () => fetchCorrelativasCaidas(),
+    queryFn: () => getCorrelativasCaidas(),
     enabled: can(["admin", "secretaria"]),
   });
 
@@ -254,6 +256,9 @@ export default function DashboardPage() {
 
   return (
     <Stack spacing={3}>
+      {/* Alertas para alumnos (solo se muestran si hay problemas) */}
+      <StudentAlerts />
+
       <Box
         sx={{
           p: { xs: 3, md: 4 },
@@ -324,6 +329,15 @@ export default function DashboardPage() {
           </Grid>
         ))}
       </Grid>
+
+      {/* Widget de Correlativas para Admin/Secretaría/Bedel/Tutor */}
+      {can(["admin", "secretaria", "bedel", "tutor"]) && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <AdminCorrelativasWidget />
+          </Grid>
+        </Grid>
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} lg={7}>
