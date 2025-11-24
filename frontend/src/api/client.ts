@@ -14,7 +14,7 @@ const fallbackBase = (() => {
   return `${currentOrigin.replace(/\/$/, "")}/api`;
 })();
 
-const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000/api";
+const BASE = import.meta.env.VITE_API_BASE || "/api";
 const REFRESH_ENDPOINT = "auth/refresh/";
 
 export interface ErrorResponse {
