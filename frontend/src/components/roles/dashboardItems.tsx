@@ -204,6 +204,12 @@ export const DASHBOARD_ITEMS = {
     icon: <WorkspacesIcon />,
     path: "/docentes/mis-materias",
   },
+  EQUIVALENCIAS_GESTION: {
+    title: "Gestión de equivalencias",
+    subtitle: "Bandeja de pedidos, disposiciones y reportes.",
+    icon: <SchoolIcon />,
+    path: "/secretaria/pedidos-equivalencias",
+  },
 } satisfies Record<string, SectionCardProps>;
 
 export type DashboardItemKey = keyof typeof DASHBOARD_ITEMS;

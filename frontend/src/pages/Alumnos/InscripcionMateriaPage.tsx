@@ -659,7 +659,7 @@ const InscripcionMateriaPage: React.FC = () => {
                   <MenuItem value="all">Todos los años</MenuItem>
                   {aniosDisponibles.map((anio) => (
                     <MenuItem key={anio} value={String(anio)}>
-                      {`${anio} año`}
+                      {`${anio}º año`}
                     </MenuItem>
                   ))}
                 </Select>

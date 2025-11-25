@@ -308,7 +308,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
     if (!anio) {
       return null;
     }
-    return `${anio}° anio`;
+    return `${anio}°`;
   }, [selectedMateria]);
 
   const plantillasDisponibles = useMemo<RegularidadMetadataPlantilla[]>(() => {

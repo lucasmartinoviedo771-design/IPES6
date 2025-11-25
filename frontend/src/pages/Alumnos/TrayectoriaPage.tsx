@@ -332,7 +332,7 @@ const TrayectoriaPage: React.FC = () => {
       {trayectoria && (
         <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
           <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons allowScrollButtonsMobile>
-            <Tab icon={<HistoryEduIcon />} iconPosition="start" label="Historial academico" {...a11yProps(0)} />
+            <Tab icon={<HistoryEduIcon />} iconPosition="start" label="Historial académico" {...a11yProps(0)} />
             <Tab icon={<TableChartIcon />} iconPosition="start" label="Cartón" {...a11yProps(1)} />
             <Tab icon={<AssignmentTurnedInIcon />} iconPosition="start" label="Mesas y notas" {...a11yProps(2)} />
             <Tab icon={<InsightsIcon />} iconPosition="start" label="Recomendaciones" {...a11yProps(3)} />
@@ -507,7 +507,7 @@ const TrayectoriaPage: React.FC = () => {
                                 <Stack direction="row" spacing={1} alignItems="center">
                                   <Typography variant="body2">{formatDate(reg.vigencia_hasta)}</Typography>
                                   {typeof reg.dias_restantes === 'number' && (
-                                    <Chip label={`${reg.dias_restantes} dias`} size="small" color={reg.dias_restantes >= 0 ? 'success' : 'error'} />
+                                    <Chip label={`${reg.dias_restantes} días`} size="small" color={reg.dias_restantes >= 0 ? 'success' : 'error'} />
                                   )}
                                 </Stack>
                               ) : '-'}
@@ -574,7 +574,7 @@ const TrayectoriaPage: React.FC = () => {
                             <Stack spacing={1}>
                               <Typography variant="subtitle1" fontWeight={700}>{mat.materia_nombre}</Typography>
                               <Stack direction="row" spacing={1}>
-                                <Chip label={`Ano ${mat.anio}`} size="small" color="primary" />
+                                <Chip label={`Año ${mat.anio}`} size="small" color="primary" />
                                 <Chip label={mat.cuatrimestre} size="small" />
                               </Stack>
                               <Stack spacing={0.5}>
@@ -610,7 +610,7 @@ const TrayectoriaPage: React.FC = () => {
                               <Typography variant="body2">Vigencia hasta: {item.vigencia_hasta ? formatDate(item.vigencia_hasta) : '-'}</Typography>
                               {typeof item.dias_restantes === 'number' && (
                                 <Chip
-                                  label={`${item.dias_restantes} dias`}
+                                  label={`${item.dias_restantes} días`}
                                   size="small"
                                   color={item.dias_restantes >= 0 ? 'success' : 'error'}
                                 />
@@ -661,7 +661,7 @@ const TrayectoriaPage: React.FC = () => {
                               color={vig.vigente ? 'success' : 'error'}
                             />
                             <Chip
-                              label={`${vig.dias_restantes} dias`}
+                              label={`${vig.dias_restantes} días`}
                               size="small"
                               color={vig.dias_restantes >= 0 ? 'primary' : 'error'}
                             />
@@ -680,7 +680,7 @@ const TrayectoriaPage: React.FC = () => {
 
       {trayectoria?.updated_at && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-          Ultima actualizacion: {formatDate(trayectoria.updated_at)}
+          Última actualización: {formatDate(trayectoria.updated_at)}
         </Typography>
       )}
     </Box>

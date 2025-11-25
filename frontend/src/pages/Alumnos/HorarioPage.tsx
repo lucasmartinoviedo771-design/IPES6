@@ -459,10 +459,10 @@ const HorarioPage: React.FC = () => {
         </Grid>
         <Grid item xs={12} md={4}>
           <FormControl fullWidth size="small" disabled={!aniosDisponibles.length}>
-            <InputLabel id="anio-select-label">Anio</InputLabel>
+            <InputLabel id="anio-select-label">Año</InputLabel>
             <Select
               labelId="anio-select-label"
-              label="Anio"
+              label="Año"
               value={anioFilter}
               onChange={(event) => setAnioFilter(event.target.value)}
             >
@@ -514,7 +514,7 @@ const HorarioPage: React.FC = () => {
               {tablasAgrupadas.map(([anio, items]) => (
                 <Box key={anio} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 2 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>
-                    {items[0].anio_plan_label || `Anio ${anio}`}
+                    {items[0].anio_plan_label || `Año ${anio}`}
                   </Typography>
                   <Stack spacing={2}>
                     {items

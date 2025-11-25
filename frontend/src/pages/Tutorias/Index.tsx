@@ -21,12 +21,7 @@ const sections: RoleDashboardSection[] = [
   {
     title: "Circuito de equivalencias",
     items: [
-      DASHBOARD_ITEMS.EQUIV_PENDING_DOCS,
-      DASHBOARD_ITEMS.EQUIV_WORKFLOW_TITULOS,
-      {
-        ...DASHBOARD_ITEMS.EQUIV_DISPOSICIONES,
-        subtitle: "Consulta los dictámenes emitidos para informar al estudiante.",
-      },
+      DASHBOARD_ITEMS.EQUIVALENCIAS_GESTION,
     ],
   },
 ];
