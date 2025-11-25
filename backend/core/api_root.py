@@ -27,6 +27,10 @@ if 'api' not in locals():
     api.add_router("/profesorados", carreras_router)
     api.add_router("/alumnos", alumnos_api_router)  # Montar el router de alumnos
     api.add_router("/alumnos/carga-notas", carga_notas_router)
+    
+    from apps.alumnos.gestion_comisiones_api import router as gestion_comisiones_router
+    api.add_router("/alumnos/comisiones", gestion_comisiones_router)
+
     api.add_router("/asistencia/docentes", asistencia_docentes_router)
     api.add_router("/asistencia/alumnos", asistencia_alumnos_router)
     api.add_router("/asistencia/calendario", asistencia_calendario_router)

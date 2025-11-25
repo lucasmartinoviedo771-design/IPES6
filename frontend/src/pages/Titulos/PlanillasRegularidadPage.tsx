@@ -450,6 +450,8 @@ export default function PlanillasRegularidadPage() {
   const [profesoradoId, setProfesoradoId] = useState("");
   const [planId, setPlanId] = useState("");
   const [materiaId, setMateriaId] = useState("");
+  const [anioCursada, setAnioCursada] = useState("");
+  const [cuatrimestre, setCuatrimestre] = useState("");
   const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
   const [planes, setPlanes] = useState<PlanDTO[]>([]);
   const [materias, setMaterias] = useState<MateriaOptionDTO[]>([]);
@@ -460,6 +462,24 @@ export default function PlanillasRegularidadPage() {
   const [planillaSeleccionada, setPlanillaSeleccionada] = useState<RegularidadPlanillaDTO | null>(null);
   const [comisionSeleccionada, setComisionSeleccionada] = useState<ComisionOptionDTO | null>(null);
   const [materiaSeleccionada, setMateriaSeleccionada] = useState<MateriaOptionDTO | null>(null);
+
+  const uniqueAnios = useMemo(() => {
+    const set = new Set<number>();
+    comisiones.forEach((c) => {
+      if (c.anio) set.add(c.anio);
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [comisiones]);
+
+  const uniqueAniosCursada = useMemo(() => {
+    const set = new Set<number>();
+    materias.forEach((m) => {
+      if (m.anio) {
+        set.add(m.anio);
+      }
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [materias]);
 
   useEffect(() => {
     listarProfesorados()
@@ -485,10 +505,8 @@ export default function PlanillasRegularidadPage() {
       return;
     }
     setLookupLoading(true);
-    const anioNumber = Number(anioLectivo);
     obtenerDatosCargaNotas({
       plan_id: Number(planId),
-      anio: Number.isNaN(anioNumber) ? undefined : anioNumber,
     })
       .then((data) => {
         setMaterias(data.materias);
@@ -499,22 +517,40 @@ export default function PlanillasRegularidadPage() {
         setComisiones([]);
       })
       .finally(() => setLookupLoading(false));
-  }, [planId, anioLectivo]);
-
-  const filteredComisiones = useMemo(() => {
-    return comisiones.filter((comision) => {
-      if (materiaId && comision.materia_id !== Number(materiaId)) return false;
-      if (profesoradoId && comision.profesorado_id !== Number(profesoradoId)) return false;
-      if (planId && comision.plan_id !== Number(planId)) return false;
-      return true;
-    });
-  }, [comisiones, materiaId, profesoradoId, planId]);
+  }, [planId]);
 
   const materiaLookup = useMemo(() => {
     const map = new Map<number, MateriaOptionDTO>();
     materias.forEach((materia) => map.set(materia.id, materia));
     return map;
   }, [materias]);
+
+  const filteredComisiones = useMemo(() => {
+    return comisiones.filter((comision) => {
+      if (anioLectivo && comision.anio !== Number(anioLectivo)) return false;
+      if (materiaId && comision.materia_id !== Number(materiaId)) return false;
+      if (profesoradoId && comision.profesorado_id !== Number(profesoradoId)) return false;
+      if (planId && comision.plan_id !== Number(planId)) return false;
+      
+      // Filtros adicionales para ayudar a encontrar la materia
+      if (anioCursada || cuatrimestre) {
+        const mat = materiaLookup.get(comision.materia_id);
+        if (!mat) return false;
+        if (anioCursada && mat.anio !== Number(anioCursada)) return false;
+        if (cuatrimestre && mat.cuatrimestre !== cuatrimestre) return false;
+      }
+      
+      return true;
+    });
+  }, [comisiones, materiaId, profesoradoId, planId, anioCursada, cuatrimestre, materiaLookup]);
+
+  const filteredMateriasOptions = useMemo(() => {
+    return materias.filter((m) => {
+      if (anioCursada && m.anio !== Number(anioCursada)) return false;
+      if (cuatrimestre && m.cuatrimestre !== cuatrimestre) return false;
+      return true;
+    });
+  }, [materias, anioCursada, cuatrimestre]);
 
   const handleVerPlanilla = async (comision: ComisionOptionDTO) => {
     setComisionSeleccionada(comision);
@@ -542,15 +578,24 @@ export default function PlanillasRegularidadPage() {
 
       <Paper sx={{ p: 3 }}>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={2}>
             <TextField
+              select
               label="Año lectivo"
               value={anioLectivo}
               onChange={(event) => setAnioLectivo(event.target.value)}
               fullWidth
-              inputMode="numeric"
               disabled={disableFilters}
-            />
+            >
+              <MenuItem value="">
+                <em>Todos</em>
+              </MenuItem>
+              {uniqueAnios.map((anio) => (
+                <MenuItem key={anio} value={String(anio)}>
+                  {anio}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid item xs={12} md={3}>
             <TextField
@@ -575,7 +620,7 @@ export default function PlanillasRegularidadPage() {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={2}>
             <TextField
               select
               label="Plan"
@@ -597,7 +642,45 @@ export default function PlanillasRegularidadPage() {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={1}>
+            <TextField
+              select
+              label="Año"
+              value={anioCursada}
+              onChange={(event) => setAnioCursada(event.target.value)}
+              fullWidth
+              disabled={!planId || disableFilters}
+            >
+              <MenuItem value="">
+                <em>Todos</em>
+              </MenuItem>
+              {uniqueAniosCursada.map((a) => (
+                <MenuItem key={a} value={String(a)}>
+                  {a}º
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              select
+              label="Cuatrimestre"
+              value={cuatrimestre}
+              onChange={(event) => setCuatrimestre(event.target.value)}
+              fullWidth
+              disabled={!planId || disableFilters}
+            >
+              <MenuItem value="">
+                <em>Todos</em>
+              </MenuItem>
+              {Object.entries(CUATRIMESTRE_LABELS).map(([key, label]) => (
+                <MenuItem key={key} value={key}>
+                  {label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={2}>
             <TextField
               select
               label="Materia"
@@ -609,7 +692,7 @@ export default function PlanillasRegularidadPage() {
               <MenuItem value="">
                 <em>Todas</em>
               </MenuItem>
-              {materias.map((materia) => (
+              {filteredMateriasOptions.map((materia) => (
                 <MenuItem key={materia.id} value={materia.id}>
                   {materia.nombre}
                 </MenuItem>

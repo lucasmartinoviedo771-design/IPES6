@@ -91,7 +91,7 @@ const formatHorarios = (horarios: Horario[]) =>
 
 const mensajeError = (error: unknown) => {
   const err = error as any;
-  return err?.response?.data?.message || err?.message || 'No se pudo registrar la inscripcion.';
+  return err?.response?.data?.message || err?.message || 'No se pudo registrar la inscripción.';
 };
 
 const mapMateria = (dto: MateriaPlanDTO): Materia => ({
@@ -369,10 +369,10 @@ const CambioComisionPage: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <BackButton fallbackPath={canGestionar ? '/secretaria' : '/alumnos'} />
       <Typography variant="h4" gutterBottom>
-        Cambio de Comision
+        Cambio de Comisión
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Si una materia queda bloqueada por superposicion horaria, podes solicitar cursarla en otro profesorado.
+        Si una materia queda bloqueada por superposición horaria, podés solicitar cursarla en otro profesorado.
       </Typography>
 
       {canGestionar && (
@@ -417,13 +417,13 @@ const CambioComisionPage: React.FC = () => {
 
       {shouldFetch && !ventanaActiva && (
         <Alert severity="warning" sx={{ mt: 2 }}>
-          No hay una ventana de inscripcion activa. Las solicitudes quedaran pendientes hasta que se habilite.
+          No hay una ventana de inscripción activa. Las solicitudes quedarán pendientes hasta que se habilite.
         </Alert>
       )}
 
       {shouldFetch && materiasConChoque.length === 0 ? (
         <Alert severity="info" sx={{ mt: 2 }}>
-          No se detectaron materias habilitadas con superposicion horaria.
+          No se detectaron materias habilitadas con superposición horaria.
         </Alert>
       ) : shouldFetch ? (
         <Stack gap={2} sx={{ mt: 2 }}>
@@ -550,7 +550,7 @@ function Alternativas({
       )}
       {!loading && !error && (!items || items.length === 0) && (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Sin alternativas que eviten superposicion en este cuatrimestre.
+          Sin alternativas que eviten superposición en este cuatrimestre.
         </Typography>
       )}
       <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
@@ -560,7 +560,7 @@ function Alternativas({
               <Stack gap={0.5}>
                 <Typography variant="subtitle2">{alt.profesorado}</Typography>
                 <Typography variant="body2">
-                  Comision {alt.comision.codigo} ({alt.comision.turno})
+                  Comisión {alt.comision.codigo} ({alt.comision.turno})
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {formatHorarios(alt.horarios)}
@@ -571,7 +571,7 @@ function Alternativas({
                   disabled={disabled}
                   onClick={() => onSolicitar(alt)}
                 >
-                  Solicitar inscripcion
+                  Solicitar inscripción
                 </Button>
               </Stack>
             </Paper>

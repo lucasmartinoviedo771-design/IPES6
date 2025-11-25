@@ -111,7 +111,7 @@ const CargarHorarioPage: React.FC = () => {
   }, [fetchHorario]);
 
   const handleDuplicateToOtherCuatri = () => {
-    alert('Funcionalidad "Duplicar al otro cuatri" pendiente de implementación. Necesito más detalles sobre su comportamiento para cursos anuales.');
+    alert('Funcionalidad "Duplicar al otro cuatrimestre" pendiente de implementación. Necesito más detalles sobre su comportamiento para cursos anuales.');
   };
 
   const handleSave = async () => {

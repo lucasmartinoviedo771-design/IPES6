@@ -5,9 +5,7 @@ const sections: RoleDashboardSection[] = [
   {
     title: "Evaluación y dictamen",
     items: [
-      DASHBOARD_ITEMS.EQUIV_BANDEJA_REVIEW,
-      DASHBOARD_ITEMS.EQUIV_DISPOSICIONES,
-      DASHBOARD_ITEMS.EQUIV_REPORTES,
+      DASHBOARD_ITEMS.EQUIVALENCIAS_GESTION,
     ],
   },
 ];

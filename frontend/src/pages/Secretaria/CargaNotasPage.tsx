@@ -70,12 +70,14 @@ import OralExamActaDialog, { OralActFormValues, OralActFormTopic } from "@/compo
 import { PageHero } from "@/components/ui/GradientTitles";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import { OralTopicScore, generarActaExamenOralPDF } from "@/utils/actaOralPdf";
+import GestionComisionesDialog from "./components/GestionComisionesDialog";
 
 type FiltersState = {
   profesoradoId: number | null;
   planId: number | null;
   anio: number | null;
   cuatrimestre: string | null;
+  anioCursada: number | null;
   materiaId: number | null;
   comisionId: number | null;
 };
@@ -130,9 +132,10 @@ const CargaNotasPage: React.FC = () => {
     planId: null,
     anio: null,
     cuatrimestre: null,
+    anioCursada: null,
     materiaId: null,
-  comisionId: null,
-});
+    comisionId: null,
+  });
 
   const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
   const [planes, setPlanes] = useState<PlanDTO[]>([]);
@@ -184,14 +187,15 @@ const [finalSuccess, setFinalSuccess] = useState<string | null>(null);
 const [finalPermissionDenied, setFinalPermissionDenied] = useState(false);
 const [loadingFinalPlanes, setLoadingFinalPlanes] = useState(false);
 const [loadingFinalMaterias, setLoadingFinalMaterias] = useState(false);
-const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
-const [finalPendingPayload, setFinalPendingPayload] = useState<{ mesaId: number; payload: FinalPlanillaPayload } | null>(null);
-const [finalCierreLoading, setFinalCierreLoading] = useState(false);
-const [oralActDrafts, setOralActDrafts] = useState<Record<number, OralActFormValues>>({});
-const [oralDialogRow, setOralDialogRow] = useState<FinalRowState | null>(null);
-const [oralActaLoading, setOralActaLoading] = useState(false);
-const [oralActaSaving, setOralActaSaving] = useState(false);
-const [downloadingOralBatch, setDownloadingOralBatch] = useState(false);
+  const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
+  const [finalPendingPayload, setFinalPendingPayload] = useState<{ mesaId: number; payload: FinalPlanillaPayload } | null>(null);
+  const [finalCierreLoading, setFinalCierreLoading] = useState(false);
+  const [oralActDrafts, setOralActDrafts] = useState<Record<number, OralActFormValues>>({});
+  const [oralDialogRow, setOralDialogRow] = useState<FinalRowState | null>(null);
+  const [oralActaLoading, setOralActaLoading] = useState(false);
+  const [oralActaSaving, setOralActaSaving] = useState(false);
+  const [downloadingOralBatch, setDownloadingOralBatch] = useState(false);
+  const [gestionComisionesOpen, setGestionComisionesOpen] = useState(false);
 
   useEffect(() => {
     const loadProfesorados = async () => {
@@ -233,7 +237,8 @@ const [downloadingOralBatch, setDownloadingOralBatch] = useState(false);
     const profesoradoId = filters.profesoradoId;
     if (!profesoradoId) {
       setPlanes([]);
-      setFilters((prev) => ({ ...prev, planId: null, materiaId: null, comisionId: null, anio: null, cuatrimestre: null }));
+      setPlanes([]);
+      setFilters((prev) => ({ ...prev, planId: null, materiaId: null, comisionId: null, anio: null, cuatrimestre: null, anioCursada: null }));
       return;
     }
     const loadPlanes = async () => {
@@ -460,8 +465,9 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
     const planId = filters.planId;
     if (!planId) {
       setMaterias([]);
+      setMaterias([]);
       setAllComisiones([]);
-      setFilters((prev) => ({ ...prev, materiaId: null, comisionId: null, anio: null, cuatrimestre: null }));
+      setFilters((prev) => ({ ...prev, materiaId: null, comisionId: null, anio: null, cuatrimestre: null, anioCursada: null }));
       return;
     }
     const loadDatos = async () => {
@@ -469,7 +475,6 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
       try {
         const data = await obtenerDatosCargaNotas({
           plan_id: planId,
-          anio: filters.anio ?? undefined,
         });
         setMaterias(data.materias);
         setAllComisiones(data.comisiones);
@@ -480,7 +485,7 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
       }
     };
     loadDatos();
-  }, [filters.planId, filters.anio]);
+  }, [filters.planId]);
 
   const uniqueAnios = useMemo(() => {
     const set = new Set<number>();
@@ -500,6 +505,16 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [allComisiones]);
+
+  const uniqueAniosCursada = useMemo(() => {
+    const set = new Set<number>();
+    materias.forEach((m) => {
+      if (m.anio) {
+        set.add(m.anio);
+      }
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [materias]);
 
   useEffect(() => {
     if (!filters.planId) return;
@@ -529,8 +544,11 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
         return clave === filters.cuatrimestre;
       });
     }
+    if (filters.anioCursada) {
+      base = base.filter((m) => m.anio === filters.anioCursada);
+    }
     return base;
-  }, [materias, filters.anio, filters.cuatrimestre]);
+  }, [materias, filters.anio, filters.cuatrimestre, filters.anioCursada]);
 
   const filteredComisiones = useMemo(() => {
     let base = allComisiones;
@@ -546,8 +564,17 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
         return clave === filters.cuatrimestre;
       });
     }
+    if (filters.anioCursada) {
+      // Necesitamos saber el anio de cursada de la materia de esta comision
+      // Podemos usar 'materias' para buscarlo
+      const materiaMap = new Map(materias.map(m => [m.id, m.anio]));
+      base = base.filter((c) => {
+        const anioMateria = materiaMap.get(c.materia_id);
+        return anioMateria === filters.anioCursada;
+      });
+    }
     return base;
-  }, [allComisiones, filters.materiaId, filters.anio, filters.cuatrimestre]);
+  }, [allComisiones, filters.materiaId, filters.anio, filters.cuatrimestre, filters.anioCursada, materias]);
 
   const finalAvailableAnios = useMemo(() => {
     const set = new Set<number>();
@@ -661,8 +688,17 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
       }
       return;
     }
-    if (!filters.comisionId || !filteredComisiones.some((c) => c.id === filters.comisionId)) {
-      setFilters((prev) => ({ ...prev, comisionId: filteredComisiones[0].id }));
+    // Auto-seleccionar si hay exactamente una comisión (la "A" por defecto)
+    if (filteredComisiones.length === 1) {
+      if (filters.comisionId !== filteredComisiones[0].id) {
+        setFilters((prev) => ({ ...prev, comisionId: filteredComisiones[0].id }));
+      }
+    } else {
+      // Si hay múltiples, solo reseteamos si la seleccionada ya no es válida
+      // Esto obliga al usuario a elegir explícitamente entre "A" y "B"
+      if (filters.comisionId && !filteredComisiones.some((c) => c.id === filters.comisionId)) {
+        setFilters((prev) => ({ ...prev, comisionId: null }));
+      }
     }
   }, [filteredComisiones, filters.materiaId, filters.comisionId]);
 
@@ -1068,6 +1104,7 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
                         comisionId: null,
                         anio: null,
                         cuatrimestre: null,
+                        anioCursada: null,
                       }))
                     }
                     renderInput={(params) => (
@@ -1102,6 +1139,7 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
                         comisionId: null,
                         anio: null,
                         cuatrimestre: null,
+                        anioCursada: null,
                       }))
                     }
                     renderInput={(params) => (
@@ -1149,7 +1187,7 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={6} lg={4}>
+                <Grid item xs={12} md={6} lg={2}>
                   <FormControl fullWidth>
                     <InputLabel id="cuatrimestre-select">Cuatrimestre</InputLabel>
                     <Select
@@ -1171,6 +1209,33 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
                       {uniqueCuatrimestres.map((clave) => (
                         <MenuItem key={clave} value={clave}>
                           {cuatrimestreLabel[clave] ?? clave}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6} lg={2}>
+                  <FormControl fullWidth>
+                    <InputLabel id="anio-cursada-select">Año (Cursada)</InputLabel>
+                    <Select
+                      labelId="anio-cursada-select"
+                      label="Año (Cursada)"
+                      value={filters.anioCursada ?? ""}
+                      onChange={(event) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          anioCursada: event.target.value ? Number(event.target.value) : null,
+                          materiaId: null,
+                          comisionId: null,
+                        }))
+                      }
+                    >
+                      <MenuItem value="">
+                        <em>TODOS</em>
+                      </MenuItem>
+                      {uniqueAniosCursada.map((a) => (
+                        <MenuItem key={a} value={a}>
+                          {a}º Año
                         </MenuItem>
                       ))}
                     </Select>
@@ -1210,6 +1275,13 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
                     )}
                   />
                 </Grid>
+                {filters.materiaId && (
+                  <Grid item xs={12}>
+                    <Button variant="outlined" size="small" onClick={() => setGestionComisionesOpen(true)}>
+                      Gestionar Comisiones
+                    </Button>
+                  </Grid>
+                )}
               </Grid>
             </Stack>
           </Paper>
@@ -1934,6 +2006,15 @@ const finalReadOnly = finalPermissionDenied || (finalPlanilla ? !finalPlanilla.p
         onSave={handleSaveOralActa}
       />
     )}
+      <GestionComisionesDialog
+        open={gestionComisionesOpen}
+        onClose={() => setGestionComisionesOpen(false)}
+        materiaId={filters.materiaId ?? 0}
+        anioLectivo={filters.anio ?? new Date().getFullYear()}
+        materiaNombre={materias.find((m) => m.id === filters.materiaId)?.nombre ?? ""}
+        planId={filters.planId ?? 0}
+        anioCursada={materias.find((m) => m.id === filters.materiaId)?.anio ?? 1}
+      />
     </Box>
   );
 };
