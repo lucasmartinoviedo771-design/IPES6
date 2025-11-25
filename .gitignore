@@ -31,3 +31,6 @@ venv/
 db.sqlite3
 media/
 staticfiles/
+
+# Ignored PDFs
+*.pdf
