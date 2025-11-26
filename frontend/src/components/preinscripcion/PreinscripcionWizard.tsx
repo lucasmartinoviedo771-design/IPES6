@@ -44,6 +44,8 @@ import Confirmacion from "./steps/Confirmacion";
 import { PageHero } from "@/components/ui/GradientTitles";
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 
+
+
 const STORAGE_KEY = "preinscripcion_form_data";
 
 dayjs.extend(isSameOrBefore);
@@ -59,11 +61,11 @@ const steps = [
 ];
 const stepHints = [
   "Validamos identidad y fecha de nacimiento.",
-  "Telefonos, email y domicilio de contacto.",
-  "Titulos secundarios/superiores y situacion laboral.",
+  "Teléfonos, email y domicilio de contacto.",
+  "Títulos secundarios/superiores y situación laboral.",
   "Datos de salud, apoyos y consentimiento informado.",
-  "Elegis carrera, cargas foto 4x4 y documentacion requerida.",
-  "Descarga la planilla PDF y enviamos tu preinscripcion.",
+  "Elegís carrera, cargás foto 4x4 y documentación requerida.",
+  "Descargá la planilla PDF y enviamos tu preinscripción.",
 ];
 
 // Mapea los datos del formulario a la estructura que espera la API
@@ -270,17 +272,17 @@ export default function PreinscripcionWizard() {
       <Box sx={pageBgSx}>
         <Stack spacing={3} maxWidth={960} mx="auto">
           <PageHero
-            title="Preinscripcion"
-            subtitle="Todavia no hay una ventana habilitada para completar el formulario."
+            title="Preinscripción"
+            subtitle="Todavía no hay una ventana habilitada para completar el formulario."
           />
           <Paper sx={{ p: 3, borderRadius: 4, border: "1px solid #e8e3d9", boxShadow: "0 20px 45px rgba(0,0,0,0.06)" }}>
             <Alert severity="info" sx={{ alignItems: "center" }}>
-              <AlertTitle>Preinscripcion cerrada</AlertTitle>
+              <AlertTitle>Preinscripción cerrada</AlertTitle>
               <Typography variant="body1" sx={{ mb: 1 }}>
                 Actualmente no se encuentran habilitadas las preinscripciones.
               </Typography>
               <Typography variant="body1">
-                Para mas informacion, visita <a href="http://www.ipespaulofreire.edu.ar" target="_blank" rel="noopener noreferrer">www.ipespaulofreire.edu.ar</a> o acercate a Estrada 1575, Rio Grande, Tierra del Fuego.
+                Para más información, visitá <a href="http://www.ipespaulofreire.edu.ar" target="_blank" rel="noopener noreferrer">www.ipespaulofreire.edu.ar</a> o acercate a Estrada 1575, Río Grande, Tierra del Fuego.
               </Typography>
             </Alert>
           </Paper>
@@ -306,16 +308,71 @@ export default function PreinscripcionWizard() {
       <Box sx={pageBgSx}>
         <Stack spacing={3} maxWidth={1200} mx="auto">
           <PageHero
-            title="Preinscripcion 2025"
-            subtitle="Completa los 6 pasos, descarga la planilla y presentala con tu documentacion."
+            title="Preinscripción 2025"
+            subtitle="Completá los 6 pasos, descargá la planilla y presentala con tu documentación."
             actions={
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Chip label="Formulario publico" size="small" variant="outlined" />
-                <Chip label={`Ventana: ${ventanaLabel}`} size="small" color="success" />
+                <Chip label={`Inscripción abierta: ${ventanaLabel}`} size="small" color="success" />
               </Stack>
             }
           />
-          <Grid container spacing={2.5} alignItems="stretch">
+          <Grid container spacing={2.5} alignItems="stretch" direction={{ xs: "column-reverse", md: "row" }}>
+            <Grid item xs={12} md={4}>
+              <Stack spacing={2}>
+                {/* Oferta Académica */}
+                <Paper sx={{ p: 2.5, borderRadius: 4, border: "1px solid #e6ddd1", background: "#ffffff", boxShadow: "0 12px 30px rgba(0,0,0,0.05)" }}>
+                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2, color: INSTITUTIONAL_GREEN }}>Oferta Académica</Typography>
+                   
+                   <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Turno Mañana</Typography>
+                   <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 1.5, typography: 'body2', color: 'text.secondary' }}>
+                     <li>Geografía</li>
+                     <li>Educación Inicial</li>
+                     <li>Educación Primaria</li>
+                   </Box>
+
+                   <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Turno Tarde</Typography>
+                   <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 1.5, typography: 'body2', color: 'text.secondary' }}>
+                     <li>Lengua y Literatura</li>
+                     <li>Historia</li>
+                   </Box>
+
+                   <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Turno Vespertino</Typography>
+                   <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 0, typography: 'body2', color: 'text.secondary' }}>
+                     <li>Biología</li>
+                     <li>Matemática</li>
+                     <li>Certificación Docente</li>
+                     <li>Educación Especial</li>
+                   </Box>
+                </Paper>
+
+                {/* Requisitos */}
+                <Paper sx={{ p: 2.5, borderRadius: 4, border: "1px solid #e6ddd1", background: "#fffbf6", boxShadow: "0 12px 30px rgba(0,0,0,0.05)" }}>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Requisitos de Inscripción</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">• Preinscripción on-line</Typography>
+                    <Typography variant="body2">• Fotocopia legalizada del DNI</Typography>
+                    <Typography variant="body2">• Fotocopia legalizada del título secundario o analítico</Typography>
+                    <Typography variant="body2">• Certificado de buena salud</Typography>
+                    <Typography variant="body2">• 2 fotos carnet y 2 folios oficio</Typography>
+                    <Typography variant="body2">• Curso introductorio obligatorio</Typography>
+                    
+                    <Divider sx={{ my: 1 }} />
+                    
+                    <Typography variant="subtitle2" fontWeight={700} fontSize={13}>Si adeuda materias:</Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>Certificado de estudios regularizados donde conste que adeuda materias.</Typography>
+                    
+                    <Typography variant="subtitle2" fontWeight={700} fontSize={13}>Si NO adeuda materias:</Typography>
+                    <Typography variant="body2">Certificado provisorio final de estudios Secundarios.</Typography>
+
+                    <Divider sx={{ my: 1 }} />
+                     <Typography variant="subtitle2" fontWeight={700} fontSize={13}>Para Certificación Docente:</Typography>
+                    <Typography variant="body2">Título del nivel superior legalizado e incumbencias.</Typography>
+                  </Stack>
+                </Paper>
+
+
+              </Stack>
+            </Grid>
             <Grid item xs={12} md={8}>
               <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 4, boxShadow: "0 20px 45px rgba(0,0,0,0.08)", border: "1px solid #e8e3d9", height: "100%" }}>
                 <Stack spacing={2.5}>
@@ -362,8 +419,8 @@ export default function PreinscripcionWizard() {
                       submit.status !== "ok" ? 
                       <Confirmacion carreraNombre={carreraNombre} onDownloaded={() => setPdfDownloaded(true)} /> : 
                       <Alert severity="success">
-                        <AlertTitle>Preinscripcion enviada con exito</AlertTitle>
-                        Tu codigo de seguimiento es: <strong>{submit.data.codigo}</strong>
+                        <AlertTitle>Preinscripción enviada con éxito</AlertTitle>
+                        Tu código de seguimiento es: <strong>{submit.data.codigo}</strong>
                       </Alert>
                     )}
                   </Box>
@@ -382,7 +439,7 @@ export default function PreinscripcionWizard() {
                     </Button>
                     <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", sm: "flex-end" }} flexWrap="wrap">
                       <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"} sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}>
-                        Atras
+                        Atrás
                       </Button>
                     {activeStep < steps.length - 1 ? (
                       <Button variant="contained" onClick={() => void handleNext()} sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}>
@@ -395,7 +452,7 @@ export default function PreinscripcionWizard() {
                         disabled={!pdfDownloaded || submit.status === "loading" || submit.status === "ok"}
                         sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}
                       >
-                        {submit.status === "loading" ? <CircularProgress size={24} /> : "Enviar preinscripcion"}
+                        {submit.status === "loading" ? <CircularProgress size={24} /> : "Enviar preinscripción"}
                       </Button>
                     )}
                     </Stack>
@@ -406,35 +463,6 @@ export default function PreinscripcionWizard() {
                   )}
                 </Stack>
               </Paper>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Stack spacing={2}>
-                <Paper sx={{ p: 2.5, borderRadius: 4, border: "1px solid #e6ddd1", background: "#fffbf6", boxShadow: "0 12px 30px rgba(0,0,0,0.05)" }}>
-                  <Typography variant="subtitle1" fontWeight={700}>Checklist rapido</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Tenelo a mano para avanzar sin frenos:
-                  </Typography>
-                  <Stack component="ul" spacing={1} sx={{ pl: 2.2, mt: 0, mb: 0, color: "text.secondary", listStyle: "disc" }}>
-                    <Typography component="li" variant="body2">DNI y numero de CUIL.</Typography>
-                    <Typography component="li" variant="body2">Email y telefonos actualizados.</Typography>
-                    <Typography component="li" variant="body2">Foto 4x4 digital (JPG/PNG) si ya la tenes.</Typography>
-                    <Typography component="li" variant="body2">Titulo secundario o constancia y datos del establecimiento.</Typography>
-                    <Typography component="li" variant="body2">Contacto de emergencia (nombre y telefono).</Typography>
-                  </Stack>
-                </Paper>
-                <Paper sx={{ p: 2.5, borderRadius: 4, border: "1px solid #e6ddd1", background: "#ffffff", boxShadow: "0 12px 30px rgba(0,0,0,0.05)" }}>
-                  <Typography variant="subtitle1" fontWeight={700}>Tips rapidos</Typography>
-                  <Stack spacing={1} mt={1}>
-                    <Typography variant="body2" color="text.secondary">- Guardamos lo que completas en este dispositivo mientras sigas en esta pagina.</Typography>
-                    <Typography variant="body2" color="text.secondary">- En el paso 6 descarga la planilla PDF; recien despues se habilita el envio.</Typography>
-                    <Typography variant="body2" color="text.secondary">- Si necesitas corregir, podes reiniciar con "Limpiar formulario".</Typography>
-                  </Stack>
-                  <Divider sx={{ my: 1.5 }} />
-                  <Typography variant="body2" color="text.secondary">
-                    Recorda presentar la planilla impresa con tu DNI en Bedelia (Estrada 1575, Rio Grande).
-                  </Typography>
-                </Paper>
-              </Stack>
             </Grid>
           </Grid>
         </Stack>
