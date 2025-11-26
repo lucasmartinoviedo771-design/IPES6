@@ -39,7 +39,7 @@ const CarreraDocumentacion: React.FC<Props> = ({
     }
 
     if (!/^image\/(png|jpe?g)$/i.test(selectedFile.type)) {
-      alert("Formato invalido. Solo JPG o PNG.");
+      alert("Formato inválido. Solo JPG o PNG.");
       e.target.value = "";
       if (typeof onFileChange === "function") onFileChange(null);
       return;
@@ -47,7 +47,7 @@ const CarreraDocumentacion: React.FC<Props> = ({
 
     if (selectedFile.size > maxBytes) {
       const mb = (maxBytes / (1024 * 1024)).toFixed(1);
-      alert(`La imagen supera el tamano maximo (${mb} MB).`);
+      alert(`La imagen supera el tamaño máximo (${mb} MB).`);
       e.target.value = "";
       if (typeof onFileChange === "function") onFileChange(null);
       return;
