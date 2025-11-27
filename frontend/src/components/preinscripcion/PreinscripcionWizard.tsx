@@ -22,9 +22,7 @@ import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
-// import { useNavigate } from "react-router-dom";
 
-// Lógica de negocio y tipos
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues } from "./defaultValues";
 import { PreinscripcionOut } from "@/types/preinscripcion";
@@ -32,7 +30,6 @@ import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
 import { apiUploadPreDoc } from "@/api/preinscripciones";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 
-// Pasos del Wizard
 import DatosPersonales from "./steps/DatosPersonales";
 import Contacto from "./steps/Contacto";
 import EstudiosSecundarios from "./steps/EstudiosSecundarios";
@@ -43,8 +40,6 @@ import CarreraDocumentacion from "./steps/CarreraDocumentacion";
 import Confirmacion from "./steps/Confirmacion";
 import { PageHero } from "@/components/ui/GradientTitles";
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
-
-
 
 const STORAGE_KEY = "preinscripcion_form_data";
 
@@ -68,7 +63,6 @@ const stepHints = [
   "Descargá la planilla PDF y enviamos tu preinscripción.",
 ];
 
-// Mapea los datos del formulario a la estructura que espera la API
 type SubmissionPayload = PreinscripcionForm & {
   carrera_id: number;
   captcha_token?: string | null;
@@ -94,7 +88,6 @@ type SubmitState =
   | { status: "ok"; data: PreinscripcionOut };
 
 export default function PreinscripcionWizard() {
-  // const navigate = useNavigate();
   let recaptchaContext: ReturnType<typeof useGoogleReCaptcha> | null = null;
   try {
     recaptchaContext = useGoogleReCaptcha();
@@ -128,7 +121,6 @@ export default function PreinscripcionWizard() {
     mode: "onChange",
   });
 
-  // Persistir el formulario en localStorage
   useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
       try {
@@ -180,8 +172,6 @@ export default function PreinscripcionWizard() {
     return () => { alive = false; };
   }, []);
 
-  // Eliminamos la apertura del PDF del backend; usaremos el comprobante local
-  // Exigir descarga previa del PDF en el paso final
   useEffect(() => {
     if (activeStep === steps.length - 1) setPdfDownloaded(false);
   }, [activeStep]);
@@ -243,7 +233,6 @@ export default function PreinscripcionWizard() {
 
   const onSubmitError: SubmitErrorHandler<PreinscripcionForm> = (errors) => {
     console.error("Errores de validación del formulario:", errors);
-    // Find the first field with an error and scroll to it
     const errorKeys = Object.keys(errors) as Array<keyof typeof errors>;
     const firstErrorField = errorKeys.find((field) => !!errors[field]);
     if (firstErrorField) {
@@ -319,7 +308,6 @@ export default function PreinscripcionWizard() {
           <Grid container spacing={2.5} alignItems="stretch" direction={{ xs: "column-reverse", md: "row" }}>
             <Grid item xs={12} md={4}>
               <Stack spacing={2}>
-                {/* Oferta Académica */}
                 <Paper sx={{ p: 2.5, borderRadius: 4, border: "1px solid #e6ddd1", background: "#ffffff", boxShadow: "0 12px 30px rgba(0,0,0,0.05)" }}>
                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2, color: INSTITUTIONAL_GREEN }}>Oferta Académica</Typography>
                    
@@ -345,7 +333,6 @@ export default function PreinscripcionWizard() {
                    </Box>
                 </Paper>
 
-                {/* Requisitos */}
                 <Paper sx={{ p: 2.5, borderRadius: 4, border: "1px solid #e6ddd1", background: "#fffbf6", boxShadow: "0 12px 30px rgba(0,0,0,0.05)" }}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>Requisitos de Inscripción</Typography>
                   <Stack spacing={1}>
