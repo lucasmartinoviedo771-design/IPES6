@@ -49,6 +49,7 @@ class DocenteMarcarPresenteIn(Schema):
     dni: str
     observaciones: Optional[str] = None
     via: str = "docente"  # docente | staff
+    propagar_turno: bool = False
 
 
 class DocenteMarcarPresenteOut(Schema):
@@ -70,6 +71,14 @@ class AlumnoResumenOut(Schema):
     apellido: str
     estado: str
     justificada: bool
+    porcentaje_asistencia: float = 0.0
+
+
+class ClaseNavegacionOut(Schema):
+    id: int
+    fecha: date
+    descripcion: str
+    actual: bool = False
 
 
 class ClaseAlumnoDetalleOut(Schema):
@@ -79,11 +88,15 @@ class ClaseAlumnoDetalleOut(Schema):
     horario: Optional[str]
     materia: str
     docentes: List[str]
+    docente_presente: bool
+    docente_categoria_asistencia: Optional[str] = None
     alumnos: List[AlumnoResumenOut]
+    otras_clases: List[ClaseNavegacionOut] = []
 
 
 class RegistrarAsistenciaAlumnosIn(Schema):
-    presentes: List[int]  # IDs de estudiantes
+    presentes: List[int]
+    tardes: List[int] = []  # IDs de estudiantes
     observaciones: Optional[str] = None
 
 
@@ -232,3 +245,13 @@ class AsistenciaCalendarioEventoOut(Schema):
     motivo: Optional[str]
     activo: bool
     creado_en: datetime
+
+
+class AlumnoAsistenciaItemOut(Schema):
+    id: int
+    fecha: date
+    materia: str
+    comision: str
+    estado: str
+    justificada: bool
+    observacion: Optional[str]

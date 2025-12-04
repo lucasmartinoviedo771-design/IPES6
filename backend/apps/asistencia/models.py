@@ -256,6 +256,7 @@ class AsistenciaAlumno(models.Model):
         PRESENTE = "presente", "Presente"
         AUSENTE = "ausente", "Ausente"
         AUSENTE_JUSTIFICADA = "ausente_justificada", "Ausente justificada"
+        TARDE = "tarde", "Tarde"
 
     class RegistradoVia(models.TextChoices):
         DOCENTE = "docente", "Docente"
@@ -322,6 +323,7 @@ class AsistenciaDocente(models.Model):
     class MarcacionCategoria(models.TextChoices):
         NORMAL = "normal", "Normal"
         TARDE = "tarde", "Llegada tarde"
+        DIFERIDA = "diferida", "Carga diferida"
 
     clase = models.ForeignKey(
         ClaseProgramada,

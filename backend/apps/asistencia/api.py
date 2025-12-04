@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from typing import List
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -25,6 +26,7 @@ from .models import (
     AsistenciaDocente,
     ClaseProgramada,
     CalendarioAsistenciaEvento,
+    CursoAlumnoSnapshot,
     DocenteMarcacionLog,
     Justificacion,
 )
@@ -48,6 +50,7 @@ from .schemas import (
     JustificacionListItemOut,
     JustificacionOut,
     JustificacionRechazarIn,
+    AlumnoAsistenciaItemOut,
 )
 from .services import (
     apply_justification,
@@ -56,6 +59,7 @@ from .services import (
     generate_classes_for_date,
     generate_classes_for_range,
     registrar_log_docente,
+    sync_course_snapshots,
 )
 
 
@@ -468,19 +472,19 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
             alerta_motivo = f"Marcacion anticipada registrada por staff a las {ahora.strftime('%H:%M:%S')}"
             detalle_log = "Marcacion anticipada (staff)"
         if ahora > ventana_fin:
+            # Permitir carga diferida para docentes
             if not staff_override:
-                registrar_log_docente(
-                    dni=payload.dni,
-                    resultado=DocenteMarcacionLog.Resultado.RECHAZADO,
-                    docente=docente,
-                    clase=clase,
-                    detalle="Intento fuera del horario de catedra",
-                )
-                raise HttpError(400, "No tenes horas asignadas en este horario.")
-            alerta = True
-            alerta_tipo = "fuera_de_ventana"
-            alerta_motivo = f"Marcacion posterior registrada por staff a las {ahora.strftime('%H:%M:%S')}"
-            detalle_log = "Marcacion posterior (staff)"
+                # Antes se rechazaba, ahora se permite como DIFERIDA
+                alerta = True
+                alerta_tipo = "carga_diferida"
+                categoria = AsistenciaDocente.MarcacionCategoria.DIFERIDA
+                alerta_motivo = f"Carga diferida registrada a las {ahora.strftime('%H:%M:%S')}"
+                detalle_log = "Carga diferida"
+            else:
+                alerta = True
+                alerta_tipo = "fuera_de_ventana"
+                alerta_motivo = f"Marcacion posterior registrada por staff a las {ahora.strftime('%H:%M:%S')}"
+                detalle_log = "Marcacion posterior (staff)"
         elif ahora > umbral_tarde:
             alerta = True
             alerta_tipo = "llegada_tarde"
@@ -525,6 +529,22 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
         detalle=detalle_log,
         alerta=alerta,
     )
+
+    # Propagar asistencia a otras clases del turno (Solo si se solicita explA A citamente)
+    if payload.propagar_turno:
+        from .services import propagar_asistencia_docente_turno
+        propagar_asistencia_docente_turno(
+            clase_origen=clase,
+            docente=docente,
+            estado_origen=asistencia.estado,
+            registrado_por=asistencia.registrado_por,
+            observaciones=asistencia.observaciones,
+            marcacion_categoria=asistencia.marcacion_categoria,
+            alerta=asistencia.alerta,
+            alerta_tipo=asistencia.alerta_tipo,
+            alerta_motivo=asistencia.alerta_motivo,
+        )
+
     return DocenteMarcarPresenteOut(
         clase_id=clase.id,
         estado=asistencia.estado,
@@ -553,36 +573,112 @@ def obtener_clase_alumnos(request: HttpRequest, clase_id: int) -> ClaseAlumnoDet
     if not clase:
         raise HttpError(404, "No se encontrAA3 la clase requerida.")
 
+    # Lazy Snapshot Sync: Verificar si los snapshots de esta comisiAA3n estA AAn actualizados
+    # Si no hay snapshots o son muy viejos (> 24hs), forzamos una sincronizaciAA3n ahora.
+    last_snapshot = CursoAlumnoSnapshot.objects.filter(comision_id=clase.comision_id).order_by("-sincronizado_en").first()
+    should_sync = False
+    if not last_snapshot:
+        should_sync = True
+    else:
+        # Usamos timezone.now() para comparar
+        now = timezone.now()
+        diff = now - last_snapshot.sincronizado_en
+        if diff > timedelta(hours=24):
+            should_sync = True
+
+    if should_sync:
+        # Sincronizamos solo esta comisiAA3n para no afectar performance global
+        sync_course_snapshots(comisiones=[clase.comision])
+        # Re-verificamos asistencias vacA Aas (por si entraron alumnos nuevos)
+        from .services import _ensure_asistencias_estudiantes
+        _ensure_asistencias_estudiantes(clase)
+
     asistencias = list(
         AsistenciaAlumno.objects.filter(clase=clase)
         .select_related("estudiante__user")
         .order_by("estudiante__user__last_name", "estudiante__user__first_name")
     )
 
-    alumnos = [
-        AlumnoResumenOut(
-            estudiante_id=asistencia.estudiante_id,
-            dni=asistencia.estudiante.dni,
-            nombre=asistencia.estudiante.user.first_name if asistencia.estudiante.user_id else "",
-            apellido=asistencia.estudiante.user.last_name if asistencia.estudiante.user_id else "",
-            estado=asistencia.estado,
-            justificada=asistencia.justificacion_id is not None,
+    # Calcular porcentajes de asistencia
+    stats = (
+        AsistenciaAlumno.objects.filter(clase__comision_id=clase.comision_id)
+        .values("estudiante_id")
+        .annotate(
+            total=Count("id"),
+            presentes=Count(
+                "id",
+                filter=Q(estado__in=[AsistenciaAlumno.Estado.PRESENTE, AsistenciaAlumno.Estado.TARDE])
+            ),
         )
-        for asistencia in asistencias
-    ]
+    )
+    stats_map = {s["estudiante_id"]: s for s in stats}
+
+    alumnos = []
+    for asistencia in asistencias:
+        stat = stats_map.get(asistencia.estudiante_id, {"total": 0, "presentes": 0})
+        total = stat["total"]
+        presentes = stat["presentes"]
+        porcentaje = (presentes / total * 100) if total > 0 else 0.0
+        
+        alumnos.append(
+            AlumnoResumenOut(
+                estudiante_id=asistencia.estudiante_id,
+                dni=asistencia.estudiante.dni,
+                nombre=asistencia.estudiante.user.first_name if asistencia.estudiante.user_id else "",
+                apellido=asistencia.estudiante.user.last_name if asistencia.estudiante.user_id else "",
+                estado=asistencia.estado,
+                justificada=asistencia.justificacion_id is not None,
+                porcentaje_asistencia=round(porcentaje, 1),
+            )
+        )
 
     docentes = []
+    docente_presente = False
+    docente_categoria = None
+    
     if clase.docente:
         docentes.append(_docente_nombre(clase.docente))
+        # Verificamos si estA A1 presente
+        asistencia_doc = AsistenciaDocente.objects.filter(
+            clase=clase,
+            docente=clase.docente,
+            estado=AsistenciaDocente.Estado.PRESENTE
+        ).first()
+        
+        if asistencia_doc:
+            docente_presente = True
+            docente_categoria = asistencia_doc.marcacion_categoria
+
+    # Obtener otras clases de la misma comisiA A3n para el selector
+    otras_clases_qs = (
+        ClaseProgramada.objects.filter(
+            comision_id=clase.comision_id,
+            fecha__lte=timezone.now().date()  # Solo mostrar pasadas y presente
+        )
+        .order_by("-fecha")[:20]  # Limitar a las A Altimas 20
+    )
+    
+    otras_clases = [
+        ClaseNavegacionOut(
+            id=c.id,
+            fecha=c.fecha,
+            descripcion=f"Clase del {c.fecha.strftime('%d/%m')}",
+            actual=(c.id == clase.id)
+        )
+        for c in otras_clases_qs
+    ]
 
     return ClaseAlumnoDetalleOut(
         clase_id=clase.id,
-        comision=clase.comision.codigo,
+        comision=str(clase.comision),
         fecha=clase.fecha,
-        horario=_build_horario(clase.hora_inicio, clase.hora_fin),
-        materia=clase.comision.materia.nombre,
+        horario=f"{clase.hora_inicio.strftime('%H:%M')} - {clase.hora_fin.strftime('%H:%M')}" if clase.hora_inicio and clase.hora_fin else None,
+        materia=str(clase.comision.materia) if clase.comision.materia else str(clase.comision),
         docentes=docentes,
+        docente_presente=docente_presente,
+        docente_categoria_asistencia=docente_categoria,
         alumnos=alumnos,
+        otras_clases=otras_clases,
     )
 
 
@@ -622,6 +718,22 @@ def listar_clases_alumnos(
     comision_ids = list(comisiones_qs.values_list("id", flat=True))
     if not comision_ids:
         return AlumnoClasesResponse(clases=[])
+
+    # Lazy Sync para estudiantes tambiA A9n
+    # Verificamos si alguna de las comisiones solicitadas necesita actualizaciAA3n
+    # OptimizaciAA3n: Solo chequeamos la primera para no hacer N queries, o chequeamos todas si son pocas.
+    # Como comision_ids suele ser 1 (filtrado por comision_id) o pocas (filtrado por materia), podemos iterar.
+    comisiones_a_sincronizar = []
+    now = timezone.now()
+    for cid in comision_ids:
+        last_snap = CursoAlumnoSnapshot.objects.filter(comision_id=cid).order_by("-sincronizado_en").first()
+        if not last_snap or (now - last_snap.sincronizado_en) > timedelta(hours=24):
+            comisiones_a_sincronizar.append(cid)
+    
+    if comisiones_a_sincronizar:
+        # Recuperamos los objetos Comision para pasar al servicio
+        objs = Comision.objects.filter(id__in=comisiones_a_sincronizar)
+        sync_course_snapshots(comisiones=objs)
 
     generate_classes_for_range(desde, hasta, comision_ids=comision_ids)
 
@@ -673,21 +785,74 @@ def registrar_asistencia_alumnos(request: HttpRequest, clase_id: int, payload: R
         raise HttpError(404, "No se encontrAA3 la clase indicada.")
 
     presentes = set(payload.presentes)
+    tardes = set(payload.tardes)
+    
+    # ValidaciAA3n: El docente debe haber marcado su asistencia primero
+    # Solo aplicamos esto si el usuario es el docente titular de la clase (no staff/admin)
+    roles = _normalized_user_roles(getattr(request, "user", None))
+    es_staff = bool(roles & {"admin", "secretaria", "bedel"})
+    
+    if not es_staff:
+        docente_profile = _docente_from_user(request.user)
+        if docente_profile and clase.docente_id == docente_profile.id:
+            docente_presente = AsistenciaDocente.objects.filter(
+                clase=clase,
+                docente=docente_profile,
+                estado=AsistenciaDocente.Estado.PRESENTE
+            ).exists()
+            if not docente_presente:
+                raise HttpError(400, "DebAAs registrar tu propia asistencia (Presente) antes de cargar la de los estudiantes.")
+
     registros = AsistenciaAlumno.objects.filter(clase=clase).select_related("estudiante")
 
     for registro in registros:
-        estado_nuevo = (
-            AsistenciaAlumno.Estado.PRESENTE
-            if registro.estudiante_id in presentes
-            else AsistenciaAlumno.Estado.AUSENTE
-        )
+        estado_nuevo = AsistenciaAlumno.Estado.AUSENTE
+        if registro.estudiante_id in presentes:
+            estado_nuevo = AsistenciaAlumno.Estado.PRESENTE
+        elif registro.estudiante_id in tardes:
+            estado_nuevo = AsistenciaAlumno.Estado.TARDE
+            
         if registro.justificacion_id:
             estado_nuevo = AsistenciaAlumno.Estado.AUSENTE_JUSTIFICADA
+            
         if registro.estado != estado_nuevo:
             registro.estado = estado_nuevo
             registro.registrado_via = AsistenciaAlumno.RegistradoVia.STAFF
             registro.registrado_por = request.user if request.user and request.user.is_authenticated else None
             registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
+
+
+
+
+@alumnos_router.get("/mis-asistencias", response=List[AlumnoAsistenciaItemOut])
+def listar_mis_asistencias(request: HttpRequest):
+    if not request.user.is_authenticated:
+        raise HttpError(401, "AutenticaciAA3n requerida.")
+
+    estudiante = Estudiante.objects.filter(user=request.user).first()
+    if not estudiante:
+        raise HttpError(404, "No se encontrAA3 un perfil de estudiante asociado a tu usuario.")
+
+    asistencias = (
+        AsistenciaAlumno.objects.filter(estudiante=estudiante)
+        .select_related("clase", "clase__comision", "clase__comision__materia")
+        .order_by("-clase__fecha", "-clase__hora_inicio")
+    )
+
+    data = []
+    for asist in asistencias:
+        data.append(
+            AlumnoAsistenciaItemOut(
+                id=asist.id,
+                fecha=asist.clase.fecha,
+                materia=asist.clase.comision.materia.nombre,
+                comision=asist.clase.comision.codigo,
+                estado=asist.estado,
+                justificada=asist.justificacion_id is not None,
+                observacion=None
+            )
+        )
+    return data
 
 
 def _justificacion_queryset_with_scope(

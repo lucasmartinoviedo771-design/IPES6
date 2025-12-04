@@ -109,6 +109,33 @@ export default function DocentesMisMateriasPage() {
                       >
                         Ver inscriptos
                       </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="primary"
+                        sx={{ ml: 1 }}
+                        onClick={async () => {
+                          if (!user?.dni) return;
+                          try {
+                            const today = new Date().toISOString().split('T')[0];
+                            // Importamos dinA A1micamente para no romper el ciclo si fuera necesario, aunque aquA A no lo es.
+                            const { fetchDocenteClases } = await import("@/api/asistencia");
+                            const data = await fetchDocenteClases(user.dni, { fecha: today });
+                            const claseHoy = data.clases.find(c => c.comision_id === comision.id);
+                            
+                            if (claseHoy) {
+                              navigate(`/docentes/clases/${claseHoy.id}/asistencia`);
+                            } else {
+                              alert("No tenés clases programadas para hoy en esta comisión.");
+                            }
+                          } catch (e) {
+                            console.error(e);
+                            alert("Error al buscar la clase de hoy.");
+                          }
+                        }}
+                      >
+                        Tomar Asistencia
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

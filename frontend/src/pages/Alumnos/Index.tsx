@@ -91,6 +91,12 @@ const baseSections: Section[] = [
         icon: <TrendingUp />,
         path: "/alumnos/trayectoria",
       },
+      {
+        title: "Mis Asistencias",
+        subtitle: "Consultá tu historial de presentismo por materia.",
+        icon: <EventNote />,
+        path: "/alumnos/mis-asistencias",
+      },
     ],
   },
   {

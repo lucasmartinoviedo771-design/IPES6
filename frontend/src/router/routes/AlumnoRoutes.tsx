@@ -30,6 +30,7 @@ const TrayectoriaPage = lazyPage(() => import("@/pages/Alumnos/TrayectoriaPage")
 const CertificadoRegularPage = lazyPage(() => import("@/pages/Alumnos/CertificadoRegularPage"));
 const ConstanciaExamenPage = lazyPage(() => import("@/pages/Alumnos/ConstanciaExamenPage"));
 const HorarioPage = lazyPage(() => import("@/pages/Alumnos/HorarioPage"));
+const MisAsistenciasPage = lazyPage(() => import("@/pages/Alumnos/MisAsistenciasPage"));
 const CursoIntroductorioAlumnoPage = lazyPage(() => import("@/pages/Alumnos/CursoIntroductorioPage"));
 
 const baseRoles: string[] = ["alumno", "admin"];
@@ -47,6 +48,7 @@ export const buildAlumnoRoutes = () => (
       <Route path="/alumnos/pedido-analitico" element={<PedidoAnaliticoPage />} />
       <Route path="/alumnos/mesa-examen" element={<MesaExamenPage />} />
       <Route path="/alumnos/horarios" element={<HorarioPage />} />
+      <Route path="/alumnos/mis-asistencias" element={<MisAsistenciasPage />} />
     </Route>
     <Route element={<ProtectedRoute roles={alumnoSecretariaRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/alumnos/pedido-equivalencias" element={<PedidoEquivalenciasPage />} />

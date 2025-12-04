@@ -33,6 +33,12 @@ const sections: RoleDashboardSection[] = [
         icon: DASHBOARD_ITEMS.MATERIAS_ABM.icon,
         path: "/docentes/mis-materias",
       },
+      {
+        title: "Demo Tomar Asistencia",
+        subtitle: "Vista previa de la pantalla de toma de asistencia.",
+        icon: DASHBOARD_ITEMS.DOCENTE_ASISTENCIA.icon,
+        path: "/docentes/demo-asistencia",
+      },
     ],
   },
 ];

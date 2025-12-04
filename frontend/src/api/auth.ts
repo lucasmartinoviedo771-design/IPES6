@@ -6,7 +6,7 @@ export type ChangePasswordPayload = {
 };
 
 export async function changePassword(payload: ChangePasswordPayload) {
-  const { data } = await client.post("/auth/change-password", payload);
+  // Django/Ninja expone la ruta con slash final; sin él responde 405 (Method Not Allowed).
+  const { data } = await client.post("/auth/change-password/", payload);
   return data;
 }
-

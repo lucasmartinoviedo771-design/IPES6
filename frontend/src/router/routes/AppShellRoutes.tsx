@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/router/guards";
 import { buildGeneralRoutes } from "./GeneralRoutes";
 import { buildSecretariaRoutes } from "./SecretariaRoutes";
 import { buildAlumnoRoutes } from "./AlumnoRoutes";
+import { buildDocenteRoutes } from "./DocenteRoutes";
 
 const shellRoles: string[] = [
   "secretaria",
@@ -34,5 +35,6 @@ export const buildAppShellRoutes = () => (
     {buildGeneralRoutes()}
     {buildSecretariaRoutes()}
     {buildAlumnoRoutes()}
+    {buildDocenteRoutes()}
   </Route>
 );

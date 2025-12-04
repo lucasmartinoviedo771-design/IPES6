@@ -49,6 +49,7 @@ export interface MarcarDocentePresentePayload {
   dni: string;
   observaciones?: string;
   via?: "docente" | "staff";
+  propagar_turno?: boolean;
 }
 
 export interface MarcarDocentePresenteResponse {
@@ -183,18 +184,29 @@ export interface AlumnoResumen {
   dni: string;
   nombre: string;
   apellido: string;
-  estado: string;
+  estado: "presente" | "ausente" | "ausente_justificada" | "tarde";
   justificada: boolean;
+  porcentaje_asistencia: number;
+}
+
+export interface ClaseNavegacion {
+  id: number;
+  fecha: string;
+  descripcion: string;
+  actual: boolean;
 }
 
 export interface ClaseAlumnoDetalle {
   clase_id: number;
   comision: string;
   fecha: string;
-  horario?: string | null;
+  horario?: string;
   materia: string;
   docentes: string[];
+  docente_presente: boolean;
+  docente_categoria_asistencia?: "normal" | "tarde" | "diferida";
   alumnos: AlumnoResumen[];
+  otras_clases: ClaseNavegacion[];
 }
 
 export async function fetchClaseAlumnos(claseId: number): Promise<ClaseAlumnoDetalle> {
@@ -204,6 +216,7 @@ export async function fetchClaseAlumnos(claseId: number): Promise<ClaseAlumnoDet
 
 export interface RegistrarAsistenciaAlumnosPayload {
   presentes: number[];
+  tardes: number[];
   observaciones?: string;
 }
 
@@ -231,5 +244,20 @@ export async function crearJustificacion(payload: CrearJustificacionPayload) {
 
 export async function aprobarJustificacion(justificacionId: number) {
   const { data } = await client.post(`/asistencia/alumnos/justificaciones/${justificacionId}/aprobar`);
+  return data;
+}
+
+export interface AlumnoAsistenciaItem {
+  id: number;
+  fecha: string;
+  materia: string;
+  comision: string;
+  estado: string;
+  justificada: boolean;
+  observacion?: string | null;
+}
+
+export async function fetchMisAsistencias(): Promise<AlumnoAsistenciaItem[]> {
+  const { data } = await client.get<AlumnoAsistenciaItem[]>("/asistencia/alumnos/mis-asistencias");
   return data;
 }
