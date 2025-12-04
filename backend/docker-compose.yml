@@ -17,7 +17,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     ports:
-      - "3307:3306" # Expose on 3307 to avoid conflict with local MySQL
+      - "127.0.0.1:3307:3306" # Expose on 3307 to avoid conflict with local MySQL, only localhost
     env_file:
       - .env
 
@@ -45,12 +45,12 @@ services:
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.118.140.124}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080}
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080}
-      FRONTEND_URL: http://localhost:8080
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   frontend:
     build:

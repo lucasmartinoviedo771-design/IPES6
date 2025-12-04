@@ -39,15 +39,21 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Copiar el resto del código
+# Copiar el resto del código
 COPY . .
 
-# Asegurar que el script de entrada sea ejecutable (si existiera)
-# COPY ./entrypoint.sh /entrypoint.sh
-# RUN chmod +x /entrypoint.sh
+# Crear usuario no-root para seguridad
+RUN addgroup --system appgroup && adduser --system --group appuser
+
+# Asignar permisos al directorio de trabajo
+RUN chown -R appuser:appgroup /app
+
+# Cambiar al usuario no-root
+USER appuser
 
 # Exponer el puerto
 EXPOSE 8000
 
 # Comando por defecto (ajustar workers según CPU)
 # Usamos el python del venv creado por uv
-CMD ["/app/.venv/bin/gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["/app/.venv/bin/gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
