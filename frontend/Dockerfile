@@ -3,17 +3,20 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Copiar archivos de dependencias
-COPY package.json package-lock.json ./
+# Instalar pnpm globalmente
+RUN npm install -g pnpm@latest
 
-# Instalar dependencias
-RUN npm ci
+# Copiar archivos de dependencias
+COPY package.json pnpm-lock.yaml ./
+
+# Instalar dependencias con pnpm
+RUN pnpm install --frozen-lockfile
 
 # Copiar código fuente
 COPY . .
 
 # Construir la aplicación
-RUN npm run build
+RUN pnpm run build
 
 # Etapa 2: Servidor Web (Nginx)
 FROM nginx:alpine
