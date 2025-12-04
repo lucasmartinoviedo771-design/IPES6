@@ -350,9 +350,10 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         docs.analitico_legalizado
       );
 
+  // Estado Regular solo si tiene el título completo (no en trámite ni solo analítico)
   const allDocs = isCertificacionDocente
     ? !!(docsGeneralesOk && docs.titulo_terciario_univ)
-    : !!(docsGeneralesOk && tituloSecundarioPresentado && !docs.adeuda_materias);
+    : !!(docsGeneralesOk && docs.titulo_secundario_legalizado && !docs.adeuda_materias);
 
   const anyMainSelected = isCertificacionDocente
     ? false

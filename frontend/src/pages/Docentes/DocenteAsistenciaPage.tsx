@@ -254,6 +254,7 @@ const DocenteAsistenciaPage = () => {
         dni: docente.dni,
         observaciones: observaciones || undefined,
         via: "docente",
+        propagar_turno: true,
       });
       setMarcadas((prev) => new Set(prev).add(claseId));
       setClases((prev) =>

@@ -132,7 +132,6 @@ const StatCard = ({ title, value, subtitle, icon, accent, iconBg, borderColor }:
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  console.log("[Dashboard] Rendering DashboardPage. User:", user);
 
   const [metrics, setMetrics] = useState({ total: 0, confirmadas: 0, pendientes: 0, observadas: 0, rechazadas: 0, ratio: 0 });
   const [recientes, setRecientes] = useState<PreinscripcionDTO[]>([]);

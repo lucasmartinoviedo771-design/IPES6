@@ -53,16 +53,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   }, [navigate]);
 
   const refreshProfile = async (): Promise<User | null> => {
-    console.log("[Auth] refreshProfile called");
     try {
-      console.log("[Auth] Sending GET to auth/profile/");
       // Agregamos timestamp para evitar caché 301 persistente en navegadores
       const { data } = await client.get(apiPath(`auth/profile/?_t=${Date.now()}`));
-      console.log("[Auth] Received profile data:", data);
       setUser(data);
       return data;
     } catch (err: any) {
-      console.error("[Auth] refreshProfile failed:", err);
       setUser(null);
       throw err;
     }
@@ -72,24 +68,19 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   useEffect(() => {
     let mounted = true;
     (async () => {
-      console.log("[Auth] Bootstrap effect starting. Bootstrapped:", bootstrapped);
       try {
         if (!bootstrapped) {
-          console.log("[Auth] Awaiting refreshProfile with timeout...");
           // Race refreshProfile with a timeout
           await Promise.race([
             refreshProfile(),
             new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
           ]);
-          console.log("[Auth] refreshProfile completed.");
         }
       } catch (e) {
-        console.error("[Auth] Bootstrap error or timeout:", e);
         // alert("Error de carga inicial: " + String(e)); // Uncomment for extreme debugging
         setUser(null);
       } finally {
         if (mounted) {
-          console.log("[Auth] Bootstrap finally block. Setting loading=false.");
           setBootstrapped(true);
           setLoading(false);
         }
@@ -125,7 +116,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       try {
         await requestSessionRefresh();
       } catch (err) {
-        console.warn("[Auth] keep-alive refresh failed", err);
         redirectToLogin();
       }
     }, KEEP_ALIVE_INTERVAL_MS);
@@ -145,21 +135,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     };
 
     try {
-      console.log("[Auth] Attempting login for:", id);
       const { data } = await client.post(apiPath("auth/login/"), payload);
-      console.log("[Auth] Login response data:", data);
       const u: User = data?.user ?? null;
 
       if (!u) {
-        console.error("[Auth] Login response missing user data");
         throw new Error("La respuesta del servidor no contiene datos de usuario.");
       }
 
-      console.log("[Auth] Setting user state:", u);
       setUser(u);
       return u;
     } catch (err: any) {
-      console.error("[Auth] Login failed:", err);
       const status = err?.response?.status;
       const msg =
         err?.response?.data?.detail ||

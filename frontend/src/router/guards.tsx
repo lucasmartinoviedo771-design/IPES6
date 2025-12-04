@@ -21,7 +21,6 @@ export function ProtectedRoute({
 }: ProtectedProps) {
   const { user, loading } = useAuth();
   const loc = useLocation();
-  console.log("[ProtectedRoute] Check. Path:", loc.pathname, "User:", user?.dni, "Loading:", loading);
 
   if (loading) {
     return (

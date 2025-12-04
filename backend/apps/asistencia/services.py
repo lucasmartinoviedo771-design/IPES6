@@ -525,3 +525,96 @@ def attach_classes_to_justification(
         if created:
             detalles_creados.append(detalle)
     return detalles_creados
+
+
+def propagar_asistencia_docente_turno(
+    clase_origen: ClaseProgramada,
+    docente: Docente,
+    estado_origen: AsistenciaDocente.Estado,
+    registrado_por,
+    observaciones: str = "",
+    marcacion_categoria: str = AsistenciaDocente.MarcacionCategoria.NORMAL,
+    alerta: bool = False,
+    alerta_tipo: str = "",
+    alerta_motivo: str = "",
+) -> None:
+    """
+    Propaga la marcación de asistencia del docente a otras clases del mismo turno.
+    Reglas:
+    - Clases futuras (hora_inicio > ahora): Se marcan PRESENTE.
+    - Clases pasadas (hora_fin < ahora): Si no tienen marca, se marcan AUSENTE.
+    - Clases concurrentes/mismo bloque: Se marcan igual que la origen.
+    """
+    turno = clase_origen.comision.turno if clase_origen.comision_id else None
+    
+    # Buscamos todas las clases del docente en esa fecha y turno (o sin turno si es null)
+    # Excluimos la clase origen que ya fue procesada
+    otras_clases = ClaseProgramada.objects.filter(
+        docente=docente,
+        fecha=clase_origen.fecha,
+        comision__turno=turno
+    ).exclude(id=clase_origen.id)
+
+    ahora = timezone.now()
+    if settings.USE_TZ:
+        ahora = timezone.localtime(ahora)
+    
+    # Convertimos 'ahora' a time para comparar con hora_inicio/fin
+    ahora_time = ahora.time()
+
+    for otra_clase in otras_clases:
+        # Determinar estado para esta otra clase
+        nuevo_estado = None
+        nueva_observacion = observaciones
+        es_futura = False
+        
+        if otra_clase.hora_inicio and otra_clase.hora_inicio > ahora_time:
+            # Clase futura: Se asume presente si marcó en el turno
+            nuevo_estado = AsistenciaDocente.Estado.PRESENTE
+            nueva_observacion = f"Propagado desde {clase_origen.hora_inicio}"
+            es_futura = True
+        
+        elif otra_clase.hora_fin and otra_clase.hora_fin < ahora_time:
+            # Clase pasada: Si ya pasó y no marcó antes, es Ausente.
+            nuevo_estado = AsistenciaDocente.Estado.AUSENTE
+            nueva_observacion = "No marcó asistencia a tiempo (turno vencido)"
+        
+        else:
+            # Clase actual/concurrente: Copiamos el estado de la origen
+            nuevo_estado = estado_origen
+            nueva_observacion = f"Propagado (concurrente) desde {clase_origen.hora_inicio}"
+
+        # Aplicar cambios
+        asistencia, created = AsistenciaDocente.objects.get_or_create(
+            clase=otra_clase,
+            docente=docente,
+            defaults={
+                "estado": AsistenciaDocente.Estado.AUSENTE, # Default seguro
+                "registrado_via": AsistenciaDocente.RegistradoVia.SISTEMA,
+            }
+        )
+
+        # Si ya estaba PRESENTE, no la tocamos (quizás marcó esa específicamente antes).
+        if asistencia.estado == AsistenciaDocente.Estado.PRESENTE and not created:
+            continue
+
+        asistencia.estado = nuevo_estado
+        asistencia.observaciones = nueva_observacion
+        asistencia.registrado_via = AsistenciaDocente.RegistradoVia.SISTEMA
+        asistencia.registrado_por = registrado_por
+        asistencia.registrado_en = ahora
+        
+        # Limpiamos alertas para las propagadas futuras (asumimos que llega bien)
+        if es_futura:
+            asistencia.alerta = False
+            asistencia.alerta_tipo = ""
+            asistencia.alerta_motivo = ""
+            asistencia.marcacion_categoria = AsistenciaDocente.MarcacionCategoria.NORMAL
+        elif nuevo_estado == estado_origen:
+            # Copiar alertas si es concurrente
+            asistencia.alerta = alerta
+            asistencia.alerta_tipo = alerta_tipo
+            asistencia.alerta_motivo = alerta_motivo
+            asistencia.marcacion_categoria = marcacion_categoria
+        
+        asistencia.save()

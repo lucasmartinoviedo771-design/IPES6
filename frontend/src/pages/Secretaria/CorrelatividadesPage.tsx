@@ -592,6 +592,21 @@ export default function CorrelatividadesPage() {
 
   };
 
+  const loadAllMaterias = async () => {
+    if (!planId || typeof versionId !== 'number') {
+      setAllRows(null);
+      return;
+    }
+    try {
+      const params = `?version_id=${versionId}`;
+      const { data } = await axios.get<MatrixRow[]>(`/planes/${planId}/correlatividades_matrix${params}`);
+      setAllRows(data);
+    } catch (error) {
+      console.error('Error loading all materias:', error);
+      setAllRows(null);
+    }
+  };
+
 
 
 
@@ -1524,6 +1539,12 @@ export default function CorrelatividadesPage() {
 
   const discardBatch = () => setPending({});
 
+  // Helper para resolver nombres de materias correlativas
+  const resolveMateriaNombre = (id: number): string => {
+    const materia = matrix.find(m => m.id === id) || (allRows?.find(m => m.id === id));
+    return materia?.nombre || `[Materia ID: ${id}]`;
+  };
+
 
 
 
@@ -2290,15 +2311,15 @@ export default function CorrelatividadesPage() {
 
 
 
-                  <TableCell>{r.regular_para_cursar?.length ? r.regular_para_cursar.map(id => matrix.find(m=>m.id===id)?.nombre || id).join(', ') : <em>Ninguna</em>}</TableCell>
+                  <TableCell>{r.regular_para_cursar?.length ? r.regular_para_cursar.map(id => resolveMateriaNombre(id)).join(', ') : <em>Ninguna</em>}</TableCell>
 
 
 
-                  <TableCell>{r.aprobada_para_cursar?.length ? r.aprobada_para_cursar.map(id => matrix.find(m=>m.id===id)?.nombre || id).join(', ') : <em>Ninguna</em>}</TableCell>
+                  <TableCell>{r.aprobada_para_cursar?.length ? r.aprobada_para_cursar.map(id => resolveMateriaNombre(id)).join(', ') : <em>Ninguna</em>}</TableCell>
 
 
 
-                  <TableCell>{r.aprobada_para_rendir?.length ? r.aprobada_para_rendir.map(id => matrix.find(m=>m.id===id)?.nombre || id).join(', ') : <em>Ninguna</em>}</TableCell>
+                  <TableCell>{r.aprobada_para_rendir?.length ? r.aprobada_para_rendir.map(id => resolveMateriaNombre(id)).join(', ') : <em>Ninguna</em>}</TableCell>
 
 
 

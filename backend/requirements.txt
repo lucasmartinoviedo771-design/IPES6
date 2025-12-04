@@ -147,8 +147,8 @@ python-bidi==0.6.6
     # via ipes6-backend (pyproject.toml)
 python-dotenv==1.2.1
     # via ipes6-backend (pyproject.toml)
-python-magic==0.4.27
-    # via ipes6-backend (pyproject.toml)
+python-magic-bin==0.4.14
+    # via ipes6-backend (pyproject.toml) -- Windows-friendly libmagic
 pyyaml==6.0.3
     # via pyhanko
 qrcode==8.2
