@@ -592,6 +592,8 @@ export default function CorrelatividadesPage() {
 
   };
 
+
+
   const loadAllMaterias = async () => {
     if (!planId || typeof versionId !== 'number') {
       setAllRows(null);
@@ -606,6 +608,13 @@ export default function CorrelatividadesPage() {
       setAllRows(null);
     }
   };
+
+  // Cargar todas las materias cuando se selecciona una versión, para poder resolver nombres
+  useEffect(() => {
+    if (typeof versionId === 'number') {
+      loadAllMaterias();
+    }
+  }, [versionId, planId]);
 
 
 
