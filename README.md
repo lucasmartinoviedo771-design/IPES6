@@ -57,5 +57,44 @@ Para sumar una tarjeta:
 - Flujo sugerido: construir imágenes desde `backend/` y `frontend/` tras generar `.env` y `npm run build`; luego orquestar con compose o tu stack de despliegue.
 - Setup guiado para Windows 11 + Docker Desktop: `docs/DOCKER_WINDOWS.md`.
 
+## Despliegue en Producción (Ubuntu Server)
+
+### 📦 Guía Rápida
+Para desplegar en un servidor Ubuntu con Docker:
+
+```bash
+# 1. En el servidor Ubuntu
+git clone https://github.com/TU_REPO/IPES6.git
+cd IPES6
+
+# 2. Configurar entorno
+cd backend
+cp .env.docker.example .env
+nano .env  # Edita con tu configuración
+
+# 3. Desplegar con el script de ayuda
+chmod +x ../scripts/deploy.sh
+../scripts/deploy.sh setup
+../scripts/deploy.sh createsuperuser
+
+# 4. Acceder
+# http://TU_IP_SERVIDOR
+```
+
+### 📚 Documentación Completa
+- **Guía rápida**: `DEPLOY_QUICK.md` - Pasos esenciales para desplegar
+- **Guía completa**: `.agent/workflows/deploy-ubuntu.md` - Documentación detallada con SSL, firewall, backups, etc.
+- **Script de preparación**: `scripts/prepare-deploy.ps1` - Ejecutar en Windows antes de subir
+- **Script de gestión**: `scripts/deploy.sh` - Comandos útiles en el servidor (start, stop, logs, backup, update)
+
+### 🔧 Comandos Útiles del Servidor
+```bash
+./scripts/deploy.sh status          # Ver estado de servicios
+./scripts/deploy.sh logs backend    # Ver logs
+./scripts/deploy.sh restart         # Reiniciar servicios
+./scripts/deploy.sh backup          # Backup de BD
+./scripts/deploy.sh update          # Actualizar aplicación
+```
+
 ## Autor
 - Oviedo Lucas
