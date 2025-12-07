@@ -13,7 +13,7 @@ services:
       start_period: 15s
     environment:
       MYSQL_DATABASE: ${DB_NAME:-ipes6}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-REDACTED_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
     volumes:
       - db_data:/var/lib/mysql
     ports:
