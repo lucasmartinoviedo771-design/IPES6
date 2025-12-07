@@ -17,4 +17,8 @@ dist/
 .DS_Store
 *.log
 .vscode/
-.idea/
+
+# Certificates
+certs/
+server.key
+server.crt
