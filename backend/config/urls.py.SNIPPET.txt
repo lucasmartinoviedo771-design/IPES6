@@ -1,7 +1,0 @@
-# config/urls.py (añade estas líneas)
-from django.urls import path, include
-
-urlpatterns = [
-    # ... tus otras urls
-    path("api/", include("apps.carreras.urls")),  # <-- expone /api/carreras sin Ninja
-]

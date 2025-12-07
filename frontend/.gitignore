@@ -17,8 +17,3 @@ dist/
 .DS_Store
 *.log
 .vscode/
-
-# Certificates
-certs/
-server.key
-server.crt
