@@ -14,6 +14,8 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_NAME:-ipes6}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_USER: ${DB_USER_-ipes_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ipes2024}
     volumes:
       - db_data:/var/lib/mysql
     ports:
@@ -61,6 +63,9 @@ services:
       - "8080:80"
     depends_on:
       - backend
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
 
 volumes:
   db_data:

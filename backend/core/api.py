@@ -1992,9 +1992,16 @@ class VentanaOut(Schema):
     periodo: str | None = None
 
 
-@router.get("/ventanas", response=list[VentanaOut], auth=JWTAuth())
+@router.get("/ventanas", response=list[VentanaOut], auth=None)
 def list_ventanas(request, tipo: str | None = None, estado: str | None = None):
-    ensure_roles(request.user, VENTANA_VIEW_ROLES)
+    # Permitir acceso público si es para Preinscripción
+    if tipo == "PREINSCRIPCION":
+        pass
+    else:
+        # Para otros casos, requerir autenticación y roles
+        if not request.user.is_authenticated:
+            raise HttpError(401, "Authentication required")
+        ensure_roles(request.user, VENTANA_VIEW_ROLES)
 
     qs = VentanaHabilitacion.objects.all()
 
