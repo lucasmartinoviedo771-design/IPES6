@@ -56,7 +56,7 @@ export default function LoginPage() {
   const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "/api/auth/google/login";
 
   const hasGoogleEndpoint = true;
-  
+
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -76,8 +76,8 @@ export default function LoginPage() {
       }
       const loggedUser = await login(loginId, password);
       // Limpiar password del estado local tras login exitoso (aunque se desmonte)
-      setPassword(""); 
-      
+      setPassword("");
+
       if (loggedUser?.must_change_password) {
         navigate("/cambiar-password", { replace: true, state: { from: { pathname: from } } });
       } else {
@@ -154,7 +154,7 @@ export default function LoginPage() {
                 <Button
                   variant="contained"
                   fullWidth
-                  // disabled={!hasGoogleEndpoint} // Quitamos disabled para que siempre intente si hay URL
+                  disabled={true} // Deshabilitado por falta de HTTPS
                   onClick={handleGoogleLogin}
                   startIcon={<GoogleGlyph />}
                   sx={{
@@ -177,14 +177,14 @@ export default function LoginPage() {
                 >
                   Continuar con Google
                 </Button>
-                
-                  <Typography
-                    variant="caption"
-                    sx={{ color: "rgba(255,255,255,0.7)", display: "block", textAlign: "center" }}
-                  >
-                    Solo pueden ingresar cuentas institucionales ya cargadas en el sistema.
-                  </Typography>
-                
+
+                <Typography
+                  variant="caption"
+                  sx={{ color: "rgba(255,255,255,0.7)", display: "block", textAlign: "center" }}
+                >
+                  Solo pueden ingresar cuentas institucionales ya cargadas en el sistema.
+                </Typography>
+
 
                 <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
                   o ingresá con usuario
