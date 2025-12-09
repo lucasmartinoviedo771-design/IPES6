@@ -16,6 +16,6 @@ export const buildDocenteRoutes = () => (
     <Route path="/docentes/clases/:claseId/asistencia" element={<TomarAsistenciaPage />} />
     <Route path="/docentes/demo-asistencia" element={<TomarAsistenciaDemoPage />} />
     {/* Kiosco de asistencia (puede requerir roles especiales o ser pA Aoblico/interno) */}
-    <Route path="/docentes/asistencia-kiosco" element={<DocenteAsistenciaPage />} />
+    <Route path="/docentes/asistencia-docente" element={<DocenteAsistenciaPage />} />
   </Route>
 );
