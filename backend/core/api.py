@@ -1994,14 +1994,34 @@ class VentanaOut(Schema):
 
 @router.get("/ventanas", response=list[VentanaOut], auth=None)
 def list_ventanas(request, tipo: str | None = None, estado: str | None = None):
-    # Permitir acceso público si es para Preinscripción
+    # Intentar autenticar manualmente si no lo estÃ¡ (porque auth=None deshabilita JWTAuth automÃ¡tico)
+    user = request.user
+    if not user.is_authenticated:
+        try:
+            auth_cls = JWTAuth()
+            user_resolved = auth_cls(request)
+            if user_resolved:
+                request.user = user_resolved
+                user = user_resolved
+        except Exception:
+            pass
+
+    # Permitir acceso pÃºblico si es para PreinscripciÃ³n
     if tipo == "PREINSCRIPCION":
         pass
     else:
-        # Para otros casos, requerir autenticación y roles
-        if not request.user.is_authenticated:
+        # Para otros casos, requerir autenticaciÃ³n y roles
+        if not user.is_authenticated:
             raise HttpError(401, "Authentication required")
-        ensure_roles(request.user, VENTANA_VIEW_ROLES)
+        
+        # Validar roles manualmente (puesto que ensure_roles es un decorador)
+        user_roles = {name.lower() for name in user.groups.values_list("name", flat=True)}
+        if user.is_superuser or user.is_staff:
+            user_roles.add("admin")
+            
+        required = {role.lower() for role in VENTANA_VIEW_ROLES}
+        if not user_roles.intersection(required):
+             raise HttpError(403, "No tiene permisos para ver ventanas.")
 
     qs = VentanaHabilitacion.objects.all()
 
