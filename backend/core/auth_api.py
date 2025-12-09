@@ -103,6 +103,8 @@ def _set_access_cookie(response: JsonResponse, access_token: str):
         "httponly": True,
         "path": settings.JWT_COOKIE_PATH,
     }
+    if settings.JWT_COOKIE_DOMAIN:
+        cookie_kwargs["domain"] = settings.JWT_COOKIE_DOMAIN
     if not settings.DEBUG:
         cookie_kwargs["secure"] = settings.SESSION_COOKIE_SECURE
         cookie_kwargs["samesite"] = settings.SESSION_COOKIE_SAMESITE
@@ -118,6 +120,8 @@ def _set_refresh_cookie(response: JsonResponse, refresh_token: str):
         "httponly": True,
         "path": settings.JWT_COOKIE_PATH,
     }
+    if settings.JWT_COOKIE_DOMAIN:
+        cookie_kwargs["domain"] = settings.JWT_COOKIE_DOMAIN
     if not settings.DEBUG:
         cookie_kwargs["secure"] = settings.SESSION_COOKIE_SECURE
         cookie_kwargs["samesite"] = settings.SESSION_COOKIE_SAMESITE
@@ -125,8 +129,9 @@ def _set_refresh_cookie(response: JsonResponse, refresh_token: str):
 
 
 def _clear_jwt_cookies(response: JsonResponse):
-    response.delete_cookie(key=settings.JWT_ACCESS_COOKIE_NAME, path=settings.JWT_COOKIE_PATH)
-    response.delete_cookie(key=settings.JWT_REFRESH_COOKIE_NAME, path=settings.JWT_COOKIE_PATH)
+    domain = getattr(settings, "JWT_COOKIE_DOMAIN", None)
+    response.delete_cookie(key=settings.JWT_ACCESS_COOKIE_NAME, path=settings.JWT_COOKIE_PATH, domain=domain)
+    response.delete_cookie(key=settings.JWT_REFRESH_COOKIE_NAME, path=settings.JWT_COOKIE_PATH, domain=domain)
 
 
 def _client_identifier(request, login: str) -> str:
@@ -346,12 +351,6 @@ def google_callback(request, code: str | None = None, error: str | None = None):
         )
 
     refresh = RefreshToken.for_user(user)
-    # response_body = {
-    #     "access": str(refresh.access_token),
-    #     # "refresh": str(refresh),
-    #     "user": _serialize_user(user),
-    # }
-    # response = JsonResponse(response_body)
     
     # Redireccionar al frontend
     response = HttpResponseRedirect(settings.FRONTEND_URL + "/auth/callback")

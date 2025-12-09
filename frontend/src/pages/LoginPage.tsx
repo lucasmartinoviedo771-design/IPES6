@@ -52,8 +52,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Keep the URL configurable and avoid the trailing slash that returned 404
-  const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "/api/auth/google/login";
+  // URL absoluta apuntando al backend en su subdominio (via Cloudflare Tunnel)
+  const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "https://ipes6-api.lucasoviedodev.org/api/auth/google/login";
 
   const hasGoogleEndpoint = true;
 
@@ -154,7 +154,7 @@ export default function LoginPage() {
                 <Button
                   variant="contained"
                   fullWidth
-                  disabled={true} // Deshabilitado por falta de HTTPS
+                  disabled={false} // Habilitado ahora que tenemos HTTPS
                   onClick={handleGoogleLogin}
                   startIcon={<GoogleGlyph />}
                   sx={{

@@ -1,5 +1,4 @@
-from functools import wraps  # Import wraps
-
+from functools import wraps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from ninja.security.base import AuthBase
