@@ -315,7 +315,7 @@ def listar_clases_docente(
 
     docente = Docente.objects.filter(dni=dni).first()
     if not docente:
-        raise HttpError(404, "No se encontrAA3 un docente con ese DNI.")
+        raise HttpError(404, "No se encontró un docente con ese DNI.")
 
     comision_ids = list(docente.comisiones.values_list("id", flat=True))
     if comision_ids:

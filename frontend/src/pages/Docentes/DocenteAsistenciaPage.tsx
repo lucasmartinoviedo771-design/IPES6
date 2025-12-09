@@ -141,7 +141,7 @@ const DocenteAsistenciaPage = () => {
   useEffect(() => {
     const trimmed = dni.trim();
     if (authorized && trimmed.length === 8 && trimmed !== lastLoggedDni) {
-      registrarDocenteDni(trimmed).catch(() => {});
+      registrarDocenteDni(trimmed).catch(() => { });
       setLastLoggedDni(trimmed);
     }
   }, [dni, lastLoggedDni, authorized]);
@@ -208,7 +208,7 @@ const DocenteAsistenciaPage = () => {
 
   const buscarDocente = async () => {
     if (!authorized) {
-      mostrarFeedback({ severity: "warning", message: "Debés iniciar sesión para operar el kiosco." });
+      mostrarFeedback({ severity: "warning", message: "Debés iniciar sesión para registrar asistencias." });
       return;
     }
     const trimmed = dni.trim();
@@ -261,10 +261,10 @@ const DocenteAsistenciaPage = () => {
         prev.map((clase) =>
           clase.id === claseId
             ? {
-                ...clase,
-                ya_registrada: true,
-                registrada_en: response.registrada_en,
-              }
+              ...clase,
+              ya_registrada: true,
+              registrada_en: response.registrada_en,
+            }
             : clase,
         ),
       );
@@ -330,8 +330,8 @@ const DocenteAsistenciaPage = () => {
             <Paper elevation={4} sx={{ p: 4, maxWidth: 420, mx: "auto" }}>
               <Stack spacing={2} component="form" onSubmit={handleLogin}>
                 <PageHero
-                  title="Acceso kiosco docente"
-                  subtitle="Solo usuarios autorizados (admin, secretaría o kiosco) pueden operar esta pantalla."
+                  title="Acceso - Asistencia Docente"
+                  subtitle="Solo usuarios autorizados (admin, secretaría o asistencia) pueden operar esta pantalla."
                   sx={{
                     width: "100%",
                     boxShadow: "none",
