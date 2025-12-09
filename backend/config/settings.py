@@ -256,7 +256,8 @@ SIMPLE_JWT = {
 # === JWT Cookies ==========================================================
 JWT_ACCESS_COOKIE_NAME = "jwt_access_token"
 JWT_REFRESH_COOKIE_NAME = "jwt_refresh_token"
-JWT_COOKIE_PATH = "/api/"  # Ruta donde las cookies JWT estarán disponibles
+JWT_COOKIE_PATH = "/"  # Ruta raíz para evitar conflictos de path
+JWT_COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN", None)  # Dominio de la cookie (ej: .tu-dominio.com)
 
 # Cookies/seguridad (ajustá para prod)
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -269,6 +270,9 @@ CSRF_USE_SESSIONS = False
 
 # === Seguridad en producción ============================================
 if IS_PROD:
+    # Confiar en el header de Cloudflare/Nginx para saber que es HTTPS
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
     # Redirección a HTTPS + HSTS
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SECURE_HSTS_SECONDS = 31536000  # 1 año
@@ -277,8 +281,9 @@ if IS_PROD:
 
     # Cookies seguras
     # Cookies seguras (solo si usamos SSL)
-    SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
-    CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    # IMPORTANTE: SameSite='None' requiere Secure=True sí o sí.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
     # X-Frame, X-Content-Type, etc.
     X_FRAME_OPTIONS = "DENY"
@@ -286,8 +291,8 @@ if IS_PROD:
     SECURE_REFERRER_POLICY = "same-origin"
 
     # SameSite: si front y back son dominios distintos y usás cookies cross-site, usa 'None'
-    # SESSION_COOKIE_SAMESITE = "None"
-    # CSRF_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"
 else:
     # Desarrollo
     SECURE_SSL_REDIRECT = False
