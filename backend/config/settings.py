@@ -202,13 +202,9 @@ FRONTEND_ORIGINS = env_list(
     [
         "http://127.0.0.1:5173",
         "http://localhost:5173",
-        "http://192.168.1.83:5173",
     ],
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-
-if "http://192.168.1.83:5173" not in FRONTEND_ORIGINS:
-    FRONTEND_ORIGINS.append("http://192.168.1.83:5173")
 
 
 CORS_ALLOW_ALL_ORIGINS = False
@@ -244,8 +240,8 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
     # por defecto usa settings.SECRET_KEY como SIGNING_KEY (suficiente)
     "AUTH_HEADER_TYPES": ("Bearer",),  # <— importante para "Authorization: Bearer <token>"
