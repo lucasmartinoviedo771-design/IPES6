@@ -61,11 +61,13 @@ services:
     restart: always
     ports:
       - "8080:80"
+      - "8443:443"
     depends_on:
       - backend
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - /home/admin486321/ssl:/etc/nginx/ssl:ro
 
 volumes:
   db_data:
