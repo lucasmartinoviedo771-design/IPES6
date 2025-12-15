@@ -26,12 +26,14 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django
 django.setup()
 
-from core.models import Docente
+
+from core.models import Docente, UserProfile
 from django.contrib.auth.models import User, Group
 from django.db import transaction
 import secrets
 import string
 from datetime import datetime
+
 
 
 def limpiar_cuil(cuil):
@@ -200,6 +202,14 @@ def cargar_docentes(archivo_csv, modo="crear"):
                             grupo_docente, _ = Group.objects.get_or_create(name="docente")
                             usuario.groups.add(grupo_docente)
                             usuario.save()
+                            
+                            # Crear UserProfile y activar cambio de contraseña obligatorio
+                            UserProfile.objects.create(
+                                user=usuario,
+                                must_change_password=True,
+                                temp_password=contraseña_generada  # Guardar para envío por email
+                            )
+                            
                             usuario_creado = True
                         
                         msg = f"  ➕ Creado: {datos['apellido']}, {datos['nombre']} (DNI: {dni})"
