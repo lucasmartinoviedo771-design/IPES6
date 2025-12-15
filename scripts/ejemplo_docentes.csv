@@ -1,0 +1,6 @@
+nombre,apellido,dni,cuil,email,telefono,fecha_nacimiento
+María,González,12345678,27-12345678-4,maria.gonzalez@ipes6.edu.ar,3814123456,15/03/1985
+Juan,Rodríguez,23456789,20-23456789-1,juan.rodriguez@ipes6.edu.ar,3814234567,22/07/1980
+Ana,Fernández,34567890,27-34567890-2,ana.fernandez@ipes6.edu.ar,3814345678,10/11/1990
+Carlos,López,45678901,20-45678901-3,carlos.lopez@ipes6.edu.ar,3814456789,05/02/1978
+Laura,Martínez,56789012,27-56789012-4,laura.martinez@ipes6.edu.ar,3814567890,18/09/1988

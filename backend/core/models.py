@@ -104,6 +104,11 @@ class Docente(models.Model):
         blank=True,
         help_text="CUIL sin guiones (opcional)",
     )
+    fecha_nacimiento = models.DateField(
+        blank=True,
+        null=True,
+        help_text="Fecha de nacimiento del docente (opcional)",
+    )
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre} (DNI: {self.dni})"
