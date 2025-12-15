@@ -114,6 +114,28 @@ class Docente(models.Model):
         return f"{self.apellido}, {self.nombre} (DNI: {self.dni})"
 
 
+class UserProfile(models.Model):
+    """
+    Perfil extendido para usuarios del sistema (docentes, staff, etc.)
+    Proporciona funcionalidad adicional como cambio de contraseña obligatorio.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    must_change_password = models.BooleanField(
+        default=False,
+        help_text="Si está activo, el usuario debe cambiar la contraseña al iniciar sesión.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Perfil de Usuario"
+        verbose_name_plural = "Perfiles de Usuario"
+
+    def __str__(self):
+        return f"Perfil de {self.user.username}"
+
+
+
 class Materia(models.Model):
     class FormatoMateria(models.TextChoices):
         ASIGNATURA = "ASI", "Asignatura"

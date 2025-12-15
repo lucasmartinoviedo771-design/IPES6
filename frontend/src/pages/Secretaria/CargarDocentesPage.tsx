@@ -16,6 +16,8 @@ import {
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs, { Dayjs } from "dayjs";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { client as api } from "@/api/client";
@@ -31,6 +33,7 @@ interface Docente {
   email: string | null;
   telefono: string | null;
   cuil: string | null;
+  fecha_nacimiento?: string | null;
   usuario?: string | null;
   temp_password?: string | null;
 }
@@ -42,6 +45,7 @@ interface DocenteFormInput {
   email: string | null;
   telefono: string | null;
   cuil: string | null;
+  fecha_nacimiento?: string | null;
 }
 
 export default function CargarDocentesPage() {
@@ -62,6 +66,7 @@ export default function CargarDocentesPage() {
       email: "",
       telefono: "",
       cuil: "",
+      fecha_nacimiento: "",
     },
   });
 
@@ -150,6 +155,7 @@ export default function CargarDocentesPage() {
     setValue("email", docente.email || "");
     setValue("telefono", docente.telefono || "");
     setValue("cuil", docente.cuil || "");
+    setValue("fecha_nacimiento", docente.fecha_nacimiento || "");
   };
 
   const handleDeleteClick = (docenteId: number) => {
@@ -255,6 +261,26 @@ export default function CargarDocentesPage() {
               />
             )}
           />
+          <Controller
+            name="fecha_nacimiento"
+            control={control}
+            render={({ field }) => (
+              <DatePicker
+                label="Fecha de Nacimiento (Opcional)"
+                format="DD/MM/YYYY"
+                value={field.value ? dayjs(field.value) : null}
+                onChange={(date) => field.onChange(date ? date.format("YYYY-MM-DD") : "")}
+                slotProps={{
+                  textField: {
+                    size: "small",
+                    fullWidth: true,
+                    error: !!errors.fecha_nacimiento,
+                    helperText: errors.fecha_nacimiento?.message,
+                  },
+                }}
+              />
+            )}
+          />
           <Button type="submit" variant="contained">
             {editingDocente ? "Actualizar Docente" : "Guardar Docente"}
           </Button>
@@ -288,6 +314,7 @@ export default function CargarDocentesPage() {
                   <TableCell>Apellido</TableCell>
                   <TableCell>Nombre</TableCell>
                   <TableCell>DNI</TableCell>
+                  <TableCell>Fecha Nac.</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Teléfono</TableCell>
                   <TableCell>CUIL</TableCell>
@@ -302,6 +329,7 @@ export default function CargarDocentesPage() {
                     <TableCell>{docente.apellido}</TableCell>
                     <TableCell>{docente.nombre}</TableCell>
                     <TableCell>{docente.dni}</TableCell>
+                    <TableCell>{docente.fecha_nacimiento ? dayjs(docente.fecha_nacimiento).format("DD/MM/YYYY") : "-"}</TableCell>
                     <TableCell>{docente.email || "-"}</TableCell>
                     <TableCell>{docente.telefono || "-"}</TableCell>
                     <TableCell>{docente.cuil || "-"}</TableCell>
