@@ -261,10 +261,10 @@ export default function AppShell({ children }: PropsWithChildren) {
     unreadMessages === 0
       ? "default"
       : messageSummary?.sla_danger
-      ? "error"
-      : messageSummary?.sla_warning
-      ? "warning"
-      : "primary";
+        ? "error"
+        : messageSummary?.sla_warning
+          ? "warning"
+          : "primary";
 
   const navButtonSx = {
     borderRadius: 10,
@@ -409,18 +409,18 @@ export default function AppShell({ children }: PropsWithChildren) {
                 </Typography>
               )}
             </Box>
-              <Button
-                component={Link}
-                to="/cambiar-password"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                  color: INSTITUTIONAL_TERRACOTTA,
-                  borderRadius: 10,
-                }}
-              >
-                Cambiar contraseña
-              </Button>
+            <Button
+              component={Link}
+              to="/cambiar-password"
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                color: INSTITUTIONAL_TERRACOTTA,
+                borderRadius: 10,
+              }}
+            >
+              Cambiar contraseña
+            </Button>
             <Button
               variant="contained"
               color="primary"
@@ -690,7 +690,7 @@ export default function AppShell({ children }: PropsWithChildren) {
         <Box sx={{ mt: "auto", px: 3 }}>
           <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 2 }} />
           <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
-            IPES · lucasoviedodev@gmail.com
+            IPES · Sistema de Gestión
           </Typography>
         </Box>
       </Drawer>
