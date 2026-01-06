@@ -123,7 +123,7 @@ PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
 
 
-def check_roles(request, allowed_roles: list[str]):
+def check_roles(request, profesorado_id: Optional[int] = None, allowed_roles: list[str]):
     if not request.user or not request.user.is_authenticated:
         raise HttpError(401, "Unauthorized")
 
@@ -137,14 +137,14 @@ def check_roles(request, allowed_roles: list[str]):
 
 @router.get("/", response=list[PreinscripcionOut], auth=JWTAuth())
 def listar_preinscripciones(
-    request,
+    request, profesorado_id: Optional[int] = None,
     q: str | None = None,
     limit: int = 100,
     offset: int = 0,
     include_inactivas: bool = False,
 ):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     qs = Preinscripcion.objects.select_related("alumno__user", "carrera").all().order_by("-created_at")
     if not include_inactivas:
         qs = qs.filter(activa=True)
@@ -164,9 +164,9 @@ def listar_preinscripciones(
 
 
 @router.get("/{pre_id}", response=PreinscripcionOut, auth=JWTAuth())
-def obtener_preinscripcion(request, pre_id: int):
+def obtener_preinscripcion(request, profesorado_id: Optional[int] = None, pre_id: int):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = Preinscripcion.objects.select_related("alumno__user", "carrera").filter(id=pre_id).first()
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
@@ -174,9 +174,9 @@ def obtener_preinscripcion(request, pre_id: int):
 
 
 @router.delete("/{pre_id}", response={204: None, 404: ApiResponse}, auth=JWTAuth())
-def eliminar_preinscripcion(request, pre_id: int):
+def eliminar_preinscripcion(request, profesorado_id: Optional[int] = None, pre_id: int):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
         return 404, ApiResponse(ok=False, message="No encontrada")
@@ -190,9 +190,9 @@ def eliminar_preinscripcion(request, pre_id: int):
 
 
 @router.post("/{pre_id}/activar", response=PreinscripcionOut, auth=JWTAuth())
-def activar_preinscripcion(request, pre_id: int):
+def activar_preinscripcion(request, profesorado_id: Optional[int] = None, pre_id: int):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
@@ -206,7 +206,7 @@ def activar_preinscripcion(request, pre_id: int):
 
 
 @router.get("/carreras", response=ApiResponse)
-def listar_carreras(request, vigentes: bool = True):
+def listar_carreras(request, profesorado_id: Optional[int] = None, vigentes: bool = True):
     try:
         from core.models import Profesorado
         qs = Profesorado.objects.all().order_by("nombre")
@@ -225,7 +225,7 @@ def _generar_codigo(pk: int) -> str:
 
 @router.post("", response=ApiResponse)
 @transaction.atomic
-def crear_o_actualizar(request, payload: PreinscripcionIn):
+def crear_o_actualizar(request, profesorado_id: Optional[int] = None, payload: PreinscripcionIn):
     """Crea o actualiza una preinscripción.
     La lógica es centrada en el Estudiante, usando el DNI como identificador principal.
     """
@@ -381,9 +381,9 @@ def _sync_curso_intro_flag(estudiante, nuevo_valor: bool | None):
 
 
 @router.get("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
-def get_checklist(request, pre_id: int):
+def get_checklist(request, profesorado_id: Optional[int] = None, pre_id: int):
     from core.models import Preinscripcion, PreinscripcionChecklist
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = Preinscripcion.objects.filter(id=pre_id).select_related("alumno").first()
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
@@ -397,9 +397,9 @@ def get_checklist(request, pre_id: int):
 
 @router.put("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
 @transaction.atomic
-def put_checklist(request, pre_id: int, payload: ChecklistIn):
+def put_checklist(request, profesorado_id: Optional[int] = None, pre_id: int, payload: ChecklistIn):
     from core.models import Preinscripcion, PreinscripcionChecklist
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = Preinscripcion.objects.filter(id=pre_id).select_related("alumno").first()
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
@@ -417,8 +417,8 @@ def put_checklist(request, pre_id: int, payload: ChecklistIn):
 
 @router.post("/by-code/{codigo}/confirmar", response=ApiResponse, auth=JWTAuth())
 @transaction.atomic
-def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = None):
-    check_roles(request, PREINS_ALLOWED_ROLES)
+def confirmar_por_codigo(request, profesorado_id: Optional[int] = None, codigo: str, payload: ChecklistIn | None = None):
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     """Confirma la preinscripción, actualiza checklist y estado de legajo.
 
     - Si viene payload: actualiza checklist antes de confirmar.
@@ -494,7 +494,7 @@ def _serialize_requisito(req) -> RequisitoDocumentacionOut:
     response=list[RequisitoDocumentacionOut],
     auth=JWTAuth(),
 )
-def listar_requisitos_documentacion(request, prof_id: int):
+def listar_requisitos_documentacion(request, profesorado_id: Optional[int] = None, prof_id: int):
     from core.models import Profesorado
 
     ensure_roles(request.user, DOC_ALLOWED_ROLES)
@@ -514,7 +514,7 @@ def listar_requisitos_documentacion(request, prof_id: int):
     auth=JWTAuth(),
 )
 def actualizar_requisitos_documentacion(
-    request,
+    request, profesorado_id: Optional[int] = None,
     prof_id: int,
     payload: list[RequisitoDocumentacionUpdateIn],
 ):
@@ -630,17 +630,17 @@ def _serialize_pre(pre: 'Preinscripcion'):
 
 
 @router.get("/by-code/{codigo}", auth=JWTAuth())
-def obtener_por_codigo(request, codigo: str):
+def obtener_por_codigo(request, profesorado_id: Optional[int] = None, codigo: str):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
     return _serialize_pre(pre)
 
 
 @router.get("/alumno/{dni}", auth=JWTAuth())
-def listar_por_alumno(request, dni: str):
+def listar_por_alumno(request, profesorado_id: Optional[int] = None, dni: str):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     preins = (
         Preinscripcion.objects.select_related("alumno__user", "carrera")
         .filter(alumno__dni=dni)
@@ -655,9 +655,9 @@ def listar_por_alumno(request, dni: str):
     auth=JWTAuth(),
 )
 @transaction.atomic
-def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn):
+def agregar_carrera(request, profesorado_id: Optional[int] = None, codigo: str, payload: NuevaCarreraIn):
     from core.models import Profesorado, Preinscripcion, PreinscripcionChecklist
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
     carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
     if not carrera:
@@ -709,9 +709,9 @@ def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn):
 
 @router.put("/by-code/{codigo}", auth=JWTAuth())
 @transaction.atomic
-def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn):
+def actualizar_por_codigo(request, profesorado_id: Optional[int] = None, codigo: str, payload: PreinscripcionUpdateIn):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
     if payload.alumno:
         alumno = payload.alumno
@@ -746,9 +746,9 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn)
 
 
 @router.post("/by-code/{codigo}/observar", auth=JWTAuth())
-def observar(request, codigo: str, motivo: str | None = None):
+def observar(request, profesorado_id: Optional[int] = None, codigo: str, motivo: str | None = None):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
     pre.estado = "Observada"
     pre.save(update_fields=["estado"])
@@ -756,9 +756,9 @@ def observar(request, codigo: str, motivo: str | None = None):
 
 
 @router.post("/by-code/{codigo}/rechazar", auth=JWTAuth())
-def rechazar(request, codigo: str, motivo: str | None = None):
+def rechazar(request, profesorado_id: Optional[int] = None, codigo: str, motivo: str | None = None):
     from core.models import Preinscripcion
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
     pre.estado = "Rechazada"
     pre.save(update_fields=["estado"])
@@ -766,9 +766,9 @@ def rechazar(request, codigo: str, motivo: str | None = None):
 
 
 @router.post("/by-code/{codigo}/cambiar-carrera", auth=JWTAuth())
-def cambiar_carrera(request, codigo: str, carrera_id: int):
+def cambiar_carrera(request, profesorado_id: Optional[int] = None, codigo: str, carrera_id: int):
     from core.models import Preinscripcion, InscripcionMateriaAlumno, Regularidad, InscripcionMesa
-    check_roles(request, PREINS_ALLOWED_ROLES)
+    check_roles(request, profesorado_id: Optional[int] = None, PREINS_ALLOWED_ROLES)
     pre = _get_pre_by_codigo(codigo)
     carrera_actual = pre.carrera
     alumno = pre.alumno

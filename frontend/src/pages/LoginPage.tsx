@@ -53,7 +53,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   // URL absoluta apuntando al backend en su subdominio (via Cloudflare Tunnel)
-  const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "https://ipes6-api.lucasoviedodev.org/api/auth/google/login";
+  const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "https://ipesrg.com/api/auth/google/login";
 
   const hasGoogleEndpoint = true;
 

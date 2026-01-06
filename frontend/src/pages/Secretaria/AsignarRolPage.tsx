@@ -1,257 +1,236 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
-  Alert,
-  Button,
-  CircularProgress,
-  MenuItem,
+  Box,
+  Typography,
   Paper,
-  Stack,
   TextField,
-} from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { AxiosError } from "axios";
-import { listarDocentes, DocenteDTO } from "@/api/docentes";
-import { fetchCarreras, Carrera } from "@/api/carreras";
-import { useAuth } from "@/context/AuthContext";
-import { asignarRolADocente } from "@/api/roles";
-import { toast } from "@/utils/toast";
-import { PageHero } from "@/components/ui/GradientTitles";
-import BackButton from "@/components/ui/BackButton";
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Autocomplete,
+  Chip,
+  CircularProgress,
+  Alert,
+  Stack,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  IconButton
+} from '@mui/material';
+import {
+  PersonAdd as PersonAddIcon,
+  Delete as DeleteIcon,
+  AssignmentInd as AssignmentIcon
+} from '@mui/icons-material';
+import axios from 'axios';
 
-const ALL_ROLES = [
-  "admin",
-  "secretaria",
-  "bedel",
-  "jefa_aaee",
-  "jefes",
-  "tutor",
-  "coordinador",
-  "consulta",
-];
+interface User {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  groups: string[];
+}
 
-const ROLES_CON_PROFESORADOS = new Set(["bedel", "tutor", "coordinador"]);
+interface Profesorado {
+  id: number;
+  nombre: string;
+}
 
-const ROLE_ASSIGN_MATRIX: Record<string, string[]> = {
-  admin: ALL_ROLES,
-  secretaria: ALL_ROLES.filter((role) => role !== "admin"),
-  bedel: [],
-  jefa_aaee: ["bedel", "tutor", "coordinador"],
-  jefes: [],
-  tutor: [],
-  coordinador: [],
-  consulta: [],
-};
+const AsignarRolPage: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-export default function AsignarRolPage() {
-  const { user } = useAuth();
-  const [docenteSeleccionado, setDocenteSeleccionado] = useState<DocenteDTO | null>(null);
-  const [rolSeleccionado, setRolSeleccionado] = useState<string>("");
-  const [profesoradosSeleccionados, setProfesoradosSeleccionados] = useState<number[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedProfesorados, setSelectedProfesorados] = useState<number[]>([]);
 
-  const docentesQuery = useQuery({
-    queryKey: ["docentes", "listado"],
-    queryFn: listarDocentes,
-    staleTime: 5 * 60 * 1000,
-  });
-  const docentes = docentesQuery.data ?? [];
+  const roles = [
+    { value: 'admin', label: 'Administrador' },
+    { value: 'secretaria', label: 'Secretaría' },
+    { value: 'bedel', label: 'Bedel' },
+    { value: 'jefa_aaee', label: 'Jefa A.A.E.E.' },
+    { value: 'jefes', label: 'Jefes' },
+    { value: 'tutor', label: 'Tutor' },
+    { value: 'coordinador', label: 'Coordinador' },
+    { value: 'consulta', label: 'Consulta' },
+  ];
 
-  const profesoradosQuery = useQuery({
-    queryKey: ["profesorados", "vigentes"],
-    queryFn: fetchCarreras,
-    staleTime: 5 * 60 * 1000,
-  });
-  const profesorados: Carrera[] = profesoradosQuery.data ?? [];
-
-  const userRoles = useMemo(
-    () => (user?.roles ?? []).map((role) => role.toLowerCase()),
-    [user?.roles],
-  );
-
-  const assignableRoles = useMemo(() => {
-    if (user?.is_superuser || user?.is_staff) {
-      return ALL_ROLES;
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [usersRes, profRes] = await Promise.all([
+        axios.get('/api/management/users-list'),
+        axios.get('/api/profesorados/')
+      ]);
+      setUsers(usersRes.data);
+      setProfesorados(profRes.data);
+    } catch (err) {
+      setError('Error al cargar datos');
+    } finally {
+      setLoading(false);
     }
-    const grantable = new Set<string>();
-    userRoles.forEach((role) => {
-      ROLE_ASSIGN_MATRIX[role]?.forEach((grant) => grantable.add(grant));
-    });
-    return ALL_ROLES.filter((role) => grantable.has(role));
-  }, [user?.is_staff, user?.is_superuser, userRoles]);
+  };
 
   useEffect(() => {
-    if (!assignableRoles.length) {
-      setRolSeleccionado("");
+    fetchData();
+  }, []);
+
+  const handleAction = async (action: 'assign' | 'remove', roleToRemove?: string) => {
+    const role = action === 'assign' ? selectedRole : roleToRemove;
+    
+    if (!selectedUser || !role) {
+      setError('Por favor seleccione un usuario y un rol');
       return;
     }
-    if (!assignableRoles.includes(rolSeleccionado)) {
-      setRolSeleccionado(assignableRoles[0]);
-    }
-  }, [assignableRoles, rolSeleccionado]);
 
-  const rolRequiereProfesorados = useMemo(
-    () => ROLES_CON_PROFESORADOS.has(rolSeleccionado.toLowerCase()),
-    [rolSeleccionado],
-  );
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
 
-  useEffect(() => {
-    if (!rolRequiereProfesorados) {
-      setProfesoradosSeleccionados([]);
-    }
-  }, [rolRequiereProfesorados]);
-
-  const noAssignableRoles = assignableRoles.length === 0;
-
-  const asignarRolMutation = useMutation({
-    mutationFn: async () => {
-      if (!docenteSeleccionado || !rolSeleccionado) {
-        throw new Error("Se requiere docente y rol.");
-      }
-      if (rolRequiereProfesorados && profesoradosSeleccionados.length === 0) {
-        throw new Error("Seleccioná al menos un profesorado para este rol.");
-      }
-      return asignarRolADocente(docenteSeleccionado.id, {
-        role: rolSeleccionado,
-        profesorados: rolRequiereProfesorados ? profesoradosSeleccionados : undefined,
+    try {
+      await axios.post('/api/management/asignar-rol', {
+        user_id: selectedUser.id,
+        role: role,
+        profesorado_ids: role === 'bedel' ? selectedProfesorados : [],
+        action: action
       });
-    },
-    onSuccess: (data) => {
-      toast.success(
-        `Se asignó el rol ${data.role} a ${docenteSeleccionado?.apellido}, ${docenteSeleccionado?.nombre}.`,
-      );
-      if (rolRequiereProfesorados) {
-        setProfesoradosSeleccionados(data.profesorados ?? []);
+      
+      setSuccess(`Rol ${action === 'assign' ? 'asignado' : 'quitado'} correctamente`);
+      if (action === 'assign') {
+        setSelectedRole('');
+        setSelectedProfesorados([]);
       }
-    },
-    onError: (error) => {
-      let message = "No se pudo asignar el rol.";
-      if (error instanceof AxiosError && error.response?.data) {
-        const detail = (error.response.data as any)?.detail;
-        if (typeof detail === "string") {
-          message = detail;
-        }
-      }
-      toast.error(message);
-    },
-  });
-
-  const asignarDisabled =
-    !docenteSeleccionado ||
-    !rolSeleccionado ||
-    asignarRolMutation.status === "pending" ||
-    (rolRequiereProfesorados && profesoradosSeleccionados.length === 0);
+      fetchData(); // Recargar para ver cambios
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al procesar la solicitud');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <Stack gap={3}>
-      <BackButton fallbackPath="/secretaria" />
-      <PageHero
-        title="Asignar Rol"
-        subtitle="Gestioná permisos y responsabilidades del personal"
-      />
-      <Paper sx={{ p: 2 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} gap={1.5}>
-          <Autocomplete
-            options={docentes}
-            value={docenteSeleccionado}
-            onChange={(_, value) => setDocenteSeleccionado(value)}
-            loading={docentesQuery.isLoading}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            getOptionLabel={(option) => `${option.apellido}, ${option.nombre} (${option.dni})`}
-            sx={{ minWidth: 260 }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                size="small"
-                label="Docente"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {docentesQuery.isLoading ? (
-                        <CircularProgress color="inherit" size={18} sx={{ mr: 1 }} />
-                      ) : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
+    <Box sx={{ p: 4 }}>
+      <Box sx={{ 
+        background: 'linear-gradient(135deg, #a67c52 0%, #8b6b4d 100%)',
+        borderRadius: 4,
+        p: 4,
+        mb: 4,
+        color: 'white',
+        boxShadow: '0 10px 30px rgba(166, 124, 82, 0.3)'
+      }}>
+        <Typography variant="h4" fontWeight={800} textTransform="uppercase">Asignar / Quitar Roles</Typography>
+        <Typography variant="body1" sx={{ opacity: 0.8 }}>Gestione permisos y responsabilidades del personal</Typography>
+      </Box>
+
+      <Stack spacing={4}>
+        <Paper sx={{ p: 4, borderRadius: 4 }}>
+          <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PersonAddIcon color="primary" /> Nueva Asignación
+          </Typography>
+          
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, alignItems: 'flex-start' }}>
+            <Autocomplete
+              sx={{ minWidth: 300, flex: 2 }}
+              options={users}
+              getOptionLabel={(option) => `${option.last_name}, ${option.first_name} (${option.username})`}
+              renderInput={(params) => <TextField {...params} label="Usuario" variant="outlined" />}
+              value={selectedUser}
+              onChange={(_, newValue) => setSelectedUser(newValue)}
+            />
+
+            <FormControl sx={{ minWidth: 200, flex: 1 }}>
+              <InputLabel>Rol</InputLabel>
+              <Select
+                value={selectedRole}
+                label="Rol"
+                onChange={(e) => setSelectedRole(e.target.value)}
+              >
+                {roles.map((r) => (
+                  <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {selectedRole === 'bedel' && (
+              <Autocomplete
+                multiple
+                sx={{ minWidth: 300, flex: 2 }}
+                options={profesorados}
+                getOptionLabel={(option) => option.nombre}
+                renderInput={(params) => <TextField {...params} label="Profesorados que gestiona" />}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip variant="outlined" label={option.nombre} {...getTagProps({ index })} />
+                  ))
+                }
+                onChange={(_, newValue) => setSelectedProfesorados(newValue.map(p => p.id))}
               />
             )}
-          />
-          <TextField
-            size="small"
-            label="Rol"
-            select
-            value={rolSeleccionado}
-            onChange={(event) => setRolSeleccionado(event.target.value)}
-            sx={{ minWidth: 220 }}
-            helperText={
-              noAssignableRoles
-                ? "No tenés permisos para asignar roles."
-                : "Elegí el rol que querés otorgar al docente seleccionado."
-            }
-            disabled={noAssignableRoles}
-          >
-            {ALL_ROLES.map((role) => (
-              <MenuItem key={role} value={role} disabled={!assignableRoles.includes(role)}>
-                {role}
-              </MenuItem>
-            ))}
-          </TextField>
-          {rolRequiereProfesorados && (
-            <Autocomplete
-              multiple
-              options={profesorados}
-              value={profesorados.filter((carrera) =>
-                profesoradosSeleccionados.includes(carrera.id),
+
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <AssignmentIcon />}
+              onClick={() => handleAction('assign')}
+              disabled={submitting || !selectedUser || !selectedRole}
+              sx={{ height: 56, px: 4, borderRadius: 2, bgcolor: '#a67c52', '&:hover': { bgcolor: '#8b6b4d' } }}
+            >
+              Asignar
+            </Button>
+          </Box>
+        </Paper>
+
+        {selectedUser && (
+          <Paper sx={{ p: 4, borderRadius: 4 }}>
+            <Typography variant="h6" sx={{ mb: 3 }}>
+              Roles actuales de <strong>{selectedUser.first_name} {selectedUser.last_name}</strong>
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <List>
+              {selectedUser.groups.length === 0 ? (
+                <Typography color="text.secondary">Este usuario no tiene roles asignados.</Typography>
+              ) : (
+                selectedUser.groups.map((group) => (
+                  <ListItem key={group} sx={{ bgcolor: 'grey.50', mb: 1, borderRadius: 2 }}>
+                    <ListItemText 
+                      primary={roles.find(r => r.value === group)?.label || group.toUpperCase()} 
+                      secondary={group === 'alumno' ? 'Rol automático de estudiante' : 'Rol administrativo'}
+                    />
+                    <ListItemSecondaryAction>
+                      {group !== 'alumno' && (
+                        <IconButton 
+                          edge="end" 
+                          color="error" 
+                          onClick={() => handleAction('remove', group)}
+                          disabled={submitting}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))
               )}
-              onChange={(_, values) =>
-                setProfesoradosSeleccionados(values.map((value) => value.id))
-              }
-              loading={profesoradosQuery.isLoading}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              getOptionLabel={(option) => option.nombre}
-              sx={{ minWidth: 260 }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  size="small"
-                  label="Profesorados"
-                  placeholder="Seleccionar profesorados"
-                  helperText="Asigná los profesorados que podrá gestionar."
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {profesoradosQuery.isLoading ? (
-                          <CircularProgress color="inherit" size={18} sx={{ mr: 1 }} />
-                        ) : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-            />
-          )}
-          <Button
-            variant="contained"
-            disabled={asignarDisabled}
-            onClick={() => asignarRolMutation.mutate()}
-          >
-            Asignar
-          </Button>
-        </Stack>
-        {docentesQuery.isError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            No pudimos cargar el listado de docentes. Intentá nuevamente más tarde.
-          </Alert>
+            </List>
+          </Paper>
         )}
-        {profesoradosQuery.isError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            Ocurrió un problema al obtener los profesorados. Intentá más tarde.
-          </Alert>
-        )}
-      </Paper>
-    </Stack>
+      </Stack>
+
+      <Box sx={{ mt: 3 }}>
+        {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+        {success && <Alert severity="success" onClose={() => setSuccess(null)}>{success}</Alert>}
+      </Box>
+    </Box>
   );
-}
+};
+
+export default AsignarRolPage;

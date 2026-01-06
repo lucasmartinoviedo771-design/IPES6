@@ -99,6 +99,22 @@ const ROLE_NAV_MAP: Record<string, string[]> = {
   curso_intro: ["cursoIntro", "mensajes"],
 };
 
+const roleLabels: Record<string, string> = {
+  admin: "Administrador",
+  secretaria: "Secretaría",
+  bedel: "Bedelía",
+  docente: "Docente",
+  tutor: "Tutoría",
+  coordinador: "Coordinación",
+  jefes: "Jefatura",
+  jefa_aaee: "Jefa A.A.E.E.",
+  consulta: "Consulta",
+  alumno: "Alumno/a",
+  equivalencias: "Equivalencias",
+  titulos: "Títulos",
+  curso_intro: "Curso Intro",
+};
+
 export default function AppShell({ children }: PropsWithChildren) {
   const { user, logout, roleOverride, setRoleOverride, availableRoleOptions } = useAuth();
   const [open, setOpen] = useState<boolean>(() => {
@@ -406,6 +422,20 @@ export default function AppShell({ children }: PropsWithChildren) {
               {user?.email && (
                 <Typography variant="caption" sx={{ color: "#475569" }}>
                   {user.email}
+                </Typography>
+              )}
+              {user?.roles && user.roles.length > 0 && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: INSTITUTIONAL_TERRACOTTA, 
+                    display: "block", 
+                    fontWeight: 700,
+                    fontSize: "0.65rem",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  {user.roles.map(r => roleLabels[r.toLowerCase()] || r.toUpperCase()).join(" • ")}
                 </Typography>
               )}
             </Box>

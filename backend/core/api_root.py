@@ -49,3 +49,5 @@ if 'api' not in locals():
     api.add_router("/auth", auth_router)
 
     api.add_router("/", core_router)
+    from .api import management_router
+    api.add_router("/management", management_router)

@@ -624,6 +624,11 @@ export default function CargarMateriasPage() {
                       Formato
                     </TableSortLabel>
                   </TableCell>
+                  <TableCell sortDirection={sortBy==='tipo_formacion' ? sortDir : false as any}>
+                    <TableSortLabel active={sortBy==='tipo_formacion'} direction={sortBy==='tipo_formacion'?sortDir:'asc'} onClick={() => { setSortBy('tipo_formacion'); setSortDir(d=> (sortBy!=='tipo_formacion' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                      Formación
+                    </TableSortLabel>
+                  </TableCell>
                   <TableCell sortDirection={sortBy==='regimen' ? sortDir : false as any}>
                     <TableSortLabel active={sortBy==='regimen'} direction={sortBy==='regimen'?sortDir:'asc'} onClick={() => { setSortBy('regimen'); setSortDir(d=> (sortBy!=='regimen' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
                       Cursada

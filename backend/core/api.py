@@ -1,3 +1,4 @@
+from typing import List
 import string
 from datetime import date, datetime, time
 
@@ -13,6 +14,7 @@ from ninja.errors import HttpError
 from ninja.files import UploadedFile
 
 from apps.common.api_schemas import ApiResponse
+from .schemas import UserSchema, AsignarRolIn
 from core.auth_ninja import JWTAuth
 from core.models import (
     Bloque,
@@ -3748,3 +3750,79 @@ def conversations_summary(request):
         elif indicator == "danger":
             danger += 1
     return ConversationCountsOut(unread=unread, sla_warning=warning, sla_danger=danger)
+
+
+@router.get("/users/list", response=List[UserSchema], auth=JWTAuth())
+def list_users_admin(request):
+    users = User.objects.all().prefetch_related('groups').order_by('last_name')
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "groups": [g.name for g in u.groups.all()]
+        } for u in users
+    ]
+
+@router.post("/asignar-rol", auth=JWTAuth())
+def asignar_rol(request, data: AsignarRolIn):
+    user = get_object_or_404(User, id=data.user_id)
+    group = get_object_or_404(Group, name=data.role)
+    
+    if data.action == "remove":
+        user.groups.remove(group)
+        if data.role in ["bedel", "coordinador", "tutor"]:
+             if data.profesorado_ids:
+                 StaffAsignacion.objects.filter(user=user, rol=data.role, profesorado_id__in=data.profesorado_ids).delete()
+             else:
+                 StaffAsignacion.objects.filter(user=user, rol=data.role).delete()
+        return {"message": f"Rol {data.role} quitado correctamente"}
+
+    user.groups.add(group)
+
+    if data.role in ["bedel", "coordinador", "tutor"] and data.profesorado_ids:
+        for prof_id in data.profesorado_ids:
+            StaffAsignacion.objects.get_or_create(
+                profesorado_id=prof_id,
+                user=user,
+                rol=data.role
+            )
+    return {"message": f"Rol {data.role} asignado correctamente"}
+
+management_router = Router(tags=["management"], auth=JWTAuth())
+
+@management_router.get("/users-list", response=List[UserSchema])
+def list_users_admin_v2(request):
+    users = User.objects.all().prefetch_related('groups').order_by('last_name')
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "groups": [g.name for g in u.groups.all()]
+        } for u in users
+    ]
+
+@management_router.post("/asignar-rol")
+def asignar_rol_v2(request, data: AsignarRolIn):
+    user = get_object_or_404(User, id=data.user_id)
+    group, _ = Group.objects.get_or_create(name=data.role)
+    
+    if data.action == "remove":
+        user.groups.remove(group)
+        if data.role in ["bedel", "coordinador", "tutor"]:
+             StaffAsignacion.objects.filter(user=user, rol=data.role).delete()
+        return {"message": f"Rol {data.role} quitado correctamente"}
+
+    user.groups.add(group)
+
+    if data.role in ["bedel", "coordinador", "tutor"] and data.profesorado_ids:
+        for prof_id in data.profesorado_ids:
+            StaffAsignacion.objects.get_or_create(
+                profesorado_id=prof_id,
+                user=user,
+                rol=data.role
+            )
+    return {"message": f"Rol {data.role} asignado correctamente"}

@@ -14,7 +14,7 @@ services:
     environment:
       MYSQL_DATABASE: ${DB_NAME:-ipes6}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-      MYSQL_USER: ${DB_USER_-ipes_user}
+      MYSQL_USER: ${DB_USER:-ipes_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-ipes2024}
     volumes:
       - db_data:/var/lib/mysql
@@ -44,10 +44,10 @@ services:
       DB_NAME: ${DB_NAME:-ipes6}
       DB_USER: ${DB_USER:-ipes_user}
       DB_PASSWORD: ${DB_PASSWORD:-REDACTED}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.118.140.124,ipes6-api.lucasoviedodev.org,ipes6.lucasoviedodev.org}
-      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080,https://ipes6.lucasoviedodev.org,https://www.lucasoviedodev.org,https://lucasoviedodev.org}
-      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080,https://ipes6.lucasoviedodev.org,https://ipes6-api.lucasoviedodev.org}
-      FRONTEND_URL: ${FRONTEND_URL:-https://ipes6.lucasoviedodev.org}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,10.118.140.124,ipesrg.com,ipesrg.com}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080,https://ipesrg.com,https://www.ipesrg.com,https://ipesrg.com}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://10.118.140.124:8080,https://ipesrg.com,https://ipesrg.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://ipesrg.com}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
@@ -67,7 +67,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
-      - /home/admin486321/ssl:/etc/nginx/ssl:ro
+      # - /home/admin486321/ssl:/etc/nginx/ssl:ro  # SSL will be handled by Hestia reverse proxy
 
 volumes:
   db_data:

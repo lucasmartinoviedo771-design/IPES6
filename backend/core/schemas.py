@@ -1,3 +1,4 @@
+from typing import List
 # backend/core/schemas.py
 
 from datetime import date
@@ -70,3 +71,16 @@ class ErrorSchema(Schema):
 class CarreraListSchema(Schema):
     id: int
     nombre: str
+
+class UserSchema(Schema):
+    id: int
+    username: str
+    first_name: str = ""
+    last_name: str = ""
+    groups: List[str] = []
+
+class AsignarRolIn(Schema):
+    user_id: int
+    role: str
+    profesorado_ids: List[int] = []
+    action: str = "assign"
