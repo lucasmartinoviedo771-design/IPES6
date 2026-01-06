@@ -3754,7 +3754,8 @@ def conversations_summary(request):
 
 @router.get("/users/list", response=List[UserSchema], auth=JWTAuth())
 def list_users_admin(request):
-    users = User.objects.all().prefetch_related('groups').order_by('last_name')
+    docente_dnis = Docente.objects.values_list('dni', flat=True)
+    users = User.objects.filter(Q(username__in=docente_dnis) | Q(groups__name__in=['admin', 'bedel', 'docente', 'coordinador', 'tutor']) | Q(is_superuser=True) | Q(is_staff=True)).distinct().prefetch_related('groups').order_by('last_name')
     return [
         {
             "id": u.id,
@@ -3794,7 +3795,8 @@ management_router = Router(tags=["management"], auth=JWTAuth())
 
 @management_router.get("/users-list", response=List[UserSchema])
 def list_users_admin_v2(request):
-    users = User.objects.all().prefetch_related('groups').order_by('last_name')
+    docente_dnis = Docente.objects.values_list('dni', flat=True)
+    users = User.objects.filter(Q(username__in=docente_dnis) | Q(groups__name__in=['admin', 'bedel', 'docente', 'coordinador', 'tutor']) | Q(is_superuser=True) | Q(is_staff=True)).distinct().prefetch_related('groups').order_by('last_name')
     return [
         {
             "id": u.id,

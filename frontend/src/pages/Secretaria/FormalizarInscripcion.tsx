@@ -31,7 +31,7 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { client as axios } from '@/api/client';
 
 interface Preinscripcion {
   id: number;
@@ -70,7 +70,7 @@ const FormalizarInscripcion: React.FC = () => {
 
   const fetchProfesorados = async () => {
     try {
-      const response = await axios.get('/api/profesorados');
+      const response = await axios.get('profesorados');
       setProfesorados(response.data);
     } catch (err) {
       console.error("Error al cargar profesorados", err);
@@ -80,7 +80,7 @@ const FormalizarInscripcion: React.FC = () => {
   const fetchPreinscripciones = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/preinscriptions/', {
+      const response = await axios.get('preinscripciones/', {
         params: {
           search: searchQuery || undefined,
           include_inactive: includeInactive,
@@ -204,7 +204,7 @@ const FormalizarInscripcion: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => navigate('/preinscriptions/new')}
+              onClick={() => navigate('/preinscripciones/new')}
               sx={{ 
                 borderRadius: 3,
                 px: 3,
@@ -288,7 +288,7 @@ const FormalizarInscripcion: React.FC = () => {
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                         <Tooltip title="Ver / Editar">
                           <IconButton 
-                            onClick={() => navigate(`/preinscriptions/${pre.id}`)}
+                            onClick={() => navigate(`preinscripciones/${pre.id}`)}
                             sx={{ color: '#a67c52', '&:hover': { bgcolor: 'rgba(166, 124, 82, 0.1)' } }}
                           >
                             <ViewIcon  />

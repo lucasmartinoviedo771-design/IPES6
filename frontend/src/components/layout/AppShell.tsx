@@ -154,8 +154,12 @@ export default function AppShell({ children }: PropsWithChildren) {
     return new Set(entries);
   }, [roleOverride]);
   const isNavAllowed = (key: string, defaultValue: boolean) => {
-    if (!allowedNavSet) return defaultValue;
-    return allowedNavSet.has(key);
+    // Si hay rol activo seleccionado, usar SOLO el allowedNavSet
+    if (roleOverride) {
+      return allowedNavSet ? allowedNavSet.has(key) : false;
+    }
+    // Si no hay rol seleccionado, usar el valor por defecto (que verifica todos los roles)
+    return defaultValue;
   };
   const dashboardVisible = isNavAllowed("dashboard", hasAnyRole(user, [
     "admin",
@@ -233,7 +237,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     [user],
   );
 
-  const showRoleSwitcher = availableRoleOptions.length > baseRoleCount;
+  const showRoleSwitcher = availableRoleOptions.length > 1;
   const roleHomeMap: Record<string, string> = {
     admin: "/dashboard",
     secretaria: "/secretaria",
@@ -261,6 +265,16 @@ export default function AppShell({ children }: PropsWithChildren) {
       navigate(getDefaultHomeRoute(user), { replace: true });
     }
   }, [roleOverride, user, navigate]);
+  // Auto-select first role if user has multiple roles but none selected
+  useEffect(() => {
+    if (!user) return;
+    if (roleOverride) return; // Already has a role selected
+    if (availableRoleOptions.length > 1) {
+      // User has multiple roles, auto-select the first one
+      setRoleOverride(availableRoleOptions[0].value);
+    }
+  }, [user, roleOverride, availableRoleOptions, setRoleOverride]);
+
 
   const canUseMessages = isNavAllowed("mensajes", !!user);
 
@@ -388,7 +402,6 @@ export default function AppShell({ children }: PropsWithChildren) {
                     setRoleOverride(value ? value : null);
                   }}
                 >
-                  <MenuItem value="">Roles originales</MenuItem>
                   {availableRoleOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}

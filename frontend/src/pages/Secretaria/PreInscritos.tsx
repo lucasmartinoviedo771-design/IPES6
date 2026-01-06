@@ -31,7 +31,7 @@ import {
   Search as SearchIcon,
   FilterList as FilterIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import { client as axios } from '@/api/client';
 
 interface Preinscripcion {
   id: number;
@@ -81,7 +81,7 @@ const PreInscritos: React.FC = () => {
       if (filterAnio) params.anio = filterAnio;
       if (filterCarrera) params.carrera_id = filterCarrera;
 
-      const response = await axios.get('/api/preinscriptions/admin/list', { params });
+      const response = await axios.get('preinscripciones/admin/list', { params });
       setData(response.data);
       setError(null);
     } catch (err) {
@@ -95,7 +95,7 @@ const PreInscritos: React.FC = () => {
   const fetchCarreras = async () => {
     try {
       // Asumiendo que existe un endpoint de carreras
-      const response = await axios.get('/api/profesorados');
+      const response = await axios.get('profesorados');
       setCarreras(response.data);
     } catch (err) {
       console.error("Error cargando carreras");
@@ -132,7 +132,7 @@ const PreInscritos: React.FC = () => {
   const handleDeleteClick = async (id: number) => {
     if (window.confirm('¿Está seguro de eliminar esta preinscripción?')) {
       try {
-        await axios.delete(`/api/preinscriptions/admin/${id}`);
+        await axios.delete(`preinscripciones/admin/${id}`);
         fetchData();
       } catch (err) {
         alert('Error al eliminar');
@@ -143,7 +143,7 @@ const PreInscritos: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!selectedPre) return;
     try {
-      await axios.patch(`/api/preinscriptions/admin/${selectedPre.id}`, editForm);
+      await axios.patch(`preinscripciones/admin/${selectedPre.id}`, editForm);
       setEditModalOpen(false);
       fetchData();
     } catch (err) {
@@ -154,7 +154,7 @@ const PreInscritos: React.FC = () => {
   const handleConfirmAlta = async () => {
     if (!selectedPre) return;
     try {
-      await axios.post(`/api/preinscriptions/admin/${selectedPre.id}/confirmar`);
+      await axios.post(`preinscripciones/admin/${selectedPre.id}/confirmar`);
       setConfirmModalOpen(false);
       fetchData();
     } catch (err) {

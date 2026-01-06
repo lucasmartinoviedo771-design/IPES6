@@ -26,7 +26,8 @@ import {
   Delete as DeleteIcon,
   AssignmentInd as AssignmentIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { useAuth } from '@/context/AuthContext';
+import { client as axios } from '@/api/client';
 
 interface User {
   id: number;
@@ -42,6 +43,7 @@ interface Profesorado {
 }
 
 const AsignarRolPage: React.FC = () => {
+  const { user: currentUser, refreshProfile } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +70,19 @@ const AsignarRolPage: React.FC = () => {
     setLoading(true);
     try {
       const [usersRes, profRes] = await Promise.all([
-        axios.get('/api/management/users-list'),
-        axios.get('/api/profesorados/')
+        axios.get('management/users-list?' + new Date().getTime()),
+        axios.get('profesorados/')
       ]);
       setUsers(usersRes.data);
       setProfesorados(profRes.data);
+      
+      // Si hay un usuario seleccionado, actualizarlo con los datos frescos
+      if (selectedUser) {
+        const updatedUser = usersRes.data.find((u: User) => u.id === selectedUser.id);
+        if (updatedUser) {
+          setSelectedUser(updatedUser);
+        }
+      }
     } catch (err) {
       setError('Error al cargar datos');
     } finally {
@@ -97,7 +107,7 @@ const AsignarRolPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      await axios.post('/api/management/asignar-rol', {
+      await axios.post('management/asignar-rol', {
         user_id: selectedUser.id,
         role: role,
         profesorado_ids: role === 'bedel' ? selectedProfesorados : [],
@@ -110,8 +120,13 @@ const AsignarRolPage: React.FC = () => {
         setSelectedProfesorados([]);
       }
       fetchData(); // Recargar para ver cambios
+          // Si modificamos el rol del usuario actual, actualizar su perfil
+          if (currentUser && selectedUser.id === currentUser.id) {
+            await refreshProfile();
+          }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al procesar la solicitud');
+      const message = err?.message || err?.response?.data?.message || 'Error al procesar la solicitud';
+      setError(message);
     } finally {
       setSubmitting(false);
     }

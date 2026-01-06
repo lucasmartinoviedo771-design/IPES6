@@ -24,6 +24,8 @@ if 'api' not in locals():
     from apps.preinscriptions.api_uploads import router as preins_uploads_router
     api.add_router("/preinscripciones", preins_router)
     api.add_router("/preinscripciones", preins_uploads_router)
+    from apps.preinscriptions.admin_api import router as preins_admin_router
+    api.add_router("/preinscripciones/admin", preins_admin_router)
     api.add_router("/profesorados", carreras_router)
     api.add_router("/alumnos", alumnos_api_router)  # Montar el router de alumnos
     api.add_router("/alumnos/carga-notas", carga_notas_router)
@@ -48,6 +50,6 @@ if 'api' not in locals():
     from .auth_api import router as auth_router
     api.add_router("/auth", auth_router)
 
-    api.add_router("/", core_router)
     from .api import management_router
     api.add_router("/management", management_router)
+    api.add_router("/", core_router)
