@@ -1,32 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { listarProfesorados } from "@/api/cargaNotas";
 
 export type Carrera = { id: number; nombre: string };
 
-async function tryEndpoints(): Promise<Carrera[]> {
-  const paths = [
-    "/profesorados?vigentes=true",        // API principal actual
-    "/carreras?vigentes=true",            // Ninja montado en raiz
-    "/preinscriptions/carreras?vigentes=true", // Ninja montado bajo preinscriptions
-    "/carreras",                          // Django fallback (este patch)
-    "/core/carreras"                      // antiguo
-  ];
-  for (const p of paths) {
-    try {
-      const { data } = await api.get(p);
-      if (Array.isArray(data)) return data;
-      if (data?.results) return data.results.map((r:any)=>({id:r.id, nombre:r.nombre}));
-    } catch (_error) {
-      // sigue al siguiente endpoint
-    }
-  }
-  return [];
-}
-
+/**
+ * Hook para obtener el listado de profesorados (carreras) vigentes.
+ * Utiliza React Query para cachear los resultados y evitar múltiples llamadas.
+ */
 export function useCarreras() {
   return useQuery({
-    queryKey: ["carreras"],
-    queryFn: tryEndpoints,
-    staleTime: 60_000,
+    queryKey: ["catalog", "profesorados"],
+    queryFn: listarProfesorados,
+    staleTime: 1000 * 60 * 10, // 10 minutos de cache fresca
   });
 }
+
+// Alias para compatibilidad si es necesario
+export const useProfesorados = useCarreras;

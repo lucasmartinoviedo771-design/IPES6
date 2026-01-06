@@ -118,7 +118,7 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     return reporte
 
 @alumnos_router.get(
-    "/reportes/correlativas-caidas",
+    "/reportes/correlativas-caidas/",
     response={200: List[CorrelativaCaidaItem], 403: ApiResponse},
     auth=JWTAuth(),
 )
@@ -129,7 +129,7 @@ def reporte_correlativas_caidas(request, anio: int | None = None):
     return _check_correlativas_caidas(anio)
 
 @alumnos_router.get(
-    "/me/alertas",
+    "/me/alertas/",
     response={200: List[CorrelativaCaidaItem]},
     auth=JWTAuth(),
 )

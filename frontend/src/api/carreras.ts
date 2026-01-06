@@ -10,7 +10,7 @@ export interface Carrera {
 }
 
 export async function fetchCarreras(): Promise<Carrera[]> {
-  const { data } = await client.get("/profesorados?vigentes=true");
+  const { data } = await client.get("/profesorados/?vigentes=true");
   return data as Carrera[];
 }
 

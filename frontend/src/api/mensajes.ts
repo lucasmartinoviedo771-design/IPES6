@@ -144,7 +144,7 @@ export const cerrarConversacion = async (conversationId: number) => {
 };
 
 export const obtenerResumenMensajes = async (): Promise<ConversationCountsDTO> => {
-  const { data } = await client.get<ConversationCountsDTO>("/mensajes/resumen");
+  const { data } = await client.get<ConversationCountsDTO>("/mensajes/resumen/");
   return data;
 };
 

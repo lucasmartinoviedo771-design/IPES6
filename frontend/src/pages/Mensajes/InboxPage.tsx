@@ -358,11 +358,11 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
                         }}
                         disabled={already}
                       >
-                      <ListItemText
-                        disableTypography
-                        primary={candidate.name}
-                        secondary={candidate.roles.join(", ")}
-                      />
+                        <ListItemText
+                          disableTypography
+                          primary={candidate.name}
+                          secondary={candidate.roles.join(", ")}
+                        />
                       </ListItemButton>
                     );
                   })}
@@ -524,6 +524,7 @@ const MensajesInboxPage: React.FC = () => {
     queryFn: obtenerResumenMensajes,
     enabled: !!user,
     refetchInterval: 60_000,
+    staleTime: 60_000,
   });
 
   const {
@@ -558,7 +559,7 @@ const MensajesInboxPage: React.FC = () => {
 
   useEffect(() => {
     if (!selectedId) return;
-    queryClient.invalidateQueries({ queryKey: ["mensajes", "resumen"] }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ["mensajes", "resumen"] }).catch(() => { });
   }, [selectedId, queryClient]);
 
   const sendMutation = useMutation({
@@ -583,7 +584,7 @@ const MensajesInboxPage: React.FC = () => {
     if (ids.length > 0) {
       setSelectedId(ids[0]);
       refetchList();
-      queryClient.invalidateQueries({ queryKey: ["mensajes", "resumen"] }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ["mensajes", "resumen"] }).catch(() => { });
     }
   };
 
@@ -636,8 +637,8 @@ const MensajesInboxPage: React.FC = () => {
                 summary?.sla_danger
                   ? "error"
                   : summary?.sla_warning
-                  ? "warning"
-                  : "primary"
+                    ? "warning"
+                    : "primary"
               }
               badgeContent={summary?.unread ?? 0}
             >
@@ -775,15 +776,15 @@ const MensajesInboxPage: React.FC = () => {
                       selectedConversation.status === "open"
                         ? "Abierta"
                         : selectedConversation.status === "close_requested"
-                        ? "Cierre solicitado"
-                        : "Cerrada"
+                          ? "Cierre solicitado"
+                          : "Cerrada"
                     }
                     color={
                       selectedConversation.status === "open"
                         ? "success"
                         : selectedConversation.status === "close_requested"
-                        ? "warning"
-                        : "default"
+                          ? "warning"
+                          : "default"
                     }
                   />
                 </Stack>

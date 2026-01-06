@@ -22,7 +22,7 @@ async function tryGet(path: string): Promise<Carrera[] | null> {
 
 export async function listarCarreras(): Promise<Carrera[]> {
   // El endpoint correcto está en /profesorados, no /carreras
-  const out = await tryGet("/profesorados?vigentes=true");
+  const out = await tryGet("/profesorados/?vigentes=true");
   return out ?? [];
 }
 

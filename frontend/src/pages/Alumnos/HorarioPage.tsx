@@ -30,6 +30,9 @@ import HorarioTablaCard from "@/features/alumnos/horario/HorarioTablaCard";
 import { useAuth } from "@/context/AuthContext";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import BackButton from "@/components/ui/BackButton";
+import { useCarreras } from "@/hooks/useCarreras";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
 
 type SelectValue = string;
 type PlanOption = {
@@ -72,12 +75,7 @@ const HorarioPage: React.FC = () => {
     enabled: isAlumno,
   });
 
-  const profesoradosQuery = useQuery({
-    queryKey: ["alumnos", "profesorados"],
-    queryFn: () => listarProfesorados(),
-    staleTime: 5 * 60 * 1000,
-    enabled: !isAlumno,
-  });
+  const profesoradosQuery = useCarreras();
 
   const planesAdminQuery = useQuery({
     queryKey: ["alumnos", "profesorados", "planes", profesoradoId],
@@ -324,7 +322,7 @@ const HorarioPage: React.FC = () => {
 
       pdf.save(`${fileNameParts.join("_")}.pdf`);
       enqueueSnackbar("PDF descargado correctamente.", { variant: "success" });
-    } catch (error) { 
+    } catch (error) {
       console.error("Error generando PDF", error);
       enqueueSnackbar("No se pudo generar el PDF.", { variant: "error" });
     }
@@ -361,16 +359,18 @@ const HorarioPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <BackButton fallbackPath="/alumnos" />
-      <Typography variant="h4" gutterBottom>
-        Horario de cursada
-      </Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Selecciona el profesorado y plan que deseas consultar. Podés filtrar por turno, año
-        y cuatrimestre y descargar el resultado en PDF.
-      </Typography>
+      <PageHero
+        title="Horario de cursada"
+        subtitle="Selecciona el profesorado y plan que deseas consultar. Podés filtrar por turno, año y cuatrimestre y descargar el resultado en PDF."
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+      />
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>
+          <SectionTitlePill
+            title="Selección de Carrera"
+            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mb: 1 }}
+          />
           <FormControl fullWidth size="small">
             <InputLabel id="carrera-select-label">Profesorado</InputLabel>
             <Select
@@ -382,15 +382,15 @@ const HorarioPage: React.FC = () => {
             >
               {isAlumno
                 ? carrerasQuery.data?.map((carrera: TrayectoriaCarreraDetalleDTO) => (
-                    <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
-                      {carrera.nombre}
-                    </MenuItem>
-                  ))
+                  <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
+                    {carrera.nombre}
+                  </MenuItem>
+                ))
                 : profesoradosQuery.data?.map((profesorado: ProfesoradoDTO) => (
-                    <MenuItem key={profesorado.id} value={String(profesorado.id)}>
-                      {profesorado.nombre}
-                    </MenuItem>
-                  ))}
+                  <MenuItem key={profesorado.id} value={String(profesorado.id)}>
+                    {profesorado.nombre}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
         </Grid>
@@ -438,6 +438,10 @@ const HorarioPage: React.FC = () => {
         </Grid>
       </Grid>
 
+      <SectionTitlePill
+        title="Filtros de visualización"
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mt: 3, mb: 1 }}
+      />
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>
           <FormControl fullWidth size="small" disabled={!turnosDisponibles.length}>

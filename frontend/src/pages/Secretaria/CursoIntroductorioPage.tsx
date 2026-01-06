@@ -33,8 +33,11 @@ import { hasAnyRole } from "@/utils/roles";
 import { getErrorMessage } from "@/utils/errors";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
-import { listarProfesorados, ProfesoradoDTO } from "@/api/cargaNotas";
-import { listarTurnos, TurnoDTO } from "@/api/comisiones";
+import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
+import { useCarreras } from "@/hooks/useCarreras";
+import { useTurnos } from "@/hooks/useTurnos";
+import { ProfesoradoDTO } from "@/api/cargaNotas";
+import { TurnoDTO } from "@/api/comisiones";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import {
   CursoIntroCohorteDTO,
@@ -112,10 +115,10 @@ const CursoIntroductorioPage: React.FC = () => {
   const { user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
-  const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
-  const [turnos, setTurnos] = useState<TurnoDTO[]>([]);
+  const { data: profesorados = [] } = useCarreras();
+  const { data: turnos = [] } = useTurnos();
   const [cohortes, setCohortes] = useState<CursoIntroCohorteDTO[]>([]);
-const [cohortesLoading, setCohortesLoading] = useState(false);
+  const [cohortesLoading, setCohortesLoading] = useState(false);
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanasLoading, setVentanasLoading] = useState(false);
 
@@ -157,23 +160,7 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
   const puedeGestionarRegistros = hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]);
   const cohorteAccionBloqueada = savingCohorte || creatingCohortesTurnos;
 
-  const loadProfesorados = useCallback(async () => {
-    try {
-      const data = await listarProfesorados();
-      setProfesorados(data);
-    } catch (error) {
-      enqueueSnackbar(getErrorMessage(error, "No se pudieron cargar los profesorados."), { variant: "error" });
-    }
-  }, [enqueueSnackbar]);
 
-  const loadTurnos = useCallback(async () => {
-    try {
-      const data = await listarTurnos();
-      setTurnos(data);
-    } catch (error) {
-      enqueueSnackbar(getErrorMessage(error, "No se pudieron cargar los turnos."), { variant: "error" });
-    }
-  }, [enqueueSnackbar]);
 
   const loadCohortes = useCallback(async () => {
     setCohortesLoading(true);
@@ -233,11 +220,9 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
   }, [enqueueSnackbar, registroFiltros]);
 
   useEffect(() => {
-    loadProfesorados();
-    loadTurnos();
     loadCohortes();
     loadVentanas();
-  }, [loadProfesorados, loadTurnos, loadCohortes, loadVentanas]);
+  }, [loadCohortes, loadVentanas]);
 
   useEffect(() => {
     loadPendientes();
@@ -515,10 +500,14 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
       <PageHero
         title="Curso introductorio"
         subtitle="Gestioná cohortes, asistencias y resultados del Curso Introductorio."
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
       {/* Cohortes */}
-      <SectionTitlePill title="Cohortes" />
+      <SectionTitlePill
+        title="Cohortes"
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+      />
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Stack
@@ -566,9 +555,8 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
                     <TableCell>{cohorte.turno_nombre || "-"}</TableCell>
                     <TableCell>
                       {cohorte.fecha_inicio
-                        ? `${new Date(cohorte.fecha_inicio).toLocaleDateString()} - ${
-                            cohorte.fecha_fin ? new Date(cohorte.fecha_fin).toLocaleDateString() : "-"
-                          }`
+                        ? `${new Date(cohorte.fecha_inicio).toLocaleDateString()} - ${cohorte.fecha_fin ? new Date(cohorte.fecha_fin).toLocaleDateString() : "-"
+                        }`
                         : "-"}
                     </TableCell>
                     <TableCell>{cohorte.cupo ?? "-"}</TableCell>
@@ -588,7 +576,10 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
       </Card>
 
       {/* Pendientes */}
-      <SectionTitlePill title="Estudiantes pendientes" />
+      <SectionTitlePill
+        title="Estudiantes pendientes"
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+      />
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -665,7 +656,10 @@ const [cohortesLoading, setCohortesLoading] = useState(false);
       </Card>
 
       {/* Registros */}
-      <SectionTitlePill title="Registros y asistencias" />
+      <SectionTitlePill
+        title="Registros y asistencias"
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+      />
       <Card variant="outlined">
         <CardContent>
           <Grid container spacing={2} sx={{ mb: 2 }}>

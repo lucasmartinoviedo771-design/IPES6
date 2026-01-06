@@ -409,15 +409,24 @@ def curso_intro_listar_registros(
 @alumnos_router.get("/curso-intro/pendientes", response=list[CursoIntroPendienteOut], auth=JWTAuth())
 def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
     ensure_roles(request.user, CI_ALLOWED_ROLES)
-    registros_activos = set(
-        CursoIntroductorioRegistro.objects.values_list("estudiante_id", flat=True).distinct()
-    )
+    
+    # Optimización: Usar Exists para filtrar eficientemente en DB
+    from django.db.models import Exists, OuterRef
+    tiene_registro = CursoIntroductorioRegistro.objects.filter(estudiante=OuterRef("pk"))
+
     qs = (
-        Estudiante.objects.filter(curso_introductorio_aprobado=False, carreras__isnull=False)
-        .exclude(id__in=registros_activos)
+        Estudiante.objects
+        .annotate(tiene_ci_registro=Exists(tiene_registro))
+        .filter(
+            tiene_ci_registro=False, 
+            curso_introductorio_aprobado=False, 
+            carreras__isnull=False
+        )
+        .select_related("user")  # CRÍTICO: Evita N+1
         .prefetch_related("carreras_detalle__profesorado")
         .distinct()
     )
+
     allowed = _ci_allowed_profesorados(request.user)
     if profesorado_id:
         _ci_ensure_profesorado_access(request.user, profesorado_id)
@@ -426,6 +435,10 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
         if not allowed:
             return []
         qs = qs.filter(carreras__id__in=allowed)
+
+    # Limitar resultados para evitar explosión de memoria si hay miles (opcional, pero recomendado)
+    # Por ahora lo dejamos ilimitado como pidió el usuario, pero con la query optimizada.
+
     pendientes: list[CursoIntroPendienteOut] = []
     for est in qs:
         profesorados = []

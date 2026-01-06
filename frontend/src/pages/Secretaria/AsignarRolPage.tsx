@@ -28,6 +28,9 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '@/context/AuthContext';
 import { client as axios } from '@/api/client';
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
+import { INSTITUTIONAL_TERRACOTTA, INSTITUTIONAL_TERRACOTTA_DARK } from "@/styles/institutionalColors";
 
 interface User {
   id: number;
@@ -61,6 +64,7 @@ const AsignarRolPage: React.FC = () => {
     { value: 'bedel', label: 'Bedel' },
     { value: 'jefa_aaee', label: 'Jefa A.A.E.E.' },
     { value: 'jefes', label: 'Jefes' },
+    { value: 'docente', label: 'Docente' },
     { value: 'tutor', label: 'Tutor' },
     { value: 'coordinador', label: 'Coordinador' },
     { value: 'consulta', label: 'Consulta' },
@@ -75,7 +79,7 @@ const AsignarRolPage: React.FC = () => {
       ]);
       setUsers(usersRes.data);
       setProfesorados(profRes.data);
-      
+
       // Si hay un usuario seleccionado, actualizarlo con los datos frescos
       if (selectedUser) {
         const updatedUser = usersRes.data.find((u: User) => u.id === selectedUser.id);
@@ -96,7 +100,7 @@ const AsignarRolPage: React.FC = () => {
 
   const handleAction = async (action: 'assign' | 'remove', roleToRemove?: string) => {
     const role = action === 'assign' ? selectedRole : roleToRemove;
-    
+
     if (!selectedUser || !role) {
       setError('Por favor seleccione un usuario y un rol');
       return;
@@ -113,17 +117,17 @@ const AsignarRolPage: React.FC = () => {
         profesorado_ids: role === 'bedel' ? selectedProfesorados : [],
         action: action
       });
-      
+
       setSuccess(`Rol ${action === 'assign' ? 'asignado' : 'quitado'} correctamente`);
       if (action === 'assign') {
         setSelectedRole('');
         setSelectedProfesorados([]);
       }
       fetchData(); // Recargar para ver cambios
-          // Si modificamos el rol del usuario actual, actualizar su perfil
-          if (currentUser && selectedUser.id === currentUser.id) {
-            await refreshProfile();
-          }
+      // Si modificamos el rol del usuario actual, actualizar su perfil
+      if (currentUser && selectedUser.id === currentUser.id) {
+        await refreshProfile();
+      }
     } catch (err: any) {
       const message = err?.message || err?.response?.data?.message || 'Error al procesar la solicitud';
       setError(message);
@@ -132,30 +136,28 @@ const AsignarRolPage: React.FC = () => {
     }
   };
 
+  const nonStudentUsers = users.filter(u => !u.groups.includes('alumno'));
+
   return (
-    <Box sx={{ p: 4 }}>
-      <Box sx={{ 
-        background: 'linear-gradient(135deg, #a67c52 0%, #8b6b4d 100%)',
-        borderRadius: 4,
-        p: 4,
-        mb: 4,
-        color: 'white',
-        boxShadow: '0 10px 30px rgba(166, 124, 82, 0.3)'
-      }}>
-        <Typography variant="h4" fontWeight={800} textTransform="uppercase">Asignar / Quitar Roles</Typography>
-        <Typography variant="body1" sx={{ opacity: 0.8 }}>Gestione permisos y responsabilidades del personal</Typography>
-      </Box>
+    <Box sx={{ p: 3 }}>
+      <BackButton fallbackPath="/secretaria" />
+      <PageHero
+        title="Asignar / Quitar Roles"
+        subtitle="Gestione permisos y responsabilidades del personal institucional."
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+      />
 
       <Stack spacing={4}>
         <Paper sx={{ p: 4, borderRadius: 4 }}>
-          <Typography variant="h6" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PersonAddIcon color="primary" /> Nueva Asignación
-          </Typography>
-          
+          <SectionTitlePill
+            title="Nueva Asignación"
+            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mb: 3 }}
+          />
+
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, alignItems: 'flex-start' }}>
             <Autocomplete
               sx={{ minWidth: 300, flex: 2 }}
-              options={users}
+              options={nonStudentUsers}
               getOptionLabel={(option) => `${option.last_name}, ${option.first_name} (${option.username})`}
               renderInput={(params) => <TextField {...params} label="Usuario" variant="outlined" />}
               value={selectedUser}
@@ -197,7 +199,13 @@ const AsignarRolPage: React.FC = () => {
               startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <AssignmentIcon />}
               onClick={() => handleAction('assign')}
               disabled={submitting || !selectedUser || !selectedRole}
-              sx={{ height: 56, px: 4, borderRadius: 2, bgcolor: '#a67c52', '&:hover': { bgcolor: '#8b6b4d' } }}
+              sx={{
+                height: 56,
+                px: 4,
+                borderRadius: 2,
+                bgcolor: INSTITUTIONAL_TERRACOTTA,
+                '&:hover': { bgcolor: INSTITUTIONAL_TERRACOTTA_DARK }
+              }}
             >
               Asignar
             </Button>
@@ -206,9 +214,10 @@ const AsignarRolPage: React.FC = () => {
 
         {selectedUser && (
           <Paper sx={{ p: 4, borderRadius: 4 }}>
-            <Typography variant="h6" sx={{ mb: 3 }}>
-              Roles actuales de <strong>{selectedUser.first_name} {selectedUser.last_name}</strong>
-            </Typography>
+            <SectionTitlePill
+              title={`Roles de ${selectedUser.first_name} ${selectedUser.last_name}`}
+              sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mb: 3 }}
+            />
             <Divider sx={{ mb: 2 }} />
             <List>
               {selectedUser.groups.length === 0 ? (
@@ -216,15 +225,15 @@ const AsignarRolPage: React.FC = () => {
               ) : (
                 selectedUser.groups.map((group) => (
                   <ListItem key={group} sx={{ bgcolor: 'grey.50', mb: 1, borderRadius: 2 }}>
-                    <ListItemText 
-                      primary={roles.find(r => r.value === group)?.label || group.toUpperCase()} 
+                    <ListItemText
+                      primary={roles.find(r => r.value === group)?.label || group.toUpperCase()}
                       secondary={group === 'alumno' ? 'Rol automático de estudiante' : 'Rol administrativo'}
                     />
                     <ListItemSecondaryAction>
                       {group !== 'alumno' && (
-                        <IconButton 
-                          edge="end" 
-                          color="error" 
+                        <IconButton
+                          edge="end"
+                          color="error"
                           onClick={() => handleAction('remove', group)}
                           disabled={submitting}
                         >

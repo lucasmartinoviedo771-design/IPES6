@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Autocomplete, Box, Typography, Stack, TextField, MenuItem, Grid, Paper, Button, Alert, FormGroup, FormControlLabel, Checkbox, FormLabel, FormControl, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
-import { listarPlanes, listarProfesorados, PlanDTO, ProfesoradoDTO } from '@/api/cargaNotas';
+import { listarPlanes, ProfesoradoDTO, PlanDTO } from '@/api/cargaNotas';
+import { useCarreras } from '@/hooks/useCarreras';
 import { obtenerMesaPlanilla, actualizarMesaPlanilla, MesaPlanillaAlumnoDTO, MesaPlanillaCondicionDTO } from '@/api/alumnos';
 import { listarMaterias } from '@/api/comisiones';
 import { listarDocentes, DocenteDTO } from '@/api/docentes';
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
+import { INSTITUTIONAL_TERRACOTTA } from '@/styles/institutionalColors';
 
 const CUATRIMESTRE_LABEL: Record<string, string> = {
   ANU: 'Anual',
@@ -25,22 +27,22 @@ const BASE_CUATRIMESTRE_OPTIONS = [
 const DEFAULT_ANIO_OPTIONS = Array.from({ length: 6 }, (_value, index) => index + 1);
 
 type Mesa = {
-  id:number;
-  materia_id:number;
-  materia_nombre:string;
-  profesorado_id:number | null;
-  profesorado_nombre:string | null;
-  plan_id:number | null;
-  plan_resolucion:string | null;
-  anio_cursada:number | null;
-  regimen:string | null;
-  tipo:string;
-  modalidad:string;
-  fecha:string;
-  hora_desde?:string;
-  hora_hasta?:string;
-  aula?:string;
-  cupo:number;
+  id: number;
+  materia_id: number;
+  materia_nombre: string;
+  profesorado_id: number | null;
+  profesorado_nombre: string | null;
+  plan_id: number | null;
+  plan_resolucion: string | null;
+  anio_cursada: number | null;
+  regimen: string | null;
+  tipo: string;
+  modalidad: string;
+  fecha: string;
+  hora_desde?: string;
+  hora_hasta?: string;
+  aula?: string;
+  cupo: number;
   codigo?: string | null;
   docentes?: MesaTribunalDocente[];
 };
@@ -117,12 +119,12 @@ const formatDocenteLabel = (docente?: DocenteDTO | null) => {
   return partes.join(' - ');
 };
 
-export default function MesasPage(){
+export default function MesasPage() {
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
   const [tipo, setTipo] = useState('');
   const [modalidadFiltro, setModalidadFiltro] = useState('');
-  const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
+  const { data: profesorados = [] } = useCarreras();
   const [planesFiltro, setPlanesFiltro] = useState<PlanDTO[]>([]);
   const [planesNueva, setPlanesNueva] = useState<PlanDTO[]>([]);
   const [profesoradoFiltro, setProfesoradoFiltro] = useState<string>('');
@@ -132,7 +134,7 @@ export default function MesasPage(){
   const [materiaFiltro, setMateriaFiltro] = useState<string>('');
   const [codigoFiltro, setCodigoFiltro] = useState<string>('');
   const [mesas, setMesas] = useState<Mesa[]>([]);
-  const [form, setForm] = useState<Partial<Mesa> & { ventana_id?: number }>({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
+  const [form, setForm] = useState<Partial<Mesa> & { ventana_id?: number }>({ tipo: 'FIN', fecha: new Date().toISOString().slice(0, 10), cupo: 0 });
   const [ventanaNueva, setVentanaNueva] = useState<string>('');
   const [profesoradoNueva, setProfesoradoNueva] = useState<string>('');
   const [planNueva, setPlanNueva] = useState<string>('');
@@ -163,25 +165,18 @@ export default function MesasPage(){
     return map;
   }, [planillaCondiciones]);
 
-  const loadVentanas = async()=>{
+  const loadVentanas = async () => {
     const data = await fetchVentanas();
-    const filtradas = (data||[]).filter(v=> ['MESAS_FINALES','MESAS_EXTRA'].includes(v.tipo));
+    const filtradas = (data || []).filter(v => ['MESAS_FINALES', 'MESAS_EXTRA'].includes(v.tipo));
     setVentanas(filtradas);
-    if (filtradas.length){
+    if (filtradas.length) {
       setVentanaId((prev) => (prev ? prev : String(filtradas[0].id)));
       setVentanaNueva((prev) => (prev ? prev : String(filtradas[0].id)));
     }
   };
-  const loadProfesorados = async()=>{
-    try{
-      const data = await listarProfesorados();
-      setProfesorados(data);
-    }catch{
-      setProfesorados([]);
-    }
-  };
-  const loadMesas = async()=>{
-    try{
+
+  const loadMesas = async () => {
+    try {
       const params: Record<string, unknown> = {};
       if (ventanaId) params.ventana_id = Number(ventanaId);
       if (tipo) params.tipo = tipo;
@@ -195,12 +190,12 @@ export default function MesasPage(){
       const mesasObtenidas = data || [];
       const mesasFiltradas = modalidadFiltro ? mesasObtenidas.filter((m) => m.modalidad === modalidadFiltro) : mesasObtenidas;
       setMesas(mesasFiltradas);
-    }catch (error){
+    } catch (error) {
       console.error('No se pudieron obtener las mesas', error);
       setMesas([]);
     }
   };
-  useEffect(()=>{ loadVentanas(); loadProfesorados(); },[]);
+  useEffect(() => { loadVentanas(); }, []);
   useEffect(() => {
     const loadDocentesLista = async () => {
       setDocentesLoading(true);
@@ -263,8 +258,8 @@ export default function MesasPage(){
     }
   }, [ventanaId, ventanas]);
 
-  useEffect(()=>{
-    if (!profesoradoFiltro){
+  useEffect(() => {
+    if (!profesoradoFiltro) {
       setPlanesFiltro([]);
       setPlanFiltro('');
       setMateriasFiltro([]);
@@ -278,20 +273,20 @@ export default function MesasPage(){
     setMateriaFiltro('');
     setAnioFiltro('');
     setCuatrimestreFiltro('');
-    const fetchPlanes = async()=>{
-      try{
+    const fetchPlanes = async () => {
+      try {
         const data = await listarPlanes(Number(profesoradoFiltro));
         setPlanesFiltro(data);
-      }catch{
+      } catch {
         setPlanesFiltro([]);
         setMateriasFiltro([]);
       }
     };
     fetchPlanes();
-  },[profesoradoFiltro]);
+  }, [profesoradoFiltro]);
 
-  useEffect(()=>{
-    if (!profesoradoNueva){
+  useEffect(() => {
+    if (!profesoradoNueva) {
       setPlanesNueva([]);
       setPlanNueva('');
       setMaterias([]);
@@ -300,16 +295,16 @@ export default function MesasPage(){
       setCuatrimestreNueva('');
       return;
     }
-    const fetchPlanes = async()=>{
-      try{
+    const fetchPlanes = async () => {
+      try {
         const data = await listarPlanes(Number(profesoradoNueva));
         setPlanesNueva(data);
-      }catch{
+      } catch {
         setPlanesNueva([]);
       }
     };
     fetchPlanes();
-  },[profesoradoNueva]);
+  }, [profesoradoNueva]);
 
   useEffect(() => {
     if (planNueva && !planesNueva.some((p) => String(p.id) === planNueva)) {
@@ -325,8 +320,8 @@ export default function MesasPage(){
       setMateriaFiltro('');
     }
   }, [planFiltro, planesFiltro]);
-  useEffect(()=>{
-    if (!planFiltro){
+  useEffect(() => {
+    if (!planFiltro) {
       setMateriasFiltro([]);
       setMateriaFiltro('');
       setAnioFiltro('');
@@ -334,8 +329,8 @@ export default function MesasPage(){
       return;
     }
     setMateriaFiltro('');
-    const fetchMateriasFiltro = async()=>{
-      try{
+    const fetchMateriasFiltro = async () => {
+      try {
         const data = await listarMaterias(Number(planFiltro));
         const mapped: MateriaOption[] = data.map(m => ({
           id: m.id,
@@ -345,22 +340,22 @@ export default function MesasPage(){
           permiteLibre: Boolean(m.permite_mesa_libre),
         }));
         setMateriasFiltro(mapped);
-      }catch{
+      } catch {
         setMateriasFiltro([]);
       }
     };
     fetchMateriasFiltro();
-  },[planFiltro]);
-  useEffect(()=>{
-    if (!planNueva){
+  }, [planFiltro]);
+  useEffect(() => {
+    if (!planNueva) {
       setMaterias([]);
       setForm(f => ({ ...f, materia_id: undefined }));
       setAnioNueva('');
       setCuatrimestreNueva('');
       return;
     }
-    const fetchMaterias = async()=>{
-      try{
+    const fetchMaterias = async () => {
+      try {
         const data = await listarMaterias(Number(planNueva));
         const mapped: MateriaOption[] = data.map(m => ({
           id: m.id,
@@ -372,12 +367,12 @@ export default function MesasPage(){
         setMaterias(mapped);
         setAnioNueva('');
         setCuatrimestreNueva('');
-      }catch{
+      } catch {
         setMaterias([]);
       }
     };
     fetchMaterias();
-  },[planNueva]);
+  }, [planNueva]);
 
   useEffect(() => {
     if (form.materia_id && !materias.some((m) => m.id === form.materia_id)) {
@@ -396,7 +391,7 @@ export default function MesasPage(){
       setMateriaFiltro('');
     }
   }, [materiaFiltro, materiasFiltroFiltradas]);
-  useEffect(()=>{ loadMesas(); },[ventanaId, tipo, modalidadFiltro, materiaFiltro, profesoradoFiltro, planFiltro, anioFiltro, cuatrimestreFiltro, codigoFiltro]);
+  useEffect(() => { loadMesas(); }, [ventanaId, tipo, modalidadFiltro, materiaFiltro, profesoradoFiltro, planFiltro, anioFiltro, cuatrimestreFiltro, codigoFiltro]);
 
   const resetTribunalDocentes = () => {
     setTribunalDocentes({ presidente: null, vocal1: null, vocal2: null });
@@ -482,7 +477,7 @@ export default function MesasPage(){
     return base;
   }, [mesas]);
 
-  const guardar = async()=>{
+  const guardar = async () => {
 
     if (!form.materia_id) {
 
@@ -565,7 +560,7 @@ export default function MesasPage(){
 
 
 
-      setForm({ tipo:'FIN', fecha: new Date().toISOString().slice(0,10), cupo: 0 });
+      setForm({ tipo: 'FIN', fecha: new Date().toISOString().slice(0, 10), cupo: 0 });
 
       setModalidadesSeleccionadas(['REG']);
 
@@ -583,7 +578,7 @@ export default function MesasPage(){
 
   };
 
-  const eliminar = async(id:number)=>{
+  const eliminar = async (id: number) => {
     await api.delete(`/mesas/${id}`);
     await loadMesas();
   };
@@ -719,21 +714,25 @@ export default function MesasPage(){
   };
 
   return (
-    <Box sx={{ p:2 }}>
+    <Box sx={{ p: 2 }}>
       <BackButton fallbackPath="/secretaria" />
       <PageHero
         title="Mesas de examen"
         subtitle="ABM de mesas ordinarias, extraordinarias y especiales"
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
-      <SectionTitlePill title="Nueva mesa" />
-      <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ mt:1, flexWrap: 'wrap' }}>
+      <SectionTitlePill
+        title="Nueva mesa"
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+      />
+      <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mt: 1, flexWrap: 'wrap' }}>
         <TextField
           select
           label="Periodo"
           size="small"
           value={ventanaNueva}
-          onChange={(e)=>setVentanaNueva(e.target.value)}
+          onChange={(e) => setVentanaNueva(e.target.value)}
           sx={{ minWidth: 220 }}
           disabled={mesaEspecial}
           helperText={mesaEspecial ? 'No aplica para mesas especiales.' : undefined}
@@ -748,7 +747,7 @@ export default function MesasPage(){
           label="Profesorado"
           size="small"
           value={profesoradoNueva}
-          onChange={(e)=>setProfesoradoNueva(e.target.value)}
+          onChange={(e) => setProfesoradoNueva(e.target.value)}
           sx={{ minWidth: 240 }}
         >
           <MenuItem value="">Todos</MenuItem>
@@ -761,7 +760,7 @@ export default function MesasPage(){
           label="Plan de estudio"
           size="small"
           value={planNueva}
-          onChange={(e)=>setPlanNueva(e.target.value)}
+          onChange={(e) => setPlanNueva(e.target.value)}
           sx={{ minWidth: 200 }}
           disabled={!profesoradoNueva}
         >
@@ -775,7 +774,7 @@ export default function MesasPage(){
           label="Año cursada"
           size="small"
           value={anioNueva}
-          onChange={(e)=>setAnioNueva(e.target.value)}
+          onChange={(e) => setAnioNueva(e.target.value)}
           sx={{ minWidth: 160 }}
         >
           <MenuItem value="">Todos</MenuItem>
@@ -788,7 +787,7 @@ export default function MesasPage(){
           label="Cuatrimestre"
           size="small"
           value={cuatrimestreNueva}
-          onChange={(e)=>setCuatrimestreNueva(e.target.value)}
+          onChange={(e) => setCuatrimestreNueva(e.target.value)}
           sx={{ minWidth: 180 }}
         >
           {cuatrimestreOptionsNueva.map(option => (
@@ -828,7 +827,7 @@ export default function MesasPage(){
               <Checkbox
                 size="small"
                 checked={mesaEspecial}
-                onChange={(e)=>handleMesaEspecialChange(e.target.checked)}
+                onChange={(e) => handleMesaEspecialChange(e.target.checked)}
               />
             }
             label="Crear como mesa especial (no requiere periodo)"
@@ -837,14 +836,14 @@ export default function MesasPage(){
         <FormControl component="fieldset" sx={{ minWidth: 220 }}>
           <FormLabel component="legend">Modalidades</FormLabel>
           <FormGroup row sx={{ mt: 0.5 }}>
-            {( ['REG','LIB'] as MesaModalidad[]).map((modalidad) => (
+            {(['REG', 'LIB'] as MesaModalidad[]).map((modalidad) => (
               <FormControlLabel
                 key={modalidad}
                 control={
                   <Checkbox
                     size="small"
                     checked={modalidadesSeleccionadas.includes(modalidad)}
-                    onChange={(e)=>handleToggleModalidad(modalidad, e.target.checked)}
+                    onChange={(e) => handleToggleModalidad(modalidad, e.target.checked)}
                   />
                 }
                 label={MESA_MODALIDAD_LABEL[modalidad]}
@@ -930,24 +929,24 @@ export default function MesasPage(){
             )}
           />
         </Box>
-        <TextField label="Fecha" size="small" type="date" value={form.fecha || ''} onChange={(e)=>setForm(f=>({...f, fecha: e.target.value}))} InputLabelProps={{ shrink:true }} />
-        <TextField label="Hora desde" size="small" type="time" value={form.hora_desde || ''} onChange={(e)=>setForm(f=>({...f, hora_desde: e.target.value}))} InputLabelProps={{ shrink:true }} />
-        <TextField label="Hora hasta" size="small" type="time" value={form.hora_hasta || ''} onChange={(e)=>setForm(f=>({...f, hora_hasta: e.target.value}))} InputLabelProps={{ shrink:true }} />
-        <TextField label="Aula" size="small" value={form.aula || ''} onChange={(e)=>setForm(f=>({...f, aula: e.target.value}))} />
-        <TextField label="Cupo" size="small" type="number" value={form.cupo ?? 0} onChange={(e)=>setForm(f=>({...f, cupo: Number(e.target.value)}))} />
+        <TextField label="Fecha" size="small" type="date" value={form.fecha || ''} onChange={(e) => setForm(f => ({ ...f, fecha: e.target.value }))} InputLabelProps={{ shrink: true }} />
+        <TextField label="Hora desde" size="small" type="time" value={form.hora_desde || ''} onChange={(e) => setForm(f => ({ ...f, hora_desde: e.target.value }))} InputLabelProps={{ shrink: true }} />
+        <TextField label="Hora hasta" size="small" type="time" value={form.hora_hasta || ''} onChange={(e) => setForm(f => ({ ...f, hora_hasta: e.target.value }))} InputLabelProps={{ shrink: true }} />
+        <TextField label="Aula" size="small" value={form.aula || ''} onChange={(e) => setForm(f => ({ ...f, aula: e.target.value }))} />
+        <TextField label="Cupo" size="small" type="number" value={form.cupo ?? 0} onChange={(e) => setForm(f => ({ ...f, cupo: Number(e.target.value) }))} />
         <Button variant="contained" onClick={guardar}>Guardar</Button>
       </Stack>
 
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mt:4 }}>Filtros</Typography>
-      <Stack gap={2} sx={{ mt:1 }}>
-        <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ flexWrap: 'wrap' }}>
-          <TextField select label="Periodo" size="small" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)} sx={{ minWidth: 220 }}>
+      <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 4 }}>Filtros</Typography>
+      <Stack gap={2} sx={{ mt: 1 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ flexWrap: 'wrap' }}>
+          <TextField select label="Periodo" size="small" value={ventanaId} onChange={(e) => setVentanaId(e.target.value)} sx={{ minWidth: 220 }}>
             <MenuItem value="">Todos</MenuItem>
-            {ventanas.map(v=> (
+            {ventanas.map(v => (
               <MenuItem key={v.id} value={String(v.id)}>{buildVentanaLabel(v)}</MenuItem>
             ))}
           </TextField>
-          <TextField select label="Tipo" size="small" value={tipo} onChange={(e)=>setTipo(e.target.value)} sx={{ minWidth: 160 }}>
+          <TextField select label="Tipo" size="small" value={tipo} onChange={(e) => setTipo(e.target.value)} sx={{ minWidth: 160 }}>
             <MenuItem value="">Todos</MenuItem>
             <MenuItem value="FIN">Ordinaria</MenuItem>
             <MenuItem value="EXT">Extraordinaria</MenuItem>
@@ -958,7 +957,7 @@ export default function MesasPage(){
             label="Modalidad"
             size="small"
             value={modalidadFiltro}
-            onChange={(e)=>setModalidadFiltro(e.target.value)}
+            onChange={(e) => setModalidadFiltro(e.target.value)}
             sx={{ minWidth: 160 }}
           >
             <MenuItem value="">Todas</MenuItem>
@@ -969,7 +968,7 @@ export default function MesasPage(){
             label="Código"
             size="small"
             value={codigoFiltro}
-            onChange={(e)=>setCodigoFiltro(e.target.value)}
+            onChange={(e) => setCodigoFiltro(e.target.value)}
             sx={{ minWidth: 200 }}
             placeholder="MESA-..."
           />
@@ -978,7 +977,7 @@ export default function MesasPage(){
             label="Profesorado"
             size="small"
             value={profesoradoFiltro}
-            onChange={(e)=>{
+            onChange={(e) => {
               setProfesoradoFiltro(e.target.value);
               setPlanFiltro('');
               setMateriaFiltro('');
@@ -995,7 +994,7 @@ export default function MesasPage(){
             label="Plan de estudio"
             size="small"
             value={planFiltro}
-            onChange={(e)=>{
+            onChange={(e) => {
               setPlanFiltro(e.target.value);
               setMateriaFiltro('');
             }}
@@ -1009,13 +1008,13 @@ export default function MesasPage(){
           </TextField>
         </Stack>
 
-        <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ flexWrap: 'wrap' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ flexWrap: 'wrap' }}>
           <TextField
             select
             label="Año cursada"
             size="small"
             value={anioFiltro}
-            onChange={(e)=>setAnioFiltro(e.target.value)}
+            onChange={(e) => setAnioFiltro(e.target.value)}
             sx={{ minWidth: 160 }}
           >
             <MenuItem value="">Todos</MenuItem>
@@ -1028,7 +1027,7 @@ export default function MesasPage(){
             label="Cuatrimestre"
             size="small"
             value={cuatrimestreFiltro}
-            onChange={(e)=>setCuatrimestreFiltro(e.target.value)}
+            onChange={(e) => setCuatrimestreFiltro(e.target.value)}
             sx={{ minWidth: 180 }}
           >
             {cuatrimestreOptionsFiltro.map(option => (
@@ -1040,7 +1039,7 @@ export default function MesasPage(){
             label="Materia"
             size="small"
             value={materiaFiltro}
-            onChange={(e)=>setMateriaFiltro(e.target.value)}
+            onChange={(e) => setMateriaFiltro(e.target.value)}
             sx={{ minWidth: 220 }}
             disabled={!planFiltro || !materiasFiltroFiltradas.length}
           >
@@ -1051,7 +1050,7 @@ export default function MesasPage(){
           </TextField>
         </Stack>
       </Stack>
-      <Grid container spacing={1.5} sx={{ mt:2 }}>
+      <Grid container spacing={1.5} sx={{ mt: 2 }}>
         {mesas.map(m => {
           const horaDesde = m.hora_desde ? m.hora_desde.slice(0, 5) : '';
           const horaHasta = m.hora_hasta ? m.hora_hasta.slice(0, 5) : '';
@@ -1061,7 +1060,7 @@ export default function MesasPage(){
           const fechaLabel = m.fecha ? new Date(m.fecha).toLocaleDateString() : '-';
           return (
             <Grid item xs={12} md={6} lg={4} key={m.id}>
-              <Paper variant="outlined" sx={{ p:1.5 }}>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
                 <Stack gap={0.5}>
                   <Typography variant="subtitle2">#{m.id} - {tipoLabel} ({modalidadLabel}) - {fechaLabel}</Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -1082,12 +1081,12 @@ export default function MesasPage(){
                     <Button
                       size="small"
                       variant="outlined"
-                      onClick={()=>handleVerPlanilla(m)}
+                      onClick={() => handleVerPlanilla(m)}
                       disabled={planillaSaving && planillaMesa?.id === m.id}
                     >
                       Planilla
                     </Button>
-                    <Button size="small" color="error" onClick={()=>eliminar(m.id)} >Eliminar</Button>
+                    <Button size="small" color="error" onClick={() => eliminar(m.id)} >Eliminar</Button>
                   </Stack>
                 </Stack>
               </Paper>
@@ -1099,23 +1098,23 @@ export default function MesasPage(){
         <DialogTitle>Planilla de mesa #{planillaMesa?.id}</DialogTitle>
         <DialogContent dividers>
           {planillaMesa && (
-            <Stack spacing={0.5} sx={{ mb:2 }}>
+            <Stack spacing={0.5} sx={{ mb: 2 }}>
               <Typography variant="subtitle2">{planillaMesa.materia_nombre}</Typography>
               <Typography variant="body2" color="text.secondary">
                 {getTipoLabel(planillaMesa.tipo)} ({getModalidadLabel(planillaMesa.modalidad)}) | {planillaMesa.fecha ? new Date(planillaMesa.fecha).toLocaleDateString() : '-'}
               </Typography>
             </Stack>
           )}
-          {planillaError && <Alert severity="error" sx={{ mb:2 }}>{planillaError}</Alert>}
-          {planillaSuccess && <Alert severity="success" sx={{ mb:2 }}>{planillaSuccess}</Alert>}
+          {planillaError && <Alert severity="error" sx={{ mb: 2 }}>{planillaError}</Alert>}
+          {planillaSuccess && <Alert severity="success" sx={{ mb: 2 }}>{planillaSuccess}</Alert>}
           {planillaLoading ? (
-            <Stack alignItems="center" justifyContent="center" sx={{ py:4 }}>
+            <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
               <CircularProgress />
             </Stack>
           ) : planillaAlumnos.length === 0 ? (
             <Alert severity="info">No hay inscripciones registradas para esta mesa.</Alert>
           ) : (
-            <Box sx={{ overflowX:'auto' }}>
+            <Box sx={{ overflowX: 'auto' }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -1141,7 +1140,7 @@ export default function MesasPage(){
                           size="small"
                           fullWidth
                           value={alumno.condicion ?? ''}
-                          onChange={(e)=>handlePlanillaCondicionChange(alumno.inscripcion_id, e.target.value)}
+                          onChange={(e) => handlePlanillaCondicionChange(alumno.inscripcion_id, e.target.value)}
                           disabled={planillaSaving}
                         >
                           <MenuItem value="">Sin asignar</MenuItem>
@@ -1155,7 +1154,7 @@ export default function MesasPage(){
                           size="small"
                           type="number"
                           value={alumno.nota ?? ''}
-                          onChange={(e)=>handlePlanillaNotaChange(alumno.inscripcion_id, e.target.value)}
+                          onChange={(e) => handlePlanillaNotaChange(alumno.inscripcion_id, e.target.value)}
                           disabled={planillaSaving}
                           inputProps={{ step: 0.5, min: 0, max: 10 }}
                         />
@@ -1165,7 +1164,7 @@ export default function MesasPage(){
                           size="small"
                           type="date"
                           value={alumno.fecha_resultado ?? ''}
-                          onChange={(e)=>handlePlanillaFechaChange(alumno.inscripcion_id, e.target.value)}
+                          onChange={(e) => handlePlanillaFechaChange(alumno.inscripcion_id, e.target.value)}
                           disabled={planillaSaving}
                           InputLabelProps={{ shrink: true }}
                         />
@@ -1173,7 +1172,7 @@ export default function MesasPage(){
                       <TableCell align="center">
                         <Checkbox
                           checked={Boolean(alumno.cuenta_para_intentos)}
-                          onChange={(e)=>handlePlanillaCuentaIntentosChange(alumno.inscripcion_id, e.target.checked)}
+                          onChange={(e) => handlePlanillaCuentaIntentosChange(alumno.inscripcion_id, e.target.checked)}
                           disabled={planillaSaving}
                         />
                       </TableCell>
@@ -1181,7 +1180,7 @@ export default function MesasPage(){
                         <TextField
                           size="small"
                           value={alumno.folio ?? ''}
-                          onChange={(e)=>handlePlanillaTextoChange(alumno.inscripcion_id, 'folio', e.target.value)}
+                          onChange={(e) => handlePlanillaTextoChange(alumno.inscripcion_id, 'folio', e.target.value)}
                           disabled={planillaSaving}
                         />
                       </TableCell>
@@ -1189,7 +1188,7 @@ export default function MesasPage(){
                         <TextField
                           size="small"
                           value={alumno.libro ?? ''}
-                          onChange={(e)=>handlePlanillaTextoChange(alumno.inscripcion_id, 'libro', e.target.value)}
+                          onChange={(e) => handlePlanillaTextoChange(alumno.inscripcion_id, 'libro', e.target.value)}
                           disabled={planillaSaving}
                         />
                       </TableCell>
@@ -1197,7 +1196,7 @@ export default function MesasPage(){
                         <TextField
                           size="small"
                           value={alumno.observaciones ?? ''}
-                          onChange={(e)=>handlePlanillaTextoChange(alumno.inscripcion_id, 'observaciones', e.target.value)}
+                          onChange={(e) => handlePlanillaTextoChange(alumno.inscripcion_id, 'observaciones', e.target.value)}
                           disabled={planillaSaving}
                           multiline
                           maxRows={3}

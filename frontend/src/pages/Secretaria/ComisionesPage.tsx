@@ -33,13 +33,14 @@ import {
   ComisionDTO,
   listarComisiones,
   listarMaterias,
-  listarTurnos,
   MateriaDTO,
-  TurnoDTO,
   generarComisiones,
 } from "@/api/comisiones";
-import { PageHero } from "@/components/ui/GradientTitles";
+import { useCarreras } from "@/hooks/useCarreras";
+import { useTurnos } from "@/hooks/useTurnos";
+import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
+import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
 
 type FiltersState = {
   profesoradoId: number | null;
@@ -68,10 +69,8 @@ const ComisionesPage: React.FC = () => {
     estado: "",
   });
 
-  const [profesorados, setProfesorados] = useState<ProfesoradoDTO[]>([]);
-  const [planes, setPlanes] = useState<PlanDTO[]>([]);
-  const [materias, setMaterias] = useState<MateriaDTO[]>([]);
-  const [turnos, setTurnos] = useState<TurnoDTO[]>([]);
+  const { data: profesorados = [] } = useCarreras();
+  const { data: turnos = [] } = useTurnos();
   const [comisiones, setComisiones] = useState<ComisionDTO[]>([]);
 
   const [loadingPlanes, setLoadingPlanes] = useState(false);
@@ -82,23 +81,8 @@ const ComisionesPage: React.FC = () => {
   const [bulkCantidad, setBulkCantidad] = useState("1");
   const [bulkEstado, setBulkEstado] = useState("ABI");
 
-  useEffect(() => {
-    const loadInicial = async () => {
-      try {
-        const [profList, turnosList] = await Promise.all([
-          listarProfesorados(),
-          listarTurnos(),
-        ]);
-        setProfesorados(profList);
-        setTurnos(turnosList);
-      } catch (error) {
-        enqueueSnackbar("No se pudieron cargar los datos iniciales.", {
-          variant: "error",
-        });
-      }
-    };
-    loadInicial();
-  }, []);
+  const [planes, setPlanes] = useState<PlanDTO[]>([]);
+  const [materias, setMaterias] = useState<MateriaDTO[]>([]);
 
   useEffect(() => {
     if (!filters.profesoradoId) {
@@ -262,13 +246,15 @@ const ComisionesPage: React.FC = () => {
       <PageHero
         title="Gestión de comisiones"
         subtitle="Generación automática y consulta de comisiones por plan y ciclo lectivo."
+        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
       <Paper sx={{ p: 3 }}>
         <Stack gap={3}>
-          <Typography variant="subtitle1" fontWeight={700}>
-            Filtros
-          </Typography>
+          <SectionTitlePill
+            title="Filtros"
+            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+          />
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} lg={4}>
               <Autocomplete
@@ -438,9 +424,10 @@ const ComisionesPage: React.FC = () => {
 
       <Paper sx={{ p: 3 }}>
         <Stack gap={2}>
-          <Typography variant="subtitle1" fontWeight={700}>
-            Generar comisiones por ciclo lectivo
-          </Typography>
+          <SectionTitlePill
+            title="Generar comisiones por ciclo lectivo"
+            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+          />
           <Typography color="text.secondary">
             Crea comisiones base para todas las materias del plan seleccionado
             en el ciclo lectivo indicado.
@@ -487,9 +474,10 @@ const ComisionesPage: React.FC = () => {
       <Paper sx={{ p: 3 }}>
         <Stack gap={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="subtitle1" fontWeight={700}>
-              Comisiones existentes
-            </Typography>
+            <SectionTitlePill
+              title="Comisiones existentes"
+              sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
+            />
             {loadingComisiones ? <CircularProgress size={20} /> : null}
           </Box>
           {comisiones.length ? (

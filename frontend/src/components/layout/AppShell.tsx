@@ -66,7 +66,25 @@ import {
 const drawerWidth = 280;
 const collapsedDrawerWidth = 0;
 const ROLE_NAV_MAP: Record<string, string[]> = {
-  admin: [],
+  admin: [
+    "dashboard",
+    "preinscripciones",
+    "carreras",
+    "reportes",
+    "asistencia",
+    "cursoIntro",
+    "mensajes",
+    "secretaria",
+    "bedeles",
+    "docentes",
+    "tutorias",
+    "equivalencias",
+    "titulos",
+    "coordinacion",
+    "jefatura",
+    "alumnos",
+    "primeraCarga",
+  ],
   secretaria: [
     "dashboard",
     "preinscripciones",
@@ -284,6 +302,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     queryFn: obtenerResumenMensajes,
     enabled: canUseMessages,
     refetchInterval: 60_000,
+    staleTime: 60_000,
   });
 
   const unreadMessages = messageSummary?.unread ?? 0;
@@ -438,11 +457,11 @@ export default function AppShell({ children }: PropsWithChildren) {
                 </Typography>
               )}
               {user?.roles && user.roles.length > 0 && (
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    color: INSTITUTIONAL_TERRACOTTA, 
-                    display: "block", 
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: INSTITUTIONAL_TERRACOTTA,
+                    display: "block",
                     fontWeight: 700,
                     fontSize: "0.65rem",
                     textTransform: "uppercase"
