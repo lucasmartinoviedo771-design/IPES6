@@ -195,7 +195,7 @@ export default function EstudiantesAdminPage() {
   const updateMutation = useMutation({
     mutationFn: (payload: { dni: string; data: Partial<DetailFormValues> }) => {
       const { dni, data } = payload;
-      const documentacionPayload: Record<string, unknown> = {};
+      const documentacionPayload: Partial<EstudianteAdminDocumentacionDTO> = {};
       const doc = data.documentacion;
       if (doc) {
         [
@@ -211,9 +211,11 @@ export default function EstudiantesAdminPage() {
           "titulo_terciario_univ",
           "incumbencia",
         ].forEach((name) => {
-          const current = (doc as Record<string, unknown>)[name];
-          if (typeof current === "boolean") {
-            documentacionPayload[name] = current;
+          // Cast explícito a keyof DetailDocumentacionForm para acceder a 'doc'
+          const key = name as keyof DetailDocumentacionForm;
+          if (typeof doc[key] === "boolean") {
+            // Cast explícito para asignar al DTO
+            (documentacionPayload as any)[name] = doc[key];
           }
         });
         if (typeof doc.folios_oficio === "boolean") {
@@ -221,10 +223,10 @@ export default function EstudiantesAdminPage() {
         }
         documentacionPayload.adeuda_materias_detalle = doc.adeuda_materias_detalle.trim()
           ? doc.adeuda_materias_detalle.trim()
-          : null;
+          : undefined;
         documentacionPayload.escuela_secundaria = doc.escuela_secundaria.trim()
           ? doc.escuela_secundaria.trim()
-          : null;
+          : undefined;
       }
 
       const payloadData = {
