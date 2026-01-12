@@ -1,20 +1,19 @@
-from __future__ import annotations
+
 
 from datetime import date
 from decimal import Decimal
-from typing import Literal
 
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Q, Max
 from django.utils import timezone
 from django.utils.text import slugify
-from ninja import Router, Schema, Field
+from ninja import Router, Schema, Field, Body  # Importamos Schema y Field aqui tambien
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
 from apps.alumnos.api.reportes_api import _check_correlativas_caidas
 from apps.alumnos.services.cursada import estudiante_tiene_materia_aprobada
-from core.permissions import ensure_profesorado_access
+from core.permissions import ensure_profesorado_access, allowed_profesorados
 from core.auth_ninja import JWTAuth, ensure_roles
 from core.models import (
     ActaExamen,
@@ -35,8 +34,111 @@ from core.models import (
     RegularidadPlanillaLock,
 )
 
+# Mantenemos los otros schemas que NO daban error importados desde schemas.py
+# Si esto vuelve a fallar, te pasare una version SIN NINGUN import de schemas.py
+from apps.alumnos.schemas import (
+    ActaMetadataOut,
+    ActaMetadataProfesorado,
+    ActaMetadataPlan,
+    ActaMetadataMateria,
+    ActaMetadataDocente,
+    ActaOralSchema,
+    ActaOralListItemSchema,
+    RegularidadPlanillaOut,
+    RegularidadAlumnoOut,
+    RegularidadCargaIn,
+    RegularidadCierreIn,
+    CargaNotasLookup,
+    MateriaOption,
+    ComisionOption,
+)
+
 carga_notas_router = Router(tags=["carga_notas"])
 
+# ==============================================================================
+# DEFINICION LOCAL DE SCHEMAS DE ACTAS (Para evitar error PydanticUserError)
+# ==============================================================================
+
+class ActaDocenteLocal(Schema):
+    rol: str
+    docente_id: int | None = None
+    nombre: str
+    dni: str | None = None
+
+class ActaAlumnoLocal(Schema):
+    numero_orden: int
+    permiso_examen: str | None = None
+    dni: str
+    apellido_nombre: str
+    examen_escrito: str | None = None
+    examen_oral: str | None = None
+    calificacion_definitiva: str
+    observaciones: str | None = None
+
+class ActaCreateLocal(Schema):
+    tipo: str
+    profesorado_id: int
+    materia_id: int
+    fecha: date
+    folio: str
+    libro: str | None = None
+    observaciones: str | None = None
+    # Definicion directa sin comillas, usando default_factory
+    docentes: list[ActaDocenteLocal] = Field(default_factory=list)
+    alumnos: list[ActaAlumnoLocal] = Field(default_factory=list)
+    total_aprobados: int | None = None
+    total_desaprobados: int | None = None
+    total_ausentes: int | None = None
+
+class ActaCreateOutLocal(Schema):
+    id: int
+    codigo: str
+
+class ActaListItem(Schema):
+    id: int
+    codigo: str
+    fecha: str
+    materia: str
+    libro: str | None = None
+    folio: str | None = None
+    total_alumnos: int
+    created_at: str
+    mesa_id: int | None = None
+    esta_cerrada: bool = False
+
+class ActaDetailLocal(Schema):
+    id: int
+    codigo: str
+    fecha: str
+    profesorado: str
+    materia: str
+    materia_anio: int | None = None
+    plan_resolucion: str | None = None
+    libro: str | None = None
+    folio: str | None = None
+    observaciones: str | None = None
+    total_alumnos: int
+    total_aprobados: int
+    total_desaprobados: int
+    total_ausentes: int
+    created_by: str | None = None
+    created_at: str | None = None
+    mesa_id: int | None = None
+    esta_cerrada: bool = False
+    alumnos: list[ActaAlumnoLocal] = Field(default_factory=list)
+    docentes: list[ActaDocenteLocal] = Field(default_factory=list)
+
+# Rebuild explicito para asegurar que Pydantic v2 los marque como 'fully defined'
+ActaDocenteLocal.model_rebuild()
+ActaAlumnoLocal.model_rebuild()
+ActaCreateLocal.model_rebuild()
+ActaCreateOutLocal.model_rebuild()
+ActaListItem.model_rebuild()
+ActaDetailLocal.model_rebuild()
+
+# ==============================================================================
+# FIN DEFINICION LOCAL
+# ==============================================================================
 
 def _normalized_user_roles(user) -> set[str]:
     if not user or not getattr(user, "is_authenticated", False):
@@ -97,163 +199,7 @@ def _regularidad_lock_for_scope(
     return None
 
 
-class RegularidadAlumnoOut(Schema):
-    inscripcion_id: int
-    alumno_id: int
-    orden: int
-    apellido_nombre: str
-    dni: str
-    nota_tp: float | None = None
-    nota_final: int | None = None
-    asistencia: int | None = None
-    excepcion: bool = False
-    situacion: str | None = None
-    observaciones: str | None = None
-    correlativas_caidas: list[str] = Field(default_factory=list)
-
-
-class RegularidadPlanillaOut(Schema):
-    materia_id: int
-    materia_nombre: str
-    materia_anio: int | None = None
-    formato: str
-    regimen: str | None = None
-    comision_id: int
-    comision_codigo: str
-    anio: int
-    turno: str
-    profesorado_id: int | None = None
-    profesorado_nombre: str | None = None
-    plan_id: int | None = None
-    plan_resolucion: str | None = None
-    docentes: list[str] = Field(default_factory=list)
-    fecha_cierre: date | None = None
-    esta_cerrada: bool = False
-    cerrada_en: str | None = None
-    cerrada_por: str | None = None
-    puede_editar: bool = True
-    puede_cerrar: bool = True
-    puede_reabrir: bool = False
-    situaciones: list[dict]
-    alumnos: list[RegularidadAlumnoOut]
-
-
-class RegularidadAlumnoIn(Schema):
-    inscripcion_id: int
-    nota_tp: float | None = None
-    nota_final: int | None = None
-    asistencia: int | None = None
-    excepcion: bool = False
-    situacion: str
-    observaciones: str | None = None
-
-
-class RegularidadCargaIn(Schema):
-    comision_id: int
-    fecha_cierre: date | None = None
-    alumnos: list[RegularidadAlumnoIn]
-    observaciones_generales: str | None = None
-
-
-class RegularidadCierreIn(Schema):
-    comision_id: int
-    accion: Literal["cerrar", "reabrir"]
-
-
-class ActaDocenteIn(Schema):
-    rol: str
-    docente_id: int | None = None
-    nombre: str
-    dni: str | None = None
-
-
-class ActaAlumnoIn(Schema):
-    numero_orden: int
-    permiso_examen: str | None = None
-    dni: str
-    apellido_nombre: str
-    examen_escrito: str | None = None
-    examen_oral: str | None = None
-    calificacion_definitiva: str
-    observaciones: str | None = None
-
-
-class ActaCreateIn(Schema):
-    tipo: str
-    profesorado_id: int
-    materia_id: int
-    fecha: date
-    folio: str
-    libro: str | None = None
-    observaciones: str | None = None
-    docentes: list[ActaDocenteIn]
-    alumnos: list[ActaAlumnoIn]
-    total_aprobados: int | None = None
-    total_desaprobados: int | None = None
-    total_ausentes: int | None = None
-
-
-class ActaCreateOut(Schema):
-    id: int
-    codigo: str
-
-
-class OralTopicSchema(Schema):
-    tema: str
-    score: str | None = None
-
-
-class ActaOralSchema(Schema):
-    acta_numero: str | None = None
-    folio_numero: str | None = None
-    fecha: date | None = None
-    curso: str | None = None
-    nota_final: str | None = None
-    observaciones: str | None = None
-    temas_alumno: list[OralTopicSchema] = Field(default_factory=list)
-    temas_docente: list[OralTopicSchema] = Field(default_factory=list)
-
-
-class ActaOralListItemSchema(ActaOralSchema):
-    inscripcion_id: int
-    alumno: str
-    dni: str
-
-
-class ActaMetadataMateria(Schema):
-    id: int
-    nombre: str
-    anio_cursada: int | None = None
-    plan_id: int
-    plan_resolucion: str
-
-
-class ActaMetadataPlan(Schema):
-    id: int
-    resolucion: str
-    materias: list[ActaMetadataMateria]
-
-
-class ActaMetadataProfesorado(Schema):
-    id: int
-    nombre: str
-    planes: list[ActaMetadataPlan]
-
-
-class ActaMetadataDocente(Schema):
-    id: int
-    nombre: str
-    dni: str | None = None
-
-
-class ActaMetadataOut(Schema):
-    profesorados: list[ActaMetadataProfesorado]
-    docentes: list[ActaMetadataDocente]
-    nota_opciones: list[dict[str, str]]
-
-
 FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB"}
-
 _VIRTUAL_COMISION_FACTOR = 10000
 
 
@@ -280,13 +226,6 @@ def _nota_label(value: str) -> str:
 
 
 def _compute_acta_codigo(profesorado: Profesorado, anio: int, numero: int) -> str:
-    """Genera un código estable para las actas.
-
-    Prioriza un posible acrónimo definido en el modelo y cae en un slug del nombre
-    (o en una marca basada en el identificador) cuando dicho atributo no existe.
-    Así evitamos depender de campos opcionales sin romper instalaciones que sí
-    lo tengan configurado.
-    """
     prefix = (
         getattr(profesorado, "acronimo", None) or slugify(profesorado.nombre or "") or f"P{profesorado.id}"
     ).upper()
@@ -316,9 +255,14 @@ def _clasificar_resultado(nota: str) -> str:
     return "aprobado" if valor >= 6 else "desaprobado"
 
 
-def _acta_metadata() -> ActaMetadataOut:
+def _acta_metadata(user=None) -> ActaMetadataOut:
     profesorados_data: list[ActaMetadataProfesorado] = []
     profesorados_qs = Profesorado.objects.order_by("nombre").prefetch_related("planes")
+    
+    if user:
+        allowed = allowed_profesorados(user)
+        if allowed is not None:
+            profesorados_qs = profesorados_qs.filter(id__in=allowed)
 
     for profesorado in profesorados_qs:
         planes_payload: list[ActaMetadataPlan] = []
@@ -358,6 +302,12 @@ def _acta_metadata() -> ActaMetadataOut:
         )
         for doc in Docente.objects.order_by("apellido", "nombre", "id")
     ]
+    
+    NOTA_NUMERIC_VALUES = [str(i) for i in range(1, 11)]
+    ACTA_NOTA_CHOICES = NOTA_NUMERIC_VALUES + [
+        ActaExamenAlumno.NOTA_AUSENTE_JUSTIFICADO,
+        ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO,
+    ]
 
     nota_options = [{"value": value, "label": _nota_label(value)} for value in ACTA_NOTA_CHOICES]
 
@@ -373,13 +323,129 @@ def _acta_metadata() -> ActaMetadataOut:
     response={200: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
 def obtener_acta_metadata(request):
-    data = _acta_metadata()
+    data = _acta_metadata(user=request.user)
     return ApiResponse(
         ok=True,
         message="Metadata para actas de examen.",
         data=data.dict(),
+    )
+
+
+@carga_notas_router.get(
+    "/actas",
+    response={200: list[ActaListItem]},
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+def listar_actas(request):
+    user = request.user
+    roles = _normalized_user_roles(user)
+    
+    # Roles con acceso total
+    if roles.intersection({"admin", "secretaria", "titulos"}):
+        qs = ActaExamen.objects.all()
+    else:
+        # Roles limitados (Bedel, Coordinador): Filtramos por asignacion
+        from core.models import StaffAsignacion
+        
+        # Obtenemos IDs de profesorados donde el usuario tiene asignacion activa
+        carreras_ids = StaffAsignacion.objects.filter(
+            user=user
+        ).values_list("profesorado_id", flat=True)
+        
+        # Nota: Si StaffAsignacion no tiene 'activo', quitar esa linea.
+        # Fallback si no tiene asignaciones: no ve nada
+        qs = ActaExamen.objects.filter(profesorado_id__in=carreras_ids)
+
+    actas = qs.select_related("materia").order_by("-id")[:50]
+    
+    result = []
+    for acta in actas:
+        mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=acta.tipo).first()
+        result.append({
+            "id": acta.id,
+            "codigo": acta.codigo,
+            "fecha": acta.fecha.isoformat(),
+            "materia": acta.materia.nombre if acta.materia else "Desconocida",
+            "libro": acta.libro,
+            "folio": acta.folio,
+            "total_alumnos": acta.total_alumnos,
+            "created_at": acta.created_at.isoformat() if acta.created_at else "",
+            "mesa_id": mesa.id if mesa else None,
+            "esta_cerrada": (mesa.planilla_cerrada_en is not None) if mesa else False
+        })
+    return result
+
+
+@carga_notas_router.get(
+    "/actas/{acta_id}",
+    response={200: ActaDetailLocal, 404: ApiResponse, 403: ApiResponse},
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+def obtener_acta(request, acta_id: int):
+    acta = ActaExamen.objects.select_related("materia", "profesorado", "created_by", "plan").filter(id=acta_id).first()
+    if not acta:
+        return 404, ApiResponse(ok=False, message="Acta no encontrada.")
+
+    # Validacion de permisos segun profesorado (copiando logica de listar)
+    user = request.user
+    roles = _normalized_user_roles(user)
+    if not roles.intersection({"admin", "secretaria", "titulos"}):
+        from core.models import StaffAsignacion
+        carreras_ids = StaffAsignacion.objects.filter(user=user).values_list("profesorado_id", flat=True)
+        if acta.profesorado_id not in carreras_ids:
+             return 403, ApiResponse(ok=False, message="No tiene permiso para ver actas de este profesorado.")
+
+    mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=acta.tipo).first()
+
+    alumnos_qs = acta.alumnos.all().order_by("numero_orden")
+    alumnos_list = [
+        ActaAlumnoLocal(
+            numero_orden=a.numero_orden,
+            permiso_examen=a.permiso_examen,
+            dni=a.dni,
+            apellido_nombre=a.apellido_nombre,
+            examen_escrito=a.examen_escrito,
+            examen_oral=a.examen_oral,
+            calificacion_definitiva=a.calificacion_definitiva,
+            observaciones=a.observaciones
+        ) for a in alumnos_qs
+    ]
+
+    docentes_qs = acta.docentes.all().order_by("orden")
+    docentes_list = [
+        ActaDocenteLocal(
+            docente_id=a.docente_id,
+            nombre=a.nombre,
+            dni=a.dni,
+            rol=a.rol
+        ) for a in docentes_qs
+    ]
+
+    return ActaDetailLocal(
+        id=acta.id,
+        codigo=acta.codigo,
+        fecha=acta.fecha.isoformat(),
+        profesorado=acta.profesorado.nombre,
+        materia=acta.materia.nombre if acta.materia else "Desconocida",
+        materia_anio=acta.materia.anio_cursada if acta.materia else None,
+        plan_resolucion=acta.plan.resolucion if acta.plan else None,
+        libro=acta.libro,
+        folio=acta.folio,
+        observaciones=acta.observaciones,
+        total_alumnos=acta.total_alumnos,
+        total_aprobados=acta.total_aprobados or 0,
+        total_desaprobados=acta.total_desaprobados or 0,
+        total_ausentes=acta.total_ausentes or 0,
+        created_by=_format_user_display(acta.created_by),
+        created_at=acta.created_at.isoformat() if acta.created_at else None,
+        mesa_id=mesa.id if mesa else None,
+        esta_cerrada=(mesa.planilla_cerrada_en is not None) if mesa else False,
+        alumnos=alumnos_list,
+        docentes=docentes_list
     )
 
 
@@ -389,12 +455,20 @@ def obtener_acta_metadata(request):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
-def crear_acta_examen(request, payload: ActaCreateIn):
+def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
+    # Definimos las constantes locales para validacion
+    NOTA_NUMERIC_VALUES = [str(i) for i in range(1, 11)]
+    ACTA_NOTA_CHOICES = NOTA_NUMERIC_VALUES + [
+        ActaExamenAlumno.NOTA_AUSENTE_JUSTIFICADO,
+        ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO,
+    ]
+
     if payload.tipo not in dict(ActaExamen.Tipo.choices):
         return 400, ApiResponse(ok=False, message="Tipo de acta inválido.")
 
     try:
         profesorado = Profesorado.objects.get(pk=payload.profesorado_id)
+        ensure_profesorado_access(request.user, profesorado.id)
     except Profesorado.DoesNotExist:
         return 404, ApiResponse(ok=False, message="Profesorado no encontrado.")
 
@@ -410,8 +484,52 @@ def crear_acta_examen(request, payload: ActaCreateIn):
             message="La materia seleccionada no pertenece al profesorado indicado.",
         )
 
-    if not payload.alumnos:
-        return 400, ApiResponse(ok=False, message="Debe ingresar al menos un alumno en el acta.")
+    
+    # 1. Auto-creacion / Validacion de estudiantes (Lazy Creation)
+    # En lugar de rechazar, creamos los perfiles minimos necesarios para los DNI que no existen.
+    
+    from django.contrib.auth.models import User
+    
+    for alumno_data in payload.alumnos:
+        clean_dni = alumno_data.dni.strip()
+        if not clean_dni:
+            continue
+            
+        estudiante = Estudiante.objects.filter(dni=clean_dni).first()
+        
+        if not estudiante:
+            # Creacion automatica del usuario y estudiante
+            nombre_completo = alumno_data.apellido_nombre.strip()
+            parts = nombre_completo.split(",")
+            if len(parts) == 2:
+                last_name = parts[0].strip()
+                first_name = parts[1].strip()
+            else:
+                return 400, ApiResponse(
+                    ok=False,
+                    message=f"El alumno con DNI {clean_dni} ({nombre_completo}) no existe y para crearlo automáticamente se requiere el formato 'Apellido, Nombre' (con coma)."
+                )
+
+            # Crear User
+            username = clean_dni
+            # Manejo de colision de username raros
+            if User.objects.filter(username=username).exists():
+                 # Si existe el user pero no estudiante, lo vinculamos.
+                 user = User.objects.get(username=username)
+            else:
+                user = User.objects.create_user(username=username, password=clean_dni, first_name=first_name, last_name=last_name)
+            
+            # Crear Estudiante
+            estudiante = Estudiante.objects.create(
+                user=user,
+                dni=clean_dni,
+                legajo=None, # Se asignara despues o manual
+                estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
+            )
+        
+        # Asegurar vinculacion con el profesorado (Inscripcion a carrera)
+        # Esto permite que aparezca en los reportes de esa carrera
+        estudiante.asignar_profesorado(profesorado)
 
     anio = payload.fecha.year
     numero = _next_acta_numero(profesorado.id, anio)
@@ -483,6 +601,56 @@ def crear_acta_examen(request, payload: ActaCreateIn):
             created_by=usuario if getattr(usuario, "is_authenticated", False) else None,
             updated_by=usuario if getattr(usuario, "is_authenticated", False) else None,
         )
+        
+        # --- REFLEJO EN MESA DE EXAMEN Y TRAYECTORIA ---
+        # 1. Determinar o crear MesaExamen Virtual/Real
+        mesa_modalidad = MesaExamen.Modalidad.REGULAR
+        if payload.tipo == ActaExamen.Tipo.LIBRE:
+            mesa_modalidad = MesaExamen.Modalidad.LIBRE
+        
+        # Buscar docentes para asignar a la mesa (si se crea nueva)
+        docente_presidente = None
+        docente_vocal1 = None
+        docente_vocal2 = None
+        
+        for docente_data in payload.docentes or []:
+            d_obj = None
+            if docente_data.docente_id:
+                d_obj = Docente.objects.filter(id=docente_data.docente_id).first()
+            
+            # Map Acta roles to vars
+            if docente_data.rol == ActaExamenDocente.Rol.PRESIDENTE:
+                docente_presidente = d_obj
+            elif docente_data.rol == ActaExamenDocente.Rol.VOCAL1:
+                docente_vocal1 = d_obj
+            elif docente_data.rol == ActaExamenDocente.Rol.VOCAL2:
+                docente_vocal2 = d_obj
+
+        # Intentamos buscar una mesa existente que coincida
+        mesa = MesaExamen.objects.filter(
+            materia=materia,
+            fecha=payload.fecha,
+            modalidad=mesa_modalidad,
+        ).first()
+
+        if not mesa:
+            # Generamos un codigo mas corto para evitar DataError (max 40 chars)
+            # MA = Mesa Automatica / A{id} = Acta ID
+            fecha_str = payload.fecha.strftime("%Y%m%d")
+            mesa_codigo = f"MA-{acta.id}-{fecha_str}" 
+            mesa = MesaExamen.objects.create(
+                materia=materia,
+                fecha=payload.fecha,
+                tipo=MesaExamen.Tipo.FINAL, # Asumimos Final por defecto para Actas
+                modalidad=mesa_modalidad,
+                codigo=mesa_codigo,
+                docente_presidente=docente_presidente,
+                docente_vocal1=docente_vocal1,
+                docente_vocal2=docente_vocal2,
+                planilla_cerrada_en=timezone.now(), # Se asume cerrada si viene de acta
+                planilla_cerrada_por=usuario if getattr(usuario, "is_authenticated", False) else None,
+                cupo=0
+            )
 
         for idx, docente_data in enumerate(payload.docentes or [], start=1):
             rol = (
@@ -503,6 +671,7 @@ def crear_acta_examen(request, payload: ActaCreateIn):
             )
 
         for alumno in alumnos_payload:
+            # Crear registro en Acta
             ActaExamenAlumno.objects.create(
                 acta=acta,
                 numero_orden=alumno.numero_orden,
@@ -514,11 +683,47 @@ def crear_acta_examen(request, payload: ActaCreateIn):
                 calificacion_definitiva=alumno.calificacion_definitiva,
                 observaciones=alumno.observaciones or "",
             )
+            
+            # --- REFLEJO EN INSCRIPCION MESA (TRAYECTORIA) ---
+            estudiante = Estudiante.objects.filter(dni=alumno.dni.strip()).first()
+            if estudiante:
+                # Parsear nota y condicion
+                nota_decimal = None
+                condicion_mesa = InscripcionMesa.Condicion.DESAPROBADO # Default
+
+                calif_upper = alumno.calificacion_definitiva.strip().upper()
+                if calif_upper in (str(i) for i in range(1, 11)):
+                    try:
+                        nota_decimal = Decimal(calif_upper)
+                        if nota_decimal >= 6: # Umbral 6
+                             condicion_mesa = InscripcionMesa.Condicion.APROBADO
+                    except:
+                        pass
+                elif calif_upper == ActaExamenAlumno.NOTA_AUSENTE_JUSTIFICADO:
+                     condicion_mesa = InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
+                elif calif_upper == ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO:
+                     condicion_mesa = InscripcionMesa.Condicion.AUSENTE
+                
+                # Crear o actualizar InscripcionMesa
+                InscripcionMesa.objects.update_or_create(
+                    mesa=mesa,
+                    estudiante=estudiante,
+                    defaults={
+                        "estado": InscripcionMesa.Estado.INSCRIPTO,
+                        "fecha_resultado": payload.fecha,
+                        "condicion": condicion_mesa,
+                        "nota": nota_decimal,
+                        "folio": payload.folio,
+                        "libro": payload.libro,
+                        "observaciones": "Carga por Acta de Examen (Primera Carga)",
+                        "cuenta_para_intentos": condicion_mesa != InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
+                    }
+                )
 
     return ApiResponse(
         ok=True,
-        message="Acta de examen generada correctamente.",
-        data=ActaCreateOut(id=acta.id, codigo=acta.codigo).dict(),
+        message="Acta de examen generada correctamente y reflejada en trayectoria.",
+        data=ActaCreateOutLocal(id=acta.id, codigo=acta.codigo).dict(),
     )
 
 
@@ -623,43 +828,15 @@ def _situaciones_para_formato(formato: str) -> list[dict]:
     formato_key = formato.upper()
     if formato_key in _SITUACIONES:
         return _SITUACIONES[formato_key]
+
     if formato_key in FORMATOS_TALLER:
         return _SITUACIONES["TAL"]
     return _SITUACIONES["ASI"]
-
 
 def _alias_desde_situacion(codigo: str | None) -> str | None:
     if not codigo:
         return None
     return SITUACION_TO_ALIAS.get(codigo)
-
-
-class MateriaOption(Schema):
-    id: int
-    nombre: str
-    plan_id: int
-    anio: int | None = None
-    cuatrimestre: str | None = None
-    formato: str | None = None
-
-
-class ComisionOption(Schema):
-    id: int
-    materia_id: int
-    materia_nombre: str
-    profesorado_id: int
-    profesorado_nombre: str
-    plan_id: int
-    plan_resolucion: str
-    anio: int
-    cuatrimestre: str | None = None
-    turno: str
-    codigo: str
-
-
-class CargaNotasLookup(Schema):
-    materias: list[MateriaOption]
-    comisiones: list[ComisionOption]
 
 
 @carga_notas_router.get(
@@ -997,7 +1174,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "docente"])
-def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
+def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...)):
     is_virtual = payload.comision_id < 0
     comision = None
     materia = None
@@ -1142,7 +1319,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "docente"])
-def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn):
+def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(...)):
     is_virtual = payload.comision_id < 0
     comision: Comision | None = None
     materia: Materia | None = None
@@ -1232,7 +1409,7 @@ def obtener_acta_oral(request, mesa_id: int, inscripcion_id: int):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
-def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaOralSchema):
+def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaOralSchema = Body(...)):
     try:
         inscripcion = _get_inscripcion_mesa_or_404(mesa_id, inscripcion_id)
     except HttpError as exc:
@@ -1307,3 +1484,49 @@ def listar_actas_orales(request, mesa_id: int):
         )
 
     return payload
+
+
+class ActaHeaderUpdateIn(Schema):
+    fecha: date
+    libro: str | None = None
+    folio: str | None = None
+
+
+@carga_notas_router.put(
+    "/actas/{acta_id}/header",
+    response={200: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria"])
+def actualizar_cabecera_acta(request, acta_id: int, payload: ActaHeaderUpdateIn):
+    """
+    Permite corregir fecha, libro y folio de un Acta ya generada.
+    Intenta actualizar también la Mesa de Examen asociada para mantener consistencia.
+    """
+    acta = ActaExamen.objects.filter(id=acta_id).first()
+    if not acta:
+        return 404, ApiResponse(ok=False, message="Acta no encontrada.")
+
+    # 1. Buscar mesa asociada con los datos VIEJOS (antes de update)
+    # Usamos la misma lógica de filtrado que en listar_actas
+    mesa = MesaExamen.objects.filter(
+        materia_id=acta.materia_id, 
+        fecha=acta.fecha, 
+        modalidad=acta.tipo
+    ).first()
+
+    # 2. Actualizar Acta
+    acta.fecha = payload.fecha
+    if payload.libro is not None:
+        acta.libro = payload.libro
+    if payload.folio is not None:
+        acta.folio = payload.folio
+    
+    acta.save()
+
+    # 3. Actualizar Mesa (si existe y fue encontrada)
+    if mesa:
+        mesa.fecha = payload.fecha
+        mesa.save()
+
+    return ApiResponse(ok=True, message="Cabecera del acta actualizada correctamente.")

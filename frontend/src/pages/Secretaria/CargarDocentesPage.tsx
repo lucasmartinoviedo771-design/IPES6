@@ -24,6 +24,7 @@ import { client as api } from "@/api/client";
 import { toast } from "@/utils/toast";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
+import { INSTITUTIONAL_TERRACOTTA, INSTITUTIONAL_TERRACOTTA_DARK } from "@/styles/institutionalColors";
 
 interface Docente {
   id: number;
@@ -173,7 +174,9 @@ export default function CargarDocentesPage() {
       />
 
       <Paper sx={{ p: 2 }}>
-        <SectionTitlePill title={editingDocente ? "Editar docente" : "Crear nuevo docente"} />
+        <Typography variant="h6" mb={2}>
+          {editingDocente ? "Editar docente" : "Crear nuevo docente"}
+        </Typography>
         <Box
           component="form"
           onSubmit={handleSubmit(onSubmit)}
@@ -281,7 +284,14 @@ export default function CargarDocentesPage() {
               />
             )}
           />
-          <Button type="submit" variant="contained">
+          <Button
+            type="submit"
+            variant="contained"
+            sx={{
+              bgcolor: INSTITUTIONAL_TERRACOTTA,
+              '&:hover': { bgcolor: INSTITUTIONAL_TERRACOTTA_DARK }
+            }}
+          >
             {editingDocente ? "Actualizar Docente" : "Guardar Docente"}
           </Button>
           {editingDocente && (

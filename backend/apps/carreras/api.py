@@ -4,7 +4,7 @@ from ninja import Router, Schema
 
 from core.auth_ninja import JWTAuth
 from core.models import PlanDeEstudio, Profesorado
-from core.permissions import ensure_profesorado_access, ensure_roles
+from core.permissions import ensure_profesorado_access, ensure_roles, allowed_profesorados
 
 STRUCTURE_VIEW_ROLES = {
     "admin",
@@ -79,13 +79,18 @@ class RequisitoDocumentacionOut(Schema):
     activo: bool
 
 
-@carreras_router.get("/", response=list[ProfesoradoOut])
+@carreras_router.get("/", response=list[ProfesoradoOut], auth=JWTAuth())
 def listar_carreras(request, vigentes: bool | None = None):
+    qs = Profesorado.objects.all().order_by("nombre")
     if getattr(request, "user", None) and getattr(request.user, "is_authenticated", False):
         _require_view(request.user)
-    qs = Profesorado.objects.all().order_by("nombre")
+        allowed = allowed_profesorados(request.user)
+        if allowed is not None:
+            qs = qs.filter(id__in=allowed)
+            
     if vigentes is not None:
         qs = qs.filter(activo=vigentes, inscripcion_abierta=vigentes)
+    print(f"DEBUG: Returning {qs.count()} carreras for user {getattr(request, 'user', 'Anonymous')}")
     return qs
 
 

@@ -80,6 +80,7 @@ type ActaExamenFormProps = {
   title?: string;
   subtitle?: string;
   successMessage?: string;
+  estudiantes?: Array<{ dni: string; apellido_nombre: string }>;
 };
 
 const createEmptyDocentes = (): DocenteState[] =>
@@ -117,6 +118,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   title = "Generar acta de examen",
   subtitle = "Complete los datos del acta y registre los resultados obtenidos por cada estudiante.",
   successMessage = "Acta generada correctamente.",
+  estudiantes = [],
 }) => {
   const metadataQuery = useQuery<ActaMetadataDTO>({
     queryKey: ["acta-examen-metadata"],
@@ -312,14 +314,14 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   );
 
   const handleAlumnoDniChange = async (internoId: string, dni: string) => {
-    const numeric = dni.replace(/\D/g, "").slice(0, 8);
+    const numeric = dni.replace(/\D/g, "").slice(0, 10);
 
     updateAlumno(internoId, {
       dni: numeric,
       apellido_nombre: "",
     });
 
-    if (numeric.length !== 8) {
+    if (numeric.length < 7) {
       return;
     }
 
@@ -334,9 +336,14 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
         ),
       );
     } catch (error: any) {
-      enqueueSnackbar(error?.response?.data?.message || "No se encontr\u00f3 un estudiante con ese DNI.", {
-        variant: "error",
-      });
+      if (strict) {
+        enqueueSnackbar(error?.response?.data?.message || "No se encontró un estudiante con ese DNI.", {
+          variant: "error",
+        });
+      } else {
+        // En modo no estricto, no mostramos error, solo dejamos que el usuario cargue manualmente
+        console.warn("Estudiante no encontrado en el sistema (modo no estricto).");
+      }
     } finally {
       setLoadingAlumnoDni((current) => (current === internoId ? null : current));
     }
@@ -513,415 +520,495 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 
   return (
     <>
-    <Stack spacing={3} sx={{ p: { xs: 1, md: 3 } }}>
-      <Box>
-        <Typography variant="h4" fontWeight={700}>
-          {title}
-        </Typography>
-        <Typography color="text.secondary">
-          {subtitle}
-        </Typography>
-      </Box>
-
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
-          Asociar una mesa
-        </Typography>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <TextField
-            label="Código de mesa (opcional)"
-            size="small"
-            value={mesaCodigo}
-            onChange={(event) => setMesaCodigo(event.target.value)}
-            placeholder="Ej: MESA-20251112-00010"
-            fullWidth
-          />
-          <Button
-            variant="contained"
-            onClick={handleBuscarMesa}
-            disabled={mesaBuscando}
-            startIcon={mesaBuscando ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
-          >
-            {mesaBuscando ? "Buscando..." : "Buscar"}
-          </Button>
-        </Stack>
-        {mesaBusquedaError && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
-            {mesaBusquedaError}
-          </Alert>
-        )}
-        {mesaSeleccionada && (
-          <Alert severity="info" sx={{ mt: 1 }}>
-            <Stack spacing={0.5}>
-              <Typography variant="body2">
-                <strong>Código:</strong> {mesaSeleccionada.codigo || mesaSeleccionada.id} - {mesaSeleccionada.materia_nombre}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Tipo:</strong> {getMesaTipoNombre(mesaSeleccionada.tipo)} | <strong>Modalidad:</strong>{" "}
-                {mesaSeleccionada.modalidad === "LIB" ? "Libre" : "Regular"}
-              </Typography>
-              {mesaSeleccionada.docentes && mesaSeleccionada.docentes.length ? (
-                <Typography variant="body2">
-                  <strong>Tribunal:</strong>{" "}
-                  {mesaSeleccionada.docentes
-                    .map((doc) => `${DOCENTE_ROL_LABEL[doc.rol] ?? doc.rol}: ${doc.nombre || "Sin asignar"}`)
-                    .join(" | ")}
-                </Typography>
-              ) : (
-                <Typography variant="body2">Tribunal sin designar.</Typography>
-              )}
-            </Stack>
-          </Alert>
-        )}
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Encabezado del acta
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              select
-              label="Tipo de acta"
-              fullWidth
-              value={tipo}
-              onChange={(event) => setTipo(event.target.value as "REG" | "LIB")}
-            >
-              {ACTA_TIPOS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              select
-              label="Profesorado"
-              fullWidth
-              value={profesoradoId}
-              onChange={(event) => {
-                setProfesoradoId(event.target.value);
-                setPlanId("");
-                setMateriaId("");
-              }}
-            >
-              <MenuItem value="">Seleccionar</MenuItem>
-              {profesorados.map((prof) => (
-                <MenuItem key={prof.id} value={String(prof.id)}>
-                  {prof.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              select
-              label="Plan de estudio"
-              fullWidth
-              value={planId}
-              onChange={(event) => {
-                setPlanId(event.target.value);
-                setMateriaId("");
-              }}
-              disabled={!selectedProfesorado}
-            >
-              <MenuItem value="">Seleccionar</MenuItem>
-              {planesDisponibles.map((plan) => (
-                <MenuItem key={plan.id} value={String(plan.id)}>
-                  {plan.resolucion}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              select
-              label="Materia"
-              fullWidth
-              value={materiaId}
-              onChange={(event) => setMateriaId(event.target.value)}
-              disabled={!selectedPlan}
-            >
-              <MenuItem value="">Seleccionar</MenuItem>
-              {materiasDisponibles.map((materia) => (
-                <MenuItem key={materia.id} value={String(materia.id)}>
-                  {materia.nombre} {materia.anio_cursada ? `(${materia.anio_cursada}° año)` : ""}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              label="Fecha"
-              type="date"
-              fullWidth
-              value={fecha}
-              onChange={(event) => setFecha(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              label="Número de folio"
-              fullWidth
-              value={folio}
-              onChange={(event) => setFolio(event.target.value)}
-              required
-            />
-          </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <TextField
-              label="Libro"
-              fullWidth
-              value={libro}
-              onChange={(event) => setLibro(event.target.value)}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Observaciones generales"
-              fullWidth
-              multiline
-              minRows={2}
-              value={observaciones}
-              onChange={(event) => setObservaciones(event.target.value)}
-            />
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-          Tribunal examinador
-        </Typography>
-        <Stack spacing={2}>
-          {docentes.map((docente, index) => {
-            const role = DOCENTE_ROLES[index];
-            return (
-              <Grid
-                container
-                spacing={2}
-                alignItems="center"
-                key={role.value}
-              >
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    {role.label}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} md={9}>
-                  <Autocomplete
-                    freeSolo
-                    options={docenteOptions}
-                    value={docente.inputValue || ""}
-                    onInputChange={(_, newInputValue) =>
-                      handleDocenteInputChange(index, newInputValue || "")
-                    }
-                    onChange={(_, newValue) =>
-                      handleDocenteInputChange(index, newValue || "")
-                    }
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="DNI y nombre (ej: 29825234 - Apellido, Nombre)"
-                        fullWidth
-                      />
-                    )}
-                  />
-                </Grid>
-              </Grid>
-            );
-          })}
-        </Stack>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 3 }}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} sx={{ mb: 2 }} spacing={2}>
-          <Typography variant="h6" fontWeight={600}>
-            Resultados del examen
+      <Stack spacing={3} sx={{ p: { xs: 1, md: 3 } }}>
+        <Box>
+          <Typography variant="h4" fontWeight={700}>
+            {title}
           </Typography>
-          <Button startIcon={<AddIcon />} variant="outlined" onClick={handleAgregarAlumno}>
-            Agregar fila
-          </Button>
-        </Stack>
-        <Box sx={{ overflowX: "auto" }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell align="center">N°</TableCell>
-                <TableCell>Permiso examen</TableCell>
-                <TableCell>DNI</TableCell>
-                <TableCell>Apellido y nombre</TableCell>
-                <TableCell>Examen escrito</TableCell>
-                <TableCell>Examen oral</TableCell>
-                <TableCell>Calificación definitiva</TableCell>
-                <TableCell>Observaciones</TableCell>
-                <TableCell align="center">Acta oral</TableCell>
-                <TableCell align="center">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {alumnos.map((alumno) => (
-                <TableRow key={alumno.internoId}>
-                  <TableCell align="center">{alumno.numero_orden}</TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      value={alumno.permiso_examen ?? ""}
-                      onChange={(event) =>
-                        updateAlumno(alumno.internoId, { permiso_examen: event.target.value })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      value={alumno.dni}
-                      onChange={(event) => handleAlumnoDniChange(alumno.internoId, event.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={alumno.apellido_nombre}
-                      onChange={(event) =>
-                        updateAlumno(alumno.internoId, { apellido_nombre: event.target.value })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      select
-                      size="small"
-                      value={alumno.examen_escrito ?? ""}
-                      onChange={(event) =>
-                        updateAlumno(alumno.internoId, { examen_escrito: event.target.value })
-                      }
-                    >
-                      <MenuItem value="">-</MenuItem>
-                      {notaOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      select
-                      size="small"
-                      value={alumno.examen_oral ?? ""}
-                      onChange={(event) =>
-                        updateAlumno(alumno.internoId, { examen_oral: event.target.value })
-                      }
-                    >
-                      <MenuItem value="">-</MenuItem>
-                      {notaOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      select
-                      size="small"
-                      required
-                      value={alumno.calificacion_definitiva}
-                      onChange={(event) =>
-                        updateAlumno(alumno.internoId, { calificacion_definitiva: event.target.value })
-                      }
-                    >
-                      <MenuItem value="">Seleccionar</MenuItem>
-                      {notaOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      value={alumno.observaciones ?? ""}
-                      onChange={(event) =>
-                        updateAlumno(alumno.internoId, { observaciones: event.target.value })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Button variant="outlined" size="small" onClick={() => handleOpenOralActa(alumno)}>
-                      Acta oral
-                    </Button>
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      color="error"
-                      size="small"
-                      onClick={() => handleEliminarAlumno(alumno.internoId)}
-                      disabled={alumnos.length === 1}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Typography color="text.secondary">
+            {subtitle}
+          </Typography>
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-          <Alert severity="info" sx={{ flex: 1 }}>
-            <Typography variant="subtitle2">Resumen automático</Typography>
-            <Typography variant="body2">
-              Total de alumnos: <strong>{summary.total}</strong> — Aprobados: <strong>{summary.aprobados}</strong> — Desaprobados: <strong>{summary.desaprobados}</strong> — Ausentes: <strong>{summary.ausentes}</strong>
-            </Typography>
-          </Alert>
-        </Stack>
-      </Paper>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            Asociar una mesa
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+              label="Código de mesa (opcional)"
+              size="small"
+              value={mesaCodigo}
+              onChange={(event) => setMesaCodigo(event.target.value)}
+              placeholder="Ej: MESA-20251112-00010"
+              fullWidth
+            />
+            <Button
+              variant="contained"
+              onClick={handleBuscarMesa}
+              disabled={mesaBuscando}
+              startIcon={mesaBuscando ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
+            >
+              {mesaBuscando ? "Buscando..." : "Buscar"}
+            </Button>
+          </Stack>
+          {mesaBusquedaError && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              {mesaBusquedaError}
+            </Alert>
+          )}
+          {mesaSeleccionada && (
+            <Alert severity="info" sx={{ mt: 1 }}>
+              <Stack spacing={0.5}>
+                <Typography variant="body2">
+                  <strong>Código:</strong> {mesaSeleccionada.codigo || mesaSeleccionada.id} - {mesaSeleccionada.materia_nombre}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Tipo:</strong> {getMesaTipoNombre(mesaSeleccionada.tipo)} | <strong>Modalidad:</strong>{" "}
+                  {mesaSeleccionada.modalidad === "LIB" ? "Libre" : "Regular"}
+                </Typography>
+                {mesaSeleccionada.docentes && mesaSeleccionada.docentes.length ? (
+                  <Typography variant="body2">
+                    <strong>Tribunal:</strong>{" "}
+                    {mesaSeleccionada.docentes
+                      .map((doc) => `${DOCENTE_ROL_LABEL[doc.rol] ?? doc.rol}: ${doc.nombre || "Sin asignar"}`)
+                      .join(" | ")}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2">Tribunal sin designar.</Typography>
+                )}
+              </Stack>
+            </Alert>
+          )}
+        </Paper>
 
-      <Stack direction="row" justifyContent="flex-end">
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleSubmit}
-          disabled={mutation.isPending}
-          startIcon={mutation.isPending ? <CircularProgress size={18} color="inherit" /> : undefined}
-        >
-          {mutation.isPending ? "Generando..." : "Generar acta"}
-        </Button>
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+            Encabezado del acta
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                select
+                label="Tipo de acta"
+                fullWidth
+                value={tipo}
+                onChange={(event) => setTipo(event.target.value as "REG" | "LIB")}
+              >
+                {ACTA_TIPOS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                select
+                label="Profesorado"
+                fullWidth
+                value={profesoradoId}
+                onChange={(event) => {
+                  setProfesoradoId(event.target.value);
+                  setPlanId("");
+                  setMateriaId("");
+                }}
+              >
+                <MenuItem value="">Seleccionar</MenuItem>
+                {profesorados.map((prof) => (
+                  <MenuItem key={prof.id} value={String(prof.id)}>
+                    {prof.nombre}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                select
+                label="Plan de estudio"
+                fullWidth
+                value={planId}
+                onChange={(event) => {
+                  setPlanId(event.target.value);
+                  setMateriaId("");
+                }}
+                disabled={!selectedProfesorado}
+              >
+                <MenuItem value="">Seleccionar</MenuItem>
+                {planesDisponibles.map((plan) => (
+                  <MenuItem key={plan.id} value={String(plan.id)}>
+                    {plan.resolucion}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                select
+                label="Materia"
+                fullWidth
+                value={materiaId}
+                onChange={(event) => setMateriaId(event.target.value)}
+                disabled={!selectedPlan}
+              >
+                <MenuItem value="">Seleccionar</MenuItem>
+                {materiasDisponibles.map((materia) => (
+                  <MenuItem key={materia.id} value={String(materia.id)}>
+                    {materia.nombre} {materia.anio_cursada ? `(${materia.anio_cursada}° año)` : ""}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                label="Fecha"
+                type="date"
+                fullWidth
+                value={fecha}
+                onChange={(event) => setFecha(event.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                label="Número de folio"
+                fullWidth
+                value={folio}
+                onChange={(event) => setFolio(event.target.value)}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={6} lg={4}>
+              <TextField
+                label="Libro"
+                fullWidth
+                value={libro}
+                onChange={(event) => setLibro(event.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Observaciones generales"
+                fullWidth
+                multiline
+                minRows={2}
+                value={observaciones}
+                onChange={(event) => setObservaciones(event.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+            Tribunal examinador
+          </Typography>
+          <Stack spacing={2}>
+            {docentes.map((docente, index) => {
+              const role = DOCENTE_ROLES[index];
+              return (
+                <Grid
+                  container
+                  spacing={2}
+                  alignItems="center"
+                  key={role.value}
+                >
+                  <Grid item xs={12} md={3}>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      {role.label}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={9}>
+                    <Autocomplete
+                      freeSolo
+                      options={docenteOptions}
+                      value={docente.inputValue || ""}
+                      onInputChange={(_, newInputValue) =>
+                        handleDocenteInputChange(index, newInputValue || "")
+                      }
+                      onChange={(_, newValue) =>
+                        handleDocenteInputChange(index, newValue || "")
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="DNI y nombre (ej: 29825234 - Apellido, Nombre)"
+                          fullWidth
+                        />
+                      )}
+                    />
+                  </Grid>
+                </Grid>
+              );
+            })}
+          </Stack>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} sx={{ mb: 2 }} spacing={2}>
+            <Typography variant="h6" fontWeight={600}>
+              Resultados del examen
+            </Typography>
+            <Button startIcon={<AddIcon />} variant="outlined" onClick={handleAgregarAlumno}>
+              Agregar fila
+            </Button>
+          </Stack>
+          <Box sx={{ overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell align="center" sx={{ width: 50 }}>N°</TableCell>
+                  <TableCell sx={{ width: 120 }}>Permiso examen</TableCell>
+                  <TableCell sx={{ width: 140 }}>DNI</TableCell>
+                  <TableCell sx={{ minWidth: 320 }}>
+                    <Box>
+                      <Typography variant="subtitle2" component="span" sx={{ fontWeight: "bold" }}>
+                        Apellido y nombre
+                      </Typography>
+                      {!strict && (
+                        <Typography variant="caption" display="block" color="text.secondary" sx={{ fontStyle: "italic", mt: -0.5 }}>
+                          (Formato: Apellido, Nombre)
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ width: 100 }}>Examen escrito</TableCell>
+                  <TableCell sx={{ width: 100 }}>Examen oral</TableCell>
+                  <TableCell sx={{ width: 110 }}>Calificación definitiva</TableCell>
+                  <TableCell>Observaciones</TableCell>
+                  <TableCell align="center" sx={{ width: 90 }}>Acta oral</TableCell>
+                  <TableCell align="center" sx={{ width: 80 }}>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {alumnos.map((alumno) => (
+                  <TableRow key={alumno.internoId}>
+                    <TableCell align="center">{alumno.numero_orden}</TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        inputProps={{ maxLength: 10 }}
+                        value={alumno.permiso_examen ?? ""}
+                        onChange={(event) =>
+                          updateAlumno(alumno.internoId, { permiso_examen: event.target.value })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        inputProps={{ maxLength: 10 }}
+                        value={alumno.dni}
+                        onChange={(event) => handleAlumnoDniChange(alumno.internoId, event.target.value)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {estudiantes && estudiantes.length > 0 ? (
+                        <Autocomplete
+                          freeSolo
+                          options={estudiantes}
+                          getOptionLabel={(option) => {
+                            if (typeof option === "string") return option;
+                            return `${option.apellido_nombre} (${option.dni})`;
+                          }}
+                          value={
+                            estudiantes.find(
+                              (e) => e.apellido_nombre === alumno.apellido_nombre && e.dni === alumno.dni
+                            ) || alumno.apellido_nombre
+                          }
+                          onChange={(_, value) => {
+                            if (typeof value === "string") {
+                              const match = value.match(/(.*) \((\d+)\)$/);
+                              if (match) {
+                                updateAlumno(alumno.internoId, {
+                                  apellido_nombre: match[1].trim(),
+                                  dni: match[2],
+                                });
+                              } else {
+                                updateAlumno(alumno.internoId, { apellido_nombre: value });
+                              }
+                            } else if (value) {
+                              updateAlumno(alumno.internoId, {
+                                apellido_nombre: value.apellido_nombre,
+                                dni: value.dni,
+                              });
+                            } else {
+                              updateAlumno(alumno.internoId, { apellido_nombre: "" });
+                            }
+                          }}
+                          onInputChange={(_, value) => {
+                            const match = value.match(/(.*) \((\d+)\)$/);
+                            updateAlumno(alumno.internoId, {
+                              apellido_nombre: match ? match[1].trim() : value,
+                            });
+                          }}
+                          renderOption={(props, option) => {
+                            const { key, ...restProps } = props as any;
+                            return (
+                              <li key={key} {...restProps}>
+                                <Box>
+                                  <Typography variant="body2">{option.apellido_nombre}</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    DNI: {option.dni}
+                                  </Typography>
+                                </Box>
+                              </li>
+                            );
+                          }}
+                          renderInput={(params: any) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              fullWidth
+                              placeholder="Apellido y nombre"
+                            />
+                          )}
+                          noOptionsText="No se encontraron estudiantes"
+                        />
+                      ) : (
+                        <TextField
+                          size="small"
+                          fullWidth
+                          value={alumno.apellido_nombre}
+                          onChange={(event) =>
+                            updateAlumno(alumno.internoId, { apellido_nombre: event.target.value })
+                          }
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        select
+                        size="small"
+                        value={alumno.examen_escrito ?? ""}
+                        onChange={(event) =>
+                          updateAlumno(alumno.internoId, { examen_escrito: event.target.value })
+                        }
+                      >
+                        <MenuItem value="">-</MenuItem>
+                        {notaOptions.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        select
+                        size="small"
+                        value={alumno.examen_oral ?? ""}
+                        onChange={(event) =>
+                          updateAlumno(alumno.internoId, { examen_oral: event.target.value })
+                        }
+                      >
+                        <MenuItem value="">-</MenuItem>
+                        {notaOptions.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        select
+                        size="small"
+                        fullWidth
+                        required
+                        value={alumno.calificacion_definitiva}
+                        onChange={(event) =>
+                          updateAlumno(alumno.internoId, { calificacion_definitiva: event.target.value })
+                        }
+                      >
+                        <MenuItem value="">-</MenuItem>
+                        {notaOptions.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        value={alumno.observaciones ?? ""}
+                        onChange={(event) =>
+                          updateAlumno(alumno.internoId, { observaciones: event.target.value })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Button variant="outlined" size="small" onClick={() => handleOpenOralActa(alumno)}>
+                        Abrir
+                      </Button>
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        color="error"
+                        size="small"
+                        onClick={() => handleEliminarAlumno(alumno.internoId)}
+                        disabled={alumnos.length === 1}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <Alert severity="info" sx={{ flex: 1 }}>
+              <Typography variant="subtitle2">Resumen automático</Typography>
+              <Typography variant="body2">
+                Total de alumnos: <strong>{summary.total}</strong> — Aprobados: <strong>{summary.aprobados}</strong> — Desaprobados: <strong>{summary.desaprobados}</strong> — Ausentes: <strong>{summary.ausentes}</strong>
+              </Typography>
+            </Alert>
+          </Stack>
+        </Paper>
+
+        <Stack direction="row" justifyContent="flex-end">
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleSubmit}
+            disabled={mutation.isPending}
+            startIcon={mutation.isPending ? <CircularProgress size={18} color="inherit" /> : undefined}
+          >
+            {mutation.isPending ? "Generando..." : "Generar acta"}
+          </Button>
+        </Stack>
       </Stack>
-    </Stack>
-    {oralDialogAlumno && (
-      <OralExamActaDialog
-        open
-        onClose={() => setOralDialogAlumno(null)}
-        alumnoNombre={oralDialogAlumno.apellido_nombre || "Alumno/a"}
-        alumnoDni={oralDialogAlumno.dni || "-"}
-        carrera={selectedProfesorado?.nombre ?? ""}
-        unidadCurricular={selectedMateria?.nombre ?? ""}
-        curso={mesaSeleccionada?.codigo ?? ""}
-        fechaMesa={fecha}
-        tribunal={tribunalInfo}
-        existingValues={oralActDrafts[oralDialogAlumno.internoId]}
-        defaultNota={oralDialogAlumno.calificacion_definitiva}
-        loading={false}
-        saving={false}
-        onSave={handleSaveOralActa}
+      {oralDialogAlumno && (
+        <OralExamActaDialog
+          open
+          onClose={() => setOralDialogAlumno(null)}
+          alumnoNombre={oralDialogAlumno.apellido_nombre || "Alumno/a"}
+          alumnoDni={oralDialogAlumno.dni || "-"}
+          carrera={selectedProfesorado?.nombre ?? ""}
+          unidadCurricular={selectedMateria?.nombre ?? ""}
+          curso={mesaSeleccionada?.codigo ?? ""}
+          fechaMesa={fecha}
+          tribunal={tribunalInfo}
+          existingValues={oralActDrafts[oralDialogAlumno.internoId]}
+          defaultNota={oralDialogAlumno.calificacion_definitiva}
+          loading={false}
+          saving={false}
+          onSave={handleSaveOralActa}
+        />
+      )}
+      <FinalConfirmationDialog
+        open={confirmActaOpen}
+        onConfirm={handleConfirmActaSubmit}
+        onCancel={handleCancelActaSubmit}
+        contextText={confirmActaContext}
+        loading={mutation.isPending}
       />
-    )}
-    <FinalConfirmationDialog
-      open={confirmActaOpen}
-      onConfirm={handleConfirmActaSubmit}
-      onCancel={handleCancelActaSubmit}
-      contextText={confirmActaContext}
-      loading={mutation.isPending}
-    />
     </>
   );
 };

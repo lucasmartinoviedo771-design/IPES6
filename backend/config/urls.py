@@ -6,7 +6,7 @@ from apps.preinscriptions.views import serve_media
 from core.api_root import api  # ← importa la NinjaAPI
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("backend-admin/", admin.site.urls),
     path("api/", api.urls),  # ← EXPOne /api/*
     path("", include("apps.preinscriptions.urls")),  # ← tus vistas clásicas (PDF, etc.)
     path("media/<path:path>", serve_media),

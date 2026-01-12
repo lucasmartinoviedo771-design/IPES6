@@ -104,7 +104,7 @@ const ROLE_NAV_MAP: Record<string, string[]> = {
     "alumnos",
     "primeraCarga",
   ],
-  bedel: ["bedeles", "mensajes", "alumnos", "asistencia", "cursoIntro"],
+  bedel: ["bedeles", "mensajes", "alumnos", "asistencia", "cursoIntro", "primeraCarga"],
   docente: ["docentes", "mensajes"],
   tutor: ["tutorias", "mensajes", "alumnos", "equivalencias", "reportes", "cursoIntro"],
   coordinador: ["coordinacion", "mensajes", "alumnos", "reportes", "cursoIntro"],
@@ -245,17 +245,28 @@ export default function AppShell({ children }: PropsWithChildren) {
     "coordinador"
   ]));
   const canPrimeraCarga = isNavAllowed("primeraCarga", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
-  const baseRoleCount = useMemo(
-    () =>
-      new Set(
-        (user?.roles ?? [])
-          .map((role) => (role || "").toLowerCase().trim())
-          .filter((role) => role.length > 0),
-      ).size,
-    [user],
-  );
+  const roleOptions = useMemo(() => {
+    const roles = Array.from(new Set(
+      (user?.roles ?? [])
+        .map((r) => r.toLowerCase().trim())
+        .filter((r) => r.length > 0)
+    ));
 
-  const showRoleSwitcher = availableRoleOptions.length > 1;
+    // Si availableRoleOptions tiene roles que no están en user.roles (ej: mocks o agregados), los incluimos
+    const existingValues = new Set(roles);
+    availableRoleOptions.forEach(opt => {
+      if (!existingValues.has(opt.value.toLowerCase())) {
+        roles.push(opt.value.toLowerCase());
+      }
+    });
+
+    return roles.map(r => ({
+      value: r,
+      label: roleLabels[r] || r.toUpperCase()
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [user, availableRoleOptions]);
+
+  const showRoleSwitcher = roleOptions.length > 1;
   const roleHomeMap: Record<string, string> = {
     admin: "/dashboard",
     secretaria: "/secretaria",
@@ -421,7 +432,10 @@ export default function AppShell({ children }: PropsWithChildren) {
                     setRoleOverride(value ? value : null);
                   }}
                 >
-                  {availableRoleOptions.map((option) => (
+                  <MenuItem value="">
+                    <em>Rol automático (Todos)</em>
+                  </MenuItem>
+                  {roleOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
                     </MenuItem>

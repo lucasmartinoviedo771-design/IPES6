@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
-from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import AnonymousUser, User
 from django.db.models import Q
 
 from apps.common.api_schemas import ApiResponse
@@ -219,6 +219,21 @@ def _apply_estudiante_updates(
 ):
     fields_to_update: set[str] = set()
     user = est.user if est.user_id else None
+
+    if payload.dni is not None:
+        new_dni = payload.dni.strip()
+        if new_dni and new_dni != est.dni:
+            if Estudiante.objects.filter(dni=new_dni).exclude(id=est.id).exists():
+                return False, (400, ApiResponse(ok=False, message=f"El DNI {new_dni} ya está registrado."))
+            
+            est.dni = new_dni
+            fields_to_update.add("dni")
+            
+            if user:
+                if User.objects.filter(username=new_dni).exclude(id=user.id).exists():
+                     return False, (400, ApiResponse(ok=False, message=f"El usuario {new_dni} ya existe."))
+                user.username = new_dni
+                user.save(update_fields=["username"])
 
     if payload.email is not None and user:
         user.email = payload.email or ""

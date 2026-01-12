@@ -144,15 +144,13 @@ const AsignarRolPage: React.FC = () => {
       <PageHero
         title="Asignar / Quitar Roles"
         subtitle="Gestione permisos y responsabilidades del personal institucional."
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
       <Stack spacing={4}>
         <Paper sx={{ p: 4, borderRadius: 4 }}>
-          <SectionTitlePill
-            title="Nueva Asignación"
-            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mb: 3 }}
-          />
+          <Typography variant="h6" mb={3}>
+            Nueva Asignación
+          </Typography>
 
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, alignItems: 'flex-start' }}>
             <Autocomplete
@@ -214,10 +212,9 @@ const AsignarRolPage: React.FC = () => {
 
         {selectedUser && (
           <Paper sx={{ p: 4, borderRadius: 4 }}>
-            <SectionTitlePill
-              title={`Roles de ${selectedUser.first_name} ${selectedUser.last_name}`}
-              sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mb: 3 }}
-            />
+            <Typography variant="h6" mb={3}>
+              Roles de {selectedUser.first_name} {selectedUser.last_name}
+            </Typography>
             <Divider sx={{ mb: 2 }} />
             <List>
               {selectedUser.groups.length === 0 ? (

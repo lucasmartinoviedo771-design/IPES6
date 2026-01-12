@@ -16,7 +16,7 @@ export default function ConfirmarInscripcionSecretaria() {
   const { data } = useQuery({
     queryKey: ["preins-busq-sec", query],
     queryFn: () => listarPreinscripciones({ q: query || undefined, limit: 20, offset: 0 }),
-    
+
   });
 
   // La confirmación y el manejo de documentación se realizan dentro de PreConfirmEditor
@@ -30,18 +30,20 @@ export default function ConfirmarInscripcionSecretaria() {
       />
 
       {!codigo && (
-        <Paper sx={{ p:2 }}>
+        <Paper sx={{ p: 2 }}>
           <Stack gap={2}>
-            <SectionTitlePill title="Buscar aspirante" />
+            <Typography variant="h6" mb={1} fontWeight={600}>
+              Buscar aspirante
+            </Typography>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={4}>
-                <TextField size="small" label="DNI" fullWidth value={dni} onChange={(e)=>setSp({ dni: e.target.value || "" })} />
+                <TextField size="small" label="DNI" fullWidth value={dni} onChange={(e) => setSp({ dni: e.target.value || "" })} />
               </Grid>
               <Grid item xs={12} md={4}>
-                <TextField size="small" label="Apellido y Nombre" fullWidth value={nombre} onChange={(e)=>setSp({ q: e.target.value || "" })} />
+                <TextField size="small" label="Apellido y Nombre" fullWidth value={nombre} onChange={(e) => setSp({ q: e.target.value || "" })} />
               </Grid>
               <Grid item xs={12} md={4}>
-                <TextField size="small" label="Código PRE-..." fullWidth value={codigo} onChange={(e)=>setSp({ codigo: e.target.value || "" })} />
+                <TextField size="small" label="Código PRE-..." fullWidth value={codigo} onChange={(e) => setSp({ codigo: e.target.value || "" })} />
               </Grid>
             </Grid>
             <Divider />
@@ -55,7 +57,7 @@ export default function ConfirmarInscripcionSecretaria() {
                     labelId="sel-preins"
                     label="Seleccionar preinscripto"
                     value=""
-                    onChange={(e)=> setSp({ codigo: String(e.target.value) })}
+                    onChange={(e) => setSp({ codigo: String(e.target.value) })}
                     disabled={!data?.results || data.results.length === 0}
                   >
                     {(data?.results || []).map((p: any) => (

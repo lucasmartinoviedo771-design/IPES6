@@ -46,7 +46,7 @@ export const cancelarInscripcionMateria = (payload: CancelarInscripcionPayload) 
   return client.post<ApiResponseDTO>(`/alumnos/inscripcion-materia/${inscripcion_id}/cancelar`, body).then(res => res.data);
 };
 
-export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia'|'beca'|'control'|'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
+export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia' | 'beca' | 'control' | 'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
   client.post<GenericResponse>("/alumnos/pedido_analitico", payload).then(res => res.data);
 
 export type PedidoEquivalenciaMateriaPayload = {
@@ -716,22 +716,24 @@ export async function obtenerMesaPlanilla(mesaId: number): Promise<MesaPlanillaD
   return data;
 }
 
-export async function actualizarMesaPlanilla(mesaId: number, payload: { alumnos: Array<{
-  inscripcion_id: number;
-  fecha_resultado?: string | null;
-  condicion?: string | null;
-  nota?: number | null;
-  folio?: string | null;
-  libro?: string | null;
-  observaciones?: string | null;
-  cuenta_para_intentos?: boolean | null;
-}> }): Promise<ApiResponseDTO> {
+export async function actualizarMesaPlanilla(mesaId: number, payload: {
+  alumnos: Array<{
+    inscripcion_id: number;
+    fecha_resultado?: string | null;
+    condicion?: string | null;
+    nota?: number | null;
+    folio?: string | null;
+    libro?: string | null;
+    observaciones?: string | null;
+    cuenta_para_intentos?: boolean | null;
+  }>
+}): Promise<ApiResponseDTO> {
   const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/planilla`, payload);
   return data;
 }
 
 export async function gestionarMesaPlanillaCierre(mesaId: number, accion: "cerrar" | "reabrir"): Promise<ApiResponseDTO> {
-  const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/planilla/cierre`, { accion });
+  const { data } = await client.post<ApiResponseDTO>(`/alumnos/mesas/${mesaId}/cierre`, { accion });
   return data;
 }
 
@@ -821,6 +823,7 @@ export interface EstudianteAdminDetailDTO {
 }
 
 export interface EstudianteAdminUpdatePayload {
+  dni?: string | null;
   telefono?: string | null;
   domicilio?: string | null;
   estado_legajo?: string | null;

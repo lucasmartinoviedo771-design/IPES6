@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { Box } from "@mui/material";
 import { client as api } from '@/api/client';
 import HorarioFilters from '@/components/horarios/HorarioFilters';
 import TimetableGrid from '@/components/horarios/TimetableGrid';
 import BackButton from "@/components/ui/BackButton";
+import { PageHero } from "@/components/ui/GradientTitles";
 
 type MateriaDTO = {
   id: number;
@@ -132,14 +134,14 @@ const CargarHorarioPage: React.FC = () => {
         .replace(/[̀-ͯ]/g, '');
       const esTallerCuarto = nombreNormalizado.includes('taller') && materiaAnio === 4;
       const esTallerResidencia = nombreNormalizado.includes('taller') && nombreNormalizado.includes('residencia');
-      const esFlexible = 
-        materiaFormato === 'PRA' || 
-        materiaFormato === 'TAL' || 
-        materiaFormato === 'TALLER' || 
-        nombreNormalizado.includes('practica') || 
-        nombreNormalizado.includes('residencia') || 
-        nombreNormalizado.includes('campo de la practica') || 
-        esTallerCuarto || 
+      const esFlexible =
+        materiaFormato === 'PRA' ||
+        materiaFormato === 'TAL' ||
+        materiaFormato === 'TALLER' ||
+        nombreNormalizado.includes('practica') ||
+        nombreNormalizado.includes('residencia') ||
+        nombreNormalizado.includes('campo de la practica') ||
+        esTallerCuarto ||
         esTallerResidencia;
 
       if (!esFlexible && horasAsignadas !== horasRequeridas) {
@@ -210,12 +212,12 @@ const CargarHorarioPage: React.FC = () => {
   };
 
   return (
-    <div className="center-page">
+    <Box sx={{ p: 3 }}>
       <BackButton fallbackPath="/secretaria" sx={{ mb: 2 }} />
-      <h1 className="text-3xl font-extrabold mb-1">Armar Horarios de Cátedra</h1>
-      <p className="text-gray-600 mb-6">
-        Seleccioná una materia y un turno para definir los bloques horarios que ocupará la cátedra.
-      </p>
+      <PageHero
+        title="Armar Horarios de Cátedra"
+        subtitle="Seleccioná una materia y un turno para definir los bloques horarios que ocupará la cátedra."
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <section className="card md:col-span-1">
@@ -257,7 +259,7 @@ const CargarHorarioPage: React.FC = () => {
           />
         </section>
       </div>
-    </div>
+    </Box>
   );
 };
 

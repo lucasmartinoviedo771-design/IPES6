@@ -287,6 +287,63 @@ export type ActaCreateResult = {
   codigo: string;
 };
 
+export interface ActaListItemDTO {
+  id: number;
+  codigo: string;
+  fecha: string;
+  materia: string;
+  libro: string | null;
+  folio: string | null;
+  total_alumnos: number;
+  created_at: string;
+  mesa_id?: number | null;
+  esta_cerrada?: boolean;
+}
+
+export interface ActaDetailDTO {
+  id: number;
+  codigo: string;
+  fecha: string;
+  profesorado: string;
+  materia: string;
+  materia_anio?: number | null;
+  plan_resolucion?: string | null;
+  libro: string | null;
+  folio: string | null;
+  observaciones: string | null;
+  total_alumnos: number;
+  total_aprobados: number;
+  total_desaprobados: number;
+  total_ausentes: number;
+  created_by: string | null;
+  created_at: string | null;
+  mesa_id?: number | null;
+  esta_cerrada?: boolean;
+  alumnos: ActaAlumnoPayload[];
+  docentes: ActaDocentePayload[];
+}
+
+export async function listarActas() {
+  const { data } = await client.get<ActaListItemDTO[]>("/alumnos/carga-notas/actas");
+  return data;
+}
+
+export async function obtenerActa(actaId: number) {
+  const { data } = await client.get<ActaDetailDTO>(`/alumnos/carga-notas/actas/${actaId}`);
+  return data;
+}
+
+export async function actualizarCabeceraActa(
+  actaId: number,
+  payload: { fecha: string; libro?: string | null; folio?: string | null }
+) {
+  const { data } = await client.put<ApiResponse<null>>(
+    `/alumnos/carga-notas/actas/${actaId}/header`,
+    payload
+  );
+  return data;
+}
+
 export type OralTopicDTO = {
   tema: string;
   score?: string | null;

@@ -1,4 +1,4 @@
-import { Box, Grid, Stack } from "@mui/material";
+import { Box, Grid, Stack, Typography } from "@mui/material";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import EventIcon from "@mui/icons-material/Event";
@@ -39,23 +39,23 @@ export default function SecretariaIndex() {
       items: [
         ...(canManageDocentes
           ? [
-              {
-                title: "Cargar docentes",
-                subtitle: "Alta y edición de docentes del sistema.",
-                icon: <PersonAddIcon />,
-                path: "/secretaria/docentes",
-              },
-            ]
+            {
+              title: "Cargar docentes",
+              subtitle: "Alta y edición de docentes del sistema.",
+              icon: <PersonAddIcon />,
+              path: "/secretaria/docentes",
+            },
+          ]
           : []),
         ...(canAssignRoles
           ? [
-              {
-                title: "Asignar roles",
-                subtitle: "Gestioná permisos y roles de usuarios.",
-                icon: <AssignmentIndIcon />,
-                path: "/secretaria/asignar-rol",
-              },
-            ]
+            {
+              title: "Asignar roles",
+              subtitle: "Gestioná permisos y roles de usuarios.",
+              icon: <AssignmentIndIcon />,
+              path: "/secretaria/asignar-rol",
+            },
+          ]
           : []),
       ],
     },
@@ -64,51 +64,51 @@ export default function SecretariaIndex() {
       items: [
         ...(canManageHorarios
           ? [
-              {
-                title: "Cargar horario",
-                subtitle: "Armar y publicar horarios de cursada.",
-                icon: <EventIcon />,
-                path: "/secretaria/horarios",
-              },
-            ]
+            {
+              title: "Cargar horario",
+              subtitle: "Armar y publicar horarios de cursada.",
+              icon: <EventIcon />,
+              path: "/secretaria/horarios",
+            },
+          ]
           : []),
         ...(canManageMesas
           ? [
-              {
-                title: "Mesas de examen",
-                subtitle: "Crear y gestionar mesas según el período.",
-                icon: <CalendarMonthIcon />,
-                path: "/secretaria/mesas",
-              },
-            ]
+            {
+              title: "Mesas de examen",
+              subtitle: "Crear y gestionar mesas según el período.",
+              icon: <CalendarMonthIcon />,
+              path: "/secretaria/mesas",
+            },
+          ]
           : []),
         ...(canManageCatDoc
           ? [
-              {
-                title: "Cátedra - Docente",
-                subtitle: "Asignar docentes a cátedras y comisiones.",
-                icon: <RecordVoiceOverIcon />,
-                path: "/secretaria/catedra-docente",
-              },
-            ]
+            {
+              title: "Cátedra - Docente",
+              subtitle: "Asignar docentes a cátedras y comisiones.",
+              icon: <RecordVoiceOverIcon />,
+              path: "/secretaria/catedra-docente",
+            },
+          ]
           : []),
         ...(canManageNotas
           ? [
-              {
-                ...DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES,
-                subtitle: "Consulta comisiones asignadas (vista docente).",
-              },
-            ]
+            {
+              ...DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES,
+              subtitle: "Consulta comisiones asignadas (vista docente).",
+            },
+          ]
           : []),
         ...(canManageVentanas
           ? [
-              {
-                title: "Habilitar fechas",
-                subtitle: "Configurar períodos y fechas clave.",
-                icon: <DateRangeIcon />,
-                path: "/secretaria/habilitar-fechas",
-              },
-            ]
+            {
+              title: "Habilitar fechas",
+              subtitle: "Configurar períodos y fechas clave.",
+              icon: <DateRangeIcon />,
+              path: "/secretaria/habilitar-fechas",
+            },
+          ]
           : []),
       ],
     },
@@ -125,7 +125,9 @@ export default function SecretariaIndex() {
 
       {visibleSections.map((section) => (
         <Box key={section.title}>
-          <SectionTitlePill title={section.title} />
+          <Typography variant="h6" mb={2} fontWeight={600}>
+            {section.title}
+          </Typography>
           <Grid container spacing={2}>
             {section.items.map((item) => (
               <SectionCard key={item.title} {...item} />

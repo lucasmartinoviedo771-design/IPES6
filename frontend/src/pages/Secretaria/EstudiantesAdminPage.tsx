@@ -77,6 +77,7 @@ type DetailDocumentacionForm = {
 };
 
 type DetailFormValues = {
+  dni: string;
   telefono: string;
   domicilio: string;
   estado_legajo: EstadoLegajo;
@@ -227,6 +228,7 @@ export default function EstudiantesAdminPage() {
       }
 
       const payloadData = {
+        dni: data.dni?.trim(),
         telefono: data.telefono?.trim() || undefined,
         domicilio: data.domicilio?.trim() || undefined,
         estado_legajo: data.estado_legajo || undefined,
@@ -262,6 +264,7 @@ export default function EstudiantesAdminPage() {
 
   const form = useForm<DetailFormValues>({
     defaultValues: {
+      dni: "",
       telefono: "",
       domicilio: "",
       estado_legajo: "PEN",
@@ -347,6 +350,7 @@ export default function EstudiantesAdminPage() {
       const extra = detail.datos_extra ?? {};
       const toStringOrEmpty = (value: unknown) => (value === null || value === undefined ? "" : String(value));
       const formValues: DetailFormValues = {
+        dni: detail.dni,
         telefono: detail.telefono ?? "",
         domicilio: detail.domicilio ?? "",
         estado_legajo: (detail.estado_legajo as EstadoLegajo) ?? "PEN",
@@ -628,6 +632,13 @@ export default function EstudiantesAdminPage() {
                 onSubmit={handleSubmit(onSubmit)}
               >
                 <Stack spacing={2}>
+                  <Controller
+                    name="dni"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="DNI" size="small" fullWidth />
+                    )}
+                  />
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
                       name="anio_ingreso"
@@ -710,7 +721,7 @@ export default function EstudiantesAdminPage() {
                   </Stack>
 
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                                        <Controller
+                    <Controller
                       name="anio_ingreso"
                       control={control}
                       render={({ field }) => (
@@ -724,7 +735,7 @@ export default function EstudiantesAdminPage() {
                         </TextField>
                       )}
                     />
-                                        <Controller
+                    <Controller
                       name="genero"
                       control={control}
                       render={({ field }) => (

@@ -155,7 +155,7 @@ def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateI
     if mesa.planilla_cerrada_en and not _user_can_override_planilla_lock(request.user):
         return 400, ApiResponse(ok=False, message="La planilla ya está cerrada y no se puede editar.")
 
-    resultados = payload.resultados or []
+    resultados = payload.alumnos or []
     update_fields = ["condicion", "nota", "folio", "libro", "fecha_resultado", "cuenta_para_intentos", "observaciones"]
     updated = 0
     for item in resultados:
@@ -183,9 +183,8 @@ def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateI
         insc.save(update_fields=update_fields)
         updated += 1
 
-    mesa.planilla_actualizada_en = timezone.now()
-    mesa.planilla_actualizada_por = request.user if request.user.is_authenticated else None
-    mesa.save(update_fields=["planilla_actualizada_en", "planilla_actualizada_por"])
+    # mesa.planilla_actualizada_en = timezone.now()
+    # mesa.save(update_fields=["planilla_actualizada_en", "planilla_actualizada_por"])
 
     return ApiResponse(ok=True, message=f"{updated} registros actualizados.")
 
@@ -207,7 +206,7 @@ def gestionar_mesa_planilla_cierre(request, mesa_id: int, payload: MesaPlanillaC
         return 403, ApiResponse(ok=False, message="No está autorizado para cerrar esta planilla.")
 
     accion = payload.accion
-    if accion == MesaPlanillaCierreIn.Accion.CERRAR:
+    if accion == "cerrar":
         if mesa.planilla_cerrada_en:
             return 400, ApiResponse(ok=False, message="La planilla ya está cerrada.")
         mesa.planilla_cerrada_en = timezone.now()
@@ -215,7 +214,7 @@ def gestionar_mesa_planilla_cierre(request, mesa_id: int, payload: MesaPlanillaC
         mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
         return ApiResponse(ok=True, message="Planilla cerrada.")
 
-    if accion == MesaPlanillaCierreIn.Accion.REABRIR:
+    if accion == "reabrir":
         if not _user_can_override_planilla_lock(request.user):
             return 403, ApiResponse(ok=False, message="Solo Secretaría/Admin pueden reabrir planillas.")
         mesa.planilla_cerrada_en = None

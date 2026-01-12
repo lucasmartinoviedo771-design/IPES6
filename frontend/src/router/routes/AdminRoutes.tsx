@@ -22,20 +22,35 @@ const lazyPage = (importer: () => Promise<{ default: React.ComponentType<any> }>
 
 const PrimeraCargaPage = lazyPage(() => import("@/pages/admin/PrimeraCargaPage"));
 const ActaExamenPrimeraCargaPage = lazyPage(() => import("@/pages/admin/ActaExamenPrimeraCargaPage"));
+const HistorialActasPage = lazyPage(() => import("@/pages/admin/HistorialActasPage"));
 
-const adminRoles: string[] = ["admin", "secretaria", "bedel"];
+const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
+
+const adminRoles: string[] = ["admin", "secretaria", "bedel", "titulos", "jefatura", "coordinador"];
 
 export const buildAdminRoutes = () => (
-  <Route
-    element={(
-      <ProtectedRoute roles={adminRoles}>
-        <AppShell>
-          <Outlet />
-        </AppShell>
-      </ProtectedRoute>
-    )}
-  >
-    <Route path="/admin/primera-carga" element={<PrimeraCargaPage />} />
-    <Route path="/admin/primera-carga/actas-examen" element={<ActaExamenPrimeraCargaPage />} />
-  </Route>
+  <>
+    <Route
+      element={(
+        <ProtectedRoute roles={adminRoles}>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </ProtectedRoute>
+      )}
+    >
+      <Route path="/admin/primera-carga" element={<PrimeraCargaPage />} />
+      <Route path="/admin/primera-carga/actas-examen" element={<ActaExamenPrimeraCargaPage />} />
+      <Route path="/admin/primera-carga/historial-actas" element={<HistorialActasPage />} />
+    </Route>
+
+    <Route
+      path="/admin/actas/:actaId/print"
+      element={(
+        <ProtectedRoute roles={adminRoles}>
+          <ActaPrintPage />
+        </ProtectedRoute>
+      )}
+    />
+  </>
 );

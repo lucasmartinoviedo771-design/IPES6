@@ -255,25 +255,90 @@ def trayectoria_alumno(request, dni: str | None = None):
             {
                 "id": insc.id,
                 "mesa_id": mesa.id,
-                "materia": materia.nombre if materia else "",
+                "materia_id": materia.id if materia else 0,
+                "materia_nombre": materia.nombre if materia else "",
+                "tipo": mesa.tipo,
+                "tipo_display": mesa.get_tipo_display(),
                 "fecha": mesa.fecha.isoformat(),
-                "condicion": insc.condicion,
-                "condicion_display": insc.get_condicion_display() or "",
-                "nota": insc.nota,
-                "nota_display": _format_nota(insc.nota),
-                "profesorado_id": profesorado.id if profesorado else None,
-                "profesorado_nombre": profesorado.nombre if profesorado else None,
-                "metadata": _metadata_str(
-                    {
-                        "mesa_codigo": mesa.codigo,
-                        "tipo": mesa.get_tipo_display(),
-                        "modalidad": mesa.get_modalidad_display(),
-                        "folio": insc.folio,
-                        "libro": insc.libro,
-                    }
-                ),
+                "estado": insc.condicion if insc.condicion else insc.estado,
+                "estado_display": (insc.get_condicion_display() if insc.condicion else insc.get_estado_display()) or "",
+                "nota": _format_nota(insc.nota),
+                "aula": mesa.aula,
             }
         )
+    
+    # --- CONSTRUCCION DEL CARTON (Verificacion de Planes) ---
+    regularidades_map = {reg.materia_id: reg for reg in regularidades_qs}
+    # Para finales, priorizamos las aprobadas, luego la mas reciente
+    finales_map = {}
+    for insc in inscripciones_mesa_qs:
+        mid = insc.mesa.materia_id
+        if mid not in finales_map:
+            finales_map[mid] = insc
+        else:
+             # Si ya tenemos uno, reemplazamos ssi el actual es APROBADO y el anterior NO
+             current = finales_map[mid]
+             if current.condicion == InscripcionMesa.Condicion.APROBADO:
+                 continue
+             if insc.condicion == InscripcionMesa.Condicion.APROBADO:
+                 finales_map[mid] = insc
+
+    for carrera in carreras_est:
+        # Buscamos planes de estudio activos o relacionados a la carrera
+        # Idealmente, buscamos el plan vigente
+        planes = PlanDeEstudio.objects.filter(profesorado=carrera, vigente=True)
+        if not planes:
+             # Fallback: Traer todos si no hay vigentes explicitos
+             planes = PlanDeEstudio.objects.filter(profesorado=carrera)
+        
+        for plan in planes:
+            materias_plan = Materia.objects.filter(plan_de_estudio=plan).order_by("anio_cursada", "nombre")
+            
+            carton_materias = []
+            for mat in materias_plan:
+                reg = regularidades_map.get(mat.id)
+                final = finales_map.get(mat.id)
+                
+                reg_data = None
+                if reg:
+                    reg_data = {
+                        "fecha": reg.fecha_cierre.isoformat(),
+                        "condicion": reg.situacion,
+                        "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
+                        "folio": None, # Regularidad no suele tener folio en este modelo simple
+                        "libro": None
+                    }
+                
+                final_data = None
+                if final:
+                     final_data = {
+                        "fecha": final.mesa.fecha.isoformat(),
+                        "condicion": final.condicion,
+                        "nota": _format_nota(final.nota),
+                        "folio": final.folio,
+                        "libro": final.libro,
+                        "id_fila": final.id
+                     }
+
+                carton_materias.append({
+                    "materia_id": mat.id,
+                    "materia_nombre": mat.nombre,
+                    "anio": mat.anio_cursada,
+                    "regimen": mat.regimen,
+                    "regimen_display": mat.get_regimen_display(),
+                    "formato": mat.formato,
+                    "formato_display": mat.get_formato_display(),
+                    "regularidad": reg_data,
+                    "final": final_data
+                })
+            
+            carton_planes.append({
+                "profesorado_id": carrera.id,
+                "profesorado_nombre": carrera.nombre,
+                "plan_id": plan.id,
+                "plan_resolucion": plan.resolucion,
+                "materias": carton_materias
+            })
 
     estudiante_out = EstudianteResumen(
         dni=est.dni,

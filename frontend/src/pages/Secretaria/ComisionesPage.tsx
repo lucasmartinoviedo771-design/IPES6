@@ -246,15 +246,13 @@ const ComisionesPage: React.FC = () => {
       <PageHero
         title="Gestión de comisiones"
         subtitle="Generación automática y consulta de comisiones por plan y ciclo lectivo."
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
       <Paper sx={{ p: 3 }}>
         <Stack gap={3}>
-          <SectionTitlePill
-            title="Filtros"
-            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-          />
+          <Typography variant="h6" mb={2}>
+            Filtros
+          </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} lg={4}>
               <Autocomplete
@@ -424,10 +422,9 @@ const ComisionesPage: React.FC = () => {
 
       <Paper sx={{ p: 3 }}>
         <Stack gap={2}>
-          <SectionTitlePill
-            title="Generar comisiones por ciclo lectivo"
-            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-          />
+          <Typography variant="h6" mb={2}>
+            Generar comisiones por ciclo lectivo
+          </Typography>
           <Typography color="text.secondary">
             Crea comisiones base para todas las materias del plan seleccionado
             en el ciclo lectivo indicado.
@@ -474,10 +471,9 @@ const ComisionesPage: React.FC = () => {
       <Paper sx={{ p: 3 }}>
         <Stack gap={2}>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <SectionTitlePill
-              title="Comisiones existentes"
-              sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-            />
+            <Typography variant="h6" mb={2}>
+              Comisiones existentes
+            </Typography>
             {loadingComisiones ? <CircularProgress size={20} /> : null}
           </Box>
           {comisiones.length ? (

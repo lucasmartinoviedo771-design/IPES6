@@ -719,13 +719,11 @@ export default function MesasPage() {
       <PageHero
         title="Mesas de examen"
         subtitle="ABM de mesas ordinarias, extraordinarias y especiales"
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
-      <SectionTitlePill
-        title="Nueva mesa"
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-      />
+      <Typography variant="h6" mb={1} mt={2}>
+        Nueva mesa
+      </Typography>
       <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mt: 1, flexWrap: 'wrap' }}>
         <TextField
           select

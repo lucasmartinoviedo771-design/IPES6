@@ -206,8 +206,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
   const bodyCellSx = {
     border: '1px solid',
     borderColor: 'grey.200',
-    px: 1,
-    py: 0.75,
+    px: 1.5,
+    py: 1,
     verticalAlign: 'middle',
   };
 
@@ -428,18 +428,18 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
     let filasPayload: PlanillaRegularidadCreatePayload['filas'];
     try {
       filasPayload = filasPreparadas.map<PlanillaRegularidadCreatePayload['filas'][number]>((fila, idx) => {
-      const datosLimpios: Record<string, string> = {};
-      columnasDinamicas.forEach((col) => {
-        const valor = fila.datos?.[col.key];
-        const stringValor = valor !== undefined && valor !== null ? String(valor).trim() : '';
-        if (!stringValor) {
-          if (!col.optional) {
-            throw new Error(`Completa el campo "${col.label}" en la fila ${fila.index + 1}.`);
+        const datosLimpios: Record<string, string> = {};
+        columnasDinamicas.forEach((col) => {
+          const valor = fila.datos?.[col.key];
+          const stringValor = valor !== undefined && valor !== null ? String(valor).trim() : '';
+          if (!stringValor) {
+            if (!col.optional) {
+              throw new Error(`Completa el campo "${col.label}" en la fila ${fila.index + 1}.`);
+            }
+          } else {
+            datosLimpios[col.key] = stringValor;
           }
-        } else {
-          datosLimpios[col.key] = stringValor;
-        }
-      });
+        });
 
         const asistenciaNumero = Number(fila.asistencia);
         if (Number.isNaN(asistenciaNumero) || asistenciaNumero < 0 || asistenciaNumero > 100) {
@@ -559,10 +559,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
         )}
         {!metadataQuery.isLoading && metadataQuery.data && (
           <Box component="form" sx={{ mt: 1 }} onSubmit={handleSubmit(onSubmit)}>
-            <Typography variant="subtitle1" gutterBottom>
+            <Typography variant="subtitle1" gutterBottom fontWeight={600}>
               Datos generales
             </Typography>
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={4}>
                 <Controller
                   control={control}
@@ -754,10 +754,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
               </Box>
             )}
 
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 4 }} />
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="subtitle1">Docentes / Firmantes</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600}>Docentes / Firmantes</Typography>
               <Button size="small" startIcon={<AddCircleOutlineIcon />} onClick={handleAddDocente}>
                 Agregar firmante
               </Button>
@@ -769,7 +769,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
               </Alert>
             )}
 
-            <Grid container spacing={1}>
+            <Grid container spacing={3}>
               {docenteFields.map((field, index) => (
                 <React.Fragment key={field.id}>
                   <Grid item xs={12} md={5}>
@@ -929,10 +929,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
               ))}
             </Grid>
 
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 4 }} />
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="subtitle1">Detalle de estudiantes</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600}>Detalle de estudiantes</Typography>
               <Box>
                 <Tooltip title="Agregar una fila">
                   <IconButton color="primary" size="small" onClick={() => handleAddRow(1)}>
@@ -1019,18 +1019,68 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           )}
                         />
                       </TableCell>
-                      <TableCell sx={{ ...bodyCellSx, minWidth: 240 }}>
+                      <TableCell sx={{ ...bodyCellSx, minWidth: 320 }}>
                         <Controller
                           control={control}
                           name={`filas.${index}.apellido_nombre`}
                           render={({ field: controllerField }) => (
-                            <TextField
-                              {...controllerField}
-                              value={controllerField.value ?? ''}
-                              size="small"
-                              fullWidth
-                              placeholder="Apellido y nombre"
-                              required
+                            <Autocomplete
+                              freeSolo
+                              options={estudiantesMetadata}
+                              getOptionLabel={(option) => {
+                                if (typeof option === 'string') return option;
+                                return `${option.apellido_nombre} (${option.dni})`;
+                              }}
+                              value={
+                                estudiantesMetadata.find(
+                                  (e) => e.apellido_nombre === controllerField.value && e.dni === watch(`filas.${index}.dni`)
+                                ) || controllerField.value
+                              }
+                              onChange={(_, value) => {
+                                if (typeof value === 'string') {
+                                  // Intentar extraer DNI si viene formateado como "Nombre (DNI)"
+                                  const match = value.match(/(.*) \((\d+)\)$/);
+                                  if (match) {
+                                    controllerField.onChange(match[1].trim());
+                                    setValue(`filas.${index}.dni`, match[2], { shouldDirty: true });
+                                  } else {
+                                    controllerField.onChange(value);
+                                  }
+                                } else if (value) {
+                                  controllerField.onChange(value.apellido_nombre);
+                                  setValue(`filas.${index}.dni`, value.dni, { shouldDirty: true });
+                                } else {
+                                  controllerField.onChange('');
+                                }
+                              }}
+                              onInputChange={(_, value) => {
+                                // Eliminar el (DNI) de la visualización al escribir si es necesario
+                                const match = value.match(/(.*) \((\d+)\)$/);
+                                controllerField.onChange(match ? match[1].trim() : value);
+                              }}
+                              renderOption={(props, option) => {
+                                const { key, ...restProps } = props as any;
+                                return (
+                                  <li key={key} {...restProps}>
+                                    <Box>
+                                      <Typography variant="body2">{option.apellido_nombre}</Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        DNI: {option.dni}
+                                      </Typography>
+                                    </Box>
+                                  </li>
+                                );
+                              }}
+                              renderInput={(params: any) => (
+                                <TextField
+                                  {...params}
+                                  size="small"
+                                  fullWidth
+                                  placeholder="Apellido y nombre"
+                                  required
+                                />
+                              )}
+                              noOptionsText="No se encontraron estudiantes"
                             />
                           )}
                         />

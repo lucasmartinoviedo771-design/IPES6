@@ -500,14 +500,12 @@ const CursoIntroductorioPage: React.FC = () => {
       <PageHero
         title="Curso introductorio"
         subtitle="Gestioná cohortes, asistencias y resultados del Curso Introductorio."
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
       {/* Cohortes */}
-      <SectionTitlePill
-        title="Cohortes"
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-      />
+      <Typography variant="h6" mb={2}>
+        Cohortes
+      </Typography>
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Stack
@@ -576,10 +574,9 @@ const CursoIntroductorioPage: React.FC = () => {
       </Card>
 
       {/* Pendientes */}
-      <SectionTitlePill
-        title="Estudiantes pendientes"
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-      />
+      <Typography variant="h6" mb={2} mt={3}>
+        Estudiantes pendientes
+      </Typography>
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -656,10 +653,9 @@ const CursoIntroductorioPage: React.FC = () => {
       </Card>
 
       {/* Registros */}
-      <SectionTitlePill
-        title="Registros y asistencias"
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
-      />
+      <Typography variant="h6" mb={2} mt={3}>
+        Registros y asistencias
+      </Typography>
       <Card variant="outlined">
         <CardContent>
           <Grid container spacing={2} sx={{ mb: 2 }}>

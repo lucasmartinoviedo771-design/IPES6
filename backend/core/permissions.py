@@ -9,7 +9,7 @@ from apps.common.errors import AppError
 
 from .models import StaffAsignacion
 
-_LIMITED_ROLES = {"coordinador"}
+_LIMITED_ROLES = {"coordinador", "bedel"}
 _UNRESTRICTED_ROLES = {
     "admin",
     "secretaria",
@@ -17,7 +17,6 @@ _UNRESTRICTED_ROLES = {
     "consulta",
     "tutor",
     "jefes",
-    "bedel",
 }
 
 
@@ -43,20 +42,25 @@ def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
 
 def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = None) -> set[int] | None:
     user = _ensure_authenticated(user)
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         return None
     groups = _group_names(user)
+    print(f"DEBUG: User={user}, Groups={groups}, IsSuper={user.is_superuser}, IsStaff={user.is_staff}")
     if groups.intersection(_UNRESTRICTED_ROLES):
+        print("DEBUG: Unrestricted role match")
         return None
     relevant_roles = _LIMITED_ROLES
     if role_filter:
         relevant_roles = {role.lower() for role in role_filter}
+    
     if not groups.intersection(relevant_roles):
+        print(f"DEBUG: No limited role intersection. Relevant={relevant_roles}")
         return None
     qs = StaffAsignacion.objects.filter(user=user)
     if role_filter:
         qs = qs.filter(rol__in=[role.lower() for role in role_filter])
     ids = set(qs.values_list("profesorado_id", flat=True))
+    print(f"DEBUG: Filtering IDs: {ids}")
     return ids
 
 

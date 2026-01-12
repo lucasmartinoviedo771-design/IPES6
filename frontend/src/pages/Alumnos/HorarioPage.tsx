@@ -362,15 +362,13 @@ const HorarioPage: React.FC = () => {
       <PageHero
         title="Horario de cursada"
         subtitle="Selecciona el profesorado y plan que deseas consultar. Podés filtrar por turno, año y cuatrimestre y descargar el resultado en PDF."
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)` }}
       />
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>
-          <SectionTitlePill
-            title="Selección de Carrera"
-            sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mb: 1 }}
-          />
+          <Typography variant="h6" mb={1}>
+            Selección de Carrera
+          </Typography>
           <FormControl fullWidth size="small">
             <InputLabel id="carrera-select-label">Profesorado</InputLabel>
             <Select
@@ -438,10 +436,9 @@ const HorarioPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      <SectionTitlePill
-        title="Filtros de visualización"
-        sx={{ background: `linear-gradient(120deg, ${INSTITUTIONAL_TERRACOTTA} 0%, #8e4a31 100%)`, mt: 3, mb: 1 }}
-      />
+      <Typography variant="h6" mb={1} mt={3}>
+        Filtros de visualización
+      </Typography>
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>
           <FormControl fullWidth size="small" disabled={!turnosDisponibles.length}>
