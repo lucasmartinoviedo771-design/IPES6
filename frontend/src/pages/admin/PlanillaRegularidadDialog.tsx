@@ -42,6 +42,8 @@ import {
   RegularidadMetadataProfesorado,
   PlanillaRegularidadCreatePayload,
   PlanillaRegularidadCreateResult,
+  obtenerPlanillaRegularidadDetalle,
+  actualizarPlanillaRegularidad,
 } from '@/api/primeraCarga';
 
 type PlanillaDocenteFormValues = {
@@ -79,7 +81,9 @@ type PlanillaFormValues = {
 interface PlanillaRegularidadDialogProps {
   open: boolean;
   onClose: () => void;
-  onCreated?: (result: PlanillaRegularidadCreateResult, dryRun: boolean) => void;
+  onCreated?: (result: PlanillaRegularidadCreateResult | any, dryRun: boolean) => void;
+  planillaId?: number | null;
+  mode?: 'create' | 'edit' | 'view';
 }
 
 const DEFAULT_DOCENTE: PlanillaDocenteFormValues = {
@@ -94,7 +98,7 @@ const buildDefaultRow = (index: number): PlanillaFilaFormValues => ({
   orden: index + 1,
   dni: '',
   apellido_nombre: '',
-  nota_final: '',
+  nota_final: '', // Permitirá números 0-10 o '---'
   asistencia: '',
   situacion: '',
   excepcion: false,
@@ -134,7 +138,7 @@ const FORMATO_SLUG_MAP: Record<string, string> = {
   TAL: 'taller',
   PRA: 'taller',
   LAB: 'taller',
-  SEM: 'taller',
+  SEM: 'asignatura', // Seminario según reglamento tiene piso 65% (B)
 };
 
 const SITUACION_PLACEHOLDER = 'Seleccionar';
@@ -147,9 +151,23 @@ const formatColumnLabel = (label?: string) => {
   return normalized.replace(/º|°/g, '').replace(/\s+/g, ' ').trim();
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ open, onClose, onCreated }) => {
+const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
+  open,
+  onClose,
+  onCreated,
+  planillaId,
+  mode = 'create'
+}) => {
+  const isReadOnly = mode === 'view';
+
   const {
     control,
     handleSubmit,
@@ -180,12 +198,56 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
     retry: false,
   });
 
+  const detailQuery = useQuery({
+    queryKey: ['primera-carga', 'regularidades', 'detalle', planillaId],
+    queryFn: () => obtenerPlanillaRegularidadDetalle(planillaId!),
+    enabled: open && !!planillaId,
+  });
+
   useEffect(() => {
     if (open) {
       metadataQuery.refetch();
     }
+    if (!open) {
+      reset();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (detailQuery.data?.data) {
+      const d = detailQuery.data.data;
+      reset({
+        profesoradoId: d.profesorado_id,
+        materiaId: d.materia_id,
+        plantillaId: d.plantilla_id,
+        fecha: d.fecha.slice(0, 10),
+        folio: d.folio || '',
+        planResolucion: d.plan_resolucion || '',
+        observaciones: d.observaciones || '',
+        docentes: d.docentes.map(doc => ({
+          docente_id: doc.docente_id,
+          nombre: doc.nombre,
+          dni: doc.dni || '',
+          rol: doc.rol || 'profesor',
+          orden: doc.orden ?? null
+        })),
+        filas: d.filas.map(f => ({
+          orden: f.orden ?? null,
+          dni: f.dni,
+          apellido_nombre: f.apellido_nombre,
+          nota_final: f.nota_final?.toString() || '',
+          asistencia: f.asistencia?.toString() || '',
+          situacion: f.situacion,
+          excepcion: f.excepcion ?? false,
+          datos: Object.fromEntries(
+            Object.entries(f.datos || {}).map(([k, v]) => [k, v?.toString() ?? ''])
+          )
+        })),
+        dry_run: false
+      });
+    }
+  }, [detailQuery.data, reset]);
 
   const profesoradoId = watch('profesoradoId');
   const materiaId = watch('materiaId');
@@ -233,9 +295,15 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
 
 
   const mutation = useMutation({
-    mutationFn: crearPlanillaRegularidad,
+    mutationFn: (payload: PlanillaRegularidadCreatePayload) => {
+      if (mode === 'edit' && planillaId) {
+        return actualizarPlanillaRegularidad(planillaId, payload);
+      }
+      return crearPlanillaRegularidad(payload);
+    },
     onSuccess: (data, variables) => {
       enqueueSnackbar(data.message, { variant: 'success' });
+      if (onCreated) onCreated(data.data, !!variables.dry_run);
       if (typeof data.data?.regularidades_registradas === 'number') {
         const count = data.data.regularidades_registradas;
         const messageDetalle = variables.dry_run
@@ -396,31 +464,60 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
       return;
     }
 
-    const filasPreparadas = values.filas
-      .map((fila, index) => ({
-        ...fila,
-        index,
-        tieneDatos:
+    const filasConDatos = values.filas
+      .map((fila, index) => ({ ...fila, index }))
+      .filter((fila) => {
+        return (
           fila.dni.trim() ||
           fila.apellido_nombre.trim() ||
           fila.nota_final.trim() ||
           fila.asistencia.trim() ||
-          fila.situacion.trim(),
-      }))
-      .filter((fila) => fila.tieneDatos);
+          fila.situacion.trim() ||
+          Object.values(fila.datos || {}).some(v => String(v).trim())
+        );
+      });
 
-    if (filasPreparadas.length === 0) {
+    if (filasConDatos.length === 0) {
       enqueueSnackbar('Debe completar al menos una fila de estudiante.', { variant: 'warning' });
       return;
     }
 
+    // Actualizar el estado del formulario para remover físicamente las vacías de la UI
+    if (filasConDatos.length !== values.filas.length) {
+      const nuevasFilas = filasConDatos.map((f, i) => ({
+        ...f,
+        orden: i + 1
+      }));
+      replaceFilas(nuevasFilas);
+    }
+
+    const filasPreparadas = filasConDatos.map((f, i) => ({
+      ...f,
+      orden: i + 1,
+      // Usar un índice lógico para el mensaje de error basado en la nueva tabla limpia
+      displayIndex: i + 1
+    }));
+
     for (const fila of filasPreparadas) {
-      if (!fila.dni.trim() || !fila.apellido_nombre.trim() || !fila.nota_final.trim() || !fila.asistencia.trim()) {
-        enqueueSnackbar(`Complete todos los campos obligatorios en la fila ${fila.index + 1}.`, { variant: 'warning' });
+      const rowNum = fila.displayIndex;
+      if (!fila.dni.trim()) {
+        enqueueSnackbar(`Ingrese el DNI en la fila ${rowNum}.`, { variant: 'warning' });
+        return;
+      }
+      if (!fila.apellido_nombre.trim()) {
+        enqueueSnackbar(`Ingrese el nombre del alumno en la fila ${rowNum}.`, { variant: 'warning' });
+        return;
+      }
+      if (!fila.nota_final.trim()) {
+        enqueueSnackbar(`Ingrese la nota final en la fila ${rowNum}.`, { variant: 'warning' });
+        return;
+      }
+      if (!fila.asistencia.trim()) {
+        enqueueSnackbar(`Ingrese el porcentaje de asistencia en la fila ${rowNum}.`, { variant: 'warning' });
         return;
       }
       if (!fila.situacion.trim()) {
-        enqueueSnackbar(`Seleccione la situación académica en la fila ${fila.index + 1}.`, { variant: 'warning' });
+        enqueueSnackbar(`Seleccione la situación académica en la fila ${rowNum}.`, { variant: 'warning' });
         return;
       }
     }
@@ -441,14 +538,26 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
           }
         });
 
-        const asistenciaNumero = Number(fila.asistencia);
-        if (Number.isNaN(asistenciaNumero) || asistenciaNumero < 0 || asistenciaNumero > 100) {
-          throw new Error(`La asistencia de la fila ${fila.index + 1} debe estar entre 0 y 100.`);
+        const asistRaw = (fila.asistencia || '').trim();
+        let asistNumero: number | null = null;
+        if (asistRaw === '---') {
+          asistNumero = null;
+        } else {
+          asistNumero = parseInt(asistRaw, 10);
+          if (isNaN(asistNumero) || asistNumero < 0 || asistNumero > 100) {
+            throw new Error(`La asistencia de la fila ${fila.index + 1} debe estar entre 0 y 100 o "---".`);
+          }
         }
 
-        const notaNumero = Number(fila.nota_final);
-        if (Number.isNaN(notaNumero)) {
-          throw new Error(`La nota final de la fila ${fila.index + 1} debe ser numérica.`);
+        const notaRaw = fila.nota_final.trim();
+        let notaNumero: number | null = null;
+        if (notaRaw === '---') {
+          notaNumero = null;
+        } else {
+          notaNumero = Number(notaRaw.replace(',', '.'));
+          if (Number.isNaN(notaNumero)) {
+            throw new Error(`La nota final de la fila ${fila.index + 1} debe ser numérica (0-10) o "---".`);
+          }
         }
 
         return {
@@ -456,7 +565,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
           dni: fila.dni.trim(),
           apellido_nombre: fila.apellido_nombre.trim(),
           nota_final: notaNumero,
-          asistencia: asistenciaNumero,
+          asistencia: asistNumero,
           situacion: fila.situacion.trim(),
           excepcion: fila.excepcion ?? false,
           datos: datosLimpios,
@@ -528,6 +637,50 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
     setValue(`filas.${index}.apellido_nombre`, match.apellido_nombre, { shouldDirty: true });
   };
 
+  const calculateSituacionForRow = (index: number) => {
+    const row = getValues(`filas.${index}`);
+    if (!selectedMateria || !row.asistencia || !row.nota_final) return;
+
+    const formato = selectedMateria.formato.toUpperCase();
+    const isGroupA = ['TAL', 'LAB', 'PRA'].includes(formato);
+    // Group A (Taller/Lab/Práctica): Piso 80%, con excepción 65%
+    // Group B (Asignatura/Seminario/MOD): Piso 65% fijo
+    const floor = isGroupA ? (row.excepcion ? 65 : 80) : 65;
+
+    const asistVal = parseInt(row.asistencia, 10);
+    const notaVal = row.nota_final === '---' ? null : Number(row.nota_final.replace(',', '.'));
+
+    let newSit = '';
+    if (isNaN(asistVal)) {
+      newSit = '';
+    } else if (asistVal < 30) {
+      newSit = 'LIBRE-AT';
+    } else if (asistVal < floor) {
+      newSit = 'LIBRE-I';
+    } else if (notaVal === null) {
+      // Si no hay nota pero hay asistencia, asumimos REGULAR o el primer estado positivo
+      newSit = 'REGULAR';
+    } else if (notaVal >= 8 && situacionesDisponibles.some(s => s.codigo === 'PROMOCIONADO')) {
+      newSit = 'PROMOCIONADO';
+    } else if (notaVal >= 6) {
+      newSit = 'REGULAR';
+    } else {
+      newSit = 'DESAPROBADO_PA';
+    }
+
+    // Solo asignar si el código existe en la plantilla actual
+    if (newSit && situacionesDisponibles.some(s => s.codigo === newSit)) {
+      setValue(`filas.${index}.situacion`, newSit, { shouldDirty: true });
+    }
+  };
+
+  const handleAutoCalculateAll = () => {
+    filaFields.forEach((_, index) => {
+      calculateSituacionForRow(index);
+    });
+    enqueueSnackbar('Situaciones académicas calculadas según reglamento.', { variant: 'info' });
+  };
+
   return (
     <Dialog
       open={open}
@@ -545,11 +698,16 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
         },
       }}
     >
-      <DialogTitle>Generar planilla de regularidad / promoción</DialogTitle>
-      <DialogContent dividers>
-        {metadataQuery.isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+        <Typography variant="h6" fontWeight={700}>
+          {mode === 'view' ? 'Ver Planilla de Regularidad' : mode === 'edit' ? 'Editar Planilla de Regularidad' : 'Generar planilla de regularidad / promoción'}
+        </Typography>
+        {mode !== 'create' && <Chip label={`MODO: ${mode.toUpperCase()}`} color={mode === 'view' ? 'info' : 'primary'} size="small" variant="filled" />}
+      </DialogTitle>
+      <DialogContent dividers sx={{ position: 'relative' }}>
+        {(detailQuery.isLoading || metadataQuery.isLoading) && (
+          <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CircularProgress size={60} thickness={4} />
           </Box>
         )}
         {metadataQuery.error && (
@@ -698,16 +856,18 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                 />
               </Grid>
               <Grid item xs={12}>
-                <Controller
-                  control={control}
-                  name="dry_run"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={<Checkbox {...field} checked={field.value} />}
-                      label="Dry-run (simular sin guardar ni generar PDF)"
-                    />
-                  )}
-                />
+                {!isReadOnly && (
+                  <Controller
+                    control={control}
+                    name="dry_run"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={<Checkbox {...field} checked={field.value} />}
+                        label="Dry-run (simular sin guardar ni generar PDF)"
+                      />
+                    )}
+                  />
+                )}
               </Grid>
             </Grid>
 
@@ -758,9 +918,11 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="subtitle1" fontWeight={600}>Docentes / Firmantes</Typography>
-              <Button size="small" startIcon={<AddCircleOutlineIcon />} onClick={handleAddDocente}>
-                Agregar firmante
-              </Button>
+              {!isReadOnly && (
+                <Button size="small" startIcon={<AddCircleOutlineIcon />} onClick={handleAddDocente}>
+                  Agregar firmante
+                </Button>
+              )}
             </Box>
 
             {docenteFields.length === 0 && (
@@ -790,6 +952,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           <Autocomplete
                             options={docentesOptions}
                             freeSolo
+                            disabled={isReadOnly}
                             value={autoValue}
                             onChange={(_, value) => {
                               if (!value) {
@@ -865,6 +1028,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           fullWidth
                           size="small"
                           inputProps={{ maxLength: 10, inputMode: 'numeric' }}
+                          disabled={isReadOnly}
                         />
                       )}
                     />
@@ -881,6 +1045,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           label="Rol"
                           fullWidth
                           size="small"
+                          disabled={isReadOnly}
                         >
                           <MenuItem value="profesor">Profesor/a</MenuItem>
                           <MenuItem value="bedel">Bedel</MenuItem>
@@ -902,6 +1067,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           fullWidth
                           size="small"
                           inputProps={{ min: 1 }}
+                          disabled={isReadOnly}
                         />
                       )}
                     />
@@ -912,18 +1078,20 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                     md={1}
                     sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Tooltip title="Quitar firmante">
-                      <span>
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => handleRemoveDocente(index)}
-                          disabled={docenteFields.length === 1}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
+                    {!isReadOnly && (
+                      <Tooltip title="Quitar firmante">
+                        <span>
+                          <IconButton
+                            color="error"
+                            size="small"
+                            onClick={() => handleRemoveDocente(index)}
+                            disabled={docenteFields.length === 1}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
                   </Grid>
                 </React.Fragment>
               ))}
@@ -932,24 +1100,40 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
             <Divider sx={{ my: 4 }} />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight={600}>Detalle de estudiantes</Typography>
-              <Box>
-                <Tooltip title="Agregar una fila">
-                  <IconButton color="primary" size="small" onClick={() => handleAddRow(1)}>
-                    <AddCircleOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Agregar 5 filas">
-                  <IconButton color="primary" size="small" onClick={() => handleAddRow(5)}>
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Restablecer filas (limpiar)">
-                  <IconButton color="warning" size="small" onClick={handleClearRows}>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="subtitle1" fontWeight={600}>Detalle de estudiantes</Typography>
+                {!isReadOnly && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleAutoCalculateAll}
+                    disabled={!selectedMateria}
+                    sx={{ borderRadius: 2, textTransform: 'none' }}
+                  >
+                    Sugerir situaciones académicas
+                  </Button>
+                )}
               </Box>
+              {!isReadOnly && (
+                <Box>
+                  <Tooltip title="Agregar una fila">
+                    <IconButton color="primary" size="small" onClick={() => handleAddRow(1)}>
+                      <AddCircleOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Agregar 5 filas">
+                    <IconButton color="primary" size="small" onClick={() => handleAddRow(5)}>
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Restablecer filas (limpiar)">
+                    <IconButton color="warning" size="small" onClick={handleClearRows}>
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
             </Box>
 
             <TableContainer component={Paper} variant="outlined" sx={{ mt: 1 }}>
@@ -969,7 +1153,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                       sx={{ ...headerCellSx, textAlign: 'center' }}
                       colSpan={Math.max(columnasDinamicas.length, 0) + 1}
                     >
-                      Nota de trabajos prácticos
+                      Nota de trabajos prácticos y final
                     </TableCell>
                     <TableCell sx={{ ...headerCellSx, width: 130, textAlign: 'center' }} colSpan={1}>
                       Asistencia
@@ -984,38 +1168,34 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                   </TableRow>
                   <TableRow>
                     {columnasDinamicas.map((col) => (
-                      <TableCell sx={{ ...headerCellSx, minWidth: 140 }} key={col.key}>
-                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                      <TableCell sx={{ ...headerCellSx, width: 80, minWidth: 80 }} key={col.key}>
+                        <Typography variant="body2" sx={{ fontSize: '0.70rem' }}>
                           {formatColumnLabel(col.label)}
                         </Typography>
                         {col.optional ? (
-                          <Typography variant="caption" color="text.secondary">
-                            Opcional
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                            (opt)
                           </Typography>
                         ) : null}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...headerCellSx, width: 110 }}>Nota final</TableCell>
-                    <TableCell sx={{ ...headerCellSx, width: 130 }}>%</TableCell>
-                    <TableCell sx={{ ...headerCellSx, width: 90 }}>Si/No</TableCell>
+                    <TableCell sx={{ ...headerCellSx, width: 80 }}>Final</TableCell>
+                    <TableCell sx={{ ...headerCellSx, width: 80 }}>% Asist.</TableCell>
+                    <TableCell sx={{ ...headerCellSx, width: 70 }}>Excep.</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filaFields.map((field, index) => (
                     <TableRow key={field.id}>
-                      <TableCell sx={{ ...bodyCellSx, width: 60 }}>
+                      <TableCell sx={{ ...bodyCellSx, width: 60, textAlign: 'center' }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {index + 1}
+                        </Typography>
                         <Controller
                           control={control}
                           name={`filas.${index}.orden`}
                           render={({ field: controllerField }) => (
-                            <TextField
-                              {...controllerField}
-                              value={controllerField.value ?? ''}
-                              type="number"
-                              size="small"
-                              fullWidth
-                              inputProps={{ min: 1, max: 999 }}
-                            />
+                            <input type="hidden" {...controllerField} value={index + 1} />
                           )}
                         />
                       </TableCell>
@@ -1026,6 +1206,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           render={({ field: controllerField }) => (
                             <Autocomplete
                               freeSolo
+                              disabled={isReadOnly}
                               options={estudiantesMetadata}
                               getOptionLabel={(option) => {
                                 if (typeof option === 'string') return option;
@@ -1085,7 +1266,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                           )}
                         />
                       </TableCell>
-                      <TableCell sx={{ ...bodyCellSx, width: 140 }}>
+                      <TableCell sx={{ ...bodyCellSx, width: 100 }}>
                         <Controller
                           control={control}
                           name={`filas.${index}.dni`}
@@ -1096,25 +1277,30 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                               size="small"
                               fullWidth
                               placeholder="DNI"
-                              inputProps={{ maxLength: 8, inputMode: 'numeric' }}
+                              inputProps={{
+                                maxLength: 9,
+                                inputMode: 'numeric',
+                                sx: { fontSize: '0.85rem', px: 0.5 }
+                              }}
                               onBlur={(event) => {
                                 controllerField.onBlur();
                                 handleStudentDniBlur(index, event.target.value);
                               }}
                               onChange={(event) => {
-                                controllerField.onChange(event);
-                                const value = event.target.value.trim();
-                                if (value.length >= 7) {
-                                  handleStudentDniBlur(index, value);
+                                const val = event.target.value.replace(/\D/g, '');
+                                controllerField.onChange(val);
+                                if (val.length >= 7) {
+                                  handleStudentDniBlur(index, val);
                                 }
                               }}
                               required
+                              disabled={isReadOnly}
                             />
                           )}
                         />
                       </TableCell>
                       {columnasDinamicas.map((col) => (
-                        <TableCell sx={{ ...bodyCellSx, minWidth: 140 }} key={`${field.id}-${col.key}`}>
+                        <TableCell sx={{ ...bodyCellSx, width: 80, minWidth: 80 }} key={`${field.id}-${col.key}`}>
                           <Controller
                             control={control}
                             name={`filas.${index}.datos.${col.key}`}
@@ -1124,56 +1310,108 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                                 value={controllerField.value ?? ''}
                                 size="small"
                                 fullWidth
-                                placeholder={
-                                  col.optional
-                                    ? `${formatColumnLabel(col.label)} (opt)`
-                                    : formatColumnLabel(col.label)
-                                }
-                                type={col.type === 'number' ? 'number' : 'text'}
-                                inputProps={col.type === 'number' ? { step: '0.1' } : undefined}
+                                inputProps={{
+                                  sx: { textAlign: 'center', px: 0.5 },
+                                  maxLength: 3
+                                }}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '-' || val === '--' || val === '---') {
+                                    controllerField.onChange(val);
+                                    return;
+                                  }
+                                  const num = val.replace(/\D/g, '');
+                                  if (num === '') {
+                                    controllerField.onChange('');
+                                    return;
+                                  }
+                                  const n = parseInt(num, 10);
+                                  if (n >= 0 && n <= 10) {
+                                    controllerField.onChange(num);
+                                  }
+                                }}
                                 required={!col.optional}
+                                disabled={isReadOnly}
                               />
                             )}
                           />
                         </TableCell>
                       ))}
-                      <TableCell sx={{ ...bodyCellSx, width: 110 }}>
+                      <TableCell sx={{ ...bodyCellSx, width: 80 }}>
                         <Controller
                           control={control}
                           name={`filas.${index}.nota_final`}
                           render={({ field: controllerField }) => (
                             <TextField
                               {...controllerField}
-                              value={controllerField.value ?? ''}
+                              value={controllerField.value || (isReadOnly ? '-' : '')}
                               size="small"
                               fullWidth
-                              placeholder="6"
-                              type="number"
-                              inputProps={{ min: 0, max: 10, step: '0.1' }}
+                              inputProps={{
+                                sx: { textAlign: 'center', px: 0.5 },
+                                maxLength: 3
+                              }}
+                              onBlur={() => calculateSituacionForRow(index)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '-' || val === '--' || val === '---') {
+                                  controllerField.onChange(val);
+                                  return;
+                                }
+                                const num = val.replace(/\D/g, '');
+                                if (num === '') {
+                                  controllerField.onChange('');
+                                  return;
+                                }
+                                const n = parseInt(num, 10);
+                                if (n >= 0 && n <= 10) {
+                                  controllerField.onChange(num);
+                                }
+                              }}
                               required
+                              disabled={isReadOnly}
                             />
                           )}
                         />
                       </TableCell>
-                      <TableCell sx={{ ...bodyCellSx, width: 130 }}>
+                      <TableCell sx={{ ...bodyCellSx, width: 80 }}>
                         <Controller
                           control={control}
                           name={`filas.${index}.asistencia`}
                           render={({ field: controllerField }) => (
                             <TextField
                               {...controllerField}
-                              value={controllerField.value ?? ''}
+                              value={controllerField.value || (isReadOnly ? '-' : '')}
                               size="small"
                               fullWidth
-                              placeholder="80"
-                              type="number"
-                              inputProps={{ min: 0, max: 100 }}
+                              inputProps={{
+                                sx: { textAlign: 'center', px: 0.5 },
+                                maxLength: 3
+                              }}
+                              onBlur={() => calculateSituacionForRow(index)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === '-' || val === '--' || val === '---') {
+                                  controllerField.onChange(val);
+                                  return;
+                                }
+                                const num = val.replace(/\D/g, '');
+                                if (num === '') {
+                                  controllerField.onChange('');
+                                  return;
+                                }
+                                const n = parseInt(num, 10);
+                                if (n >= 0 && n <= 100) {
+                                  controllerField.onChange(num);
+                                }
+                              }}
                               required
+                              disabled={isReadOnly}
                             />
                           )}
                         />
                       </TableCell>
-                      <TableCell sx={{ ...bodyCellSx, width: 90, textAlign: 'center' }}>
+                      <TableCell sx={{ ...bodyCellSx, width: 70, textAlign: 'center' }}>
                         <Controller
                           control={control}
                           name={`filas.${index}.excepcion`}
@@ -1183,73 +1421,105 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
                               <Checkbox
                                 {...rest}
                                 checked={Boolean(value)}
-                                onChange={(event) => onChange(event.target.checked)}
+                                onChange={(event) => {
+                                  onChange(event.target.checked);
+                                  // Recalcular al cambiar el check
+                                  setTimeout(() => calculateSituacionForRow(index), 10);
+                                }}
                                 size="small"
                                 sx={{ p: 0 }}
+                                disabled={isReadOnly}
                               />
                             );
                           }}
                         />
                       </TableCell>
                       <TableCell sx={{ ...bodyCellSx, minWidth: 200 }}>
-                        <Controller
-                          control={control}
-                          name={`filas.${index}.situacion`}
-                          render={({ field: controllerField }) => (
-                            <Autocomplete
-                              options={situacionesDisponibles}
-                              fullWidth
-                              size="small"
-                              disabled={!situacionesDisponibles.length}
-                              value={
-                                situacionesDisponibles.find((s) => s.codigo === controllerField.value) || null
-                              }
-                              onChange={(_, value) => controllerField.onChange(value?.codigo || '')}
-                              getOptionLabel={(option) => option?.label || option?.codigo || ''}
-                              renderOption={(props, option) => {
-                                const { key, ...restProps } = props as any;
-                                return (
-                                  <li key={key} {...restProps}>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                      <Typography variant="body2">{option.label || option.codigo}</Typography>
-                                      {option.descripcion ? (
-                                        <Typography variant="caption" color="text.secondary">
-                                          {option.descripcion}
-                                        </Typography>
-                                      ) : null}
-                                    </Box>
-                                  </li>
-                                );
-                              }}
-                              isOptionEqualToValue={(option, value) => option?.codigo === value?.codigo}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  size="small"
-                                  label="Situación"
-                                  placeholder={SITUACION_PLACEHOLDER}
-                                  InputLabelProps={{ shrink: true }}
-                                  required
-                                />
-                              )}
-                              noOptionsText="Sin opciones"
-                            />
-                          )}
-                        />
+                        {isReadOnly ? (
+                          <TextField
+                            size="small"
+                            fullWidth
+                            value={(() => {
+                              const val = watch(`filas.${index}.situacion`);
+                              // Intentar buscar label en situacionesDisponibles
+                              const match = situacionesDisponibles.find(
+                                (s) => s.codigo.toString().toLowerCase() === (val || '').toString().toLowerCase()
+                              );
+                              return match ? match.label : val;
+                            })()}
+                            InputProps={{
+                              readOnly: true,
+                            }}
+                            disabled
+                          // disabled adds opacity, readOnly doesn't. 
+                          // If we want it to look clearly readable, maybe just readOnly is better, 
+                          // but consistent with other disabled fields is OK.
+                          // Let's use disabled to match the rest of the form style.
+                          />
+                        ) : (
+                          <Controller
+                            control={control}
+                            name={`filas.${index}.situacion`}
+                            render={({ field: controllerField }) => (
+                              <Autocomplete
+                                options={situacionesDisponibles}
+                                fullWidth
+                                size="small"
+                                disabled={isReadOnly || !situacionesDisponibles.length}
+                                value={
+                                  situacionesDisponibles.find(
+                                    (s) => s.codigo.toString().toLowerCase() === (controllerField.value || '').toString().toLowerCase()
+                                  ) || null
+                                }
+                                onChange={(_, value) => controllerField.onChange(value?.codigo || '')}
+                                getOptionLabel={(option) => option?.label || option?.codigo || ''}
+                                renderOption={(props, option) => {
+                                  const { key, ...restProps } = props as any;
+                                  return (
+                                    <li key={key} {...restProps}>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                        <Typography variant="body2">{option.label || option.codigo}</Typography>
+                                        {option.descripcion ? (
+                                          <Typography variant="caption" color="text.secondary">
+                                            {option.descripcion}
+                                          </Typography>
+                                        ) : null}
+                                      </Box>
+                                    </li>
+                                  );
+                                }}
+                                isOptionEqualToValue={(option, value) => option?.codigo === value?.codigo}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    size="small"
+                                    label="Situación"
+                                    placeholder={SITUACION_PLACEHOLDER}
+                                    InputLabelProps={{ shrink: true }}
+                                    required
+                                  />
+                                )}
+                                noOptionsText="Sin opciones"
+                              />
+                            )}
+                          />
+                        )}
                       </TableCell>
                       <TableCell sx={{ ...bodyCellSx, width: 56, textAlign: 'center' }}>
-                        <Tooltip title="Eliminar fila">
-                          <span>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => removeFila(index)}
-                              disabled={filaFields.length <= 1}
-                            >
-                              <DeleteOutlineIcon fontSize="small" />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
+                        {!isReadOnly && (
+                          <Tooltip title="Eliminar fila">
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => removeFila(index)}
+                                disabled={filaFields.length <= 1}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1260,14 +1530,18 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({ o
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button
-          onClick={handleSubmit(onSubmit)}
-          variant="contained"
-          disabled={mutation.isPending || metadataQuery.isLoading}
-        >
-          {mutation.isPending ? 'Generando...' : 'Generar planilla'}
-        </Button>
+        <Button onClick={onClose}>{mode === 'view' ? 'Cerrar' : 'Cancelar'}</Button>
+        {mode !== 'view' && (
+          <Button
+            onClick={handleSubmit(onSubmit)}
+            variant="contained"
+            disabled={mutation.isPending || metadataQuery.isLoading}
+          >
+            {mutation.isPending
+              ? (mode === 'edit' ? 'Guardando...' : 'Generando...')
+              : (mode === 'edit' ? 'Guardar Cambios' : 'Generar planilla')}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

@@ -323,8 +323,25 @@ export interface ActaDetailDTO {
   docentes: ActaDocentePayload[];
 }
 
-export async function listarActas() {
-  const { data } = await client.get<ActaListItemDTO[]>("/alumnos/carga-notas/actas");
+export type ActaFilter = {
+  anio?: string;
+  materia?: string;
+  libro?: string;
+  folio?: string;
+};
+
+export async function listarActas(filters?: ActaFilter) {
+  const params: Record<string, string | number> = {};
+  if (filters) {
+    if (filters.anio && filters.anio.trim() !== "") params.anio = filters.anio;
+    if (filters.materia && filters.materia.trim() !== "") params.materia = filters.materia;
+    if (filters.libro && filters.libro.trim() !== "") params.libro = filters.libro;
+    if (filters.folio && filters.folio.trim() !== "") params.folio = filters.folio;
+  }
+
+  const { data } = await client.get<ActaListItemDTO[]>("/alumnos/carga-notas/actas", {
+    params,
+  });
   return data;
 }
 

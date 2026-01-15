@@ -779,6 +779,8 @@ EstudianteAdminDetail.model_rebuild()
 
 class EstudianteAdminUpdateIn(Schema):
     dni: str | None = None
+    apellido: str | None = None
+    nombre: str | None = None
     email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None

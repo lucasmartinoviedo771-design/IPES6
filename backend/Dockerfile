@@ -45,7 +45,12 @@ COPY . .
 # Crear usuario no-root para seguridad
 RUN addgroup --system appgroup && adduser --system --group appuser
 
-# Asignar permisos al directorio de trabajo
+# Crear directorios para estáticos y media, y asignar permisos
+RUN mkdir -p /app/staticfiles /app/media && \
+    chown -R appuser:appgroup /app/staticfiles /app/media && \
+    chmod -R 775 /app/staticfiles /app/media
+
+# Asignar permisos al resto del directorio de trabajo
 RUN chown -R appuser:appgroup /app
 
 # Cambiar al usuario no-root

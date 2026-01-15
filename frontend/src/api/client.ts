@@ -155,9 +155,14 @@ const buildAppError = (error: unknown, fallbackStatus?: number): AppError => {
 };
 
 const notifyError = (appError: AppError, config?: AppAxiosRequestConfig) => {
-  if (!config?.suppressErrorToast) {
-    toast.error(appError.message);
+  if (config?.suppressErrorToast) {
+    return;
   }
+  // No mostrar "No autenticado" si ya estamos en la página de login
+  if (appError.status === 401 && window.location.pathname === "/login") {
+    return;
+  }
+  toast.error(appError.message);
 };
 
 const enqueueRefresh = () => {

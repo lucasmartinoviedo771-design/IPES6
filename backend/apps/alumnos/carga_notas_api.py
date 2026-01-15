@@ -1,6 +1,6 @@
 
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.db import transaction
@@ -50,7 +50,7 @@ from apps.alumnos.schemas import (
     ComisionOption,
 )
 
-carga_notas_router = Router(tags=["carga_notas"])
+carga_notas_router = Router(tags=["carga_notas"], auth=JWTAuth())
 
 # ==============================================================================
 # DEFINICION LOCAL DE SCHEMAS DE ACTAS (Para evitar error PydanticUserError)
@@ -76,7 +76,7 @@ class ActaCreateLocal(Schema):
     tipo: str
     profesorado_id: int
     materia_id: int
-    fecha: date
+    fecha: str
     folio: str
     libro: str | None = None
     observaciones: str | None = None
@@ -336,7 +336,7 @@ def obtener_acta_metadata(request):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
-def listar_actas(request):
+def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None):
     user = request.user
     roles = _normalized_user_roles(user)
     
@@ -356,7 +356,21 @@ def listar_actas(request):
         # Fallback si no tiene asignaciones: no ve nada
         qs = ActaExamen.objects.filter(profesorado_id__in=carreras_ids)
 
-    actas = qs.select_related("materia").order_by("-id")[:50]
+    # 1. Filtros
+    if anio:
+        qs = qs.filter(fecha__year=anio)
+    if materia:
+        qs = qs.filter(materia__nombre__icontains=materia)
+    if libro:
+        qs = qs.filter(libro__icontains=libro)
+    if folio:
+        qs = qs.filter(folio__icontains=folio)
+
+    # 2. Limit: If filtering, allow more results. If not, only last 50.
+    has_filters = any([anio, materia, libro, folio])
+    limit = 200 if has_filters else 50
+
+    actas = qs.select_related("materia").order_by("-id")[:limit]
     
     result = []
     for acta in actas:
@@ -460,6 +474,17 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO,
     ]
 
+    # Validación y parseo manual de fecha
+    try:
+        # Intentar formato YYYY-MM-DD
+        acta_fecha = datetime.strptime(payload.fecha, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        try:
+            # Fallback a ISO format si viene con hora
+            acta_fecha = datetime.fromisoformat(payload.fecha).date()
+        except ValueError:
+             return 400, ApiResponse(ok=False, message="Formato de fecha inválido. Use YYYY-MM-DD")
+
     if payload.tipo not in dict(ActaExamen.Tipo.choices):
         return 400, ApiResponse(ok=False, message="Tipo de acta inválido.")
 
@@ -528,7 +553,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         # Esto permite que aparezca en los reportes de esa carrera
         estudiante.asignar_profesorado(profesorado)
 
-    anio = payload.fecha.year
+    anio = acta_fecha.year
     numero = _next_acta_numero(profesorado.id, anio)
     codigo = _compute_acta_codigo(profesorado, anio, numero)
 
@@ -587,7 +612,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             materia=materia,
             plan=plan,
             anio_cursada=materia.anio_cursada,
-            fecha=payload.fecha,
+            fecha=acta_fecha,
             folio=payload.folio,
             libro=payload.libro or "",
             observaciones=payload.observaciones or "",
@@ -626,18 +651,18 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         # Intentamos buscar una mesa existente que coincida
         mesa = MesaExamen.objects.filter(
             materia=materia,
-            fecha=payload.fecha,
+            fecha=acta_fecha,
             modalidad=mesa_modalidad,
         ).first()
 
         if not mesa:
             # Generamos un codigo mas corto para evitar DataError (max 40 chars)
             # MA = Mesa Automatica / A{id} = Acta ID
-            fecha_str = payload.fecha.strftime("%Y%m%d")
+            fecha_str = acta_fecha.strftime("%Y%m%d")
             mesa_codigo = f"MA-{acta.id}-{fecha_str}" 
             mesa = MesaExamen.objects.create(
                 materia=materia,
-                fecha=payload.fecha,
+                fecha=acta_fecha,
                 tipo=MesaExamen.Tipo.FINAL, # Asumimos Final por defecto para Actas
                 modalidad=mesa_modalidad,
                 codigo=mesa_codigo,
@@ -707,7 +732,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                     estudiante=estudiante,
                     defaults={
                         "estado": InscripcionMesa.Estado.INSCRIPTO,
-                        "fecha_resultado": payload.fecha,
+                        "fecha_resultado": acta_fecha,
                         "condicion": condicion_mesa,
                         "nota": nota_decimal,
                         "folio": payload.folio,

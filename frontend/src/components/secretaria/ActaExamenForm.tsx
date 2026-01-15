@@ -81,6 +81,7 @@ type ActaExamenFormProps = {
   subtitle?: string;
   successMessage?: string;
   estudiantes?: Array<{ dni: string; apellido_nombre: string }>;
+  headerAction?: React.ReactNode;
 };
 
 const createEmptyDocentes = (): DocenteState[] =>
@@ -119,6 +120,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   subtitle = "Complete los datos del acta y registre los resultados obtenidos por cada estudiante.",
   successMessage = "Acta generada correctamente.",
   estudiantes = [],
+  headerAction,
 }) => {
   const metadataQuery = useQuery<ActaMetadataDTO>({
     queryKey: ["acta-examen-metadata"],
@@ -521,14 +523,17 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   return (
     <>
       <Stack spacing={3} sx={{ p: { xs: 1, md: 3 } }}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            {title}
-          </Typography>
-          <Typography color="text.secondary">
-            {subtitle}
-          </Typography>
-        </Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+          <Box>
+            <Typography variant="h4" fontWeight={700}>
+              {title}
+            </Typography>
+            <Typography color="text.secondary">
+              {subtitle}
+            </Typography>
+          </Box>
+          {headerAction && <Box>{headerAction}</Box>}
+        </Stack>
 
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
@@ -879,57 +884,49 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       )}
                     </TableCell>
                     <TableCell>
-                      <TextField
-                        select
-                        size="small"
-                        value={alumno.examen_escrito ?? ""}
-                        onChange={(event) =>
-                          updateAlumno(alumno.internoId, { examen_escrito: event.target.value })
+                      <Autocomplete
+                        options={notaOptions}
+                        getOptionLabel={(option) => option.label}
+                        value={notaOptions.find((opt) => opt.value === alumno.examen_escrito) || null}
+                        onChange={(_, newValue) =>
+                          updateAlumno(alumno.internoId, { examen_escrito: newValue?.value || "" })
                         }
-                      >
-                        <MenuItem value="">-</MenuItem>
-                        {notaOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                        autoHighlight
+                        autoSelect
+                        selectOnFocus
+                        renderInput={(params) => <TextField {...params} size="small" />}
+                      />
                     </TableCell>
                     <TableCell>
-                      <TextField
-                        select
-                        size="small"
-                        value={alumno.examen_oral ?? ""}
-                        onChange={(event) =>
-                          updateAlumno(alumno.internoId, { examen_oral: event.target.value })
+                      <Autocomplete
+                        options={notaOptions}
+                        getOptionLabel={(option) => option.label}
+                        value={notaOptions.find((opt) => opt.value === alumno.examen_oral) || null}
+                        onChange={(_, newValue) =>
+                          updateAlumno(alumno.internoId, { examen_oral: newValue?.value || "" })
                         }
-                      >
-                        <MenuItem value="">-</MenuItem>
-                        {notaOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                        autoHighlight
+                        autoSelect
+                        selectOnFocus
+                        renderInput={(params) => <TextField {...params} size="small" />}
+                      />
                     </TableCell>
                     <TableCell>
-                      <TextField
-                        select
-                        size="small"
-                        fullWidth
-                        required
-                        value={alumno.calificacion_definitiva}
-                        onChange={(event) =>
-                          updateAlumno(alumno.internoId, { calificacion_definitiva: event.target.value })
+                      <Autocomplete
+                        options={notaOptions}
+                        getOptionLabel={(option) => option.label}
+                        value={notaOptions.find((opt) => opt.value === alumno.calificacion_definitiva) || null}
+                        onChange={(_, newValue) =>
+                          updateAlumno(alumno.internoId, { calificacion_definitiva: newValue?.value || "" })
                         }
-                      >
-                        <MenuItem value="">-</MenuItem>
-                        {notaOptions.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                        autoHighlight
+                        autoSelect
+                        selectOnFocus
+                        disableClearable={false}
+                        renderInput={(params) => (
+                          <TextField {...params} size="small" fullWidth required />
+                        )}
+                      />
                     </TableCell>
                     <TableCell>
                       <TextField

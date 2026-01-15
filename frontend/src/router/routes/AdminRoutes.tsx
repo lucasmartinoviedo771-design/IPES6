@@ -23,6 +23,7 @@ const lazyPage = (importer: () => Promise<{ default: React.ComponentType<any> }>
 const PrimeraCargaPage = lazyPage(() => import("@/pages/admin/PrimeraCargaPage"));
 const ActaExamenPrimeraCargaPage = lazyPage(() => import("@/pages/admin/ActaExamenPrimeraCargaPage"));
 const HistorialActasPage = lazyPage(() => import("@/pages/admin/HistorialActasPage"));
+const HistorialRegularidadesPage = lazyPage(() => import("@/pages/admin/HistorialRegularidadesPage"));
 
 const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
 
@@ -42,6 +43,7 @@ export const buildAdminRoutes = () => (
       <Route path="/admin/primera-carga" element={<PrimeraCargaPage />} />
       <Route path="/admin/primera-carga/actas-examen" element={<ActaExamenPrimeraCargaPage />} />
       <Route path="/admin/primera-carga/historial-actas" element={<HistorialActasPage />} />
+      <Route path="/admin/primera-carga/historial-regularidades" element={<HistorialRegularidadesPage />} />
     </Route>
 
     <Route

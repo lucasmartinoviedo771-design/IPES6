@@ -824,6 +824,9 @@ export interface EstudianteAdminDetailDTO {
 
 export interface EstudianteAdminUpdatePayload {
   dni?: string | null;
+  apellido?: string | null;
+  nombre?: string | null;
+  email?: string | null;
   telefono?: string | null;
   domicilio?: string | null;
   estado_legajo?: string | null;

@@ -23,7 +23,8 @@ if 'api' not in locals():
     from apps.preinscriptions.api import router as preins_router
     from apps.preinscriptions.api_uploads import router as preins_uploads_router
     api.add_router("/preinscripciones", preins_router)
-    api.add_router("/preinscripciones", preins_uploads_router)
+    # api.add_router("/preinscripciones", preins_uploads_router) # FIX: Evitar conflicto de router
+    api.add_router("/preinscripciones/uploads", preins_uploads_router)
     from apps.preinscriptions.admin_api import router as preins_admin_router
     api.add_router("/preinscripciones/admin", preins_admin_router)
     api.add_router("/profesorados", carreras_router)

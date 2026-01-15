@@ -55,7 +55,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const refreshProfile = async (): Promise<User | null> => {
     try {
       // Agregamos timestamp para evitar caché 301 persistente en navegadores
-      const { data } = await client.get(apiPath(`auth/profile/?_t=${Date.now()}`));
+      const { data } = await client.get(apiPath(`auth/profile/?_t=${Date.now()}`), {
+        suppressErrorToast: true,
+      } as any);
       setUser(data);
       return data;
     } catch (err: any) {
@@ -150,8 +152,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         err?.response?.data?.detail ||
         err?.response?.data?.message ||
         (status === 400 ? "Datos inválidos." :
-         status === 401 ? "Credenciales incorrectas." :
-         "No se pudo iniciar sesión.");
+          status === 401 ? "Credenciales incorrectas." :
+            "No se pudo iniciar sesión.");
       throw new Error(msg);
     }
   };

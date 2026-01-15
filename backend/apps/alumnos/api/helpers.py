@@ -239,6 +239,17 @@ def _apply_estudiante_updates(
         user.email = payload.email or ""
         user.save(update_fields=["email"])
 
+    if user:
+        user_updates = []
+        if payload.nombre is not None:
+            user.first_name = payload.nombre.strip()
+            user_updates.append("first_name")
+        if payload.apellido is not None:
+            user.last_name = payload.apellido.strip()
+            user_updates.append("last_name")
+        if user_updates:
+            user.save(update_fields=user_updates)
+
     if payload.telefono is not None:
         est.telefono = payload.telefono or ""
         fields_to_update.add("telefono")

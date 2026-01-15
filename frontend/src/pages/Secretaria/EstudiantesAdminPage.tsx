@@ -78,6 +78,8 @@ type DetailDocumentacionForm = {
 
 type DetailFormValues = {
   dni: string;
+  apellido: string;
+  nombre: string;
   telefono: string;
   domicilio: string;
   estado_legajo: EstadoLegajo;
@@ -231,6 +233,8 @@ export default function EstudiantesAdminPage() {
 
       const payloadData = {
         dni: data.dni?.trim(),
+        apellido: data.apellido?.trim() || undefined,
+        nombre: data.nombre?.trim() || undefined,
         telefono: data.telefono?.trim() || undefined,
         domicilio: data.domicilio?.trim() || undefined,
         estado_legajo: data.estado_legajo || undefined,
@@ -267,6 +271,8 @@ export default function EstudiantesAdminPage() {
   const form = useForm<DetailFormValues>({
     defaultValues: {
       dni: "",
+      apellido: "",
+      nombre: "",
       telefono: "",
       domicilio: "",
       estado_legajo: "PEN",
@@ -353,6 +359,8 @@ export default function EstudiantesAdminPage() {
       const toStringOrEmpty = (value: unknown) => (value === null || value === undefined ? "" : String(value));
       const formValues: DetailFormValues = {
         dni: detail.dni,
+        apellido: detail.apellido ?? "",
+        nombre: detail.nombre ?? "",
         telefono: detail.telefono ?? "",
         domicilio: detail.domicilio ?? "",
         estado_legajo: (detail.estado_legajo as EstadoLegajo) ?? "PEN",
@@ -634,13 +642,29 @@ export default function EstudiantesAdminPage() {
                 onSubmit={handleSubmit(onSubmit)}
               >
                 <Stack spacing={2}>
-                  <Controller
-                    name="dni"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} label="DNI" size="small" fullWidth />
-                    )}
-                  />
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="dni"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="DNI" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="apellido"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Apellido" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="nombre"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Nombre" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
                       name="anio_ingreso"
@@ -722,35 +746,6 @@ export default function EstudiantesAdminPage() {
                     />
                   </Stack>
 
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Controller
-                      name="anio_ingreso"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} select label="Anio de ingreso" size="small" fullWidth>
-                          <MenuItem value="">Sin especificar</MenuItem>
-                          {anioIngresoOptions.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              {option}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      )}
-                    />
-                    <Controller
-                      name="genero"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} select label="Genero" size="small" fullWidth>
-                          {generoOptions.map((option) => (
-                            <MenuItem key={option.value} value={option.value}>
-                              {option.label}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      )}
-                    />
-                  </Stack>
 
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller

@@ -63,9 +63,9 @@ from .services import (
 )
 
 
-docentes_router = Router(tags=["asistencia-docentes"])
-alumnos_router = Router(tags=["asistencia-alumnos"])
-calendario_router = Router(tags=["asistencia-calendario"])
+docentes_router = Router(tags=["asistencia-docentes"], auth=JWTAuth())
+alumnos_router = Router(tags=["asistencia-alumnos"], auth=JWTAuth())
+calendario_router = Router(tags=["asistencia-calendario"], auth=JWTAuth())
 
 
 def _normalized_user_roles(user) -> set[str]:

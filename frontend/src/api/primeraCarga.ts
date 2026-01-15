@@ -168,8 +168,8 @@ export interface PlanillaRegularidadFilaPayload {
   orden?: number | null;
   dni: string;
   apellido_nombre: string;
-  nota_final: number;
-  asistencia: number;
+  nota_final: number | null;
+  asistencia: number | null;
   situacion: string;
   excepcion?: boolean;
   datos?: Record<string, string | number | null | undefined>;
@@ -217,6 +217,55 @@ export const crearPlanillaRegularidad = async (
 ): Promise<ApiResponse<PlanillaRegularidadCreateResult>> => {
   const { data } = await api.post<ApiResponse<PlanillaRegularidadCreateResult>>(
     '/admin/primera-carga/regularidades/planillas',
+    payload,
+  );
+  return data;
+};
+
+export interface PlanillaRegularidadListItem {
+  id: number;
+  codigo: string;
+  profesorado_nombre: string;
+  materia_nombre: string;
+  anio_cursada: string;
+  fecha: string;
+  cantidad_estudiantes: number;
+  estado: string;
+  created_at: string;
+}
+
+export const listarHistorialRegularidades = async (): Promise<PlanillaRegularidadListItem[]> => {
+  const { data } = await api.get<PlanillaRegularidadListItem[]>(
+    '/admin/primera-carga/regularidades/historial',
+  );
+  return data;
+};
+
+export interface PlanillaRegularidadDetalle extends PlanillaRegularidadCreateResult {
+  profesorado_nombre: string;
+  materia_nombre: string;
+  folio?: string | null;
+  plan_resolucion?: string | null;
+  observaciones?: string | null;
+  datos_adicionales?: Record<string, string>;
+  docentes: PlanillaRegularidadDocentePayload[];
+  filas: PlanillaRegularidadFilaPayload[];
+  estado: string;
+}
+
+export const obtenerPlanillaRegularidadDetalle = async (id: number): Promise<ApiResponse<PlanillaRegularidadDetalle>> => {
+  const { data } = await api.get<ApiResponse<PlanillaRegularidadDetalle>>(
+    `/admin/primera-carga/regularidades/planillas/${id}`,
+  );
+  return data;
+};
+
+export const actualizarPlanillaRegularidad = async (
+  id: number,
+  payload: PlanillaRegularidadCreatePayload,
+): Promise<ApiResponse<PlanillaRegularidadDetalle>> => {
+  const { data } = await api.put<ApiResponse<PlanillaRegularidadDetalle>>(
+    `/admin/primera-carga/regularidades/planillas/${id}`,
     payload,
   );
   return data;

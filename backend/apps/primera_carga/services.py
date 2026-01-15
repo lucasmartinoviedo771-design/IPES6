@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+import math
 import unicodedata
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -57,7 +58,7 @@ def _to_bool(value: str | None) -> bool:
     if value is None:
         return False
     val = value.strip().lower()
-    return val in {"true", "1", "si", "sÃƒÆ’Ã‚Â­", "yes", "verdadero"}
+    return val in {"true", "1", "si", "sí", "yes", "verdadero"}
 
 
 def _parse_date(value: str) -> date | None:
@@ -98,7 +99,7 @@ def _normalize_header(value: str | None) -> str:
     if value is None:
         return ""
     cleaned = value.replace("\ufeff", "")
-    if cleaned.startswith("ÃƒÆ’Ã‚Â¯Ãƒâ€šÃ‚Â»Ãƒâ€šÃ‚Â¿"):
+    if cleaned.startswith("ï»¿"):
         cleaned = cleaned[3:]
     return cleaned.strip()
 
@@ -144,7 +145,7 @@ FORMATO_SLUG_MAP = {
 def _format_column_label(value: str | None) -> str:
     if not value:
         return ""
-    normalized = value.replace("Ãƒâ€šÃ‚Âº", "").replace("Ãƒâ€šÃ‚Â°", "")
+    normalized = value.replace("º", "").replace("°", "")
     normalized = re.sub(r"([0-9])\s*C\.?", r"\1C", normalized)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.strip()
@@ -176,7 +177,7 @@ def _next_planilla_numero(profesorado_id: int, anio: int) -> int:
 def _resolve_situacion(raw: str, formato_slug: str) -> str:
     alias_key = _normalize_alias(raw)
     if not alias_key:
-        raise ValueError("La situaciÃƒÆ’Ã‚Â³n acadÃƒÆ’Ã‚Â©mica es obligatoria.")
+        raise ValueError("La situación académica es obligatoria.")
 
     if alias_key in ALIAS_TO_SITUACION:
         return ALIAS_TO_SITUACION[alias_key]
@@ -346,24 +347,29 @@ def _extraer_nota_practicos(columnas: list[dict], datos: dict) -> Decimal | None
     return None
 
 
+
 def _ensure_required_row_fields(row: dict) -> None:
     missing = []
     for field in (
         "orden",
         "dni",
         "apellido_nombre",
-        "nota_final",
-        "asistencia",
         "situacion",
     ):
         if row.get(field) in (None, "", []):
             missing.append(field)
+    
+    # nota_final y asistencia pueden ser None (cuando es '---')
+    for field in ("nota_final", "asistencia"):
+        if row.get(field) == "" or row.get(field) == []:
+            missing.append(field)
+            
     if missing:
         raise ValueError(f"Campos obligatorios faltantes en la fila {row.get('orden')}: {', '.join(missing)}.")
 
 
 # -------------------------------------------------------------
-# FunciÃƒÆ’Ã‚Â³n Principal para la GeneraciÃƒÆ’Ã‚Â³n del PDF
+# Función Principal para la Generación del PDF
 # -------------------------------------------------------------
 
 
@@ -457,7 +463,27 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     def _display(value: Any, default: str = "-") -> str:
         if value in (None, "", [], {}):
             return default
-        return str(value)
+        s = str(value)
+        # Limpieza agresiva de mojibake UTF-8
+        try:
+            # Detectar si es una cadena que parece estar mal codificada
+            # Ej: 'PROMOCIÃƒÆ’Ã¢â‚¬Å“N'
+            if "Ã" in s:
+                # Intentar varios pasos de decodificación si es necesario
+                # Probar con latin1 -> utf-8, luego utf-8 -> utf-8 (para doble encoding)
+                try:
+                    s = s.encode('latin1').decode('utf-8')
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass # Fallback to original if it fails
+                try:
+                    s = s.encode('utf-8').decode('utf-8')
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass # Fallback to original if it fails
+        except:
+            pass
+        # Reemplazos finales de emergencia
+        s = s.replace("Ãƒâ€šÃ‚Â°", "º").replace("Ãƒâ€šÃ‚Âº", "º")
+        return s
 
     def _format_decimal_value(value: Decimal | None) -> str:
         if value is None:
@@ -580,70 +606,83 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         )
     )
     elements.append(header_table)
-    elements.append(Spacer(1, 10))
-    elements.append(Paragraph("PLANILLA DE REGULARIDAD Y PROMOCIÃƒÆ’Ã¢â‚¬Å“N", title_style))
-
-    docentes_qs = planilla.docentes.all().order_by("orden", "id")
-    docente_principal = docentes_qs.filter(rol="P").first()
-    docente_nombre = _display(docente_principal.nombre if docente_principal else "_______________________")
-
-    if isinstance(planilla.fecha, datetime | date):
-        fecha_formateada = planilla.fecha.strftime("%d/%m/%Y")
-    else:
-        fecha_formateada = _display(planilla.fecha)
-
-    info_pairs: list[tuple[str, Any, str, Any]] = [
-        ("CODIGO", planilla.codigo, "PROFESORADO DE", planilla.profesorado.nombre),
-        (
-            "UNIDAD CURRICULAR",
-            planilla.materia.nombre,
-            "RESOLUCIÃƒÆ’Ã¢â‚¬Å“N NRO",
-            planilla.plan_resolucion or planilla.materia.plan_de_estudio.resolucion,
-        ),
-        (
-            "FORMATO",
-            planilla.formato.nombre,
-            "DICTADO",
-            planilla.plantilla.get_dictado_display(),
-        ),
-        (
-            "AÃƒÆ’Ã¢â‚¬ËœO DE CURSADA",
-            planilla.materia.anio_cursada or "-",
-            "FOLIO NRO",
-            planilla.folio or "-",
-        ),
-        ("PROFESOR/A", docente_nombre, "FECHA", fecha_formateada),
-    ]
-
-    for key, value in (planilla.datos_adicionales or {}).items():
-        label = key.replace("_", " ").strip().upper()
-        info_pairs.append((label, value, "", ""))
-
-    info_data = [
-        [_build_info(left_label, left_value), _build_info(right_label, right_value)]
-        for left_label, left_value, right_label, right_value in info_pairs
-    ]
-
-    info_base_widths = [270.0, 270.0]
-    info_total = sum(info_base_widths)
-    info_scale = min(1.0, doc.width / info_total)
-    info_widths = [w * info_scale for w in info_base_widths]
-
-    info_table = Table(info_data, colWidths=info_widths)
-    info_table.setStyle(
-        TableStyle(
-            [
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-            ]
-        )
+    # --- Estilos y Colores ---
+    doc_title_style = ParagraphStyle(
+        "DocTitle",
+        parent=styles["Heading1"],
+        fontSize=12,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+        fontName="Helvetica-Bold"
     )
-    elements.append(info_table)
-    elements.append(Spacer(1, 12))
+
+    header_value_style = ParagraphStyle(
+        "HeaderValue", parent=styles["Normal"], fontSize=8
+    )
+
+    doc_center_style = ParagraphStyle(
+        "DocCenter", parent=styles["Normal"], fontSize=10, alignment=TA_CENTER, spaceAfter=2
+    )
+
+    color_header = colors.HexColor("#d9e2f3")  # Azul claro
+    color_aprobado = colors.HexColor("#ed7d31")  # Naranja
+    color_desaprobado = colors.HexColor("#ffc000") # Dorado
+    color_libre_i = colors.HexColor("#f8cbad")    # Durazno
+    color_libre_at = colors.HexColor("#4bacc6")    # Turquesa
+
+    def get_situacion_color(codigo):
+        if codigo in ("APR", "PRO", "REG", "APROBADO", "PROMOCIONADO", "REGULAR"): return color_aprobado
+        if codigo in ("LBI", "LIBRE-I"): return color_libre_i
+        if codigo in ("LAT", "LIBRE-AT"): return color_libre_at
+        if codigo in ("DPA", "DTP", "DESAPROBADO_PA", "DESAPROBADO_TP"): return color_desaprobado
+        return None
+
+    # Título principal
+    elements.append(Paragraph("PLANILLA DE REGULARIDAD Y PROMOCIÓN", doc_title_style))
+
+    # Firmantes
+    docentes_qs = planilla.docentes.all().order_by("orden", "id")
+    profesor_docente = docentes_qs.filter(rol="profesor").first()
+    bedel_docente = docentes_qs.filter(rol="bedel").first()
+    
+    docente_nombre = profesor_docente.nombre if profesor_docente else (planilla.materia.profesor_nombre or "_______________________")
+
+    # Datos Generales (Tabla Azul)
+    data_gen = [
+        [Paragraph(f"<b>PROFESORADO DE:</b> {escape(planilla.profesorado.nombre)}", header_value_style), ""],
+        [
+            Paragraph(f"<b>UNIDAD CURRICULAR:</b> {escape(planilla.materia.nombre)}", header_value_style),
+            Paragraph(f"<b>AÑO:</b> {planilla.materia.anio_cursada or '-'}°", header_value_style)
+        ],
+        [
+            Paragraph(f"<b>FORMATO:</b> {escape(planilla.formato.nombre)}", header_value_style),
+            Paragraph(f"<b>RESOLUCIÓN Nº:</b> {escape(planilla.plan_resolucion or planilla.materia.plan_de_estudio.resolucion)}", header_value_style)
+        ],
+        [
+            Paragraph(f"<b>FOLIO Nº:</b> {planilla.folio or '-'}", header_value_style),
+            Paragraph(f"<b>DICTADO:</b> {planilla.plantilla.get_dictado_display() if planilla.plantilla else planilla.dictado}", header_value_style)
+        ],
+        [
+            Paragraph(f"<b>PROFESOR/A:</b> {escape(docente_nombre)}", header_value_style),
+            Paragraph(f"<b>FECHA:</b> {planilla.fecha.strftime('%d/%m/%Y')}", header_value_style)
+        ]
+    ]
+
+    table_gen = Table(data_gen, colWidths=[380, 160])
+    table_gen.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('SPAN', (0, 0), (1, 0)),
+        ('BACKGROUND', (0, 0), (0, 0), color_header),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    
+    elements.append(table_gen)
+    elements.append(Spacer(1, 15))
+
+    # --- TABLA DE ALUMNOS ---
 
     columnas_raw = planilla.plantilla.columnas or []
     columnas_tp = [
@@ -719,7 +758,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         ("<b>FINAL</b>", nota_final_idx),
         ("<b>%</b>", asistencia_idx),
         ("<b>EXC.</b>", excepcion_idx),
-        ("<b>SITUACIÃƒÆ’Ã¢â‚¬Å“N ACADÃƒÆ’Ã¢â‚¬Â°MICA</b>", situacion_idx),
+        ("<b>SITUACION ACADEMICA</b>", situacion_idx),
     ]
     for title, _ in constant_headers:
         headers_row1.append(Paragraph(title, header_style))
@@ -774,17 +813,24 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     table_style = TableStyle(
         [
             ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e0e0e0")),
-            ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#f5f5f5")),
+            ("BACKGROUND", (0, 0), (-1, 1), color_header),
             ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
             ("FONTSIZE", (0, 0), (-1, -1), 7),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (1, 2), (1, -1), 2),
-            ("RIGHTPADDING", (1, 2), (1, -1), 2),
-            ("ALIGN", (1, 2), (1, -1), "LEFT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
         ]
     )
+
+    # Colorear columna de Situación
+    for i, fila in enumerate(filas_qs, start=2): # +2 por las cabeceras
+        situacion_color = get_situacion_color(fila.situacion)
+        if situacion_color:
+            table_style.add("BACKGROUND", (situacion_idx, i), (situacion_idx, i), situacion_color)
+            
+    table_style.add("ALIGN", (1, 2), (1, -1), "LEFT")
+    table_style.add("ALIGN", (situacion_idx, 2), (situacion_idx, -1), "LEFT")
 
     table_style.add("SPAN", (0, 0), (0, 1))
     table_style.add("SPAN", (1, 0), (1, 1))
@@ -806,74 +852,86 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     elements.append(table)
     elements.append(Spacer(1, 14))
 
-    if planilla.observaciones:
-        elements.append(Paragraph("Observaciones:", section_heading_style))
-        obs_style = ParagraphStyle(
-            "ObservacionesTexto",
-            parent=styles["BodyText"],
-            fontSize=9,
-            leading=12,
-            alignment=TA_LEFT,
-        )
-        elements.append(Paragraph(planilla.observaciones.replace("\n", "<br/>"), obs_style))
-        elements.append(Spacer(1, 12))
+    # Bloque de Observaciones (enmarcado)
+    obs_data = [[Paragraph("<b>OBSERVACIONES:</b>", header_value_style)], [Paragraph(escape(planilla.observaciones or ""), body_left_style)]]
+    obs_table = Table(obs_data, colWidths=[doc.width])
+    obs_table.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BACKGROUND', (0, 0), (0, 0), colors.white),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 1), (-1, 1), 20), # Espacio para observaciones manuales si está vacío
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(obs_table)
+    elements.append(Spacer(1, 20))
 
-    profesor_docente = docentes_qs.filter(rol="P").first()
-    bedel_docente = docentes_qs.filter(rol="B").first()
+    # Firmas al final
+    firmantes_data = []
+    
+    # Profesor/a
+    p_nom = profesor_docente.nombre if profesor_docente else "_______________________"
+    p_dni = profesor_docente.dni if profesor_docente else "_______________________"
+    firmantes_data.append([
+        f"Profesor/a: {p_nom}",
+        "",
+        f"DNI: {p_dni}"
+    ])
+    
+    # Bedel
+    b_nom = bedel_docente.nombre if bedel_docente else "_______________________"
+    b_dni = bedel_docente.dni if bedel_docente else "_______________________"
+    firmantes_data.append([
+        f"Bedel: {b_nom}",
+        "",
+        f"DNI: {b_dni}"
+    ])
+    
+    # Convertir a párrafos sin líneas punteadas
+    firma_style = ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)
+    firmas_table_rows = []
+    for f_row in firmantes_data:
+        firmas_table_rows.append([
+            Paragraph(f"<b>{escape(f_row[0])}</b>", firma_style),
+            Paragraph(f"<b>{escape(f_row[2])}</b>", firma_style),
+        ])
 
-    if profesor_docente or bedel_docente:
-        elements.append(Paragraph("Firmas:", section_heading_style))
-        profesor_nombre = _display(profesor_docente.nombre if profesor_docente else "_______________________")
-        profesor_dni = _display(profesor_docente.dni if profesor_docente else "-", "-")
-        bedel_nombre = _display(bedel_docente.nombre if bedel_docente else "_______________________")
-        bedel_dni = _display(bedel_docente.dni if bedel_docente else "-", "-")
+    firmas_table = Table(firmas_table_rows, colWidths=[350, 150])
+    firmas_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    elements.append(firmas_table)
+    elements.append(Spacer(1, 25))
 
-        firmas_data = [
-            [
-                Paragraph(f"<b>Profesor/a:</b> {escape(profesor_nombre)}", info_style),
-                Paragraph(f"<b>Bedel:</b> {escape(bedel_nombre)}", info_style),
-            ],
-            [
-                Paragraph(f"<b>DNI:</b> {escape(profesor_dni)}", info_style),
-                Paragraph(f"<b>DNI:</b> {escape(bedel_dni)}", info_style),
-            ],
-            [
-                Paragraph("<br/><br/>______________________", info_style),
-                Paragraph("<br/><br/>______________________", info_style),
-            ],
-        ]
-
-        firmas_table = Table(firmas_data, colWidths=[270, 270], hAlign="LEFT")
-        firmas_table.setStyle(
-            TableStyle(
-                [
-                    ("ALIGN", (0, 0), (-1, 1), "LEFT"),
-                    ("ALIGN", (0, 2), (-1, 2), "CENTER"),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                ]
-            )
-        )
-        elements.append(firmas_table)
-        elements.append(Spacer(1, 10))
-
+    # Referencias como TABLA con colores
     referencias = planilla.plantilla.referencias or []
     if referencias:
-        elements.append(Paragraph('Referencias de casillero "Situacion Academica":', section_heading_style))
-        referencia_style = ParagraphStyle(
-            "Referencias",
-            parent=styles["BodyText"],
-            fontSize=8,
-            leading=10,
-            alignment=TA_LEFT,
-        )
-        for referencia in referencias:
-            label = referencia.get("label") or referencia.get("codigo") or "-"
-            descripcion = referencia.get("descripcion") or ""
-            texto = f"<b>{escape(str(label))}:</b> {escape(str(descripcion))}"
-            elements.append(Paragraph(texto, referencia_style))
-        elements.append(Spacer(1, 8))
+        elements.append(Paragraph('REFERENCIAS DE CASILLERO "SITUACIÓN ACADÉMICA"', doc_center_style))
+        ref_header = [Paragraph("<b>VALOR</b>", header_style), Paragraph("<b>DESCRIPCIÓN</b>", header_style)]
+        ref_data = [ref_header]
+        
+        for ref in referencias:
+            cod = ref.get("codigo") or ref.get("label") or "-"
+            desc = ref.get("descripcion") or ""
+            c_label = Paragraph(f"<b>{escape(str(cod))}</b>", header_style)
+            c_desc = Paragraph(escape(str(desc)), body_left_style)
+            ref_data.append([c_label, c_desc])
+            
+        ref_table = Table(ref_data, colWidths=[80, 460])
+        ref_style = TableStyle([
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+            ('BACKGROUND', (0, 0), (-1, 0), color_header),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ])
+        
+        # Aplicar colores a las filas de la tabla de referencia
+        for idx, ref in enumerate(referencias, start=1):
+            color = get_situacion_color(ref.get("codigo"))
+            if color:
+                ref_style.add('BACKGROUND', (0, idx), (0, idx), color)
+                
+        ref_table.setStyle(ref_style)
+        elements.append(ref_table)
 
     doc.build(elements)
     buffer.seek(0)
@@ -922,7 +980,19 @@ def crear_planilla_regularidad(
     try:
         plantilla = RegularidadPlantilla.objects.select_related("formato").get(pk=plantilla_id)
     except RegularidadPlantilla.DoesNotExist:
-        raise ValueError("La plantilla indicada no existe.") from None
+        # Fallback a anual del mismo formato
+        formato_obj = materia.formato
+        if isinstance(formato_obj, str): # Ensure formato_obj is an object, not just a slug
+            formato_obj = FormatoMateria.objects.filter(slug=formato_obj).first()
+        if formato_obj:
+            plantilla = RegularidadPlantilla.objects.filter(formato=formato_obj, dictado="ANUAL").first()
+            if plantilla:
+                # If a fallback plantilla is found, use it and update plantilla_id
+                plantilla_id = plantilla.id
+            else:
+                raise ValueError("La plantilla indicada no existe y no se encontró una plantilla ANUAL de fallback.") from None
+        else:
+            raise ValueError("La plantilla indicada no existe y no se pudo resolver el formato de la materia.") from None
 
     if plantilla.dictado != dictado:
         raise ValueError("El dictado seleccionado no coincide con la plantilla elegida.")
@@ -993,35 +1063,68 @@ def crear_planilla_regularidad(
             _ensure_required_row_fields(fila_data)
 
             if orden in ordenes_usados:
-                raise ValueError(f"El nÃƒÆ’Ã‚Âºmero de orden {orden} estÃƒÆ’Ã‚Â¡ duplicado.")
+                raise ValueError(f"El número de orden {orden} está duplicado.")
             ordenes_usados.add(orden)
 
             dni = _normalize_value(fila_data.get("dni"))
             if dni:
                 if dni in dnis_usados:
-                    raise ValueError(f"El DNI {dni} aparece mÃƒÆ’Ã‚Â¡s de una vez en la planilla.")
+                    raise ValueError(f"El DNI {dni} aparece más de una vez en la planilla.")
                 dnis_usados.add(dni)
             estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
+
+            # --- Lazy Student Creation (Similar a Actas) ---
+            if not estudiante and dni:
+                apellido_nombre = _normalize_value(fila_data.get("apellido_nombre"))
+                if "," in (apellido_nombre or ""):
+                    parts = apellido_nombre.split(",", 1)
+                    last_name = parts[0].strip()
+                    first_name = parts[1].strip()
+                    
+                    # Buscar o crear usuario
+                    user_obj = User.objects.filter(username=dni).first()
+                    if not user_obj:
+                         user_obj = User.objects.create_user(
+                             username=dni,
+                             password=dni,
+                             first_name=first_name,
+                             last_name=last_name
+                         )
+                    
+                    # Crear Estudiante
+                    estudiante = Estudiante.objects.create(
+                        user=user_obj,
+                        dni=dni,
+                        estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
+                    )
+                    # Vincular con el profesorado actual
+                    estudiante.asignar_profesorado(profesorado)
+                    warnings.append(f"[Fila {orden}] El estudiante {dni} ({apellido_nombre}) fue creado automáticamente.")
+            # -----------------------------------------------
 
             situacion = _resolve_situacion(fila_data.get("situacion", ""), formato_para_situaciones)
             nota_final_raw = fila_data.get("nota_final")
             nota_final_decimal = None
-            if nota_final_raw not in (None, "", []):
+            if nota_final_raw not in (None, "", [], "---"):
                 try:
                     nota_final_decimal = Decimal(str(nota_final_raw)).quantize(Decimal("0.1"))
                 except (InvalidOperation, ValueError) as e:
                     raise ValueError(
-                        f"La nota final de la fila {orden} debe ser un número válido."
+                        f"La nota final de la fila {orden} debe ser un número válido o '---'."
                     ) from e
             nota_final_entera = None
             if nota_final_decimal is not None:
                 nota_final_entera = int(nota_final_decimal.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
-            asistencia_raw = fila_data.get("asistencia")
-            if asistencia_raw in (None, "", []):
+            asistencia_raw = str(fila_data.get("asistencia") or "").strip()
+            if asistencia_raw in (None, "", [], "---"):
                 asistencia = None
             else:
-                asistencia = int(asistencia_raw)
+                try:
+                    # Soportar decimales y redondear hacia arriba según pedido del usuario
+                    asistencia = int(math.ceil(float(asistencia_raw.replace(",", "."))))
+                except (ValueError, TypeError):
+                    raise ValueError(f"La asistencia de la fila {orden} debe ser un número válido o '---'.")
                 if asistencia < 0 or asistencia > 100:
                     raise ValueError(f"La asistencia de la fila {orden} debe estar entre 0 y 100.")
 
@@ -1050,11 +1153,11 @@ def crear_planilla_regularidad(
                 and nota_final_entera is not None
                 and nota_final_entera < 8
             ):
-                raise ValueError(f"La nota final debe ser >= 8 para registrar una promociÃƒÆ’Ã‚Â³n en la fila {orden}.")
+                raise ValueError(f"La nota final debe ser >= 8 para registrar una promoción en la fila {orden}.")
 
             if not estudiante:
                 warnings.append(
-                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. "
+                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado y no tiene formato 'Apellido, Nombre' para creación automática. "
                     "Se omitió el registro de regularidad."
                 )
                 continue
@@ -1159,6 +1262,170 @@ def crear_planilla_regularidad(
     return result
 
 
+def obtener_planilla_regularidad_detalle(planilla_id: int) -> dict:
+    try:
+        planilla = PlanillaRegularidad.objects.select_related(
+            "profesorado", "materia", "plantilla", "formato"
+        ).get(pk=planilla_id)
+    except PlanillaRegularidad.DoesNotExist:
+        raise ValueError("La planilla no existe.")
+
+    docentes = []
+    for d in planilla.docentes.all().order_by("orden", "id"):
+        docentes.append({
+            "docente_id": d.docente_id,
+            "nombre": d.nombre,
+            "dni": d.dni,
+            "rol": d.rol,
+            "orden": d.orden,
+        })
+        
+    filas = []
+    for f in planilla.filas.all().order_by("orden", "id"):
+        filas.append({
+            "orden": f.orden,
+            "dni": f.dni,
+            "apellido_nombre": f.apellido_nombre,
+            "nota_final": float(f.nota_final) if f.nota_final else None,
+            "asistencia": f.asistencia_porcentaje,
+            "situacion": f.situacion,
+            "excepcion": f.excepcion,
+            "datos": f.datos,
+        })
+        
+    return {
+        "id": planilla.id,
+        "codigo": planilla.codigo,
+        "anio_academico": planilla.anio_academico,
+        "profesorado_id": planilla.profesorado_id,
+        "profesorado_nombre": planilla.profesorado.nombre,
+        "materia_id": planilla.materia_id,
+        "materia_nombre": planilla.materia.nombre,
+        "plantilla_id": planilla.plantilla_id,
+        "dictado": planilla.dictado,
+        "fecha": planilla.fecha.isoformat(),
+        "folio": planilla.folio,
+        "plan_resolucion": planilla.plan_resolucion,
+        "observaciones": planilla.observaciones,
+        "datos_adicionales": planilla.datos_adicionales,
+        "docentes": docentes,
+        "filas": filas,
+        "estado": planilla.estado,
+        "pdf_url": planilla.pdf.url if planilla.pdf else None,
+    }
+
+
+def actualizar_planilla_regularidad(
+    planilla_id: int,
+    user: User,
+    profesorado_id: int | None = None,
+    materia_id: int | None = None,
+    plantilla_id: int | None = None,
+    dictado: str | None = None,
+    fecha: date | None = None,
+    folio: str | None = None,
+    plan_resolucion: str | None = None,
+    observaciones: str | None = None,
+    datos_adicionales: dict | None = None,
+    docentes: list[dict] | None = None,
+    filas: list[dict] | None = None,
+    estado: str | None = None,
+    dry_run: bool = False,
+) -> dict:
+    try:
+        planilla = PlanillaRegularidad.objects.get(pk=planilla_id)
+    except PlanillaRegularidad.DoesNotExist:
+        raise ValueError("La planilla no existe.")
+
+    ensure_profesorado_access(user, planilla.profesorado_id, role_filter={"bedel", "secretaria"})
+
+    if fecha:
+        planilla.fecha = fecha
+    if folio is not None:
+        planilla.folio = folio
+    if plan_resolucion is not None:
+        planilla.plan_resolucion = plan_resolucion
+    if observaciones is not None:
+        planilla.observaciones = observaciones
+    if estado:
+        planilla.estado = estado
+    if datos_adicionales is not None:
+        planilla.datos_adicionales = datos_adicionales
+
+    atomic_ctx = transaction.atomic if not dry_run else _atomic_rollback
+    warnings = []
+    regularidades_registradas = 0
+
+    with atomic_ctx():
+        planilla.save()
+
+        if docentes is not None:
+            planilla.docentes.all().delete()
+            for idx, d_data in enumerate(docentes, start=1):
+                nombre = d_data.get("nombre", "").strip()
+                if not nombre: continue
+                dni = _normalize_value(d_data.get("dni"))
+                docente_id = d_data.get("docente_id")
+                d_obj = Docente.objects.filter(pk=docente_id).first() if docente_id else (Docente.objects.filter(dni=dni).first() if dni else None)
+                
+                PlanillaRegularidadDocente.objects.create(
+                    planilla=planilla, docente=d_obj, nombre=nombre, dni=dni,
+                    rol=d_data.get("rol") or "profesor", orden=d_data.get("orden") or idx
+                )
+
+        if filas is not None:
+            planilla.filas.all().delete()
+            columnas = planilla.plantilla.columnas or []
+            formato = planilla.materia.formato
+
+            for idx, f_data in enumerate(filas, start=1):
+                orden = f_data.get("orden") or idx
+                dni = _normalize_value(f_data.get("dni"))
+                estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
+                
+                situacion = _resolve_situacion(f_data.get("situacion", ""), formato)
+                nota_raw = f_data.get("nota_final")
+                nota_dec = None
+                if nota_raw not in (None, "", "---"):
+                    nota_dec = Decimal(str(nota_raw)).quantize(Decimal("0.1"))
+                
+                asist_raw = str(f_data.get("asistencia") or "").strip()
+                asist = None
+                if asist_raw not in ("", "---"):
+                    try:
+                        asist = int(math.ceil(float(asist_raw.replace(",", "."))))
+                    except: pass
+                
+                PlanillaRegularidadFila.objects.create(
+                    planilla=planilla, orden=orden, estudiante=estudiante, dni=dni or "",
+                    apellido_nombre=_normalize_value(f_data.get("apellido_nombre") or ""),
+                    nota_final=nota_dec, asistencia_porcentaje=asist,
+                    situacion=situacion, excepcion=bool(f_data.get("excepcion")),
+                    datos=_limpiar_datos_fila(f_data.get("datos"), columnas)
+                )
+                
+                # Actualizar también tabla Regularidad si existe estudiante y materia
+                if estudiante:
+                    Regularidad.objects.update_or_create(
+                        estudiante=estudiante, materia=planilla.materia,
+                        fecha_cierre=planilla.fecha,
+                        defaults={
+                            "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if nota_dec else None,
+                            "asistencia_porcentaje": asist,
+                            "situacion": situacion,
+                            "excepcion": bool(f_data.get("excepcion")),
+                        }
+                    )
+                    regularidades_registradas += 1
+
+        if not dry_run:
+            pdf_bytes = _render_planilla_regularidad_pdf(planilla)
+            filename = f"{planilla.codigo}.pdf"
+            planilla.pdf.save(filename, ContentFile(pdf_bytes), save=True)
+
+    return obtener_planilla_regularidad_detalle(planilla.id)
+
+
 REQUIRED_COLUMNS_ESTUDIANTES = {
     "DNI",
     "apellido",
@@ -1168,7 +1435,7 @@ REQUIRED_COLUMNS_ESTUDIANTES = {
     "must_change_password",
     "is_active",
     "fecha_nacimiento",
-    "telÃƒÆ’Ã‚Â©fono",
+    "teléfono",
     "domicilio",
     "estado_legajo",
     "carreras",
@@ -1189,7 +1456,7 @@ def _get_profesorado_from_cache(cache: dict[str, Profesorado], nombre: str) -> P
             cache[nombre] = profesorado
             return profesorado
     disponibles = ", ".join(nombre for _, nombre in opciones)
-    raise CommandError(f"No se encontrÃƒÆ’Ã‚Â³ el profesorado '{nombre}'. Disponibles: {disponibles}")
+    raise CommandError(f"No se encontró el profesorado '{nombre}'. Disponibles: {disponibles}")
 
 
 def _import_estudiante_record(
@@ -1221,7 +1488,7 @@ def _import_estudiante_record(
     else:
         fecha_nacimiento = None
 
-    telefono = (record.get("telefono") or record.get("telÃƒÆ’Ã‚Â©fono") or "").strip()
+    telefono = (record.get("telefono") or record.get("teléfono") or "").strip()
     domicilio = (record.get("domicilio") or "").strip()
     estado_legajo = (record.get("estado_legajo") or "").strip().upper()
     anio_ingreso_val = (record.get("anio_ingreso") or "").strip()
@@ -1386,7 +1653,7 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> dict:
 
                 carrera_nombre = normalized_row.get("carreras", "").strip()
                 if not carrera_nombre:
-                    raise ValueError("No se especificÃƒÂ³ la carrera.")
+                    raise ValueError("No se especificó la carrera.")
 
                 profesorado = carreras_cache.get(carrera_nombre)
                 if profesorado is None:
@@ -1565,7 +1832,7 @@ REQUIRED_COLUMNS_EQUIVALENCIAS = {
     "Codigo Equivalencia",
     "Nombre Equivalencia",
     "Materia",
-    "AÃƒÆ’Ã‚Â±o Cursada",
+    "Año Cursada",
     "Plan de Estudio Resolucion",
 }
 
@@ -1602,7 +1869,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> dict:
                 codigo_equivalencia = normalized_row.get("Codigo Equivalencia", "").strip()
                 nombre_equivalencia = normalized_row.get("Nombre Equivalencia", "").strip()
                 materia_nombre = normalized_row.get("Materia", "").strip()
-                anio_cursada_str = normalized_row.get("AÃƒÆ’Ã‚Â±o Cursada", "").strip()
+                anio_cursada_str = normalized_row.get("Año Cursada", "").strip()
                 plan_resolucion = normalized_row.get("Plan de Estudio Resolucion", "").strip()
 
                 if not codigo_equivalencia or not materia_nombre or not anio_cursada_str or not plan_resolucion:
@@ -1616,7 +1883,7 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> dict:
 
                 plan_de_estudio = PlanDeEstudio.objects.filter(resolucion=plan_resolucion).first()
                 if not plan_de_estudio:
-                    raise ValueError(f"Plan de Estudio con resoluciÃƒÆ’Ã‚Â³n '{plan_resolucion}' no encontrado.")
+                    raise ValueError(f"Plan de Estudio con resolución '{plan_resolucion}' no encontrado.")
 
                 materia = Materia.objects.filter(
                     nombre=materia_nombre,

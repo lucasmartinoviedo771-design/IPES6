@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Box, CircularProgress } from "@mui/material";
+import { Box, Button, CircularProgress } from "@mui/material";
 import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
 import { fetchRegularidadMetadata } from "@/api/primeraCarga";
 
@@ -24,6 +24,14 @@ const ActaExamenPrimeraCargaPage: React.FC = () => {
       subtitle="Registre rápidamente actas históricas. Algunos controles estrictos se omiten para agilizar la carga inicial."
       successMessage="Acta cargada correctamente."
       estudiantes={metadata?.estudiantes}
+      headerAction={
+        <Button
+          variant="outlined"
+          onClick={() => window.open("/admin/primera-carga/historial-actas", "_blank")}
+        >
+          Ver Historial de Actas
+        </Button>
+      }
     />
   );
 };

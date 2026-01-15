@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import {
     Box,
     Typography,
@@ -20,31 +23,53 @@ import {
     Stack,
     CircularProgress,
     Chip,
-    Alert
+    Alert,
+    TextField
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
-import { useNavigate } from 'react-router-dom';
-
-import { listarActas, obtenerActa, actualizarCabeceraActa, ActaListItemDTO, ActaDetailDTO } from '@/api/cargaNotas';
-import { gestionarMesaPlanillaCierre } from '@/api/alumnos';
-import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { enqueueSnackbar } from 'notistack';
+import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
-import { TextField } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { enqueueSnackbar } from 'notistack';
+
+import { listarActas, obtenerActa, actualizarCabeceraActa, ActaFilter } from '@/api/cargaNotas';
+import { gestionarMesaPlanillaCierre } from '@/api/alumnos';
+import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const HistorialActasPage: React.FC = () => {
     const navigate = useNavigate();
     const [selectedActaId, setSelectedActaId] = useState<number | null>(null);
 
-    const { data: actas, isLoading, isError } = useQuery({
-        queryKey: ['actas-historial'],
-        queryFn: listarActas,
+    // Filtros
+    const [filters, setFilters] = useState({
+        anio: '',
+        materia: '',
+        libro: '',
+        folio: ''
     });
+    const [activeFilters, setActiveFilters] = useState({});
+
+    const { data: actas, isLoading, isError } = useQuery({
+        queryKey: ['actas-historial', activeFilters],
+        queryFn: () => listarActas(activeFilters),
+    });
+
+    const handleSearch = () => {
+        setActiveFilters(filters);
+    };
+
+    const handleClear = () => {
+        const empty = { anio: '', materia: '', libro: '', folio: '' };
+        setFilters(empty);
+        setActiveFilters({});
+    };
 
     return (
         <Box sx={{ p: 3 }}>
@@ -56,6 +81,60 @@ const HistorialActasPage: React.FC = () => {
                     Historial de Actas Cargadas
                 </Typography>
             </Stack>
+
+            {/* Filtros de Busqueda */}
+            <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+                    <TextField
+                        label="Año (Fecha)"
+                        size="small"
+                        type="number"
+                        placeholder="Ej: 2024"
+                        value={filters.anio}
+                        onChange={(e) => setFilters({ ...filters, anio: e.target.value })}
+                        sx={{ width: { xs: '100%', md: 150 } }}
+                    />
+                    <TextField
+                        label="Materia"
+                        size="small"
+                        placeholder="Buscar por nombre..."
+                        value={filters.materia}
+                        onChange={(e) => setFilters({ ...filters, materia: e.target.value })}
+                        sx={{ flex: 1 }}
+                    />
+                    <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                        <TextField
+                            label="Libro"
+                            size="small"
+                            value={filters.libro}
+                            onChange={(e) => setFilters({ ...filters, libro: e.target.value })}
+                            sx={{ width: 100 }}
+                        />
+                        <TextField
+                            label="Folio"
+                            size="small"
+                            value={filters.folio}
+                            onChange={(e) => setFilters({ ...filters, folio: e.target.value })}
+                            sx={{ width: 100 }}
+                        />
+                    </Stack>
+                    <Button
+                        variant="contained"
+                        onClick={handleSearch}
+                        startIcon={<SearchIcon />}
+                    >
+                        Buscar
+                    </Button>
+                    {(Object.values(activeFilters).some(v => v)) && (
+                        <Button
+                            color="inherit"
+                            onClick={handleClear}
+                        >
+                            Limpiar
+                        </Button>
+                    )}
+                </Stack>
+            </Paper>
 
             {isLoading && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -87,7 +166,7 @@ const HistorialActasPage: React.FC = () => {
                             {actas?.map((acta) => (
                                 <TableRow key={acta.id} hover>
                                     <TableCell>{acta.id}</TableCell>
-                                    <TableCell>{new Date(acta.fecha).toLocaleDateString()}</TableCell>
+                                    <TableCell>{dayjs.utc(acta.fecha).format('DD/MM/YYYY')}</TableCell>
                                     <TableCell>
                                         <Chip label={acta.codigo} size="small" variant="outlined" />
                                     </TableCell>
@@ -113,7 +192,7 @@ const HistorialActasPage: React.FC = () => {
                             {actas?.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                                        No hay actas registradas.
+                                        No hay actas registradas que coincidan con la búsqueda.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -284,7 +363,7 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                             <Stack direction="row" spacing={2}>
                                 <Box flex={1}>
                                     <Typography variant="subtitle2" color="text.secondary">Fecha</Typography>
-                                    <Typography variant="body1">{new Date(acta.fecha).toLocaleDateString()}</Typography>
+                                    <Typography variant="body1">{dayjs.utc(acta.fecha).format('DD/MM/YYYY')}</Typography>
                                 </Box>
                                 <Box flex={1}>
                                     <Typography variant="subtitle2" color="text.secondary">Libro / Folio</Typography>

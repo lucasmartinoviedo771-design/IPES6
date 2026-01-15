@@ -28,6 +28,7 @@ import PersonAdd from '@mui/icons-material/PersonAdd';
 import FileCopy from '@mui/icons-material/FileCopy';
 import CompareArrows from '@mui/icons-material/CompareArrows';
 import HistoryIcon from '@mui/icons-material/History';
+import FindInPage from '@mui/icons-material/FindInPage';
 
 import {
   crearEstudianteInicial,
@@ -658,6 +659,42 @@ const PrimeraCargaPage: React.FC = () => {
                     "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
                   }}
                   onClick={() => navigate("/admin/primera-carga/historial-actas")}
+                >
+                  Ver Historial
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Card sx={cardStyles}>
+            <CardContent sx={{ height: "100%" }}>
+              <Stack spacing={3} sx={{ height: "100%" }}>
+                <Box
+                  sx={iconBoxStyles}
+                >
+                  <FindInPage fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Historial de Regularidades
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Consultá el listado de las planillas de regularidad cargadas.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  sx={{
+                    mt: "auto",
+                    borderRadius: 999,
+                    borderColor: INSTITUTIONAL_TERRACOTTA,
+                    color: INSTITUTIONAL_TERRACOTTA,
+                    "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                  }}
+                  onClick={() => navigate("/admin/primera-carga/historial-regularidades")}
                 >
                   Ver Historial
                 </Button>
