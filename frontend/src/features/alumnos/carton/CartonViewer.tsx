@@ -275,27 +275,25 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
               <Table
                 size="small"
                 sx={{
-                  borderCollapse: 'separate',
+                  borderCollapse: 'collapse',
                   borderSpacing: 0,
-                  '& th, & td': { border: '1px solid #000' },
                 }}
               >
                 <TableHead>
-                  <TableRow
-                    sx={{
-                      '& .MuiTableCell-root': {
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      sx={{
+                        backgroundColor: 'grey.100',
+                        borderLeft: '1px solid #000',
+                        borderTop: '1px solid #000',
+                        borderBottom: '1px solid #000',
+                        borderRight: '1px solid #000',
                         fontWeight: 700,
                         fontSize: '0.85rem',
                         py: 1,
-                        color: '#0f172a',
-                        borderTop: '1px solid #000',
-                        borderBottom: '1px solid #000',
-                      },
-                    }}
-                  >
-                    <TableCell
-                      colSpan={3}
-                      sx={{ backgroundColor: 'grey.100', borderLeft: '1px solid #000' }}
+                        color: '#0f172a'
+                      }}
                     />
                     <TableCell
                       colSpan={3}
@@ -306,7 +304,8 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                         fontWeight: 700,
                         letterSpacing: 1,
                         textTransform: 'uppercase',
-                        borderLeft: '1px solid #000',
+                        borderTop: '1px solid #000',
+                        borderBottom: '1px solid #000',
                         borderRight: '1px solid #000',
                       }}
                     >
@@ -321,79 +320,89 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                         fontWeight: 700,
                         letterSpacing: 1,
                         textTransform: 'uppercase',
+                        borderTop: '1px solid #000',
+                        borderBottom: '1px solid #000',
                         borderRight: '1px solid #000',
                       }}
                     >
                       Final
                     </TableCell>
                   </TableRow>
-                  <TableRow
-                    sx={{
-                      backgroundColor: 'grey.100',
-                      '& .MuiTableCell-root': { border: '1px solid #000' },
-                    }}
-                  >
-                    <TableCell align="center">Año</TableCell>
-                    <TableCell align="center">Cuat.</TableCell>
-                    <TableCell>Espacio Curricular</TableCell>
-                    <TableCell align="center">Fecha</TableCell>
-                    <TableCell align="center">Sit. Académica</TableCell>
-                    <TableCell align="center">Nota</TableCell>
-                    <TableCell align="center">Fecha</TableCell>
-                    <TableCell align="center">Condición</TableCell>
-                    <TableCell align="center">Nota</TableCell>
-                    <TableCell align="center">Folio</TableCell>
-                    <TableCell align="center">Libro</TableCell>
+                  <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                    {['Año', 'Cuat.', 'Espacio Curricular', 'Fecha', 'Sit. Académica', 'Nota', 'Fecha', 'Condición', 'Nota', 'Folio', 'Libro'].map((head, i) => (
+                      <TableCell
+                        key={head}
+                        align={i === 2 ? 'left' : 'center'}
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          borderBottom: '1px solid #000',
+                          borderRight: '1px solid #000',
+                          borderTop: '1px solid #000',
+                          borderLeft: i === 0 ? '1px solid #000' : 'none',
+                          color: '#0f172a'
+                        }}
+                      >
+                        {head}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
+
                 <TableBody>
                   {data.registros.map((record, index) => {
                     const nextRecord = data.registros[index + 1];
-                    let borderBottom: string | undefined;
+                    const isLastInGroup = !nextRecord || record.espacioCurricular !== nextRecord.espacioCurricular;
 
-                    if (nextRecord) {
-                      if (record.espacioCurricular !== nextRecord.espacioCurricular) {
-                        borderBottom = '1.5px solid #e0e0e0';
-                      }
-                      if (record.anio !== nextRecord.anio) {
-                        borderBottom = '2px solid #bdbdbd';
-                      }
-                    }
+                    const bottomBorder = isLastInGroup ? '2px solid #000' : 'none';
 
-                    const isFirstInGroup = 
+                    const isFirstInGroup =
                       index === 0 || record.espacioCurricular !== data.registros[index - 1].espacioCurricular;
+
                     let rowSpan = 1;
                     if (isFirstInGroup) {
                       rowSpan = data.registros.filter((r) => r.espacioCurricular === record.espacioCurricular).length;
                     }
 
+                    const commonCellSx = {
+                      borderRight: '1px solid #000',
+                      borderBottom: bottomBorder,
+                      height: '35px',
+                      padding: '4px 8px',
+                      fontSize: '0.80rem',
+                    };
+
+                    const spanningCellSx = {
+                      ...commonCellSx,
+                      borderLeft: '1px solid #000',
+                      borderBottom: '2px solid #000',
+                      verticalAlign: 'middle',
+                      backgroundColor: '#fff',
+                    };
+
                     return (
                       <TableRow
                         key={`${record.espacioCurricular}-${index}`}
-                        sx={{
-                          borderBottom,
-                          '& .MuiTableCell-root': {
-                            border: '1px solid #000',
-                          },
-                        }}
+                        sx={{ '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.02)' } }}
                       >
                         {isFirstInGroup && (
                           <>
-                            <TableCell rowSpan={rowSpan} align="center" sx={{ verticalAlign: 'middle' }}>
+                            <TableCell rowSpan={rowSpan} align="center" sx={spanningCellSx}>
                               {record.anio}
                             </TableCell>
-                            <TableCell rowSpan={rowSpan} align="center" sx={{ verticalAlign: 'middle' }}>
+                            <TableCell rowSpan={rowSpan} align="center" sx={{ ...spanningCellSx, borderLeft: 'none' }}>
                               {record.cuatrimestre}
                             </TableCell>
-                            <TableCell rowSpan={rowSpan} sx={{ verticalAlign: 'middle', fontWeight: 500 }}>
+                            <TableCell rowSpan={rowSpan} sx={{ ...spanningCellSx, borderLeft: 'none', fontWeight: 600 }}>
                               {record.espacioCurricular}
                             </TableCell>
                           </>
                         )}
-                        <TableCell align="center">
+
+                        <TableCell align="center" sx={commonCellSx}>
                           {record.tipo === 'regularidad' ? formatDateToDDMMYY(record.fecha) : '-'}
                         </TableCell>
-                        <TableCell align="center">
+                        <TableCell align="center" sx={commonCellSx}>
                           {record.tipo === 'regularidad'
                             ? record.condicion
                               ? record.condicion === "REGULAR"
@@ -402,16 +411,17 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                               : "-"
                             : "-"}
                         </TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 'medium' }}>
+                        <TableCell align="center" sx={{ ...commonCellSx, fontWeight: 'medium' }}>
                           {record.tipo === 'regularidad' ? record.nota ?? '-' : '-'}
                         </TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? formatDateToDDMMYY(record.fecha) : '-'}</TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? record.condicion ?? '-' : '-'}</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 'medium' }}>
+
+                        <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? formatDateToDDMMYY(record.fecha) : '-'}</TableCell>
+                        <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? record.condicion ?? '-' : '-'}</TableCell>
+                        <TableCell align="center" sx={{ ...commonCellSx, fontWeight: 'medium' }}>
                           {record.tipo === 'final' ? record.nota ?? '-' : '-'}
                         </TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? record.folio ?? '-' : '-'}</TableCell>
-                        <TableCell align="center">{record.tipo === 'final' ? record.libro ?? '-' : '-'}</TableCell>
+                        <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? record.folio ?? '-' : '-'}</TableCell>
+                        <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? record.libro ?? '-' : '-'}</TableCell>
                       </TableRow>
                     );
                   })}

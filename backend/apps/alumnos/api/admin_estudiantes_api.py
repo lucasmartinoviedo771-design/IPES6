@@ -40,6 +40,7 @@ def admin_list_estudiantes(
                 Q(dni__icontains=q_clean)
                 | Q(user__first_name__icontains=q_clean)
                 | Q(user__last_name__icontains=q_clean)
+                | Q(legajo__icontains=q_clean)
             )
     if carrera_id:
         qs = qs.filter(carreras__id=carrera_id)

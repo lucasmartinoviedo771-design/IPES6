@@ -23,7 +23,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { enqueueSnackbar } from "notistack";
 
 import {
@@ -122,6 +122,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   estudiantes = [],
   headerAction,
 }) => {
+  const queryClient = useQueryClient();
   const metadataQuery = useQuery<ActaMetadataDTO>({
     queryKey: ["acta-examen-metadata"],
     queryFn: fetchActaMetadata,
@@ -139,7 +140,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const [alumnos, setAlumnos] = useState<AlumnoState[]>([createEmptyAlumno(1)]);
   const [oralActDrafts, setOralActDrafts] = useState<Record<string, OralActFormValues>>({});
   const [oralDialogAlumno, setOralDialogAlumno] = useState<AlumnoState | null>(null);
-  const [, setLoadingAlumnoDni] = useState<string | null>(null);
+  const [loadingAlumnoDni, setLoadingAlumnoDni] = useState<string | null>(null);
   const [mesaCodigo, setMesaCodigo] = useState<string>("");
   const [mesaBuscando, setMesaBuscando] = useState(false);
   const [mesaBusquedaError, setMesaBusquedaError] = useState<string | null>(null);
@@ -277,6 +278,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const mutation = useMutation({
     mutationFn: (payload: ActaCreatePayload) => crearActaExamen(payload),
     onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["acta-examen-metadata"] });
       enqueueSnackbar(response.message || successMessage, { variant: "success" });
       setDocentes(createEmptyDocentes());
       setAlumnos([createEmptyAlumno(1)]);
@@ -383,30 +385,71 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       return;
     }
 
-    const normalized = trimmed.replace(/\s+/g, " ");
-    const hyphenIndex = normalized.indexOf("-");
-    const dniSegmentRaw =
-      hyphenIndex >= 0 ? normalized.slice(0, hyphenIndex).trim() : normalized;
-    const sanitizedDni = dniSegmentRaw.replace(/\D/g, "");
+    // 1. Intentar buscar coincidencia EXACTA con las opciones generadas (para selección de drop-down)
+    const exactMatch = docentesDisponibles.find((doc) => {
+      const label = doc.dni ? `${doc.dni} - ${doc.nombre}` : doc.nombre;
+      return label === value;
+    });
 
-    if (sanitizedDni.length !== 8) {
-      const nombreOnly =
-        hyphenIndex >= 0
-          ? normalized.slice(hyphenIndex + 1).trim()
-          : sanitizedDni.length === 0
-            ? normalized
-            : "";
+    if (exactMatch) {
       updateDocente(index, {
-        docente_id: null,
-        dni: sanitizedDni,
-        nombre: nombreOnly,
+        docente_id: exactMatch.id,
+        dni: exactMatch.dni || "",
+        nombre: exactMatch.nombre,
         inputValue: value,
       });
       return;
     }
 
+    // 2. Si no es coincidencia exacta, parseamos manual
+    const normalized = trimmed.replace(/\s+/g, " ");
+    const hyphenIndex = normalized.indexOf("-");
+    const dniSegmentRaw =
+      hyphenIndex >= 0 ? normalized.slice(0, hyphenIndex).trim() : normalized;
+
+    // Si es un ID histórico (HIST-), no lo sanitizamos para preservar letras/guiones.
+    // Si es un DNI normal, quitamos no-dígitos.
+    const isHist = dniSegmentRaw.toUpperCase().startsWith("HIST-");
+    const sanitizedDni = isHist ? dniSegmentRaw : dniSegmentRaw.replace(/\D/g, "");
+
+    // Si la longitud no es standard de DNI (y no es HIST), asumimos que es solo nombre
+    // (Ajuste: Los DNI pueden ser de 7 u 8. HIST son más largos. Relajamos esto un poco)
+    if (!isHist && (sanitizedDni.length < 6 || sanitizedDni.length > 9)) {
+      // Check if it looks like a name only (no hyphen, no valid dni)
+      if (hyphenIndex === -1 && sanitizedDni.length === 0) {
+        // Es todo texto (nombre)
+        updateDocente(index, {
+          docente_id: null,
+          dni: "",
+          nombre: normalized,
+          inputValue: value,
+        });
+        return;
+      }
+      // Si hay guion pero el DNI no parece válido, procedemos con cautela,
+      // pero la lógica original asumía que si no era len=8 era nombre.
+      // Mantenemos lógica similar pero permitiendo 7 u 8.
+      if (sanitizedDni.length !== 8 && sanitizedDni.length !== 7) {
+        const nombreOnly =
+          hyphenIndex >= 0
+            ? normalized.slice(hyphenIndex + 1).trim()
+            : normalized;
+
+        updateDocente(index, {
+          docente_id: null,
+          dni: sanitizedDni, // Quizas vacio
+          nombre: nombreOnly,
+          inputValue: value,
+        });
+        return;
+      }
+    }
+
+    // 3. Buscar en disponibles por DNI saneado (para tipeo manual de DNI)
     const match = docentesDisponibles.find((doc) => {
-      const candidateDni = doc.dni ? doc.dni.replace(/\D/g, "") : null;
+      const candidateDni = doc.dni
+        ? (doc.dni.toUpperCase().startsWith("HIST-") ? doc.dni : doc.dni.replace(/\D/g, ""))
+        : null;
       return candidateDni === sanitizedDni;
     });
 
@@ -763,9 +806,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
               <TableHead>
                 <TableRow>
                   <TableCell align="center" sx={{ width: 50 }}>N°</TableCell>
-                  <TableCell sx={{ width: 120 }}>Permiso examen</TableCell>
-                  <TableCell sx={{ width: 140 }}>DNI</TableCell>
-                  <TableCell sx={{ minWidth: 320 }}>
+                  <TableCell align="center" sx={{ width: 115, px: 1 }}>Permiso examen</TableCell>
+                  <TableCell sx={{ width: 125, px: 1 }}>DNI</TableCell>
+                  <TableCell sx={{ minWidth: 450 }}>
                     <Box>
                       <Typography variant="subtitle2" component="span" sx={{ fontWeight: "bold" }}>
                         Apellido y nombre
@@ -777,19 +820,19 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ width: 100 }}>Examen escrito</TableCell>
-                  <TableCell sx={{ width: 100 }}>Examen oral</TableCell>
-                  <TableCell sx={{ width: 110 }}>Calificación definitiva</TableCell>
-                  <TableCell>Observaciones</TableCell>
-                  <TableCell align="center" sx={{ width: 90 }}>Acta oral</TableCell>
-                  <TableCell align="center" sx={{ width: 80 }}>Acciones</TableCell>
+                  <TableCell sx={{ width: 160 }}>Examen escrito</TableCell>
+                  <TableCell sx={{ width: 160 }}>Examen oral</TableCell>
+                  <TableCell sx={{ width: 160 }}>Calificación definitiva</TableCell>
+                  <TableCell sx={{ width: 140 }}>Observaciones</TableCell>
+                  <TableCell align="center" sx={{ width: 80, px: 1 }}>Acta oral</TableCell>
+                  <TableCell align="center" sx={{ width: 60, px: 1 }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {alumnos.map((alumno) => (
                   <TableRow key={alumno.internoId}>
                     <TableCell align="center">{alumno.numero_orden}</TableCell>
-                    <TableCell>
+                    <TableCell align="center" sx={{ p: 1 }}>
                       <TextField
                         size="small"
                         fullWidth
@@ -798,19 +841,28 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                         onChange={(event) =>
                           updateAlumno(alumno.internoId, { permiso_examen: event.target.value })
                         }
+                        sx={{
+                          "& .MuiInputBase-input": {
+                            py: 0.5,
+                            px: 1,
+                            textAlign: "center"
+                          }
+                        }}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ p: 1 }}>
                       <TextField
                         size="small"
                         fullWidth
-                        inputProps={{ maxLength: 10 }}
+                        inputProps={{ maxLength: 8 }}
                         value={alumno.dni}
                         onChange={(event) => handleAlumnoDniChange(alumno.internoId, event.target.value)}
                       />
                     </TableCell>
                     <TableCell>
-                      {estudiantes && estudiantes.length > 0 ? (
+                      {loadingAlumnoDni === alumno.internoId ? (
+                        <CircularProgress size={20} />
+                      ) : estudiantes && estudiantes.length > 0 ? (
                         <Autocomplete
                           freeSolo
                           options={estudiantes}
@@ -849,28 +901,28 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                               apellido_nombre: match ? match[1].trim() : value,
                             });
                           }}
+                          forcePopupIcon={false}
                           renderOption={(props, option) => {
                             const { key, ...restProps } = props as any;
                             return (
                               <li key={key} {...restProps}>
                                 <Box>
                                   <Typography variant="body2">{option.apellido_nombre}</Typography>
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography variant="caption" display="block" color="text.secondary">
                                     DNI: {option.dni}
                                   </Typography>
                                 </Box>
                               </li>
                             );
                           }}
-                          renderInput={(params: any) => (
+                          renderInput={(params) => (
                             <TextField
                               {...params}
                               size="small"
                               fullWidth
-                              placeholder="Apellido y nombre"
+                              placeholder={!strict ? "Apellido, Nombre" : ""}
                             />
                           )}
-                          noOptionsText="No se encontraron estudiantes"
                         />
                       ) : (
                         <TextField
@@ -880,6 +932,8 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                           onChange={(event) =>
                             updateAlumno(alumno.internoId, { apellido_nombre: event.target.value })
                           }
+                          disabled={strict}
+                          placeholder={!strict ? "Apellido, Nombre" : ""}
                         />
                       )}
                     </TableCell>
@@ -894,6 +948,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                         autoHighlight
                         autoSelect
                         selectOnFocus
+                        forcePopupIcon={false}
                         renderInput={(params) => <TextField {...params} size="small" />}
                       />
                     </TableCell>
@@ -908,6 +963,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                         autoHighlight
                         autoSelect
                         selectOnFocus
+                        forcePopupIcon={false}
                         renderInput={(params) => <TextField {...params} size="small" />}
                       />
                     </TableCell>
@@ -922,6 +978,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                         autoHighlight
                         autoSelect
                         selectOnFocus
+                        forcePopupIcon={false}
                         disableClearable={false}
                         renderInput={(params) => (
                           <TextField {...params} size="small" fullWidth required />

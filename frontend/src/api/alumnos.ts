@@ -435,6 +435,7 @@ export type CartonMateriaDTO = {
   formato_display?: string | null;
   regularidad?: CartonEventoDTO | null;
   final?: CartonEventoDTO | null;
+  finales?: CartonEventoDTO[] | null;
 };
 
 export type CartonPlanDTO = {

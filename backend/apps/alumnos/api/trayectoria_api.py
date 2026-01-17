@@ -269,19 +269,19 @@ def trayectoria_alumno(request, dni: str | None = None):
     
     # --- CONSTRUCCION DEL CARTON (Verificacion de Planes) ---
     regularidades_map = {reg.materia_id: reg for reg in regularidades_qs}
-    # Para finales, priorizamos las aprobadas, luego la mas reciente
+    # Para finales, agrupamos TODAS las inscripciones por materia
     finales_map = {}
     for insc in inscripciones_mesa_qs:
         mid = insc.mesa.materia_id
         if mid not in finales_map:
-            finales_map[mid] = insc
-        else:
-             # Si ya tenemos uno, reemplazamos ssi el actual es APROBADO y el anterior NO
-             current = finales_map[mid]
-             if current.condicion == InscripcionMesa.Condicion.APROBADO:
-                 continue
-             if insc.condicion == InscripcionMesa.Condicion.APROBADO:
-                 finales_map[mid] = insc
+            finales_map[mid] = []
+        finales_map[mid].append(insc)
+        
+        if insc.condicion == InscripcionMesa.Condicion.APROBADO:
+            # We add logic to define what is "approved".
+            # Usually Nota >= 4 or just APROBADO enum. 
+            # In this system, cond='APR' is enough.
+            aprobadas_set.add(mid)
 
     for carrera in carreras_est:
         # Buscamos planes de estudio activos o relacionados a la carrera
@@ -297,8 +297,6 @@ def trayectoria_alumno(request, dni: str | None = None):
             carton_materias = []
             for mat in materias_plan:
                 reg = regularidades_map.get(mat.id)
-                final = finales_map.get(mat.id)
-                
                 reg_data = None
                 if reg:
                     reg_data = {
@@ -308,17 +306,29 @@ def trayectoria_alumno(request, dni: str | None = None):
                         "folio": None, # Regularidad no suele tener folio en este modelo simple
                         "libro": None
                     }
-                
-                final_data = None
-                if final:
-                     final_data = {
-                        "fecha": final.mesa.fecha.isoformat(),
-                        "condicion": final.condicion,
-                        "nota": _format_nota(final.nota),
-                        "folio": final.folio,
-                        "libro": final.libro,
-                        "id_fila": final.id
+
+                finales_list = finales_map.get(mat.id, [])
+                carton_finales = []
+                best_final = None
+
+                for f in finales_list:
+                     f_data = {
+                        "fecha": f.mesa.fecha.isoformat(),
+                        "condicion": f.condicion,
+                        "nota": _format_nota(f.nota),
+                        "folio": f.folio,
+                        "libro": f.libro,
+                        "id_fila": f.id
                      }
+                     carton_finales.append(f_data)
+                     
+                     # Simple logic for 'best_final' (legacy field): prefer APROBADO, else last one
+                     if not best_final:
+                         best_final = f_data
+                     elif f.condicion == InscripcionMesa.Condicion.APROBADO and best_final["condicion"] != InscripcionMesa.Condicion.APROBADO:
+                         best_final = f_data
+                
+                final_data = best_final
 
                 carton_materias.append({
                     "materia_id": mat.id,
@@ -329,7 +339,8 @@ def trayectoria_alumno(request, dni: str | None = None):
                     "formato": mat.formato,
                     "formato_display": mat.get_formato_display(),
                     "regularidad": reg_data,
-                    "final": final_data
+                    "final": final_data,
+                    "finales": carton_finales
                 })
             
             carton_planes.append({

@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Router, Schema, Field, Body  # Importamos Schema y Field aqui tambien
 from ninja.errors import HttpError
+import uuid
 
 from apps.common.api_schemas import ApiResponse
 from apps.alumnos.api.reportes_api import _check_correlativas_caidas
@@ -29,6 +30,7 @@ from core.models import (
     Profesorado,
     Regularidad,
     RegularidadPlanillaLock,
+    InscripcionMateriaAlumno,
 )
 
 # Mantenemos los otros schemas que NO daban error importados desde schemas.py
@@ -216,9 +218,9 @@ def _nota_label(value: str) -> str:
     if not value:
         return "-"
     if value == ActaExamenAlumno.NOTA_AUSENTE_JUSTIFICADO:
-        return "Ausente justificado"
+        return "Aus. Jus."
     if value == ActaExamenAlumno.NOTA_AUSENTE_INJUSTIFICADO:
-        return "Ausente injustificado"
+        return "Aus. Injus."
     return f"{value}"
 
 
@@ -601,6 +603,62 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             message="La cantidad de ausentes no coincide con las calificaciones cargadas.",
         )
 
+    # 2. Auto-creacion de Docentes Históricos (si no tienen ID)
+    # Si viene nombre pero no docente_id, creamos un Docente "placeholder" si no existe DNI,
+    # o buscamos/creamos por DNI si viene especificado.
+    
+    for docente_data in payload.docentes:
+        if not docente_data.docente_id and docente_data.nombre:
+            nombre_clean = docente_data.nombre.strip()
+            dni_clean = (docente_data.dni or "").strip()
+            
+            # Caso 1: Viene DNI especificado manualmente
+            if dni_clean:
+                # Buscar si ya existe
+                existing_doc = Docente.objects.filter(dni=dni_clean).first()
+                if existing_doc:
+                    docente_data.docente_id = existing_doc.id
+                else:
+                    # Crear nuevo con ese DNI
+                    parts = nombre_clean.split(",")
+                    if len(parts) >= 2:
+                        apellido = parts[0].strip()
+                        nombre = " ".join(parts[1:]).strip()
+                    else:
+                        # Si no hay coma, asumimos todo apellido (o convención)
+                        apellido = nombre_clean
+                        nombre = "."
+
+                    new_doc = Docente.objects.create(
+                        dni=dni_clean,
+                        apellido=apellido,
+                        nombre=nombre
+                    )
+                    docente_data.docente_id = new_doc.id
+
+            # Caso 2: No viene DNI (solo nombre)
+            else:
+                # Generamos un DNI ficticio para persistirlo
+                # Formato: HIST-{hash corto}
+                fake_dni = f"HIST-{uuid.uuid4().hex[:8].upper()}"
+                
+                parts = nombre_clean.split(",")
+                if len(parts) >= 2:
+                    apellido = parts[0].strip()
+                    nombre = " ".join(parts[1:]).strip()
+                else:
+                    apellido = nombre_clean
+                    nombre = "."
+                
+                new_doc = Docente.objects.create(
+                    dni=fake_dni,
+                    apellido=apellido,
+                    nombre=nombre
+                )
+                docente_data.docente_id = new_doc.id
+                # Actualizamos el DNI en el payload para que quede guardado en el acta tambien
+                docente_data.dni = fake_dni
+
     usuario = getattr(request, "user", None)
     with transaction.atomic():
         acta = ActaExamen.objects.create(
@@ -885,7 +943,9 @@ def listar_comisiones(
         return CargaNotasLookup(materias=[], comisiones=[])
 
     roles = _normalized_user_roles(request.user)
-    docente_profile = _docente_from_user(request.user) if "docente" in roles else None
+    # Si es admin/secretaria/etc, NO filtramos por docente aunque tenga el rol.
+    is_privileged = bool(roles.intersection({"admin", "secretaria", "bedel", "titulos", "coordinador"}))
+    docente_profile = _docente_from_user(request.user) if "docente" in roles and not is_privileged else None
 
     comisiones_qs = (
         Comision.objects.select_related(

@@ -41,16 +41,16 @@ const buildStudentInfo = (trayectoria: TrayectoriaDTO, plan?: CartonPlanDTO): St
   const estudiante = trayectoria.estudiante;
   const planMateriaIds = plan
     ? new Set(
-        plan.materias
-          .map((materia) => materia.materia_id)
-          .filter((value): value is number => value !== null && value !== undefined),
-      )
+      plan.materias
+        .map((materia) => materia.materia_id)
+        .filter((value): value is number => value !== null && value !== undefined),
+    )
     : null;
 
   const totalMaterias = planMateriaIds
     ? planMateriaIds.size
     : estudiante.materias_totales ??
-      (plan ? plan.materias.length : trayectoria.regularidades.length || trayectoria.historial.length);
+    (plan ? plan.materias.length : trayectoria.regularidades.length || trayectoria.historial.length);
 
   const planAprobadas = planMateriaIds
     ? trayectoria.aprobadas.filter((id) => planMateriaIds.has(id))
@@ -61,11 +61,11 @@ const buildStudentInfo = (trayectoria: TrayectoriaDTO, plan?: CartonPlanDTO): St
 
   const regularizadasCount = planMateriaIds
     ? Math.max(
-        trayectoria.regularizadas.filter((id) => planMateriaIds.has(id)).length - planAprobadas.length,
-        0,
-      )
+      trayectoria.regularizadas.filter((id) => planMateriaIds.has(id)).length - planAprobadas.length,
+      0,
+    )
     : estudiante.materias_regularizadas ??
-      Math.max(trayectoria.regularizadas.length - trayectoria.aprobadas.length, 0);
+    Math.max(trayectoria.regularizadas.length - trayectoria.aprobadas.length, 0);
 
   const enCursoCount = planMateriaIds
     ? trayectoria.inscriptas_actuales.filter((id) => planMateriaIds.has(id)).length
@@ -125,16 +125,25 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
       });
     }
 
-    if (materia.final) {
-      registros.push({
-        ...commonData,
-        tipo: 'final',
-        fecha: materia.final.fecha || undefined,
-        condicion: materia.final.condicion || undefined,
-        nota: materia.final.nota || undefined,
-        folio: materia.final.folio || undefined,
-        libro: materia.final.libro || undefined,
-        idFila: materia.final.id_fila || undefined,
+    const finalesList = materia.finales && materia.finales.length > 0 ? materia.finales : (materia.final ? [materia.final] : []);
+
+    // Debug log to check if finales are coming through
+    if (materia.finales && materia.finales.length > 1) {
+      console.log(`Materia ${materia.materia_nombre} tiene ${materia.finales.length} finales`, materia.finales);
+    }
+
+    if (finalesList.length > 0) {
+      finalesList.forEach((fin) => {
+        registros.push({
+          ...commonData,
+          tipo: 'final',
+          fecha: fin.fecha || undefined,
+          condicion: fin.condicion || undefined,
+          nota: fin.nota || undefined,
+          folio: fin.folio || undefined,
+          libro: fin.libro || undefined,
+          idFila: fin.id_fila || undefined,
+        });
       });
     }
   });

@@ -910,6 +910,7 @@ class CartonMateria(Schema):
     formato_display: str | None = None
     regularidad: CartonEvento | None = None
     final: CartonEvento | None = None
+    finales: list[CartonEvento] = Field(default_factory=list)
 
 class CartonPlan(Schema):
     profesorado_id: int
