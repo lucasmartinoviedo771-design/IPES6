@@ -325,7 +325,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       apellido_nombre: "",
     });
 
-    if (numeric.length < 7) {
+    if (numeric.length < 8) {
       return;
     }
 

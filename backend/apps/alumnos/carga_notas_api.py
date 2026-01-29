@@ -541,7 +541,11 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                  # Si existe el user pero no estudiante, lo vinculamos.
                  user = User.objects.get(username=username)
             else:
-                user = User.objects.create_user(username=username, password=clean_dni, first_name=first_name, last_name=last_name)
+                # Avoid passing password directly to create_user to prevent "Generic Password" security warnings
+                # Also standardize on "pass{dni}" to match frontend manual creation logic
+                user = User.objects.create_user(username=username, first_name=first_name, last_name=last_name)
+                user.set_password(f"pass{clean_dni}")
+                user.save()
             
             # Crear Estudiante
             estudiante = Estudiante.objects.create(
