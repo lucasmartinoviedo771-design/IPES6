@@ -315,8 +315,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
         );
       }
       if (data.data?.warnings?.length) {
-        data.data.warnings.forEach((warning) => {
-          if (warning) {
+        data.data.warnings.forEach((warning: string) => {
+          if (warning && !warning.includes("No se encontró inscripción")) {
             enqueueSnackbar(warning, { variant: 'warning' });
           }
         });

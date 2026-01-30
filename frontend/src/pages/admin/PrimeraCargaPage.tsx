@@ -156,10 +156,11 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
     let dniExiste = false;
     let abortar = false;
     try {
-      await fetchEstudianteAdminDetail(dni);
+      await fetchEstudianteAdminDetail(dni, { suppressErrorToast: true });
       dniExiste = true;
     } catch (error: any) {
-      const status = error?.response?.status;
+      // El error puede ser un AppError (con propiedad status) o un error de Axios directo
+      const status = error.status || error?.response?.status;
       if (status === 404) {
         dniExiste = false;
       } else {

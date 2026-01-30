@@ -1,4 +1,4 @@
-import { client } from "@/api/client";
+import { client, AppAxiosRequestConfig } from "@/api/client";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 
 // Schemas de entrada (payloads)
@@ -856,8 +856,8 @@ export async function fetchEstudiantesAdmin(params: EstudianteAdminListParams = 
   return data;
 }
 
-export async function fetchEstudianteAdminDetail(dni: string): Promise<EstudianteAdminDetailDTO> {
-  const { data } = await client.get<EstudianteAdminDetailDTO>(`/alumnos/admin/estudiantes/${dni}`);
+export async function fetchEstudianteAdminDetail(dni: string, config?: AppAxiosRequestConfig): Promise<EstudianteAdminDetailDTO> {
+  const { data } = await client.get<EstudianteAdminDetailDTO>(`/alumnos/admin/estudiantes/${dni}`, config as any);
   return data;
 }
 
