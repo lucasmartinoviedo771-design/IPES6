@@ -167,6 +167,18 @@ const todayIso = () => {
   return `${year}-${month}-${day}`;
 };
 
+const getSituacionColor = (situacion?: string) => {
+  const s = (situacion || '').toUpperCase();
+  // Códigos de DB o Aliases
+  if (s === 'PRO' || s.includes('PROM')) return '#c6e0b4'; // Verde claro
+  if (s === 'REGULAR' || s === 'REG') return '#ffff00';     // Amarillo
+  if (s === 'APR' || s.includes('APRO')) return '#ed7d31';    // Naranja
+  if (s.includes('DESAPROBADO') || s === 'DPA' || s === 'DTP') return '#ff0000'; // Rojo
+  if (s === 'LIBRE-I' || s === 'LBI') return '#5b9bd5';      // Azul/Cyan
+  if (s === 'LIBRE-AT' || s === 'LAT') return '#5b9bd5';     // Azul/Cyan (Igual que Libre I)
+  return 'transparent';
+};
+
 const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   open,
   onClose,
@@ -192,7 +204,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       folio: '',
       planResolucion: '',
       observaciones: '',
-      docentes: [DEFAULT_DOCENTE, DEFAULT_DOCENTE_BEDEL],
+      docentes: [
+        { ...DEFAULT_DOCENTE, orden: 1 },
+        { ...DEFAULT_DOCENTE_BEDEL, orden: 2 }
+      ],
       filas: buildDefaultRows(),
       dry_run: false,
     },
@@ -235,12 +250,12 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
         folio: d.folio || '',
         planResolucion: d.plan_resolucion || '',
         observaciones: d.observaciones || '',
-        docentes: d.docentes.map(doc => ({
+        docentes: d.docentes.map((doc, idx) => ({
           docente_id: doc.docente_id,
           nombre: doc.nombre,
           dni: doc.dni || '',
           rol: doc.rol || 'profesor',
-          orden: doc.orden ?? null
+          orden: doc.orden ?? (idx + 1)
         })),
         filas: d.filas.map(f => ({
           orden: f.orden ?? null,
@@ -287,6 +302,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     fields: docenteFields,
     append: appendDocente,
     remove: removeDocente,
+    replace: replaceDocente,
   } = useFieldArray({
     control,
     name: 'docentes',
@@ -301,6 +317,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     control,
     name: 'filas',
   });
+
+
 
 
 
@@ -676,11 +694,40 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   };
 
   const handleAddDocente = () => {
-    appendDocente({ ...DEFAULT_DOCENTE });
+    const currentDocentes = getValues('docentes');
+    const bedelIndex = currentDocentes.findIndex((d) => d.rol === 'bedel');
+
+    const newDocente = { ...DEFAULT_DOCENTE };
+    const newList = [...currentDocentes];
+
+    if (bedelIndex !== -1) {
+      // Insertar antes del bedel
+      newList.splice(bedelIndex, 0, newDocente);
+    } else {
+      // Si no hay bedel (raro), al final
+      newList.push(newDocente);
+    }
+
+    // Recalcular orden
+    const orderedList = newList.map((d, i) => ({
+      ...d,
+      orden: i + 1,
+    }));
+
+    replaceDocente(orderedList);
   };
 
   const handleRemoveDocente = (index: number) => {
-    removeDocente(index);
+    const currentDocentes = getValues('docentes');
+    const newList = currentDocentes.filter((_, i) => i !== index);
+
+    // Recalcular orden
+    const orderedList = newList.map((d, i) => ({
+      ...d,
+      orden: i + 1,
+    }));
+
+    replaceDocente(orderedList);
   };
 
   const handleStudentDniBlur = (index: number, rawValue: string) => {
@@ -700,100 +747,162 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
   const calculateSituacionForRow = (index: number) => {
     const row = getValues(`filas.${index}`);
-    if (!selectedMateria || !row.asistencia || !row.nota_final) return;
+    // Permitir calculo parcial si faltan datos, o esperar? El usuario quiere sugerencia.
+    // Si falta nota_final, asumimos que estamos escribiendo.
+    // Pero para lógica estricta necesitamos datos.
+    if (!selectedMateria) return;
 
-    const formato = selectedMateria.formato.toUpperCase();
+    // Parsers
+    const parseVal = (v: any) => {
+      if (!v || v === '---') return 0; // Treat empty/dashes as 0 for strict checking? Or null?
+      // If user is typing, we might check partial. 
+      // But rules say "si nota ... es menor a 6". If empty, is it 0?
+      // Lets treat empty as 0 for calculation to avoid getting Stuck.
+      return Number(String(v).replace(',', '.'));
+    };
+    const hasVal = (v: any) => v && v !== '---' && v !== '';
 
-    // ASISTENCIA Y PROMOCIÓN:
-    // 1. Formatos que ADMITEN EXCEPCIÓN (Asignaturas, Seminarios, Talleres, Labs, Practicas, Materias):
-    //    - Base Regular/Promoción: 80%
-    //    - Con Excepción: Baja a 65%
-    // 2. Formatos que NO ADMITEN EXCEPCIÓN (Módulos):
-    //    - Base Regular/Promoción: 80% (Fijo). (Reglamento dice 65% un parrafo, promo 80% user rule. Usamos 65 Regular / 80 Promo para MOD)
+    const asistencia = row.asistencia ? parseInt(row.asistencia, 10) : 0;
+    const notaVal = row.nota_final === '---' || !row.nota_final ? 0 : parseVal(row.nota_final);
 
-    const admiteExcepcion = ['ASI', 'SEM', 'TAL', 'LAB', 'PRA', 'MAT'].includes(formato);
-    const esModulo = ['MOD', 'MODULO'].includes(formato);
+    const formato = selectedMateria?.formato?.toUpperCase() || '';
+    const dictado = selectedMateria?.dictado || '';
 
-    const asistencia = parseInt(row.asistencia, 10);
-    const notaVal = row.nota_final === '---' ? null : Number(row.nota_final.replace(',', '.'));
-    const tieneExcepcion = row.excepcion; // boolean
+    const isModulo = ['MOD', 'MODULO'].includes(formato);
+    const isAnual = dictado === 'ANUAL';
+    const isLabTalPra = ['LAB', 'TAL', 'PRA'].includes(formato);
+    const isSeminario = ['SEM', 'SEMINARIO'].includes(formato);
+    const isAsignatura = ['ASI', 'ASIGNATURA'].includes(formato);
 
-    let minAsistencia = 80;
-
-    if (esModulo) {
-      // Módulos: 
-      // Regularidad: 65% (segun reglamento textual "Módulos 65%").
-      minAsistencia = 65;
-    } else if (admiteExcepcion) {
-      // Asignaturas y otros:
-      // Base 80%. Con excepción 65%.
-      minAsistencia = tieneExcepcion ? 65 : 80;
-    } else {
-      // Default (otras cosas): 65% base.
-      minAsistencia = 65;
-    }
-
+    const tieneExcepcion = row.excepcion;
     let newSit = '';
 
-    if (isNaN(asistencia)) {
-      newSit = '';
-    } else if (asistencia < 30) {
-      newSit = 'LIBRE-AT';
-    } else if (asistencia < minAsistencia) {
-      newSit = 'LIBRE-I';
-    } else if (notaVal === null) {
-      newSit = 'REGULAR';
-    } else if (notaVal < 6) {
-      newSit = 'DESAPROBADO_PA';
-    } else {
-      // Candidato a Regular o Promocion
-      let esPromocion = false;
+    // LÓGICA ESPECÍFICA PARA MÓDULO ANUAL O ASIGNATURA ANUAL
+    if ((isModulo || isAsignatura) && isAnual) {
+      // Reglas estrictas Módulo Anual
+      // Tratar vacíos como 0 para forzar Desaprobado si falta nota
 
-      if (notaVal >= 8) {
-        let minAsistPromo = 80;
+      // 1. Asistencia
+      if (asistencia < 30) {
+        newSit = 'LIBRE-AT';
+      } else if (asistencia < 65) {
+        newSit = 'LIBRE-I';
+      } else {
+        // Asistencia >= 65% (Regular base)
 
-        if (esModulo) {
-          // Modulo: 80% Fijo para promo (User instruction)
-          minAsistPromo = 80;
-        } else if (admiteExcepcion) {
-          // Resto: 80% o 65% si hay check
-          minAsistPromo = tieneExcepcion ? 65 : 80;
+        // 2. Chequeo de Notas Desaprobatorias
+        const tpFinal = parseVal(row.datos?.tp_final);
+        const p1 = parseVal(row.datos?.parcial_1p);
+        const r1 = parseVal(row.datos?.parcial_1r);
+        const p2 = parseVal(row.datos?.parcial_2p);
+        const r2 = parseVal(row.datos?.parcial_2r);
+
+        // Si TP Final < 6 -> DESAPROBADO_TP (Segun requerimiento)
+        // Aquí NO usamos hasVal, porque vacio = 0 = Desaprobado
+        if (tpFinal < 6) {
+          newSit = 'DESAPROBADO_TP';
         }
+        // Si Parcial 1 (P o R) no logran 6 -> DESAPROBADO_PA
+        // "P 6 o + o recuperatorio 6 o +" => max(p1, r1) >= 6
+        else if (Math.max(p1, r1) < 6) {
+          newSit = 'DESAPROBADO_PA';
+        }
+        // Si Parcial 2 (P o R) no logran 6 -> DESAPROBADO_PA
+        else if (Math.max(p2, r2) < 6) {
+          newSit = 'DESAPROBADO_PA';
+        }
+        // Nota final global < 6
+        else if (notaVal < 6) {
+          newSit = 'DESAPROBADO_PA';
+        }
+        else {
+          // Si llegamos acá, tiene todo aprobado con 6+.
+          // Chequear PROMOCIÓN
+          // TP Final >= 6 (ya chequeado, pero regla dice "si tiene TP nota final 6 o mas... y el resto 8")
+          // P1 >= 8 (Primera instancia)
+          // P2 >= 8 (Primera instancia)
+          // Final >= 8
+          // Asistencia >= 80%
 
-        if (asistencia >= minAsistPromo) {
-          // Chequear TPs y Parciales
-          let requisitosNotasOk = true;
-          if (row.datos && columnasDinamicas.length > 0) {
-            columnasDinamicas.forEach(col => {
-              const key = col.key.toLowerCase();
-              const valStr = row.datos[col.key];
-              const val = Number(valStr);
-              if (valStr && !isNaN(val)) {
-                // TPs >= 6
-                if (key.includes('tp') || key.includes('trabajo')) {
-                  if (val < 6) requisitosNotasOk = false;
-                }
-                // Parciales >= 8
-                if (key.includes('parc') || key.includes('parcial')) {
-                  if (val < 8) requisitosNotasOk = false;
-                }
-              }
-            });
-          }
-          if (requisitosNotasOk) {
-            esPromocion = true;
+          // NOTA: Para P1/P2 "en primera instancia", debemos ver si P >= 8.
+          // Si P < 8 pero R >= 8, ya no es primera instancia -> No promociona.
+          const p1_promocion = p1 >= 8;
+          const p2_promocion = p2 >= 8;
+
+          const isPromocion =
+            asistencia >= 80 &&
+            notaVal >= 8 &&
+            p1_promocion &&
+            p2_promocion &&
+            tpFinal >= 6;
+
+          if (isPromocion && isModulo) {
+            newSit = 'PROMOCIONADO';
+          } else {
+            // Si no promociona (o es Asignatura que no promociona), pero aprobó todo con >= 6
+            newSit = 'REGULAR';
           }
         }
       }
+    } else {
+      // LÓGICA GENÉRICA / ANTERIOR (Asignaturas, Talleres, etc.)
+      let pisoRegularidad = 65;
+      if (isLabTalPra) {
+        pisoRegularidad = tieneExcepcion ? 65 : 80;
+      }
 
-      if (esPromocion && situacionesDisponibles.some(s => s.codigo === 'PRO')) {
-        newSit = 'PRO';
+      if (isNaN(asistencia)) {
+        newSit = ''; // Esperar datos
+      } else if (asistencia < 30) {
+        // Unificar criterio Libre AT para todos? User dijo "Libre at desde 0 a 29.99%" en contexto modulo anual.
+        // Lo aplicamos general por coherencia o mantenemos logica vieja?
+        // La logica vieja no tenia LIBRE-AT. Vamos a usar la general si < 30 es común.
+        newSit = 'LIBRE-AT';
+      } else if (asistencia < pisoRegularidad) {
+        newSit = 'LIBRE-I';
+      } else if (!hasVal(row.nota_final)) {
+        newSit = 'REGULAR'; // Default temporal
+      } else if (notaVal < 6) {
+        newSit = 'DESAPROBADO_PA';
       } else {
-        newSit = 'REGULAR';
+        // Aprobado/Regular
+        if (isModulo) {
+          // MODULO GENERICO (No anual, o anual sin columnas especiales?)
+          if (asistencia >= 80 && notaVal >= 8) {
+            newSit = 'PRO';
+          } else {
+            newSit = 'REGULAR';
+          }
+        } else if (isAsignatura) {
+          newSit = 'REGULAR';
+        } else if (isLabTalPra || isSeminario) {
+          newSit = 'APR';
+        } else {
+          newSit = 'REGULAR';
+        }
       }
     }
 
-    if (newSit && situacionesDisponibles.some(s => s.codigo === newSit)) {
+    // Normalización de Códigos (PRO -> PROMOCIONADO, etc)
+    const validCodes = situacionesDisponibles.map(s => s.codigo);
+
+    // Mapeo de códigos cortos a largos si es necesario
+    const mapCode = (short: string, long: string) => {
+      if (newSit === short && !validCodes.includes(short) && validCodes.includes(long)) {
+        newSit = long;
+      } else if (newSit === long && !validCodes.includes(long) && validCodes.includes(short)) {
+        newSit = short;
+      }
+    };
+
+    mapCode('PRO', 'PROMOCIONADO');
+    mapCode('APR', 'APROBADO');
+    mapCode('REG', 'REGULAR');
+    mapCode('LBI', 'LIBRE-I');
+    mapCode('LAT', 'LIBRE-AT');
+
+    // Asignar
+    if (newSit) {
       setValue(`filas.${index}.situacion`, newSit, { shouldDirty: true });
     }
   };
@@ -907,6 +1016,16 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                       size="small"
                       required
                       disabled={!selectedProfesorado}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        // Solo recalculamos automáticamente en modo creación.
+                        // En edición, respetamos lo que viene de DB a menos que el usuario pulse el botón.
+                        if (mode === 'create') {
+                          setTimeout(() => {
+                            filaFields.forEach((_, idx) => calculateSituacionForRow(idx));
+                          }, 100);
+                        }
+                      }}
                     >
                       {materias.map((materia) => (
                         <MenuItem key={materia.id} value={materia.id}>
@@ -1312,17 +1431,59 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                     <TableCell sx={{ ...headerCellSx, width: 140 }} rowSpan={2}>
                       DNI
                     </TableCell>
-                    <TableCell
-                      sx={{ ...headerCellSx, textAlign: 'center' }}
-                      colSpan={Math.max(columnasDinamicas.length, 0) + 1}
-                    >
-                      Nota de trabajos prácticos y final
+
+                    {/* Render Groups for Dynamic Columns */}
+                    {(() => {
+                      const groups: { name: string; span: number }[] = [];
+                      let currentGroup = '';
+                      let currentSpan = 0;
+
+                      // Agrupar columnas
+                      columnasDinamicas.forEach((col: any) => {
+                        // Usar un espacio si no hay grupo para evitar problemas
+                        const gName = col.group || '';
+                        if (gName !== currentGroup) {
+                          if (currentSpan > 0) groups.push({ name: currentGroup, span: currentSpan });
+                          currentGroup = gName;
+                          currentSpan = 1;
+                        } else {
+                          currentSpan++;
+                        }
+                      });
+                      if (currentSpan > 0) groups.push({ name: currentGroup, span: currentSpan });
+
+                      // Si no hay grupos definidos (legacy), fallback a un solo header
+                      if (groups.length === 0 && columnasDinamicas.length > 0) {
+                        return (
+                          <TableCell
+                            sx={{ ...headerCellSx, textAlign: 'center' }}
+                            colSpan={columnasDinamicas.length}
+                          >
+                            Nota de trabajos prácticos
+                          </TableCell>
+                        );
+                      }
+
+                      // Renderizar headers de grupo
+                      return groups.map((g, idx) => (
+                        <TableCell
+                          key={`group-${idx}`}
+                          sx={{ ...headerCellSx, textAlign: 'center' }}
+                          colSpan={g.span}
+                        >
+                          {g.name}
+                        </TableCell>
+                      ));
+                    })()}
+
+                    <TableCell sx={{ ...headerCellSx, width: 80, textAlign: 'center' }} rowSpan={2}>
+                      Final
                     </TableCell>
-                    <TableCell sx={{ ...headerCellSx, width: 130, textAlign: 'center' }} colSpan={1}>
+                    <TableCell sx={{ ...headerCellSx, width: 80, textAlign: 'center' }} rowSpan={2}>
                       Asistencia
                     </TableCell>
-                    <TableCell sx={{ ...headerCellSx, width: 90, textAlign: 'center' }} colSpan={1}>
-                      Excepción
+                    <TableCell sx={{ ...headerCellSx, width: 70, textAlign: 'center' }} rowSpan={2}>
+                      Excep.
                     </TableCell>
                     <TableCell sx={{ ...headerCellSx, minWidth: 200 }} rowSpan={2}>
                       Situación académica
@@ -1342,9 +1503,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                         ) : null}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...headerCellSx, width: 80 }}>Final</TableCell>
-                    <TableCell sx={{ ...headerCellSx, width: 80 }}>% Asist.</TableCell>
-                    <TableCell sx={{ ...headerCellSx, width: 70 }}>Excep.</TableCell>
+                    {/* Las columnas estáticas (Final, Asistencia...) ya tienen rowSpan=2 arriba, 
+                        así que no agregamos celdas aquí */}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1583,7 +1743,9 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                             // Determinar si se permite excepción según formato
                             const formato = selectedMateria?.formato?.toUpperCase();
                             const isGroupHigh = ['LAB', 'TAL', 'PRA'].includes(formato || '');
-                            // Deshabilitar si es View o si el formato no admite excepción (ASI, SEM, MOD...)
+                            const isModulo = ['MOD', 'MODULO'].includes(formato || '');
+                            // Deshabilitar si es View o si el formato no admite excepción 
+                            // Para MOD deshabilitamos porque la asistencia base ya es 65% y no admite excepción.
                             const isDisabled = isReadOnly || (selectedMateria && !isGroupHigh);
 
                             return (
@@ -1603,7 +1765,11 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                           }}
                         />
                       </TableCell>
-                      <TableCell sx={{ ...bodyCellSx, minWidth: 200 }}>
+                      <TableCell sx={{
+                        ...bodyCellSx,
+                        minWidth: 200,
+                        backgroundColor: getSituacionColor(watch(`filas.${index}.situacion`))
+                      }}>
                         {isReadOnly ? (
                           <TextField
                             size="small"

@@ -145,8 +145,13 @@ FORMATO_SLUG_MAP = {
 def _format_column_label(value: str | None) -> str:
     if not value:
         return ""
-    normalized = value.replace("º", "").replace("°", "")
-    normalized = re.sub(r"([0-9])\s*C\.?", r"\1C", normalized)
+    # Normalizar ordinales a caracter común o quitar si ensucia
+    # User shows "TP 1C" in screenshot.
+    # El label en DB es "TP 1° C."
+    # La funcion actual lo deja como "TP 1 C." -> "TP 1C" por el regex de abajo.
+    normalized = value.replace("º", "°")
+    # Compactar 1° C. a 1°C
+    normalized = re.sub(r"([0-9])°?\s*C\.?", r"\1°C", normalized)
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.strip()
 
@@ -230,6 +235,7 @@ def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dic
                         "nombre": materia.nombre,
                         "anio_cursada": materia.anio_cursada,
                         "formato": materia.formato,
+                        "dictado": materia.get_regimen_display().upper(),
                         "regimen": materia.regimen,
                         "plan_id": plan.id,
                         "plan_resolucion": plan.resolucion,
@@ -639,16 +645,21 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     )
 
     color_header = colors.HexColor("#d9e2f3")  # Azul claro
-    color_aprobado = colors.HexColor("#ed7d31")  # Naranja
-    color_desaprobado = colors.HexColor("#ffc000") # Dorado
-    color_libre_i = colors.HexColor("#f8cbad")    # Durazno
-    color_libre_at = colors.HexColor("#4bacc6")    # Turquesa
+    color_promocion = colors.HexColor("#c6e0b4") # Verde claro (Módulos)
+    color_regular = colors.HexColor("#ffff00")   # Amarillo
+    color_aprobado = colors.HexColor("#ed7d31")  # Naranja (Aprobación directa)
+    color_desaprobado = colors.HexColor("#ff0000") # Rojo
+    color_libre_i = colors.HexColor("#5b9bd5")    # Azul/Cyan
+    # color_libre_at ya no se usa distinto
 
     def get_situacion_color(codigo):
-        if codigo in ("APR", "PRO", "REG", "APROBADO", "PROMOCIONADO", "REGULAR"): return color_aprobado
-        if codigo in ("LBI", "LIBRE-I"): return color_libre_i
-        if codigo in ("LAT", "LIBRE-AT"): return color_libre_at
-        if codigo in ("DPA", "DTP", "DESAPROBADO_PA", "DESAPROBADO_TP"): return color_desaprobado
+        c = (codigo or "").upper()
+        if "PRO" in c: return color_promocion
+        if "REGULAR" in c or c == "REG": return color_regular
+        if "APR" in c: return color_aprobado
+        if "LBI" in c or "LIBRE-I" in c: return color_libre_i
+        if "LAT" in c or "LIBRE-AT" in c: return color_libre_i # Mismo color
+        if "DPA" in c or "DTP" in c or "DESAPROBADO" in c: return color_desaprobado
         return None
 
     # Título principal
@@ -656,10 +667,13 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     # Firmantes
     docentes_qs = planilla.docentes.all().order_by("orden", "id")
-    profesor_docente = docentes_qs.filter(rol="profesor").first()
+    profesores_qs = docentes_qs.filter(rol="profesor")
     bedel_docente = docentes_qs.filter(rol="bedel").first()
     
-    docente_nombre = profesor_docente.nombre if profesor_docente else (planilla.materia.profesor_nombre or "_______________________")
+    if profesores_qs.exists():
+        docente_nombre = " / ".join([p.nombre for p in profesores_qs])
+    else:
+        docente_nombre = planilla.materia.profesor_nombre or "_______________________"
 
     # Datos Generales (Tabla Azul)
     data_gen = [
@@ -700,10 +714,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     columnas_raw = planilla.plantilla.columnas or []
     columnas_tp = [
-        {
-            "key": col.get("key"),
-            "label": _format_column_label(col.get("label") or col.get("key") or "").upper(),
-        }
+        col
         for col in columnas_raw
     ]
 
@@ -727,6 +738,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     def _column_group(col: dict) -> str | None:
         group = col.get("group") or col.get("group_label")
+        # print(f"DEBUG: Checking group for col {col.get('key')}: group={group}")
         if group:
             return str(group)
         label_norm = (col.get("label") or "").strip().lower()
@@ -743,6 +755,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         label = columna.get("label") or columna.get("key") or ""
         label_display = escape(label.upper())
         group_label = _column_group(columna)
+        
         group_label = group_label.upper() if group_label else None
         col_index = base_cols + idx
 
@@ -886,14 +899,23 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     # Firmas al final
     firmantes_data = []
     
-    # Profesor/a
-    p_nom = profesor_docente.nombre if profesor_docente else "_______________________"
-    p_dni = profesor_docente.dni if profesor_docente else "_______________________"
-    firmantes_data.append([
-        f"Profesor/a: {p_nom}",
-        "",
-        f"DNI: {p_dni}"
-    ])
+    # Profesores (Todos)
+    if profesores_qs.exists():
+        for p in profesores_qs:
+            p_nom = p.nombre
+            p_dni = p.dni or "_______________________"
+            firmantes_data.append([
+                f"Profesor/a: {p_nom}",
+                "",
+                f"DNI: {p_dni}"
+            ])
+    else:
+        # Placeholder si no hay nadie
+        firmantes_data.append([
+            "Profesor/a: _______________________",
+            "",
+            "DNI: _______________________"
+        ])
     
     # Bedel
     b_nom = bedel_docente.nombre if bedel_docente else "_______________________"
@@ -1227,23 +1249,23 @@ def crear_planilla_regularidad(
                 )
                 continue
 
-            if materia.nombre.upper().startswith("EDI") and situacion in {
-                Regularidad.Situacion.APROBADO,
-                Regularidad.Situacion.PROMOCIONADO,
-                Regularidad.Situacion.REGULAR,
-            }:
-                try:
-                    checklist = PreinscripcionChecklist.objects.get(preinscripcion__alumno=estudiante)
-                    if not checklist.curso_introductorio_aprobado:
-                        raise ValueError(
-                            f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
-                            f"No se puede registrar la situación '{situacion}' para una materia EDI."
-                        )
-                except PreinscripcionChecklist.DoesNotExist:
-                    raise ValueError(
-                        f"El estudiante {estudiante.dni} no posee checklist de preinscripción. "
-                        f"No se puede registrar la situación '{situacion}' para una materia EDI."
-                    ) from None
+            # if materia.nombre.upper().startswith("EDI") and situacion in {
+            #     Regularidad.Situacion.APROBADO,
+            #     Regularidad.Situacion.PROMOCIONADO,
+            #     Regularidad.Situacion.REGULAR,
+            # }:
+            #     try:
+            #         checklist = PreinscripcionChecklist.objects.get(preinscripcion__alumno=estudiante)
+            #         if not checklist.curso_introductorio_aprobado:
+            #             raise ValueError(
+            #                 f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
+            #                 f"No se puede registrar la situación '{situacion}' para una materia EDI."
+            #             )
+            #     except PreinscripcionChecklist.DoesNotExist:
+            #         raise ValueError(
+            #             f"El estudiante {estudiante.dni} no posee checklist de preinscripción. "
+            #             f"No se puede registrar la situación '{situacion}' para una materia EDI."
+            #         ) from None
 
             # Validación: Evitar duplicados de aprobados
             if situacion in {Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO}:
@@ -1411,8 +1433,20 @@ def actualizar_planilla_regularidad(
         if not es_autoridad and not user.is_superuser:
             raise ValueError("No tiene permisos para editar planillas de este profesorado.")
 
+    if profesorado_id:
+        planilla.profesorado_id = profesorado_id
+    if materia_id:
+        planilla.materia_id = materia_id
+    if plantilla_id:
+        planilla.plantilla_id = plantilla_id
+        p = RegularidadPlantilla.objects.filter(pk=plantilla_id).first()
+        if p:
+            planilla.formato = p.formato
+    if dictado:
+        planilla.dictado = dictado
     if fecha:
         planilla.fecha = fecha
+        planilla.anio_academico = fecha.year
     if folio is not None:
         planilla.folio = folio
     if plan_resolucion is not None:
@@ -1430,6 +1464,8 @@ def actualizar_planilla_regularidad(
 
     with atomic_ctx():
         planilla.save()
+        # Refrescar para asegurar relaciones actualizadas (materia, profesorado)
+        planilla.refresh_from_db()
 
         if docentes is not None:
             planilla.docentes.all().delete()
@@ -1448,14 +1484,15 @@ def actualizar_planilla_regularidad(
         if filas is not None:
             planilla.filas.all().delete()
             columnas = planilla.plantilla.columnas or []
-            formato = planilla.materia.formato
+            # Usar la materia ya actualizada
+            materia_actual = planilla.materia
 
             for idx, f_data in enumerate(filas, start=1):
                 orden = f_data.get("orden") or idx
                 dni = _normalize_value(f_data.get("dni"))
                 estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
                 
-                situacion = _resolve_situacion(f_data.get("situacion", ""), formato)
+                situacion = _resolve_situacion(f_data.get("situacion", ""), planilla.materia.formato)
                 nota_raw = f_data.get("nota_final")
                 nota_dec = None
                 if nota_raw not in (None, "", "---"):
@@ -1479,7 +1516,7 @@ def actualizar_planilla_regularidad(
                 # Actualizar también tabla Regularidad si existe estudiante y materia
                 if estudiante:
                     Regularidad.objects.update_or_create(
-                        estudiante=estudiante, materia=planilla.materia,
+                        estudiante=estudiante, materia=materia_actual,
                         fecha_cierre=planilla.fecha,
                         defaults={
                             "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if nota_dec else None,

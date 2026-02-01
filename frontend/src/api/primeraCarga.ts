@@ -84,8 +84,8 @@ export interface RegularidadMetadataMateria {
   nombre: string;
   anio_cursada: number | null;
   formato: string;
+  dictado: string | null;
   regimen: string;
-  plan_id: number;
   plan_resolucion: string;
 }
 
