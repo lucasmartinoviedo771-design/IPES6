@@ -703,63 +703,111 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     if (!selectedMateria || !row.asistencia || !row.nota_final) return;
 
     const formato = selectedMateria.formato.toUpperCase();
-    const isGroupA = ['TAL', 'LAB', 'PRA', 'MOD', 'MODULO'].includes(formato);
-    // Group A (Taller/Lab/Práctica/Módulo): Piso 80%, con excepción 65%
-    // Group B (Asignatura/Seminario): Piso 65% fijo
-    const floor = isGroupA ? (row.excepcion ? 65 : 80) : 65;
 
-    const asistVal = parseInt(row.asistencia, 10);
+    // REGLA ASISTENCIA:
+    // ● Laboratorios (LAB), Talleres (TAL), Prácticas Docentes (PRA): 80% (con excepción)
+    // ● Seminarios (SEM), Asignaturas (ASI), Módulos (MOD): 65% (sin excepción explicitada distinta, base 65)
+    // Nota: El reglamento dice "80% con régimen de excep", asumimos que baja a 65% igual que el piso general.
+
+    const isGroupHighExec = ['LAB', 'TAL', 'PRA'].includes(formato);
+    // Group High: LAB, TAL, PRA
+    // Group Low: ASI, SEM, MOD
+
+    // Si es High: Piso normal 80. Si hay excepción, baja a 65.
+    // Si es Low: Piso fijo 65. (La excepción no bajaría más, o el teglamento no lo menciona, asumimos 65 piso).
+
+    const asistencia = parseInt(row.asistencia, 10);
     const notaVal = row.nota_final === '---' ? null : Number(row.nota_final.replace(',', '.'));
+    const tieneExcepcion = row.excepcion; // boolean
+
+    let minAsistencia = 65;
+    if (isGroupHighExec) {
+      minAsistencia = tieneExcepcion ? 65 : 80;
+    } else {
+      minAsistencia = 65; // SEM, ASI, MOD
+    }
+
+    // TODO: Manejar "Unidades Curriculares Promocionales" mencionadas en el reglamento como grupo 80%.
+    // Como no tenemos un flag explícito de "EsPromocional" en la materia, usaremos la lógica de abajo
+    // para determinar si *aplica* promoción, pero el piso de asistencia para estar REGULAR se rige por formato.
 
     let newSit = '';
-    if (isNaN(asistVal)) {
+
+    if (isNaN(asistencia)) {
       newSit = '';
-    } else if (asistVal < 30) {
-      newSit = 'LIBRE-AT';
-    } else if (asistVal < floor) {
+    } else if (asistencia < 30) {
+      // Libre por inasistencia total/abandono, a veces se usa otro codigo, aqui LIBRE-AT o LIBRE-I
+      // Asumimos lógica simple: no llega al mínimo -> Libre
+      newSit = 'LIBRE-I';
+    } else if (asistencia < minAsistencia) {
       newSit = 'LIBRE-I';
     } else if (notaVal === null) {
-      // Si no hay nota pero hay asistencia, asumimos REGULAR o el primer estado positivo
+      // Asistencia OK, pero nota vacia (---). 
+      // Si la nota es null, no podemos cerrar situación final de aprobación.
+      // Asumimos 'REGULAR' por defecto si asistencia da.
       newSit = 'REGULAR';
-    } else if (notaVal >= 8 && situacionesDisponibles.some(s => s.codigo === 'PRO')) {
-      // Validar notas de TPs/Parciales si existen en columnas dinámicas para promoción
-      // REGLAMENTO: Aprobar TPs con minimo 6.
-      let cumpleRequisitosExtra = true;
-      if (row.datos && columnasDinamicas.length > 0) {
-        // Buscamos columnas que parezcan ser notas (TP, PARCIAL, etc) y validamos >= 6
-        columnasDinamicas.forEach(col => {
-          const key = col.key.toLowerCase();
-          const val = row.datos[col.key];
-          // Si es numerico y parece una nota
-          if (val && !isNaN(Number(val))) {
-            // Si es TP o trabajo practico, check >= 6
-            // Si es Parcial check >= 8 (segun el usuario dijo parcial >= 8 en otro momento, pero dejemos regla general >= 6 para no bloquear excesivamente, o estricto?)
-            // El usuario dijo: "el trabajo practico debe estar aprobado minimo con 6"
-            // Y reglamento modulo: parcial >= 8.
-            // Vamos a ser estrictos con TP >= 6.
-            if (key.includes('tp') || key.includes('trabajo')) {
-              if (Number(val) < 6) cumpleRequisitosExtra = false;
-            }
-            // Podriamos agregar logica para parciales >= 8 si se desea
-            if (key.includes('parc') || key.includes('parcial')) {
-              if (Number(val) < 8) cumpleRequisitosExtra = false;
-            }
+    } else if (notaVal < 6) {
+      // Nota < 6 implica desaprobado la cursada en la mayoría de los casos
+      newSit = 'DESAPROBADO_PA';
+    } else {
+      // Aquí notaVal >= 6 Y Asistencia >= Minima. Es al menos REGULAR.
+      // Verificamos PROMOCIÓN
+
+      let esPromocion = false;
+
+      // Requisitos Promoción (Art 63):
+      // a. Asistencia 80% (o 65% excepcion).
+      //    OJO: Si la materia era ASI (piso 65%), para promocionar PIDE 80%.
+      //    El art 63 aplica a "promocionar una unidad curricular". 
+      //    Entonces para PRO, el piso SIEMPRE es 80/65excep, sea cual sea el formato.
+
+      const minAsistPromocion = tieneExcepcion ? 65 : 80;
+
+      if (asistencia >= minAsistPromocion) {
+        // b. Aprobar parciales con >= 8
+        // c. Aprobar TPs con >= 6
+        // d. Nota final (asumimos que la nota final cargada para promo debe ser >= 8)
+
+        if (notaVal >= 8) {
+          // Chequear columnas dinámicas
+          let requisitosNotasOk = true;
+
+          if (row.datos && columnasDinamicas.length > 0) {
+            columnasDinamicas.forEach(col => {
+              const key = col.key.toLowerCase();
+              const valStr = row.datos[col.key];
+              const val = Number(valStr);
+
+              if (valStr && !isNaN(val)) {
+                // TPs >= 6
+                if (key.includes('tp') || key.includes('trabajo')) {
+                  if (val < 6) requisitosNotasOk = false;
+                }
+                // Parciales >= 8
+                if (key.includes('parc') || key.includes('parcial')) {
+                  if (val < 8) requisitosNotasOk = false;
+                }
+              }
+            });
           }
-        });
+
+          if (requisitosNotasOk) {
+            esPromocion = true;
+          }
+        }
       }
 
-      if (cumpleRequisitosExtra) {
+      // Determinar código final
+      // Si hay código PRO disponible y cumple requisitos -> PRO
+      // Sino -> REGULAR
+      if (esPromocion && situacionesDisponibles.some(s => s.codigo === 'PRO')) {
         newSit = 'PRO';
       } else {
         newSit = 'REGULAR';
       }
-    } else if (notaVal >= 6) {
-      newSit = 'REGULAR';
-    } else {
-      newSit = 'DESAPROBADO_PA';
     }
 
-    // Solo asignar si el código existe en la plantilla actual
+    // Solo asignar si el código existe en la plantilla actual (seguridad)
     if (newSit && situacionesDisponibles.some(s => s.codigo === newSit)) {
       setValue(`filas.${index}.situacion`, newSit, { shouldDirty: true });
     }
