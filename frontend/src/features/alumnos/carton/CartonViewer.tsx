@@ -37,6 +37,14 @@ const formatBooleanLabel = (value?: boolean | null, trueLabel = 'Sí', falseLabe
   return value ? trueLabel : falseLabel;
 };
 
+const formatCondicion = (condicion?: string | null): string => {
+  if (!condicion) return '-';
+  if (condicion === 'AUJ') return 'JUS';
+  // Si queréis mantener "REGULAR" -> "En curso"
+  if (condicion === 'REGULAR') return 'En curso';
+  return condicion;
+};
+
 export const CartonViewer = ({ data }: CartonViewerProps) => {
   const cartonRef = useRef<HTMLDivElement>(null);
   const { enqueueSnackbar } = useSnackbar();
@@ -403,20 +411,14 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                           {record.tipo === 'regularidad' ? formatDateToDDMMYY(record.fecha) : '-'}
                         </TableCell>
                         <TableCell align="center" sx={commonCellSx}>
-                          {record.tipo === 'regularidad'
-                            ? record.condicion
-                              ? record.condicion === "REGULAR"
-                                ? "En curso"
-                                : record.condicion
-                              : "-"
-                            : "-"}
+                          {record.tipo === 'regularidad' ? formatCondicion(record.condicion) : '-'}
                         </TableCell>
                         <TableCell align="center" sx={{ ...commonCellSx, fontWeight: 'medium' }}>
                           {record.tipo === 'regularidad' ? record.nota ?? '-' : '-'}
                         </TableCell>
 
                         <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? formatDateToDDMMYY(record.fecha) : '-'}</TableCell>
-                        <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? record.condicion ?? '-' : '-'}</TableCell>
+                        <TableCell align="center" sx={commonCellSx}>{record.tipo === 'final' ? formatCondicion(record.condicion) : '-'}</TableCell>
                         <TableCell align="center" sx={{ ...commonCellSx, fontWeight: 'medium' }}>
                           {record.tipo === 'final' ? record.nota ?? '-' : '-'}
                         </TableCell>
@@ -457,7 +459,7 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                         <TableCell>{record.cuatrimestre}</TableCell>
                         <TableCell sx={{ fontWeight: 500 }}>{record.espacioCurricular}</TableCell>
                         <TableCell>{formatDisplay(record.fecha)}</TableCell>
-                        <TableCell>{formatDisplay(record.condicion)}</TableCell>
+                        <TableCell>{formatCondicion(record.condicion)}</TableCell>
                         <TableCell sx={{ fontWeight: 'medium' }}>{formatDisplay(record.nota)}</TableCell>
                         <TableCell>{formatDisplay(record.folio)}</TableCell>
                       </TableRow>

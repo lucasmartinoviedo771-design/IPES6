@@ -94,6 +94,14 @@ const DEFAULT_DOCENTE: PlanillaDocenteFormValues = {
   orden: null,
 };
 
+const DEFAULT_DOCENTE_BEDEL: PlanillaDocenteFormValues = {
+  docente_id: null,
+  nombre: '',
+  dni: '',
+  rol: 'bedel',
+  orden: null,
+};
+
 const buildDefaultRow = (index: number): PlanillaFilaFormValues => ({
   orden: index + 1,
   dni: '',
@@ -105,7 +113,7 @@ const buildDefaultRow = (index: number): PlanillaFilaFormValues => ({
   datos: {},
 });
 
-const buildDefaultRows = (count = 10): PlanillaFilaFormValues[] =>
+const buildDefaultRows = (count = 1): PlanillaFilaFormValues[] =>
   Array.from({ length: count }, (_, idx) => buildDefaultRow(idx));
 
 const regimenToDictado: Record<string, string> = {
@@ -184,15 +192,17 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       folio: '',
       planResolucion: '',
       observaciones: '',
-      docentes: [DEFAULT_DOCENTE],
+      docentes: [DEFAULT_DOCENTE, DEFAULT_DOCENTE_BEDEL],
       filas: buildDefaultRows(),
       dry_run: false,
     },
   });
 
+  const [crossLoadEnabled, setCrossLoadEnabled] = React.useState(false);
+
   const metadataQuery = useQuery({
-    queryKey: ['primera-carga', 'regularidades', 'metadata'],
-    queryFn: fetchRegularidadMetadata,
+    queryKey: ['primera-carga', 'regularidades', 'metadata', crossLoadEnabled],
+    queryFn: () => fetchRegularidadMetadata(crossLoadEnabled),
     enabled: open,
     staleTime: 1000 * 60 * 10,
     retry: false,
@@ -303,7 +313,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     },
     onSuccess: (data, variables) => {
       enqueueSnackbar(data.message, { variant: 'success' });
-      if (onCreated) onCreated(data.data, !!variables.dry_run);
+      // ... (warnings logic same as before) ...
       if (typeof data.data?.regularidades_registradas === 'number') {
         const count = data.data.regularidades_registradas;
         const messageDetalle = variables.dry_run
@@ -322,6 +332,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
         });
       }
       if (!variables.dry_run && data.data?.pdf_url) {
+        // ... (pdf open logic) ...
         const base = import.meta.env.VITE_API_BASE || window.location.origin;
         const mediaBase = base.replace(/\/api\/?$/, '/');
         let targetUrl = data.data.pdf_url;
@@ -329,13 +340,37 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
           try {
             targetUrl = new URL(targetUrl, mediaBase).toString();
           } catch (error) {
-            // fallback to original relative URL if URL construction fails
           }
         }
         window.open(targetUrl, '_blank', 'noopener,noreferrer');
       }
+
       onCreated?.(data.data, !!variables.dry_run);
-      onClose();
+
+      if (!variables.dry_run && !planillaId && persistStudents) {
+        // Si es creación y quiere persistir estudiantes:
+        // 1. Guardamos la lista de estudiantes limpia
+        const currentFilas = getValues('filas');
+        const preservedFilas = currentFilas.map((f, idx) => ({
+          ...buildDefaultRow(idx),
+          dni: f.dni,
+          apellido_nombre: f.apellido_nombre,
+          orden: idx + 1
+        }));
+
+        // 2. Reseteamos formulario pero volvemos a poner las filas
+        // Cuidado: reset() borra todo. Mejor estrategia: setValue manual de campos cabecera.
+        setValue('materiaId', '');
+        setValue('plantillaId', '');
+        setValue('folio', '');
+        setValue('observaciones', '');
+        setValue('filas', preservedFilas);
+
+        enqueueSnackbar('Se han mantenido los estudiantes para la siguiente carga. Seleccione nueva materia.', { variant: 'info' });
+        // NO llamamos onClose()
+      } else {
+        onClose();
+      }
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message ?? 'No se pudo generar la planilla.';
@@ -401,15 +436,28 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   useEffect(() => {
     if (selectedMateria) {
       setValue('planResolucion', selectedMateria.plan_resolucion || '');
-      const currentPlantilla = plantillasDisponibles.find((plantilla) => plantilla.id === Number(getValues('plantillaId')));
-      if (!currentPlantilla) {
-        setValue('plantillaId', plantillasDisponibles[0]?.id ?? '');
+      // Al cambiar de materia, seleccionamos automáticamente la primera plantilla compatible disponible
+      // para evitar que quede seleccionada una plantilla incompatible (ej: Modulo en Asignatura).
+      // Solo intentamos mantener la actual si estamos en modo edición.
+      if (mode === 'create') {
+        if (plantillasDisponibles.length > 0) {
+          setValue('plantillaId', plantillasDisponibles[0].id);
+        } else {
+          setValue('plantillaId', '');
+        }
+      } else {
+        // En modo view/edit intentamos preservar si existe
+        const currentId = getValues('plantillaId');
+        const exists = plantillasDisponibles.some(p => p.id === Number(currentId));
+        if (!exists && plantillasDisponibles.length > 0) {
+          setValue('plantillaId', plantillasDisponibles[0].id);
+        }
       }
     } else {
       setValue('plantillaId', '');
       setValue('planResolucion', '');
     }
-  }, [selectedMateria, plantillasDisponibles, setValue, getValues]);
+  }, [selectedMateria, plantillasDisponibles, setValue, mode, getValues]);
 
   const selectedPlantilla = useMemo(
     () => plantillasDisponibles.find((p) => p.id === Number(plantillaId)),
@@ -500,10 +548,11 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
     for (const fila of filasPreparadas) {
       const rowNum = fila.displayIndex;
-      if (!fila.dni.trim()) {
-        enqueueSnackbar(`Ingrese el DNI en la fila ${rowNum}.`, { variant: 'warning' });
+      if (!fila.dni.trim() && !fila.apellido_nombre.trim()) {
+        enqueueSnackbar(`Ingrese el DNI o el Nombre en la fila ${rowNum}.`, { variant: 'warning' });
         return;
       }
+      // Validar que si no hay DNI, al menos el backend lo pueda manejar (ya cubierto por logica backend)
       if (!fila.apellido_nombre.trim()) {
         enqueueSnackbar(`Ingrese el nombre del alumno en la fila ${rowNum}.`, { variant: 'warning' });
         return;
@@ -604,10 +653,26 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     mutation.mutate(payload);
   };
 
-  const handleAddRow = (count = 1) => {
+  const [persistStudents, setPersistStudents] = React.useState(false);
+  const [rowsToAdd, setRowsToAdd] = React.useState<string>('5');
+
+  const handleAddRow = () => {
+    let count = parseInt(rowsToAdd, 10);
+    if (isNaN(count) || count < 1) count = 1;
     const currentLength = filaFields.length;
     const nuevos = Array.from({ length: count }, (_, idx) => buildDefaultRow(currentLength + idx));
     appendFila(nuevos);
+  };
+
+  const handleInsertRow = (index: number) => {
+    // Usamos splite/insert logica manual porque useFieldArray.insert a veces da problemas de re-render index
+    const newRow = buildDefaultRow(0); // El orden se recalcula al enviar
+    // @ts-ignore - insert is available in useFieldArray returns but sometimes typed poorly in older RHF
+    replaceFilas([
+      ...getValues('filas').slice(0, index + 1),
+      newRow,
+      ...getValues('filas').slice(index + 1)
+    ]);
   };
 
   const handleClearRows = () => {
@@ -642,9 +707,9 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     if (!selectedMateria || !row.asistencia || !row.nota_final) return;
 
     const formato = selectedMateria.formato.toUpperCase();
-    const isGroupA = ['TAL', 'LAB', 'PRA'].includes(formato);
-    // Group A (Taller/Lab/Práctica): Piso 80%, con excepción 65%
-    // Group B (Asignatura/Seminario/MOD): Piso 65% fijo
+    const isGroupA = ['TAL', 'LAB', 'PRA', 'MOD', 'MODULO'].includes(formato);
+    // Group A (Taller/Lab/Práctica/Módulo): Piso 80%, con excepción 65%
+    // Group B (Asignatura/Seminario): Piso 65% fijo
     const floor = isGroupA ? (row.excepcion ? 65 : 80) : 65;
 
     const asistVal = parseInt(row.asistencia, 10);
@@ -660,8 +725,38 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     } else if (notaVal === null) {
       // Si no hay nota pero hay asistencia, asumimos REGULAR o el primer estado positivo
       newSit = 'REGULAR';
-    } else if (notaVal >= 8 && situacionesDisponibles.some(s => s.codigo === 'PROMOCIONADO')) {
-      newSit = 'PROMOCIONADO';
+    } else if (notaVal >= 8 && situacionesDisponibles.some(s => s.codigo === 'PRO')) {
+      // Validar notas de TPs/Parciales si existen en columnas dinámicas para promoción
+      // REGLAMENTO: Aprobar TPs con minimo 6.
+      let cumpleRequisitosExtra = true;
+      if (row.datos && columnasDinamicas.length > 0) {
+        // Buscamos columnas que parezcan ser notas (TP, PARCIAL, etc) y validamos >= 6
+        columnasDinamicas.forEach(col => {
+          const key = col.key.toLowerCase();
+          const val = row.datos[col.key];
+          // Si es numerico y parece una nota
+          if (val && !isNaN(Number(val))) {
+            // Si es TP o trabajo practico, check >= 6
+            // Si es Parcial check >= 8 (segun el usuario dijo parcial >= 8 en otro momento, pero dejemos regla general >= 6 para no bloquear excesivamente, o estricto?)
+            // El usuario dijo: "el trabajo practico debe estar aprobado minimo con 6"
+            // Y reglamento modulo: parcial >= 8.
+            // Vamos a ser estrictos con TP >= 6.
+            if (key.includes('tp') || key.includes('trabajo')) {
+              if (Number(val) < 6) cumpleRequisitosExtra = false;
+            }
+            // Podriamos agregar logica para parciales >= 8 si se desea
+            if (key.includes('parc') || key.includes('parcial')) {
+              if (Number(val) < 8) cumpleRequisitosExtra = false;
+            }
+          }
+        });
+      }
+
+      if (cumpleRequisitosExtra) {
+        newSit = 'PRO';
+      } else {
+        newSit = 'REGULAR';
+      }
     } else if (notaVal >= 6) {
       newSit = 'REGULAR';
     } else {
@@ -684,7 +779,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(event, reason) => {
+        if (reason && reason === 'backdropClick') return;
+        onClose();
+      }}
       maxWidth={false}
       scroll="paper"
       PaperProps={{
@@ -721,6 +819,22 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
               Datos generales
             </Typography>
             <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={crossLoadEnabled}
+                      onChange={(e) => setCrossLoadEnabled(e.target.checked)}
+                    />
+                  }
+                  label="Habilitar carga de comisiones cruzadas (Cargar en otro profesorado)"
+                />
+                {crossLoadEnabled && (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Esta opción mostrará todos los profesorados disponibles. Utilícela solo para cargar alumnos de comisiones o equivalencias.
+                  </Alert>
+                )}
+              </Grid>
               <Grid item xs={12} sm={6} md={4}>
                 <Controller
                   control={control}
@@ -1116,17 +1230,31 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                 )}
               </Box>
               {!isReadOnly && (
-                <Box>
-                  <Tooltip title="Agregar una fila">
-                    <IconButton color="primary" size="small" onClick={() => handleAddRow(1)}>
-                      <AddCircleOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Agregar 5 filas">
-                    <IconButton color="primary" size="small" onClick={() => handleAddRow(5)}>
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>
+                    <Typography variant="body2" sx={{ mr: 1, fontSize: '0.85rem' }}>Agregar filas al final:</Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={rowsToAdd}
+                      onChange={(e) => setRowsToAdd(e.target.value)}
+                      sx={{ width: 60 }}
+                      disabled={isReadOnly}
+                      inputProps={{ min: 1, sx: { py: 0.5, px: 1 } }}
+                    />
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<AddCircleOutlineIcon fontSize="small" />}
+                      onClick={() => handleAddRow()}
+                      disabled={isReadOnly}
+                      sx={{ textTransform: 'none', px: 1, minWidth: 'auto' }}
+                    >
+                      Agregar
+                    </Button>
+                  </Box>
+
                   <Tooltip title="Restablecer filas (limpiar)">
                     <IconButton color="warning" size="small" onClick={handleClearRows}>
                       <DeleteOutlineIcon fontSize="small" />
@@ -1507,18 +1635,25 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                       </TableCell>
                       <TableCell sx={{ ...bodyCellSx, width: 56, textAlign: 'center' }}>
                         {!isReadOnly && (
-                          <Tooltip title="Eliminar fila">
-                            <span>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => removeFila(index)}
-                                disabled={filaFields.length <= 1}
-                              >
-                                <DeleteOutlineIcon fontSize="small" />
+                          <>
+                            <Tooltip title="Eliminar fila">
+                              <span>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => removeFila(index)}
+                                  disabled={filaFields.length <= 1}
+                                >
+                                  <DeleteOutlineIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Insertar fila debajo">
+                              <IconButton size="small" color="primary" onClick={() => handleInsertRow(index)}>
+                                <AddCircleOutlineIcon fontSize="small" />
                               </IconButton>
-                            </span>
-                          </Tooltip>
+                            </Tooltip>
+                          </>
                         )}
                       </TableCell>
                     </TableRow>
@@ -1526,22 +1661,35 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                 </TableBody>
               </Table>
             </TableContainer>
+
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{mode === 'view' ? 'Cerrar' : 'Cancelar'}</Button>
-        {mode !== 'view' && (
-          <Button
-            onClick={handleSubmit(onSubmit)}
-            variant="contained"
-            disabled={mutation.isPending || metadataQuery.isLoading}
-          >
-            {mutation.isPending
-              ? (mode === 'edit' ? 'Guardando...' : 'Generando...')
-              : (mode === 'edit' ? 'Guardar Cambios' : 'Generar planilla')}
-          </Button>
-        )}
+      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={persistStudents}
+              onChange={(e) => setPersistStudents(e.target.checked)}
+              disabled={mode !== 'create'}
+            />
+          }
+          label="Mantener lista de estudiantes al guardar"
+        />
+        <Box>
+          <Button onClick={onClose} sx={{ mr: 1 }}>{mode === 'view' ? 'Cerrar' : 'Cancelar'}</Button>
+          {mode !== 'view' && (
+            <Button
+              onClick={handleSubmit(onSubmit)}
+              variant="contained"
+              disabled={mutation.isPending || metadataQuery.isLoading}
+            >
+              {mutation.isPending
+                ? (mode === 'edit' ? 'Guardando...' : 'Generando...')
+                : (mode === 'edit' ? 'Guardar Cambios' : 'Generar planilla')}
+            </Button>
+          )}
+        </Box>
       </DialogActions>
     </Dialog>
   );

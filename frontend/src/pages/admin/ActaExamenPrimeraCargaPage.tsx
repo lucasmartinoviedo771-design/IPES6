@@ -6,7 +6,7 @@ import { fetchRegularidadMetadata } from "@/api/primeraCarga";
 const ActaExamenPrimeraCargaPage: React.FC = () => {
   const { data: metadata, isLoading } = useQuery({
     queryKey: ["regularidad-metadata"],
-    queryFn: fetchRegularidadMetadata,
+    queryFn: () => fetchRegularidadMetadata(false),
   });
 
   if (isLoading) {

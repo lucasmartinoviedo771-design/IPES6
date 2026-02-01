@@ -201,8 +201,15 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
     raise ValueError(f"Situacion academica '{raw}' no es valida para el formato seleccionado.")
 
 
-def _regularidad_metadata_for_user(user: User) -> dict:
+def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dict:
     allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
+    
+    # Solo si el usuario explicita include_all y es autoridad, permitimos ver todos
+    if include_all:
+        es_autoridad = user.asignaciones_profesorado.filter(rol__in=["bedel", "coordinador", "secretaria"]).exists()
+        if es_autoridad or user.is_superuser:
+            allowed = None # Deshabilitar filtro por ID
+            
     profes_qs = Profesorado.objects.filter(activo=True).order_by("nombre")
     if allowed is not None:
         if not allowed:
@@ -284,9 +291,16 @@ def _regularidad_metadata_for_user(user: User) -> dict:
     ]
 
     estudiantes = []
+    estudiantes = []
+    
+    # Si include_all está activo, traemos TODOS los estudiantes (incluso sin carrera)
+    if include_all:
+        estudiantes_qs = Estudiante.objects.all()
+    else:
+        estudiantes_qs = Estudiante.objects.filter(carreras__in=profes_qs).distinct()
+        
     estudiantes_qs = (
-        Estudiante.objects.filter(carreras__in=profes_qs)
-        .distinct()
+        estudiantes_qs
         .prefetch_related("carreras", "user")
         .order_by("user__last_name", "user__first_name")
     )
@@ -352,7 +366,7 @@ def _ensure_required_row_fields(row: dict) -> None:
     missing = []
     for field in (
         "orden",
-        "dni",
+        # "dni", # DNI is now optional (auto-generated if missing)
         "apellido_nombre",
         "situacion",
     ):
@@ -789,7 +803,11 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
             asistencia_val = f"{_display(fila.asistencia_porcentaje)}%"
         row[asistencia_idx] = _cell(asistencia_val, body_center_style, "-")
         row[excepcion_idx] = _cell("SI" if fila.excepcion else "NO", body_center_style, "NO")
-        situacion_valor = situacion_labels.get(fila.situacion, fila.situacion)
+        situacion_raw = fila.situacion
+        if situacion_raw == "AUJ":
+            situacion_valor = "JUS"
+        else:
+            situacion_valor = situacion_labels.get(situacion_raw, situacion_raw)
         row[situacion_idx] = _cell(situacion_valor, body_left_style, "-")
         table_rows.append(row)
 
@@ -938,11 +956,12 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     return buffer.read()
 
 
-def obtener_regularidad_metadata(user: User) -> dict:
+def obtener_regularidad_metadata(user: User, include_all: bool = False) -> dict:
     """Devuelve los metadatos necesarios para armar planillas manuales:
     profesorados accesibles, plantillas disponibles y columnas/situaciones.
+    Si include_all es True y el usuario tiene permisos de autoridad, devuelve todos los profesorados.
     """
-    return _regularidad_metadata_for_user(user)
+    return _regularidad_metadata_for_user(user, include_all=include_all)
 
 
 def crear_planilla_regularidad(
@@ -962,7 +981,15 @@ def crear_planilla_regularidad(
     estado: str = "final",
     dry_run: bool = False,
 ) -> dict:
-    ensure_profesorado_access(user, profesorado_id, role_filter={"bedel", "secretaria"})
+    # Intentamos verificar acceso estricto al profesorado
+    try:
+        ensure_profesorado_access(user, profesorado_id, role_filter={"bedel", "secretaria"})
+    except Exception:
+        # Si falla el acceso estricto, permitimos si el usuario es Bedel/Coordinador en CUALQUIER profesorado
+        # Esto habilita la "Carga Cruzada" para comisiones o históricos.
+        es_autoridad = user.asignaciones_profesorado.filter(rol__in=["bedel", "coordinador", "secretaria"]).exists()
+        if not es_autoridad and not user.is_superuser:
+            raise ValueError("No tiene permisos para cargar planillas en este profesorado.")
 
     try:
         profesorado = Profesorado.objects.get(pk=profesorado_id)
@@ -1067,6 +1094,28 @@ def crear_planilla_regularidad(
             ordenes_usados.add(orden)
 
             dni = _normalize_value(fila_data.get("dni"))
+
+            # --- Lógica de DNI Provisorio ---
+            if not dni and fila_data.get("apellido_nombre"):
+                # Generar DNI provisorio: HIS-{prof_id}-{seq}
+                prefix = f"HIS-{profesorado.id:02d}-"
+                # Contar cuantos HIS-{prof_id}- existen para calcular el próximo
+                # Buscamos en Estudiante directamente. Es una operación algo costosa pero aceptable para first-load.
+                count = Estudiante.objects.filter(dni__startswith=prefix).count()
+                seq = count + 1
+                new_dni = f"{prefix}{seq:04d}"
+                
+                # Verificar colisión simple (por si acaso borraron uno intermedio o concurrencia simple)
+                while Estudiante.objects.filter(dni=new_dni).exists():
+                    seq += 1
+                    new_dni = f"{prefix}{seq:04d}"
+                
+                dni = new_dni
+                warnings.append(f"[Fila {orden}] Se asignó DNI provisorio {dni} al estudiante sin identificación.")
+                # Asignamos el DNI generado al fila_data para que se guarde en la planilla
+                # Nota: fila_data es un dict del esquema, no el objeto fila DB aún
+            # --------------------------------
+
             if dni:
                 if dni in dnis_usados:
                     raise ValueError(f"El DNI {dni} aparece más de una vez en la planilla.")
@@ -1076,20 +1125,24 @@ def crear_planilla_regularidad(
             # --- Lazy Student Creation (Similar a Actas) ---
             if not estudiante and dni:
                 apellido_nombre = _normalize_value(fila_data.get("apellido_nombre"))
-                if "," in (apellido_nombre or ""):
-                    parts = apellido_nombre.split(",", 1)
-                    last_name = parts[0].strip()
-                    first_name = parts[1].strip()
+                if apellido_nombre:
+                    if "," in apellido_nombre:
+                        parts = apellido_nombre.split(",", 1)
+                        last_name = parts[0].strip()
+                        first_name = parts[1].strip()
+                    else:
+                        last_name = apellido_nombre
+                        first_name = "-"
                     
                     # Buscar o crear usuario
                     user_obj = User.objects.filter(username=dni).first()
                     if not user_obj:
-                         user_obj = User.objects.create_user(
-                             username=dni,
-                             password=dni,
-                             first_name=first_name,
-                             last_name=last_name
-                         )
+                        user_obj = User.objects.create_user(
+                            username=dni,
+                            password=dni,
+                            first_name=first_name,
+                            last_name=last_name
+                        )
                     
                     # Crear Estudiante
                     estudiante = Estudiante.objects.create(
@@ -1097,9 +1150,21 @@ def crear_planilla_regularidad(
                         dni=dni,
                         estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
                     )
-                    # Vincular con el profesorado actual
+                    
+                    try:
+                        estudiante.asignar_profesorado(profesorado)
+                    except Exception:
+                        pass
+                    
+                    warnings.append(f"[Fila {orden}] Se creó el estudiante {dni} automáticamente.")
+
+            # Asegurar vinculación al profesorado (útil en "Cargas Cruzadas")
+            if estudiante:
+                try:
                     estudiante.asignar_profesorado(profesorado)
-                    warnings.append(f"[Fila {orden}] El estudiante {dni} ({apellido_nombre}) fue creado automáticamente.")
+                except Exception:
+                    pass
+            # -----------------------------------------------
             # -----------------------------------------------
 
             situacion = _resolve_situacion(fila_data.get("situacion", ""), formato_para_situaciones)
@@ -1337,7 +1402,14 @@ def actualizar_planilla_regularidad(
     except PlanillaRegularidad.DoesNotExist:
         raise ValueError("La planilla no existe.")
 
-    ensure_profesorado_access(user, planilla.profesorado_id, role_filter={"bedel", "secretaria"})
+    # Intentamos verificar acceso estricto al profesorado
+    try:
+        ensure_profesorado_access(user, planilla.profesorado_id, role_filter={"bedel", "secretaria"})
+    except Exception:
+        # Permitir edición cruzada si es autoridad en otro lado
+        es_autoridad = user.asignaciones_profesorado.filter(rol__in=["bedel", "coordinador", "secretaria"]).exists()
+        if not es_autoridad and not user.is_superuser:
+            raise ValueError("No tiene permisos para editar planillas de este profesorado.")
 
     if fecha:
         planilla.fecha = fecha

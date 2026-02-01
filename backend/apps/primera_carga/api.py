@@ -214,8 +214,8 @@ class PlanillaRegularidadCreateIn(Schema):
     response={200: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
-def regularidades_metadata(request):
-    data = obtener_regularidad_metadata(request.user)
+def regularidades_metadata(request, include_all: bool = False):
+    data = obtener_regularidad_metadata(request.user, include_all=include_all)
     return ApiResponse(ok=True, message="Metadata de planillas de regularidad.", data=data)
 
 

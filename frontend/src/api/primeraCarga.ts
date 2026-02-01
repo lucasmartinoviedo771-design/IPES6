@@ -149,9 +149,10 @@ export interface RegularidadMetadataResponse {
   }>;
 }
 
-export const fetchRegularidadMetadata = async (): Promise<RegularidadMetadataResponse> => {
+export const fetchRegularidadMetadata = async (include_all = false): Promise<RegularidadMetadataResponse> => {
   const { data } = await api.get<ApiResponse<RegularidadMetadataResponse>>(
     '/admin/primera-carga/regularidades/metadata',
+    { params: { include_all } }
   );
   return data.data;
 };
