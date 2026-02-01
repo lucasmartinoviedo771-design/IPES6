@@ -704,80 +704,70 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
     const formato = selectedMateria.formato.toUpperCase();
 
-    // REGLA ASISTENCIA:
-    // ● Laboratorios (LAB), Talleres (TAL), Prácticas Docentes (PRA): 80% (con excepción)
-    // ● Seminarios (SEM), Asignaturas (ASI), Módulos (MOD): 65% (sin excepción explicitada distinta, base 65)
-    // Nota: El reglamento dice "80% con régimen de excep", asumimos que baja a 65% igual que el piso general.
+    // ASISTENCIA Y PROMOCIÓN:
+    // 1. Formatos que ADMITEN EXCEPCIÓN (Asignaturas, Seminarios, Talleres, Labs, Practicas, Materias):
+    //    - Base Regular/Promoción: 80%
+    //    - Con Excepción: Baja a 65%
+    // 2. Formatos que NO ADMITEN EXCEPCIÓN (Módulos):
+    //    - Base Regular/Promoción: 80% (Fijo). (Reglamento dice 65% un parrafo, promo 80% user rule. Usamos 65 Regular / 80 Promo para MOD)
 
-    const isGroupHighExec = ['LAB', 'TAL', 'PRA'].includes(formato);
-    // Group High: LAB, TAL, PRA
-    // Group Low: ASI, SEM, MOD
-
-    // Si es High: Piso normal 80. Si hay excepción, baja a 65.
-    // Si es Low: Piso fijo 65. (La excepción no bajaría más, o el teglamento no lo menciona, asumimos 65 piso).
+    const admiteExcepcion = ['ASI', 'SEM', 'TAL', 'LAB', 'PRA', 'MAT'].includes(formato);
+    const esModulo = ['MOD', 'MODULO'].includes(formato);
 
     const asistencia = parseInt(row.asistencia, 10);
     const notaVal = row.nota_final === '---' ? null : Number(row.nota_final.replace(',', '.'));
     const tieneExcepcion = row.excepcion; // boolean
 
-    let minAsistencia = 65;
-    if (isGroupHighExec) {
+    let minAsistencia = 80;
+
+    if (esModulo) {
+      // Módulos: 
+      // Regularidad: 65% (segun reglamento textual "Módulos 65%").
+      minAsistencia = 65;
+    } else if (admiteExcepcion) {
+      // Asignaturas y otros:
+      // Base 80%. Con excepción 65%.
       minAsistencia = tieneExcepcion ? 65 : 80;
     } else {
-      minAsistencia = 65; // SEM, ASI, MOD
+      // Default (otras cosas): 65% base.
+      minAsistencia = 65;
     }
-
-    // TODO: Manejar "Unidades Curriculares Promocionales" mencionadas en el reglamento como grupo 80%.
-    // Como no tenemos un flag explícito de "EsPromocional" en la materia, usaremos la lógica de abajo
-    // para determinar si *aplica* promoción, pero el piso de asistencia para estar REGULAR se rige por formato.
 
     let newSit = '';
 
     if (isNaN(asistencia)) {
       newSit = '';
     } else if (asistencia < 30) {
-      // Libre por inasistencia total/abandono, a veces se usa otro codigo, aqui LIBRE-AT o LIBRE-I
-      // Asumimos lógica simple: no llega al mínimo -> Libre
-      newSit = 'LIBRE-I';
+      newSit = 'LIBRE-AT';
     } else if (asistencia < minAsistencia) {
       newSit = 'LIBRE-I';
     } else if (notaVal === null) {
-      // Asistencia OK, pero nota vacia (---). 
-      // Si la nota es null, no podemos cerrar situación final de aprobación.
-      // Asumimos 'REGULAR' por defecto si asistencia da.
       newSit = 'REGULAR';
     } else if (notaVal < 6) {
-      // Nota < 6 implica desaprobado la cursada en la mayoría de los casos
       newSit = 'DESAPROBADO_PA';
     } else {
-      // Aquí notaVal >= 6 Y Asistencia >= Minima. Es al menos REGULAR.
-      // Verificamos PROMOCIÓN
-
+      // Candidato a Regular o Promocion
       let esPromocion = false;
 
-      // Requisitos Promoción (Art 63):
-      // a. Asistencia 80% (o 65% excepcion).
-      //    OJO: Si la materia era ASI (piso 65%), para promocionar PIDE 80%.
-      //    El art 63 aplica a "promocionar una unidad curricular". 
-      //    Entonces para PRO, el piso SIEMPRE es 80/65excep, sea cual sea el formato.
+      if (notaVal >= 8) {
+        let minAsistPromo = 80;
 
-      const minAsistPromocion = tieneExcepcion ? 65 : 80;
+        if (esModulo) {
+          // Modulo: 80% Fijo para promo (User instruction)
+          minAsistPromo = 80;
+        } else if (admiteExcepcion) {
+          // Resto: 80% o 65% si hay check
+          minAsistPromo = tieneExcepcion ? 65 : 80;
+        }
 
-      if (asistencia >= minAsistPromocion) {
-        // b. Aprobar parciales con >= 8
-        // c. Aprobar TPs con >= 6
-        // d. Nota final (asumimos que la nota final cargada para promo debe ser >= 8)
-
-        if (notaVal >= 8) {
-          // Chequear columnas dinámicas
+        if (asistencia >= minAsistPromo) {
+          // Chequear TPs y Parciales
           let requisitosNotasOk = true;
-
           if (row.datos && columnasDinamicas.length > 0) {
             columnasDinamicas.forEach(col => {
               const key = col.key.toLowerCase();
               const valStr = row.datos[col.key];
               const val = Number(valStr);
-
               if (valStr && !isNaN(val)) {
                 // TPs >= 6
                 if (key.includes('tp') || key.includes('trabajo')) {
@@ -790,16 +780,12 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
               }
             });
           }
-
           if (requisitosNotasOk) {
             esPromocion = true;
           }
         }
       }
 
-      // Determinar código final
-      // Si hay código PRO disponible y cumple requisitos -> PRO
-      // Sino -> REGULAR
       if (esPromocion && situacionesDisponibles.some(s => s.codigo === 'PRO')) {
         newSit = 'PRO';
       } else {
@@ -807,7 +793,6 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       }
     }
 
-    // Solo asignar si el código existe en la plantilla actual (seguridad)
     if (newSit && situacionesDisponibles.some(s => s.codigo === newSit)) {
       setValue(`filas.${index}.situacion`, newSit, { shouldDirty: true });
     }
