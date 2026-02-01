@@ -392,11 +392,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     return selectedProfesorado.planes.flatMap((plan) => plan.materias);
   }, [selectedProfesorado]);
 
-  useEffect(() => {
-    setValue('materiaId', '');
-    setValue('plantillaId', '');
-    setValue('planResolucion', '');
-  }, [profesoradoId, setValue]);
+  /* Removed cleanup useEffect */
 
   const selectedMateria = useMemo(
     () => materias.find((m) => m.id === Number(materiaId)),
@@ -848,6 +844,12 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                       fullWidth
                       size="small"
                       required
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setValue('materiaId', '');
+                        setValue('plantillaId', '');
+                        setValue('planResolucion', '');
+                      }}
                     >
                       {profesorados.map((prof) => (
                         <MenuItem key={prof.id} value={prof.id}>
