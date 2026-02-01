@@ -1580,6 +1580,12 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                           name={`filas.${index}.excepcion`}
                           render={({ field: controllerField }) => {
                             const { value, onChange, ...rest } = controllerField;
+                            // Determinar si se permite excepción según formato
+                            const formato = selectedMateria?.formato?.toUpperCase();
+                            const isGroupHigh = ['LAB', 'TAL', 'PRA'].includes(formato || '');
+                            // Deshabilitar si es View o si el formato no admite excepción (ASI, SEM, MOD...)
+                            const isDisabled = isReadOnly || (selectedMateria && !isGroupHigh);
+
                             return (
                               <Checkbox
                                 {...rest}
@@ -1591,7 +1597,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                                 }}
                                 size="small"
                                 sx={{ p: 0 }}
-                                disabled={isReadOnly}
+                                disabled={isDisabled}
                               />
                             );
                           }}
