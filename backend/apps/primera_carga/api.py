@@ -269,8 +269,11 @@ class PlanillaRegularidadListOut(Schema):
     profesorado_nombre: str
     materia_nombre: str
     anio_cursada: str | None
+    dictado: str | None
     fecha: date
     cantidad_estudiantes: int
+    estado: str | None
+    created_at: datetime | None
 
 @primera_carga_router.get(
     "/regularidades/historial-debug",
@@ -299,15 +302,34 @@ def listar_historial_regularidades(request):
         data = []
         # Convertir explícitamente a lista
         lista_planillas = list(qs)
-        print(f"DEBUG: Encontradas {len(lista_planillas)} planillas")
+
         
+        
+        # Mapping helpers
+        regimen_map = {
+            "ANU": "ANUAL",
+            "PCU": "1C",
+            "SCU": "2C"
+        }
+
         for planilla in lista_planillas:
+            # Robust dictado resolution
+            dictado_val = planilla.dictado
+            if not dictado_val and planilla.plantilla:
+                dictado_val = planilla.plantilla.dictado
+            
+            if not dictado_val:
+                # Fallback to materia regimen
+                reg = planilla.materia.regimen
+                dictado_val = regimen_map.get(reg, "ANUAL")
+
             data.append({
                 "id": planilla.id,
                 "codigo": planilla.codigo,
                 "profesorado_nombre": planilla.profesorado.nombre,
                 "materia_nombre": planilla.materia.nombre,
                 "anio_cursada": str(planilla.materia.anio_cursada) if planilla.materia.anio_cursada else "-",
+                "dictado": dictado_val,
                 "fecha": planilla.fecha,
                 "cantidad_estudiantes": planilla.filas.count(),
                 "estado": planilla.estado,

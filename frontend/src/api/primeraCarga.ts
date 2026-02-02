@@ -229,6 +229,7 @@ export interface PlanillaRegularidadListItem {
   profesorado_nombre: string;
   materia_nombre: string;
   anio_cursada: string;
+  dictado?: string;
   fecha: string;
   cantidad_estudiantes: number;
   estado: string;

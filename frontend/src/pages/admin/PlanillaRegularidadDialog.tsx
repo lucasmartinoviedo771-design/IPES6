@@ -140,6 +140,17 @@ const DICTADO_LABELS: Record<string, string> = {
   '2C': '2° cuatrimestre',
 };
 
+const SITUACION_DESCRIPTIONS: Record<string, string> = {
+  PRO: "Promocionado",
+  REG: "Regular",
+  APR: "Aprobado (sin final)",
+  DPA: "Desaprobado por Parciales",
+  DTP: "Desaprobado por Trabajos Prácticos",
+  LBI: "Libre por Inasistencias",
+  LAT: "Libre Antes de Tiempo",
+  AUJ: "JUS",
+};
+
 const FORMATO_SLUG_MAP: Record<string, string> = {
   ASI: 'asignatura',
   MOD: 'modulo',
@@ -745,146 +756,212 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     setValue(`filas.${index}.apellido_nombre`, match.apellido_nombre, { shouldDirty: true });
   };
 
+  // --- LÓGICA DE ASISTENCIA BLUR AUTO-FILL ---
+  const handleAsistenciaBlur = (index: number, e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    // Auto-fill empty fields with '---' if attendance is entered
+    if (val && val.trim() !== '') {
+      const currentRow = getValues(`filas.${index}`);
+
+      // Helper to set if empty
+      const fillIfEmpty = (path: string, currentVal: any) => {
+        if (!currentVal || String(currentVal).trim() === '') {
+          setValue(`filas.${index}.${path}` as any, '---', { shouldDirty: true });
+        }
+      };
+
+      if (!currentRow.nota_final) setValue(`filas.${index}.nota_final`, '---', { shouldDirty: true });
+
+      columnasDinamicas.forEach(col => {
+        const currentVal = currentRow.datos?.[col.key];
+        if (!currentVal || String(currentVal).trim() === '') {
+          setValue(`filas.${index}.datos.${col.key}`, '---', { shouldDirty: true });
+        }
+      });
+    }
+
+    // Trigger calculation
+    calculateSituacionForRow(index);
+  };
+
+
   const calculateSituacionForRow = (index: number) => {
     const row = getValues(`filas.${index}`);
-    // Permitir calculo parcial si faltan datos, o esperar? El usuario quiere sugerencia.
-    // Si falta nota_final, asumimos que estamos escribiendo.
-    // Pero para lógica estricta necesitamos datos.
     if (!selectedMateria) return;
 
     // Parsers
     const parseVal = (v: any) => {
-      if (!v || v === '---') return 0; // Treat empty/dashes as 0 for strict checking? Or null?
-      // If user is typing, we might check partial. 
-      // But rules say "si nota ... es menor a 6". If empty, is it 0?
-      // Lets treat empty as 0 for calculation to avoid getting Stuck.
+      if (!v || v === '---') return 0;
       return Number(String(v).replace(',', '.'));
     };
-    const hasVal = (v: any) => v && v !== '---' && v !== '';
 
     const asistencia = row.asistencia ? parseInt(row.asistencia, 10) : 0;
     const notaVal = row.nota_final === '---' || !row.nota_final ? 0 : parseVal(row.nota_final);
 
-    const formato = selectedMateria?.formato?.toUpperCase() || '';
-    const dictado = selectedMateria?.dictado || '';
-
-    const isModulo = ['MOD', 'MODULO'].includes(formato);
-    const isAnual = dictado === 'ANUAL';
-    const isLabTalPra = ['LAB', 'TAL', 'PRA'].includes(formato);
-    const isSeminario = ['SEM', 'SEMINARIO'].includes(formato);
-    const isAsignatura = ['ASI', 'ASIGNATURA'].includes(formato);
-
-    const tieneExcepcion = row.excepcion;
     let newSit = '';
+    const dictado = selectedPlantilla?.dictado || selectedMateria?.dictado || '';
+    let formato = selectedMateria?.formato?.toUpperCase() || '';
 
-    // LÓGICA ESPECÍFICA PARA MÓDULO ANUAL O ASIGNATURA ANUAL
-    if ((isModulo || isAsignatura) && isAnual) {
-      // Reglas estrictas Módulo Anual
-      // Tratar vacíos como 0 para forzar Desaprobado si falta nota
+    // Fallback if materia has no format but template does
+    if (!formato && selectedPlantilla) {
+      const pName = selectedPlantilla.nombre.toUpperCase();
+      if (pName.includes('TALLER')) formato = 'TALLER';
+      else if (pName.includes('SEMINARIO')) formato = 'SEMINARIO';
+      else if (pName.includes('ASIGNATURA')) formato = 'ASIGNATURA';
+      else if (pName.includes('MODULO')) formato = 'MODULO';
+      else if (pName.includes('LABORATORIO')) formato = 'LABORATORIO';
+    }
 
-      // 1. Asistencia
+    const isAnual = dictado === 'ANUAL';
+    const is1C = dictado === '1C' || dictado === '1° Cuatrimestre';
+    const is2C = dictado === '2C' || dictado === '2° Cuatrimestre';
+
+    // Logic groups
+    const isTallerGroup = ['TAL', 'TALLER', 'SEM', 'SEMINARIO', 'LAB', 'LABORATORIO', 'PRA', 'PRACTICA'].includes(formato || '');
+    const isAsignaturaGroup = ['ASI', 'ASIGNATURA'].includes(formato || '');
+    const isModuloGroup = ['MOD', 'MODULO'].includes(formato || '');
+
+    // LÓGICA STRICTA PARA MODULO/ASIGNATURA/TALLER
+    console.log(`[DEBUG] Row ${index} | Formato: ${formato} | Dictado: ${dictado} | Asistencia: ${asistencia} (Raw: ${row.asistencia}) | TallerGroup: ${isTallerGroup}`);
+    console.log(`[DEBUG] Datos:`, row.datos, ` | Final: ${row.nota_final}`);
+
+    // Thresholds
+    // Modulo/Anual -> 65%
+    // Others (Asignatura, Taller 1C/2C) -> 60%? 
+    // Usually Taller requires high attendance (80%), but user mentioned 5% failing, so let's enforce the low limit first.
+    // Thresholds
+    // User requested "libre I que debe ser menor a 65".
+    // We unify the threshold to 65 for all formats to be consistent with this request.
+    const thresholdRegular = 65;
+
+    if (isModuloGroup || isAsignaturaGroup || isTallerGroup) {
       if (asistencia < 30) {
         newSit = 'LIBRE-AT';
-      } else if (asistencia < 65) {
+      } else if (asistencia < thresholdRegular) {
         newSit = 'LIBRE-I';
       } else {
-        // Asistencia >= 65% (Regular base)
+        // Attendance OK -> Check Grades
+        let desaprobado = false;
 
-        // 2. Chequeo de Notas Desaprobatorias
-        const tpFinal = parseVal(row.datos?.tp_final);
-        const p1 = parseVal(row.datos?.parcial_1p);
-        const r1 = parseVal(row.datos?.parcial_1r);
-        const p2 = parseVal(row.datos?.parcial_2p);
-        const r2 = parseVal(row.datos?.parcial_2r);
+        // Define keys based on dictado
+        if (isAnual) {
+          const tpFinal = parseVal(row.datos?.tp_final);
+          const tp1 = parseVal(row.datos?.tp_1c);
+          const tp2 = parseVal(row.datos?.tp_2c);
 
-        // Si TP Final < 6 -> DESAPROBADO_TP (Segun requerimiento)
-        // Aquí NO usamos hasVal, porque vacio = 0 = Desaprobado
-        if (tpFinal < 6) {
-          newSit = 'DESAPROBADO_TP';
-        }
-        // Si Parcial 1 (P o R) no logran 6 -> DESAPROBADO_PA
-        // "P 6 o + o recuperatorio 6 o +" => max(p1, r1) >= 6
-        else if (Math.max(p1, r1) < 6) {
-          newSit = 'DESAPROBADO_PA';
-        }
-        // Si Parcial 2 (P o R) no logran 6 -> DESAPROBADO_PA
-        else if (Math.max(p2, r2) < 6) {
-          newSit = 'DESAPROBADO_PA';
-        }
-        // Nota final global < 6
-        else if (notaVal < 6) {
-          newSit = 'DESAPROBADO_PA';
-        }
-        else {
-          // Si llegamos acá, tiene todo aprobado con 6+.
-          // Chequear PROMOCIÓN
-          // TP Final >= 6 (ya chequeado, pero regla dice "si tiene TP nota final 6 o mas... y el resto 8")
-          // P1 >= 8 (Primera instancia)
-          // P2 >= 8 (Primera instancia)
-          // Final >= 8
-          // Asistencia >= 80%
+          const hasTpFinal = row.datos && 'tp_final' in row.datos;
+          const hasTp1 = row.datos && 'tp_1c' in row.datos;
+          const hasTp2 = row.datos && 'tp_2c' in row.datos;
 
-          // NOTA: Para P1/P2 "en primera instancia", debemos ver si P >= 8.
-          // Si P < 8 pero R >= 8, ya no es primera instancia -> No promociona.
-          const p1_promocion = p1 >= 8;
-          const p2_promocion = p2 >= 8;
+          // Fail if any TP exists and is < 6
+          if (hasTpFinal && tpFinal < 6) desaprobado = true;
+          if (hasTp1 && tp1 < 6) desaprobado = true;
+          if (hasTp2 && tp2 < 6) desaprobado = true;
 
-          const isPromocion =
-            asistencia >= 80 &&
-            notaVal >= 8 &&
-            p1_promocion &&
-            p2_promocion &&
-            tpFinal >= 6;
+          const p1 = parseVal(row.datos?.parcial_1p);
+          const r1 = parseVal(row.datos?.parcial_1r);
+          const p2 = parseVal(row.datos?.parcial_2p);
+          const r2 = parseVal(row.datos?.parcial_2r);
 
-          if (isPromocion && isModulo) {
-            newSit = 'PROMOCIONADO';
-          } else {
-            // Si no promociona (o es Asignatura que no promociona), pero aprobó todo con >= 6
-            newSit = 'REGULAR';
+          // Check Parciales only if NOT Taller/Lab/Seminario
+          if (!isTallerGroup) {
+            if (Math.max(p1, r1) < 6) desaprobado = true;
+            if (Math.max(p2, r2) < 6) desaprobado = true;
           }
-        }
-      }
-    } else {
-      // LÓGICA GENÉRICA / ANTERIOR (Asignaturas, Talleres, etc.)
-      let pisoRegularidad = 65;
-      if (isLabTalPra) {
-        pisoRegularidad = tieneExcepcion ? 65 : 80;
-      }
+        } else if (is1C) {
+          const tp = parseVal(row.datos?.tp_1c);
+          const p = parseVal(row.datos?.parcial_1p);
+          const r = parseVal(row.datos?.parcial_1r);
 
-      if (isNaN(asistencia)) {
-        newSit = ''; // Esperar datos
-      } else if (asistencia < 30) {
-        // Unificar criterio Libre AT para todos? User dijo "Libre at desde 0 a 29.99%" en contexto modulo anual.
-        // Lo aplicamos general por coherencia o mantenemos logica vieja?
-        // La logica vieja no tenia LIBRE-AT. Vamos a usar la general si < 30 es común.
-        newSit = 'LIBRE-AT';
-      } else if (asistencia < pisoRegularidad) {
-        newSit = 'LIBRE-I';
-      } else if (!hasVal(row.nota_final)) {
-        newSit = 'REGULAR'; // Default temporal
-      } else if (notaVal < 6) {
-        newSit = 'DESAPROBADO_PA';
-      } else {
-        // Aprobado/Regular
-        if (isModulo) {
-          // MODULO GENERICO (No anual, o anual sin columnas especiales?)
-          if (asistencia >= 80 && notaVal >= 8) {
-            newSit = 'PRO';
-          } else {
-            newSit = 'REGULAR';
+          if (tp < 6) desaprobado = true;
+          if (!isTallerGroup && Math.max(p, r) < 6) desaprobado = true;
+        } else if (is2C) {
+          const tp = parseVal(row.datos?.tp_2c);
+          const p = parseVal(row.datos?.parcial_2p);
+          const r = parseVal(row.datos?.parcial_2r);
+
+          if (tp < 6) desaprobado = true;
+          if (!isTallerGroup && Math.max(p, r) < 6) desaprobado = true;
+        }
+
+        // Global Final Note Check
+        if (notaVal < 6) desaprobado = true;
+
+        if (desaprobado) {
+          // Determine specific failure status
+          let specificStatus = 'DESAPROBADO_PA'; // Default to Parcial fail
+
+          const tp1 = parseVal(row.datos?.tp_1c);
+          const tp2 = parseVal(row.datos?.tp_2c);
+          const tpFinal = parseVal(row.datos?.tp_final);
+
+          // If failure is due to TP, switch to DESAPROBADO_TP
+          if (is1C && tp1 < 6) specificStatus = 'DESAPROBADO_TP';
+          else if (is2C && tp2 < 6) specificStatus = 'DESAPROBADO_TP';
+          else if (isAnual) {
+            if ((row.datos && 'tp_final' in row.datos && tpFinal < 6) ||
+              (row.datos && 'tp_1c' in row.datos && tp1 < 6) ||
+              (row.datos && 'tp_2c' in row.datos && tp2 < 6)) {
+              specificStatus = 'DESAPROBADO_TP';
+            }
           }
-        } else if (isAsignatura) {
-          newSit = 'REGULAR';
-        } else if (isLabTalPra || isSeminario) {
-          newSit = 'APR';
+
+          // Taller/Lab failure is always TP related (since no exams)
+          if (isTallerGroup) specificStatus = 'DESAPROBADO_TP';
+
+          newSit = specificStatus;
         } else {
-          newSit = 'REGULAR';
+          // Passed
+          if (isTallerGroup) {
+            // Taller/Seminario/Lab -> Direct Approval
+            newSit = 'APROBADO';
+          } else if (isModuloGroup) {
+            // MÓDULO LOGIC: Check for PROMOCIÓN (Art 63)
+            // 1. Asistencia >= 80%
+            // 2. Parciales >= 8 in FIRST INSTANCE (P). Taking Recuperatorio loses promotion.
+            // 3. TPs Approved (already checked above to reach this block)
+
+            let promo = false;
+            if (asistencia >= 80) {
+              if (isAnual) {
+                const p1 = parseVal(row.datos?.parcial_1p);
+                const p2 = parseVal(row.datos?.parcial_2p);
+                // Must have >= 8 in both P instances to promote
+                if (p1 >= 8 && p2 >= 8) promo = true;
+              } else if (is1C) {
+                const p = parseVal(row.datos?.parcial_1p);
+                if (p >= 8) promo = true;
+              } else if (is2C) {
+                const p = parseVal(row.datos?.parcial_2p);
+                if (p >= 8) promo = true;
+              }
+            }
+
+            newSit = promo ? 'PROMOCION' : 'REGULAR';
+          } else {
+            // Asignatura -> Regularity
+            newSit = 'REGULAR';
+          }
         }
       }
     }
 
     // Normalización de Códigos (PRO -> PROMOCIONADO, etc)
     const validCodes = situacionesDisponibles.map(s => s.codigo);
+
+    // Helper to find best matching code
+    const findCode = (search: string) => {
+      const found = situacionesDisponibles.find(s =>
+        s.codigo === search ||
+        s.label.toUpperCase() === search ||
+        s.label.toUpperCase().includes(search)
+      );
+      return found ? found.codigo : search;
+    };
+
+    if (newSit === 'APROBADO') {
+      newSit = findCode('APROBADO'); // Tries to find matching code for APROBADO
+    }
 
     // Mapeo de códigos cortos a largos si es necesario
     const mapCode = (short: string, long: string) => {
@@ -893,16 +970,21 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       } else if (newSit === long && !validCodes.includes(long) && validCodes.includes(short)) {
         newSit = short;
       }
-    };
+    }
 
     mapCode('PRO', 'PROMOCIONADO');
-    mapCode('APR', 'APROBADO');
     mapCode('REG', 'REGULAR');
-    mapCode('LBI', 'LIBRE-I');
-    mapCode('LAT', 'LIBRE-AT');
+    mapCode('LIBRE', 'LIBRE-I'); // Default libre
+    mapCode('APR', 'APROBADO'); // Try to map common abbreviations
 
-    // Asignar
-    if (newSit) {
+    // If still not valid, try to find by name similar to strictly what we have
+    if (!validCodes.includes(newSit)) {
+      // Last resort lookup
+      const similar = situacionesDisponibles.find(s => s.label.toUpperCase().includes(newSit.replace(/_/g, ' ')));
+      if (similar) newSit = similar.codigo;
+    }
+
+    if (newSit !== row.situacion) {
       setValue(`filas.${index}.situacion`, newSit, { shouldDirty: true });
     }
   };
@@ -1627,36 +1709,60 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                           <Controller
                             control={control}
                             name={`filas.${index}.datos.${col.key}`}
-                            render={({ field: controllerField }) => (
-                              <TextField
-                                {...controllerField}
-                                value={controllerField.value ?? ''}
-                                size="small"
-                                fullWidth
-                                inputProps={{
-                                  sx: { textAlign: 'center', px: 0.5 },
-                                  maxLength: 3
-                                }}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === '-' || val === '--' || val === '---') {
-                                    controllerField.onChange(val);
-                                    return;
-                                  }
-                                  const num = val.replace(/\D/g, '');
-                                  if (num === '') {
-                                    controllerField.onChange('');
-                                    return;
-                                  }
-                                  const n = parseInt(num, 10);
-                                  if (n >= 0 && n <= 10) {
-                                    controllerField.onChange(num);
-                                  }
-                                }}
-                                required={!col.optional}
-                                disabled={isReadOnly}
-                              />
-                            )}
+                            render={({ field: controllerField }) => {
+                              const isRecuperatorio = col.key.endsWith('r');
+                              let disabled = isReadOnly;
+                              let softDisabled = false;
+
+                              if (!isReadOnly && isRecuperatorio) {
+                                const pKey = col.key.slice(0, -1) + 'p';
+                                const pVal = getValues(`filas.${index}.datos.${pKey}`);
+                                if (pVal && String(pVal).trim() !== '' && String(pVal) !== '---' && Number(String(pVal).replace(',', '.')) >= 6) {
+                                  softDisabled = true;
+                                }
+                              }
+
+                              const isBlocked = disabled || softDisabled;
+
+                              return (
+                                <TextField
+                                  {...controllerField}
+                                  value={controllerField.value ?? ''}
+                                  size="small"
+                                  fullWidth
+                                  inputProps={{
+                                    sx: {
+                                      textAlign: 'center',
+                                      px: 0.5,
+                                      ...(softDisabled ? { backgroundColor: '#f5f5f5', color: '#a0a0a0', cursor: 'not-allowed' } : {})
+                                    },
+                                    maxLength: 3,
+                                    readOnly: softDisabled,
+                                    tabIndex: softDisabled ? -1 : undefined
+                                  }}
+                                  onBlur={() => calculateSituacionForRow(index)}
+                                  onChange={(e) => {
+                                    if (softDisabled) return; // double safety
+                                    const val = e.target.value;
+                                    if (val === '-' || val === '--' || val === '---') {
+                                      controllerField.onChange(val);
+                                      return;
+                                    }
+                                    const num = val.replace(/\D/g, '');
+                                    if (num === '') {
+                                      controllerField.onChange('');
+                                      return;
+                                    }
+                                    const n = parseInt(num, 10);
+                                    if (n >= 0 && n <= 10) {
+                                      controllerField.onChange(num);
+                                    }
+                                  }}
+                                  required={!col.optional}
+                                  disabled={disabled} // Hard disabled only for global readonly
+                                />
+                              );
+                            }}
                           />
                         </TableCell>
                       ))}
@@ -1711,7 +1817,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                                 sx: { textAlign: 'center', px: 0.5 },
                                 maxLength: 3
                               }}
-                              onBlur={() => calculateSituacionForRow(index)}
+                              onBlur={(e) => handleAsistenciaBlur(index, e)}
                               onChange={(e) => {
                                 const val = e.target.value;
                                 if (val === '-' || val === '--' || val === '---') {
@@ -1776,11 +1882,21 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                             fullWidth
                             value={(() => {
                               const val = watch(`filas.${index}.situacion`);
-                              // Intentar buscar label en situacionesDisponibles
+
+                              // Paridad con PDF: AUJ -> JUS
+                              if (val === 'AUJ') return 'JUS';
+
+                              // 1. Intentar buscar label en situacionesDisponibles (metadata dinámica)
                               const match = situacionesDisponibles.find(
                                 (s) => s.codigo.toString().toLowerCase() === (val || '').toString().toLowerCase()
                               );
-                              return match ? match.label : val;
+                              if (match && match.label) return match.label;
+
+                              // 2. Fallback a mapa estático (simula comportamiento del PDF backend)
+                              const staticDesc = SITUACION_DESCRIPTIONS[(val || '').toUpperCase()];
+                              if (staticDesc) return staticDesc;
+
+                              return val;
                             })()}
                             InputProps={{
                               readOnly: true,
