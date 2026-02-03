@@ -1,1 +1,0 @@
-export default function AlumnosPage(){ return <>Gestión de alumnos</>; }
