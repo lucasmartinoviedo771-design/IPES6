@@ -27,6 +27,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { PageHero } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
+import { hasAnyRole } from "@/utils/roles";
 
 type SelectValue = string;
 
@@ -35,33 +36,34 @@ const CertificadoRegularPage: React.FC = () => {
   const { user } = useAuth();
 
   const roles = user?.roles ?? [];
-  const isAlumno = roles.includes("alumno") && roles.every((rol) => rol === "alumno");
+  const isOnlyStudent = hasAnyRole(user, ["alumno"]) && !hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const canGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
   const [profesoradoId, setProfesoradoId] = useState<SelectValue>("");
   const [planId, setPlanId] = useState<SelectValue>("");
   const [dniManual, setDniManual] = useState<string>("");
   const [descargando, setDescargando] = useState(false);
 
-  const dniObjetivo = isAlumno ? (user?.dni ?? "") : dniManual.trim();
+  const dniObjetivo = isOnlyStudent ? (user?.dni ?? "") : dniManual.trim();
 
   const carrerasQuery = useQuery({
     queryKey: ["alumnos", "carreras-activas", dniObjetivo || null],
     queryFn: () => obtenerCarrerasActivas(dniObjetivo ? { dni: dniObjetivo } : {}),
-    enabled: isAlumno || Boolean(dniObjetivo),
+    enabled: (isOnlyStudent || Boolean(dniObjetivo)) && (canGestionar || isOnlyStudent),
   });
 
   const carreras = carrerasQuery.data ?? [];
 
-useEffect(() => {
-  if (!carreras.length) {
-    setProfesoradoId("");
-    return;
-  }
-  const existe = carreras.some((item) => String(item.profesorado_id) === profesoradoId);
-  if (!existe) {
-    setProfesoradoId(String(carreras[0].profesorado_id));
-  }
-}, [carreras, profesoradoId]);
+  useEffect(() => {
+    if (!carreras.length) {
+      setProfesoradoId("");
+      return;
+    }
+    const existe = carreras.some((item) => String(item.profesorado_id) === profesoradoId);
+    if (!existe) {
+      setProfesoradoId(String(carreras[0].profesorado_id));
+    }
+  }, [carreras, profesoradoId]);
 
   const planesDisponibles = useMemo(() => {
     const carrera = carreras.find((item) => item.profesorado_id === Number(profesoradoId));
@@ -80,7 +82,7 @@ useEffect(() => {
     }
   }, [planesDisponibles, planId]);
 
-  const puedeCambiarDni = !isAlumno;
+  const puedeCambiarDni = canGestionar;
   const handleDescargar = async () => {
     if (!profesoradoId || !planId) {
       enqueueSnackbar("Selecciona un profesorado y un plan de estudio.", { variant: "warning" });
@@ -164,7 +166,7 @@ useEffect(() => {
               label="Profesorado"
               value={profesoradoId}
               onChange={(event: SelectChangeEvent<string>) => setProfesoradoId(event.target.value)}
-              disabled={carrerasQuery.isLoading || (!isAlumno && !dniObjetivo) || (!isAlumno && !carreras.length)}
+              disabled={carrerasQuery.isLoading || (!isOnlyStudent && !dniObjetivo) || (!isOnlyStudent && !carreras.length)}
             >
               {carreras.map((carrera: TrayectoriaCarreraDetalleDTO) => (
                 <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
@@ -178,7 +180,7 @@ useEffect(() => {
           <FormControl
             fullWidth
             size="small"
-            disabled={!planesDisponibles.length || carrerasQuery.isLoading || (!isAlumno && !dniObjetivo)}
+            disabled={!planesDisponibles.length || carrerasQuery.isLoading || (!isOnlyStudent && !dniObjetivo)}
           >
             <InputLabel id="plan-select-label">Plan</InputLabel>
             <Select

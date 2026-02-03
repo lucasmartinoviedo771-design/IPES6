@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.db.models import Max, Q
 
 from apps.common.api_schemas import ApiResponse
-from core.models import Estudiante, HorarioCatedra, HorarioCatedraDetalle, Materia, PlanDeEstudio, Profesorado
+from core.models import Correlatividad, Estudiante, HorarioCatedra, HorarioCatedraDetalle, Materia, PlanDeEstudio, Profesorado
 
 from ..schemas import Horario, HorarioTabla, MateriaPlan
 from .helpers import (

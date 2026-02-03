@@ -30,6 +30,7 @@ import {
   VentanaInscripcion,
 } from '@/api/alumnos';
 import { useAuth } from '@/context/AuthContext';
+import { hasAnyRole, isOnlyStudent } from '@/utils/roles';
 
 type Horario = HorarioDTO;
 type Cuatrimestre = MateriaPlanDTO['cuatrimestre'];
@@ -125,10 +126,7 @@ const defaultHistorial: HistorialAlumnoDTO = {
 
 const CambioComisionPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user: null }) as any;
-  const canGestionar =
-    !!user &&
-    (user.is_staff ||
-      (user.roles || []).some((r: string) => ['admin', 'secretaria', 'bedel'].includes((r || '').toLowerCase())));
+  const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel']);
 
   const [dniFiltro, setDniFiltro] = React.useState<string>('');
   const [debouncedDni, setDebouncedDni] = React.useState(dniFiltro);
@@ -368,118 +366,118 @@ const CambioComisionPage: React.FC = () => {
     <>
       <Box sx={{ p: 3 }}>
         <BackButton fallbackPath={canGestionar ? '/secretaria' : '/alumnos'} />
-      <Typography variant="h4" gutterBottom>
-        Cambio de Comisión
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Si una materia queda bloqueada por superposición horaria, podés solicitar cursarla en otro profesorado.
-      </Typography>
+        <Typography variant="h4" gutterBottom>
+          Cambio de Comisión
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Si una materia queda bloqueada por superposición horaria, podés solicitar cursarla en otro profesorado.
+        </Typography>
 
-      {canGestionar && (
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          gap={1}
-          alignItems={{ xs: 'stretch', sm: 'center' }}
-          sx={{ mt: 2, mb: 1 }}
-        >
-          <TextField
-            label="DNI del estudiante"
-            size="small"
-            value={dniFiltro}
-            onChange={(e) => setDniFiltro(e.target.value)}
-            sx={{ maxWidth: 260 }}
-          />
-        </Stack>
-      )}
+        {canGestionar && (
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            gap={1}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+            sx={{ mt: 2, mb: 1 }}
+          >
+            <TextField
+              label="DNI del estudiante"
+              size="small"
+              value={dniFiltro}
+              onChange={(e) => setDniFiltro(e.target.value)}
+              sx={{ maxWidth: 260 }}
+            />
+          </Stack>
+        )}
 
-      {!shouldFetch && canGestionar && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          Ingresa el DNI del estudiante para analizar superposiciones.
-        </Alert>
-      )}
+        {!shouldFetch && canGestionar && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Ingresa el DNI del estudiante para analizar superposiciones.
+          </Alert>
+        )}
 
-      {queryError && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          No se pudieron cargar los datos necesarios. Intenta nuevamente.
-        </Alert>
-      )}
+        {queryError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            No se pudieron cargar los datos necesarios. Intenta nuevamente.
+          </Alert>
+        )}
 
-      {info && (
-        <Alert severity="success" sx={{ mt: 2 }} onClose={() => setInfo(null)}>
-          {info}
-        </Alert>
-      )}
-      {err && (
-        <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErr(null)}>
-          {err}
-        </Alert>
-      )}
+        {info && (
+          <Alert severity="success" sx={{ mt: 2 }} onClose={() => setInfo(null)}>
+            {info}
+          </Alert>
+        )}
+        {err && (
+          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErr(null)}>
+            {err}
+          </Alert>
+        )}
 
-      {shouldFetch && !ventanaActiva && (
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          No hay una ventana de inscripción activa. Las solicitudes quedarán pendientes hasta que se habilite.
-        </Alert>
-      )}
+        {shouldFetch && !ventanaActiva && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            No hay una ventana de inscripción activa. Las solicitudes quedarán pendientes hasta que se habilite.
+          </Alert>
+        )}
 
-      {shouldFetch && materiasConChoque.length === 0 ? (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          No se detectaron materias habilitadas con superposición horaria.
-        </Alert>
-      ) : shouldFetch ? (
-        <Stack gap={2} sx={{ mt: 2 }}>
-          {materiasConChoque.map((entrada) => {
-            const { materia, horarios, conflictos } = entrada;
-            const clave = String(materia.id);
-            const isExpanded = !!expandedMap[materia.id];
+        {shouldFetch && materiasConChoque.length === 0 ? (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            No se detectaron materias habilitadas con superposición horaria.
+          </Alert>
+        ) : shouldFetch ? (
+          <Stack gap={2} sx={{ mt: 2 }}>
+            {materiasConChoque.map((entrada) => {
+              const { materia, horarios, conflictos } = entrada;
+              const clave = String(materia.id);
+              const isExpanded = !!expandedMap[materia.id];
 
-            return (
-              <Paper key={clave} sx={{ p: 2 }}>
-                <Stack gap={1.2}>
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    {materia.nombre}
-                  </Typography>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      Horarios: {formatHorarios(horarios)}
+              return (
+                <Paper key={clave} sx={{ p: 2 }}>
+                  <Stack gap={1.2}>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      {materia.nombre}
                     </Typography>
-                    {materia.profesorado && (
+                    <Box>
                       <Typography variant="body2" color="text.secondary">
-                        Profesorado: {materia.profesorado}
+                        Horarios: {formatHorarios(horarios)}
                       </Typography>
-                    )}
-                  </Box>
-                  <Box>
-                    <Typography variant="body2" fontWeight={500}>
-                      Se superpone con:
-                    </Typography>
-                    <Stack component="ul" sx={{ pl: 2, m: 0 }} gap={0.5}>
-                      {conflictos.map((otro) => (
-                        <li key={otro.inscripcion.inscripcion_id}>
-                          <Typography variant="body2">
-                            {otro.inscripcion.materia_nombre} - {otro.comision.codigo} ({otro.comision.turno}) -{' '}
-                            {formatHorarios(otro.horarios)}
-                          </Typography>
-                        </li>
+                      {materia.profesorado && (
+                        <Typography variant="body2" color="text.secondary">
+                          Profesorado: {materia.profesorado}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" fontWeight={500}>
+                        Se superpone con:
+                      </Typography>
+                      <Stack component="ul" sx={{ pl: 2, m: 0 }} gap={0.5}>
+                        {conflictos.map((otro) => (
+                          <li key={otro.inscripcion.inscripcion_id}>
+                            <Typography variant="body2">
+                              {otro.inscripcion.materia_nombre} - {otro.comision.codigo} ({otro.comision.turno}) -{' '}
+                              {formatHorarios(otro.horarios)}
+                            </Typography>
+                          </li>
                         ))}
-                    </Stack>
-                  </Box>
-                  <Button size="small" onClick={() => toggleExpanded(materia.id)}>
-                    {isExpanded ? 'Ocultar alternativas' : 'Ver alternativas en otros profesorados'}
-                  </Button>
-                  <Collapse in={isExpanded}>
-                    <Alternativas
-                      base={entrada}
-                      otros={inscripcionesConHorario}
-                      disabled={mSolicitar.isPending || !ventanaActiva}
-                      onSolicitar={(alternativa) => abrirConfirmacionSolicitud(materia, alternativa)}
-                    />
-                  </Collapse>
-                </Stack>
-              </Paper>
-            );
-          })}
-        </Stack>
-      ) : null}
+                      </Stack>
+                    </Box>
+                    <Button size="small" onClick={() => toggleExpanded(materia.id)}>
+                      {isExpanded ? 'Ocultar alternativas' : 'Ver alternativas en otros profesorados'}
+                    </Button>
+                    <Collapse in={isExpanded}>
+                      <Alternativas
+                        base={entrada}
+                        otros={inscripcionesConHorario}
+                        disabled={mSolicitar.isPending || !ventanaActiva}
+                        onSolicitar={(alternativa) => abrirConfirmacionSolicitud(materia, alternativa)}
+                      />
+                    </Collapse>
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        ) : null}
       </Box>
       <FinalConfirmationDialog
         open={!!solicitudPendiente}
@@ -487,9 +485,8 @@ const CambioComisionPage: React.FC = () => {
         onCancel={cancelarSolicitud}
         contextText={
           solicitudPendiente
-            ? `solicitud de cambio de comisión para ${solicitudPendiente.materiaNombre} (Comisión ${solicitudPendiente.comisionLabel}${
-                solicitudPendiente.profesorado ? ` · ${solicitudPendiente.profesorado}` : ''
-              })`
+            ? `solicitud de cambio de comisión para ${solicitudPendiente.materiaNombre} (Comisión ${solicitudPendiente.comisionLabel}${solicitudPendiente.profesorado ? ` · ${solicitudPendiente.profesorado}` : ''
+            })`
             : 'cambio de comisión'
         }
         loading={solicitudLoading}

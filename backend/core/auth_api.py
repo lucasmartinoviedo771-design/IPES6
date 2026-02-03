@@ -334,6 +334,7 @@ def google_callback(request, code: str | None = None, error: str | None = None):
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "No se pudo obtener el perfil de Google.")
 
     email = (userinfo.get("email") or "").strip().lower()
+    print(f"DEBUG: Google returned email: '{email}'", flush=True)  # <-- DEBUG LINE
     if not email:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Google no devolvio un email.")
 
@@ -343,7 +344,7 @@ def google_callback(request, code: str | None = None, error: str | None = None):
         raise AppError(
             403,
             AppErrorCode.AUTHENTICATION_FAILED,
-            "Tu cuenta de Google no esta habilitada en el sistema. Usa tu usuario y contrasena o pedi acceso al administrador.",
+            f"Tu cuenta de Google ({email}) no esta habilitada en el sistema. Usa tu usuario y contrasena o pedi acceso al administrador.",
         )
 
     refresh = RefreshToken.for_user(user)

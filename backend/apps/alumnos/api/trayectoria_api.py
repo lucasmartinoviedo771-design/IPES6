@@ -47,20 +47,44 @@ def historial_alumno(request, dni: str | None = None):
     if not est:
         return HistorialAlumno(aprobadas=[], regularizadas=[], inscriptas_actuales=[])
 
-    aprobadas = list(
-        Regularidad.objects.filter(
-            estudiante=est,
-            situacion__in=[
-                Regularidad.Situacion.APROBADO,
-                Regularidad.Situacion.PROMOCIONADO,
-            ],
-        ).values_list("materia_id", flat=True)
-    )
-    regularizadas = list(
-        Regularidad.objects.filter(estudiante=est, situacion=Regularidad.Situacion.REGULAR).values_list(
-            "materia_id", flat=True
+    aprobadas_set: set[int] = set()
+    regularizadas_set: set[int] = set()
+    inscriptas_actuales_set: set[int] = set()
+
+    # 1. Regularidades
+    regularidades_qs = Regularidad.objects.filter(estudiante=est)
+    for reg in regularidades_qs:
+        if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+            aprobadas_set.add(reg.materia_id)
+        elif reg.situacion == Regularidad.Situacion.REGULAR:
+            regularizadas_set.add(reg.materia_id)
+
+    # 2. Actas de Examen (Incluye equivalencias)
+    actas_alumno_qs = ActaExamenAlumno.objects.filter(dni=est.dni).select_related("acta")
+    for a in actas_alumno_qs:
+        cond_val, _ = _acta_condicion(a.calificacion_definitiva)
+        
+        # Robust equivalency detection (mirrors trayectoria_alumno)
+        is_equiv = (
+            (a.permiso_examen == "EQUIV") or 
+            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
+            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
         )
-    )
+        
+        if cond_val == "APR" or is_equiv:
+            aprobadas_set.add(a.acta.materia_id)
+
+    # 3. Inscripciones a Mesa con resultado APROBADO
+    inscripciones_mesa_qs = InscripcionMesa.objects.filter(
+        estudiante=est, 
+        condicion=InscripcionMesa.Condicion.APROBADO,
+        estado=InscripcionMesa.Estado.INSCRIPTO
+    ).select_related("mesa")
+    for insc in inscripciones_mesa_qs:
+        if insc.mesa and insc.mesa.materia_id:
+            aprobadas_set.add(insc.mesa.materia_id)
+
+    # 4. Inscripciones Actuales (Cursadas en curso o pendientes)
     inscriptas_actuales = list(
         InscripcionMateriaAlumno.objects.filter(
             estudiante=est,
@@ -70,11 +94,12 @@ def historial_alumno(request, dni: str | None = None):
             ],
         ).values_list("materia_id", flat=True)
     )
+    inscriptas_actuales_set.update(inscriptas_actuales)
 
     return HistorialAlumno(
-        aprobadas=aprobadas,
-        regularizadas=regularizadas,
-        inscriptas_actuales=inscriptas_actuales,
+        aprobadas=sorted(list(aprobadas_set)),
+        regularizadas=sorted(list(regularizadas_set - aprobadas_set)),
+        inscriptas_actuales=sorted(list(inscriptas_actuales_set)),
     )
 
 

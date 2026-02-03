@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Tabs,
@@ -41,6 +42,7 @@ import { CartonTabPanel } from "@/features/alumnos/carton/CartonTabPanel";
 import { PageHero } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
 import { useAuth } from '@/context/AuthContext';
+import { hasAnyRole } from '@/utils/roles';
 
 function a11yProps(index: number) {
   return {
@@ -100,10 +102,12 @@ const notaToString = (nota?: number | null) => {
 
 const TrayectoriaPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user: null }) as any;
-  const canGestionar = !!user && (user.is_staff || (user.roles || []).some((r: string) => ['admin', 'secretaria', 'bedel'].includes((r || '').toLowerCase())));
+  const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel']);
+  const [searchParams] = useSearchParams();
+  const dniParam = searchParams.get('dni');
   const [tab, setTab] = useState(0);
-  const [dniInput, setDniInput] = useState('');
-  const [dniQuery, setDniQuery] = useState('');
+  const [dniInput, setDniInput] = useState(dniParam || '');
+  const [dniQuery, setDniQuery] = useState(dniParam || '');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('');
   const [filtroDetalle, setFiltroDetalle] = useState('');
@@ -126,7 +130,7 @@ const TrayectoriaPage: React.FC = () => {
 
   const tiposEventos = useMemo<TrayectoriaEventoDTO['tipo'][]>(() => {
     const unique = new Set<TrayectoriaEventoDTO['tipo']>();
-    eventos.forEach((ev) => unique.add(ev.tipo));
+    eventos.forEach((ev: TrayectoriaEventoDTO) => unique.add(ev.tipo));
     return Array.from(unique);
   }, [eventos]);
 
@@ -136,7 +140,7 @@ const TrayectoriaPage: React.FC = () => {
     const estadoFilter = filtroEstado.trim().toLowerCase();
     const metadataFilter = filtroMetadata.trim().toLowerCase();
 
-    return eventos.filter((evento) => {
+    return eventos.filter((evento: TrayectoriaEventoDTO) => {
       if (filtroTipo && evento.tipo !== filtroTipo) {
         return false;
       }
@@ -190,7 +194,7 @@ const TrayectoriaPage: React.FC = () => {
       return;
     }
     setSelectedPlanId((prev) => {
-      if (prev && planesCarton.some((plan) => String(plan.plan_id) === prev)) {
+      if (prev && planesCarton.some((plan: any) => String(plan.plan_id) === prev)) {
         return prev;
       }
       return String(planesCarton[0].plan_id);
@@ -201,7 +205,7 @@ const TrayectoriaPage: React.FC = () => {
     const chips: Array<{ id: string; label: string; detalle: string | null; disabled?: boolean }> = [];
     const usedNombres = new Set<string>();
 
-    planesCarton.forEach((plan) => {
+    planesCarton.forEach((plan: any) => {
       chips.push({
         id: String(plan.plan_id),
         label: plan.profesorado_nombre,
@@ -211,7 +215,7 @@ const TrayectoriaPage: React.FC = () => {
     });
 
     const nombres = trayectoria?.estudiante?.carreras ?? [];
-    nombres.forEach((nombre, index) => {
+    nombres.forEach((nombre: string, index: number) => {
       if (usedNombres.has(nombre)) {
         return;
       }
@@ -561,7 +565,7 @@ const TrayectoriaPage: React.FC = () => {
 
             <TabPanel value={tab} index={3}>
               <Stack spacing={2}>
-                {(recomendaciones?.alertas ?? []).map((alerta, idx) => (
+                {(recomendaciones?.alertas ?? []).map((alerta: string, idx: number) => (
                   <Alert key={`alerta-${idx}`} severity="warning">{alerta}</Alert>
                 ))}
 

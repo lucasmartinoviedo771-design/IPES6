@@ -39,6 +39,7 @@ import {
   VentanaInscripcion,
 } from "@/api/alumnos";
 import { useAuth } from "@/context/AuthContext";
+import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
 
 type Horario = { dia: string; desde: string; hasta: string };
 
@@ -124,7 +125,7 @@ const EMPTY_HISTORIAL: HistorialAlumnoDTO = {
 const InscripcionMateriaPage: React.FC = () => {
   const qc = useQueryClient();
   const { user } = (useAuth?.() ?? { user: null }) as any;
-  const puedeGestionar = !!user && (user.is_staff || (user.roles || []).some((r: string) => ["admin", "secretaria", "bedel"].includes((r || "").toLowerCase())));
+  const puedeGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
   const [dniInput, setDniInput] = useState<string>("");
   const [dniFiltro, setDniFiltro] = useState<string>("");
@@ -410,6 +411,17 @@ const InscripcionMateriaPage: React.FC = () => {
       return { ...materia, status: "aprobada", motivos: ["Materia aprobada"], faltantesRegular: [], faltantesAprob: [] };
     }
 
+    if (historial.regularizadas.includes(materia.id)) {
+      return {
+        ...materia,
+        status: "bloqueada",
+        motivos: ["Ya tienes la regularidad de esta materia"],
+        tipoBloqueo: "otro",
+        faltantesRegular: [],
+        faltantesAprob: [],
+      };
+    }
+
     if (!esPeriodoHabilitado(materia)) {
       return {
         ...materia,
@@ -421,7 +433,7 @@ const InscripcionMateriaPage: React.FC = () => {
       };
     }
 
-    const faltasReg = materia.correlativasRegular.filter((id) => !historial.regularizadas.includes(id));
+    const faltasReg = materia.correlativasRegular.filter((id) => !historial.regularizadas.includes(id) && !historial.aprobadas.includes(id));
     const faltasApr = materia.correlativasAprob.filter((id) => !historial.aprobadas.includes(id));
     const faltasRegNombres = Array.from(new Set(faltasReg.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
     const faltasAprNombres = Array.from(new Set(faltasApr.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
@@ -593,341 +605,341 @@ const InscripcionMateriaPage: React.FC = () => {
   return (
     <>
       <Box sx={{ p: 3, bgcolor: "#f9f5ea", minHeight: "100vh" }}>
-      <Stack spacing={3} maxWidth={1180} mx="auto">
-        <BackButton fallbackPath="/alumnos" />
-        <Stack
-          direction={{ xs: "column", lg: "row" }}
-          spacing={2}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", lg: "center" }}
-        >
-          <Box>
-            <Typography variant="h4" fontWeight={800}>Inscripción a Materias</Typography>
-            <Typography color="text.secondary">
-              {profesoradoNombre} • {periodoLabel}
-            </Typography>
-            {ventana?.desde && ventana?.hasta && (
-              <Typography variant="body2" color="text.secondary">
-                Ventana: {new Date(ventana.desde).toLocaleDateString()} - {new Date(ventana.hasta).toLocaleDateString()}
+        <Stack spacing={3} maxWidth={1180} mx="auto">
+          <BackButton fallbackPath="/alumnos" />
+          <Stack
+            direction={{ xs: "column", lg: "row" }}
+            spacing={2}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", lg: "center" }}
+          >
+            <Box>
+              <Typography variant="h4" fontWeight={800}>Inscripción a Materias</Typography>
+              <Typography color="text.secondary">
+                {profesoradoNombre} • {periodoLabel}
               </Typography>
-            )}
-            {!puedeInscribirse && !ventanaQ.isLoading && (
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                No hay una ventana de inscripción activa. Cuando se habilite vas a poder inscribirte desde aquí.
-              </Alert>
-            )}
-          </Box>
-
-          <Stack spacing={1.5} sx={{ width: { xs: "100%", lg: "auto" } }}>
-            {puedeGestionar && (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                <TextField
-                  label="DNI del estudiante"
-                  size="small"
-                  value={dniInput}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D+/g, "");
-                    if (value.length <= 8) {
-                      setDniInput(value);
-                    }
-                  }}
-                  sx={{ maxWidth: 240, bgcolor: "#fff" }}
-                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
-                />
-                <Button
-                  variant="contained"
-                  onClick={() => setDniFiltro(dniInput.trim())}
-                  disabled={dniInput.length < 7}
-                >
-                  Buscar
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  Bedel/Secretaría/Admin: filtrá por DNI para gestionar inscripciones de un alumno.
+              {ventana?.desde && ventana?.hasta && (
+                <Typography variant="body2" color="text.secondary">
+                  Ventana: {new Date(ventana.desde).toLocaleDateString()} - {new Date(ventana.hasta).toLocaleDateString()}
                 </Typography>
+              )}
+              {!puedeInscribirse && !ventanaQ.isLoading && (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  No hay una ventana de inscripción activa. Cuando se habilite vas a poder inscribirte desde aquí.
+                </Alert>
+              )}
+            </Box>
+
+            <Stack spacing={1.5} sx={{ width: { xs: "100%", lg: "auto" } }}>
+              {puedeGestionar && (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                  <TextField
+                    label="DNI del estudiante"
+                    size="small"
+                    value={dniInput}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D+/g, "");
+                      if (value.length <= 8) {
+                        setDniInput(value);
+                      }
+                    }}
+                    sx={{ maxWidth: 240, bgcolor: "#fff" }}
+                    inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => setDniFiltro(dniInput.trim())}
+                    disabled={dniInput.length < 7}
+                  >
+                    Buscar
+                  </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    Bedel/Secretaría/Admin: filtrá por DNI para gestionar inscripciones de un alumno.
+                  </Typography>
+                </Stack>
+              )}
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                <FormControl size="small" sx={{ minWidth: 150, bgcolor: "#fff" }}>
+                  <InputLabel id="filtro-anio-label">Año</InputLabel>
+                  <Select
+                    labelId="filtro-anio-label"
+                    value={anioFiltro === "all" ? "all" : String(anioFiltro)}
+                    label="Año"
+                    onChange={handleAnioChange}
+                  >
+                    <MenuItem value="all">Todos los años</MenuItem>
+                    {aniosDisponibles.map((anio) => (
+                      <MenuItem key={anio} value={String(anio)}>
+                        {`${anio}º año`}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {shouldFetchInscriptas && (
+                  <FormControl size="small" sx={{ minWidth: 220, bgcolor: "#fff" }} disabled={carrerasDisponibles.length === 0}>
+                    <InputLabel id="select-profesorado-label">Profesorado</InputLabel>
+                    <Select
+                      labelId="select-profesorado-label"
+                      value={selectedCarreraId}
+                      label="Profesorado"
+                      onChange={handleCarreraChange}
+                      displayEmpty
+                    >
+                      {carrerasDisponibles.length === 0 && (
+                        <MenuItem value="">
+                          {carrerasQ.isLoading ? "Cargando..." : "Sin profesorados"}
+                        </MenuItem>
+                      )}
+                      {carrerasDisponibles.map((carrera) => (
+                        <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
+                          {carrera.nombre}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+                {planesDisponibles.length > 1 && (
+                  <FormControl size="small" sx={{ minWidth: 200, bgcolor: "#fff" }}>
+                    <InputLabel id="select-plan-label">Plan</InputLabel>
+                    <Select
+                      labelId="select-plan-label"
+                      value={selectedPlanId}
+                      label="Plan"
+                      onChange={handlePlanChange}
+                      displayEmpty
+                    >
+                      {planesDisponibles.map((plan) => (
+                        <MenuItem key={plan.id} value={String(plan.id)}>
+                          {plan.resolucion ? `Plan ${plan.resolucion}` : `Plan ${plan.id}`}{plan.vigente ? " (vigente)" : ""}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              </Stack>
+              {shouldFetchInscriptas && carrerasDisponibles.length > 1 && !selectedCarreraId && !carrerasQ.isLoading && (
+                <Typography variant="caption" color="error">
+                  Seleccioná un profesorado para ver sus materias.
+                </Typography>
+              )}
+            </Stack>
+          </Stack>
+
+          {requiereSeleccionAlumno && (
+            <Alert severity="info">
+              Ingresa un DNI para gestionar inscripciones de otro estudiante.
+            </Alert>
+          )}
+
+          {queryError && (
+            <Alert severity="error">
+              No se pudieron cargar los datos de inscripción. Verifica el DNI e intenta nuevamente.
+            </Alert>
+          )}
+
+          {err && <Alert severity="error">{err}</Alert>}
+          {info && <Alert severity="success">{info}</Alert>}
+
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid #e3d7bc", bgcolor: "#fff" }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom color="primary.dark">
+              Materias habilitadas para inscribirte
+            </Typography>
+            {habilitadasFiltradas.length === 0 ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                No hay materias habilitadas que coincidan con los filtros seleccionados. Revisa correlatividades o estados administrativos.
+              </Alert>
+            ) : (
+              <Stack spacing={3}>
+                {habilitadasPorAnio.map(({ anio, items }) => (
+                  <Box key={anio}>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                      {anio}º año
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gap: 2,
+                        gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                      }}
+                    >
+                      {items.map((materia) => (
+                        <Box
+                          key={materia.id}
+                          sx={{ p: 2.5, borderRadius: 2, border: "1px solid #d4c4a5", bgcolor: "#fefbf4", height: "100%" }}
+                        >
+                          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} height="100%">
+                            <Box>
+                              <Typography variant="h6">{materia.nombre}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {materia.cuatrimestre}
+                              </Typography>
+                              <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
+                                <Chip size="small" color="success" label="Correlativas cumplidas" />
+                                {materia.status === "habilitada" && <Chip size="small" color="primary" label={STATUS_LABEL[materia.status]} />}
+                              </Stack>
+                            </Box>
+                            <Stack spacing={1} minWidth={240}>
+                              <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#fff" }}>
+                                <Typography variant="body2" fontWeight={600}>Horarios</Typography>
+                                {materia.horarios.length === 0 ? (
+                                  <Typography variant="body2" color="text.secondary">Sin horarios informados.</Typography>
+                                ) : (
+                                  materia.horarios.map((h, idx) => (
+                                    <Typography key={idx} variant="body2" color="text.secondary">
+                                      {h.dia} {h.desde} - {h.hasta}
+                                    </Typography>
+                                  ))
+                                )}
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  sx={{ mt: 1 }}
+                                  onClick={() => handleInscribir(materia.id)}
+                                  disabled={
+                                    !puedeInscribirse ||
+                                    materia.status !== "habilitada" ||
+                                    (mInscribir.isPending && pendingMateriaId === materia.id)
+                                  }
+                                >
+                                  Inscribirme
+                                </Button>
+                              </Box>
+                            </Stack>
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
               </Stack>
             )}
+          </Paper>
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-              <FormControl size="small" sx={{ minWidth: 150, bgcolor: "#fff" }}>
-                <InputLabel id="filtro-anio-label">Año</InputLabel>
-                <Select
-                  labelId="filtro-anio-label"
-                  value={anioFiltro === "all" ? "all" : String(anioFiltro)}
-                  label="Año"
-                  onChange={handleAnioChange}
-                >
-                  <MenuItem value="all">Todos los años</MenuItem>
-                  {aniosDisponibles.map((anio) => (
-                    <MenuItem key={anio} value={String(anio)}>
-                      {`${anio}º año`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {shouldFetchInscriptas && (
-                <FormControl size="small" sx={{ minWidth: 220, bgcolor: "#fff" }} disabled={carrerasDisponibles.length === 0}>
-                  <InputLabel id="select-profesorado-label">Profesorado</InputLabel>
-                  <Select
-                    labelId="select-profesorado-label"
-                    value={selectedCarreraId}
-                    label="Profesorado"
-                    onChange={handleCarreraChange}
-                    displayEmpty
-                  >
-                    {carrerasDisponibles.length === 0 && (
-                      <MenuItem value="">
-                        {carrerasQ.isLoading ? "Cargando..." : "Sin profesorados"}
-                      </MenuItem>
-                    )}
-                    {carrerasDisponibles.map((carrera) => (
-                      <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
-                        {carrera.nombre}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-
-              {planesDisponibles.length > 1 && (
-                <FormControl size="small" sx={{ minWidth: 200, bgcolor: "#fff" }}>
-                  <InputLabel id="select-plan-label">Plan</InputLabel>
-                  <Select
-                    labelId="select-plan-label"
-                    value={selectedPlanId}
-                    label="Plan"
-                    onChange={handlePlanChange}
-                    displayEmpty
-                  >
-                    {planesDisponibles.map((plan) => (
-                      <MenuItem key={plan.id} value={String(plan.id)}>
-                        {plan.resolucion ? `Plan ${plan.resolucion}` : `Plan ${plan.id}`}{plan.vigente ? " (vigente)" : ""}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            </Stack>
-            {shouldFetchInscriptas && carrerasDisponibles.length > 1 && !selectedCarreraId && !carrerasQ.isLoading && (
-              <Typography variant="caption" color="error">
-                Seleccioná un profesorado para ver sus materias.
-              </Typography>
-            )}
-          </Stack>
-        </Stack>
-
-        {requiereSeleccionAlumno && (
-          <Alert severity="info">
-            Ingresa un DNI para gestionar inscripciones de otro estudiante.
-          </Alert>
-        )}
-
-        {queryError && (
-          <Alert severity="error">
-            No se pudieron cargar los datos de inscripción. Verifica el DNI e intenta nuevamente.
-          </Alert>
-        )}
-
-        {err && <Alert severity="error">{err}</Alert>}
-        {info && <Alert severity="success">{info}</Alert>}
-
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid #e3d7bc", bgcolor: "#fff" }}>
-          <Typography variant="h6" fontWeight={700} gutterBottom color="primary.dark">
-            Materias habilitadas para inscribirte
-          </Typography>
-          {habilitadasFiltradas.length === 0 ? (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              No hay materias habilitadas que coincidan con los filtros seleccionados. Revisa correlatividades o estados administrativos.
-            </Alert>
-          ) : (
-            <Stack spacing={3}>
-              {habilitadasPorAnio.map(({ anio, items }) => (
-                <Box key={anio}>
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-                    {anio}º año
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gap: 2,
-                      gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                    }}
-                  >
-                    {items.map((materia) => (
-                      <Box
-                        key={materia.id}
-                        sx={{ p: 2.5, borderRadius: 2, border: "1px solid #d4c4a5", bgcolor: "#fefbf4", height: "100%" }}
-                      >
-                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} height="100%">
-                          <Box>
-                            <Typography variant="h6">{materia.nombre}</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {materia.cuatrimestre}
-                            </Typography>
-                            <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
-                              <Chip size="small" color="success" label="Correlativas cumplidas" />
-                              {materia.status === "habilitada" && <Chip size="small" color="primary" label={STATUS_LABEL[materia.status]} />}
-                            </Stack>
-                          </Box>
-                          <Stack spacing={1} minWidth={240}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#fff" }}>
-                              <Typography variant="body2" fontWeight={600}>Horarios</Typography>
-                              {materia.horarios.length === 0 ? (
-                                <Typography variant="body2" color="text.secondary">Sin horarios informados.</Typography>
-                              ) : (
-                                materia.horarios.map((h, idx) => (
-                                  <Typography key={idx} variant="body2" color="text.secondary">
-                                    {h.dia} {h.desde} - {h.hasta}
-                                  </Typography>
-                                ))
-                              )}
-                              <Button
-                                variant="contained"
-                                size="small"
-                                sx={{ mt: 1 }}
-                                onClick={() => handleInscribir(materia.id)}
-                                disabled={
-                                  !puedeInscribirse ||
-                                  materia.status !== "habilitada" ||
-                                  (mInscribir.isPending && pendingMateriaId === materia.id)
-                                }
-                              >
-                                Inscribirme
-                              </Button>
-                            </Box>
-                          </Stack>
-                        </Stack>
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </Paper>
-
-        <Accordion defaultExpanded sx={{ bgcolor: "#fffaf1", borderRadius: 3, border: "1px solid #e2d4b5" }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography fontWeight={700}>Materias pendientes / no disponibles</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            {(["correlativas", "periodo", "choque", "inscripta", "otro"] as const).map((tipo) => {
-              const lista = bloqueadasPorTipo[tipo];
-              if (!lista || lista.length === 0) return null;
-              return (
-                <Box key={tipo} sx={{ mb: 3 }}>
-                  <Divider textAlign="left" sx={{ mb: 1.5 }}>{BLOQUEO_LABEL[tipo]}</Divider>
-                  <Stack spacing={1.5}>
-                    {lista.map((materia: MateriaEvaluada) => (
-                      <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px dashed #d3c19c", bgcolor: "#fff" }}>
-                        <Typography fontWeight={600}>{materia.nombre}</Typography>
-                        {materia.tipoBloqueo === "correlativas" ? (
-                          <>
-                            {materia.faltantesRegular && materia.faltantesRegular.length > 0 && (
-                              <Typography
-                              variant="body2"
-                              color="text.secondary"
-                            >
-                                <Box component="span" sx={{ textDecoration: "underline", fontWeight: 600 }}>
-                                  Regularizar:
-                                </Box>{" "}
-                                {materia.faltantesRegular.join(", ")}
-                              </Typography>
-                            )}
-                            {materia.faltantesAprob && materia.faltantesAprob.length > 0 && (
-                              <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ mt: materia.faltantesRegular?.length ? 0.5 : 0 }}
-                            >
-                              <Box component="span" sx={{ textDecoration: "underline", fontWeight: 600 }}>
-                                  Aprobar:
-                                </Box>{" "}
-                                {materia.faltantesAprob.join(", ")}
-                              </Typography>
-                            )}
-                          </>
-                        ) : (
-                          materia.motivos.length > 0 && (
-                            <Typography variant="body2" color="text.secondary">
-                              {materia.motivos.join(" | ")}
-                            </Typography>
-                          )
-                        )}
-                      </Box>
-                    ))}
-                  </Stack>
-                </Box>
-              );
-            })}
-
-            {aprobadasFiltradas.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Divider textAlign="left" sx={{ mb: 1.5 }}>Materias ya aprobadas</Divider>
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {aprobadasFiltradas.map((materia) => (
-                    <Chip key={materia.id} label={materia.nombre} color="success" size="small" />
-                  ))}
-                </Stack>
-              </Box>
-            )}
-          </AccordionDetails>
-        </Accordion>
-
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid #d8ccb0", bgcolor: "#fff" }}>
-          <Typography variant="h6" fontWeight={700} gutterBottom>
-            Materias ya inscriptas en esta ventana
-          </Typography>
-          {inscriptasDetalle.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Todavía no tenés inscripciones registradas.
-            </Typography>
-          ) : (
-            <Stack spacing={2}>
-              {inscriptasDetalle.map(({ materia, inscripcion }) => {
-                const canceling = inscripcion ? (cancelarVars?.inscripcionId === inscripcion.inscripcion_id && mCancelar.isPending) : false;
+          <Accordion defaultExpanded sx={{ bgcolor: "#fffaf1", borderRadius: 3, border: "1px solid #e2d4b5" }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography fontWeight={700}>Materias pendientes / no disponibles</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {(["correlativas", "periodo", "choque", "inscripta", "otro"] as const).map((tipo) => {
+                const lista = bloqueadasPorTipo[tipo];
+                if (!lista || lista.length === 0) return null;
                 return (
-                  <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#f7f1df" }}>
-                    <Typography fontWeight={600}>{materia.nombre}</Typography>
-                    {materia.horarios.length > 0 ? (
-                      materia.horarios.map((h, idx) => (
-                        <Typography key={idx} variant="body2" color="text.secondary">
-                          {h.dia} {h.desde} - {h.hasta}
-                        </Typography>
-                      ))
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">Horario no informado.</Typography>
-                    )}
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                      <Chip label="Inscripta" color="success" size="small" />
-                      {ventanaActiva && inscripcion && (
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          size="small"
-                          disabled={canceling}
-                          onClick={() => handleCancelar(materia.id, inscripcion.inscripcion_id)}
-                        >
-                          Cancelar inscripción
-                        </Button>
-                      )}
+                  <Box key={tipo} sx={{ mb: 3 }}>
+                    <Divider textAlign="left" sx={{ mb: 1.5 }}>{BLOQUEO_LABEL[tipo]}</Divider>
+                    <Stack spacing={1.5}>
+                      {lista.map((materia: MateriaEvaluada) => (
+                        <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px dashed #d3c19c", bgcolor: "#fff" }}>
+                          <Typography fontWeight={600}>{materia.nombre}</Typography>
+                          {materia.tipoBloqueo === "correlativas" ? (
+                            <>
+                              {materia.faltantesRegular && materia.faltantesRegular.length > 0 && (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  <Box component="span" sx={{ textDecoration: "underline", fontWeight: 600 }}>
+                                    Regularizar:
+                                  </Box>{" "}
+                                  {materia.faltantesRegular.join(", ")}
+                                </Typography>
+                              )}
+                              {materia.faltantesAprob && materia.faltantesAprob.length > 0 && (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ mt: materia.faltantesRegular?.length ? 0.5 : 0 }}
+                                >
+                                  <Box component="span" sx={{ textDecoration: "underline", fontWeight: 600 }}>
+                                    Aprobar:
+                                  </Box>{" "}
+                                  {materia.faltantesAprob.join(", ")}
+                                </Typography>
+                              )}
+                            </>
+                          ) : (
+                            materia.motivos.length > 0 && (
+                              <Typography variant="body2" color="text.secondary">
+                                {materia.motivos.join(" | ")}
+                              </Typography>
+                            )
+                          )}
+                        </Box>
+                      ))}
                     </Stack>
                   </Box>
                 );
               })}
-            </Stack>
-          )
-}
-        </Paper>
-      </Stack>
-    </Box>
-    <FinalConfirmationDialog
-      open={confirmInscripcionOpen}
-      onConfirm={confirmInscripcion}
-      onCancel={cancelInscripcionConfirm}
-      contextText="Nuevos Registros"
-      loading={mInscribir.isPending}
-    />
+
+              {aprobadasFiltradas.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Divider textAlign="left" sx={{ mb: 1.5 }}>Materias ya aprobadas</Divider>
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {aprobadasFiltradas.map((materia) => (
+                      <Chip key={materia.id} label={materia.nombre} color="success" size="small" />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </AccordionDetails>
+          </Accordion>
+
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid #d8ccb0", bgcolor: "#fff" }}>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Materias ya inscriptas en esta ventana
+            </Typography>
+            {inscriptasDetalle.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Todavía no tenés inscripciones registradas.
+              </Typography>
+            ) : (
+              <Stack spacing={2}>
+                {inscriptasDetalle.map(({ materia, inscripcion }) => {
+                  const canceling = inscripcion ? (cancelarVars?.inscripcionId === inscripcion.inscripcion_id && mCancelar.isPending) : false;
+                  return (
+                    <Box key={materia.id} sx={{ p: 2, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#f7f1df" }}>
+                      <Typography fontWeight={600}>{materia.nombre}</Typography>
+                      {materia.horarios.length > 0 ? (
+                        materia.horarios.map((h, idx) => (
+                          <Typography key={idx} variant="body2" color="text.secondary">
+                            {h.dia} {h.desde} - {h.hasta}
+                          </Typography>
+                        ))
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">Horario no informado.</Typography>
+                      )}
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                        <Chip label="Inscripta" color="success" size="small" />
+                        {ventanaActiva && inscripcion && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            disabled={canceling}
+                            onClick={() => handleCancelar(materia.id, inscripcion.inscripcion_id)}
+                          >
+                            Cancelar inscripción
+                          </Button>
+                        )}
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )
+            }
+          </Paper>
+        </Stack>
+      </Box>
+      <FinalConfirmationDialog
+        open={confirmInscripcionOpen}
+        onConfirm={confirmInscripcion}
+        onCancel={cancelInscripcionConfirm}
+        contextText="Nuevos Registros"
+        loading={mInscribir.isPending}
+      />
     </>
   );
 };

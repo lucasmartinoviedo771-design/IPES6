@@ -1,0 +1,185 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Constancia de Alumno Regular - {{ estudiante.dni }}</title>
+  <style>
+    @page {
+      margin: 10mm 15mm;
+      size: A4;
+    }
+
+    body {
+      font-family: "Helvetica", Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.3;
+      color: #000;
+      margin: 0;
+      padding: 0;
+    }
+
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10pt;
+      border-bottom: 2px solid #f39200;
+      padding-bottom: 5pt;
+    }
+
+    .header-table td {
+      vertical-align: middle;
+      text-align: center;
+      padding: 5px;
+    }
+
+    .logo-left {
+      text-align: left !important;
+      width: 15%;
+    }
+
+    .logo-right {
+      text-align: right !important;
+      width: 15%;
+    }
+
+    .logo-img {
+      height: 55px;
+      object-fit: contain;
+    }
+
+    .center-text-container {
+      text-align: center;
+      width: 70%;
+    }
+
+    .institution-name {
+      font-size: 14pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 2pt;
+    }
+
+    .institution-sub {
+      font-size: 10pt;
+      text-transform: uppercase;
+    }
+
+    .title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 12pt;
+      text-decoration: underline;
+      margin: 15pt 0 20pt 0;
+      text-transform: uppercase;
+    }
+
+    .content {
+      text-align: justify;
+      line-height: 1.6;
+      margin-bottom: 20pt;
+      font-size: 11pt;
+    }
+
+    .content p {
+      margin-bottom: 15pt;
+      text-indent: 30pt;
+    }
+
+    .highlight {
+      font-weight: bold;
+    }
+
+    .footer-signatures {
+      width: 100%;
+      margin-top: 30pt;
+    }
+
+    .signature-cell {
+      width: 33.33%;
+      text-align: center;
+      vertical-align: top;
+    }
+
+    .signature-line {
+      border-top: 1px dashed #000;
+      width: 80%;
+      margin: 0 auto;
+      padding-top: 3pt;
+      font-size: 8pt;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .footer-running {
+      width: 100%;
+      text-align: center;
+      font-size: 9pt;
+      font-style: italic;
+      margin-top: 20pt;
+    }
+  </style>
+</head>
+
+<body>
+  <table class="header-table">
+    <tr>
+      <td class="logo-left">
+        <img src="file://{{ base_dir }}/static/logos/escudo_ministerio_tdf.png" class="logo-img" />
+      </td>
+      <td class="center-text-container">
+        <div class="institution-name">IPES PAULO FREIRE</div>
+        <div class="institution-sub">INSTITUTO PROVINCIAL DE EDUCACION SUPERIOR</div>
+      </td>
+      <td class="logo-right">
+        <img src="file://{{ base_dir }}/static/logos/logo_ipes11.png" class="logo-img" />
+      </td>
+    </tr>
+  </table>
+
+  <div class="title">CONSTANCIA DE ALUMNO REGULAR</div>
+
+  <div class="content">
+    <p>
+      Por medio de la presente el <span class="highlight">Instituto Provincial de Enseñanza Superior “Paulo
+        Freire”</span>,
+      deja constancia que El/La Sr./a
+      <span class="highlight">{{ usuario.last_name|upper }}, {{ usuario.first_name|upper }}</span>
+      D.N.I. Nº <span class="highlight">{{ estudiante.dni }}</span>,
+      cursa sus estudios regularmente en <span class="highlight">{{ anio_estudio }}°</span>
+      Año del <span class="highlight">{{ profesorado.nombre }} – Plan {{ plan.anio_inicio }} {{ resolucion_plan }}</span>
+    </p>
+
+    <p>
+      Se expide dicha constancia, sin enmiendas ni raspaduras, a pedido del interesado/a y a solo efecto de ser
+      presentado
+      ante quien corresponda a los {{ fecha.day }} días del mes de
+      {{ fecha|date:"F"|lower }} del año {{ fecha.year }}
+      en la ciudad de Río Grande; Provincia de Tierra del Fuego, Antártida e Islas del Atlántico Sur.
+    </p>
+  </div>
+
+  <table class="footer-signatures">
+    <tr>
+      <td class="signature-cell">
+        <div style="height: 40pt;"></div>
+        <div class="signature-line">FIRMA BEDEL</div>
+      </td>
+      <td class="signature-cell">
+        <div style="height: 40pt;"></div>
+        <div class="signature-line">SELLO INSTITUCIONAL</div>
+      </td>
+      <td class="signature-cell">
+        <div style="height: 40pt;"></div>
+        <div class="signature-line">FIRMA AUTORIDAD</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="footer-running">
+    “Las Islas Malvinas, Georgias, Sándwich del Sur y los Hielos Continentales, son y serán Argentinas”
+  </div>
+</body>
+
+</html>

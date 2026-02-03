@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, TextField, Typography, Box, Alert, MenuItem, Select, FormControl, InputLabel, Grid, Paper, Stack } from '@mui/material';
 import { listarMesas, inscribirMesa, obtenerHistorialAlumno, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO, MesaListadoItemDTO } from '@/api/alumnos';
+import { hasAnyRole } from '@/utils/roles';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
 import BackButton from '@/components/ui/BackButton';
@@ -15,15 +17,20 @@ const MESA_TIPO_LABEL: Record<string, string> = {
 const getMesaTipoLabel = (tipo: string) => MESA_TIPO_LABEL[tipo] ?? tipo;
 
 const MesaExamenPage: React.FC = () => {
-  const { user } = (useAuth?.() ?? { user:null }) as any;
-  const canGestionar = !!user && (user.is_staff || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel'].includes((r||'').toLowerCase())));
-  const [dni, setDni] = useState('');
-  const [tipo, setTipo] = useState<'FIN'|'EXT'|'ESP'|''>('');
-  const [modalidad, setModalidad] = useState<'REG'|'LIB'|''>('');
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const dniParam = searchParams.get('dni');
+  const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel']);
+  const isAlumno = hasAnyRole(user, ['alumno']);
+  const initialDni = dniParam || (isAlumno && !canGestionar ? user?.dni || '' : '');
+
+  const [dni, setDni] = useState(initialDni);
+  const [tipo, setTipo] = useState<'FIN' | 'EXT' | 'ESP' | ''>('');
+  const [modalidad, setModalidad] = useState<'REG' | 'LIB' | ''>('');
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
   const [mesas, setMesas] = useState<MesaListadoItemDTO[]>([]);
-  const [historial, setHistorial] = useState<{ aprobadas:number[]; regularizadas:number[]; inscriptas_actuales:number[] }>({ aprobadas:[], regularizadas:[], inscriptas_actuales:[] });
+  const [historial, setHistorial] = useState<{ aprobadas: number[]; regularizadas: number[]; inscriptas_actuales: number[] }>({ aprobadas: [], regularizadas: [], inscriptas_actuales: [] });
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [carreras, setCarreras] = useState<TrayectoriaCarreraDetalleDTO[]>([]);
@@ -104,14 +111,14 @@ const MesaExamenPage: React.FC = () => {
       return;
     }
     if (selectedCarreraId) {
-      const actual = carreras.find((c) => String(c.profesorado_id) === selectedCarreraId);
+      const actual = carreras.find((c: any) => String(c.profesorado_id) === selectedCarreraId);
       if (!actual) {
         setSelectedCarreraId('');
         setSelectedPlanId('');
         return;
       }
-      if (!selectedPlanId || !actual.planes.some((p) => String(p.id) === selectedPlanId)) {
-        const preferido = actual.planes.find((p) => p.vigente) || actual.planes[0] || null;
+      if (!selectedPlanId || !actual.planes.some((p: any) => String(p.id) === selectedPlanId)) {
+        const preferido = actual.planes.find((p: any) => p.vigente) || actual.planes[0] || null;
         setSelectedPlanId(preferido ? String(preferido.id) : '');
       }
       return;
@@ -119,14 +126,14 @@ const MesaExamenPage: React.FC = () => {
     if (carreras.length === 1) {
       const unica = carreras[0];
       setSelectedCarreraId(String(unica.profesorado_id));
-      const preferido = unica.planes.find((p) => p.vigente) || unica.planes[0] || null;
+      const preferido = unica.planes.find((p: any) => p.vigente) || unica.planes[0] || null;
       setSelectedPlanId(preferido ? String(preferido.id) : '');
     }
   }, [carreras, carrerasLoading, selectedCarreraId, selectedPlanId]);
 
   const planesDisponibles = useMemo(() => {
     if (!selectedCarreraId) return [];
-    const carrera = carreras.find((c) => String(c.profesorado_id) === selectedCarreraId);
+    const carrera = carreras.find((c: any) => String(c.profesorado_id) === selectedCarreraId);
     return carrera ? carrera.planes : [];
   }, [carreras, selectedCarreraId]);
 
@@ -189,21 +196,21 @@ const MesaExamenPage: React.FC = () => {
     dni,
   ]);
 
-  
-useEffect(() => {
-  (async () => {
-    try {
-      const h = await obtenerHistorialAlumno(canGestionar && dni ? { dni } : undefined);
-      setHistorial({
-        aprobadas: h.aprobadas || [],
-        regularizadas: h.regularizadas || [],
-        inscriptas_actuales: h.inscriptas_actuales || [],
-      });
-    } catch (error) {
-      console.warn("No se pudo obtener el historial del alumno", error);
-    }
-  })();
-}, [dni, canGestionar]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const h = await obtenerHistorialAlumno(canGestionar && dni ? { dni } : undefined);
+        setHistorial({
+          aprobadas: h.aprobadas || [],
+          regularizadas: h.regularizadas || [],
+          inscriptas_actuales: h.inscriptas_actuales || [],
+        });
+      } catch (error) {
+        console.warn("No se pudo obtener el historial del alumno", error);
+      }
+    })();
+  }, [dni, canGestionar]);
 
   const handleOpenInscripcionConfirm = (mesa: MesaListadoItemDTO) => {
     setPendingInscripcion({ mesa });
@@ -218,12 +225,12 @@ useEffect(() => {
     if (!pendingInscripcion) return;
     const mesaId = pendingInscripcion.mesa.id;
     setInscribiendoId(mesaId);
-    try{
-      const res = await inscribirMesa({ mesa_id: mesaId, dni: canGestionar ? (dni||undefined) : undefined });
+    try {
+      const res = await inscribirMesa({ mesa_id: mesaId, dni: canGestionar ? (dni || undefined) : undefined });
       setInfo(res.message);
       setErr(null);
       setPendingInscripcion(null);
-    }catch(e:any){
+    } catch (e: any) {
       const data = e?.response?.data;
       let message = typeof data === 'string' ? data : data?.message || data?.detail || e?.message || 'No se pudo inscribir';
       if (data?.faltantes?.length) {
@@ -244,10 +251,10 @@ useEffect(() => {
       {info && <Alert severity="success" sx={{ mb: 2 }}>{info}</Alert>}
       {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
 
-      <Stack direction={{ xs:'column', sm:'row' }} gap={2} sx={{ mb:2 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mb: 2 }}>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel>Tipo</InputLabel>
-          <Select label="Tipo" value={tipo} onChange={(e)=>setTipo(e.target.value as any)}>
+          <Select label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value as any)}>
             <MenuItem value="">Todos</MenuItem>
             <MenuItem value="FIN">Ordinaria</MenuItem>
             <MenuItem value="EXT">Extraordinaria</MenuItem>
@@ -256,7 +263,7 @@ useEffect(() => {
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel>Modalidad</InputLabel>
-          <Select label="Modalidad" value={modalidad} onChange={(e)=>setModalidad(e.target.value as any)}>
+          <Select label="Modalidad" value={modalidad} onChange={(e) => setModalidad(e.target.value as any)}>
             <MenuItem value="">Todas</MenuItem>
             <MenuItem value="REG">Regulares</MenuItem>
             <MenuItem value="LIB">Libres</MenuItem>
@@ -264,8 +271,8 @@ useEffect(() => {
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel>Periodo</InputLabel>
-          <Select label="Periodo" value={ventanaId} onChange={(e)=>setVentanaId(e.target.value)}>
-            {ventanas.map((v)=> (
+          <Select label="Periodo" value={ventanaId} onChange={(e) => setVentanaId(e.target.value)}>
+            {ventanas.map((v) => (
               <MenuItem key={v.id} value={String(v.id)}>
                 {new Date(v.desde).toLocaleDateString()} - {new Date(v.hasta).toLocaleDateString()} ({v.tipo === 'MESAS_FINALES' ? 'Ordinarias' : 'Extraordinarias'})
               </MenuItem>
@@ -298,7 +305,7 @@ useEffect(() => {
           </FormControl>
         )}
         {canGestionar && (
-          <TextField size="small" label="DNI estudiante (opcional)" value={dni} onChange={(e)=>setDni(e.target.value)} />
+          <TextField size="small" label="DNI estudiante (opcional)" value={dni} onChange={(e) => setDni(e.target.value)} />
         )}
       </Stack>
 
@@ -333,16 +340,16 @@ useEffect(() => {
             return !estaRegular && !cursando;
           }).map((mesa) => (
             <Grid item xs={12} md={6} lg={4} key={mesa.id}>
-              <Paper variant="outlined" sx={{ p:1.5 }}>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
                 <Stack gap={0.5}>
                   <Typography variant="subtitle2">{mesa.materia?.nombre ?? mesa.materia_nombre} - {getMesaTipoLabel(mesa.tipo)} ({mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'})</Typography>
-                  <Typography variant="body2" color="text.secondary">{new Date(mesa.fecha).toLocaleDateString()} {mesa.hora_desde ? (mesa.hora_desde + (mesa.hora_hasta? ' - ' + mesa.hora_hasta : '')) : ''} - {mesa.aula || ''}</Typography>
+                  <Typography variant="body2" color="text.secondary">{new Date(mesa.fecha).toLocaleDateString()} {mesa.hora_desde ? (mesa.hora_desde + (mesa.hora_hasta ? ' - ' + mesa.hora_hasta : '')) : ''} - {mesa.aula || ''}</Typography>
                   {mesa.codigo && (
                     <Typography variant="caption" color="text.secondary">
                       Código: {mesa.codigo}
                     </Typography>
                   )}
-                   <Button size="small" variant="contained" onClick={()=>handleOpenInscripcionConfirm(mesa)} disabled={inscribiendoId === mesa.id}>Inscribirme</Button>
+                  <Button size="small" variant="contained" onClick={() => handleOpenInscripcionConfirm(mesa)} disabled={inscribiendoId === mesa.id}>Inscribirme</Button>
                 </Stack>
               </Paper>
             </Grid>

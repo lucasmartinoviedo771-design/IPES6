@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Box,
   Button,
@@ -25,6 +26,7 @@ import {
   obtenerCarrerasActivas,
   obtenerHorarioAlumno,
 } from "@/api/alumnos";
+import { getDefaultHomeRoute, hasAnyRole, isOnlyStudent } from "@/utils/roles";
 import { listarPlanes, listarProfesorados, PlanDTO, ProfesoradoDTO } from "@/api/cargaNotas";
 import HorarioTablaCard from "@/features/alumnos/horario/HorarioTablaCard";
 import { useAuth } from "@/context/AuthContext";
@@ -59,8 +61,11 @@ const HorarioPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const { user } = useAuth();
-  const roles = user?.roles ?? [];
-  const isAlumno = roles.includes("alumno") && roles.every((rol) => rol === "alumno");
+  const [searchParams] = useSearchParams();
+  const dniParam = searchParams.get("dni");
+  const canGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const isAlumno = hasAnyRole(user, ["alumno"]);
+  const targetDni = dniParam || (isAlumno && !canGestionar ? user?.dni : undefined);
 
   const [profesoradoId, setProfesoradoId] = useState<SelectValue>("");
   const [planId, setPlanId] = useState<SelectValue>("");
@@ -69,10 +74,10 @@ const HorarioPage: React.FC = () => {
   const [cuatrFilter, setCuatrFilter] = useState<SelectValue>("");
 
   const carrerasQuery = useQuery({
-    queryKey: ["alumnos", "carreras-activas"],
-    queryFn: () => obtenerCarrerasActivas(),
+    queryKey: ["alumnos", "carreras-activas", targetDni],
+    queryFn: () => obtenerCarrerasActivas({ dni: targetDni ?? undefined }),
     staleTime: 5 * 60 * 1000,
-    enabled: isAlumno,
+    enabled: !!targetDni || isAlumno,
   });
 
   const profesoradosQuery = useCarreras();
@@ -91,17 +96,17 @@ const HorarioPage: React.FC = () => {
 
   useEffect(() => {
     if (!profesoradoId) {
-      if (isAlumno && carrerasQuery.data && carrerasQuery.data.length > 0) {
+      if ((isAlumno || targetDni) && carrerasQuery.data && carrerasQuery.data.length > 0) {
         setProfesoradoId(String(carrerasQuery.data[0].profesorado_id));
       }
-      if (!isAlumno && profesoradosQuery.data && profesoradosQuery.data.length > 0) {
+      if (!isAlumno && !targetDni && profesoradosQuery.data && profesoradosQuery.data.length > 0) {
         setProfesoradoId(String(profesoradosQuery.data[0].id));
       }
     }
-  }, [isAlumno, carrerasQuery.data, profesoradosQuery.data, profesoradoId]);
+  }, [isAlumno, targetDni, carrerasQuery.data, profesoradosQuery.data, profesoradoId]);
 
   const planesDisponibles = useMemo<PlanOption[]>(() => {
-    if (isAlumno) {
+    if (isAlumno || targetDni) {
       if (!carrerasQuery.data) return [];
       const selected = carrerasQuery.data.find(
         (item) => item.profesorado_id === Number(profesoradoId),
@@ -112,7 +117,7 @@ const HorarioPage: React.FC = () => {
       id: plan.id,
       resolucion: plan.resolucion,
     }));
-  }, [isAlumno, carrerasQuery.data, planesAdminQuery.data, profesoradoId]);
+  }, [isAlumno, targetDni, carrerasQuery.data, planesAdminQuery.data, profesoradoId]);
 
   useEffect(() => {
     if (!planesDisponibles.length) {
@@ -127,11 +132,12 @@ const HorarioPage: React.FC = () => {
   }, [planesDisponibles, planId]);
 
   const horarioQuery = useQuery({
-    queryKey: ["alumnos", "horarios", profesoradoId, planId],
+    queryKey: ["alumnos", "horarios", profesoradoId, planId, targetDni],
     queryFn: () =>
       obtenerHorarioAlumno({
         profesorado_id: parseNumberOrEmpty(profesoradoId),
         plan_id: parseNumberOrEmpty(planId),
+        dni: targetDni ?? undefined,
       }),
     enabled: Boolean(profesoradoId && planId),
     retry: false,
@@ -303,6 +309,14 @@ const HorarioPage: React.FC = () => {
         );
         if (carrera) {
           fileNameParts.push(carrera.nombre.replace(/\s+/g, "_"));
+        }
+      } else if (targetDni && targetDni !== user?.dni) {
+        fileNameParts.push(`DNI_${targetDni}`);
+        if (profesoradosQuery.data) {
+          const prof = profesoradosQuery.data.find((item) => item.id === Number(profesoradoId));
+          if (prof) {
+            fileNameParts.push(prof.nombre.replace(/\s+/g, "_"));
+          }
         }
       } else if (profesoradosQuery.data) {
         const prof = profesoradosQuery.data.find((item) => item.id === Number(profesoradoId));

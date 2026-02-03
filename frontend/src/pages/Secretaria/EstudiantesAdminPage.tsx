@@ -33,6 +33,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CloseIcon from "@mui/icons-material/Close";
+import DescriptionIcon from "@mui/icons-material/Description";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { enqueueSnackbar } from "notistack";
@@ -619,6 +620,50 @@ export default function EstudiantesAdminPage() {
                   />
                 </Stack>
               )}
+
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Accesos rápidos (Vista estudiante)
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => window.open(`/alumnos/trayectoria?dni=${selectedDni}`, "_blank")}
+                  >
+                    Trayectoria
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => window.open(`/alumnos/horarios?dni=${selectedDni}`, "_blank")}
+                  >
+                    Horarios
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => window.open(`/alumnos/inscripcion-materia?dni=${selectedDni}`, "_blank")}
+                  >
+                    Inscripción
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => window.open(`/alumnos/cambio-comision?dni=${selectedDni}`, "_blank")}
+                  >
+                    Cambio comisión
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<DescriptionIcon />}
+                    onClick={() => window.open(`/alumnos/certificado-regular?dni=${selectedDni}`, "_blank")}
+                  >
+                    Constancia Regular
+                  </Button>
+                </Stack>
+              </Box>
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                 <TextField

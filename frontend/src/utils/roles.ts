@@ -16,13 +16,23 @@ const normalizeRoles = (roles?: string[] | null) =>
 const collectRoles = (user: User | null | undefined): Set<string> => {
   const set = new Set<string>();
   if (globalRoleOverride) {
-    set.add(globalRoleOverride);
+    const r = globalRoleOverride.toLowerCase().trim();
+    set.add(r);
+    if (r.startsWith("bedel")) set.add("bedel");
+    if (r.startsWith("secretaria")) set.add("secretaria");
+    if (r.startsWith("coordinador")) set.add("coordinador");
     return set;
   }
   if (!user) {
     return set;
   }
-  normalizeRoles(user.roles).forEach((r) => set.add(r));
+  normalizeRoles(user.roles).forEach((r) => {
+    set.add(r);
+    // Expandimos roles base si tienen sufijos (ej: bedels -> bedel)
+    if (r.startsWith("bedel")) set.add("bedel");
+    if (r.startsWith("secretaria")) set.add("secretaria");
+    if (r.startsWith("coordinador")) set.add("coordinador");
+  });
   if (user.is_staff || user.is_superuser) {
     set.add("admin");
   }

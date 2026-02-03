@@ -27,7 +27,16 @@ def _ensure_authenticated(user: User | None) -> User:
 
 
 def _group_names(user: User) -> set[str]:
-    return {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    raw_names = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    expanded = set(raw_names)
+    for name in raw_names:
+        if name.startswith("bedel"):
+            expanded.add("bedel")
+        if name.startswith("secretaria"):
+            expanded.add("secretaria")
+        if name.startswith("coordinador"):
+            expanded.add("coordinador")
+    return expanded
 
 
 def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
