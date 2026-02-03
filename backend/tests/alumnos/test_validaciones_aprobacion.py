@@ -8,7 +8,7 @@ from core.models import (
 )
 from apps.alumnos.services.cursada import estudiante_tiene_materia_aprobada
 from apps.primera_carga.services import crear_planilla_regularidad
-from apps.alumnos.carga_notas_api import crear_acta_examen, ActaCreateIn, ActaAlumnoIn
+from apps.alumnos.api.actas import crear_acta_examen, ActaCreateLocal as ActaCreateIn, ActaAlumnoLocal as ActaAlumnoIn
 from apps.alumnos.services.equivalencias_disposicion import registrar_disposicion_equivalencia
 
 @pytest.mark.django_db

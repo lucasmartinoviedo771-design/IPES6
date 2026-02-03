@@ -30,7 +30,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from apps.alumnos.carga_notas_api import ALIAS_TO_SITUACION, _situaciones_para_formato
+from apps.alumnos.api.notas_utils import ALIAS_TO_SITUACION, situaciones_para_formato as _situaciones_para_formato
 from core.models import (
     Docente,
     EquivalenciaCurricular,
