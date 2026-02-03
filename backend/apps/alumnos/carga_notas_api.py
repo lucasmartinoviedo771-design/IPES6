@@ -338,7 +338,7 @@ def obtener_acta_metadata(request):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
-def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None):
+def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, incluir_equivalencias: bool = False):
     user = request.user
     roles = _normalized_user_roles(user)
     
@@ -357,6 +357,10 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
         # Nota: Si StaffAsignacion no tiene 'activo', quitar esa linea.
         # Fallback si no tiene asignaciones: no ve nada
         qs = ActaExamen.objects.filter(profesorado_id__in=carreras_ids)
+
+    # Filtrar equivalencias si se solicita (por defecto se excluyen)
+    if not incluir_equivalencias:
+        qs = qs.exclude(codigo__startswith="EQUIV-")
 
     # 1. Filtros
     if anio:
@@ -881,7 +885,7 @@ _SITUACIONES = {
         {
             "alias": "APROBADO",
             "codigo": Regularidad.Situacion.APROBADO,
-            "descripcion": "Cumple con el régimen de asistencia y con las evaluaciones.",
+            "descripcion": "Cumple con el régimen de asistencia (80%, o 65% con excepción) y con las evaluaciones.",
         },
         {
             "alias": "DESAPROBADO_TP",
@@ -891,7 +895,7 @@ _SITUACIONES = {
         {
             "alias": "LIBRE-I",
             "codigo": Regularidad.Situacion.LIBRE_I,
-            "descripcion": "Libre por inasistencias (menos del 65% de la cursada).",
+            "descripcion": "Libre por inasistencias (menos del 80%, o menos del 65% con excepción).",
         },
         {
             "alias": "LIBRE-AT",
@@ -1380,6 +1384,36 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                             ),
                         ) from None
             # --- END NEW VALIDATION ---
+            
+            # --- ASISTENCIA VALIDATION (ART. 24) ---
+            asistencia = alumno.asistencia or 0
+            excepcion = alumno.excepcion or False
+            
+            es_aprobatoria = situacion_codigo in [
+                Regularidad.Situacion.APROBADO,
+                Regularidad.Situacion.PROMOCIONADO,
+                Regularidad.Situacion.REGULAR,
+            ]
+            
+            if es_aprobatoria:
+                 formato_up = (materia.formato or "").upper()
+                 if formato_up in FORMATOS_TALLER:
+                      piso = 65 if excepcion else 80
+                      if asistencia < piso:
+                           raise HttpError(
+                               400, 
+                               f"El alumno {alumno.dni} no cumple con la asistencia mínima ({piso}%) "
+                               f"requerida para {materia.nombre} ({'con' if excepcion else 'sin'} excepción)."
+                           )
+                 else:
+                      # Asignaturas / otros: 65% fijo configurado actual
+                      if asistencia < 65:
+                           raise HttpError(
+                               400,
+                               f"El alumno {alumno.dni} no cumple con la asistencia mínima (65%) "
+                               f"requerida para {materia.nombre}."
+                           )
+            # --- END ASISTENCIA VALIDATION ---
 
             Regularidad.objects.update_or_create(
                 inscripcion=inscripcion,

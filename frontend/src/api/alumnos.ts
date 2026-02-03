@@ -150,6 +150,8 @@ export type EquivalenciaDisposicionDetalleDTO = {
 export type EquivalenciaDisposicionDTO = {
   id: number;
   origen: "primera_carga" | "secretaria";
+  estudiante_dni: string;
+  estudiante_nombre: string;
   numero_disposicion: string;
   fecha_disposicion: string;
   profesorado_id: number;

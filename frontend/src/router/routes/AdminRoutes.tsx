@@ -24,6 +24,7 @@ const PrimeraCargaPage = lazyPage(() => import("@/pages/admin/PrimeraCargaPage")
 const ActaExamenPrimeraCargaPage = lazyPage(() => import("@/pages/admin/ActaExamenPrimeraCargaPage"));
 const HistorialActasPage = lazyPage(() => import("@/pages/admin/HistorialActasPage"));
 const HistorialRegularidadesPage = lazyPage(() => import("@/pages/admin/HistorialRegularidadesPage"));
+const HistorialEquivalenciasPage = lazyPage(() => import("@/pages/admin/HistorialEquivalenciasPage"));
 
 const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
 
@@ -44,6 +45,7 @@ export const buildAdminRoutes = () => (
       <Route path="/admin/primera-carga/actas-examen" element={<ActaExamenPrimeraCargaPage />} />
       <Route path="/admin/primera-carga/historial-actas" element={<HistorialActasPage />} />
       <Route path="/admin/primera-carga/historial-regularidades" element={<HistorialRegularidadesPage />} />
+      <Route path="/admin/primera-carga/historial-equivalencias" element={<HistorialEquivalenciasPage />} />
     </Route>
 
     <Route

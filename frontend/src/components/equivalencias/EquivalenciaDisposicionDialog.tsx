@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -19,6 +20,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import { useSnackbar } from "notistack";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   EquivalenciaDisposicionPayload,
@@ -27,7 +29,8 @@ import {
   TrayectoriaCarreraDetalleDTO,
 } from "@/api/alumnos";
 import { listarPlanes, PlanDetalle } from "@/api/carreras";
-import { fetchMateriasPendientesEquivalencia } from "@/api/alumnos";
+import { fetchMateriasPendientesEquivalencia, fetchEstudianteAdminDetail } from "@/api/alumnos";
+import { fetchRegularidadMetadata } from "@/api/primeraCarga";
 import { getErrorMessage } from "@/utils/errors";
 
 type Row = {
@@ -64,6 +67,7 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
 }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [dni, setDni] = useState("");
+  const [estudianteNombre, setEstudianteNombre] = useState("");
   const [numeroDisposicion, setNumeroDisposicion] = useState("");
   const [fechaDisposicion, setFechaDisposicion] = useState(() => new Date().toISOString().slice(0, 10));
   const [observaciones, setObservaciones] = useState("");
@@ -80,6 +84,7 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
 
   const resetState = () => {
     setDni("");
+    setEstudianteNombre("");
     setNumeroDisposicion("");
     setFechaDisposicion(new Date().toISOString().slice(0, 10));
     setObservaciones("");
@@ -97,8 +102,16 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
     }
   }, [open]);
 
-  const handleBuscarCarreras = async () => {
-    const dniTrimmed = dni.trim();
+  const metadataQuery = useQuery({
+    queryKey: ['primera-carga', 'metadata-global'],
+    queryFn: () => fetchRegularidadMetadata(true),
+    enabled: open,
+    staleTime: 1000 * 60 * 10,
+  });
+  const estudiantesOptions = metadataQuery.data?.estudiantes ?? [];
+
+  const handleBuscarCarreras = async (dniToSearch?: string) => {
+    const dniTrimmed = (dniToSearch || dni).trim();
     if (dniTrimmed.length < 7) {
       enqueueSnackbar("Ingresá un DNI válido.", { variant: "warning" });
       return;
@@ -114,6 +127,14 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
         setSelectedProfesoradoId(String(data[0].profesorado_id));
       } else {
         setSelectedProfesoradoId("");
+      }
+
+      // Intentar obtener el nombre si no lo tenemos
+      if (!estudianteNombre) {
+        try {
+          const det = await fetchEstudianteAdminDetail(dniTrimmed);
+          setEstudianteNombre(`${det.apellido}, ${det.nombre}`);
+        } catch { /* ignore */ }
       }
     } catch (error) {
       enqueueSnackbar(getErrorMessage(error, "No se pudieron obtener las carreras del estudiante."), {
@@ -299,33 +320,115 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
   });
 
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(event, reason) => {
+        if (submitting) return;
+        if (reason && reason === 'backdropClick') return;
+        onClose();
+      }}
+      disableEscapeKeyDown
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Grid container spacing={2} alignItems="flex-end">
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="DNI del estudiante"
-                value={dni}
-                onChange={(event) => setDni(event.target.value.replace(/\D/g, ""))}
-                fullWidth
-                size="small"
-                inputProps={{ maxLength: 8 }}
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={8}>
+              <Autocomplete
+                freeSolo
+                options={estudiantesOptions}
+                getOptionLabel={(option) => {
+                  if (typeof option === 'string') return option;
+                  return `${option.apellido_nombre} (${option.dni})`;
+                }}
+                value={
+                  estudiantesOptions.find(e => e.dni === dni) ||
+                  (estudianteNombre ? { dni, apellido_nombre: estudianteNombre, profesorados: [] } : null) ||
+                  dni
+                }
+                onChange={(_, value) => {
+                  if (typeof value === 'string') {
+                    const match = value.match(/(.*) \((\d+)\)$/);
+                    if (match) {
+                      const name = match[1].trim();
+                      const d = match[2];
+                      setDni(d);
+                      setEstudianteNombre(name);
+                      handleBuscarCarreras(d);
+                    } else {
+                      setDni(value.replace(/\D/g, ""));
+                    }
+                  } else if (value) {
+                    setDni(value.dni);
+                    setEstudianteNombre(value.apellido_nombre);
+                    handleBuscarCarreras(value.dni);
+                  } else {
+                    setDni("");
+                    setEstudianteNombre("");
+                    setCarreras([]);
+                  }
+                }}
+                onInputChange={(_, value, reason) => {
+                  if (reason === 'input') {
+                    const cleanDni = value.replace(/\D/g, "");
+                    if (cleanDni.length !== value.length) {
+                      // if it contains nondigits, user might be typing name
+                    } else {
+                      setDni(cleanDni);
+                    }
+                  }
+                }}
+                renderOption={(props, option) => {
+                  const { key, ...restProps } = props as any;
+                  return (
+                    <li key={key} {...restProps}>
+                      <Box>
+                        <Typography variant="body2">{option.apellido_nombre}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          DNI: {option.dni}
+                        </Typography>
+                      </Box>
+                    </li>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Buscar estudiante (Nombre o DNI)"
+                    size="small"
+                    inputProps={{
+                      ...params.inputProps,
+                      maxLength: 50,
+                    }}
+                  />
+                )}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
+            <Grid item xs={12} md={4}>
               <Button
                 variant="outlined"
                 fullWidth
                 startIcon={carrerasLoading ? <CircularProgress size={16} /> : <SearchIcon />}
-                onClick={handleBuscarCarreras}
+                onClick={() => handleBuscarCarreras()}
                 disabled={carrerasLoading || dni.trim().length < 7}
               >
-                Buscar estudiante
+                Buscar Carreras
               </Button>
             </Grid>
           </Grid>
+
+          {estudianteNombre && (
+            <Box sx={{ p: 1.5, bgcolor: '#f0f7f0', borderRadius: 1, border: '1px solid #cce7cc' }}>
+              <Typography variant="body2" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+                Estudiante: {estudianteNombre}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                DNI: {dni}
+              </Typography>
+            </Box>
+          )}
 
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>

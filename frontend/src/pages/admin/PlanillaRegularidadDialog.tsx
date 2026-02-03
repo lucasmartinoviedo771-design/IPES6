@@ -829,10 +829,13 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     // Modulo/Anual -> 65%
     // Others (Asignatura, Taller 1C/2C) -> 60%? 
     // Usually Taller requires high attendance (80%), but user mentioned 5% failing, so let's enforce the low limit first.
-    // Thresholds
-    // User requested "libre I que debe ser menor a 65".
-    // We unify the threshold to 65 for all formats to be consistent with this request.
-    const thresholdRegular = 65;
+    // Thresholds (Reglamento Académico Art. 24)
+    // Taller/Práctica/Laboratorio: 80% (65% con excepción justificada)
+    // Asignatura/Módulo: 65% (actual configurado)
+    let thresholdRegular = 65;
+    if (isTallerGroup) {
+      thresholdRegular = row.excepcion ? 65 : 80;
+    }
 
     if (isModuloGroup || isAsignaturaGroup || isTallerGroup) {
       if (asistencia < 30) {
@@ -1003,6 +1006,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
         if (reason && reason === 'backdropClick') return;
         onClose();
       }}
+      disableEscapeKeyDown
       maxWidth={false}
       scroll="paper"
       PaperProps={{

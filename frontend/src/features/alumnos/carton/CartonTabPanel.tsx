@@ -59,17 +59,22 @@ const buildStudentInfo = (trayectoria: TrayectoriaDTO, plan?: CartonPlanDTO): St
     ? planAprobadas.length
     : estudiante.materias_aprobadas ?? trayectoria.aprobadas.length;
 
+  const planRegularizadas = trayectoria.regularizadas.filter(
+    (id) => planMateriaIds ? planMateriaIds.has(id) : true
+  );
+  const planInscriptas = trayectoria.inscriptas_actuales.filter(
+    (id) => planMateriaIds ? planMateriaIds.has(id) : true
+  );
+
   const regularizadasCount = planMateriaIds
-    ? Math.max(
-      trayectoria.regularizadas.filter((id) => planMateriaIds.has(id)).length - planAprobadas.length,
-      0,
-    )
+    ? planRegularizadas.filter(id => !planAprobadas.includes(id)).length
     : estudiante.materias_regularizadas ??
-    Math.max(trayectoria.regularizadas.length - trayectoria.aprobadas.length, 0);
+    trayectoria.regularizadas.filter(id => !trayectoria.aprobadas.includes(id)).length;
 
   const enCursoCount = planMateriaIds
-    ? trayectoria.inscriptas_actuales.filter((id) => planMateriaIds.has(id)).length
-    : estudiante.materias_en_curso ?? trayectoria.inscriptas_actuales.length;
+    ? planInscriptas.filter(id => !planRegularizadas.includes(id) && !planAprobadas.includes(id)).length
+    : estudiante.materias_en_curso ??
+    trayectoria.inscriptas_actuales.filter(id => !trayectoria.regularizadas.includes(id) && !trayectoria.aprobadas.includes(id)).length;
 
   return {
     apellidoNombre: estudiante.apellido_nombre,

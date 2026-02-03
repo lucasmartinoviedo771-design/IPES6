@@ -263,20 +263,48 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
             </Grid>
           </Paper>
 
-          <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
             {summaryCards.map((card) => (
               <Grid item xs={12} md={4} key={card.title}>
-                <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                <Paper variant="outlined" sx={{ p: 2, height: '100%', backgroundColor: '#fff' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>
                     {card.title}
                   </Typography>
-                  <Typography variant="h6" fontWeight={700}>
+                  <Typography variant="h6" fontWeight={700} color="primary.dark">
                     {card.value}
                   </Typography>
                 </Paper>
               </Grid>
             ))}
           </Grid>
+
+          {/* Referencias/Leyenda */}
+          <Box sx={{ mb: 4, display: 'flex', flexWrap: 'wrap', gap: 3, p: 1.5, borderRadius: 1, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'divider' }}>
+            <Box>
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase' }}>
+                Situación Académica
+              </Typography>
+              <Stack direction="row" spacing={1.5}>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>REG:</b> Regular</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>PROM:</b> Promocionado</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>LIB:</b> Libre</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>PEN:</b> Pendiente</Typography>
+              </Stack>
+            </Box>
+            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+            <Box>
+              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase' }}>
+                Condición de Examen
+              </Typography>
+              <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>APR:</b> Aprobado</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>EQUI:</b> Equivalencia</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>DES:</b> Desaprobado</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>AUS:</b> Ausente</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>JUS:</b> Justificado</Typography>
+              </Stack>
+            </Box>
+          </Box>
 
           <Box sx={{ mb: 4 }}>
             <TableContainer component={Paper} elevation={0} variant="outlined">

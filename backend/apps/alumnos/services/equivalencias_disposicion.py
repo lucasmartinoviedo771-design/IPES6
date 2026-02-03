@@ -49,13 +49,42 @@ def _correlatividades_qs(materia: Materia, tipo: str, estudiante: Estudiante | N
     return qs
 
 
+
+def _es_nota_aprobada(nota: str) -> bool:
+    if not nota:
+        return False
+    n = nota.strip().upper()
+    # Explicit failing codes
+    if n in ("AUS", "DES", "REP", "LAT", "LBI", "LIB", "INC"):
+        return False
+    
+    # Try numeric grade
+    try:
+        val = float(n.replace(",", "."))
+        return val >= 6.0
+    except ValueError:
+        pass
+        
+    # Check for passing codes (APR=Aprobado, PROM=Promocionado, EQUIV=Equivalencia)
+    if any(code in n for code in ("APR", "PROM", "EQ", "EXIM")):
+        return True
+        
+    return False
+
+
 def _materias_aprobadas_ids(estudiante: Estudiante, plan: PlanDeEstudio) -> set[int]:
-    actas_ids = set(
-        ActaExamenAlumno.objects.filter(
-            dni=estudiante.dni,
-            acta__materia__plan_de_estudio=plan,
-        ).values_list("acta__materia_id", flat=True)
-    )
+    # 1. Actas de Examen: Filter by passing grade
+    raw_actas = ActaExamenAlumno.objects.filter(
+        dni=estudiante.dni,
+        acta__materia__plan_de_estudio=plan,
+    ).values_list("acta__materia_id", "calificacion_definitiva")
+    
+    actas_ids = set()
+    for mid, nota in raw_actas:
+        if _es_nota_aprobada(nota):
+            actas_ids.add(mid)
+
+    # 2. Mesas de Examen (InscripcionMesa)
     mesas_ids = set(
         InscripcionMesa.objects.filter(
             estudiante=estudiante,
@@ -63,6 +92,8 @@ def _materias_aprobadas_ids(estudiante: Estudiante, plan: PlanDeEstudio) -> set[
             condicion=InscripcionMesa.Condicion.APROBADO,
         ).values_list("mesa__materia_id", flat=True)
     )
+
+    # 3. Regularidades (Situacion de Aprobación/Promoción)
     reg_ids = set(
         Regularidad.objects.filter(
             estudiante=estudiante,
@@ -74,6 +105,7 @@ def _materias_aprobadas_ids(estudiante: Estudiante, plan: PlanDeEstudio) -> set[
         ).values_list("materia_id", flat=True)
     )
     return set(chain(actas_ids, mesas_ids, reg_ids))
+
 
 
 def materias_pendientes_para_equivalencia(estudiante: Estudiante, plan: PlanDeEstudio):
@@ -265,6 +297,8 @@ def serialize_disposicion(dispo: EquivalenciaDisposicion, detalles=None) -> dict
     return {
         "id": dispo.id,
         "origen": dispo.origen,
+        "estudiante_dni": dispo.estudiante.dni,
+        "estudiante_nombre": dispo.estudiante.user.get_full_name() if dispo.estudiante.user_id else "",
         "numero_disposicion": dispo.numero_disposicion,
         "fecha_disposicion": dispo.fecha_disposicion.isoformat(),
         "profesorado_id": dispo.profesorado_id,

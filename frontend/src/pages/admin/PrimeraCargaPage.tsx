@@ -212,7 +212,16 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
   const isSaving = mutation.isPending || checkingDni;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={(event, reason) => {
+        if (reason && reason === 'backdropClick') return;
+        onClose();
+      }}
+      disableEscapeKeyDown
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle>Registrar estudiante (carga inicial)</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
@@ -696,6 +705,42 @@ const PrimeraCargaPage: React.FC = () => {
                     "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
                   }}
                   onClick={() => navigate("/admin/primera-carga/historial-regularidades")}
+                >
+                  Ver Historial
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Card sx={cardStyles}>
+            <CardContent sx={{ height: "100%" }}>
+              <Stack spacing={3} sx={{ height: "100%" }}>
+                <Box
+                  sx={iconBoxStyles}
+                >
+                  <CompareArrows fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Historial de Equivalencias
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Consultá las disposiciones de equivalencia registradas.
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  sx={{
+                    mt: "auto",
+                    borderRadius: 999,
+                    borderColor: INSTITUTIONAL_TERRACOTTA,
+                    color: INSTITUTIONAL_TERRACOTTA,
+                    "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                  }}
+                  onClick={() => navigate("/admin/primera-carga/historial-equivalencias")}
                 >
                   Ver Historial
                 </Button>

@@ -100,6 +100,8 @@ def listar_disposiciones_equivalencia(
         "profesorado",
         "plan",
         "creado_por",
+        "estudiante",
+        "estudiante__user",
     ).prefetch_related("detalles__materia")
 
     if dni:

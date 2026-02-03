@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
 from core.models import (
+    ActaExamenAlumno,
     InscripcionMateriaAlumno,
     InscripcionMesa,
     Materia,
@@ -250,7 +251,6 @@ def trayectoria_alumno(request, dni: str | None = None):
             continue
         materia = mesa.materia
         plan_estudio = materia.plan_de_estudio if materia else None
-        profesorado = plan_estudio.profesorado if plan_estudio else None
         mesas_raw.append(
             {
                 "id": insc.id,
@@ -266,6 +266,51 @@ def trayectoria_alumno(request, dni: str | None = None):
                 "aula": mesa.aula,
             }
         )
+
+    # --- ACTAS DE EXAMEN ---
+    actas_alumno_qs = (
+        ActaExamenAlumno.objects.filter(dni=est.dni)
+        .select_related("acta", "acta__materia")
+        .order_by("-acta__fecha")
+    )
+    actas_map: dict[int, list[dict]] = {}
+    for a in actas_alumno_qs:
+        mid = a.acta.materia_id
+        if mid not in actas_map:
+            actas_map[mid] = []
+        
+        cond_val, cond_label = _acta_condicion(a.calificacion_definitiva)
+        print(f"DEBUG: Processing acta ID {a.id}, initial cond: {cond_val}", flush=True)
+        
+        # Robust equivalency detection
+        is_equiv = (
+            (a.permiso_examen == "EQUIV") or 
+            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
+            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
+        )
+        
+        folio_val = a.acta.folio
+        if is_equiv:
+            cond_val = "EQUI"
+            cond_label = "Equivalencia"
+            if a.acta.folio:
+                fol_str = str(a.acta.folio).strip()
+                if fol_str and not fol_str.upper().startswith("DISP"):
+                    folio_val = f"Disp. {fol_str}"
+        
+        actas_map[mid].append({
+            "fecha": a.acta.fecha.isoformat(),
+            "condicion": cond_val,
+            "condicion_display": cond_label,
+            "nota": a.calificacion_definitiva,
+            "folio": folio_val,
+            "libro": a.acta.libro,
+            "id_fila": a.id,
+            "es_acta": True
+        })
+        
+        if cond_val in ("APR", "EQUI"):
+            aprobadas_set.add(mid)
     
     # --- CONSTRUCCION DEL CARTON (Verificacion de Planes) ---
     regularidades_map = {reg.materia_id: reg for reg in regularidades_qs}
@@ -308,25 +353,45 @@ def trayectoria_alumno(request, dni: str | None = None):
                     }
 
                 finales_list = finales_map.get(mat.id, [])
-                carton_finales = []
-                best_final = None
-
+                actas_list = actas_map.get(mat.id, [])
+                # Diccionario para unificar por fecha
+                merged_finales = {}
+                
+                # 1. Agregar Inscripciones a Mesa
                 for f in finales_list:
-                     f_data = {
-                        "fecha": f.mesa.fecha.isoformat(),
-                        "condicion": f.condicion,
+                    fecha_key = f.mesa.fecha.isoformat()
+                    # Normalizar condicion para comparacion
+                    c_val = f.condicion if f.condicion else "INS"
+                    merged_finales[fecha_key] = {
+                        "fecha": fecha_key,
+                        "condicion": c_val,
                         "nota": _format_nota(f.nota),
                         "folio": f.folio,
                         "libro": f.libro,
                         "id_fila": f.id
-                     }
-                     carton_finales.append(f_data)
-                     
-                     # Simple logic for 'best_final' (legacy field): prefer APROBADO, else last one
-                     if not best_final:
-                         best_final = f_data
-                     elif f.condicion == InscripcionMesa.Condicion.APROBADO and best_final["condicion"] != InscripcionMesa.Condicion.APROBADO:
-                         best_final = f_data
+                    }
+
+                # 2. Agregar/Actualizar con Actas de Examen (tienen prioridad)
+                for a_data in actas_list:
+                    fecha_key = a_data["fecha"]
+                    # El Acta tiene el resultado definitivo y la condicion 'EQUI'
+                    merged_finales[fecha_key] = a_data
+                
+                carton_finales = sorted(merged_finales.values(), key=lambda x: x["fecha"], reverse=True)
+                best_final = None
+                
+                # Encontrar el mejor resultado para el resumen de la materia
+                for f_data in carton_finales:
+                    if not best_final:
+                        best_final = f_data
+                    else:
+                        is_aprob = f_data["condicion"] in ("APR", "EQUI")
+                        best_aprob = best_final["condicion"] in ("APR", "EQUI")
+                        if is_aprob and not best_aprob:
+                            best_final = f_data
+                
+                # Ordenar finales por fecha descendente
+                carton_finales.sort(key=lambda x: x["fecha"], reverse=True)
                 
                 final_data = best_final
 
@@ -369,8 +434,8 @@ def trayectoria_alumno(request, dni: str | None = None):
         activo=est.user.is_active if est.user_id else None,
         materias_totales=None,
         materias_aprobadas=len(aprobadas_set),
-        materias_regularizadas=len(regularizadas_set),
-        materias_en_curso=len(inscriptas_actuales_set),
+        materias_regularizadas=len(regularizadas_set - aprobadas_set),
+        materias_en_curso=len(inscriptas_actuales_set - regularizadas_set - aprobadas_set),
         fotoUrl=None,
     )
 

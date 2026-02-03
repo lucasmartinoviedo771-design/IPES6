@@ -683,6 +683,8 @@ class EquivalenciaDisposicionCreateIn(Schema):
 class EquivalenciaDisposicionOut(Schema):
     id: int
     origen: Literal["primera_carga", "secretaria"]
+    estudiante_dni: str
+    estudiante_nombre: str
     numero_disposicion: str
     fecha_disposicion: str
     profesorado_id: int
