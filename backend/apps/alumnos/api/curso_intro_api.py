@@ -410,6 +410,18 @@ def curso_intro_listar_registros(
 def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
     ensure_roles(request.user, CI_ALLOWED_ROLES)
     
+    from django.core.cache import cache
+    allowed = _ci_allowed_profesorados(request.user)
+    
+    # Generar clave de caché basada en permisos y filtro
+    cache_key = f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}"
+    if allowed is not None:
+        cache_key += f"_a{'-'.join(map(str, sorted(list(allowed))))}"
+    
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return cached_data
+
     # Optimización: Usar Exists para filtrar eficientemente en DB
     from django.db.models import Exists, OuterRef
     tiene_registro = CursoIntroductorioRegistro.objects.filter(estudiante=OuterRef("pk"))
@@ -422,7 +434,8 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
             curso_introductorio_aprobado=False, 
             carreras__isnull=False
         )
-        .select_related("user")  # CRÍTICO: Evita N+1
+        .only("id", "dni", "user_id") # Solo traemos campos mínimos
+        .select_related("user")
         .prefetch_related("carreras_detalle__profesorado")
         .distinct()
     )
@@ -459,6 +472,10 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
                 anio_ingreso=profesorados[0].get("anio_ingreso") if profesorados else None,
             )
         )
+    
+    # Guardar en caché por 15 minutos (900 segundos)
+    cache.set(cache_key, pendientes, 900)
+    
     return pendientes
 
 

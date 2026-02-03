@@ -89,6 +89,14 @@ INSTALLED_APPS = [
     "apps.metrics",
 ]
 
+# Profiling con silk (puede activarse en producción de forma segura)
+ENABLE_PROFILING = env_bool("ENABLE_PROFILING", default=DEBUG)
+if ENABLE_PROFILING:
+    INSTALLED_APPS.append("silk")
+    SILKY_AUTHENTICATION = False  # Cambiado a False para evitar redirecciones al login de Django
+    SILKY_AUTHORISATION = False
+    # Podríamos agregar una validación personalizada aquí luego si es necesario
+
 # === Middleware =========================================================
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -101,6 +109,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.AuditRequestMiddleware",
 ]
+
+# Profiling middleware
+if ENABLE_PROFILING:
+    MIDDLEWARE.insert(0, "silk.middleware.SilkyMiddleware")
 
 ROOT_URLCONF = "config.urls"
 

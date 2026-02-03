@@ -207,8 +207,19 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
 
 
 def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dict:
-    allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
+    from django.core.cache import cache
     
+    # Generar una clave de caché única por usuario/permisos
+    allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
+    cache_key = f"reg_metadata_u{user.id}_a{include_all}"
+    if allowed is not None:
+        allowed_str = "-".join(map(str, sorted(list(allowed))))
+        cache_key += f"_p{allowed_str}"
+    
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return cached_data
+
     # Solo si el usuario explicita include_all y es autoridad, permitimos ver todos
     if include_all:
         es_autoridad = user.asignaciones_profesorado.filter(rol__in=["bedel", "coordinador", "secretaria"]).exists()
@@ -221,21 +232,42 @@ def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dic
             return {"profesorados": [], "plantillas": []}
         profes_qs = profes_qs.filter(id__in=allowed)
 
-    profes_qs = profes_qs.prefetch_related("planes__materias")
+    # Optimizamos la consulta con Prefetch para traer todo ordenado de una sola vez
+    from django.db.models import Prefetch
+    
+    # Solo traemos los campos necesarios (.only) para reducir el ancho de banda
+    materias_prefetch = Materia.objects.all().only(
+        "id", "plan_de_estudio_id", "nombre", "anio_cursada", "formato", "regimen"
+    ).order_by("anio_cursada", "nombre")
+    
+    planes_prefetch = PlanDeEstudio.objects.all().only(
+        "id", "profesorado_id", "resolucion", "anio_inicio", "anio_fin", "vigente"
+    ).prefetch_related(
+        Prefetch("materias", queryset=materias_prefetch)
+    ).order_by("anio_inicio")
+    
+    profes_qs = (
+        profes_qs.prefetch_related(
+            Prefetch("planes", queryset=planes_prefetch)
+        )
+    )
 
     profes_data = []
     for profesorado in profes_qs:
         planes_data = []
-        for plan in profesorado.planes.all().order_by("anio_inicio"):
+        # Importante: usar .all() sin .order_by() para aprovechar el prefetch configurado arriba
+        for plan in profesorado.planes.all():
             materias_data = []
-            for materia in plan.materias.all().order_by("anio_cursada", "nombre"):
+            # Mapeo manual para evitar get_regimen_display() en el bucle
+            REGIMEN_MAP = {"ANU": "ANUAL", "PCU": "1C", "SCU": "2C"}
+            for materia in plan.materias.all():
                 materias_data.append(
                     {
                         "id": materia.id,
                         "nombre": materia.nombre,
                         "anio_cursada": materia.anio_cursada,
                         "formato": materia.formato,
-                        "dictado": materia.get_regimen_display().upper(),
+                        "dictado": REGIMEN_MAP.get(materia.regimen, "ANUAL"),
                         "regimen": materia.regimen,
                         "plan_id": plan.id,
                         "plan_resolucion": plan.resolucion,
@@ -286,6 +318,17 @@ def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dic
             }
         )
 
+    result = {"profesorados": profes_data, "plantillas": plantillas}
+    
+    # Guardamos en caché por 1 hora (3600 segundos)
+    # Importante: Solo guardamos si hay datos
+    from django.core.cache import cache
+    if profes_data:
+        cache.set(cache_key, result, 3600)
+    
+    return result
+
+def obtener_docentes_metadata():
     docente_qs = Docente.objects.order_by("apellido", "nombre")
     docentes = [
         {
@@ -295,39 +338,7 @@ def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dic
         }
         for docente in docente_qs
     ]
-
-    estudiantes = []
-    estudiantes = []
-    
-    # Si include_all está activo, traemos TODOS los estudiantes (incluso sin carrera)
-    if include_all:
-        estudiantes_qs = Estudiante.objects.all()
-    else:
-        estudiantes_qs = Estudiante.objects.filter(carreras__in=profes_qs).distinct()
-        
-    estudiantes_qs = (
-        estudiantes_qs
-        .prefetch_related("carreras", "user")
-        .order_by("user__last_name", "user__first_name")
-    )
-    for estudiante in estudiantes_qs:
-        apellido = (estudiante.user.last_name or "").strip()
-        nombre = (estudiante.user.first_name or "").strip()
-        estudiantes.append(
-            {
-                "dni": estudiante.dni,
-                "apellido_nombre": f"{apellido}, {nombre}".strip(", "),
-                "profesorados": list(estudiante.carreras.values_list("id", flat=True)),
-            }
-        )
-
-    return {
-        "profesorados": profes_data,
-        "plantillas": plantillas,
-        "docentes": docentes,
-        "estudiantes": estudiantes,
-    }
-
+    return docentes
 
 def _limpiar_datos_fila(raw_datos: dict | None, columnas: list[dict]) -> dict:
     if not raw_datos:

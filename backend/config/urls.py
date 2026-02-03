@@ -12,5 +12,7 @@ urlpatterns = [
     path("media/<path:path>", serve_media),
 ]
 
-# if settings.DEBUG:
-#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Panel de profiling
+from django.conf import settings
+if getattr(settings, 'ENABLE_PROFILING', False):
+    urlpatterns.append(path("silk/", include("silk.urls", namespace="silk")))

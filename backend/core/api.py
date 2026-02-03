@@ -1088,7 +1088,44 @@ class HorarioCatedraDetalleOut(Schema):
 def list_docentes(request):
     _ensure_structure_view(request.user)
     docentes = Docente.objects.all().order_by("apellido", "nombre")
-    return [_serialize_docente(docente) for docente in docentes]
+    
+    # Optimizamos: Traemos todos los usuarios posibles de un solo viaje
+    # Para evitar 400 queries, hacemos un mapa en memoria
+    dnis = [d.dni for d in docentes if d.dni]
+    emails = [d.email for d in docentes if d.email]
+    
+    users_qs = User.objects.filter(
+        Q(username__in=dnis) | Q(email__in=emails)
+    ).only("id", "username", "email")
+    
+    # Creamos mapas para búsqueda ultra rápida
+    user_by_username = {u.username.lower(): u.username for u in users_qs}
+    user_by_email = {u.email.lower(): u.username for u in users_qs if u.email}
+    
+    result = []
+    for docente in docentes:
+        # Buscamos en el mapa en lugar de hacer Docente.objects.filter...
+        username = None
+        dni_lower = docente.dni.lower() if docente.dni else None
+        email_lower = docente.email.lower() if docente.email else None
+        
+        if dni_lower and dni_lower in user_by_username:
+            username = user_by_username[dni_lower]
+        elif email_lower and email_lower in user_by_email:
+            username = user_by_email[email_lower]
+            
+        result.append(DocenteOut(
+            id=docente.id,
+            nombre=docente.nombre,
+            apellido=docente.apellido,
+            dni=docente.dni,
+            email=docente.email,
+            telefono=docente.telefono,
+            cuil=docente.cuil,
+            usuario=username,
+            temp_password=None,
+        ))
+    return result
 
 
 @router.post("/docentes", response=DocenteOut, auth=JWTAuth())

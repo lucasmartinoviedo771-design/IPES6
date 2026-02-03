@@ -36,7 +36,7 @@ COPY pyproject.toml uv.lock ./
 # Aquí usaremos el venv que crea uv por defecto o --system. 
 # Para simplicidad en docker, --system a veces es preferido, pero uv recomienda venv.
 # Usaremos `uv sync` que crea .venv
-RUN uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 # Copiar el resto del código
 # Copiar el resto del código
