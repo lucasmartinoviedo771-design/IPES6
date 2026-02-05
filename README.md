@@ -50,6 +50,9 @@ Para sumar una tarjeta:
 - APIs frontend centralizadas en `frontend/src/api` y dashboards compartidos por rol.
 - Autenticación reforzada con cookies HTTP-only + CSRF.
 - `requirements.txt` regenerado con `uv pip compile` para alinear dependencias con `pyproject.toml`.
+- **Optimización de rendimiento**: Solución a consultas N+1 en planillas de regularidad y profiling activo con Django Silk.
+- **Correcciones de integridad**: Unificación de nomenclatura `alumno`/`estudiante` en APIs y scripts de saneamiento de datos (`backend/fix_data_safe.py`).
+- **Protocolos**: Nueva documentación de seguridad y despliegue en `.agent/workflows/protocolo_despliegue.md`.
 
 ## Contenedores (Docker)
 - Backend: `backend/Dockerfile` y `backend/docker-compose.yml` para levantar API + MySQL localmente (ajusta variables del compose antes de subir).
