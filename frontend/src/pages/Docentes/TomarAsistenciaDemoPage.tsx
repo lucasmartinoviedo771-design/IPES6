@@ -40,7 +40,7 @@ const MOCK_CLASE = {
   comision: "1º Año - Comisión A",
   fecha: new Date().toISOString(),
   docente_presente: false,
-  alumnos: [
+  estudiantes: [
     { estudiante_id: 101, nombre: "Juan", apellido: "Pérez", dni: "40.123.456", estado: "ausente", justificada: false, porcentaje_asistencia: 85 },
     { estudiante_id: 102, nombre: "María", apellido: "Gómez", dni: "41.987.654", estado: "ausente", justificada: false, porcentaje_asistencia: 60 },
     { estudiante_id: 103, nombre: "Carlos", apellido: "López", dni: "39.555.444", estado: "ausente", justificada: true, porcentaje_asistencia: 35 },
@@ -102,12 +102,12 @@ export default function TomarAsistenciaDemoPage() {
     }, 1000);
   };
 
-  const handleGuardarAlumnos = () => {
+  const handleGuardarEstudiantes = () => {
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
       setHasChanges(false);
-      enqueueSnackbar("Asistencia de alumnos guardada (DEMO).", { variant: "success" });
+      enqueueSnackbar("Asistencia de estudiantes guardada (DEMO).", { variant: "success" });
     }, 1000);
   };
 
@@ -148,8 +148,8 @@ export default function TomarAsistenciaDemoPage() {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {docentePresente
-                        ? "Ya registraste tu presencia para esta clase. Podés gestionar la asistencia de los alumnos."
-                        : "Para habilitar la lista de alumnos, primero debés confirmar tu presencia en el aula."}
+                        ? "Ya registraste tu presencia para esta clase. Podés gestionar la asistencia de los estudiantes."
+                        : "Para habilitar la lista de estudiantes, primero debés confirmar tu presencia en el aula."}
                     </Typography>
                   </Stack>
                 </Grid>
@@ -183,12 +183,12 @@ export default function TomarAsistenciaDemoPage() {
             <Box sx={{ p: 2, bgcolor: "#fafafa", borderBottom: "1px solid #eee" }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="subtitle1" fontWeight={600}>
-                  Listado de Estudiantes ({MOCK_CLASE.alumnos.length})
+                  Listado de Estudiantes ({MOCK_CLASE.estudiantes.length})
                 </Typography>
                 <Button
                   variant="contained"
                   startIcon={<Save />}
-                  onClick={handleGuardarAlumnos}
+                  onClick={handleGuardarEstudiantes}
                   disabled={!docentePresente || isSaving || !hasChanges}
                 >
                   {isSaving ? "Guardando..." : "Guardar Cambios"}
@@ -217,19 +217,19 @@ export default function TomarAsistenciaDemoPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {MOCK_CLASE.alumnos.map((alumno, index) => {
-                    const isPresent = presentes.has(alumno.estudiante_id);
-                    const isLate = tardes.has(alumno.estudiante_id);
+                  {MOCK_CLASE.estudiantes.map((estudiante, index) => {
+                    const isPresent = presentes.has(estudiante.estudiante_id);
+                    const isLate = tardes.has(estudiante.estudiante_id);
                     const isAbsent = !isPresent && !isLate;
-                    const isJustified = alumno.justificada;
-                    const percentage = alumno.porcentaje_asistencia || 0;
+                    const isJustified = estudiante.justificada;
+                    const percentage = estudiante.porcentaje_asistencia || 0;
                     const percentageColor = getPercentageColor(percentage);
 
                     return (
-                      <TableRow key={alumno.estudiante_id} hover>
+                      <TableRow key={estudiante.estudiante_id} hover>
                         <TableCell>{String(index + 1).padStart(3, '0')}</TableCell>
-                        <TableCell>{alumno.dni}</TableCell>
-                        <TableCell sx={{ fontWeight: 500 }}>{`${alumno.apellido}, ${alumno.nombre}`}</TableCell>
+                        <TableCell>{estudiante.dni}</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{`${estudiante.apellido}, ${estudiante.nombre}`}</TableCell>
                         <TableCell align="center">
                           <Chip 
                             label={`${percentage}%`} 
@@ -245,7 +245,7 @@ export default function TomarAsistenciaDemoPage() {
                         <TableCell align="center">
                           <Checkbox
                             checked={isPresent}
-                            onChange={() => handleCheck(alumno.estudiante_id, "presente")}
+                            onChange={() => handleCheck(estudiante.estudiante_id, "presente")}
                             disabled={isJustified}
                             color="success"
                           />
@@ -253,7 +253,7 @@ export default function TomarAsistenciaDemoPage() {
                         <TableCell align="center">
                           <Checkbox
                             checked={isAbsent}
-                            onChange={() => handleCheck(alumno.estudiante_id, "ausente")}
+                            onChange={() => handleCheck(estudiante.estudiante_id, "ausente")}
                             disabled={isJustified}
                             color="error"
                           />
@@ -261,7 +261,7 @@ export default function TomarAsistenciaDemoPage() {
                         <TableCell align="center">
                           <Checkbox
                             checked={isLate}
-                            onChange={() => handleCheck(alumno.estudiante_id, "tarde")}
+                            onChange={() => handleCheck(estudiante.estudiante_id, "tarde")}
                             disabled={isJustified}
                             color="warning"
                           />

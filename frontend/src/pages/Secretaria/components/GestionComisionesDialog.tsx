@@ -19,7 +19,7 @@ import ShuffleIcon from "@mui/icons-material/Shuffle";
 import {
   listarComisionesGestion,
   crearComisionMasiva,
-  distribuirAlumnos,
+  distribuirEstudiantes,
   type ComisionGestionDTO,
 } from "@/api/gestionComisiones";
 import { useSnackbar } from "notistack";
@@ -84,13 +84,13 @@ export default function GestionComisionesDialog({ open, onClose, materiaId, anio
   };
 
   const handleDistribute = async (origenId: number, destinoId: number) => {
-    if (!confirm("¿Estás seguro de mover aleatoriamente el 50% de los alumnos de ESTA materia?")) return;
+    if (!confirm("¿Estás seguro de mover aleatoriamente el 50% de los estudiantes de ESTA materia?")) return;
     try {
-      await distribuirAlumnos(origenId, destinoId, 50);
-      enqueueSnackbar("Alumnos distribuidos", { variant: "success" });
+      await distribuirEstudiantes(origenId, destinoId, 50);
+      enqueueSnackbar("Estudiantes distribuidos", { variant: "success" });
       loadComisiones();
     } catch (error) {
-      enqueueSnackbar("Error al distribuir alumnos", { variant: "error" });
+      enqueueSnackbar("Error al distribuir estudiantes", { variant: "error" });
     }
   };
 
@@ -150,7 +150,7 @@ export default function GestionComisionesDialog({ open, onClose, materiaId, anio
             <Box mt={3} p={2} bgcolor="grey.100" borderRadius={1}>
                 <Typography variant="subtitle2" gutterBottom>Herramientas de Distribución</Typography>
                 <Typography variant="caption" display="block" mb={1}>
-                    Mover 50% de alumnos de la primera a la última comisión creada.
+                    Mover 50% de estudiantes de la primera a la última comisión creada.
                 </Typography>
                 <Button 
                     variant="outlined" 

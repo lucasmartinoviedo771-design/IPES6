@@ -58,29 +58,29 @@ export default function ActaPrintPage() {
                 </Box>
             </Box>
 
-            {/* Tabla de Alumnos */}
+            {/* Tabla de Estudiantes */}
             <Table size="small" sx={{ border: "1px solid black", mb: 4 }}>
                 <TableHead>
                     <TableRow>
                         <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>Orden</TableCell>
                         <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>Permiso</TableCell>
                         <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>DNI</TableCell>
-                        <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>Alumno</TableCell>
+                        <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>Estudiante</TableCell>
                         <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>Escrito</TableCell>
                         <TableCell sx={{ border: "1px solid black", fontWeight: "bold" }}>Oral</TableCell>
                         <TableCell sx={{ border: "1px solid black", fontWeight: "bold", textAlign: "center" }}>Nota Final</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {acta.alumnos?.map((alumno) => (
-                        <TableRow key={alumno.dni}>
-                            <TableCell sx={{ border: "1px solid black", textAlign: "center" }}>{alumno.numero_orden}</TableCell>
-                            <TableCell sx={{ border: "1px solid black" }}>{alumno.permiso_examen || ""}</TableCell>
-                            <TableCell sx={{ border: "1px solid black" }}>{alumno.dni}</TableCell>
-                            <TableCell sx={{ border: "1px solid black" }}>{alumno.apellido_nombre}</TableCell>
-                            <TableCell sx={{ border: "1px solid black" }}>{alumno.examen_escrito || "-"}</TableCell>
-                            <TableCell sx={{ border: "1px solid black" }}>{alumno.examen_oral || "-"}</TableCell>
-                            <TableCell sx={{ border: "1px solid black", textAlign: "center", fontWeight: "bold" }}>{alumno.calificacion_definitiva}</TableCell>
+                    {acta.estudiantes?.map((estudiante: any) => (
+                        <TableRow key={estudiante.dni}>
+                            <TableCell sx={{ border: "1px solid black", textAlign: "center" }}>{estudiante.numero_orden}</TableCell>
+                            <TableCell sx={{ border: "1px solid black" }}>{estudiante.permiso_examen || ""}</TableCell>
+                            <TableCell sx={{ border: "1px solid black" }}>{estudiante.dni}</TableCell>
+                            <TableCell sx={{ border: "1px solid black" }}>{estudiante.apellido_nombre}</TableCell>
+                            <TableCell sx={{ border: "1px solid black" }}>{estudiante.examen_escrito || "-"}</TableCell>
+                            <TableCell sx={{ border: "1px solid black" }}>{estudiante.examen_oral || "-"}</TableCell>
+                            <TableCell sx={{ border: "1px solid black", textAlign: "center", fontWeight: "bold" }}>{estudiante.calificacion_definitiva}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

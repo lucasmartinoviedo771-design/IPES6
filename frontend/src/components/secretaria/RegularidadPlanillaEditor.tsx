@@ -25,7 +25,7 @@ import { enqueueSnackbar } from "notistack";
 
 import {
   GuardarRegularidadPayload,
-  RegularidadAlumnoDTO,
+  RegularidadEstudianteDTO,
   RegularidadPlanillaDTO,
   SituacionOptionDTO,
 } from "@/api/cargaNotas";
@@ -61,18 +61,18 @@ interface RegularidadPlanillaEditorProps {
   readOnly?: boolean;
 }
 
-const mapAlumnoToFormRow = (alumno: RegularidadAlumnoDTO): RegularidadFilaForm => ({
-  inscripcionId: alumno.inscripcion_id,
-  orden: alumno.orden ?? 0,
-  dni: alumno.dni,
-  apellidoNombre: alumno.apellido_nombre,
-  notaTp: alumno.nota_tp !== null ? String(alumno.nota_tp).replace(".", ",") : "",
-  notaFinal: alumno.nota_final !== null ? String(alumno.nota_final) : "",
-  asistencia: alumno.asistencia !== null ? String(alumno.asistencia) : "",
-  excepcion: alumno.excepcion,
-  situacion: alumno.situacion ?? "",
-  observaciones: alumno.observaciones ?? "",
-  correlativasCaidas: alumno.correlativas_caidas ?? [],
+const mapEstudianteToFormRow = (estudiante: RegularidadEstudianteDTO): RegularidadFilaForm => ({
+  inscripcionId: estudiante.inscripcion_id,
+  orden: estudiante.orden ?? 0,
+  dni: estudiante.dni,
+  apellidoNombre: estudiante.apellido_nombre,
+  notaTp: estudiante.nota_tp !== null ? String(estudiante.nota_tp).replace(".", ",") : "",
+  notaFinal: estudiante.nota_final !== null ? String(estudiante.nota_final) : "",
+  asistencia: estudiante.asistencia !== null ? String(estudiante.asistencia) : "",
+  excepcion: estudiante.excepcion,
+  situacion: estudiante.situacion ?? "",
+  observaciones: estudiante.observaciones ?? "",
+  correlativasCaidas: estudiante.correlativas_caidas ?? [],
 });
 
 const toIsoDate = (value?: string): string => {
@@ -109,7 +109,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     defaultValues: {
       fechaCierre: toIsoDate(defaultFechaCierre),
       observaciones: defaultObservaciones ?? "",
-      filas: planilla.alumnos.map(mapAlumnoToFormRow),
+      filas: planilla.estudiantes.map(mapEstudianteToFormRow),
     },
   });
 
@@ -122,7 +122,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     reset({
       fechaCierre: toIsoDate(defaultFechaCierre),
       observaciones: defaultObservaciones ?? "",
-      filas: planilla.alumnos.map(mapAlumnoToFormRow),
+      filas: planilla.estudiantes.map(mapEstudianteToFormRow),
     });
   }, [planilla, defaultFechaCierre, defaultObservaciones, reset]);
 
@@ -183,7 +183,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     if (readOnly) {
       return;
     }
-    const alumnos: GuardarRegularidadPayload["alumnos"] = [];
+    const estudiantes: GuardarRegularidadPayload["estudiantes"] = [];
 
     for (const fila of values.filas) {
       if (!fila.situacion) {
@@ -220,7 +220,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
         return;
       }
 
-      alumnos.push({
+      estudiantes.push({
         inscripcion_id: fila.inscripcionId,
         nota_tp: notaTp ?? undefined,
         nota_final: notaFinal ?? undefined,
@@ -235,7 +235,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
       comision_id: comisionId,
       fecha_cierre: values.fechaCierre,
       observaciones_generales: ensureString(values.observaciones).trim() || undefined,
-      alumnos,
+      estudiantes,
     };
 
     await onSave(payload);

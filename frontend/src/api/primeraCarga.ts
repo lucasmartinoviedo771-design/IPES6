@@ -1,5 +1,5 @@
 import { api } from './client';
-import { EquivalenciaDisposicionDTO, EquivalenciaDisposicionPayload } from "@/api/alumnos";
+import { EquivalenciaDisposicionDTO, EquivalenciaDisposicionPayload } from "@/api/estudiantes";
 
 interface UploadResult {
   ok: boolean;

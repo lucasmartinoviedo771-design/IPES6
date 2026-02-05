@@ -5,11 +5,11 @@ from django.http import HttpResponse
 from ninja import File, Form, Router, Schema
 from ninja.files import UploadedFile
 
-from apps.alumnos.schemas import (
+from apps.estudiantes.schemas import (
     EquivalenciaDisposicionCreateIn,
     EquivalenciaDisposicionOut,
 )
-from apps.alumnos.services.equivalencias_disposicion import (
+from apps.estudiantes.services.equivalencias_disposicion import (
     registrar_disposicion_equivalencia,
     resolver_contexto_equivalencia,
     serialize_disposicion,

@@ -35,7 +35,7 @@ def guia_usuario(request: HttpRequest):
         "tutor",
         "jefes",
         "jefa_aaee",
-        "alumno",
+        "estudiante",
     ]
     user_role = next((r for r in role_priority if r in roles), None)
 

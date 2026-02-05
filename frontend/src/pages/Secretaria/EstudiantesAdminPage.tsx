@@ -46,7 +46,7 @@ import {
   EstudianteAdminDetailDTO,
   updateEstudianteAdmin,
   EstudianteAdminDocumentacionDTO,
-} from "@/api/alumnos";
+} from "@/api/estudiantes";
 import { fetchCarreras } from "@/api/carreras";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import BackButton from "@/components/ui/BackButton";
@@ -68,7 +68,7 @@ type DetailDocumentacionForm = {
   titulo_secundario_legalizado: boolean;
   certificado_titulo_en_tramite: boolean;
   analitico_legalizado: boolean;
-  certificado_alumno_regular_sec: boolean;
+  certificado_estudiante_regular_sec: boolean;
   adeuda_materias: boolean;
   adeuda_materias_detalle: string;
   escuela_secundaria: string;
@@ -115,7 +115,7 @@ function normalizeDoc(detail?: EstudianteAdminDocumentacionDTO | null): DetailDo
     titulo_secundario_legalizado: Boolean(detail?.titulo_secundario_legalizado),
     certificado_titulo_en_tramite: Boolean(detail?.certificado_titulo_en_tramite),
     analitico_legalizado: Boolean(detail?.analitico_legalizado),
-    certificado_alumno_regular_sec: Boolean(detail?.certificado_alumno_regular_sec),
+    certificado_estudiante_regular_sec: Boolean(detail?.certificado_estudiante_regular_sec),
     adeuda_materias: Boolean(detail?.adeuda_materias),
     adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
     escuela_secundaria: detail?.escuela_secundaria ?? "",
@@ -208,7 +208,7 @@ export default function EstudiantesAdminPage() {
           "titulo_secundario_legalizado",
           "certificado_titulo_en_tramite",
           "analitico_legalizado",
-          "certificado_alumno_regular_sec",
+          "certificado_estudiante_regular_sec",
           "adeuda_materias",
           "es_certificacion_docente",
           "titulo_terciario_univ",
@@ -311,8 +311,8 @@ export default function EstudiantesAdminPage() {
         setValue("documentacion.incumbencia" as const, false, { shouldDirty: true });
       }
     } else {
-      if (docValues.certificado_alumno_regular_sec) {
-        setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
+      if (docValues.certificado_estudiante_regular_sec) {
+        setValue("documentacion.certificado_estudiante_regular_sec" as const, false, { shouldDirty: true });
       }
       if (docValues.adeuda_materias) {
         setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
@@ -324,7 +324,7 @@ export default function EstudiantesAdminPage() {
     docValues.es_certificacion_docente,
     docValues.titulo_terciario_univ,
     docValues.incumbencia,
-    docValues.certificado_alumno_regular_sec,
+    docValues.certificado_estudiante_regular_sec,
     docValues.adeuda_materias,
     setValue,
   ]);
@@ -334,7 +334,7 @@ export default function EstudiantesAdminPage() {
       setValue(`documentacion.${key}` as const, key === target ? checked : false, { shouldDirty: true });
     });
     if (checked) {
-      setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
+      setValue("documentacion.certificado_estudiante_regular_sec" as const, false, { shouldDirty: true });
       setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
       setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
       setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
@@ -349,8 +349,8 @@ export default function EstudiantesAdminPage() {
     }
   };
 
-  const handleAlumnoRegularChange = (_: unknown, checked: boolean) => {
-    setValue("documentacion.certificado_alumno_regular_sec" as const, checked, { shouldDirty: true });
+  const handleEstudianteRegularChange = (_: unknown, checked: boolean) => {
+    setValue("documentacion.certificado_estudiante_regular_sec" as const, checked, { shouldDirty: true });
   };
 
   useEffect(() => {
@@ -629,28 +629,28 @@ export default function EstudiantesAdminPage() {
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => window.open(`/alumnos/trayectoria?dni=${selectedDni}`, "_blank")}
+                    onClick={() => window.open(`/estudiantes/trayectoria?dni=${selectedDni}`, "_blank")}
                   >
                     Trayectoria
                   </Button>
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => window.open(`/alumnos/horarios?dni=${selectedDni}`, "_blank")}
+                    onClick={() => window.open(`/estudiantes/horarios?dni=${selectedDni}`, "_blank")}
                   >
                     Horarios
                   </Button>
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => window.open(`/alumnos/inscripcion-materia?dni=${selectedDni}`, "_blank")}
+                    onClick={() => window.open(`/estudiantes/inscripcion-materia?dni=${selectedDni}`, "_blank")}
                   >
                     Inscripción
                   </Button>
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => window.open(`/alumnos/cambio-comision?dni=${selectedDni}`, "_blank")}
+                    onClick={() => window.open(`/estudiantes/cambio-comision?dni=${selectedDni}`, "_blank")}
                   >
                     Cambio comisión
                   </Button>
@@ -658,7 +658,7 @@ export default function EstudiantesAdminPage() {
                     size="small"
                     variant="outlined"
                     startIcon={<DescriptionIcon />}
-                    onClick={() => window.open(`/alumnos/certificado-regular?dni=${selectedDni}`, "_blank")}
+                    onClick={() => window.open(`/estudiantes/certificado-regular?dni=${selectedDni}`, "_blank")}
                   >
                     Constancia Regular
                   </Button>
@@ -953,12 +953,12 @@ export default function EstudiantesAdminPage() {
                           <FormControlLabel
                             control={
                               <Checkbox
-                                checked={Boolean(docValues.certificado_alumno_regular_sec)}
-                                onChange={handleAlumnoRegularChange}
+                                checked={Boolean(docValues.certificado_estudiante_regular_sec)}
+                                onChange={handleEstudianteRegularChange}
                                 disabled={anyMainSelected}
                               />
                             }
-                            label="Constancia alumno regular"
+                            label="Constancia estudiante regular"
                           />
                           <FormControlLabel
                             control={

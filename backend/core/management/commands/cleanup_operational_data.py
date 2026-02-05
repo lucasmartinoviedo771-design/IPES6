@@ -12,7 +12,7 @@ from apps.preinscriptions.models_uploads import PreinscripcionArchivo
 from core.models import (
     Conversation,
     Estudiante,
-    InscripcionMateriaAlumno,
+    InscripcionMateriaEstudiante,
     MesaExamen,
     PedidoAnalitico,
     Preinscripcion,
@@ -39,7 +39,7 @@ class Command(BaseCommand):
         ("mesas_examen", MesaExamen),
         ("pedidos_analitico", PedidoAnalitico),
         ("regularidades", Regularidad),
-        ("inscripciones_materia", InscripcionMateriaAlumno),
+        ("inscripciones_materia", InscripcionMateriaEstudiante),
         ("preinscripciones", Preinscripcion),
         ("preinscripcion_checklists", PreinscripcionChecklist),
         ("ventanas_habilitacion", VentanaHabilitacion),
@@ -70,7 +70,7 @@ class Command(BaseCommand):
         self.stdout.write("")  # separación visual
         for label, count in stats.items():
             self.stdout.write(f"- {label}: {count}")
-        self.stdout.write(f"- usuarios_alumno: {self._count_student_users(student_user_ids)}")
+        self.stdout.write(f"- usuarios_estudiante: {self._count_student_users(student_user_ids)}")
         self.stdout.write("")
 
         if dry_run:
@@ -107,7 +107,7 @@ class Command(BaseCommand):
         self._delete_queryset(MesaExamen, "mesas_examen")
         self._delete_queryset(PedidoAnalitico, "pedidos_analitico")
         self._delete_queryset(Regularidad, "regularidades")
-        self._delete_queryset(InscripcionMateriaAlumno, "inscripciones_materia")
+        self._delete_queryset(InscripcionMateriaEstudiante, "inscripciones_materia")
         self._delete_queryset(PreinscripcionChecklist, "preinscripcion_checklists")
         self._delete_queryset(Preinscripcion, "preinscripciones")
         self._delete_queryset(VentanaHabilitacion, "ventanas_habilitacion")
@@ -116,7 +116,7 @@ class Command(BaseCommand):
         self._delete_queryset(Estudiante, "estudiantes")
         if student_user_ids:
             deleted, _ = User.objects.filter(id__in=student_user_ids).delete()
-            self.stdout.write(self.style.NOTICE(f"  • usuarios_alumno eliminados: {deleted}"))
+            self.stdout.write(self.style.NOTICE(f"  • usuarios_estudiante eliminados: {deleted}"))
 
     def _delete_queryset(self, model: type[Model], label: str) -> None:
         deleted, _ = model.objects.all().delete()

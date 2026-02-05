@@ -43,7 +43,7 @@ export type OralActFormValues = {
   curso: string;
   notaFinal: string;
   observaciones: string;
-  temasAlumno: OralActFormTopic[];
+  temasEstudiante: OralActFormTopic[];
   temasDocente: OralActFormTopic[];
 };
 
@@ -65,8 +65,8 @@ type TribunalInfo = {
 type OralExamActaDialogProps = {
   open: boolean;
   onClose: () => void;
-  alumnoNombre: string;
-  alumnoDni: string;
+  estudianteNombre: string;
+  estudianteDni: string;
   carrera?: string | null;
   unidadCurricular?: string | null;
   curso?: string | null;
@@ -90,8 +90,8 @@ const ensureMinRows = (rows: OralActFormTopic[], min = 3) => {
 const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
   open,
   onClose,
-  alumnoNombre,
-  alumnoDni,
+  estudianteNombre,
+  estudianteDni,
   carrera,
   unidadCurricular,
   curso,
@@ -110,7 +110,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
     curso: curso ?? "",
     notaFinal: defaultNota ?? "",
     observaciones: "",
-    temasAlumno: ensureMinRows([], 3),
+    temasEstudiante: ensureMinRows([], 3),
     temasDocente: ensureMinRows([], 4),
   }));
 
@@ -121,7 +121,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
     if (existingValues) {
       setForm({
         ...existingValues,
-        temasAlumno: ensureMinRows(existingValues.temasAlumno),
+        temasEstudiante: ensureMinRows(existingValues.temasEstudiante),
         temasDocente: ensureMinRows(existingValues.temasDocente),
       });
       return;
@@ -133,7 +133,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
       curso: curso ?? "",
       notaFinal: defaultNota ?? "",
       observaciones: "",
-      temasAlumno: ensureMinRows([], 3),
+      temasEstudiante: ensureMinRows([], 3),
       temasDocente: ensureMinRows([], 4),
     });
   }, [open, existingValues, fechaMesa, curso, defaultNota]);
@@ -143,7 +143,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
   };
 
   const updateTopic = (
-    section: "temasAlumno" | "temasDocente",
+    section: "temasEstudiante" | "temasDocente",
     id: string,
     patch: Partial<OralActFormTopic>,
   ) => {
@@ -153,24 +153,24 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
     }));
   };
 
-  const addTopic = (section: "temasAlumno" | "temasDocente") => {
+  const addTopic = (section: "temasEstudiante" | "temasDocente") => {
     setForm((prev) => ({
       ...prev,
       [section]: [...prev[section], createTopicRow()],
     }));
   };
 
-  const removeTopic = (section: "temasAlumno" | "temasDocente", id: string) => {
+  const removeTopic = (section: "temasEstudiante" | "temasDocente", id: string) => {
     setForm((prev) => {
       const filtered = prev[section].filter((row) => row.id !== id);
       return {
         ...prev,
-        [section]: ensureMinRows(filtered, section === "temasAlumno" ? 3 : 4),
+        [section]: ensureMinRows(filtered, section === "temasEstudiante" ? 3 : 4),
       };
     });
   };
 
-  const temasAlumno = useMemo(() => ensureMinRows(form.temasAlumno, 3), [form.temasAlumno]);
+  const temasEstudiante = useMemo(() => ensureMinRows(form.temasEstudiante, 3), [form.temasEstudiante]);
   const temasDocente = useMemo(() => ensureMinRows(form.temasDocente, 4), [form.temasDocente]);
   const actionDisabled = loading || saving || submitting;
 
@@ -181,7 +181,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
     setSubmitting(true);
     const nextValues: OralActFormValues = {
       ...form,
-      temasAlumno,
+      temasEstudiante,
       temasDocente,
     };
     try {
@@ -193,9 +193,9 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
         carrera: carrera ?? "",
         unidadCurricular: unidadCurricular ?? "",
         curso: nextValues.curso,
-        alumno: `${alumnoNombre} - DNI ${alumnoDni}`,
+        estudiante: `${estudianteNombre} - DNI ${estudianteDni}`,
         tribunal: tribunal ?? {},
-        temasElegidosAlumno: nextValues.temasAlumno
+        temasElegidosEstudiante: nextValues.temasEstudiante
           .filter((item) => item.tema.trim())
           .map((item) => ({ tema: item.tema.trim(), score: item.score || undefined })),
         temasSugeridosDocente: nextValues.temasDocente
@@ -214,7 +214,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
 
   const renderTopicsTable = (
     title: string,
-    section: "temasAlumno" | "temasDocente",
+    section: "temasEstudiante" | "temasDocente",
     rows: OralActFormTopic[],
   ) => (
     <Box>
@@ -277,7 +277,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>Acta de examen oral · {alumnoNombre}</DialogTitle>
+      <DialogTitle>Acta de examen oral · {estudianteNombre}</DialogTitle>
       <DialogContent dividers>
         {loading ? (
           <Stack alignItems="center" justifyContent="center" py={6}>
@@ -337,7 +337,7 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
 
           <Divider />
 
-          {renderTopicsTable("Temas elegidos por el alumno", "temasAlumno", temasAlumno)}
+          {renderTopicsTable("Temas elegidos por el estudiante", "temasEstudiante", temasEstudiante)}
           {renderTopicsTable("Temas sugeridos por el docente", "temasDocente", temasDocente)}
 
           <TextField

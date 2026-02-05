@@ -34,7 +34,7 @@ import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
 import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
 
-import { listarDisposicionesEquivalencia, EquivalenciaDisposicionDTO } from '@/api/alumnos';
+import { listarDisposicionesEquivalencia, EquivalenciaDisposicionDTO } from '@/api/estudiantes';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 
 dayjs.extend(utc);

@@ -15,7 +15,7 @@ import { changePassword } from "@/api/auth";
 import { useAuth } from "@/context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PageHero } from "@/components/ui/GradientTitles";
-import { getDefaultHomeRoute, isOnlyStudent } from "@/utils/roles";
+import { getDefaultHomeRoute, isOnlyEstudiante } from "@/utils/roles";
 
 const ChangePasswordPage: React.FC = () => {
   const { refreshProfile, user } = useAuth();
@@ -28,10 +28,10 @@ const ChangePasswordPage: React.FC = () => {
   const resolveDestination = (candidate: string | undefined, profileUser = user) => {
     const base = getDefaultHomeRoute(profileUser);
     let target = candidate && candidate !== "/cambiar-password" ? candidate : base;
-    if (isOnlyStudent(profileUser) && target && !target.startsWith("/alumnos")) {
+    if (isOnlyEstudiante(profileUser) && target && !target.startsWith("/estudiantes")) {
       target = base;
     }
-    return target || base || "/alumnos";
+    return target || base || "/estudiantes";
   };
 
   const [currentPassword, setCurrentPassword] = useState("");

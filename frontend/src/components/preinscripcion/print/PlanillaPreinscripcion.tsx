@@ -129,7 +129,7 @@ const PlanillaPreinscripcion = forwardRef<HTMLDivElement, { values: Values }>(
                 "Fotocopia legalizada del analítico",
                 "2 fotos carnet 4×4",
                 "Título secundario",
-                "Certificado de alumno regular",
+                "Certificado de estudiante regular",
                 "Certificado de título en trámite",
                 "Certificado de buena salud",
                 "3 folios oficio",
@@ -150,7 +150,7 @@ const PlanillaPreinscripcion = forwardRef<HTMLDivElement, { values: Values }>(
           <div className="talon-grid">
             <div><b>COMPROBANTE DE INSCRIPCIÓN DEL ALUMNO</b></div>
             {qrDataUrlBottom && <img className="qr qr-bottom" src={qrDataUrlBottom} alt="QR" />}
-            <div><b>Alumno/a:</b> {`${apellido || ""}, ${nombres || ""}`}</div>
+            <div><b>Estudiante/a:</b> {`${apellido || ""}, ${nombres || ""}`}</div>
             <div><b>DNI:</b> {dni}</div>
             <div><b>Carrera:</b> {carrera || "—"}</div>
           </div>

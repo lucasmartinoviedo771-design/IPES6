@@ -28,7 +28,7 @@ def parse_fecha(fecha_str):
             continue
     return None
 
-def cargar_alumnos_v2(archivo_csv):
+def cargar_estudiantes_v2(archivo_csv):
     print(f"📂 Refinando Preinscripciones desde: {archivo_csv}")
     
     stats = {
@@ -102,7 +102,7 @@ def cargar_alumnos_v2(archivo_csv):
                     with transaction.atomic():
                         # Creamos o actualizamos
                         pre, created = Preinscripcion.objects.get_or_create(
-                            alumno=estudiante,
+                            estudiante=estudiante,
                             carrera=profesorado,
                             anio=anio_pre,
                             defaults={
@@ -136,4 +136,4 @@ def cargar_alumnos_v2(archivo_csv):
     print(f"   Errores: {stats['errores']}")
 
 if __name__ == "__main__":
-    cargar_alumnos_v2(sys.argv[1])
+    cargar_estudiantes_v2(sys.argv[1])

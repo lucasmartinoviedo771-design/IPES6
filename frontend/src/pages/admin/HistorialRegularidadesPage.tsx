@@ -274,7 +274,7 @@ const HistorialRegularidadesPage: React.FC = () => {
                                             <b>Año</b>
                                         </TableSortLabel>
                                     </TableCell>
-                                    <TableCell align="center"><b>Alumnos</b></TableCell>
+                                    <TableCell align="center"><b>Estudiantes</b></TableCell>
                                     <TableCell align="center"><b>Estado</b></TableCell>
                                     <TableCell align="right"><b>Acciones</b></TableCell>
                                 </TableRow>

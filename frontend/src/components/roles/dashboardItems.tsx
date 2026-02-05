@@ -64,7 +64,7 @@ export const DASHBOARD_ITEMS = {
     title: "Trayectoria del estudiante",
     subtitle: "Consultá el avance de cada cohorte (solo lectura).",
     icon: <TrendingUpIcon />,
-    path: "/alumnos/trayectoria",
+    path: "/estudiantes/trayectoria",
   },
   CURSO_INTRO_PANEL: {
     title: "Curso introductorio",

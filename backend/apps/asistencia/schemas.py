@@ -64,7 +64,7 @@ class DocenteMarcarPresenteOut(Schema):
     turno: Optional[str]
 
 
-class AlumnoResumenOut(Schema):
+class EstudianteResumenOut(Schema):
     estudiante_id: int
     dni: str
     nombre: str
@@ -81,7 +81,7 @@ class ClaseNavegacionOut(Schema):
     actual: bool = False
 
 
-class ClaseAlumnoDetalleOut(Schema):
+class ClaseEstudianteDetalleOut(Schema):
     clase_id: int
     comision: str
     fecha: date
@@ -90,11 +90,11 @@ class ClaseAlumnoDetalleOut(Schema):
     docentes: List[str]
     docente_presente: bool
     docente_categoria_asistencia: Optional[str] = None
-    alumnos: List[AlumnoResumenOut]
+    estudiantes: List[EstudianteResumenOut]
     otras_clases: List[ClaseNavegacionOut] = []
 
 
-class RegistrarAsistenciaAlumnosIn(Schema):
+class RegistrarAsistenciaEstudiantesIn(Schema):
     presentes: List[int]
     tardes: List[int] = []  # IDs de estudiantes
     observaciones: Optional[str] = None
@@ -188,7 +188,7 @@ class DocenteDniLogIn(Schema):
     origen: Optional[str] = "kiosk"
 
 
-class AlumnoClaseListadoOut(Schema):
+class EstudianteClaseListadoOut(Schema):
     clase_id: int
     fecha: date
     materia: str
@@ -196,14 +196,14 @@ class AlumnoClaseListadoOut(Schema):
     turno: Optional[str]
     horario: Optional[str]
     estado_clase: str
-    total_alumnos: int
+    total_estudiantes: int
     presentes: int
     ausentes: int
     ausentes_justificados: int
 
 
-class AlumnoClasesResponse(Schema):
-    clases: List[AlumnoClaseListadoOut]
+class EstudianteClasesResponse(Schema):
+    clases: List[EstudianteClaseListadoOut]
 
 
 class AsistenciaCalendarioEventoIn(Schema):
@@ -247,7 +247,7 @@ class AsistenciaCalendarioEventoOut(Schema):
     creado_en: datetime
 
 
-class AlumnoAsistenciaItemOut(Schema):
+class EstudianteAsistenciaItemOut(Schema):
     id: int
     fecha: date
     materia: str

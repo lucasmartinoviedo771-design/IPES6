@@ -50,7 +50,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ErrorBoundary } from "react-error-boundary";
 import { useQuery } from "@tanstack/react-query";
 import { obtenerResumenMensajes } from "@/api/mensajes";
-import { getDefaultHomeRoute, hasAnyRole, isOnlyStudent } from "@/utils/roles";
+import { getDefaultHomeRoute, hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
 import UserGuideDisplay from "../guia/UserGuideDisplay";
 import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback";
 import BackButton from "@/components/ui/BackButton";
@@ -82,7 +82,7 @@ const ROLE_NAV_MAP: Record<string, string[]> = {
     "titulos",
     "coordinacion",
     "jefatura",
-    "alumnos",
+    "estudiante",
     "primeraCarga",
   ],
   secretaria: [
@@ -101,17 +101,17 @@ const ROLE_NAV_MAP: Record<string, string[]> = {
     "titulos",
     "coordinacion",
     "jefatura",
-    "alumnos",
+    "estudiante",
     "primeraCarga",
   ],
-  bedel: ["bedeles", "mensajes", "alumnos", "asistencia", "cursoIntro", "primeraCarga"],
+  bedel: ["bedeles", "mensajes", "estudiante", "asistencia", "cursoIntro", "primeraCarga"],
   docente: ["docentes", "mensajes"],
-  tutor: ["tutorias", "mensajes", "alumnos", "equivalencias", "reportes", "cursoIntro"],
-  coordinador: ["coordinacion", "mensajes", "alumnos", "reportes", "cursoIntro"],
+  tutor: ["tutorias", "mensajes", "estudiante", "equivalencias", "reportes", "cursoIntro"],
+  coordinador: ["coordinacion", "mensajes", "estudiante", "reportes", "cursoIntro"],
   jefes: ["jefatura", "mensajes", "reportes"],
   jefa_aaee: ["jefatura", "mensajes", "reportes"],
   consulta: ["dashboard", "reportes", "mensajes"],
-  alumno: ["alumnos", "mensajes"],
+  estudiante: ["estudiante", "mensajes"],
   equivalencias: ["equivalencias", "mensajes"],
   titulos: ["titulos", "mensajes"],
   curso_intro: ["cursoIntro", "mensajes"],
@@ -127,7 +127,7 @@ const roleLabels: Record<string, string> = {
   jefes: "Jefatura",
   jefa_aaee: "Jefa A.A.E.E.",
   consulta: "Consulta",
-  alumno: "Alumno/a",
+  estudiante: "Estudiante",
   equivalencias: "Equivalencias",
   titulos: "Títulos",
   curso_intro: "Curso Intro",
@@ -162,7 +162,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     return () => observer.disconnect();
   }, [current]);
 
-  const studentOnly = isOnlyStudent(user);
+  const studentOnly = isOnlyEstudiante(user);
   const allowedNavSet = useMemo(() => {
     if (!roleOverride) return null;
     const entries = ROLE_NAV_MAP[roleOverride];
@@ -234,8 +234,8 @@ export default function AppShell({ children }: PropsWithChildren) {
   const canJefaturaPanel = isNavAllowed("jefatura", hasAnyRole(user, ["jefes", "jefa_aaee", "secretaria", "admin"]));
   const canAsistenciaReportes = isNavAllowed("asistencia", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
   const canCursoIntro = isNavAllowed("cursoIntro", hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]));
-  const canAlumnoPortal = isNavAllowed("alumnos", hasAnyRole(user, ["alumno"]));
-  const canAlumnoPanel = isNavAllowed("alumnos", hasAnyRole(user, [
+  const canEstudiantePortal = isNavAllowed("estudiante", hasAnyRole(user, ["estudiante"]));
+  const canEstudiantePanel = isNavAllowed("estudiante", hasAnyRole(user, [
     "admin",
     "secretaria",
     "bedel",
@@ -277,7 +277,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     jefes: "/jefatura",
     jefa_aaee: "/jefatura",
     consulta: "/dashboard",
-    alumno: "/alumnos",
+    estudiante: "/estudiantes",
     equivalencias: "/equivalencias",
     titulos: "/titulos",
     curso_intro: "/secretaria/curso-introductorio",
@@ -738,14 +738,14 @@ export default function AppShell({ children }: PropsWithChildren) {
             </ListItemButton>
           )}
 
-          {(canAlumnoPortal || canAlumnoPanel) && (
+          {(canEstudiantePortal || canEstudiantePanel) && (
             <ListItemButton
-              selected={current.startsWith("/alumnos")}
-              onClick={() => navigate("/alumnos")}
+              selected={current.startsWith("/estudiantes")}
+              onClick={() => navigate("/estudiantes")}
               sx={navButtonSx}
             >
               <ListItemIcon><SchoolIcon fontSize="small" /></ListItemIcon>
-              <ListItemText primary="Alumnos" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+              <ListItemText primary="Estudiantes" primaryTypographyProps={{ sx: { color: "#fff" } }} />
             </ListItemButton>
           )}
 

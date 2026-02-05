@@ -181,16 +181,29 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       jefes: "Jefatura",
       jefa_aaee: "Jefa A.A.E.E.",
       consulta: "Consulta",
-      alumno: "Alumno/a",
+      estudiante: "Estudiante",
       equivalencias: "Equipo de equivalencias",
       titulos: "Títulos",
       curso_intro: "Curso Introductorio",
     };
-    const normalized = new Set(
-      (currentUser.roles ?? [])
-        .map((role) => (role || "").toLowerCase().trim())
-        .filter(Boolean),
-    );
+    const normalized = new Set<string>();
+    (currentUser.roles ?? []).forEach((r) => {
+      const role = (r || "").toLowerCase().trim();
+      if (!role) return;
+
+      if (role === "estudiantes" || role === "estudiante") {
+        normalized.add("estudiante");
+      } else if (role.startsWith("bedel")) {
+        normalized.add("bedel");
+      } else if (role.startsWith("secretaria")) {
+        normalized.add("secretaria");
+      } else if (role.startsWith("coordinador")) {
+        normalized.add("coordinador");
+      } else {
+        normalized.add(role);
+      }
+    });
+
     const admin = normalized.has("admin");
     if (admin) {
       [
@@ -203,7 +216,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         "jefes",
         "jefa_aaee",
         "consulta",
-        "alumno",
+        "estudiante",
         "equivalencias",
         "titulos",
         "curso_intro",

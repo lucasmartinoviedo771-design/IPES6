@@ -26,14 +26,14 @@ export type OralActaPdfPayload = {
   carrera?: string;
   unidadCurricular?: string;
   curso?: string;
-  alumno: string;
+  estudiante: string;
   tribunal: {
     presidente?: string | null;
     vocal1?: string | null;
     vocal2?: string | null;
     vocalExtra?: string | null;
   };
-  temasElegidosAlumno: OralTopicEntry[];
+  temasElegidosEstudiante: OralTopicEntry[];
   temasSugeridosDocente: OralTopicEntry[];
   notaFinal?: string;
   observaciones?: string;
@@ -90,7 +90,7 @@ export function generarActaExamenOralPDF(payload: OralActaPdfPayload) {
   y += 6;
   lineField("CURSO", payload.curso);
   y += 6;
-  lineField("ALUMNO/A", payload.alumno);
+  lineField("ALUMNO/A", payload.estudiante);
   y += 6;
 
   pdf.setFont("helvetica", "bold");
@@ -148,7 +148,7 @@ export function generarActaExamenOralPDF(payload: OralActaPdfPayload) {
     y += ensureTopics.length * rowHeight + 6;
   };
 
-  drawTopicsTable("Elegidos por el alumno", payload.temasElegidosAlumno);
+  drawTopicsTable("Elegidos por el estudiante", payload.temasElegidosEstudiante);
   drawTopicsTable("Sugeridos por el docente", payload.temasSugeridosDocente, 1);
 
   pdf.setFont("helvetica", "bold");
@@ -178,7 +178,7 @@ export function generarActaExamenOralPDF(payload: OralActaPdfPayload) {
     pdf.text(rol, x + sigWidth / 2, y + 5, { align: "center" });
   });
 
-  const safeName = payload.alumno.replace(/\s+/g, "_").replace(/[^\w_-]/g, "");
-  const file = `acta_oral_${safeName || "alumno"}.pdf`;
+  const safeName = payload.estudiante.replace(/\s+/g, "_").replace(/[^\w_-]/g, "");
+  const file = `acta_oral_${safeName || "estudiante"}.pdf`;
   pdf.save(file);
 }

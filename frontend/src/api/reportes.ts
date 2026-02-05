@@ -11,11 +11,11 @@ export interface CorrelativaCaidaItem {
 
 export const getCorrelativasCaidas = async (anio?: number): Promise<CorrelativaCaidaItem[]> => {
     const params = anio ? { anio } : {};
-    const response = await client.get<CorrelativaCaidaItem[]>("/alumnos/reportes/correlativas-caidas/", { params });
+    const response = await client.get<CorrelativaCaidaItem[]>("/estudiantes/reportes/correlativas-caidas/", { params });
     return response.data;
 };
 
 export const getMisAlertas = async (): Promise<CorrelativaCaidaItem[]> => {
-    const response = await client.get<CorrelativaCaidaItem[]>("/alumnos/me/alertas/");
+    const response = await client.get<CorrelativaCaidaItem[]>("/estudiantes/me/alertas/");
     return response.data;
 };

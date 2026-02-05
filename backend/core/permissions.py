@@ -9,7 +9,7 @@ from apps.common.errors import AppError
 
 from .models import StaffAsignacion
 
-_LIMITED_ROLES = {"coordinador", "bedel"}
+_LIMITED_ROLES = {"coordinador", "bedel", "estudiante"}
 _UNRESTRICTED_ROLES = {
     "admin",
     "secretaria",
@@ -36,6 +36,8 @@ def _group_names(user: User) -> set[str]:
             expanded.add("secretaria")
         if name.startswith("coordinador"):
             expanded.add("coordinador")
+        if name == "estudiantes":
+            expanded.add("estudiante")
     return expanded
 
 
@@ -63,13 +65,23 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
         relevant_roles = {role.lower() for role in role_filter}
     
     if not groups.intersection(relevant_roles):
-        print(f"DEBUG: No limited role intersection. Relevant={relevant_roles}")
         return None
-    qs = StaffAsignacion.objects.filter(user=user)
+    
+    ids = set()
+    
+    # Si es estudiante, agregar sus carreras
+    if "estudiante" in groups:
+        est = getattr(user, "estudiante", None)
+        if est:
+            ids.update(est.carreras.values_list("id", flat=True))
+            
+    # Agregar asignaciones de staff
+    staff_qs = StaffAsignacion.objects.filter(user=user)
     if role_filter:
-        qs = qs.filter(rol__in=[role.lower() for role in role_filter])
-    ids = set(qs.values_list("profesorado_id", flat=True))
-    print(f"DEBUG: Filtering IDs: {ids}")
+        staff_qs = staff_qs.filter(rol__in=[role.lower() for role in role_filter])
+    
+    ids.update(staff_qs.values_list("profesorado_id", flat=True))
+    
     return ids
 
 

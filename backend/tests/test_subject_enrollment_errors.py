@@ -3,7 +3,7 @@ from datetime import datetime, time, timedelta
 from rest_framework_simplejwt.tokens import AccessToken
 from core.models import (
     Profesorado, PlanDeEstudio, Materia, Estudiante, User, 
-    InscripcionMateriaAlumno, Correlatividad, Regularidad,
+    InscripcionMateriaEstudiante, Correlatividad, Regularidad,
     Turno, Bloque, HorarioCatedra, HorarioCatedraDetalle,
     VentanaHabilitacion
 )
@@ -81,7 +81,7 @@ def test_enrollment_schedule_conflict(client, setup_error_scenarios):
     HorarioCatedraDetalle.objects.create(horario_catedra=hc2, bloque=setup_error_scenarios['bloque'])
     
     # Enroll in Subject 1
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_error_scenarios['estudiante'],
         materia=materia1,
         anio=datetime.now().year,
@@ -91,7 +91,7 @@ def test_enrollment_schedule_conflict(client, setup_error_scenarios):
     # Try to enroll in Subject 2
     payload = {"materia_id": materia2.id}
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_error_scenarios['auth_headers']
@@ -143,7 +143,7 @@ def test_enrollment_missing_correlatives(client, setup_error_scenarios):
     # Try to enroll in B without A
     payload = {"materia_id": materia_b.id}
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_error_scenarios['auth_headers']
@@ -182,7 +182,7 @@ def test_enrollment_edi_without_intro(client, setup_error_scenarios):
     
     payload = {"materia_id": materia_edi.id}
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_error_scenarios['auth_headers']
@@ -218,7 +218,7 @@ def test_enrollment_wrong_semester_window(client, setup_error_scenarios):
     
     payload = {"materia_id": materia_2c.id}
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_error_scenarios['auth_headers']
@@ -252,7 +252,7 @@ def test_enrollment_correct_semester_window(client, setup_error_scenarios):
     
     payload = {"materia_id": materia_2c.id}
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_error_scenarios['auth_headers']
@@ -277,7 +277,7 @@ def test_enrollment_no_active_window(client, setup_error_scenarios):
     
     payload = {"materia_id": materia.id}
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_error_scenarios['auth_headers']

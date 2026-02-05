@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 // Asumo que estas rutas son correctas
 import logoMinisterio from "@/assets/escudo_ministerio_tdf.png";
 import logoIpes from "@/assets/logo_ipes.png";
-import type { ConstanciaExamenDTO } from "@/api/alumnos";
+import type { ConstanciaExamenDTO } from "@/api/estudiantes";
 
 type ConstanciaPdfOptions = {
   destinatario?: string;
@@ -179,7 +179,7 @@ export function generarConstanciaExamenPDF(
 
   // --- Párrafos ---
   const parrafos = [
-    `El INSTITUTO PROVINCIAL DE EDUCACIÓN SUPERIOR “Paulo Freire” deja constancia que el/la Sr/a ${item.alumno}, DNI ${item.dni}, ha rendido examen de ${item.materia} de ${anioTexto} año, de la carrera de ${carrera}, el día ${fechaMesa}.`,
+    `El INSTITUTO PROVINCIAL DE EDUCACIÓN SUPERIOR “Paulo Freire” deja constancia que el/la Sr/a ${item.estudiante}, DNI ${item.dni}, ha rendido examen de ${item.materia} de ${anioTexto} año, de la carrera de ${carrera}, el día ${fechaMesa}.`,
     `Desde las ${horaInicio} hs (${TURNOS_LABEL[turno]}) hasta las ${horaFin} hs (momento de cierre del acta en el campus), en este establecimiento.`,
     `Se extiende la presente, sin enmiendas ni raspaduras, a pedido del/a interesado/a, y a solo efecto de ser presentada ante ${destinatario}, en la ciudad de Río Grande, a los ${diaNumero} (${diaEnTexto}) días del mes de ${mesTexto} del año ${anioActual}.`,
   ];

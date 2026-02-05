@@ -58,14 +58,14 @@ export default function AdminCorrelativasWidget() {
                         <Chip label={items.length} size="small" color="warning" variant="filled" />
                     </Box>
                 }
-                subheader="Alumnos cursando materias sin cumplir requisitos"
+                subheader="Estudiantes cursando materias sin cumplir requisitos"
             />
             <CardContent sx={{ flexGrow: 1, overflow: "auto", p: 0 }}>
                 <TableContainer sx={{ maxHeight: 400 }}>
                     <Table stickyHeader size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell>Alumno</TableCell>
+                                <TableCell>Estudiante</TableCell>
                                 <TableCell>Materia Actual</TableCell>
                                 <TableCell>Debe</TableCell>
                                 <TableCell>Motivo</TableCell>

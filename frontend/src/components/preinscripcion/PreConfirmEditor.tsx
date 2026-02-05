@@ -7,7 +7,7 @@ import {
   apiGetPreinscripcionByCodigo, apiUpdatePreinscripcion,
   apiConfirmarPreinscripcion, apiObservarPreinscripcion, apiRechazarPreinscripcion, apiCambiarCarrera, PreinscripcionDTO,
   eliminarPreinscripcion, apiGetChecklist, apiPutChecklist, ChecklistDTO, apiListPreDocs, apiUploadPreDoc, PreinscripcionUpdatePayload,
-  listarPreinscripcionesAlumno, agregarCarreraPreinscripcion
+  listarPreinscripcionesEstudiante, agregarCarreraPreinscripcion
 } from "@/api/preinscripciones";
 import { fetchCarreras } from "@/api/carreras";
 import {
@@ -86,7 +86,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     titulo_secundario_legalizado: false,
     certificado_titulo_en_tramite: false,
     analitico_legalizado: false,
-    certificado_alumno_regular_sec: false,
+    certificado_estudiante_regular_sec: false,
     adeuda_materias: false,
     curso_introductorio_aprobado: false,
     titulo_terciario_univ: false,
@@ -168,16 +168,16 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     }, { ...formDefaults } as PreinscripcionForm);
 
     // Overwrites desde los campos normalizados del backend
-    const alumnoDto = data.alumno as any;
-    sanitized.nombres = String(alumnoDto?.nombres ?? alumnoDto?.nombre ?? formDefaults.nombres);
-    sanitized.apellido = String(alumnoDto?.apellido ?? formDefaults.apellido);
-    sanitized.dni = String(alumnoDto?.dni ?? sanitized.dni ?? "");
-    sanitized.cuil = String(alumnoDto?.cuil ?? (extra as any)?.cuil ?? sanitized.cuil ?? "");
-    sanitized.email = String(alumnoDto?.email ?? sanitized.email ?? "");
-    sanitized.tel_movil = String(alumnoDto?.telefono ?? sanitized.tel_movil ?? "");
-    sanitized.domicilio = String(alumnoDto?.domicilio ?? sanitized.domicilio ?? "");
+    const estudianteDto = data.estudiante as any;
+    sanitized.nombres = String(estudianteDto?.nombres ?? estudianteDto?.nombre ?? formDefaults.nombres);
+    sanitized.apellido = String(estudianteDto?.apellido ?? formDefaults.apellido);
+    sanitized.dni = String(estudianteDto?.dni ?? sanitized.dni ?? "");
+    sanitized.cuil = String(estudianteDto?.cuil ?? (extra as any)?.cuil ?? sanitized.cuil ?? "");
+    sanitized.email = String(estudianteDto?.email ?? sanitized.email ?? "");
+    sanitized.tel_movil = String(estudianteDto?.telefono ?? sanitized.tel_movil ?? "");
+    sanitized.domicilio = String(estudianteDto?.domicilio ?? sanitized.domicilio ?? "");
     const rawBirthDate =
-      alumnoDto?.fecha_nacimiento ??
+      estudianteDto?.fecha_nacimiento ??
       (extra as any)?.fecha_nacimiento ??
       sanitized.fecha_nacimiento ??
       "";
@@ -216,7 +216,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       titulo_secundario_legalizado: !!cl.titulo_secundario_legalizado,
       certificado_titulo_en_tramite: !!cl.certificado_titulo_en_tramite,
       analitico_legalizado: !!cl.analitico_legalizado,
-      certificado_alumno_regular_sec: !!cl.certificado_alumno_regular_sec,
+      certificado_estudiante_regular_sec: !!cl.certificado_estudiante_regular_sec,
       adeuda_materias: !!cl.adeuda_materias,
       curso_introductorio_aprobado: !!cl.curso_introductorio_aprobado,
       titulo_terciario_univ: !!cl.titulo_terciario_univ,
@@ -248,7 +248,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       } = values;
 
       const payload: PreinscripcionUpdatePayload = {
-        alumno: {
+        estudiante: {
           dni,
           nombres,
           apellido,
@@ -319,21 +319,21 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
   useEffect(() => {
     if (!isCertificacionDocente) {
       setDocs((prev) => {
-        if (!prev.titulo_terciario_univ && !prev.incumbencia && !prev.certificado_alumno_regular_sec && !prev.adeuda_materias) {
+        if (!prev.titulo_terciario_univ && !prev.incumbencia && !prev.certificado_estudiante_regular_sec && !prev.adeuda_materias) {
           return prev;
         }
         return {
           ...prev,
           titulo_terciario_univ: false,
           incumbencia: false,
-          certificado_alumno_regular_sec: prev.certificado_alumno_regular_sec,
+          certificado_estudiante_regular_sec: prev.certificado_estudiante_regular_sec,
           adeuda_materias: prev.adeuda_materias,
         };
       });
     } else {
       setDocs((prev) => ({
         ...prev,
-        certificado_alumno_regular_sec: false,
+        certificado_estudiante_regular_sec: false,
         adeuda_materias: false,
       }));
       setAdeudaDetalle({ materias: "", institucion: "" });
@@ -359,17 +359,17 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     ? false
     : !!(docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado);
 
-  const alumnoDni = data?.alumno?.dni ?? "";
-  const preinsAlumnoQ = useQuery({
-    queryKey: ["preinscripciones", "alumno", alumnoDni],
-    queryFn: () => listarPreinscripcionesAlumno(alumnoDni),
-    enabled: !!alumnoDni,
+  const estudianteDni = data?.estudiante?.dni ?? "";
+  const preinsEstudianteQ = useQuery({
+    queryKey: ["preinscripciones", "estudiante", estudianteDni],
+    queryFn: () => listarPreinscripcionesEstudiante(estudianteDni),
+    enabled: !!estudianteDni,
     staleTime: 30_000,
   });
   
-  const preinscripcionesAlumno = (preinsAlumnoQ.data as PreinscripcionDTO[] | undefined) ?? [];
+  const preinscripcionesEstudiante = (preinsEstudianteQ.data as PreinscripcionDTO[] | undefined) ?? [];
   const existingCarreraIds = new Set<number>(
-    preinscripcionesAlumno
+    preinscripcionesEstudiante
       .map((p: any) => p?.carrera?.id)
       .filter((id: number | undefined): id is number => typeof id === "number"),
   );
@@ -399,7 +399,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       next.titulo_en_tramite = mapped === 'certificado_titulo_en_tramite' ? !!checked : false;
       const anyMain = !!(next.titulo_secundario_legalizado || next.certificado_titulo_en_tramite || next.analitico_legalizado);
       if (anyMain) {
-        next.certificado_alumno_regular_sec = false;
+        next.certificado_estudiante_regular_sec = false;
         next.adeuda_materias = false;
         setAdeudaDetalle({ materias: "", institucion: "" });
       }
@@ -419,7 +419,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     titulo_secundario_legalizado: !!docs.titulo_secundario_legalizado,
     certificado_titulo_en_tramite: !!docs.certificado_titulo_en_tramite,
     analitico_legalizado: !!docs.analitico_legalizado,
-    certificado_alumno_regular_sec: !!docs.certificado_alumno_regular_sec,
+    certificado_estudiante_regular_sec: !!docs.certificado_estudiante_regular_sec,
     adeuda_materias: !!docs.adeuda_materias,
     adeuda_materias_detalle: adeudaDetalle.materias,
     escuela_secundaria: adeudaDetalle.institucion,
@@ -487,7 +487,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     onSuccess: () => {
       enqueueSnackbar("Profesorado actualizado", { variant: "success" });
       qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
-      qc.invalidateQueries({ queryKey: ["preinscripciones", "alumno", alumnoDni] });
+      qc.invalidateQueries({ queryKey: ["preinscripciones", "estudiante", estudianteDni] });
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo cambiar el profesorado";
@@ -516,7 +516,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       enqueueSnackbar(resp.message || 'Profesorado agregado', { variant: 'success' });
       setAddCarreraOpen(false);
       resetAgregarCarreraForm();
-      qc.invalidateQueries({ queryKey: ['preinscripciones', 'alumno', alumnoDni] });
+      qc.invalidateQueries({ queryKey: ['preinscripciones', 'estudiante', estudianteDni] });
       if (resp.data?.codigo) {
         navigate(`/secretaria/confirmar-inscripcion?codigo=${resp.data.codigo}`);
       }
@@ -966,13 +966,13 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         <Grid item xs={12} md={4}>
       <Paper sx={{ p:2 }}>
         <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorados asociados</Typography>
-        {preinsAlumnoQ.isLoading ? (
+        {preinsEstudianteQ.isLoading ? (
           <Typography variant="body2" color="text.secondary">Cargando profesorados…</Typography>
-        ) : preinscripcionesAlumno.length === 0 ? (
+        ) : preinscripcionesEstudiante.length === 0 ? (
           <Typography variant="body2" color="text.secondary">No se encontraron otras preinscripciones.</Typography>
         ) : (
           <Stack direction="column" spacing={1} mb={2}>
-            {preinscripcionesAlumno.map((pre) => {
+            {preinscripcionesEstudiante.map((pre) => {
               const activo = pre.codigo === codigo;
               return (
                 <Button
@@ -1051,7 +1051,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           <>
             <Divider sx={{ my: 2 }} />
             <Stack>
-              <FormControlLabel control={<Checkbox checked={!!docs.certificado_alumno_regular_sec} onChange={(_, c)=>setDocs(s=>({...s,certificado_alumno_regular_sec:c}))} disabled={anyMainSelected} />} label="Certificado de alumno regular del secundario" />
+              <FormControlLabel control={<Checkbox checked={!!docs.certificado_estudiante_regular_sec} onChange={(_, c)=>setDocs(s=>({...s,certificado_estudiante_regular_sec:c}))} disabled={anyMainSelected} />} label="Certificado de estudiante regular del secundario" />
               <FormControlLabel control={<Checkbox checked={!!docs.adeuda_materias} onChange={(_, c)=>setDocs(s=>({...s,adeuda_materias:c}))} disabled={anyMainSelected} />} label="Si adeuda materias" />
               {docs.adeuda_materias && (
                 <Grid container spacing={2}>
@@ -1136,7 +1136,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
         <DialogContent sx={{ pt: 2 }}>
           {availableCarreras.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              Este alumno ya tiene cargados todos los profesorados disponibles.
+              Este estudiante ya tiene cargados todos los profesorados disponibles.
             </Typography>
           ) : (
             <Stack spacing={2}>

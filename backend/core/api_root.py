@@ -1,13 +1,13 @@
 # core/api_root.py
 from ninja import NinjaAPI
 
-from apps.alumnos.api import alumnos_router as alumnos_api_router  # Importar el router de alumnos
-from apps.alumnos.carga_notas_api import carga_notas_router
+from apps.estudiantes.api import estudiantes_router as estudiantes_api_router  # Importar el router de estudiantes
+from apps.estudiantes.carga_notas_api import carga_notas_router
 from apps.carreras.api import carreras_router  # Importar el router de carreras
 from apps.guias.api import router as guias_router
 from apps.health_api import health  # Health check
 from apps.asistencia.api import (
-    alumnos_router as asistencia_alumnos_router,
+    estudiantes_router as asistencia_estudiantes_router,
     docentes_router as asistencia_docentes_router,
     calendario_router as asistencia_calendario_router,
 )
@@ -37,14 +37,14 @@ if 'api' not in locals():
     safe_add_router("/preinscripciones/admin", preins_admin_router)
     
     safe_add_router("/profesorados", carreras_router)
-    safe_add_router("/alumnos", alumnos_api_router)  # Montar el router de alumnos
-    safe_add_router("/alumnos/carga-notas", carga_notas_router)
+    safe_add_router("/estudiantes", estudiantes_api_router)  # Montar el router de estudiantes
+    safe_add_router("/estudiantes/carga-notas", carga_notas_router)
     
-    from apps.alumnos.gestion_comisiones_api import router as gestion_comisiones_router
-    safe_add_router("/alumnos/comisiones", gestion_comisiones_router)
+    from apps.estudiantes.gestion_comisiones_api import router as gestion_comisiones_router
+    safe_add_router("/estudiantes/comisiones", gestion_comisiones_router)
 
     safe_add_router("/asistencia/docentes", asistencia_docentes_router)
-    safe_add_router("/asistencia/alumnos", asistencia_alumnos_router)
+    safe_add_router("/asistencia/estudiantes", asistencia_estudiantes_router)
     safe_add_router("/asistencia/calendario", asistencia_calendario_router)
     safe_add_router("/", guias_router)
     

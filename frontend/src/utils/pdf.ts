@@ -79,7 +79,7 @@ export type DocsFlags = {
   analitico?: boolean;
   fotos?: boolean;
   titulo?: boolean;
-  alumnoRegular?: boolean;
+  estudianteRegular?: boolean;
   tituloTramite?: boolean;
   salud?: boolean;
   folios?: boolean;
@@ -346,7 +346,7 @@ export function generarPlanillaPDF(
   const leftDocs = [
     ["Fotocopia legalizada del DNI", d.dni],
     ["2 fotos carnet 4x4", d.fotos],
-    ["Certificado de alumno regular", d.alumnoRegular],
+    ["Certificado de estudiante regular", d.estudianteRegular],
     ["Certificado de buena salud", d.salud],
   ] as const;
   const rightDocs = [
@@ -402,7 +402,7 @@ export function generarPlanillaPDF(
   close();
 
   close = cardStart("COMPROBANTE DE INSCRIPCION DEL ALUMNO", 38, 8);
-  lineField("Alumno/a", `${fmt(v.apellido)}, ${fmt(v.nombres)} `);
+  lineField("Estudiante/a", `${fmt(v.apellido)}, ${fmt(v.nombres)} `);
   lineField("DNI", fmt(v.dni));
   lineField("Carrera", carreraNombre);
   if (opts?.qrDataUrl) pdf.addImage(opts.qrDataUrl, "PNG", W - M - 24, y - 9, 18, 18);

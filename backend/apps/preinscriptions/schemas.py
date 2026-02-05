@@ -3,7 +3,7 @@ from datetime import date, datetime
 from ninja import Field, Schema
 
 
-class AlumnoIn(Schema):
+class EstudianteIn(Schema):
     dni: str
     nombres: str
     apellido: str
@@ -14,7 +14,7 @@ class AlumnoIn(Schema):
     domicilio: str | None = None
 
 
-class AlumnoOut(Schema):
+class EstudianteOut(Schema):
     dni: str
     nombres: str = Field(alias="user.first_name")
     apellido: str = Field(alias="user.last_name")
@@ -33,7 +33,7 @@ class CarreraOut(Schema):
 class PreinscripcionIn(Schema):
     carrera_id: int
     foto_4x4_dataurl: str | None = None
-    alumno: AlumnoIn
+    estudiante: EstudianteIn
     captcha_token: str | None = None
     honeypot: str | None = None
 
@@ -74,7 +74,7 @@ class PreinscripcionIn(Schema):
 
 class PreinscripcionUpdateIn(Schema):
     carrera_id: int | None = None
-    alumno: AlumnoIn | None = None
+    estudiante: EstudianteIn | None = None
     datos_extra: dict | None = None
 
 
@@ -85,7 +85,7 @@ class PreinscripcionOut(Schema):
     fecha: datetime = Field(alias="created_at")
     created_at: datetime
     activa: bool
-    alumno: AlumnoOut
+    estudiante: EstudianteOut
     carrera: CarreraOut
 
 
@@ -100,7 +100,7 @@ class ChecklistIn(Schema):
     titulo_secundario_legalizado: bool = False
     certificado_titulo_en_tramite: bool = False
     analitico_legalizado: bool = False
-    certificado_alumno_regular_sec: bool = False
+    certificado_estudiante_regular_sec: bool = False
 
     # Detalles de adeuda (solo si corresponde)
     adeuda_materias: bool = False

@@ -3,7 +3,7 @@ from datetime import datetime
 from rest_framework_simplejwt.tokens import AccessToken
 from core.models import (
     Profesorado, PlanDeEstudio, Materia, Estudiante, User, 
-    InscripcionMateriaAlumno, Comision, Turno, Regularidad, Docente
+    InscripcionMateriaEstudiante, Comision, Turno, Regularidad, Docente
 )
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def setup_regularidad_data(db):
     )
     
     # Enroll student in Commission
-    inscripcion = InscripcionMateriaAlumno.objects.create(
+    inscripcion = InscripcionMateriaEstudiante.objects.create(
         estudiante=estudiante,
         materia=materia,
         comision=comision,
@@ -62,7 +62,7 @@ def setup_regularidad_data(db):
 def test_get_regularidad_planilla(client, setup_regularidad_data):
     comision_id = setup_regularidad_data['comision'].id
     response = client.get(
-        f'/api/alumnos/carga-notas/regularidad?comision_id={comision_id}',
+        f'/api/estudiantes/carga-notas/regularidad?comision_id={comision_id}',
         **setup_regularidad_data['auth_headers']
     )
     
@@ -71,11 +71,11 @@ def test_get_regularidad_planilla(client, setup_regularidad_data):
     
     # Check structure
     assert data['comision_id'] == comision_id
-    assert len(data['alumnos']) == 1
+    assert len(data['estudiantes']) == 1
     
-    alumno_data = data['alumnos'][0]
-    assert alumno_data['dni'] == setup_regularidad_data['estudiante'].dni
-    assert alumno_data['inscripcion_id'] == setup_regularidad_data['inscripcion'].id
+    estudiante_data = data['estudiantes'][0]
+    assert estudiante_data['dni'] == setup_regularidad_data['estudiante'].dni
+    assert estudiante_data['inscripcion_id'] == setup_regularidad_data['inscripcion'].id
 
 def test_update_regularidad(client, setup_regularidad_data):
     comision_id = setup_regularidad_data['comision'].id
@@ -84,7 +84,7 @@ def test_update_regularidad(client, setup_regularidad_data):
     # Payload to update regularity
     payload = {
         "comision_id": comision_id,
-        "alumnos": [
+        "estudiantes": [
             {
                 "inscripcion_id": inscripcion_id,
                 "situacion": "REGULAR", # Alias for Regularidad.Situacion.REGULAR
@@ -96,7 +96,7 @@ def test_update_regularidad(client, setup_regularidad_data):
     }
     
     response = client.post(
-        '/api/alumnos/carga-notas/regularidad',
+        '/api/estudiantes/carga-notas/regularidad',
         data=payload,
         content_type='application/json',
         **setup_regularidad_data['auth_headers']
@@ -123,7 +123,7 @@ def test_update_regularidad_unauthorized_teacher(client, setup_regularidad_data)
     
     payload = {
         "comision_id": comision_id,
-        "alumnos": [
+        "estudiantes": [
             {
                 "inscripcion_id": inscripcion_id,
                 "situacion": "REGULAR",
@@ -132,7 +132,7 @@ def test_update_regularidad_unauthorized_teacher(client, setup_regularidad_data)
     }
     
     response = client.post(
-        '/api/alumnos/carga-notas/regularidad',
+        '/api/estudiantes/carga-notas/regularidad',
         data=payload,
         content_type='application/json',
         **auth_headers
@@ -164,7 +164,7 @@ def test_update_regularidad_admin(client, setup_regularidad_data):
     
     payload = {
         "comision_id": comision_id,
-        "alumnos": [
+        "estudiantes": [
             {
                 "inscripcion_id": inscripcion_id,
                 "situacion": "REGULAR",
@@ -174,7 +174,7 @@ def test_update_regularidad_admin(client, setup_regularidad_data):
     }
     
     response = client.post(
-        '/api/alumnos/carga-notas/regularidad',
+        '/api/estudiantes/carga-notas/regularidad',
         data=payload,
         content_type='application/json',
         **auth_headers

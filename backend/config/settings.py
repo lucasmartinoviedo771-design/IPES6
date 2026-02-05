@@ -83,7 +83,7 @@ INSTALLED_APPS = [
     "core",
     "apps.carreras",
     "apps.preinscriptions",
-    "apps.alumnos",
+    "apps.estudiantes",
     "apps.guias",
     "apps.asistencia",
     "apps.metrics",

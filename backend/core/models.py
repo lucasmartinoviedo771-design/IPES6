@@ -898,7 +898,7 @@ class EquivalenciaCurricular(models.Model):
         return f"{self.codigo} - {self.nombre or ''}".strip()
 
 
-class InscripcionMateriaAlumno(models.Model):
+class InscripcionMateriaEstudiante(models.Model):
     """Inscripción anual de un estudiante a una materia/comisión."""
 
     class Estado(models.TextChoices):
@@ -908,7 +908,7 @@ class InscripcionMateriaAlumno(models.Model):
         ANULADA = "ANUL", "Anulada"
 
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name="inscripciones_materia")
-    materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="inscripciones_alumnos")
+    materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="inscripciones_estudiantes")
     comision = models.ForeignKey(
         Comision,
         on_delete=models.PROTECT,
@@ -1245,6 +1245,7 @@ class MesaExamen(models.Model):
         related_name="mesas_planillas_cerradas",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Mesa {self.get_tipo_display()} {self.materia.nombre} {self.fecha}"
@@ -1279,6 +1280,7 @@ class InscripcionMesa(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name="inscripciones_mesa")
     estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.INSCRIPTO)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     fecha_resultado = models.DateField(null=True, blank=True)
     condicion = models.CharField(max_length=3, choices=Condicion.choices, null=True, blank=True)
     nota = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
@@ -1326,7 +1328,7 @@ class Regularidad(models.Model):
         LIBRE_AT = "LAT", "Libre Antes de Tiempo"
 
     inscripcion = models.ForeignKey(
-        "InscripcionMateriaAlumno",
+        "InscripcionMateriaEstudiante",
         on_delete=models.CASCADE,
         related_name="regularidades_historial",
         null=True,
@@ -1684,14 +1686,14 @@ class ActaExamenDocente(models.Model):
         return f"{self.get_rol_display()} - {self.nombre}"
 
 
-class ActaExamenAlumno(models.Model):
+class ActaExamenEstudiante(models.Model):
     NOTA_AUSENTE_JUSTIFICADO = "AJ"
     NOTA_AUSENTE_INJUSTIFICADO = "AI"
 
     acta = models.ForeignKey(
         ActaExamen,
         on_delete=models.CASCADE,
-        related_name="alumnos",
+        related_name="estudiantes",
     )
     numero_orden = models.PositiveIntegerField()
     permiso_examen = models.CharField(max_length=64, blank=True)

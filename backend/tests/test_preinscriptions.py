@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime, date, timedelta
 from rest_framework_simplejwt.tokens import AccessToken
 from core.models import Profesorado, Preinscripcion, Estudiante, User, VentanaHabilitacion
-from apps.preinscriptions.schemas import PreinscripcionIn, AlumnoIn
+from apps.preinscriptions.schemas import PreinscripcionIn, EstudianteIn
 
 # We will use the 'client' fixture provided by pytest-django
 
@@ -12,9 +12,9 @@ def setup_data(db):
     # Create a user with admin access (staff)
     user = User.objects.create_user(username='adminuser', password='adminpass', first_name='Admin', last_name='User', email='admin@example.com', is_staff=True)
     
-    # Create a regular user/alumno for preinscription
+    # Create a regular user/estudiante for preinscription
     student_user = User.objects.create_user(username='student', password='studentpass', first_name='Juan', last_name='Perez', email='juan@example.com')
-    alumno = Estudiante.objects.create(user=student_user, dni='12345678', fecha_nacimiento=date(2000, 1, 1))
+    estudiante = Estudiante.objects.create(user=student_user, dni='12345678', fecha_nacimiento=date(2000, 1, 1))
     
     # Create a carrera
     carrera = Profesorado.objects.create(nombre='Profesorado de Matemática', activo=True, inscripcion_abierta=True, duracion_anios=4)
@@ -34,7 +34,7 @@ def setup_data(db):
     return {
         'admin_user': user,
         'student_user': student_user,
-        'alumno': alumno,
+        'estudiante': estudiante,
         'carrera': carrera,
         'ventana': ventana,
         'auth_headers': {'HTTP_AUTHORIZATION': f'Bearer {token}'}
@@ -45,10 +45,10 @@ def test_create_preinscripcion(client, setup_data):
     payload = {
         "carrera_id": setup_data['carrera'].id,
         "foto_4x4_dataurl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA",
-        "alumno": {
+        "estudiante": {
             "dni": "87654321",
             "nombres": "Nuevo",
-            "apellido": "Alumno",
+            "apellido": "Estudiante",
             "fecha_nacimiento": "2005-05-05",
             "email": "nuevo@example.com",
             "telefono": "1122334455",
@@ -68,7 +68,7 @@ def test_create_preinscripcion(client, setup_data):
 def test_list_preinscripciones(client, setup_data):
     # Create a preinscription manually
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -84,7 +84,7 @@ def test_list_preinscripciones(client, setup_data):
 
 def test_get_preinscripcion_by_code(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -98,7 +98,7 @@ def test_get_preinscripcion_by_code(client, setup_data):
 
 def test_confirm_preinscripcion(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -115,7 +115,7 @@ def test_confirm_preinscripcion(client, setup_data):
 
 def test_reject_preinscripcion(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -130,7 +130,7 @@ def test_reject_preinscripcion(client, setup_data):
 
 def test_observe_preinscripcion(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -146,7 +146,7 @@ def test_observe_preinscripcion(client, setup_data):
 def test_change_carrera(client, setup_data):
     new_carrera = Profesorado.objects.create(nombre='Arquitectura', activo=True, duracion_anios=5)
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -162,7 +162,7 @@ def test_change_carrera(client, setup_data):
 
 def test_delete_preinscripcion(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Borrador',

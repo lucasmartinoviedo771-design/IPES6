@@ -1,10 +1,10 @@
 from django.contrib import admin
 
 from .models import (
-    AsistenciaAlumno,
+    AsistenciaEstudiante,
     AsistenciaDocente,
     ClaseProgramada,
-    CursoAlumnoSnapshot,
+    CursoEstudianteSnapshot,
     CursoHorarioSnapshot,
     DocenteMarcacionLog,
     Justificacion,
@@ -20,8 +20,8 @@ class CursoHorarioSnapshotAdmin(admin.ModelAdmin):
     search_fields = ("comision__nombre", "comision__codigo")
 
 
-@admin.register(CursoAlumnoSnapshot)
-class CursoAlumnoSnapshotAdmin(admin.ModelAdmin):
+@admin.register(CursoEstudianteSnapshot)
+class CursoEstudianteSnapshotAdmin(admin.ModelAdmin):
     list_display = ("comision", "dni", "apellido", "nombre", "activo", "sincronizado_en")
     list_filter = ("activo",)
     search_fields = ("dni", "apellido", "nombre", "comision__nombre")
@@ -35,8 +35,8 @@ class ClaseProgramadaAdmin(admin.ModelAdmin):
     date_hierarchy = "fecha"
 
 
-@admin.register(AsistenciaAlumno)
-class AsistenciaAlumnoAdmin(admin.ModelAdmin):
+@admin.register(AsistenciaEstudiante)
+class AsistenciaEstudianteAdmin(admin.ModelAdmin):
     list_display = ("clase", "estudiante", "estado", "registrado_via", "registrado_en")
     list_filter = ("estado", "registrado_via")
     search_fields = ("estudiante__dni", "estudiante__user__first_name", "estudiante__user__last_name")

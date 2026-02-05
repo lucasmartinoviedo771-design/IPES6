@@ -1,5 +1,5 @@
 
-from core.models import Estudiante, InscripcionMesa, ActaExamen, ActaExamenAlumno
+from core.models import Estudiante, InscripcionMesa, ActaExamen, ActaExamenEstudiante
 from django.contrib.auth.models import User
 
 dni_incorrecto = "40091520"

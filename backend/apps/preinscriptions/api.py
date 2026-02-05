@@ -247,9 +247,9 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
     try:
         from django.contrib.auth.models import User
         from core.models import Estudiante, Preinscripcion
-        alumno_data = payload.alumno
-        dni = alumno_data.dni
-        email = alumno_data.email
+        estudiante_data = payload.estudiante
+        dni = estudiante_data.dni
+        email = estudiante_data.email
 
         # 1. Buscar o crear el Estudiante y el User asociado, usando DNI como clave.
         estudiante = Estudiante.objects.filter(dni=dni).first()
@@ -257,8 +257,8 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
         if estudiante:
             # Si el estudiante ya existe, actualizar sus datos y los del usuario asociado.
             user = estudiante.user
-            user.first_name = alumno_data.nombres
-            user.last_name = alumno_data.apellido
+            user.first_name = estudiante_data.nombres
+            user.last_name = estudiante_data.apellido
             # Solo actualizar email si se proporciona uno nuevo.
             if email and user.email != email:
                 # Opcional: verificar si el nuevo email ya está en uso por otro usuario.
@@ -267,14 +267,14 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
                 user.email = email
             user.save()
 
-            estudiante.fecha_nacimiento = alumno_data.fecha_nacimiento
-            estudiante.telefono = alumno_data.telefono
-            estudiante.domicilio = alumno_data.domicilio
+            estudiante.fecha_nacimiento = estudiante_data.fecha_nacimiento
+            estudiante.telefono = estudiante_data.telefono
+            estudiante.domicilio = estudiante_data.domicilio
             from contextlib import suppress
 
             with suppress(Exception):
                 # cuil puede ser opcional
-                estudiante.cuil = getattr(alumno_data, "cuil", None)
+                estudiante.cuil = getattr(estudiante_data, "cuil", None)
             estudiante.save()
         else:
             # Si el estudiante no existe, crear un nuevo User y Estudiante.
@@ -282,8 +282,8 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
             user, user_created = User.objects.get_or_create(
                 username=dni,
                 defaults={
-                    "first_name": alumno_data.nombres,
-                    "last_name": alumno_data.apellido,
+                    "first_name": estudiante_data.nombres,
+                    "last_name": estudiante_data.apellido,
                     "email": email,
                 },
             )
@@ -300,9 +300,9 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
             estudiante = Estudiante.objects.create(
                 user=user,
                 dni=dni,
-                fecha_nacimiento=alumno_data.fecha_nacimiento,
-                telefono=alumno_data.telefono,
-                domicilio=alumno_data.domicilio,
+                fecha_nacimiento=estudiante_data.fecha_nacimiento,
+                telefono=estudiante_data.telefono,
+                domicilio=estudiante_data.domicilio,
             )
 
         # 2. Buscar o crear la Preinscripción.
@@ -326,7 +326,7 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
             preinscripcion.estado = "Enviada"
             preinscripcion.foto_4x4_dataurl = payload.foto_4x4_dataurl
             preinscripcion.datos_extra = convert_dates_to_iso(data_dict.copy())
-            preinscripcion.cuil = alumno_data.cuil
+            preinscripcion.cuil = estudiante_data.cuil
             preinscripcion.save()
             created = True
 
@@ -334,7 +334,7 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
             # If object already existed, update its fields
             preinscripcion.estado = "Enviada"
             preinscripcion.datos_extra = convert_dates_to_iso(data_dict.copy())
-            preinscripcion.cuil = alumno_data.cuil
+            preinscripcion.cuil = estudiante_data.cuil
             preinscripcion.save()
 
         if created or not preinscripcion.codigo:
@@ -434,7 +434,7 @@ def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = Non
         cl.save()
         _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
 
-    # Asegurar relación alumno-carrera
+    # Asegurar relación estudiante-carrera
     cohorte_val = str(pre.anio) if pre.anio else None
     pre.alumno.asignar_profesorado(
         pre.carrera,
@@ -450,8 +450,8 @@ def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = Non
     user.set_password(default_password)
     user.save(update_fields=["password"])
 
-    alumno_group, _ = Group.objects.get_or_create(name="alumno")
-    user.groups.add(alumno_group)
+    estudiante_group, _ = Group.objects.get_or_create(name="estudiante")
+    user.groups.add(estudiante_group)
 
     estudiante.must_change_password = True
     estudiante.save(update_fields=["must_change_password"])
@@ -590,13 +590,13 @@ def _serialize_pre(pre: 'Preinscripcion'):
     user_email = getattr(u, "email", "") if u else ""
 
     extra = copy.deepcopy(pre.datos_extra or {})  # ensure we never mutate DB state
-    alumno_extra = extra.get("alumno") if isinstance(extra.get("alumno"), dict) else {}
+    estudiante_extra = extra.get("estudiante") if isinstance(extra.get("estudiante"), dict) else {}
     estudiante_extra = getattr(a, "datos_extra", {}) or {}
 
     def ensure_extra(field: str):
         if extra.get(field):
             return
-        for source in (alumno_extra, estudiante_extra):
+        for source in (estudiante_extra, estudiante_extra):
             if isinstance(source, dict):
                 value = source.get(field)
                 if value not in (None, ""):
@@ -611,7 +611,7 @@ def _serialize_pre(pre: 'Preinscripcion'):
         "codigo": pre.codigo,
         "estado": pre.estado.lower() if pre.estado else "enviada",
         "fecha": getattr(pre, "created_at", None),
-        "alumno": {
+        "estudiante": {
             "dni": getattr(a, "dni", ""),
             "nombre": user_first_name,
             "apellido": user_last_name,
@@ -634,8 +634,8 @@ def obtener_por_codigo(request, codigo: str, profesorado_id: Optional[int] = Non
     return _serialize_pre(pre)
 
 
-@router.get("/alumno/{dni}", auth=JWTAuth())
-def listar_por_alumno(request, dni: str, profesorado_id: Optional[int] = None):
+@router.get("/estudiante/{dni}", auth=JWTAuth())
+def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = None):
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     preins = (
@@ -669,7 +669,7 @@ def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_i
     ).exists():
         return 400, ApiResponse(
             ok=False,
-            message="El alumno ya tiene una preinscripción activa para esa carrera en el ciclo actual.",
+            message="El estudiante ya tiene una preinscripción activa para esa carrera en el ciclo actual.",
         )
 
     try:
@@ -691,12 +691,12 @@ def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_i
         nueva.save(update_fields=["codigo"])
         PreinscripcionChecklist.objects.create(preinscripcion=nueva)
     except Exception as e:
-        logger.exception("No se pudo agregar profesorado %s al alumno %s", carrera.id, pre.alumno_id)
+        logger.exception("No se pudo agregar profesorado %s al estudiante %s", carrera.id, pre.alumno_id)
         raise HttpError(500, "No se pudo procesar la solicitud.") from e
 
     return ApiResponse(
         ok=True,
-        message="Se agregó un nuevo profesorado para el alumno.",
+        message="Se agregó un nuevo profesorado para el estudiante.",
         data=_serialize_pre(nueva),
     )
 
@@ -710,24 +710,24 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = _get_pre_by_codigo(codigo)
-    if payload.alumno:
-        alumno = payload.alumno
+    if payload.estudiante:
+        estudiante = payload.estudiante
         u = pre.alumno.user
-        u.first_name = alumno.nombres or u.first_name
-        u.last_name = alumno.apellido or u.last_name
-        if alumno.email:
-            u.email = alumno.email
+        u.first_name = estudiante.nombres or u.first_name
+        u.last_name = estudiante.apellido or u.last_name
+        if estudiante.email:
+            u.email = estudiante.email
         u.save()
         a = pre.alumno
-        if alumno.telefono is not None:
-            a.telefono = alumno.telefono
-        if alumno.domicilio is not None:
-            a.domicilio = alumno.domicilio
-        if alumno.fecha_nacimiento:
-            a.fecha_nacimiento = alumno.fecha_nacimiento
+        if estudiante.telefono is not None:
+            a.telefono = estudiante.telefono
+        if estudiante.domicilio is not None:
+            a.domicilio = estudiante.domicilio
+        if estudiante.fecha_nacimiento:
+            a.fecha_nacimiento = estudiante.fecha_nacimiento
         a.save()
-        if alumno.cuil:
-            pre.cuil = alumno.cuil
+        if estudiante.cuil:
+            pre.cuil = estudiante.cuil
 
     if payload.carrera_id:
         pre.carrera_id = payload.carrera_id
@@ -764,22 +764,22 @@ def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: Op
 
 @router.post("/by-code/{codigo}/cambiar-carrera", auth=JWTAuth())
 def cambiar_carrera(request, codigo: str, carrera_id: int, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion, InscripcionMateriaAlumno, Regularidad, InscripcionMesa
+    from core.models import Preinscripcion, InscripcionMateriaEstudiante, Regularidad, InscripcionMesa
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = _get_pre_by_codigo(codigo)
     carrera_actual = pre.carrera
-    alumno = pre.alumno
+    estudiante = pre.alumno
 
-    hay_inscripciones = InscripcionMateriaAlumno.objects.filter(
-        estudiante=alumno,
+    hay_inscripciones = InscripcionMateriaEstudiante.objects.filter(
+        estudiante=estudiante,
         materia__plan_de_estudio__profesorado_id=carrera_actual.id,
     ).exists()
     hay_regularidades = Regularidad.objects.filter(
-        estudiante=alumno,
+        estudiante=estudiante,
         materia__plan_de_estudio__profesorado_id=carrera_actual.id,
     ).exists()
     hay_mesas = InscripcionMesa.objects.filter(
-        estudiante=alumno,
+        estudiante=estudiante,
         mesa__materia__plan_de_estudio__profesorado_id=carrera_actual.id,
     ).exists()
 
@@ -787,7 +787,7 @@ def cambiar_carrera(request, codigo: str, carrera_id: int, profesorado_id: Optio
         return 400, ApiResponse(
             ok=False,
             message=(
-                "No se puede cambiar el profesorado porque el alumno ya registra inscripciones o notas en esta carrera."
+                "No se puede cambiar el profesorado porque el estudiante ya registra inscripciones o notas en esta carrera."
             ),
         )
 

@@ -6,7 +6,7 @@ from apps.asistencia.services import sync_course_snapshots
 
 
 class Command(BaseCommand):
-    help = "Sincroniza los snapshots de asistencia (horarios y alumnos) con las comisiones actuales."
+    help = "Sincroniza los snapshots de asistencia (horarios y estudiantes) con las comisiones actuales."
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("--anio", type=int, help="Filtra inscripciones por año lectivo.")

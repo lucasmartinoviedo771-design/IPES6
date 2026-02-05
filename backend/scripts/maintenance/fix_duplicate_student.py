@@ -1,6 +1,6 @@
 
 from django.db import transaction
-from core.models import Estudiante, InscripcionMesa, ActaExamenAlumno
+from core.models import Estudiante, InscripcionMesa, ActaExamenEstudiante
 from django.contrib.auth.models import User
 
 dni_bad = "40091520"
@@ -22,11 +22,11 @@ try:
 
         print(f"Fusionando Estudiante Incorrecto ID {bad_est.id} ({bad_est.dni}) -> Correcto ID {good_est.id} ({good_est.dni})")
 
-        # 1. Update ActaExamenAlumno (Strings)
-        actas_alumnos = ActaExamenAlumno.objects.filter(dni=dni_bad)
-        count_actas = actas_alumnos.count()
-        print(f"Actualizando {count_actas} registros de ActaExamenAlumno con DNI incorrecto...")
-        actas_alumnos.update(dni=dni_good)
+        # 1. Update ActaExamenEstudiante (Strings)
+        actas_estudiantes = ActaExamenEstudiante.objects.filter(dni=dni_bad)
+        count_actas = actas_estudiantes.count()
+        print(f"Actualizando {count_actas} registros de ActaExamenEstudiante con DNI incorrecto...")
+        actas_estudiantes.update(dni=dni_good)
 
         # 2. Update InscripcionMesa (FKs)
         inscripciones_bad = InscripcionMesa.objects.filter(estudiante=bad_est)

@@ -30,12 +30,12 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from apps.alumnos.api.notas_utils import ALIAS_TO_SITUACION, situaciones_para_formato as _situaciones_para_formato
+from apps.estudiantes.api.notas_utils import ALIAS_TO_SITUACION, situaciones_para_formato as _situaciones_para_formato
 from core.models import (
     Docente,
     EquivalenciaCurricular,
     Estudiante,
-    InscripcionMateriaAlumno,
+    InscripcionMateriaEstudiante,
     InscripcionMesa,
     Materia,
     MesaExamen,
@@ -50,7 +50,7 @@ from core.models import (
     RegularidadPlantilla,
     User,
 )
-from apps.alumnos.services.cursada import estudiante_tiene_materia_aprobada
+from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 from core.permissions import allowed_profesorados, ensure_profesorado_access
 
 
@@ -318,7 +318,15 @@ def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dic
             }
         )
 
-    result = {"profesorados": profes_data, "plantillas": plantillas}
+    docentes = obtener_docentes_metadata()
+    estudiantes = obtener_estudiantes_metadata()
+
+    result = {
+        "profesorados": profes_data, 
+        "plantillas": plantillas,
+        "docentes": docentes,
+        "estudiantes": estudiantes,
+    }
     
     # Guardamos en caché por 1 hora (3600 segundos)
     # Importante: Solo guardamos si hay datos
@@ -339,6 +347,22 @@ def obtener_docentes_metadata():
         for docente in docente_qs
     ]
     return docentes
+
+def obtener_estudiantes_metadata():
+    # Traemos todos los estudiantes para el autocompletado
+    # Optimizamos con prefetch de carreras (profesorados)
+    estudiantes_qs = Estudiante.objects.all().select_related("user").prefetch_related("carreras").order_by("user__last_name", "user__first_name")
+    
+    data = []
+    for est in estudiantes_qs:
+        data.append({
+            "dni": est.dni,
+            "apellido_nombre": f"{est.user.last_name}, {est.user.first_name}".strip(", "),
+            # OPTIMIZACION CRITICA: Usar .all() para aprovechar el prefetch_related.
+            # .values_list() dispara una query nueva por cada alumno (N+1).
+            "profesorados": [c.id for c in est.carreras.all()]
+        })
+    return data
 
 def _limpiar_datos_fila(raw_datos: dict | None, columnas: list[dict]) -> dict:
     if not raw_datos:
@@ -1266,7 +1290,7 @@ def crear_planilla_regularidad(
             #     Regularidad.Situacion.REGULAR,
             # }:
             #     try:
-            #         checklist = PreinscripcionChecklist.objects.get(preinscripcion__alumno=estudiante)
+            #         checklist = PreinscripcionChecklist.objects.get(preinscripcion__estudiante=estudiante)
             #         if not checklist.curso_introductorio_aprobado:
             #             raise ValueError(
             #                 f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
@@ -1290,13 +1314,13 @@ def crear_planilla_regularidad(
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
 
             inscripcion = (
-                InscripcionMateriaAlumno.objects.filter(estudiante=estudiante, materia=materia, anio=anio_academico)
+                InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia, anio=anio_academico)
                 .order_by("-anio")
                 .first()
             )
             if inscripcion is None:
                 inscripcion = (
-                    InscripcionMateriaAlumno.objects.filter(estudiante=estudiante, materia=materia)
+                    InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia)
                     .order_by("-anio")
                     .first()
                 )
@@ -1583,7 +1607,7 @@ def _import_estudiante_record(
     record: dict[str, Any],
     *,
     profesorado: Profesorado,
-    alumno_group: Group,
+    estudiante_group: Group,
 ) -> tuple[Estudiante, bool]:
     dni = (record.get("dni") or record.get("DNI") or "").strip()
     if not dni:
@@ -1652,8 +1676,8 @@ def _import_estudiante_record(
     if updated_user:
         user.save()
 
-    if alumno_group not in user.groups.all():
-        user.groups.add(alumno_group)
+    if estudiante_group not in user.groups.all():
+        user.groups.add(estudiante_group)
 
     if not anio_ingreso_val:
         raise ValueError("El campo anio_ingreso es obligatorio.")
@@ -1756,7 +1780,7 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> dict:
             "errors": errors,
         }
 
-    alumno_group, _ = Group.objects.get_or_create(name="alumno")
+    estudiante_group, _ = Group.objects.get_or_create(name="estudiante")
     carreras_cache: dict[str, Profesorado] = {}
     atomic_context = transaction.atomic if not dry_run else _atomic_rollback
 
@@ -1784,7 +1808,7 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> dict:
                 _import_estudiante_record(
                     record,
                     profesorado=profesorado,
-                    alumno_group=alumno_group,
+                    estudiante_group=estudiante_group,
                 )
                 processed_count += 1
             except Exception as e:
@@ -1800,7 +1824,7 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> dict:
 
 
 def crear_estudiante_manual(*, user: User, data: dict[str, Any]) -> dict[str, Any]:
-    alumno_group, _ = Group.objects.get_or_create(name="alumno")
+    estudiante_group, _ = Group.objects.get_or_create(name="estudiante")
     profesorado_id = data.get("profesorado_id")
     if not profesorado_id:
         raise ValueError("Debe indicar el profesorado.")
@@ -1817,7 +1841,7 @@ def crear_estudiante_manual(*, user: User, data: dict[str, Any]) -> dict[str, An
         estudiante, created = _import_estudiante_record(
             record,
             profesorado=profesorado,
-            alumno_group=alumno_group,
+            estudiante_group=estudiante_group,
         )
 
     full_name = estudiante.user.get_full_name() if estudiante.user_id else ""

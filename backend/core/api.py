@@ -29,7 +29,7 @@ from core.models import (
     Estudiante,
     HorarioCatedra,
     HorarioCatedraDetalle,
-    InscripcionMateriaAlumno,
+    InscripcionMateriaEstudiante,
     InscripcionMesa,
     Materia,
     MesaExamen,
@@ -67,7 +67,7 @@ ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
 
 ACADEMIC_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
 
-VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "alumno"}
+VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "estudiante"}
 
 PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel"}
 
@@ -90,9 +90,9 @@ ROLE_MASS_RULES: dict[str, set[str] | None] = {
     "secretaria": None,
     "jefa_aaee": None,
     "jefes": None,
-    "coordinador": {"alumno", "docente"},
-    "tutor": {"alumno"},
-    "bedel": {"alumno"},
+    "coordinador": {"estudiante", "docente"},
+    "tutor": {"estudiante"},
+    "bedel": {"estudiante"},
 }
 
 ROLES_DIRECT_ALL = {
@@ -136,7 +136,10 @@ ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
 
 
 def _normalized_user_roles(user: User) -> set[str]:
-    roles = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    raw_roles = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    roles = set(raw_roles)
+    if "estudiantes" in raw_roles:
+        roles.add("estudiante")
     if user.is_superuser or user.is_staff:
         roles.add("admin")
     return roles
@@ -309,7 +312,7 @@ def _can_send_individual(sender: User, target: User) -> bool:
     target_roles = _normalized_user_roles(target)
     # Admins/secretaría/jefes/etc pueden escribir a cualquiera
     if sender_roles & ROLES_DIRECT_ALL:
-        if "alumno" in target_roles:
+        if "estudiante" in target_roles:
             student = _get_student(target)
             if not student:
                 return False
@@ -322,7 +325,7 @@ def _can_send_individual(sender: User, target: User) -> bool:
                 return _shared_profesorado(sender, student, {"tutor"})
         return True
     # Estudiantes: solo con bedel/tutor asignado
-    if "alumno" in sender_roles:
+    if "estudiante" in sender_roles:
         student = _get_student(sender)
         if not student:
             return False
@@ -343,7 +346,7 @@ def _get_users_by_role(role: str, limit_profesorados: set[int] | None) -> list[U
     """
     users_qs = User.objects.filter(is_active=True)
 
-    if role == "alumno":
+    if role == "estudiante":
         student_qs = Estudiante.objects.filter(user__in=users_qs)
         if limit_profesorados:
             student_qs = student_qs.filter(carreras__id__in=limit_profesorados)
@@ -370,7 +373,7 @@ def _resolve_mass_recipients(sender: User, role: str, carreras: list[int] | None
     if allowed_roles is not None and role not in allowed_roles:
         raise HttpError(403, "No tienes permisos para enviar mensajes masivos a ese rol.")
     limit_profesorados: set[int] | None = None
-    if role == "alumno":
+    if role == "estudiante":
         if sender_roles & {"bedel"}:
             limit_profesorados = _staff_profesorados(sender, {"bedel"})
             if not limit_profesorados:
@@ -404,7 +407,7 @@ def _conversation_allow_student_reply(
 ) -> bool:
     if payload_flag is not None:
         return payload_flag
-    return not (is_massive and "alumno" in recipients_roles)
+    return not (is_massive and "estudiante" in recipients_roles)
 
 
 def _compute_sla_indicator(conversation: Conversation, participant: ConversationParticipant) -> str | None:
@@ -455,7 +458,7 @@ def _primary_role(user: User) -> str | None:
         "bedel",
         "consulta",
         "docente",
-        "alumno",
+        "estudiante",
     ]
 
     for role in ROLE_PRIORITY:
@@ -497,7 +500,7 @@ def _create_conversation(
     )
     recipient_roles = _normalized_user_roles(recipient)
     recipient_can_reply = True
-    if "alumno" in recipient_roles and not allow_student_reply:
+    if "estudiante" in recipient_roles and not allow_student_reply:
         recipient_can_reply = False
     ConversationParticipant.objects.create(
         conversation=conversation,
@@ -782,7 +785,7 @@ def list_inscriptos_materia(
     else:
         _ensure_structure_view(request.user, materia.plan_de_estudio.profesorado_id)
 
-    inscripciones = InscripcionMateriaAlumno.objects.select_related("estudiante__user", "comision").filter(
+    inscripciones = InscripcionMateriaEstudiante.objects.select_related("estudiante__user", "comision").filter(
         materia_id=materia_id
     )
 
@@ -2054,9 +2057,7 @@ def list_ventanas(request, tipo: str | None = None, estado: str | None = None):
             raise HttpError(401, "Authentication required")
         
         # Validar roles manualmente (puesto que ensure_roles es un decorador)
-        user_roles = {name.lower() for name in user.groups.values_list("name", flat=True)}
-        if user.is_superuser or user.is_staff:
-            user_roles.add("admin")
+        user_roles = _normalized_user_roles(user)
             
         required = {role.lower() for role in VENTANA_VIEW_ROLES}
         if not user_roles.intersection(required):
@@ -2594,7 +2595,7 @@ class DashboardPreinsDetalle(Schema):
 
     codigo: str
 
-    alumno: str
+    estudiante: str
 
     carrera: str | None
 
@@ -2798,18 +2799,18 @@ def global_overview(request):
 
     for pre in (
         Preinscripcion.objects.filter(estado="Confirmada")
-        .select_related("alumno__user", "carrera")
+        .select_related("estudiante__user", "carrera")
         .order_by("-updated_at")[:6]
     ):
-        alumno = pre.alumno
+        estudiante = pre.estudiante
 
-        user = getattr(alumno, "user", None)
+        user = getattr(estudiante, "user", None)
 
         recientes_pre.append(
             DashboardPreinsDetalle(
                 id=pre.id,
                 codigo=pre.codigo,
-                alumno=(user.get_full_name() if user else str(alumno.dni)),
+                estudiante=(user.get_full_name() if user else str(estudiante.dni)),
                 carrera=pre.carrera.nombre if pre.carrera_id else None,
                 fecha=(pre.updated_at or pre.created_at).isoformat() if (pre.updated_at or pre.created_at) else None,
             )
@@ -2843,7 +2844,7 @@ def global_overview(request):
     ]
 
     cambios_qs = (
-        InscripcionMateriaAlumno.objects.filter(comision_solicitada__isnull=False)
+        InscripcionMateriaEstudiante.objects.filter(comision_solicitada__isnull=False)
         .select_related(
             "estudiante__user",
             "materia__plan_de_estudio__profesorado",

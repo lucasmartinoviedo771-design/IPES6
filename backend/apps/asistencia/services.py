@@ -9,14 +9,14 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from core.models import Comision, Docente, Estudiante, InscripcionMateriaAlumno
+from core.models import Comision, Docente, Estudiante, InscripcionMateriaEstudiante
 
 from .models import (
-    AsistenciaAlumno,
+    AsistenciaEstudiante,
     AsistenciaDocente,
     ClaseProgramada,
     CalendarioAsistenciaEvento,
-    CursoAlumnoSnapshot,
+    CursoEstudianteSnapshot,
     CursoHorarioSnapshot,
     DocenteMarcacionLog,
     Justificacion,
@@ -150,11 +150,11 @@ def _aplicar_evento_sobre_clase(
 
     if evento_estudiantes:
         _ensure_asistencias_estudiantes(clase)
-        alumnos_qs = AsistenciaAlumno.objects.filter(clase=clase)
-        alumnos_qs.update(
-            estado=AsistenciaAlumno.Estado.AUSENTE_JUSTIFICADA,
+        estudiantes_qs = AsistenciaEstudiante.objects.filter(clase=clase)
+        estudiantes_qs.update(
+            estado=AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA,
             justificacion=None,
-            registrado_via=AsistenciaAlumno.RegistradoVia.SISTEMA,
+            registrado_via=AsistenciaEstudiante.RegistradoVia.SISTEMA,
             registrado_por=None,
             registrado_en=timezone.now(),
         )
@@ -168,7 +168,7 @@ def _docente_nombre_snapshot(docente: Docente | None) -> str:
     return nombre or docente.dni or ""
 
 
-def _resolver_estudiante(snapshot: CursoAlumnoSnapshot) -> Estudiante | None:
+def _resolver_estudiante(snapshot: CursoEstudianteSnapshot) -> Estudiante | None:
     if snapshot.estudiante_id:
         return snapshot.estudiante
     return Estudiante.objects.filter(dni=snapshot.dni).first()
@@ -344,19 +344,19 @@ def generate_classes_for_range(start: date, end: date, *, comision_ids: Sequence
 
 
 def _ensure_asistencias_estudiantes(clase: ClaseProgramada) -> None:
-    snapshot_qs = CursoAlumnoSnapshot.objects.filter(comision=clase.comision, activo=True)
+    snapshot_qs = CursoEstudianteSnapshot.objects.filter(comision=clase.comision, activo=True)
 
     for snapshot in snapshot_qs:
         estudiante = _resolver_estudiante(snapshot)
         if not estudiante:
             continue
 
-        AsistenciaAlumno.objects.get_or_create(
+        AsistenciaEstudiante.objects.get_or_create(
             clase=clase,
             estudiante=estudiante,
             defaults={
-                "estado": AsistenciaAlumno.Estado.AUSENTE,
-                "registrado_via": AsistenciaAlumno.RegistradoVia.SISTEMA,
+                "estado": AsistenciaEstudiante.Estado.AUSENTE,
+                "registrado_via": AsistenciaEstudiante.RegistradoVia.SISTEMA,
             },
         )
 
@@ -399,12 +399,12 @@ def registrar_log_docente(
 @transaction.atomic
 def sync_course_snapshots(*, comisiones: Iterable[Comision] | None = None, anio: int | None = None) -> None:
     """
-    Actualiza las tablas snapshot (horarios y alumnos) a partir de las comisiones reales.
+    Actualiza las tablas snapshot (horarios y estudiantes) a partir de las comisiones reales.
     """
     comision_qs = comisiones if comisiones is not None else Comision.objects.all()
     for comision in comision_qs:
         _sync_horarios_snapshot(comision)
-        _sync_alumnos_snapshot(comision, anio=anio)
+        _sync_estudiantes_snapshot(comision, anio=anio)
 
 
 def _sync_horarios_snapshot(comision: Comision) -> None:
@@ -428,11 +428,11 @@ def _sync_horarios_snapshot(comision: Comision) -> None:
         CursoHorarioSnapshot.objects.bulk_create(bulk, ignore_conflicts=True)
 
 
-def _sync_alumnos_snapshot(comision: Comision, *, anio: int | None = None) -> None:
-    CursoAlumnoSnapshot.objects.filter(comision=comision).delete()
+def _sync_estudiantes_snapshot(comision: Comision, *, anio: int | None = None) -> None:
+    CursoEstudianteSnapshot.objects.filter(comision=comision).delete()
 
     inscripciones = comision.inscripciones.filter(
-        estado=InscripcionMateriaAlumno.Estado.CONFIRMADA,
+        estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA,
     )
     if anio is not None:
         inscripciones = inscripciones.filter(anio=anio)
@@ -451,7 +451,7 @@ def _sync_alumnos_snapshot(comision: Comision, *, anio: int | None = None) -> No
                 if not apellido and len(parts) > 1:
                     apellido = parts[1]
         bulk.append(
-            CursoAlumnoSnapshot(
+            CursoEstudianteSnapshot(
                 comision=comision,
                 estudiante=estudiante,
                 dni=estudiante.dni,
@@ -461,7 +461,7 @@ def _sync_alumnos_snapshot(comision: Comision, *, anio: int | None = None) -> No
             )
         )
     if bulk:
-        CursoAlumnoSnapshot.objects.bulk_create(bulk, ignore_conflicts=True)
+        CursoEstudianteSnapshot.objects.bulk_create(bulk, ignore_conflicts=True)
 
 
 @transaction.atomic
@@ -474,15 +474,15 @@ def apply_justification(justificacion: Justificacion) -> None:
     for detalle in detalles:
         clase = detalle.clase
         if justificacion.tipo == Justificacion.Tipo.ESTUDIANTE and detalle.estudiante:
-            asistencia, _ = AsistenciaAlumno.objects.get_or_create(
+            asistencia, _ = AsistenciaEstudiante.objects.get_or_create(
                 clase=clase,
                 estudiante=detalle.estudiante,
                 defaults={
-                    "estado": AsistenciaAlumno.Estado.AUSENTE,
-                    "registrado_via": AsistenciaAlumno.RegistradoVia.SISTEMA,
+                    "estado": AsistenciaEstudiante.Estado.AUSENTE,
+                    "registrado_via": AsistenciaEstudiante.RegistradoVia.SISTEMA,
                 },
             )
-            asistencia.estado = AsistenciaAlumno.Estado.AUSENTE_JUSTIFICADA
+            asistencia.estado = AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA
             asistencia.justificacion = justificacion
             asistencia.save(update_fields=["estado", "justificacion", "registrado_en"])
 

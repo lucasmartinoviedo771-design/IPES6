@@ -47,7 +47,7 @@ import {
   registrarEvaluacionEquivalencia,
   registrarTitulosEquivalencia,
   notificarPedidoEquivalencia,
-} from "@/api/alumnos";
+} from "@/api/estudiantes";
 import { getErrorMessage } from "@/utils/errors";
 import EquivalenciaDisposicionDialog from "@/components/equivalencias/EquivalenciaDisposicionDialog";
 

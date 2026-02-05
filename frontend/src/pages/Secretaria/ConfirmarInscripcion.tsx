@@ -62,7 +62,7 @@ export default function ConfirmarInscripcionSecretaria() {
                   >
                     {(data?.results || []).map((p: any) => (
                       <MenuItem key={p.codigo} value={p.codigo}>
-                        {[p.alumno.apellido, p.alumno.nombres ?? p.alumno.nombre ?? ""].filter(Boolean).join(", ")} — {p.codigo}
+                        {[p.estudiante.apellido, p.estudiante.nombres ?? p.estudiante.nombre ?? ""].filter(Boolean).join(", ")} — {p.codigo}
                       </MenuItem>
                     ))}
                   </Select>
@@ -72,7 +72,7 @@ export default function ConfirmarInscripcionSecretaria() {
             <List>
               {data?.results?.map((p: any) => (
                 <ListItem key={p.codigo} button onClick={() => setSp({ codigo: p.codigo })}>
-                  <ListItemText primary={[p.alumno.apellido, p.alumno.nombres ?? p.alumno.nombre ?? ""].filter(Boolean).join(", ")} secondary={`DNI ${p.alumno.dni} • ${p.codigo} • ${p.carrera?.nombre || ''}`} />
+                  <ListItemText primary={[p.estudiante.apellido, p.estudiante.nombres ?? p.estudiante.nombre ?? ""].filter(Boolean).join(", ")} secondary={`DNI ${p.estudiante.dni} • ${p.codigo} • ${p.carrera?.nombre || ''}`} />
                 </ListItem>
               ))}
               {!data?.results && <Typography variant="body2" color="text.secondary">Ingrese un criterio de búsqueda.</Typography>}

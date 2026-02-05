@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Typography, Stack, Grid, Paper, TextField, MenuItem, Button, Alert, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select } from '@mui/material';
 import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
-import { solicitarPedidoAnalitico, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/alumnos';
+import { solicitarPedidoAnalitico, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO } from '@/api/estudiantes';
 import { PageHero } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
 
@@ -116,7 +116,7 @@ export default function AnaliticosPage(){
 
   const loadPedidos = async(id:number)=>{
     try{
-      const { data } = await api.get<Pedido[]>(`/alumnos/analiticos_ext`, { params: { ventana_id: id, dni: dniFilter || undefined } });
+      const { data } = await api.get<Pedido[]>(`/estudiantes/analiticos_ext`, { params: { ventana_id: id, dni: dniFilter || undefined } });
       setPedidos(data||[]);
     }catch{ setPedidos([]); }
   };
@@ -131,7 +131,7 @@ export default function AnaliticosPage(){
       setError(null);
       const params: Record<string, string> = { ventana_id: ventanaId };
       if (dniFilter) params.dni = dniFilter;
-      const response = await api.get(`/alumnos/analiticos_ext/pdf`, { params, responseType: 'blob' });
+      const response = await api.get(`/estudiantes/analiticos_ext/pdf`, { params, responseType: 'blob' });
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

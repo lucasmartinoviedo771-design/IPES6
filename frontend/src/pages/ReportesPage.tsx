@@ -103,15 +103,15 @@ function ReporteCorrelativasCaidas() {
     if (isError) return <Typography color="error">Error: {error.message}</Typography>;
     if (!data || data.length === 0) return (
         <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Alumnos con Correlativas Caídas</Typography>
-            <Typography>No se encontraron alumnos con problemas de correlatividad.</Typography>
+            <Typography variant="h6" gutterBottom>Estudiantes con Correlativas Caídas</Typography>
+            <Typography>No se encontraron estudiantes con problemas de correlatividad.</Typography>
         </Paper>
     );
 
     return (
         <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h6" component="h2" gutterBottom color="error">
-                Alumnos con Correlativas Caídas ({data.length})
+                Estudiantes con Correlativas Caídas ({data.length})
             </Typography>
             <TableContainer sx={{ maxHeight: 400 }}>
                 <Table size="small" stickyHeader>

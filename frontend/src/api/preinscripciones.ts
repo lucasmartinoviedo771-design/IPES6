@@ -82,7 +82,7 @@ export interface PreinscripcionDTO {
   estado: PreEstado;
   fecha: string;
   activa?: boolean;
-  alumno: {
+  estudiante: {
     dni: string;
     nombres?: string;
     nombre?: string;
@@ -104,7 +104,7 @@ export async function apiGetPreinscripcionByCodigo(codigo: string) {
 
 export type PreinscripcionUpdatePayload = {
   carrera_id?: number;
-  alumno?: {
+  estudiante?: {
     dni: string;
     nombres: string;
     apellido: string;
@@ -127,8 +127,8 @@ export async function apiConfirmarPreinscripcion(codigo: string, payload?: any) 
   return data;
 }
 
-export async function listarPreinscripcionesAlumno(dni: string) {
-  const { data } = await client.get<PreinscripcionDTO[]>(`/preinscripciones/alumno/${encodeURIComponent(dni)}`);
+export async function listarPreinscripcionesEstudiante(dni: string) {
+  const { data } = await client.get<PreinscripcionDTO[]>(`/preinscripciones/estudiante/${encodeURIComponent(dni)}`);
   return data;
 }
 
@@ -170,7 +170,7 @@ export interface ChecklistDTO {
   titulo_secundario_legalizado: boolean;
   certificado_titulo_en_tramite: boolean;
   analitico_legalizado: boolean;
-  certificado_alumno_regular_sec: boolean;
+  certificado_estudiante_regular_sec: boolean;
 
   adeuda_materias: boolean;
   adeuda_materias_detalle?: string;

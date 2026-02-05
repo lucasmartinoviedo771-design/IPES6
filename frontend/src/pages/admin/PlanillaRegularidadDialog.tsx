@@ -579,7 +579,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       }
       // Validar que si no hay DNI, al menos el backend lo pueda manejar (ya cubierto por logica backend)
       if (!fila.apellido_nombre.trim()) {
-        enqueueSnackbar(`Ingrese el nombre del alumno en la fila ${rowNum}.`, { variant: 'warning' });
+        enqueueSnackbar(`Ingrese el nombre del estudiante en la fila ${rowNum}.`, { variant: 'warning' });
         return;
       }
       if (!fila.nota_final.trim()) {
@@ -1055,7 +1055,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                 />
                 {crossLoadEnabled && (
                   <Alert severity="warning" sx={{ mt: 1 }}>
-                    Esta opción mostrará todos los profesorados disponibles. Utilícela solo para cargar alumnos de comisiones o equivalencias.
+                    Esta opción mostrará todos los profesorados disponibles. Utilícela solo para cargar estudiantes de comisiones o equivalencias.
                   </Alert>
                 )}
               </Grid>
@@ -1512,7 +1512,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                       N°
                     </TableCell>
                     <TableCell sx={{ ...headerCellSx, minWidth: 240 }} rowSpan={2}>
-                      Alumnos
+                      Estudiantes
                     </TableCell>
                     <TableCell sx={{ ...headerCellSx, width: 140 }} rowSpan={2}>
                       DNI

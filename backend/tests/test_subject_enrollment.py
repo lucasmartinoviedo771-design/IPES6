@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
 from rest_framework_simplejwt.tokens import AccessToken
-from core.models import Profesorado, PlanDeEstudio, Materia, Estudiante, User, InscripcionMateriaAlumno, VentanaHabilitacion
+from core.models import Profesorado, PlanDeEstudio, Materia, Estudiante, User, InscripcionMateriaEstudiante, VentanaHabilitacion
 
 @pytest.fixture
 def setup_enrollment_data(db):
@@ -55,7 +55,7 @@ def test_enroll_subject_success(client, setup_enrollment_data):
     }
     
     response = client.post(
-        '/api/alumnos/inscripcion-materia',
+        '/api/estudiantes/inscripcion-materia',
         data=payload,
         content_type='application/json',
         **setup_enrollment_data['auth_headers']
@@ -64,21 +64,21 @@ def test_enroll_subject_success(client, setup_enrollment_data):
     assert response.status_code == 200
     assert response.json()['message'] == "Inscripción a materia registrada"
     
-    assert InscripcionMateriaAlumno.objects.filter(
+    assert InscripcionMateriaEstudiante.objects.filter(
         estudiante=setup_enrollment_data['estudiante'],
         materia=setup_enrollment_data['materia']
     ).exists()
 
 def test_list_enrolled_subjects(client, setup_enrollment_data):
     # First enroll
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_enrollment_data['estudiante'],
         materia=setup_enrollment_data['materia'],
         anio=datetime.now().year
     )
     
     response = client.get(
-        '/api/alumnos/materias-inscriptas',
+        '/api/estudiantes/materias-inscriptas',
         **setup_enrollment_data['auth_headers']
     )
     
@@ -91,7 +91,7 @@ def test_list_enrolled_subjects(client, setup_enrollment_data):
 
 def test_cancel_enrollment(client, setup_enrollment_data):
     # Create enrollment
-    inscripcion = InscripcionMateriaAlumno.objects.create(
+    inscripcion = InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_enrollment_data['estudiante'],
         materia=setup_enrollment_data['materia'],
         anio=datetime.now().year,
@@ -103,7 +103,7 @@ def test_cancel_enrollment(client, setup_enrollment_data):
     }
     
     response = client.post(
-        f'/api/alumnos/cancelar-inscripcion?inscripcion_id={inscripcion.id}',
+        f'/api/estudiantes/cancelar-inscripcion?inscripcion_id={inscripcion.id}',
         data=payload,
         content_type='application/json',
         **setup_enrollment_data['admin_auth_headers']

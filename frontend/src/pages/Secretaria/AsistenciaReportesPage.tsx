@@ -26,10 +26,10 @@ import { useSnackbar } from "notistack";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 import {
-  AlumnoClaseListado,
+  EstudianteClaseListado,
   DocenteClasesResponse,
   DocenteClase,
-  fetchAlumnoClases,
+  fetchEstudianteClases,
   fetchDocenteClases,
 } from "@/api/asistencia";
 import { listarComisiones, listarMaterias, ComisionDTO, MateriaDTO } from "@/api/comisiones";
@@ -67,14 +67,14 @@ const AsistenciaReportesPage = () => {
   const today = useMemo(() => dayjs().format("YYYY-MM-DD"), []);
 
   /* ---------------- Estudiantes ---------------- */
-  const [alumnoProfesorado, setAlumnoProfesorado] = useState<Option | null>(null);
-  const [alumnoPlan, setAlumnoPlan] = useState<Option | null>(null);
-  const [alumnoMateria, setAlumnoMateria] = useState<Option | null>(null);
-  const [alumnoComision, setAlumnoComision] = useState<Option | null>(null);
-  const [alumnoDesde, setAlumnoDesde] = useState(today);
-  const [alumnoHasta, setAlumnoHasta] = useState(today);
-  const [alumnoResultados, setAlumnoResultados] = useState<AlumnoClaseListado[]>([]);
-  const [cargandoAlumnos, setCargandoAlumnos] = useState(false);
+  const [estudianteProfesorado, setEstudianteProfesorado] = useState<Option | null>(null);
+  const [estudiantePlan, setEstudiantePlan] = useState<Option | null>(null);
+  const [estudianteMateria, setEstudianteMateria] = useState<Option | null>(null);
+  const [estudianteComision, setEstudianteComision] = useState<Option | null>(null);
+  const [estudianteDesde, setEstudianteDesde] = useState(today);
+  const [estudianteHasta, setEstudianteHasta] = useState(today);
+  const [estudianteResultados, setEstudianteResultados] = useState<EstudianteClaseListado[]>([]);
+  const [cargandoEstudiantes, setCargandoEstudiantes] = useState(false);
 
   const { data: profesoradosData, isLoading: profesoradosLoading } = useQuery<Carrera[]>({
     queryKey: ["asistencia", "profesorados"],
@@ -90,104 +90,104 @@ const AsistenciaReportesPage = () => {
       .sort(ordenarPorLabel);
   }, [profesoradosData]);
 
-  const { data: alumnoPlanesData, isLoading: alumnoPlanesLoading } = useQuery<PlanDetalle[]>({
-    queryKey: ["asistencia", "planes", alumnoProfesorado?.id ?? 0],
-    queryFn: () => listarPlanes(alumnoProfesorado!.id),
-    enabled: puedeVerEstudiantes && !!alumnoProfesorado,
+  const { data: estudiantePlanesData, isLoading: estudiantePlanesLoading } = useQuery<PlanDetalle[]>({
+    queryKey: ["asistencia", "planes", estudianteProfesorado?.id ?? 0],
+    queryFn: () => listarPlanes(estudianteProfesorado!.id),
+    enabled: puedeVerEstudiantes && !!estudianteProfesorado,
     staleTime: 5 * 60 * 1000,
   });
 
-  const alumnoPlanOptions = useMemo<Option[]>(() => {
-    if (!alumnoPlanesData) return [];
-    return alumnoPlanesData
+  const estudiantePlanOptions = useMemo<Option[]>(() => {
+    if (!estudiantePlanesData) return [];
+    return estudiantePlanesData
       .map((plan) => ({ id: plan.id, label: plan.resolucion }))
       .sort(ordenarPorLabel);
-  }, [alumnoPlanesData]);
+  }, [estudiantePlanesData]);
 
-  const { data: alumnoMateriasData, isLoading: alumnoMateriasLoading } = useQuery<MateriaDTO[]>({
-    queryKey: ["asistencia", "materias", alumnoPlan?.id ?? 0],
-    queryFn: () => listarMaterias(alumnoPlan!.id),
-    enabled: puedeVerEstudiantes && !!alumnoPlan,
+  const { data: estudianteMateriasData, isLoading: estudianteMateriasLoading } = useQuery<MateriaDTO[]>({
+    queryKey: ["asistencia", "materias", estudiantePlan?.id ?? 0],
+    queryFn: () => listarMaterias(estudiantePlan!.id),
+    enabled: puedeVerEstudiantes && !!estudiantePlan,
     staleTime: 5 * 60 * 1000,
   });
 
   const {
-    data: alumnoComisionesData,
-    isLoading: alumnoComisionesLoading,
+    data: estudianteComisionesData,
+    isLoading: estudianteComisionesLoading,
   } = useQuery<ComisionDTO[]>({
-    queryKey: ["asistencia", "comisiones", alumnoProfesorado?.id ?? 0, alumnoPlan?.id ?? 0, alumnoMateria?.id ?? 0],
+    queryKey: ["asistencia", "comisiones", estudianteProfesorado?.id ?? 0, estudiantePlan?.id ?? 0, estudianteMateria?.id ?? 0],
     queryFn: () =>
       listarComisiones({
-        profesorado_id: alumnoProfesorado?.id ?? undefined,
-        plan_id: alumnoPlan?.id ?? undefined,
-        materia_id: alumnoMateria?.id ?? undefined,
+        profesorado_id: estudianteProfesorado?.id ?? undefined,
+        plan_id: estudiantePlan?.id ?? undefined,
+        materia_id: estudianteMateria?.id ?? undefined,
       }),
-    enabled: puedeVerEstudiantes && !!alumnoProfesorado && !!alumnoPlan,
+    enabled: puedeVerEstudiantes && !!estudianteProfesorado && !!estudiantePlan,
     staleTime: 2 * 60 * 1000,
   });
 
-  const alumnoMateriaOptions = useMemo<Option[]>(() => {
-    if (!alumnoMateriasData) return [];
-    return alumnoMateriasData
+  const estudianteMateriaOptions = useMemo<Option[]>(() => {
+    if (!estudianteMateriasData) return [];
+    return estudianteMateriasData
       .map((materia) => ({ id: materia.id, label: materia.nombre }))
       .sort(ordenarPorLabel);
-  }, [alumnoMateriasData]);
+  }, [estudianteMateriasData]);
 
-  const alumnoComisionOptions = useMemo<Option[]>(() => {
-    if (!alumnoComisionesData) return [];
-    let filtered = alumnoComisionesData;
-    if (alumnoPlan) filtered = filtered.filter((c) => c.plan_id === alumnoPlan.id);
-    if (alumnoMateria) filtered = filtered.filter((c) => c.materia_id === alumnoMateria.id);
+  const estudianteComisionOptions = useMemo<Option[]>(() => {
+    if (!estudianteComisionesData) return [];
+    let filtered = estudianteComisionesData;
+    if (estudiantePlan) filtered = filtered.filter((c) => c.plan_id === estudiantePlan.id);
+    if (estudianteMateria) filtered = filtered.filter((c) => c.materia_id === estudianteMateria.id);
     return filtered
       .map((c) => ({ id: c.id, label: `${c.materia_nombre} - ${c.codigo}` }))
       .sort(ordenarPorLabel);
-  }, [alumnoComisionesData, alumnoPlan, alumnoMateria]);
+  }, [estudianteComisionesData, estudiantePlan, estudianteMateria]);
 
   useEffect(() => {
-    setAlumnoPlan(null);
-    setAlumnoMateria(null);
-    setAlumnoComision(null);
-  }, [alumnoProfesorado]);
+    setEstudiantePlan(null);
+    setEstudianteMateria(null);
+    setEstudianteComision(null);
+  }, [estudianteProfesorado]);
 
   useEffect(() => {
-    setAlumnoMateria(null);
-    setAlumnoComision(null);
-  }, [alumnoPlan]);
+    setEstudianteMateria(null);
+    setEstudianteComision(null);
+  }, [estudiantePlan]);
 
   useEffect(() => {
-    setAlumnoComision(null);
-  }, [alumnoMateria]);
+    setEstudianteComision(null);
+  }, [estudianteMateria]);
 
-  const handleBuscarAlumnos = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleBuscarEstudiantes = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!puedeVerEstudiantes) {
       enqueueSnackbar("No tenes permisos para consultar asistencia de estudiantes.", { variant: "warning" });
       return;
     }
-    if (!alumnoMateria && !alumnoComision) {
+    if (!estudianteMateria && !estudianteComision) {
       enqueueSnackbar("Selecciona al menos una materia o comision.", { variant: "info" });
       return;
     }
-    setCargandoAlumnos(true);
+    setCargandoEstudiantes(true);
     try {
       const params: { comision_id?: number; materia_id?: number; desde: string; hasta: string } = {
-        desde: alumnoDesde,
-        hasta: alumnoHasta,
+        desde: estudianteDesde,
+        hasta: estudianteHasta,
       };
-      if (alumnoComision) {
-        params.comision_id = alumnoComision.id;
-      } else if (alumnoMateria) {
-        params.materia_id = alumnoMateria.id;
+      if (estudianteComision) {
+        params.comision_id = estudianteComision.id;
+      } else if (estudianteMateria) {
+        params.materia_id = estudianteMateria.id;
       }
-      const data = await fetchAlumnoClases(params);
-      setAlumnoResultados(data.clases);
+      const data = await fetchEstudianteClases(params);
+      setEstudianteResultados(data.clases);
       if (data.clases.length === 0) {
         enqueueSnackbar("No encontramos clases para ese rango.", { variant: "info" });
       }
     } catch (error) {
       enqueueSnackbar("No se pudo obtener la asistencia de estudiantes.", { variant: "error" });
     } finally {
-      setCargandoAlumnos(false);
+      setCargandoEstudiantes(false);
     }
   };
 
@@ -452,7 +452,7 @@ const AsistenciaReportesPage = () => {
                   />
                 </Stack>
 
-                <Box component="form" onSubmit={handleBuscarAlumnos}>
+                <Box component="form" onSubmit={handleBuscarEstudiantes}>
                   <Stack spacing={1.5}>
                     <Typography variant="subtitle1" fontWeight={600}>
                       Filtrar asistencia de estudiantes
@@ -461,10 +461,10 @@ const AsistenciaReportesPage = () => {
                       <Grid item xs={12} md={6}>
                         <Autocomplete
                           options={profesoradoOptions}
-                          value={alumnoProfesorado}
-                          onChange={(_, value) => setAlumnoProfesorado(value)}
+                          value={estudianteProfesorado}
+                          onChange={(_, value) => setEstudianteProfesorado(value)}
                           loading={profesoradosLoading}
-                          disabled={cargandoAlumnos || !puedeVerEstudiantes}
+                          disabled={cargandoEstudiantes || !puedeVerEstudiantes}
                           fullWidth
                           renderInput={(params) => (
                             <TextField
@@ -486,11 +486,11 @@ const AsistenciaReportesPage = () => {
                       </Grid>
                       <Grid item xs={12} md={6}>
                         <Autocomplete
-                          options={alumnoPlanOptions}
-                          value={alumnoPlan}
-                          onChange={(_, value) => setAlumnoPlan(value)}
-                          loading={alumnoPlanesLoading}
-                          disabled={cargandoAlumnos || !puedeVerEstudiantes || alumnoPlanOptions.length === 0}
+                          options={estudiantePlanOptions}
+                          value={estudiantePlan}
+                          onChange={(_, value) => setEstudiantePlan(value)}
+                          loading={estudiantePlanesLoading}
+                          disabled={cargandoEstudiantes || !puedeVerEstudiantes || estudiantePlanOptions.length === 0}
                           fullWidth
                           renderInput={(params) => (
                             <TextField
@@ -501,7 +501,7 @@ const AsistenciaReportesPage = () => {
                                 ...params.InputProps,
                                 endAdornment: (
                                   <>
-                                    {alumnoPlanesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {estudiantePlanesLoading ? <CircularProgress color="inherit" size={16} /> : null}
                                     {params.InputProps.endAdornment}
                                   </>
                                 ),
@@ -514,15 +514,15 @@ const AsistenciaReportesPage = () => {
                     <Grid container spacing={1.5}>
                       <Grid item xs={12} md={6}>
                         <Autocomplete
-                          options={alumnoMateriaOptions}
-                          value={alumnoMateria}
-                          onChange={(_, value) => setAlumnoMateria(value)}
-                          loading={alumnoMateriasLoading}
+                          options={estudianteMateriaOptions}
+                          value={estudianteMateria}
+                          onChange={(_, value) => setEstudianteMateria(value)}
+                          loading={estudianteMateriasLoading}
                           disabled={
-                            cargandoAlumnos ||
+                            cargandoEstudiantes ||
                             !puedeVerEstudiantes ||
-                            alumnoMateriaOptions.length === 0 ||
-                            alumnoMateriasLoading
+                            estudianteMateriaOptions.length === 0 ||
+                            estudianteMateriasLoading
                           }
                           fullWidth
                           renderInput={(params) => (
@@ -534,7 +534,7 @@ const AsistenciaReportesPage = () => {
                                 ...params.InputProps,
                                 endAdornment: (
                                   <>
-                                    {alumnoMateriasLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {estudianteMateriasLoading ? <CircularProgress color="inherit" size={16} /> : null}
                                     {params.InputProps.endAdornment}
                                   </>
                                 ),
@@ -545,15 +545,15 @@ const AsistenciaReportesPage = () => {
                       </Grid>
                       <Grid item xs={12} md={6}>
                         <Autocomplete
-                          options={alumnoComisionOptions}
-                          value={alumnoComision}
-                          onChange={(_, value) => setAlumnoComision(value)}
-                          loading={alumnoComisionesLoading}
+                          options={estudianteComisionOptions}
+                          value={estudianteComision}
+                          onChange={(_, value) => setEstudianteComision(value)}
+                          loading={estudianteComisionesLoading}
                           disabled={
-                            cargandoAlumnos ||
+                            cargandoEstudiantes ||
                             !puedeVerEstudiantes ||
-                            alumnoComisionOptions.length === 0 ||
-                            alumnoComisionesLoading
+                            estudianteComisionOptions.length === 0 ||
+                            estudianteComisionesLoading
                           }
                           fullWidth
                           renderInput={(params) => (
@@ -565,7 +565,7 @@ const AsistenciaReportesPage = () => {
                                 ...params.InputProps,
                                 endAdornment: (
                                   <>
-                                    {alumnoComisionesLoading ? <CircularProgress color="inherit" size={16} /> : null}
+                                    {estudianteComisionesLoading ? <CircularProgress color="inherit" size={16} /> : null}
                                     {params.InputProps.endAdornment}
                                   </>
                                 ),
@@ -579,35 +579,35 @@ const AsistenciaReportesPage = () => {
                       <TextField
                         label="Desde"
                         type="date"
-                        value={alumnoDesde}
-                        onChange={(event) => setAlumnoDesde(event.target.value)}
-                        disabled={cargandoAlumnos || !puedeVerEstudiantes}
+                        value={estudianteDesde}
+                        onChange={(event) => setEstudianteDesde(event.target.value)}
+                        disabled={cargandoEstudiantes || !puedeVerEstudiantes}
                         fullWidth
                         InputLabelProps={{ shrink: true }}
                       />
                       <TextField
                         label="Hasta"
                         type="date"
-                        value={alumnoHasta}
-                        onChange={(event) => setAlumnoHasta(event.target.value)}
-                        disabled={cargandoAlumnos || !puedeVerEstudiantes}
+                        value={estudianteHasta}
+                        onChange={(event) => setEstudianteHasta(event.target.value)}
+                        disabled={cargandoEstudiantes || !puedeVerEstudiantes}
                         fullWidth
                         InputLabelProps={{ shrink: true }}
                       />
                     </Stack>
-                    <Button type="submit" variant="contained" disabled={cargandoAlumnos || !puedeVerEstudiantes}>
-                      {cargandoAlumnos ? <CircularProgress size={20} /> : "Consultar"}
+                    <Button type="submit" variant="contained" disabled={cargandoEstudiantes || !puedeVerEstudiantes}>
+                      {cargandoEstudiantes ? <CircularProgress size={20} /> : "Consultar"}
                     </Button>
                   </Stack>
                 </Box>
 
                 <Divider />
 
-                {alumnoResultados.length === 0 ? (
+                {estudianteResultados.length === 0 ? (
                   <Alert severity="info">Configura los filtros y presiona "Consultar" para ver clases.</Alert>
                 ) : (
                   <Stack spacing={1.5} sx={{ maxHeight: 260, overflowY: "auto" }}>
-                    {alumnoResultados.map((item) => (
+                    {estudianteResultados.map((item) => (
                       <Paper key={item.clase_id} variant="outlined" sx={{ p: 1.5 }}>
                         <Typography variant="subtitle2" fontWeight={600}>
                           {item.materia} - {item.comision}
@@ -619,7 +619,7 @@ const AsistenciaReportesPage = () => {
                           Estado de la clase: {item.estado_clase}
                         </Typography>
                         <Typography variant="body2" sx={{ mt: 0.5 }}>
-                          Presentes: {item.presentes} - Ausentes: {item.ausentes} - Justificados: {item.ausentes_justificados} - Total: {item.total_alumnos}
+                          Presentes: {item.presentes} - Ausentes: {item.ausentes} - Justificados: {item.ausentes_justificados} - Total: {item.total_estudiantes}
                         </Typography>
                       </Paper>
                     ))}

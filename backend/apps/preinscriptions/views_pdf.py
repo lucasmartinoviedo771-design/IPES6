@@ -62,7 +62,7 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
     pid = preinscripcion_id or pk
 
     pre = get_object_or_404(Preinscripcion, pk=pid)
-    estudiante = getattr(pre, "alumno", None)
+    estudiante = getattr(pre, "estudiante", None)
     user = getattr(estudiante, "user", None) if estudiante else None
     carrera = getattr(pre, "carrera", None)
 
@@ -70,7 +70,7 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
         "codigo": getattr(pre, "codigo", pre.pk),
         "fecha": getattr(pre, "created_at", datetime.now()),
         "foto_dataUrl": _build_foto_dataurl(pre),
-        "alumno": {
+        "estudiante": {
             "apellidos": getattr(user, "last_name", "") if user else "",
             "nombres": getattr(user, "first_name", "") if user else "",
             "dni": getattr(estudiante, "dni", "") if estudiante else "",

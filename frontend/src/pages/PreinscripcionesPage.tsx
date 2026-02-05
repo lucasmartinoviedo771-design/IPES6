@@ -159,8 +159,8 @@ export default function PreinscripcionesPage() {
                   <TableCell>{p.codigo}</TableCell>
                   <TableCell>
                     {[
-                      p.alumno.apellido,
-                      p.alumno.nombres ?? p.alumno.nombre ?? ""
+                      p.estudiante.apellido,
+                      p.estudiante.nombres ?? p.estudiante.nombre ?? ""
                     ].filter(Boolean).join(", ")}
                   </TableCell>
                   <TableCell>{p.carrera.nombre}</TableCell>

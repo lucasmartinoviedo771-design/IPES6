@@ -27,7 +27,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { enqueueSnackbar } from "notistack";
 
 import {
-  ActaAlumnoPayload,
+  ActaEstudiantePayload,
   ActaCreatePayload,
   ActaMetadataDTO,
   ActaMetadataDocente,
@@ -37,7 +37,7 @@ import {
   fetchActaMetadata,
 } from "@/api/cargaNotas";
 import OralExamActaDialog, { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
-import { fetchEstudianteAdminDetail } from "@/api/alumnos";
+import { fetchEstudianteAdminDetail } from "@/api/estudiantes";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 
 const DOCENTE_ROLES = [
@@ -61,8 +61,8 @@ const MESA_EXAMEN_TIPO_LABEL: Record<string, string> = {
 const getMesaTipoNombre = (tipo: string) => MESA_EXAMEN_TIPO_LABEL[tipo] ?? tipo;
 
 const ACTA_TIPOS = [
-  { value: "REG", label: "Acta de alumnos regulares" },
-  { value: "LIB", label: "Acta de alumnos libres" },
+  { value: "REG", label: "Acta de estudiantes regulares" },
+  { value: "LIB", label: "Acta de estudiantes libres" },
 ];
 
 type DocenteState = {
@@ -73,14 +73,14 @@ type DocenteState = {
   inputValue: string;
 };
 
-type AlumnoState = ActaAlumnoPayload & { internoId: string };
+type EstudianteState = ActaEstudiantePayload & { internoId: string };
 
 type ActaExamenFormProps = {
   strict?: boolean;
   title?: string;
   subtitle?: string;
   successMessage?: string;
-  estudiantes?: Array<{ dni: string; apellido_nombre: string }>;
+  initialEstudiantes?: Array<{ dni: string; apellido_nombre: string }>;
   headerAction?: React.ReactNode;
 };
 
@@ -93,7 +93,7 @@ const createEmptyDocentes = (): DocenteState[] =>
     inputValue: "",
   }));
 
-const createEmptyAlumno = (orden: number): AlumnoState => ({
+const createEmptyEstudiante = (orden: number): EstudianteState => ({
   internoId: `${orden}-${Date.now()}-${Math.random()}`,
   numero_orden: orden,
   permiso_examen: "",
@@ -119,7 +119,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   title = "Generar acta de examen",
   subtitle = "Complete los datos del acta y registre los resultados obtenidos por cada estudiante.",
   successMessage = "Acta generada correctamente.",
-  estudiantes = [],
+  initialEstudiantes = [],
   headerAction,
 }) => {
   const queryClient = useQueryClient();
@@ -137,10 +137,10 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const [libro, setLibro] = useState<string>("");
   const [observaciones, setObservaciones] = useState<string>("");
   const [docentes, setDocentes] = useState<DocenteState[]>(createEmptyDocentes);
-  const [alumnos, setAlumnos] = useState<AlumnoState[]>([createEmptyAlumno(1)]);
+  const [estudiantes, setEstudiantes] = useState<EstudianteState[]>([createEmptyEstudiante(1)]);
   const [oralActDrafts, setOralActDrafts] = useState<Record<string, OralActFormValues>>({});
-  const [oralDialogAlumno, setOralDialogAlumno] = useState<AlumnoState | null>(null);
-  const [loadingAlumnoDni, setLoadingAlumnoDni] = useState<string | null>(null);
+  const [oralDialogEstudiante, setOralDialogEstudiante] = useState<EstudianteState | null>(null);
+  const [loadingEstudianteDni, setLoadingEstudianteDni] = useState<string | null>(null);
   const [mesaCodigo, setMesaCodigo] = useState<string>("");
   const [mesaBuscando, setMesaBuscando] = useState(false);
   const [mesaBusquedaError, setMesaBusquedaError] = useState<string | null>(null);
@@ -262,18 +262,18 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   }, [selectedProfesorado, planId]);
 
   const summary = useMemo(() => {
-    const total = alumnos.length;
+    const total = estudiantes.length;
     let aprobados = 0;
     let desaprobados = 0;
     let ausentes = 0;
-    alumnos.forEach((alumno) => {
-      const categoria = clasificarNota(alumno.calificacion_definitiva);
+    estudiantes.forEach((estudiante) => {
+      const categoria = clasificarNota(estudiante.calificacion_definitiva);
       if (categoria === "aprobado") aprobados += 1;
       if (categoria === "desaprobado") desaprobados += 1;
       if (categoria === "ausente") ausentes += 1;
     });
     return { total, aprobados, desaprobados, ausentes };
-  }, [alumnos]);
+  }, [estudiantes]);
 
   const mutation = useMutation({
     mutationFn: (payload: ActaCreatePayload) => crearActaExamen(payload),
@@ -281,7 +281,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       queryClient.invalidateQueries({ queryKey: ["acta-examen-metadata"] });
       enqueueSnackbar(response.message || successMessage, { variant: "success" });
       setDocentes(createEmptyDocentes());
-      setAlumnos([createEmptyAlumno(1)]);
+      setEstudiantes([createEmptyEstudiante(1)]);
       setFolio("");
       setLibro("");
       setObservaciones("");
@@ -293,19 +293,19 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     },
   });
 
-  const handleAgregarAlumno = () => {
-    setAlumnos((prev) => [...prev, createEmptyAlumno(prev.length + 1)]);
+  const handleAgregarEstudiante = () => {
+    setEstudiantes((prev) => [...prev, createEmptyEstudiante(prev.length + 1)]);
   };
 
-  const handleEliminarAlumno = (internoId: string) => {
-    setAlumnos((prev) => {
+  const handleEliminarEstudiante = (internoId: string) => {
+    setEstudiantes((prev) => {
       const filtered = prev.filter((item) => item.internoId !== internoId);
       return filtered.map((item, index) => ({ ...item, numero_orden: index + 1 }));
     });
   };
 
-  const updateAlumno = (internoId: string, patch: Partial<AlumnoState>) => {
-    setAlumnos((prev) => prev.map((item) => (item.internoId === internoId ? { ...item, ...patch } : item)));
+  const updateEstudiante = (internoId: string, patch: Partial<EstudianteState>) => {
+    setEstudiantes((prev) => prev.map((item) => (item.internoId === internoId ? { ...item, ...patch } : item)));
   };
 
   const tribunalInfo = useMemo(
@@ -317,10 +317,10 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     [docentes],
   );
 
-  const handleAlumnoDniChange = async (internoId: string, dni: string) => {
+  const handleEstudianteDniChange = async (internoId: string, dni: string) => {
     const numeric = dni.replace(/\D/g, "").slice(0, 10);
 
-    updateAlumno(internoId, {
+    updateEstudiante(internoId, {
       dni: numeric,
       apellido_nombre: "",
     });
@@ -330,9 +330,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     }
 
     try {
-      setLoadingAlumnoDni(internoId);
+      setLoadingEstudianteDni(internoId);
       const data = await fetchEstudianteAdminDetail(numeric);
-      setAlumnos((prev) =>
+      setEstudiantes((prev) =>
         prev.map((item) =>
           item.internoId === internoId && item.dni === numeric
             ? { ...item, apellido_nombre: `${data.apellido}, ${data.nombre}` }
@@ -349,7 +349,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
         console.warn("Estudiante no encontrado en el sistema (modo no estricto).");
       }
     } finally {
-      setLoadingAlumnoDni((current) => (current === internoId ? null : current));
+      setLoadingEstudianteDni((current) => (current === internoId ? null : current));
     }
   };
 
@@ -359,15 +359,15 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     );
   };
 
-  const handleOpenOralActa = (alumno: AlumnoState) => {
-    setOralDialogAlumno(alumno);
+  const handleOpenOralActa = (estudiante: EstudianteState) => {
+    setOralDialogEstudiante(estudiante);
   };
 
   const handleSaveOralActa = async (values: OralActFormValues) => {
-    if (!oralDialogAlumno) return;
+    if (!oralDialogEstudiante) return;
     setOralActDrafts((prev) => ({
       ...prev,
-      [oralDialogAlumno.internoId]: values,
+      [oralDialogEstudiante.internoId]: values,
     }));
   };
 
@@ -487,7 +487,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       enqueueSnackbar("Ingrese el número de folio del acta.", { variant: "warning" });
       return;
     }
-    if (alumnos.some((alumno) => !alumno.calificacion_definitiva)) {
+    if (estudiantes.some((estudiante) => !estudiante.calificacion_definitiva)) {
       enqueueSnackbar("Complete la calificación definitiva en todas las filas.", { variant: "warning" });
       return;
     }
@@ -499,15 +499,15 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       dni: doc.dni?.trim() || null,
     }));
 
-    const alumnosPayload: ActaAlumnoPayload[] = alumnos.map((alumno, index) => ({
+    const estudiantesPayload: ActaEstudiantePayload[] = estudiantes.map((estudiante, index) => ({
       numero_orden: index + 1,
-      permiso_examen: alumno.permiso_examen?.trim() || undefined,
-      dni: alumno.dni.trim(),
-      apellido_nombre: alumno.apellido_nombre.trim(),
-      examen_escrito: alumno.examen_escrito || undefined,
-      examen_oral: alumno.examen_oral || undefined,
-      calificacion_definitiva: alumno.calificacion_definitiva,
-      observaciones: alumno.observaciones?.trim() || undefined,
+      permiso_examen: estudiante.permiso_examen?.trim() || undefined,
+      dni: estudiante.dni.trim(),
+      apellido_nombre: estudiante.apellido_nombre.trim(),
+      examen_escrito: estudiante.examen_escrito || undefined,
+      examen_oral: estudiante.examen_oral || undefined,
+      calificacion_definitiva: estudiante.calificacion_definitiva,
+      observaciones: estudiante.observaciones?.trim() || undefined,
     }));
 
     const payload: ActaCreatePayload = {
@@ -519,7 +519,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       libro: libro.trim() || undefined,
       observaciones: observaciones.trim() || undefined,
       docentes: docentesPayload,
-      alumnos: alumnosPayload,
+      estudiantes: estudiantesPayload,
       total_aprobados: summary.aprobados,
       total_desaprobados: summary.desaprobados,
       total_ausentes: summary.ausentes,
@@ -797,7 +797,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
             <Typography variant="h6" fontWeight={600}>
               Resultados del examen
             </Typography>
-            <Button startIcon={<AddIcon />} variant="outlined" onClick={handleAgregarAlumno}>
+            <Button startIcon={<AddIcon />} variant="outlined" onClick={handleAgregarEstudiante}>
               Agregar fila
             </Button>
           </Stack>
@@ -829,17 +829,17 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {alumnos.map((alumno) => (
-                  <TableRow key={alumno.internoId}>
-                    <TableCell align="center">{alumno.numero_orden}</TableCell>
+                {estudiantes.map((estudiante) => (
+                  <TableRow key={estudiante.internoId}>
+                    <TableCell align="center">{estudiante.numero_orden}</TableCell>
                     <TableCell align="center" sx={{ p: 1 }}>
                       <TextField
                         size="small"
                         fullWidth
                         inputProps={{ maxLength: 10 }}
-                        value={alumno.permiso_examen ?? ""}
+                        value={estudiante.permiso_examen ?? ""}
                         onChange={(event) =>
-                          updateAlumno(alumno.internoId, { permiso_examen: event.target.value })
+                          updateEstudiante(estudiante.internoId, { permiso_examen: event.target.value })
                         }
                         sx={{
                           "& .MuiInputBase-input": {
@@ -855,12 +855,12 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                         size="small"
                         fullWidth
                         inputProps={{ maxLength: 8 }}
-                        value={alumno.dni}
-                        onChange={(event) => handleAlumnoDniChange(alumno.internoId, event.target.value)}
+                        value={estudiante.dni}
+                        onChange={(event) => handleEstudianteDniChange(estudiante.internoId, event.target.value)}
                       />
                     </TableCell>
                     <TableCell>
-                      {loadingAlumnoDni === alumno.internoId ? (
+                      {loadingEstudianteDni === estudiante.internoId ? (
                         <CircularProgress size={20} />
                       ) : estudiantes && estudiantes.length > 0 ? (
                         <Autocomplete
@@ -872,32 +872,32 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                           }}
                           value={
                             estudiantes.find(
-                              (e) => e.apellido_nombre === alumno.apellido_nombre && e.dni === alumno.dni
-                            ) || alumno.apellido_nombre
+                              (e) => e.apellido_nombre === estudiante.apellido_nombre && e.dni === estudiante.dni
+                            ) || estudiante.apellido_nombre
                           }
                           onChange={(_, value) => {
                             if (typeof value === "string") {
                               const match = value.match(/(.*) \((\d+)\)$/);
                               if (match) {
-                                updateAlumno(alumno.internoId, {
+                                updateEstudiante(estudiante.internoId, {
                                   apellido_nombre: match[1].trim(),
                                   dni: match[2],
                                 });
                               } else {
-                                updateAlumno(alumno.internoId, { apellido_nombre: value });
+                                updateEstudiante(estudiante.internoId, { apellido_nombre: value });
                               }
                             } else if (value) {
-                              updateAlumno(alumno.internoId, {
+                              updateEstudiante(estudiante.internoId, {
                                 apellido_nombre: value.apellido_nombre,
                                 dni: value.dni,
                               });
                             } else {
-                              updateAlumno(alumno.internoId, { apellido_nombre: "" });
+                              updateEstudiante(estudiante.internoId, { apellido_nombre: "" });
                             }
                           }}
                           onInputChange={(_, value) => {
                             const match = value.match(/(.*) \((\d+)\)$/);
-                            updateAlumno(alumno.internoId, {
+                            updateEstudiante(estudiante.internoId, {
                               apellido_nombre: match ? match[1].trim() : value,
                             });
                           }}
@@ -928,9 +928,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                         <TextField
                           size="small"
                           fullWidth
-                          value={alumno.apellido_nombre}
+                          value={estudiante.apellido_nombre}
                           onChange={(event) =>
-                            updateAlumno(alumno.internoId, { apellido_nombre: event.target.value })
+                            updateEstudiante(estudiante.internoId, { apellido_nombre: event.target.value })
                           }
                           disabled={strict}
                           placeholder={!strict ? "Apellido, Nombre" : ""}
@@ -941,9 +941,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       <Autocomplete
                         options={notaOptions}
                         getOptionLabel={(option) => option.label}
-                        value={notaOptions.find((opt) => opt.value === alumno.examen_escrito) || null}
+                        value={notaOptions.find((opt) => opt.value === estudiante.examen_escrito) || null}
                         onChange={(_, newValue) =>
-                          updateAlumno(alumno.internoId, { examen_escrito: newValue?.value || "" })
+                          updateEstudiante(estudiante.internoId, { examen_escrito: newValue?.value || "" })
                         }
                         autoHighlight
                         autoSelect
@@ -956,9 +956,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       <Autocomplete
                         options={notaOptions}
                         getOptionLabel={(option) => option.label}
-                        value={notaOptions.find((opt) => opt.value === alumno.examen_oral) || null}
+                        value={notaOptions.find((opt) => opt.value === estudiante.examen_oral) || null}
                         onChange={(_, newValue) =>
-                          updateAlumno(alumno.internoId, { examen_oral: newValue?.value || "" })
+                          updateEstudiante(estudiante.internoId, { examen_oral: newValue?.value || "" })
                         }
                         autoHighlight
                         autoSelect
@@ -971,9 +971,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       <Autocomplete
                         options={notaOptions}
                         getOptionLabel={(option) => option.label}
-                        value={notaOptions.find((opt) => opt.value === alumno.calificacion_definitiva) || null}
+                        value={notaOptions.find((opt) => opt.value === estudiante.calificacion_definitiva) || null}
                         onChange={(_, newValue) =>
-                          updateAlumno(alumno.internoId, { calificacion_definitiva: newValue?.value || "" })
+                          updateEstudiante(estudiante.internoId, { calificacion_definitiva: newValue?.value || "" })
                         }
                         autoHighlight
                         autoSelect
@@ -988,14 +988,14 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                     <TableCell>
                       <TextField
                         size="small"
-                        value={alumno.observaciones ?? ""}
+                        value={estudiante.observaciones ?? ""}
                         onChange={(event) =>
-                          updateAlumno(alumno.internoId, { observaciones: event.target.value })
+                          updateEstudiante(estudiante.internoId, { observaciones: event.target.value })
                         }
                       />
                     </TableCell>
                     <TableCell align="center">
-                      <Button variant="outlined" size="small" onClick={() => handleOpenOralActa(alumno)}>
+                      <Button variant="outlined" size="small" onClick={() => handleOpenOralActa(estudiante)}>
                         Abrir
                       </Button>
                     </TableCell>
@@ -1003,8 +1003,8 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       <IconButton
                         color="error"
                         size="small"
-                        onClick={() => handleEliminarAlumno(alumno.internoId)}
-                        disabled={alumnos.length === 1}
+                        onClick={() => handleEliminarEstudiante(estudiante.internoId)}
+                        disabled={estudiantes.length === 1}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -1020,7 +1020,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
             <Alert severity="info" sx={{ flex: 1 }}>
               <Typography variant="subtitle2">Resumen automático</Typography>
               <Typography variant="body2">
-                Total de alumnos: <strong>{summary.total}</strong> — Aprobados: <strong>{summary.aprobados}</strong> — Desaprobados: <strong>{summary.desaprobados}</strong> — Ausentes: <strong>{summary.ausentes}</strong>
+                Total de estudiantes: <strong>{summary.total}</strong> — Aprobados: <strong>{summary.aprobados}</strong> — Desaprobados: <strong>{summary.desaprobados}</strong> — Ausentes: <strong>{summary.ausentes}</strong>
               </Typography>
             </Alert>
           </Stack>
@@ -1038,19 +1038,19 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
           </Button>
         </Stack>
       </Stack>
-      {oralDialogAlumno && (
+      {oralDialogEstudiante && (
         <OralExamActaDialog
           open
-          onClose={() => setOralDialogAlumno(null)}
-          alumnoNombre={oralDialogAlumno.apellido_nombre || "Alumno/a"}
-          alumnoDni={oralDialogAlumno.dni || "-"}
+          onClose={() => setOralDialogEstudiante(null)}
+          estudianteNombre={oralDialogEstudiante.apellido_nombre || "Estudiante/a"}
+          estudianteDni={oralDialogEstudiante.dni || "-"}
           carrera={selectedProfesorado?.nombre ?? ""}
           unidadCurricular={selectedMateria?.nombre ?? ""}
           curso={mesaSeleccionada?.codigo ?? ""}
           fechaMesa={fecha}
           tribunal={tribunalInfo}
-          existingValues={oralActDrafts[oralDialogAlumno.internoId]}
-          defaultNota={oralDialogAlumno.calificacion_definitiva}
+          existingValues={oralActDrafts[oralDialogEstudiante.internoId]}
+          defaultNota={oralDialogEstudiante.calificacion_definitiva}
           loading={false}
           saving={false}
           onSave={handleSaveOralActa}

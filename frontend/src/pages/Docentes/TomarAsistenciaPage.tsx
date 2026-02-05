@@ -36,8 +36,8 @@ import dayjs from "dayjs";
 import "dayjs/locale/es";
 
 import {
-  fetchClaseAlumnos,
-  registrarAsistenciaAlumnos,
+  fetchClaseEstudiantes,
+  registrarAsistenciaEstudiantes,
   marcarDocentePresente,
 } from "@/api/asistencia";
 import { useAuth } from "@/context/AuthContext";
@@ -55,8 +55,8 @@ export default function TomarAsistenciaPage() {
   const [hasChanges, setHasChanges] = useState(false);
 
   const { data: clase, isLoading, error } = useQuery({
-    queryKey: ["clase-alumnos", claseId],
-    queryFn: () => fetchClaseAlumnos(Number(claseId)),
+    queryKey: ["clase-estudiantes", claseId],
+    queryFn: () => fetchClaseEstudiantes(Number(claseId)),
     enabled: !!claseId,
   });
 
@@ -66,11 +66,11 @@ export default function TomarAsistenciaPage() {
       const newPresentes = new Set<number>();
       const newTardes = new Set<number>();
       
-      clase.alumnos.forEach((alumno) => {
-        if (alumno.estado === "presente") {
-          newPresentes.add(alumno.estudiante_id);
-        } else if (alumno.estado === "tarde") {
-          newTardes.add(alumno.estudiante_id);
+      clase.estudiantes.forEach((estudiante) => {
+        if (estudiante.estado === "presente") {
+          newPresentes.add(estudiante.estudiante_id);
+        } else if (estudiante.estado === "tarde") {
+          newTardes.add(estudiante.estudiante_id);
         }
       });
       setPresentes(newPresentes);
@@ -87,7 +87,7 @@ export default function TomarAsistenciaPage() {
       }),
     onSuccess: () => {
       enqueueSnackbar("Tu asistencia ha sido registrada.", { variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["clase-alumnos", claseId] });
+      queryClient.invalidateQueries({ queryKey: ["clase-estudiantes", claseId] });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || "Error al registrar tu asistencia.";
@@ -95,16 +95,16 @@ export default function TomarAsistenciaPage() {
     },
   });
 
-  const guardarAlumnosMutation = useMutation({
+  const guardarEstudiantesMutation = useMutation({
     mutationFn: () =>
-      registrarAsistenciaAlumnos(Number(claseId), {
+      registrarAsistenciaEstudiantes(Number(claseId), {
         presentes: Array.from(presentes),
         tardes: Array.from(tardes),
       }),
     onSuccess: () => {
-      enqueueSnackbar("Asistencia de alumnos guardada.", { variant: "success" });
+      enqueueSnackbar("Asistencia de estudiantes guardada.", { variant: "success" });
       setHasChanges(false);
-      queryClient.invalidateQueries({ queryKey: ["clase-alumnos", claseId] });
+      queryClient.invalidateQueries({ queryKey: ["clase-estudiantes", claseId] });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || "Error al guardar asistencia.";
@@ -208,8 +208,8 @@ export default function TomarAsistenciaPage() {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {docentePresente
-                        ? "Ya registraste tu presencia para esta clase. Podés gestionar la asistencia de los alumnos."
-                        : "Para habilitar la lista de alumnos, primero debés confirmar tu presencia en el aula."}
+                        ? "Ya registraste tu presencia para esta clase. Podés gestionar la asistencia de los estudiantes."
+                        : "Para habilitar la lista de estudiantes, primero debés confirmar tu presencia en el aula."}
                     </Typography>
                   </Stack>
                 </Grid>
@@ -248,20 +248,20 @@ export default function TomarAsistenciaPage() {
             </CardContent>
           </Card>
 
-          {/* Lista de Alumnos */}
+          {/* Lista de Estudiantes */}
           <Paper elevation={0} variant="outlined" sx={{ overflow: "hidden" }}>
             <Box sx={{ p: 2, bgcolor: "#fafafa", borderBottom: "1px solid #eee" }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="subtitle1" fontWeight={600}>
-                  Listado de Estudiantes ({clase.alumnos.length})
+                  Listado de Estudiantes ({clase.estudiantes.length})
                 </Typography>
                 <Button
                   variant="contained"
                   startIcon={<Save />}
-                  onClick={() => guardarAlumnosMutation.mutate()}
-                  disabled={!docentePresente || guardarAlumnosMutation.isPending || !hasChanges}
+                  onClick={() => guardarEstudiantesMutation.mutate()}
+                  disabled={!docentePresente || guardarEstudiantesMutation.isPending || !hasChanges}
                 >
-                  {guardarAlumnosMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+                  {guardarEstudiantesMutation.isPending ? "Guardando..." : "Guardar Cambios"}
                 </Button>
               </Stack>
             </Box>
@@ -287,19 +287,19 @@ export default function TomarAsistenciaPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {clase.alumnos.map((alumno, index) => {
-                    const isPresent = presentes.has(alumno.estudiante_id);
-                    const isLate = tardes.has(alumno.estudiante_id);
+                  {clase.estudiantes.map((estudiante, index) => {
+                    const isPresent = presentes.has(estudiante.estudiante_id);
+                    const isLate = tardes.has(estudiante.estudiante_id);
                     const isAbsent = !isPresent && !isLate;
-                    const isJustified = alumno.justificada;
-                    const percentage = alumno.porcentaje_asistencia || 0;
+                    const isJustified = estudiante.justificada;
+                    const percentage = estudiante.porcentaje_asistencia || 0;
                     const percentageColor = getPercentageColor(percentage);
 
                     return (
-                      <TableRow key={alumno.estudiante_id} hover>
+                      <TableRow key={estudiante.estudiante_id} hover>
                         <TableCell>{String(index + 1).padStart(3, '0')}</TableCell>
-                        <TableCell>{alumno.dni}</TableCell>
-                        <TableCell sx={{ fontWeight: 500 }}>{`${alumno.apellido}, ${alumno.nombre}`}</TableCell>
+                        <TableCell>{estudiante.dni}</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{`${estudiante.apellido}, ${estudiante.nombre}`}</TableCell>
                         <TableCell align="center">
                           <Chip 
                             label={`${percentage}%`} 
@@ -315,7 +315,7 @@ export default function TomarAsistenciaPage() {
                         <TableCell align="center">
                           <Checkbox
                             checked={isPresent}
-                            onChange={() => handleCheck(alumno.estudiante_id, "presente")}
+                            onChange={() => handleCheck(estudiante.estudiante_id, "presente")}
                             disabled={isJustified}
                             color="success"
                           />
@@ -323,7 +323,7 @@ export default function TomarAsistenciaPage() {
                         <TableCell align="center">
                           <Checkbox
                             checked={isAbsent}
-                            onChange={() => handleCheck(alumno.estudiante_id, "ausente")}
+                            onChange={() => handleCheck(estudiante.estudiante_id, "ausente")}
                             disabled={isJustified}
                             color="error"
                           />
@@ -331,7 +331,7 @@ export default function TomarAsistenciaPage() {
                         <TableCell align="center">
                           <Checkbox
                             checked={isLate}
-                            onChange={() => handleCheck(alumno.estudiante_id, "tarde")}
+                            onChange={() => handleCheck(estudiante.estudiante_id, "tarde")}
                             disabled={isJustified}
                             color="warning"
                           />

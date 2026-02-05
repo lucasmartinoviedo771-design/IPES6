@@ -22,21 +22,21 @@ from core.models import (
 from core.auth_ninja import JWTAuth
 
 from .models import (
-    AsistenciaAlumno,
+    AsistenciaEstudiante,
     AsistenciaDocente,
     ClaseProgramada,
     CalendarioAsistenciaEvento,
-    CursoAlumnoSnapshot,
+    CursoEstudianteSnapshot,
     DocenteMarcacionLog,
     Justificacion,
 )
 from .schemas import (
-    AlumnoResumenOut,
-    AlumnoClasesResponse,
-    AlumnoClaseListadoOut,
+    EstudianteResumenOut,
+    EstudianteClasesResponse,
+    EstudianteClaseListadoOut,
     AsistenciaCalendarioEventoIn,
     AsistenciaCalendarioEventoOut,
-    ClaseAlumnoDetalleOut,
+    ClaseEstudianteDetalleOut,
     DocenteClasesResponse,
     DocenteHistorialOut,
     DocenteInfoOut,
@@ -44,13 +44,13 @@ from .schemas import (
     DocenteMarcarPresenteIn,
     DocenteMarcarPresenteOut,
     DocenteDniLogIn,
-    RegistrarAsistenciaAlumnosIn,
+    RegistrarAsistenciaEstudiantesIn,
     JustificacionCreateIn,
     JustificacionDetailOut,
     JustificacionListItemOut,
     JustificacionOut,
     JustificacionRechazarIn,
-    AlumnoAsistenciaItemOut,
+    EstudianteAsistenciaItemOut,
 )
 from .services import (
     apply_justification,
@@ -64,7 +64,7 @@ from .services import (
 
 
 docentes_router = Router(tags=["asistencia-docentes"], auth=JWTAuth())
-alumnos_router = Router(tags=["asistencia-alumnos"], auth=JWTAuth())
+estudiantes_router = Router(tags=["asistencia-estudiantes"], auth=JWTAuth())
 calendario_router = Router(tags=["asistencia-calendario"], auth=JWTAuth())
 
 
@@ -558,8 +558,8 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     )
 
 
-@alumnos_router.get("/clases/{clase_id}", response=ClaseAlumnoDetalleOut)
-def obtener_clase_alumnos(request: HttpRequest, clase_id: int) -> ClaseAlumnoDetalleOut:
+@estudiantes_router.get("/clases/{clase_id}", response=ClaseEstudianteDetalleOut)
+def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstudianteDetalleOut:
     clase = (
         ClaseProgramada.objects.select_related(
             "comision",
@@ -575,7 +575,7 @@ def obtener_clase_alumnos(request: HttpRequest, clase_id: int) -> ClaseAlumnoDet
 
     # Lazy Snapshot Sync: Verificar si los snapshots de esta comisiAA3n estA AAn actualizados
     # Si no hay snapshots o son muy viejos (> 24hs), forzamos una sincronizaciAA3n ahora.
-    last_snapshot = CursoAlumnoSnapshot.objects.filter(comision_id=clase.comision_id).order_by("-sincronizado_en").first()
+    last_snapshot = CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id).order_by("-sincronizado_en").first()
     should_sync = False
     if not last_snapshot:
         should_sync = True
@@ -589,39 +589,39 @@ def obtener_clase_alumnos(request: HttpRequest, clase_id: int) -> ClaseAlumnoDet
     if should_sync:
         # Sincronizamos solo esta comisiAA3n para no afectar performance global
         sync_course_snapshots(comisiones=[clase.comision])
-        # Re-verificamos asistencias vacA Aas (por si entraron alumnos nuevos)
+        # Re-verificamos asistencias vacA Aas (por si entraron estudiantes nuevos)
         from .services import _ensure_asistencias_estudiantes
         _ensure_asistencias_estudiantes(clase)
 
     asistencias = list(
-        AsistenciaAlumno.objects.filter(clase=clase)
+        AsistenciaEstudiante.objects.filter(clase=clase)
         .select_related("estudiante__user")
         .order_by("estudiante__user__last_name", "estudiante__user__first_name")
     )
 
     # Calcular porcentajes de asistencia
     stats = (
-        AsistenciaAlumno.objects.filter(clase__comision_id=clase.comision_id)
+        AsistenciaEstudiante.objects.filter(clase__comision_id=clase.comision_id)
         .values("estudiante_id")
         .annotate(
             total=Count("id"),
             presentes=Count(
                 "id",
-                filter=Q(estado__in=[AsistenciaAlumno.Estado.PRESENTE, AsistenciaAlumno.Estado.TARDE])
+                filter=Q(estado__in=[AsistenciaEstudiante.Estado.PRESENTE, AsistenciaEstudiante.Estado.TARDE])
             ),
         )
     )
     stats_map = {s["estudiante_id"]: s for s in stats}
 
-    alumnos = []
+    estudiantes = []
     for asistencia in asistencias:
         stat = stats_map.get(asistencia.estudiante_id, {"total": 0, "presentes": 0})
         total = stat["total"]
         presentes = stat["presentes"]
         porcentaje = (presentes / total * 100) if total > 0 else 0.0
         
-        alumnos.append(
-            AlumnoResumenOut(
+        estudiantes.append(
+            EstudianteResumenOut(
                 estudiante_id=asistencia.estudiante_id,
                 dni=asistencia.estudiante.dni,
                 nombre=asistencia.estudiante.user.first_name if asistencia.estudiante.user_id else "",
@@ -668,7 +668,7 @@ def obtener_clase_alumnos(request: HttpRequest, clase_id: int) -> ClaseAlumnoDet
         for c in otras_clases_qs
     ]
 
-    return ClaseAlumnoDetalleOut(
+    return ClaseEstudianteDetalleOut(
         clase_id=clase.id,
         comision=str(clase.comision),
         fecha=clase.fecha,
@@ -677,19 +677,19 @@ def obtener_clase_alumnos(request: HttpRequest, clase_id: int) -> ClaseAlumnoDet
         docentes=docentes,
         docente_presente=docente_presente,
         docente_categoria_asistencia=docente_categoria,
-        alumnos=alumnos,
+        estudiantes=estudiantes,
         otras_clases=otras_clases,
     )
 
 
-@alumnos_router.get("/clases", response=AlumnoClasesResponse)
-def listar_clases_alumnos(
+@estudiantes_router.get("/clases", response=EstudianteClasesResponse)
+def listar_clases_estudiantes(
     request: HttpRequest,
     comision_id: int | None = None,
     materia_id: int | None = None,
     desde: date | None = None,
     hasta: date | None = None,
-) -> AlumnoClasesResponse:
+) -> EstudianteClasesResponse:
     if not comision_id and not materia_id:
         raise HttpError(400, "DebAAs indicar una comisiAA3n o una materia para filtrar.")
 
@@ -717,7 +717,7 @@ def listar_clases_alumnos(
 
     comision_ids = list(comisiones_qs.values_list("id", flat=True))
     if not comision_ids:
-        return AlumnoClasesResponse(clases=[])
+        return EstudianteClasesResponse(clases=[])
 
     # Lazy Sync para estudiantes tambiA A9n
     # Verificamos si alguna de las comisiones solicitadas necesita actualizaciAA3n
@@ -726,7 +726,7 @@ def listar_clases_alumnos(
     comisiones_a_sincronizar = []
     now = timezone.now()
     for cid in comision_ids:
-        last_snap = CursoAlumnoSnapshot.objects.filter(comision_id=cid).order_by("-sincronizado_en").first()
+        last_snap = CursoEstudianteSnapshot.objects.filter(comision_id=cid).order_by("-sincronizado_en").first()
         if not last_snap or (now - last_snap.sincronizado_en) > timedelta(hours=24):
             comisiones_a_sincronizar.append(cid)
     
@@ -741,25 +741,25 @@ def listar_clases_alumnos(
         ClaseProgramada.objects.filter(comision_id__in=comision_ids, fecha__range=(desde, hasta))
         .select_related("comision", "comision__materia", "comision__turno")
         .annotate(
-            total_alumnos=Count("asistencias_estudiantes"),
+            total_estudiantes=Count("asistencias_estudiantes"),
             presentes=Count(
                 "asistencias_estudiantes",
-                filter=Q(asistencias_estudiantes__estado=AsistenciaAlumno.Estado.PRESENTE),
+                filter=Q(asistencias_estudiantes__estado=AsistenciaEstudiante.Estado.PRESENTE),
             ),
             ausentes=Count(
                 "asistencias_estudiantes",
-                filter=Q(asistencias_estudiantes__estado=AsistenciaAlumno.Estado.AUSENTE),
+                filter=Q(asistencias_estudiantes__estado=AsistenciaEstudiante.Estado.AUSENTE),
             ),
             ausentes_justificados=Count(
                 "asistencias_estudiantes",
-                filter=Q(asistencias_estudiantes__estado=AsistenciaAlumno.Estado.AUSENTE_JUSTIFICADA),
+                filter=Q(asistencias_estudiantes__estado=AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA),
             ),
         )
         .order_by("fecha", "comision__materia__nombre", "comision__codigo", "hora_inicio")
     )
 
     clases_out = [
-        AlumnoClaseListadoOut(
+        EstudianteClaseListadoOut(
             clase_id=clase.id,
             fecha=clase.fecha,
             materia=clase.comision.materia.nombre,
@@ -767,7 +767,7 @@ def listar_clases_alumnos(
             turno=clase.comision.turno.nombre if clase.comision.turno_id else None,
             horario=_build_horario(clase.hora_inicio, clase.hora_fin),
             estado_clase=clase.estado,
-            total_alumnos=clase.total_alumnos or 0,
+            total_estudiantes=clase.total_estudiantes or 0,
             presentes=clase.presentes or 0,
             ausentes=clase.ausentes or 0,
             ausentes_justificados=clase.ausentes_justificados or 0,
@@ -775,11 +775,11 @@ def listar_clases_alumnos(
         for clase in clases_qs
     ]
 
-    return AlumnoClasesResponse(clases=clases_out)
+    return EstudianteClasesResponse(clases=clases_out)
 
 
-@alumnos_router.post("/clases/{clase_id}/registrar", response=None)
-def registrar_asistencia_alumnos(request: HttpRequest, clase_id: int, payload: RegistrarAsistenciaAlumnosIn):
+@estudiantes_router.post("/clases/{clase_id}/registrar", response=None)
+def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payload: RegistrarAsistenciaEstudiantesIn):
     clase = ClaseProgramada.objects.filter(id=clase_id).first()
     if not clase:
         raise HttpError(404, "No se encontrAA3 la clase indicada.")
@@ -803,28 +803,28 @@ def registrar_asistencia_alumnos(request: HttpRequest, clase_id: int, payload: R
             if not docente_presente:
                 raise HttpError(400, "DebAAs registrar tu propia asistencia (Presente) antes de cargar la de los estudiantes.")
 
-    registros = AsistenciaAlumno.objects.filter(clase=clase).select_related("estudiante")
+    registros = AsistenciaEstudiante.objects.filter(clase=clase).select_related("estudiante")
 
     for registro in registros:
-        estado_nuevo = AsistenciaAlumno.Estado.AUSENTE
+        estado_nuevo = AsistenciaEstudiante.Estado.AUSENTE
         if registro.estudiante_id in presentes:
-            estado_nuevo = AsistenciaAlumno.Estado.PRESENTE
+            estado_nuevo = AsistenciaEstudiante.Estado.PRESENTE
         elif registro.estudiante_id in tardes:
-            estado_nuevo = AsistenciaAlumno.Estado.TARDE
+            estado_nuevo = AsistenciaEstudiante.Estado.TARDE
             
         if registro.justificacion_id:
-            estado_nuevo = AsistenciaAlumno.Estado.AUSENTE_JUSTIFICADA
+            estado_nuevo = AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA
             
         if registro.estado != estado_nuevo:
             registro.estado = estado_nuevo
-            registro.registrado_via = AsistenciaAlumno.RegistradoVia.STAFF
+            registro.registrado_via = AsistenciaEstudiante.RegistradoVia.STAFF
             registro.registrado_por = request.user if request.user and request.user.is_authenticated else None
             registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
 
 
 
 
-@alumnos_router.get("/mis-asistencias", response=List[AlumnoAsistenciaItemOut])
+@estudiantes_router.get("/mis-asistencias", response=List[EstudianteAsistenciaItemOut])
 def listar_mis_asistencias(request: HttpRequest):
     if not request.user.is_authenticated:
         raise HttpError(401, "AutenticaciAA3n requerida.")
@@ -834,7 +834,7 @@ def listar_mis_asistencias(request: HttpRequest):
         raise HttpError(404, "No se encontrAA3 un perfil de estudiante asociado a tu usuario.")
 
     asistencias = (
-        AsistenciaAlumno.objects.filter(estudiante=estudiante)
+        AsistenciaEstudiante.objects.filter(estudiante=estudiante)
         .select_related("clase", "clase__comision", "clase__comision__materia")
         .order_by("-clase__fecha", "-clase__hora_inicio")
     )
@@ -842,7 +842,7 @@ def listar_mis_asistencias(request: HttpRequest):
     data = []
     for asist in asistencias:
         data.append(
-            AlumnoAsistenciaItemOut(
+            EstudianteAsistenciaItemOut(
                 id=asist.id,
                 fecha=asist.clase.fecha,
                 materia=asist.clase.comision.materia.nombre,
@@ -1005,7 +1005,7 @@ def _serialize_justificacion_detail(justificacion: Justificacion) -> Justificaci
     )
 
 
-@alumnos_router.post("/justificaciones", response=JustificacionOut, auth=JWTAuth())
+@estudiantes_router.post("/justificaciones", response=JustificacionOut, auth=JWTAuth())
 def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) -> JustificacionOut:
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
     _ensure_authenticated_scope(roles, docente_profile)
@@ -1079,7 +1079,7 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)
 
 
-@alumnos_router.get("/justificaciones", response=list[JustificacionListItemOut], auth=JWTAuth())
+@estudiantes_router.get("/justificaciones", response=list[JustificacionListItemOut], auth=JWTAuth())
 def listar_justificaciones(
     request: HttpRequest,
     tipo: str | None = None,
@@ -1133,7 +1133,7 @@ def listar_justificaciones(
     return [_serialize_justificacion_summary(j) for j in queryset]
 
 
-@alumnos_router.get(
+@estudiantes_router.get(
     "/justificaciones/{justificacion_id}",
     response=JustificacionDetailOut,
     auth=JWTAuth(),
@@ -1159,7 +1159,7 @@ def obtener_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     return _serialize_justificacion_detail(justificacion)
 
 
-@alumnos_router.post(
+@estudiantes_router.post(
     "/justificaciones/{justificacion_id}/aprobar",
     response=JustificacionOut,
     auth=JWTAuth(),
@@ -1187,7 +1187,7 @@ def aprobar_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)
 
 
-@alumnos_router.post(
+@estudiantes_router.post(
     "/justificaciones/{justificacion_id}/rechazar",
     response=JustificacionOut,
     auth=JWTAuth(),

@@ -35,7 +35,7 @@ def list_preinscriptions(
     carrera_id: Optional[int] = None,
     search: Optional[str] = None
 ):
-    qs = Preinscripcion.objects.all().select_related('alumno__user', 'carrera')
+    qs = Preinscripcion.objects.all().select_related('estudiante__user', 'carrera')
     
     if anio:
         qs = qs.filter(anio=anio)
@@ -43,20 +43,20 @@ def list_preinscriptions(
         qs = qs.filter(carrera_id=carrera_id)
     if search:
         qs = qs.filter(
-            Q(alumno__dni__icontains=search) |
-            Q(alumno__user__first_name__icontains=search) |
-            Q(alumno__user__last_name__icontains=search)
+            Q(estudiante__dni__icontains=search) |
+            Q(estudiante__user__first_name__icontains=search) |
+            Q(estudiante__user__last_name__icontains=search)
         )
     
     res = []
     for p in qs:
         res.append({
             "id": p.id,
-            "dni": p.alumno.dni,
-            "nombre": p.alumno.user.first_name,
-            "apellido": p.alumno.user.last_name,
-            "email": p.alumno.user.email,
-            "telefono": p.alumno.telefono,
+            "dni": p.estudiante.dni,
+            "nombre": p.estudiante.user.first_name,
+            "apellido": p.estudiante.user.last_name,
+            "email": p.estudiante.user.email,
+            "telefono": p.estudiante.telefono,
             "carrera_nombre": p.carrera.nombre,
             "carrera_id": p.carrera.id,
             "anio": p.anio,
@@ -80,7 +80,7 @@ def confirm_preinscription(request, pre_id: int):
         pre.save()
         
         # Actualizar legajo del estudiante
-        estudiante = pre.alumno
+        estudiante = pre.estudiante
         estudiante.estado_legajo = Estudiante.EstadoLegajo.COMPLETO
         estudiante.save()
         
@@ -96,7 +96,7 @@ def confirm_preinscription(request, pre_id: int):
 @router.patch("/{pre_id}")
 def update_preinscription(request, pre_id: int, data: PreinscripcionUpdateIn):
     pre = get_object_or_404(Preinscripcion, id=pre_id)
-    estudiante = pre.alumno
+    estudiante = pre.estudiante
     user = estudiante.user
     
     with transaction.atomic():

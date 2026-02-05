@@ -1,7 +1,7 @@
 import { FieldValues, UseFormSetError } from "react-hook-form";
 
 /**
- * Aplica errores normalizados (path: "alumno.email") a RHF.
+ * Aplica errores normalizados (path: "estudiante.email") a RHF.
  * Ignora paths vacíos. Usa "root" para errores generales.
  */
 export function applyErrorsToRHF<TFieldValues extends FieldValues>(

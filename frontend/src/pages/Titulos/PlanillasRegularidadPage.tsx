@@ -130,29 +130,29 @@ function RegularidadDialog({
     const situacionRefs =
       planilla.situaciones.length > 0
         ? planilla.situaciones
-            .map(
-              (ref) => `
+          .map(
+            (ref) => `
                 <tr>
                   <td>${ref.alias}</td>
                   <td>${ref.descripcion || "-"}</td>
                 </tr>
               `,
-            )
-            .join("")
+          )
+          .join("")
         : "";
-    const alumnosRows = planilla.alumnos
+    const estudiantesRows = planilla.estudiantes
       .map(
-        (alumno) => `
+        (estudiante) => `
         <tr>
-          <td>${alumno.orden ?? "-"}</td>
-          <td>${alumno.apellido_nombre}</td>
-          <td>${alumno.dni}</td>
-          <td>${formatNumber(alumno.nota_tp)}</td>
-          <td>${formatNumber(alumno.nota_final)}</td>
-          <td>${formatPercentage(alumno.asistencia)}</td>
-          <td>${alumno.excepcion ? "Sí" : "No"}</td>
-          <td>${alumno.situacion || "-"}</td>
-          <td>${alumno.observaciones || "-"}</td>
+          <td>${estudiante.orden ?? "-"}</td>
+          <td>${estudiante.apellido_nombre}</td>
+          <td>${estudiante.dni}</td>
+          <td>${formatNumber(estudiante.nota_tp)}</td>
+          <td>${formatNumber(estudiante.nota_final)}</td>
+          <td>${formatPercentage(estudiante.asistencia)}</td>
+          <td>${estudiante.excepcion ? "Sí" : "No"}</td>
+          <td>${estudiante.situacion || "-"}</td>
+          <td>${estudiante.observaciones || "-"}</td>
         </tr>
       `,
       )
@@ -290,7 +290,7 @@ function RegularidadDialog({
             <thead>
               <tr>
                 <th>Orden</th>
-                <th>Alumno</th>
+                <th>Estudiante</th>
                 <th>DNI</th>
                 <th>Nota TP</th>
                 <th>Nota final</th>
@@ -301,7 +301,7 @@ function RegularidadDialog({
               </tr>
             </thead>
             <tbody>
-              ${alumnosRows}
+              ${estudiantesRows}
             </tbody>
           </table>
           <div class="observaciones">
@@ -311,9 +311,8 @@ function RegularidadDialog({
             <div><span>Firma docente</span></div>
             <div><span>Firma Bedelía / Secretaría</span></div>
           </div>
-          ${
-            situacionRefs
-              ? `<table class="refs-table">
+          ${situacionRefs
+        ? `<table class="refs-table">
                   <thead>
                     <tr>
                       <th colspan="2">Referencias - Situación Académica</th>
@@ -327,8 +326,8 @@ function RegularidadDialog({
                     ${situacionRefs}
                   </tbody>
                 </table>`
-              : ""
-          }
+        : ""
+      }
         </div>
       </body>
     </html>
@@ -361,7 +360,7 @@ function RegularidadDialog({
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  A�o lectivo
+                  Año lectivo
                 </Typography>
                 <Typography>{planilla.anio}</Typography>
               </Box>
@@ -372,9 +371,9 @@ function RegularidadDialog({
                 <Typography>
                   {planilla.materia_nombre}
                   {planilla.materia_anio
-                    ? ` · ${planilla.materia_anio}º a�o`
+                    ? ` · ${planilla.materia_anio}º año`
                     : materiaInfo?.anio
-                      ? ` · ${materiaInfo.anio}º a�o`
+                      ? ` · ${materiaInfo.anio}º año`
                       : ""}
                 </Typography>
               </Box>
@@ -386,7 +385,7 @@ function RegularidadDialog({
               </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Resoluci�n
+                  Resolución
                 </Typography>
                 <Typography>{planilla.plan_resolucion || comisionInfo?.plan_resolucion || "-"}</Typography>
               </Box>
@@ -415,16 +414,16 @@ function RegularidadDialog({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {planilla.alumnos.map((alumno) => (
-                    <TableRow key={alumno.inscripcion_id}>
-                      <TableCell>{alumno.orden ?? "-"}</TableCell>
-                      <TableCell>{alumno.dni}</TableCell>
-                      <TableCell>{alumno.apellido_nombre}</TableCell>
-                      <TableCell align="right">{formatNumber(alumno.nota_tp)}</TableCell>
-                      <TableCell align="right">{formatNumber(alumno.nota_final)}</TableCell>
-                      <TableCell align="right">{formatPercentage(alumno.asistencia)}</TableCell>
-                      <TableCell>{alumno.situacion || "-"}</TableCell>
-                      <TableCell>{alumno.observaciones || "-"}</TableCell>
+                  {planilla.estudiantes.map((estudiante: any) => (
+                    <TableRow key={estudiante.inscripcion_id}>
+                      <TableCell>{estudiante.orden ?? "-"}</TableCell>
+                      <TableCell>{estudiante.dni}</TableCell>
+                      <TableCell>{estudiante.apellido_nombre}</TableCell>
+                      <TableCell align="right">{formatNumber(estudiante.nota_tp)}</TableCell>
+                      <TableCell align="right">{formatNumber(estudiante.nota_final)}</TableCell>
+                      <TableCell align="right">{formatPercentage(estudiante.asistencia)}</TableCell>
+                      <TableCell>{estudiante.situacion || "-"}</TableCell>
+                      <TableCell>{estudiante.observaciones || "-"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -531,7 +530,7 @@ export default function PlanillasRegularidadPage() {
       if (materiaId && comision.materia_id !== Number(materiaId)) return false;
       if (profesoradoId && comision.profesorado_id !== Number(profesoradoId)) return false;
       if (planId && comision.plan_id !== Number(planId)) return false;
-      
+
       // Filtros adicionales para ayudar a encontrar la materia
       if (anioCursada || cuatrimestre) {
         const mat = materiaLookup.get(comision.materia_id);
@@ -539,7 +538,7 @@ export default function PlanillasRegularidadPage() {
         if (anioCursada && mat.anio !== Number(anioCursada)) return false;
         if (cuatrimestre && mat.cuatrimestre !== cuatrimestre) return false;
       }
-      
+
       return true;
     });
   }, [comisiones, materiaId, profesoradoId, planId, anioCursada, cuatrimestre, materiaLookup]);

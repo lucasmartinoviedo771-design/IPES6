@@ -26,13 +26,13 @@ export default function ComprobanteScreen() {
           // Mapear DTO -> valores esperados por PrintablePreinscripcion
           const v = {
             ...pre.datos_extra, // Spread all extra data
-            apellido: pre?.alumno?.apellido,
-            nombres: pre?.alumno?.nombre,
-            dni: pre?.alumno?.dni,
-            fecha_nacimiento: pre?.alumno?.fecha_nacimiento,
-            domicilio: pre?.alumno?.domicilio,
-            email: pre?.alumno?.email,
-            tel_movil: pre?.alumno?.telefono,
+            apellido: pre?.estudiante?.apellido,
+            nombres: pre?.estudiante?.nombre,
+            dni: pre?.estudiante?.dni,
+            fecha_nacimiento: pre?.estudiante?.fecha_nacimiento,
+            domicilio: pre?.estudiante?.domicilio,
+            email: pre?.estudiante?.email,
+            tel_movil: pre?.estudiante?.telefono,
             carrera_desc: pre?.carrera?.nombre,
           } as any;
           setValues(v);

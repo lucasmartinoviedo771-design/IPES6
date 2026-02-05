@@ -33,7 +33,7 @@ def parse_fecha(fecha_str):
         except:
            return None
 
-def cargar_alumnos(archivo_csv):
+def cargar_estudiantes(archivo_csv):
     print(f"📂 Archivo: {archivo_csv}")
     
     stats = {
@@ -183,6 +183,6 @@ def cargar_alumnos(archivo_csv):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Uso: python carga_alumnos.py <archivo.csv>")
+        print("Uso: python carga_estudiantes.py <archivo.csv>")
         sys.exit(1)
-    cargar_alumnos(sys.argv[1])
+    cargar_estudiantes(sys.argv[1])

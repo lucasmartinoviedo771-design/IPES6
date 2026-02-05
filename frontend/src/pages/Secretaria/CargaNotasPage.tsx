@@ -59,11 +59,11 @@ import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import {
   actualizarMesaPlanilla,
   gestionarMesaPlanillaCierre,
-  MesaPlanillaAlumnoDTO,
+  MesaPlanillaEstudianteDTO,
   MesaPlanillaCondicionDTO,
   MesaPlanillaDTO,
   obtenerMesaPlanilla,
-} from "@/api/alumnos";
+} from "@/api/estudiantes";
 import RegularidadPlanillaEditor from "@/components/secretaria/RegularidadPlanillaEditor";
 import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
 import OralExamActaDialog, { OralActFormValues, OralActFormTopic } from "@/components/secretaria/OralExamActaDialog";
@@ -96,7 +96,7 @@ type FinalFiltersState = {
 
 type FinalRowState = {
   inscripcionId: number;
-  alumnoId: number;
+  estudianteId: number;
   apellidoNombre: string;
   dni: string;
   condicion: string | null;
@@ -109,7 +109,7 @@ type FinalRowState = {
 };
 
 type FinalPlanillaPayload = {
-  alumnos: {
+  estudiantes: {
     inscripcion_id: number;
     fecha_resultado: string | null;
     condicion: string | null;
@@ -338,18 +338,18 @@ const CargaNotasPage: React.FC = () => {
     finalFilters.ventanaId,
   ]);
 
-  const mapAlumnoToFinalRow = (alumno: MesaPlanillaAlumnoDTO): FinalRowState => ({
-    inscripcionId: alumno.inscripcion_id,
-    alumnoId: alumno.alumno_id,
-    apellidoNombre: alumno.apellido_nombre,
-    dni: alumno.dni,
-    condicion: alumno.condicion ?? null,
-    nota: alumno.nota !== null && alumno.nota !== undefined ? String(alumno.nota) : "",
-    fechaResultado: alumno.fecha_resultado ? alumno.fecha_resultado.slice(0, 10) : "",
-    cuentaParaIntentos: Boolean(alumno.cuenta_para_intentos),
-    folio: alumno.folio ?? "",
-    libro: alumno.libro ?? "",
-    observaciones: alumno.observaciones ?? "",
+  const mapEstudianteToFinalRow = (estudiante: MesaPlanillaEstudianteDTO): FinalRowState => ({
+    inscripcionId: estudiante.inscripcion_id,
+    estudianteId: estudiante.estudiante_id,
+    apellidoNombre: estudiante.apellido_nombre,
+    dni: estudiante.dni,
+    condicion: estudiante.condicion ?? null,
+    nota: estudiante.nota !== null && estudiante.nota !== undefined ? String(estudiante.nota) : "",
+    fechaResultado: estudiante.fecha_resultado ? estudiante.fecha_resultado.slice(0, 10) : "",
+    cuentaParaIntentos: Boolean(estudiante.cuenta_para_intentos),
+    folio: estudiante.folio ?? "",
+    libro: estudiante.libro ?? "",
+    observaciones: estudiante.observaciones ?? "",
   });
 
   const fetchFinalPlanilla = useCallback(
@@ -362,7 +362,7 @@ const CargaNotasPage: React.FC = () => {
         const data = await obtenerMesaPlanilla(mesaId);
         setFinalPlanilla(data);
         setFinalCondiciones(data.condiciones);
-        setFinalRows(data.alumnos.map((alumno) => mapAlumnoToFinalRow(alumno)));
+        setFinalRows(data.estudiantes.map((estudiante) => mapEstudianteToFinalRow(estudiante)));
         setFinalSearch("");
         setFinalPermissionDenied(false);
       } catch (error) {
@@ -915,7 +915,7 @@ const CargaNotasPage: React.FC = () => {
       const unidadCurricular = finalPlanilla?.materia_nombre ?? selectedMesaResumen?.materia_nombre ?? "";
       const cursoLabel = selectedMesaCursoLabel;
       actas.forEach((acta) => {
-        const temasAlumno = (acta.temas_alumno ?? []).map((item) => ({
+        const temasEstudiante = (acta.temas_estudiante ?? []).map((item) => ({
           tema: item.tema,
           score: (item.score as OralTopicScore | undefined) || undefined,
         }));
@@ -930,9 +930,9 @@ const CargaNotasPage: React.FC = () => {
           carrera,
           unidadCurricular,
           curso: acta.curso || cursoLabel,
-          alumno: `${acta.alumno} - DNI ${acta.dni}`,
+          estudiante: `${acta.estudiante} - DNI ${acta.dni}`,
           tribunal: tribunalInfo,
-          temasElegidosAlumno: temasAlumno,
+          temasElegidosEstudiante: temasEstudiante,
           temasSugeridosDocente: temasDocente,
           notaFinal: acta.nota_final ?? undefined,
           observaciones: acta.observaciones ?? undefined,
@@ -971,7 +971,7 @@ const CargaNotasPage: React.FC = () => {
     }
 
     const payload: FinalPlanillaPayload = {
-      alumnos: finalRows.map((row) => {
+      estudiantes: finalRows.map((row) => {
         const notaValor =
           row.nota.trim() === "" ? null : Number.parseFloat(row.nota.replace(",", "."));
         return {
@@ -1021,7 +1021,7 @@ const CargaNotasPage: React.FC = () => {
       if (mesaId === finalSelectedMesaId) {
         setFinalPlanilla(refreshed);
         setFinalCondiciones(refreshed.condiciones);
-        setFinalRows(refreshed.alumnos.map((alumno) => mapAlumnoToFinalRow(alumno)));
+        setFinalRows(refreshed.estudiantes.map((estudiante) => mapEstudianteToFinalRow(estudiante)));
         setFinalPermissionDenied(false);
       }
     } catch (error) {
@@ -1077,7 +1077,7 @@ const CargaNotasPage: React.FC = () => {
           title={isFinalsMode ? "Actas de Examen Final" : "Planilla de Regularidad"}
           subtitle={
             isFinalsMode
-              ? "Gestioná las mesas de examen, inscribí alumnos y cargá las notas finales."
+              ? "Gestioná las mesas de examen, inscribí estudiantes y cargá las notas finales."
               : "Gestioná la planilla de regularidad y promoción de las comisiones."
           }
         />
@@ -1997,8 +1997,8 @@ const CargaNotasPage: React.FC = () => {
         <OralExamActaDialog
           open
           onClose={handleCloseOralActa}
-          alumnoNombre={oralDialogRow.apellidoNombre}
-          alumnoDni={oralDialogRow.dni}
+          estudianteNombre={oralDialogRow.apellidoNombre}
+          estudianteDni={oralDialogRow.dni}
           carrera={selectedMesaResumen?.profesorado_nombre ?? ""}
           unidadCurricular={finalPlanilla?.materia_nombre ?? selectedMesaResumen?.materia_nombre ?? ""}
           curso={selectedMesaCursoLabel}
@@ -2033,7 +2033,7 @@ const createTopicRow = (tema = "", score?: string | null): OralActFormTopic => (
 });
 
 const ensureTopicRowsFromApi = (
-  topics: ActaOralDTO["temas_alumno"] | undefined,
+  topics: ActaOralDTO["temas_estudiante"] | undefined,
   min: number,
 ): OralActFormTopic[] => {
   const rows = (topics ?? []).map((item) => createTopicRow(item.tema ?? "", item.score ?? null));
@@ -2051,7 +2051,7 @@ function mapActaOralDtoToFormValues(dto: ActaOralDTO): OralActFormValues {
     curso: dto.curso ?? "",
     notaFinal: dto.nota_final ?? "",
     observaciones: dto.observaciones ?? "",
-    temasAlumno: ensureTopicRowsFromApi(dto.temas_alumno, 3),
+    temasEstudiante: ensureTopicRowsFromApi(dto.temas_estudiante, 3),
     temasDocente: ensureTopicRowsFromApi(dto.temas_docente, 4),
   };
 }
@@ -2072,7 +2072,7 @@ function mapFormValuesToOralPayload(values: OralActFormValues): GuardarActaOralP
     curso: values.curso || null,
     nota_final: values.notaFinal || null,
     observaciones: values.observaciones || null,
-    temas_alumno: normalize(values.temasAlumno),
+    temas_estudiante: normalize(values.temasEstudiante),
     temas_docente: normalize(values.temasDocente),
   };
 }

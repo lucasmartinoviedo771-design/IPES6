@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from django.utils import timezone
 from core.models import (
     User, Estudiante, Profesorado, PlanDeEstudio, Materia, 
-    Comision, Turno, InscripcionMateriaAlumno, Regularidad,
+    Comision, Turno, InscripcionMateriaEstudiante, Regularidad,
     MesaExamen, InscripcionMesa, Docente
 )
 from rest_framework_simplejwt.tokens import AccessToken
@@ -59,7 +59,7 @@ def test_enroll_regular_success(client, setup_mesa_data):
     )
     
     response = client.post(
-        '/api/alumnos/inscribir_mesa',
+        '/api/estudiantes/inscribir_mesa',
         data={
             "mesa_id": mesa.id,
             "dni": setup_mesa_data['estudiante'].dni
@@ -83,7 +83,7 @@ def test_enroll_regular_fail_no_regularity(client, setup_mesa_data):
     )
     
     response = client.post(
-        '/api/alumnos/inscribir_mesa',
+        '/api/estudiantes/inscribir_mesa',
         data={
             "mesa_id": mesa.id,
             "dni": setup_mesa_data['estudiante'].dni
@@ -107,7 +107,7 @@ def test_enroll_libre_success(client, setup_mesa_data):
     )
     
     response = client.post(
-        '/api/alumnos/inscribir_mesa',
+        '/api/estudiantes/inscribir_mesa',
         data={
             "mesa_id": mesa.id,
             "dni": setup_mesa_data['estudiante'].dni
@@ -138,7 +138,7 @@ def test_enroll_libre_fail_if_regular(client, setup_mesa_data):
     )
     
     response = client.post(
-        '/api/alumnos/inscribir_mesa',
+        '/api/estudiantes/inscribir_mesa',
         data={
             "mesa_id": mesa.id,
             "dni": setup_mesa_data['estudiante'].dni
@@ -152,11 +152,11 @@ def test_enroll_libre_fail_if_regular(client, setup_mesa_data):
 
 def test_enroll_libre_fail_if_cursando(client, setup_mesa_data):
     # Setup Enrollment (Cursando)
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_mesa_data['estudiante'],
         materia=setup_mesa_data['materia'],
         anio=date.today().year,
-        estado=InscripcionMateriaAlumno.Estado.CONFIRMADA
+        estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
     )
     
     mesa = MesaExamen.objects.create(
@@ -168,7 +168,7 @@ def test_enroll_libre_fail_if_cursando(client, setup_mesa_data):
     )
     
     response = client.post(
-        '/api/alumnos/inscribir_mesa',
+        '/api/estudiantes/inscribir_mesa',
         data={
             "mesa_id": mesa.id,
             "dni": setup_mesa_data['estudiante'].dni

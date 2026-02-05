@@ -36,7 +36,7 @@ import { client as axios } from '@/api/client';
 interface Preinscripcion {
   id: number;
   codigo: string;
-  alumno: {
+  estudiante: {
     dni: string;
     nombre_completo: string;
     user: {
@@ -258,10 +258,10 @@ const FormalizarInscripcion: React.FC = () => {
                     <TableCell>
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {pre.alumno.user.last_name.toUpperCase()}, {pre.alumno.user.first_name}
+                          {pre.estudiante.user.last_name.toUpperCase()}, {pre.estudiante.user.first_name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          DNI: {pre.alumno.dni}
+                          DNI: {pre.estudiante.dni}
                         </Typography>
                       </Box>
                     </TableCell>

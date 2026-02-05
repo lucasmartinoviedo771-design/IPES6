@@ -23,7 +23,7 @@ def link():
         for v in vinculos:
             # Crear preinscripción si no existe
             pre, created = Preinscripcion.objects.get_or_create(
-                alumno=est,
+                estudiante=est,
                 carrera=v.profesorado,
                 anio=v.anio_ingreso or 2026,
                 defaults={

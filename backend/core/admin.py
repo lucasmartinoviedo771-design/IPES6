@@ -24,7 +24,7 @@ from .models import (
     RequisitoDocumentacionTemplate,
     ProfesoradoRequisitoDocumentacion,
     EquivalenciaCurricular,
-    InscripcionMateriaAlumno,
+    InscripcionMateriaEstudiante,
     PedidoAnalitico,
     MesaExamen,
     InscripcionMesa,
@@ -37,7 +37,7 @@ from .models import (
     PlanillaRegularidadHistorial,
     ActaExamen,
     ActaExamenDocente,
-    ActaExamenAlumno,
+    ActaExamenEstudiante,
     MessageTopic,
     Conversation,
     ConversationParticipant,
@@ -73,7 +73,7 @@ admin.site.register(PreinscripcionChecklist)
 admin.site.register(RequisitoDocumentacionTemplate)
 admin.site.register(ProfesoradoRequisitoDocumentacion)
 admin.site.register(EquivalenciaCurricular)
-admin.site.register(InscripcionMateriaAlumno)
+admin.site.register(InscripcionMateriaEstudiante)
 admin.site.register(PedidoAnalitico)
 admin.site.register(MesaExamen)
 admin.site.register(InscripcionMesa)
@@ -86,7 +86,7 @@ admin.site.register(PlanillaRegularidadFila)
 admin.site.register(PlanillaRegularidadHistorial)
 admin.site.register(ActaExamen)
 admin.site.register(ActaExamenDocente)
-admin.site.register(ActaExamenAlumno)
+admin.site.register(ActaExamenEstudiante)
 admin.site.register(MessageTopic)
 admin.site.register(Conversation)
 admin.site.register(ConversationParticipant)

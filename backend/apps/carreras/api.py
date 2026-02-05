@@ -15,6 +15,7 @@ STRUCTURE_VIEW_ROLES = {
     "jefes",
     "jefa_aaee",
     "consulta",
+    "estudiante",
 }
 STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
 

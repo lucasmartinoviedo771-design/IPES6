@@ -90,16 +90,16 @@ function mapToApiPayload(v: any) {
     empleador: v.empleador || null,
     horario_trabajo: v.horario_trabajo || v.horario || null,
     domicilio_trabajo: v.domicilio_trabajo || v.dom_trabajo || null,
-    // bloque alumno (requerido por el backend)
-    alumno: {
-      dni: String(v?.alumno?.dni ?? v.dni ?? ""),
-      nombres: String(v?.alumno?.nombres ?? v.nombres ?? ""),
-      apellido: String(v?.alumno?.apellido ?? v.apellido ?? ""),
-      cuil: v?.alumno?.cuil ?? v.cuil ?? null,
-      fecha_nacimiento: asDate(v?.alumno?.fecha_nacimiento ?? v.fecha_nacimiento),
-      email: v?.alumno?.email ?? v.email ?? null,
-      telefono: v?.alumno?.telefono ?? v.tel_movil ?? v.tel_fijo ?? null,
-      domicilio: v?.alumno?.domicilio ?? v.domicilio ?? null,
+    // bloque estudiante (requerido por el backend)
+    estudiante: {
+      dni: String(v?.estudiante?.dni ?? v.dni ?? ""),
+      nombres: String(v?.estudiante?.nombres ?? v.nombres ?? ""),
+      apellido: String(v?.estudiante?.apellido ?? v.apellido ?? ""),
+      cuil: v?.estudiante?.cuil ?? v.cuil ?? null,
+      fecha_nacimiento: asDate(v?.estudiante?.fecha_nacimiento ?? v.fecha_nacimiento),
+      email: v?.estudiante?.email ?? v.email ?? null,
+      telefono: v?.estudiante?.telefono ?? v.tel_movil ?? v.tel_fijo ?? null,
+      domicilio: v?.estudiante?.domicilio ?? v.domicilio ?? null,
     },
   };
 }

@@ -1,7 +1,7 @@
 from ninja import Router
 from django.db.models import Count, Case, When, Avg, FloatField
 from core.models import Preinscripcion, Regularidad
-from apps.asistencia.models import AsistenciaAlumno
+from apps.asistencia.models import AsistenciaEstudiante
 
 router = Router(tags=["Metrics"])
 
@@ -74,7 +74,7 @@ def get_attendance_summary_by_profesorado(request):
     Calcula la tasa de asistencia por profesorado.
     """
     attendance_summary = (
-        AsistenciaAlumno.objects
+        AsistenciaEstudiante.objects
         .values('clase__comision__materia__plan_de_estudio__profesorado__nombre')
         .annotate(
             total_asistencias=Count('id'),

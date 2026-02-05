@@ -37,7 +37,7 @@ import { useNavigate } from 'react-router-dom';
 import { enqueueSnackbar } from 'notistack';
 
 import { listarActas, obtenerActa, actualizarCabeceraActa, ActaFilter } from '@/api/cargaNotas';
-import { gestionarMesaPlanillaCierre } from '@/api/alumnos';
+import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 
 dayjs.extend(utc);
@@ -158,7 +158,7 @@ const HistorialActasPage: React.FC = () => {
                                 <TableCell><b>Código Interino</b></TableCell>
                                 <TableCell><b>Materia</b></TableCell>
                                 <TableCell><b>Libro/Folio</b></TableCell>
-                                <TableCell align="center"><b>Alumnos</b></TableCell>
+                                <TableCell align="center"><b>Estudiantes</b></TableCell>
                                 <TableCell align="right"><b>Acciones</b></TableCell>
                             </TableRow>
                         </TableHead>
@@ -174,7 +174,7 @@ const HistorialActasPage: React.FC = () => {
                                     <TableCell>
                                         {acta.libro || '-'}/{acta.folio || '-'}
                                     </TableCell>
-                                    <TableCell align="center">{acta.total_alumnos}</TableCell>
+                                    <TableCell align="center">{acta.total_estudiantes}</TableCell>
                                     <TableCell align="right">
                                         <Tooltip title="Imprimir">
                                             <IconButton onClick={() => window.open(`/admin/actas/${acta.id}/print`, '_blank')}>

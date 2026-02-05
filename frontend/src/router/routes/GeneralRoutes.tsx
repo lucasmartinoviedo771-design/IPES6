@@ -11,7 +11,7 @@ import ConfirmarInscripcionPage from "@/pages/ConfirmarInscripcionPage";
 
 const managementRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente"];
 const preinscripcionesRoles: string[] = ["admin", "secretaria", "bedel"];
-const mensajesRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "alumno"];
+const mensajesRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "estudiante"];
 const confirmacionRoles: string[] = ["bedel", "secretaria", "admin"];
 
 export const buildGeneralRoutes = () => (

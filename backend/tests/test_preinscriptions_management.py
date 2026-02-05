@@ -9,9 +9,9 @@ def setup_data(db):
     # Create a user with admin access (staff)
     user = User.objects.create_user(username='adminuser_mgmt', password='adminpass', first_name='Admin', last_name='User', email='admin_mgmt@example.com', is_staff=True)
     
-    # Create a regular user/alumno for preinscription
+    # Create a regular user/estudiante for preinscription
     student_user = User.objects.create_user(username='student_mgmt', password='studentpass', first_name='Juan', last_name='Perez', email='juan_mgmt@example.com')
-    alumno = Estudiante.objects.create(user=student_user, dni='88888888', fecha_nacimiento=date(2000, 1, 1))
+    estudiante = Estudiante.objects.create(user=student_user, dni='88888888', fecha_nacimiento=date(2000, 1, 1))
     
     # Create a carrera
     carrera = Profesorado.objects.create(nombre='Profesorado de Física', activo=True, inscripcion_abierta=True, duracion_anios=4)
@@ -28,7 +28,7 @@ def setup_data(db):
     token = AccessToken.for_user(user)
     return {
         'admin_user': user,
-        'alumno': alumno,
+        'estudiante': estudiante,
         'carrera': carrera,
         'auth_headers': {'HTTP_AUTHORIZATION': f'Bearer {token}'}
     }
@@ -37,7 +37,7 @@ from datetime import timedelta
 
 def test_update_preinscripcion_data(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -45,8 +45,8 @@ def test_update_preinscripcion_data(client, setup_data):
     )
     
     payload = {
-        "alumno": {
-            "dni": setup_data['alumno'].dni,
+        "estudiante": {
+            "dni": setup_data['estudiante'].dni,
             "nombres": "Updated Name",
             "apellido": "Updated Lastname",
             "fecha_nacimiento": "2000-01-01",
@@ -65,16 +65,16 @@ def test_update_preinscripcion_data(client, setup_data):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data['alumno']['nombre'] == "Updated Name"
-    assert data['alumno']['email'] == "updated@example.com"
+    assert data['estudiante']['nombre'] == "Updated Name"
+    assert data['estudiante']['email'] == "updated@example.com"
     
     pre.refresh_from_db()
-    assert pre.alumno.user.first_name == "Updated Name"
-    assert pre.alumno.user.email == "updated@example.com"
+    assert pre.estudiante.user.first_name == "Updated Name"
+    assert pre.estudiante.user.email == "updated@example.com"
 
 def test_manage_checklist(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Enviada',
@@ -112,7 +112,7 @@ def test_manage_checklist(client, setup_data):
 
 def test_reactivate_preinscripcion(client, setup_data):
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Borrador',
@@ -132,7 +132,7 @@ def test_add_career_to_student(client, setup_data):
     other_career = Profesorado.objects.create(nombre='Profesorado de Historia', activo=True, inscripcion_abierta=True, duracion_anios=4)
     
     pre = Preinscripcion.objects.create(
-        alumno=setup_data['alumno'],
+        estudiante=setup_data['estudiante'],
         carrera=setup_data['carrera'],
         anio=datetime.now().year,
         estado='Confirmada',
@@ -161,4 +161,4 @@ def test_add_career_to_student(client, setup_data):
     
     new_pre = Preinscripcion.objects.get(codigo=new_pre_code)
     assert new_pre.carrera == other_career
-    assert new_pre.alumno == setup_data['alumno']
+    assert new_pre.estudiante == setup_data['estudiante']

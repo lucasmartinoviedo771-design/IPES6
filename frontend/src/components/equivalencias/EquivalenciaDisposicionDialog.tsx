@@ -27,9 +27,9 @@ import {
   EquivalenciaMateriaPendienteDTO,
   obtenerCarrerasActivas,
   TrayectoriaCarreraDetalleDTO,
-} from "@/api/alumnos";
+} from "@/api/estudiantes";
 import { listarPlanes, PlanDetalle } from "@/api/carreras";
-import { fetchMateriasPendientesEquivalencia, fetchEstudianteAdminDetail } from "@/api/alumnos";
+import { fetchMateriasPendientesEquivalencia, fetchEstudianteAdminDetail } from "@/api/estudiantes";
 import { fetchRegularidadMetadata } from "@/api/primeraCarga";
 import { getErrorMessage } from "@/utils/errors";
 

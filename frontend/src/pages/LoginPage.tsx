@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { getDefaultHomeRoute, isOnlyStudent } from "@/utils/roles";
+import { getDefaultHomeRoute, isOnlyEstudiante } from "@/utils/roles";
 import ipesLogoDark from "@/assets/ipes-logo-dark.png";
 import sigedFirma from "@/assets/siged-firma.png";
 import { PageHero } from "@/components/ui/GradientTitles";
@@ -86,7 +86,7 @@ export default function LoginPage() {
         if (target === "/preinscripcion") {
           target = defaultHome;
         }
-        if (isOnlyStudent(loggedUser) && target && !target.startsWith("/alumnos")) {
+        if (isOnlyEstudiante(loggedUser) && target && !target.startsWith("/estudiantes")) {
           target = defaultHome;
         }
         if (!target) {

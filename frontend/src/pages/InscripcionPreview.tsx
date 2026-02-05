@@ -45,7 +45,7 @@ type MockInscripta = {
 };
 
 const mockData = {
-  alumno: { nombre: "Ana Gómez", plan: "Profesorado en Educación Primaria", anioCal: 2025 },
+  estudiante: { nombre: "Ana Gómez", plan: "Profesorado en Educación Primaria", anioCal: 2025 },
   ventana: { nombre: "2.º cuatrimestre 2025", estado: "Abierta hasta 20/08" },
   habilitadas: [
     {
@@ -100,8 +100,8 @@ export default function InscripcionPreview() {
       <Stack spacing={3} maxWidth={1180} mx="auto">
         <PageHero
           title="Inscripción a materias"
-          subtitle={`Alumna: ${mockData.alumno.nombre} · Plan: ${mockData.alumno.plan} · Ventana actual: ${mockData.ventana.nombre} (${mockData.ventana.estado})`}
-          actions={<Chip color="primary" label={`Año académico ${mockData.alumno.anioCal}`} sx={{ fontWeight: 600 }} />}
+          subtitle={`Alumna: ${mockData.estudiante.nombre} · Plan: ${mockData.estudiante.plan} · Ventana actual: ${mockData.ventana.nombre} (${mockData.ventana.estado})`}
+          actions={<Chip color="primary" label={`Año académico ${mockData.estudiante.anioCal}`} sx={{ fontWeight: 600 }} />}
         />
 
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: "1px solid #e3d7bc", bgcolor: "#fff" }}>

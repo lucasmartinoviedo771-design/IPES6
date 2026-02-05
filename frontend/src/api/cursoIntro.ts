@@ -80,12 +80,12 @@ export type CursoIntroEstadoDTO = {
 };
 
 export async function fetchCursoIntroCohortes(): Promise<CursoIntroCohorteDTO[]> {
-  const { data } = await client.get<CursoIntroCohorteDTO[]>("/alumnos/curso-intro/cohortes");
+  const { data } = await client.get<CursoIntroCohorteDTO[]>("/estudiantes/curso-intro/cohortes");
   return data;
 }
 
 export async function crearCursoIntroCohorte(payload: CursoIntroCohortePayload): Promise<CursoIntroCohorteDTO> {
-  const { data } = await client.post<CursoIntroCohorteDTO>("/alumnos/curso-intro/cohortes", payload);
+  const { data } = await client.post<CursoIntroCohorteDTO>("/estudiantes/curso-intro/cohortes", payload);
   return data;
 }
 
@@ -93,7 +93,7 @@ export async function actualizarCursoIntroCohorte(
   cohorteId: number,
   payload: CursoIntroCohortePayload,
 ): Promise<CursoIntroCohorteDTO> {
-  const { data } = await client.put<CursoIntroCohorteDTO>(`/alumnos/curso-intro/cohortes/${cohorteId}`, payload);
+  const { data } = await client.put<CursoIntroCohorteDTO>(`/estudiantes/curso-intro/cohortes/${cohorteId}`, payload);
   return data;
 }
 
@@ -106,7 +106,7 @@ export async function listarCursoIntroRegistros(
   if (filters.turno_id) params.turno_id = filters.turno_id;
   if (filters.resultado) params.resultado = filters.resultado;
   if (filters.anio) params.anio = filters.anio;
-  const { data } = await client.get<CursoIntroRegistroDTO[]>("/alumnos/curso-intro/registros", { params });
+  const { data } = await client.get<CursoIntroRegistroDTO[]>("/estudiantes/curso-intro/registros", { params });
   return data;
 }
 
@@ -115,7 +115,7 @@ export async function listarCursoIntroPendientes(
 ): Promise<CursoIntroPendienteDTO[]> {
   const params: Record<string, number> = {};
   if (profesoradoId) params.profesorado_id = profesoradoId;
-  const { data } = await client.get<CursoIntroPendienteDTO[]>("/alumnos/curso-intro/pendientes", { params });
+  const { data } = await client.get<CursoIntroPendienteDTO[]>("/estudiantes/curso-intro/pendientes", { params });
   return data;
 }
 
@@ -125,7 +125,7 @@ export async function inscribirCursoIntro(payload: {
   profesorado_id?: number;
   turno_id?: number;
 }): Promise<CursoIntroRegistroDTO> {
-  const { data } = await client.post<CursoIntroRegistroDTO>("/alumnos/curso-intro/registros", payload);
+  const { data } = await client.post<CursoIntroRegistroDTO>("/estudiantes/curso-intro/registros", payload);
   return data;
 }
 
@@ -134,7 +134,7 @@ export async function registrarCursoIntroAsistencia(
   asistencias_totales: number,
 ): Promise<CursoIntroRegistroDTO> {
   const { data } = await client.post<CursoIntroRegistroDTO>(
-    `/alumnos/curso-intro/registros/${registroId}/asistencia`,
+    `/estudiantes/curso-intro/registros/${registroId}/asistencia`,
     { asistencias_totales },
   );
   return data;
@@ -149,14 +149,14 @@ export async function cerrarCursoIntroRegistro(
   if (payload.asistencias_totales !== undefined) body.asistencias_totales = payload.asistencias_totales;
   if (payload.observaciones !== undefined) body.observaciones = payload.observaciones;
   const { data } = await client.post<CursoIntroRegistroDTO>(
-    `/alumnos/curso-intro/registros/${registroId}/cierre`,
+    `/estudiantes/curso-intro/registros/${registroId}/cierre`,
     body,
   );
   return data;
 }
 
 export async function fetchCursoIntroEstado(): Promise<CursoIntroEstadoDTO> {
-  const { data } = await client.get<CursoIntroEstadoDTO>("/alumnos/curso-intro/estado");
+  const { data } = await client.get<CursoIntroEstadoDTO>("/estudiantes/curso-intro/estado");
   return data;
 }
 
@@ -165,6 +165,6 @@ export async function autoInscribirCursoIntro(payload: {
   profesorado_id?: number | null;
   turno_id?: number | null;
 }): Promise<CursoIntroRegistroDTO> {
-  const { data } = await client.post<CursoIntroRegistroDTO>("/alumnos/curso-intro/auto-inscripcion", payload);
+  const { data } = await client.post<CursoIntroRegistroDTO>("/estudiantes/curso-intro/auto-inscripcion", payload);
   return data;
 }

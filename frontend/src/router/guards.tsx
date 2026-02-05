@@ -40,8 +40,8 @@ export function ProtectedRoute({
   }
 
   const mustCompleteProfile = Boolean(user.must_complete_profile);
-  if (!mustChange && mustCompleteProfile && loc.pathname !== "/alumnos/completar-perfil") {
-    return <Navigate to="/alumnos/completar-perfil" replace state={{ from: loc }} />;
+  if (!mustChange && mustCompleteProfile && loc.pathname !== "/estudiantes/completar-perfil") {
+    return <Navigate to="/estudiantes/completar-perfil" replace state={{ from: loc }} />;
   }
 
   // Sin requisitos de rol → alcanza con estar logueado

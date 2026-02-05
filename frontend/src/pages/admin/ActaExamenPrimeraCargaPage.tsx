@@ -23,7 +23,7 @@ const ActaExamenPrimeraCargaPage: React.FC = () => {
       title="Carga inicial de actas de examen"
       subtitle="Registre rápidamente actas históricas. Algunos controles estrictos se omiten para agilizar la carga inicial."
       successMessage="Acta cargada correctamente."
-      estudiantes={metadata?.estudiantes}
+      initialEstudiantes={metadata?.estudiantes}
       headerAction={
         <Button
           variant="outlined"

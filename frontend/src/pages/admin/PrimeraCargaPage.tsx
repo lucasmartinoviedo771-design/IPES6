@@ -35,7 +35,7 @@ import {
   EstudianteInicialPayload,
   registrarDisposicionEquivalenciaPrimeraCarga,
 } from '@/api/primeraCarga';
-import { EquivalenciaDisposicionPayload, fetchEstudianteAdminDetail } from '@/api/alumnos';
+import { EquivalenciaDisposicionPayload, fetchEstudianteAdminDetail } from '@/api/estudiantes';
 import { listarProfesorados, ProfesoradoDTO } from '@/api/cargaNotas';
 import PlanillaRegularidadDialog from './PlanillaRegularidadDialog';
 import EquivalenciaDisposicionDialog from "@/components/equivalencias/EquivalenciaDisposicionDialog";

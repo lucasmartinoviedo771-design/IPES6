@@ -188,7 +188,7 @@ export default function DashboardPage() {
     const rawActions: QuickAction[] = [
         { title: "Nueva preinscripción", description: "Crear una nueva preinscripción", icon: <AddIcon />, onClick: () => navigate("/preinscripcion"), variant: "contained" },
         { title: "Ver preinscripciones", description: "Gestionar inscripciones existentes", icon: <ScheduleIcon />, onClick: () => navigate("/preinscripciones"), variant: "outlined" },
-        { title: "Gestión de alumnos", description: "Administrar información de alumnos", icon: <PeopleIcon />, onClick: () => navigate("/alumnos"), variant: "outlined", roles: ["secretaria", "admin"] },
+        { title: "Gestión de estudiantes", description: "Administrar información de estudiantes", icon: <PeopleIcon />, onClick: () => navigate("/estudiantes"), variant: "outlined", roles: ["secretaria", "admin"] },
         { title: "Carreras", description: "Administrar carreras y cohortes", icon: <MenuBookIcon />, onClick: () => navigate("/carreras"), variant: "outlined", roles: ["admin"] },
         { title: "Reportes", description: "Ver estadísticas y reportes", icon: <BarChartIcon />, onClick: () => navigate("/reportes"), variant: "outlined", roles: ["secretaria", "admin"] },
     ];
@@ -253,7 +253,7 @@ export default function DashboardPage() {
         {
             title: "Correlativas Caídas",
             value: correlativasCaidas?.length || 0,
-            subtitle: "Alumnos con problemas",
+            subtitle: "Estudiantes con problemas",
             icon: <WarningAmberIcon />,
             accent: "#ef4444",
             iconBg: "linear-gradient(135deg, #ef4444, #b91c1c)",
@@ -263,7 +263,7 @@ export default function DashboardPage() {
 
     return (
         <Stack spacing={3}>
-            {/* Alertas para alumnos (solo se muestran si hay problemas) */}
+            {/* Alertas para estudiantes (solo se muestran si hay problemas) */}
             <StudentAlerts />
 
             <PageHero
@@ -420,7 +420,7 @@ export default function DashboardPage() {
                                 >
                                     <ListItemText
                                         primaryTypographyProps={{ fontWeight: 600, color: "#020617" }}
-                                        primary={`${r.alumno.apellido}, ${r.alumno.nombres} · ${r.carrera.nombre}`}
+                                        primary={`${r.estudiante.apellido}, ${r.estudiante.nombres} · ${r.carrera.nombre}`}
                                         secondaryTypographyProps={{ color: "#475569" }}
                                         secondary={`${r.codigo} · ${dayjs(r.fecha).format("DD/MM/YYYY")}`}
                                     />

@@ -4,7 +4,7 @@ import { client as api } from '@/api/client';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { listarPlanes, ProfesoradoDTO, PlanDTO } from '@/api/cargaNotas';
 import { useCarreras } from '@/hooks/useCarreras';
-import { obtenerMesaPlanilla, actualizarMesaPlanilla, MesaPlanillaAlumnoDTO, MesaPlanillaCondicionDTO } from '@/api/alumnos';
+import { obtenerMesaPlanilla, actualizarMesaPlanilla, MesaPlanillaEstudianteDTO, MesaPlanillaCondicionDTO } from '@/api/estudiantes';
 import { listarMaterias } from '@/api/comisiones';
 import { listarDocentes, DocenteDTO } from '@/api/docentes';
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
@@ -154,7 +154,7 @@ export default function MesasPage() {
   const [planillaModalOpen, setPlanillaModalOpen] = useState(false);
   const [planillaMesa, setPlanillaMesa] = useState<Mesa | null>(null);
   const [planillaCondiciones, setPlanillaCondiciones] = useState<MesaPlanillaCondicionDTO[]>([]);
-  const [planillaAlumnos, setPlanillaAlumnos] = useState<MesaPlanillaAlumnoDTO[]>([]);
+  const [planillaEstudiantes, setPlanillaEstudiantes] = useState<MesaPlanillaEstudianteDTO[]>([]);
   const [planillaLoading, setPlanillaLoading] = useState(false);
   const [planillaSaving, setPlanillaSaving] = useState(false);
   const [planillaError, setPlanillaError] = useState<string | null>(null);
@@ -589,11 +589,11 @@ export default function MesasPage() {
     try {
       const data = await obtenerMesaPlanilla(mesaId);
       setPlanillaCondiciones(data.condiciones);
-      setPlanillaAlumnos(data.alumnos);
+      setPlanillaEstudiantes(data.estudiantes);
     } catch (error) {
       console.error('No se pudieron cargar los datos de la planilla', error);
       setPlanillaCondiciones([]);
-      setPlanillaAlumnos([]);
+      setPlanillaEstudiantes([]);
       setPlanillaError('No se pudieron cargar los resultados de la mesa.');
     } finally {
       setPlanillaLoading(false);
@@ -612,26 +612,26 @@ export default function MesasPage() {
     setPlanillaModalOpen(false);
     setPlanillaMesa(null);
     setPlanillaCondiciones([]);
-    setPlanillaAlumnos([]);
+    setPlanillaEstudiantes([]);
     setPlanillaError(null);
     setPlanillaSuccess(null);
     setPlanillaLoading(false);
     setPlanillaSaving(false);
   };
 
-  const updatePlanillaAlumno = (
+  const updatePlanillaEstudiante = (
     inscripcionId: number,
-    updater: (prev: MesaPlanillaAlumnoDTO) => MesaPlanillaAlumnoDTO,
+    updater: (prev: MesaPlanillaEstudianteDTO) => MesaPlanillaEstudianteDTO,
   ) => {
-    setPlanillaAlumnos((prev) =>
-      prev.map((alumno) => (alumno.inscripcion_id === inscripcionId ? updater(alumno) : alumno))
+    setPlanillaEstudiantes((prev) =>
+      prev.map((estudiante) => (estudiante.inscripcion_id === inscripcionId ? updater(estudiante) : estudiante))
     );
   };
 
   const handlePlanillaFechaChange = (inscripcionId: number, value: string) => {
     const nextValue = value ? value : null;
-    updatePlanillaAlumno(inscripcionId, (alumno) => ({
-      ...alumno,
+    updatePlanillaEstudiante(inscripcionId, (estudiante) => ({
+      ...estudiante,
       fecha_resultado: nextValue,
     }));
   };
@@ -639,11 +639,11 @@ export default function MesasPage() {
   const handlePlanillaCondicionChange = (inscripcionId: number, value: string) => {
     const condicion = value || null;
     const condInfo = condicion ? condicionPorValor.get(condicion) : undefined;
-    updatePlanillaAlumno(inscripcionId, (alumno) => ({
-      ...alumno,
+    updatePlanillaEstudiante(inscripcionId, (estudiante) => ({
+      ...estudiante,
       condicion,
       condicion_display: condInfo?.label ?? null,
-      cuenta_para_intentos: condInfo ? condInfo.cuenta_para_intentos : alumno.cuenta_para_intentos,
+      cuenta_para_intentos: condInfo ? condInfo.cuenta_para_intentos : estudiante.cuenta_para_intentos,
     }));
   };
 
@@ -653,8 +653,8 @@ export default function MesasPage() {
       const parsed = Number(value);
       nextValue = Number.isNaN(parsed) ? null : parsed;
     }
-    updatePlanillaAlumno(inscripcionId, (alumno) => ({
-      ...alumno,
+    updatePlanillaEstudiante(inscripcionId, (estudiante) => ({
+      ...estudiante,
       nota: nextValue,
     }));
   };
@@ -665,16 +665,16 @@ export default function MesasPage() {
     value: string,
   ) => {
     const sanitized = value.trim();
-    updatePlanillaAlumno(inscripcionId, (alumno) => {
-      const next: MesaPlanillaAlumnoDTO = { ...alumno };
+    updatePlanillaEstudiante(inscripcionId, (estudiante) => {
+      const next: MesaPlanillaEstudianteDTO = { ...estudiante };
       next[field] = sanitized ? sanitized : null;
       return next;
     });
   };
 
   const handlePlanillaCuentaIntentosChange = (inscripcionId: number, checked: boolean) => {
-    updatePlanillaAlumno(inscripcionId, (alumno) => ({
-      ...alumno,
+    updatePlanillaEstudiante(inscripcionId, (estudiante) => ({
+      ...estudiante,
       cuenta_para_intentos: checked,
     }));
   };
@@ -690,15 +690,15 @@ export default function MesasPage() {
 
     try {
       const payload = {
-        alumnos: planillaAlumnos.map((alumno) => ({
-          inscripcion_id: alumno.inscripcion_id,
-          fecha_resultado: alumno.fecha_resultado || null,
-          condicion: alumno.condicion || null,
-          nota: alumno.nota ?? null,
-          folio: alumno.folio || null,
-          libro: alumno.libro || null,
-          observaciones: alumno.observaciones || null,
-          cuenta_para_intentos: alumno.cuenta_para_intentos,
+        estudiantes: planillaEstudiantes.map((estudiante) => ({
+          inscripcion_id: estudiante.inscripcion_id,
+          fecha_resultado: estudiante.fecha_resultado || null,
+          condicion: estudiante.condicion || null,
+          nota: estudiante.nota ?? null,
+          folio: estudiante.folio || null,
+          libro: estudiante.libro || null,
+          observaciones: estudiante.observaciones || null,
+          cuenta_para_intentos: estudiante.cuenta_para_intentos,
         })),
       };
 
@@ -1109,7 +1109,7 @@ export default function MesasPage() {
             <Stack alignItems="center" justifyContent="center" sx={{ py: 4 }}>
               <CircularProgress />
             </Stack>
-          ) : planillaAlumnos.length === 0 ? (
+          ) : planillaEstudiantes.length === 0 ? (
             <Alert severity="info">No hay inscripciones registradas para esta mesa.</Alert>
           ) : (
             <Box sx={{ overflowX: 'auto' }}>
@@ -1128,17 +1128,17 @@ export default function MesasPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {planillaAlumnos.map((alumno) => (
-                    <TableRow key={alumno.inscripcion_id}>
-                      <TableCell>{alumno.dni}</TableCell>
-                      <TableCell>{alumno.apellido_nombre}</TableCell>
+                  {planillaEstudiantes.map((estudiante) => (
+                    <TableRow key={estudiante.inscripcion_id}>
+                      <TableCell>{estudiante.dni}</TableCell>
+                      <TableCell>{estudiante.apellido_nombre}</TableCell>
                       <TableCell sx={{ minWidth: 180 }}>
                         <TextField
                           select
                           size="small"
                           fullWidth
-                          value={alumno.condicion ?? ''}
-                          onChange={(e) => handlePlanillaCondicionChange(alumno.inscripcion_id, e.target.value)}
+                          value={estudiante.condicion ?? ''}
+                          onChange={(e) => handlePlanillaCondicionChange(estudiante.inscripcion_id, e.target.value)}
                           disabled={planillaSaving}
                         >
                           <MenuItem value="">Sin asignar</MenuItem>
@@ -1151,8 +1151,8 @@ export default function MesasPage() {
                         <TextField
                           size="small"
                           type="number"
-                          value={alumno.nota ?? ''}
-                          onChange={(e) => handlePlanillaNotaChange(alumno.inscripcion_id, e.target.value)}
+                          value={estudiante.nota ?? ''}
+                          onChange={(e) => handlePlanillaNotaChange(estudiante.inscripcion_id, e.target.value)}
                           disabled={planillaSaving}
                           inputProps={{ step: 0.5, min: 0, max: 10 }}
                         />
@@ -1161,40 +1161,40 @@ export default function MesasPage() {
                         <TextField
                           size="small"
                           type="date"
-                          value={alumno.fecha_resultado ?? ''}
-                          onChange={(e) => handlePlanillaFechaChange(alumno.inscripcion_id, e.target.value)}
+                          value={estudiante.fecha_resultado ?? ''}
+                          onChange={(e) => handlePlanillaFechaChange(estudiante.inscripcion_id, e.target.value)}
                           disabled={planillaSaving}
                           InputLabelProps={{ shrink: true }}
                         />
                       </TableCell>
                       <TableCell align="center">
                         <Checkbox
-                          checked={Boolean(alumno.cuenta_para_intentos)}
-                          onChange={(e) => handlePlanillaCuentaIntentosChange(alumno.inscripcion_id, e.target.checked)}
+                          checked={Boolean(estudiante.cuenta_para_intentos)}
+                          onChange={(e) => handlePlanillaCuentaIntentosChange(estudiante.inscripcion_id, e.target.checked)}
                           disabled={planillaSaving}
                         />
                       </TableCell>
                       <TableCell sx={{ minWidth: 120 }}>
                         <TextField
                           size="small"
-                          value={alumno.folio ?? ''}
-                          onChange={(e) => handlePlanillaTextoChange(alumno.inscripcion_id, 'folio', e.target.value)}
+                          value={estudiante.folio ?? ''}
+                          onChange={(e) => handlePlanillaTextoChange(estudiante.inscripcion_id, 'folio', e.target.value)}
                           disabled={planillaSaving}
                         />
                       </TableCell>
                       <TableCell sx={{ minWidth: 120 }}>
                         <TextField
                           size="small"
-                          value={alumno.libro ?? ''}
-                          onChange={(e) => handlePlanillaTextoChange(alumno.inscripcion_id, 'libro', e.target.value)}
+                          value={estudiante.libro ?? ''}
+                          onChange={(e) => handlePlanillaTextoChange(estudiante.inscripcion_id, 'libro', e.target.value)}
                           disabled={planillaSaving}
                         />
                       </TableCell>
                       <TableCell sx={{ minWidth: 220 }}>
                         <TextField
                           size="small"
-                          value={alumno.observaciones ?? ''}
-                          onChange={(e) => handlePlanillaTextoChange(alumno.inscripcion_id, 'observaciones', e.target.value)}
+                          value={estudiante.observaciones ?? ''}
+                          onChange={(e) => handlePlanillaTextoChange(estudiante.inscripcion_id, 'observaciones', e.target.value)}
                           disabled={planillaSaving}
                           multiline
                           maxRows={3}

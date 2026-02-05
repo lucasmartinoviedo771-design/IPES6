@@ -32,7 +32,7 @@ import {
   type ProfesoradoDTO,
   type MateriaOptionDTO,
 } from "@/api/cargaNotas";
-import { obtenerMesaPlanilla, type MesaPlanillaDTO, type MesaPlanillaAlumnoDTO } from "@/api/alumnos";
+import { obtenerMesaPlanilla, type MesaPlanillaDTO, type MesaPlanillaEstudianteDTO } from "@/api/estudiantes";
 import { PageHero } from "@/components/ui/GradientTitles";
 import logoMinisterio from "@/assets/escudo_ministerio_tdf.png";
 import logoIpes from "@/assets/logo_ipes.png";
@@ -97,9 +97,9 @@ function MesaPlanillaDialog({
   loading: boolean;
   onClose: () => void;
 }) {
-  const sortedAlumnos = useMemo(() => {
+  const sortedEstudiantes = useMemo(() => {
     if (!planilla) return [];
-    return [...planilla.alumnos].sort((a, b) => (a.apellido_nombre || "").localeCompare(b.apellido_nombre || ""));
+    return [...planilla.estudiantes].sort((a, b) => (a.apellido_nombre || "").localeCompare(b.apellido_nombre || ""));
   }, [planilla]);
   const horaDesdeTexto = planilla?.hora_desde ? formatHora(planilla.hora_desde) : "-";
   const horaHastaTexto = planilla?.hora_hasta ? formatHora(planilla.hora_hasta) : "-";
@@ -118,16 +118,16 @@ function MesaPlanillaDialog({
   const planillaResolucion = planilla?.plan_resolucion ?? "-";
   const codigoMesa = planilla?.mesa_codigo ?? "-";
 
-  const renderAlumnoRow = (alumno: MesaPlanillaAlumnoDTO) => (
-    <TableRow key={alumno.alumno_id ?? alumno.inscripcion_id}>
-      <TableCell>{alumno.apellido_nombre}</TableCell>
-      <TableCell>{alumno.dni}</TableCell>
-      <TableCell>{alumno.condicion_display || alumno.condicion || "-"}</TableCell>
-      <TableCell>{alumno.nota ?? "-"}</TableCell>
-      <TableCell>{alumno.folio || "-"}</TableCell>
-      <TableCell>{alumno.libro || "-"}</TableCell>
-      <TableCell>{alumno.fecha_resultado ? formatDate(alumno.fecha_resultado) : "-"}</TableCell>
-      <TableCell>{alumno.observaciones || "-"}</TableCell>
+  const renderEstudianteRow = (estudiante: MesaPlanillaEstudianteDTO) => (
+    <TableRow key={estudiante.estudiante_id ?? estudiante.inscripcion_id}>
+      <TableCell>{estudiante.apellido_nombre}</TableCell>
+      <TableCell>{estudiante.dni}</TableCell>
+      <TableCell>{estudiante.condicion_display || estudiante.condicion || "-"}</TableCell>
+      <TableCell>{estudiante.nota ?? "-"}</TableCell>
+      <TableCell>{estudiante.folio || "-"}</TableCell>
+      <TableCell>{estudiante.libro || "-"}</TableCell>
+      <TableCell>{estudiante.fecha_resultado ? formatDate(estudiante.fecha_resultado) : "-"}</TableCell>
+      <TableCell>{estudiante.observaciones || "-"}</TableCell>
     </TableRow>
   );
 
@@ -166,18 +166,18 @@ function MesaPlanillaDialog({
         `;
       })
       .join("");
-    const alumnosRows = sortedAlumnos
+    const estudiantesRows = sortedEstudiantes
       .map(
-        (alumno, index) => `
+        (estudiante, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${alumno.apellido_nombre || "-"}</td>
-          <td>${alumno.dni}</td>
-          <td>${alumno.condicion_display || alumno.condicion || "-"}</td>
-          <td>${alumno.nota ?? "-"}</td>
-          <td>${alumno.folio || "-"}</td>
-          <td>${alumno.libro || "-"}</td>
-          <td>${alumno.observaciones || "-"}</td>
+          <td>${estudiante.apellido_nombre || "-"}</td>
+          <td>${estudiante.dni}</td>
+          <td>${estudiante.condicion_display || estudiante.condicion || "-"}</td>
+          <td>${estudiante.nota ?? "-"}</td>
+          <td>${estudiante.folio || "-"}</td>
+          <td>${estudiante.libro || "-"}</td>
+          <td>${estudiante.observaciones || "-"}</td>
         </tr>
       `,
       )
@@ -310,7 +310,7 @@ function MesaPlanillaDialog({
             <thead>
               <tr>
                 <th>Orden</th>
-                <th>Alumno</th>
+                <th>Estudiante</th>
                 <th>DNI</th>
                 <th>Condición</th>
                 <th>Nota</th>
@@ -320,7 +320,7 @@ function MesaPlanillaDialog({
               </tr>
             </thead>
             <tbody>
-              ${alumnosRows}
+              ${estudiantesRows}
             </tbody>
           </table>
           <div class="firmas">
@@ -420,7 +420,7 @@ function MesaPlanillaDialog({
                     <TableCell>Observaciones</TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>{sortedAlumnos.map(renderAlumnoRow)}</TableBody>
+                <TableBody>{sortedEstudiantes.map(renderEstudianteRow)}</TableBody>
               </Table>
             </TableContainer>
           </Stack>

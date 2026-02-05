@@ -66,10 +66,10 @@ import {
   MessageDTO,
 } from "@/api/mensajes";
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
+import { hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
 
 const ROLE_OPTIONS = [
-  { value: "alumno", label: "Estudiantes" },
+  { value: "estudiante", label: "Estudiantes" },
   { value: "docente", label: "Docentes" },
   { value: "bedel", label: "Bedeles" },
   { value: "tutor", label: "Tutores" },
@@ -86,12 +86,12 @@ const MASS_ROLE_RULES: Record<string, string[] | null> = {
   secretaria: null,
   jefa_aaee: null,
   jefes: null,
-  coordinador: ["alumno", "docente"],
-  tutor: ["alumno"],
-  bedel: ["alumno"],
+  coordinador: ["estudiante", "docente"],
+  tutor: ["estudiante"],
+  bedel: ["estudiante"],
   preinscripciones: [],
   consulta: [],
-  alumno: [],
+  estudiante: [],
 };
 
 
@@ -130,7 +130,7 @@ const useDebouncedValue = (value: string, delay = 300) => {
 const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onClose, onCreated }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const studentOnly = isOnlyStudent(user);
+  const studentOnly = isOnlyEstudiante(user);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -219,7 +219,7 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
   }, [availableRoleOptions]);
 
   useEffect(() => {
-    if (!selectedRoles.includes("alumno")) {
+    if (!selectedRoles.includes("estudiante")) {
       setSelectedCarreras([]);
     }
   }, [selectedRoles]);
@@ -405,7 +405,7 @@ const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ open, onC
                 </TextField>
 
 
-                {selectedRoles.includes("alumno") && (
+                {selectedRoles.includes("estudiante") && (
                   <TextField
                     label="Carreras (IDs separados por coma)"
                     helperText="Opcional: limitar estudiantes a carreras específicas"

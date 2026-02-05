@@ -136,7 +136,7 @@ const AsignarRolPage: React.FC = () => {
     }
   };
 
-  const nonStudentUsers = users.filter(u => !u.groups.includes('alumno'));
+  const nonStudentUsers = users.filter(u => !u.groups.includes('estudiante'));
 
   return (
     <Box sx={{ p: 3 }}>
@@ -224,10 +224,10 @@ const AsignarRolPage: React.FC = () => {
                   <ListItem key={group} sx={{ bgcolor: 'grey.50', mb: 1, borderRadius: 2 }}>
                     <ListItemText
                       primary={roles.find(r => r.value === group)?.label || group.toUpperCase()}
-                      secondary={group === 'alumno' ? 'Rol automático de estudiante' : 'Rol administrativo'}
+                      secondary={group === 'estudiante' ? 'Rol automático de estudiante' : 'Rol administrativo'}
                     />
                     <ListItemSecondaryAction>
-                      {group !== 'alumno' && (
+                      {group !== 'estudiante' && (
                         <IconButton
                           edge="end"
                           color="error"

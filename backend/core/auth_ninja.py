@@ -50,7 +50,10 @@ def ensure_roles(required_roles: list[str]):
             if not request.user or not request.user.is_authenticated:
                 raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
 
-            user_roles = {name.lower() for name in request.user.groups.values_list("name", flat=True)}
+            raw_roles = {name.lower() for name in request.user.groups.values_list("name", flat=True)}
+            user_roles = set(raw_roles)
+            if "estudiantes" in raw_roles:
+                user_roles.add("estudiante")
             if request.user.is_superuser or request.user.is_staff:
                 user_roles.add("admin")  # Consider staff users as admin-equivalent
 

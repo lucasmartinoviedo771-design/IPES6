@@ -27,7 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole, isOnlyStudent } from "@/utils/roles";
+import { hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
 import { fetchCarreras, Carrera } from "@/api/carreras";
 import { listarPlanes, PlanDTO } from "@/api/cargaNotas";
 import { listarMaterias, MateriaDTO } from "@/api/comisiones";
@@ -219,7 +219,7 @@ export default function CarrerasPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const soloAlumno = isOnlyStudent(user);
+  const soloEstudiante = isOnlyEstudiante(user);
   const puedeGestionarCarreras = hasAnyRole(user, STAFF_ROLES as unknown as string[]);
 
 
@@ -303,21 +303,21 @@ export default function CarrerasPage() {
     return carrerasQuery.data.find((carrera) => carrera.id === profesoradoId);
   }, [carrerasQuery.data, profesoradoId]);
 
-  if (soloAlumno) {
+  if (soloEstudiante) {
     return (
       <Box sx={{ p: 4, maxWidth: 640, margin: "0 auto" }}>
         <Paper variant="outlined" sx={{ p: 3 }}>
           <PageHero
             title="Gestioná tus materias"
-            subtitle="La información detallada de carreras está disponible para personal administrativo. Podés inscribirte o revisar tus materias desde el Portal de Alumnos."
+            subtitle="La información detallada de carreras está disponible para personal administrativo. Podés inscribirte o revisar tus materias desde el Portal de Estudiantes."
             sx={{ width: "100%", boxShadow: "none", borderRadius: 3 }}
           />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="flex-start">
-            <Button variant="contained" onClick={() => navigate("/alumnos/inscripcion-materia")}>
+            <Button variant="contained" onClick={() => navigate("/estudiantes/inscripcion-materia")}>
               Ir a Inscripción de Materias
             </Button>
-            <Button variant="outlined" onClick={() => navigate("/alumnos")}>
-              Volver al portal de alumnos
+            <Button variant="outlined" onClick={() => navigate("/estudiantes")}>
+              Volver al portal de estudiantes
             </Button>
           </Stack>
         </Paper>

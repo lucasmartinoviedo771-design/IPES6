@@ -38,9 +38,9 @@ export type PlanDTO = {
   resolucion: string;
 };
 
-export type RegularidadAlumnoDTO = {
+export type RegularidadEstudianteDTO = {
   inscripcion_id: number;
-  alumno_id: number;
+  estudiante_id: number;
   orden: number;
   apellido_nombre: string;
   dni: string;
@@ -82,10 +82,10 @@ export type RegularidadPlanillaDTO = {
   puede_cerrar: boolean;
   puede_reabrir: boolean;
   situaciones: SituacionOptionDTO[];
-  alumnos: RegularidadAlumnoDTO[];
+  estudiantes: RegularidadEstudianteDTO[];
 };
 
-export type RegularidadAlumnoPayload = {
+export type RegularidadEstudiantePayload = {
   inscripcion_id: number;
   nota_tp?: number | null;
   nota_final?: number | null;
@@ -98,7 +98,7 @@ export type RegularidadAlumnoPayload = {
 export type GuardarRegularidadPayload = {
   comision_id: number;
   fecha_cierre?: string;
-  alumnos: RegularidadAlumnoPayload[];
+  estudiantes: RegularidadEstudiantePayload[];
   observaciones_generales?: string | null;
 };
 
@@ -158,26 +158,26 @@ export async function obtenerDatosCargaNotas(params: {
   if (params.anio) query.anio = params.anio;
   if (params.cuatrimestre) query.cuatrimestre = params.cuatrimestre;
 
-  const { data } = await client.get<DatosCargaNotasDTO>("/alumnos/carga-notas/comisiones", {
+  const { data } = await client.get<DatosCargaNotasDTO>("/estudiantes/carga-notas/comisiones", {
     params: query,
   });
   return data;
 }
 
 export async function obtenerPlanillaRegularidad(comisionId: number) {
-  const { data } = await client.get<RegularidadPlanillaDTO>("/alumnos/carga-notas/regularidad", {
+  const { data } = await client.get<RegularidadPlanillaDTO>("/estudiantes/carga-notas/regularidad", {
     params: { comision_id: comisionId },
   });
   return data;
 }
 
 export async function guardarPlanillaRegularidad(payload: GuardarRegularidadPayload) {
-  const { data } = await client.post("/alumnos/carga-notas/regularidad", payload);
+  const { data } = await client.post("/estudiantes/carga-notas/regularidad", payload);
   return data;
 }
 
 export async function gestionarCierreRegularidad(comisionId: number, accion: "cerrar" | "reabrir") {
-  const { data } = await client.post<ApiResponse<null>>("/alumnos/carga-notas/regularidad/cierre", {
+  const { data } = await client.post<ApiResponse<null>>("/estudiantes/carga-notas/regularidad/cierre", {
     comision_id: comisionId,
     accion,
   });
@@ -256,7 +256,7 @@ export type ActaDocentePayload = {
   dni?: string | null;
 };
 
-export type ActaAlumnoPayload = {
+export type ActaEstudiantePayload = {
   numero_orden: number;
   permiso_examen?: string | null;
   dni: string;
@@ -276,7 +276,7 @@ export type ActaCreatePayload = {
   libro?: string | null;
   observaciones?: string | null;
   docentes: ActaDocentePayload[];
-  alumnos: ActaAlumnoPayload[];
+  estudiantes: ActaEstudiantePayload[];
   total_aprobados?: number;
   total_desaprobados?: number;
   total_ausentes?: number;
@@ -294,7 +294,7 @@ export interface ActaListItemDTO {
   materia: string;
   libro: string | null;
   folio: string | null;
-  total_alumnos: number;
+  total_estudiantes: number;
   created_at: string;
   mesa_id?: number | null;
   esta_cerrada?: boolean;
@@ -311,7 +311,7 @@ export interface ActaDetailDTO {
   libro: string | null;
   folio: string | null;
   observaciones: string | null;
-  total_alumnos: number;
+  total_estudiantes: number;
   total_aprobados: number;
   total_desaprobados: number;
   total_ausentes: number;
@@ -319,7 +319,7 @@ export interface ActaDetailDTO {
   created_at: string | null;
   mesa_id?: number | null;
   esta_cerrada?: boolean;
-  alumnos: ActaAlumnoPayload[];
+  estudiantes: ActaEstudiantePayload[];
   docentes: ActaDocentePayload[];
 }
 
@@ -339,14 +339,14 @@ export async function listarActas(filters?: ActaFilter) {
     if (filters.folio && filters.folio.trim() !== "") params.folio = filters.folio;
   }
 
-  const { data } = await client.get<ActaListItemDTO[]>("/alumnos/carga-notas/actas", {
+  const { data } = await client.get<ActaListItemDTO[]>("/estudiantes/carga-notas/actas", {
     params,
   });
   return data;
 }
 
 export async function obtenerActa(actaId: number) {
-  const { data } = await client.get<ActaDetailDTO>(`/alumnos/carga-notas/actas/${actaId}`);
+  const { data } = await client.get<ActaDetailDTO>(`/estudiantes/carga-notas/actas/${actaId}`);
   return data;
 }
 
@@ -355,7 +355,7 @@ export async function actualizarCabeceraActa(
   payload: { fecha: string; libro?: string | null; folio?: string | null }
 ) {
   const { data } = await client.put<ApiResponse<null>>(
-    `/alumnos/carga-notas/actas/${actaId}/header`,
+    `/estudiantes/carga-notas/actas/${actaId}/header`,
     payload
   );
   return data;
@@ -373,13 +373,13 @@ export type ActaOralDTO = {
   curso?: string | null;
   nota_final?: string | null;
   observaciones?: string | null;
-  temas_alumno: OralTopicDTO[];
+  temas_estudiante: OralTopicDTO[];
   temas_docente: OralTopicDTO[];
 };
 
 export type ActaOralListItemDTO = ActaOralDTO & {
   inscripcion_id: number;
-  alumno: string;
+  estudiante: string;
   dni: string;
 };
 
@@ -390,20 +390,20 @@ export type GuardarActaOralPayload = {
   curso?: string | null;
   nota_final?: string | null;
   observaciones?: string | null;
-  temas_alumno: OralTopicDTO[];
+  temas_estudiante: OralTopicDTO[];
   temas_docente: OralTopicDTO[];
 };
 
 export async function fetchActaMetadata(): Promise<ActaMetadataDTO> {
   const { data } = await client.get<ApiResponse<ActaMetadataDTO>>(
-    "/alumnos/carga-notas/actas/metadata",
+    "/estudiantes/carga-notas/actas/metadata",
   );
   return data.data;
 }
 
 export async function crearActaExamen(payload: ActaCreatePayload) {
   const { data } = await client.post<ApiResponse<ActaCreateResult>>(
-    "/alumnos/carga-notas/actas",
+    "/estudiantes/carga-notas/actas",
     payload,
   );
   return data;
@@ -414,7 +414,7 @@ export async function obtenerActaOral(
   inscripcionId: number,
 ): Promise<ActaOralDTO> {
   const { data } = await client.get<ActaOralDTO>(
-    `/alumnos/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
+    `/estudiantes/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
   );
   return data;
 }
@@ -425,7 +425,7 @@ export async function guardarActaOral(
   payload: GuardarActaOralPayload,
 ) {
   const { data } = await client.post<ApiResponse<null>>(
-    `/alumnos/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
+    `/estudiantes/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
     payload,
   );
   return data;
@@ -433,7 +433,7 @@ export async function guardarActaOral(
 
 export async function listarActasOrales(mesaId: number): Promise<ActaOralListItemDTO[]> {
   const { data } = await client.get<ActaOralListItemDTO[]>(
-    `/alumnos/carga-notas/mesas/${mesaId}/oral-actas`,
+    `/estudiantes/carga-notas/mesas/${mesaId}/oral-actas`,
   );
   return data;
 }

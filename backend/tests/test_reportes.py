@@ -2,7 +2,7 @@ import pytest
 from datetime import date, timedelta
 from core.models import (
     User, Estudiante, Profesorado, PlanDeEstudio, Materia, 
-    InscripcionMateriaAlumno, Regularidad, Correlatividad,
+    InscripcionMateriaEstudiante, Regularidad, Correlatividad,
     MesaExamen
 )
 from rest_framework_simplejwt.tokens import AccessToken
@@ -55,15 +55,15 @@ def test_reporte_correlativas_caidas_empty(client, setup_reporte_data):
         fecha_cierre=date.today() - timedelta(days=100) # Valid
     )
     
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_reporte_data['estudiante'],
         materia=setup_reporte_data['materia_b'],
         anio=date.today().year,
-        estado=InscripcionMateriaAlumno.Estado.CONFIRMADA
+        estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
     )
     
     response = client.get(
-        '/api/alumnos/reportes/correlativas-caidas',
+        '/api/estudiantes/reportes/correlativas-caidas',
         **setup_reporte_data['auth_headers']
     )
     
@@ -81,15 +81,15 @@ def test_reporte_correlativas_caidas_expired(client, setup_reporte_data):
         fecha_cierre=date.today() - timedelta(days=800) # Expired (> 2 years)
     )
     
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_reporte_data['estudiante'],
         materia=setup_reporte_data['materia_b'],
         anio=date.today().year,
-        estado=InscripcionMateriaAlumno.Estado.CONFIRMADA
+        estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
     )
     
     response = client.get(
-        '/api/alumnos/reportes/correlativas-caidas',
+        '/api/estudiantes/reportes/correlativas-caidas',
         **setup_reporte_data['auth_headers']
     )
     
@@ -103,15 +103,15 @@ def test_reporte_correlativas_caidas_expired(client, setup_reporte_data):
 def test_reporte_correlativas_caidas_missing(client, setup_reporte_data):
     # Scenario: Student enrolled in B, has NO regularity for A
     
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_reporte_data['estudiante'],
         materia=setup_reporte_data['materia_b'],
         anio=date.today().year,
-        estado=InscripcionMateriaAlumno.Estado.CONFIRMADA
+        estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
     )
     
     response = client.get(
-        '/api/alumnos/reportes/correlativas-caidas',
+        '/api/estudiantes/reportes/correlativas-caidas',
         **setup_reporte_data['auth_headers']
     )
     
@@ -130,15 +130,15 @@ def test_reporte_correlativas_caidas_approved(client, setup_reporte_data):
         fecha_cierre=date.today() - timedelta(days=800) # Date doesn't matter if approved
     )
     
-    InscripcionMateriaAlumno.objects.create(
+    InscripcionMateriaEstudiante.objects.create(
         estudiante=setup_reporte_data['estudiante'],
         materia=setup_reporte_data['materia_b'],
         anio=date.today().year,
-        estado=InscripcionMateriaAlumno.Estado.CONFIRMADA
+        estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
     )
     
     response = client.get(
-        '/api/alumnos/reportes/correlativas-caidas',
+        '/api/estudiantes/reportes/correlativas-caidas',
         **setup_reporte_data['auth_headers']
     )
     

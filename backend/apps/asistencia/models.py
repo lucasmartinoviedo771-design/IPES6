@@ -47,13 +47,13 @@ class CursoHorarioSnapshot(models.Model):
         return f"{self.comision} - {self.get_dia_semana_display()} {self.hora_inicio} - {self.hora_fin}"
 
 
-class CursoAlumnoSnapshot(models.Model):
+class CursoEstudianteSnapshot(models.Model):
     """Relación alumno-curso utilizada por el módulo sin depender del sistema externo."""
 
     comision = models.ForeignKey(
         Comision,
         on_delete=models.CASCADE,
-        related_name="asistencia_alumnos",
+        related_name="asistencia_estudiantes",
     )
     estudiante = models.ForeignKey(
         Estudiante,
@@ -69,6 +69,7 @@ class CursoAlumnoSnapshot(models.Model):
     sincronizado_en = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = "asistencia_cursoalumnosnapshot"
         verbose_name = "Alumno de curso (snapshot)"
         verbose_name_plural = "Alumnos de curso (snapshot)"
         unique_together = ("comision", "dni")
@@ -251,7 +252,7 @@ class JustificacionDetalle(models.Model):
         return f"{self.justificacion} → {target} ({self.clase})"
 
 
-class AsistenciaAlumno(models.Model):
+class AsistenciaEstudiante(models.Model):
     class Estado(models.TextChoices):
         PRESENTE = "presente", "Presente"
         AUSENTE = "ausente", "Ausente"
@@ -297,6 +298,7 @@ class AsistenciaAlumno(models.Model):
     observaciones = models.TextField(blank=True)
 
     class Meta:
+        db_table = "asistencia_asistenciaalumno"
         verbose_name = "Asistencia de estudiante"
         verbose_name_plural = "Asistencias de estudiantes"
         unique_together = ("clase", "estudiante")

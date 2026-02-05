@@ -79,7 +79,7 @@ export async function registrarDocenteDni(dni: string, origen = "kiosk") {
   await client.post(`/asistencia/docentes/dni-log`, { dni, origen });
 }
 
-export interface AlumnoClaseListado {
+export interface EstudianteClaseListado {
   clase_id: number;
   fecha: string;
   materia: string;
@@ -87,23 +87,23 @@ export interface AlumnoClaseListado {
   turno?: string | null;
   horario?: string | null;
   estado_clase: string;
-  total_alumnos: number;
+  total_estudiantes: number;
   presentes: number;
   ausentes: number;
   ausentes_justificados: number;
 }
 
-export interface AlumnoClasesResponse {
-  clases: AlumnoClaseListado[];
+export interface EstudianteClasesResponse {
+  clases: EstudianteClaseListado[];
 }
 
-export async function fetchAlumnoClases(params: {
+export async function fetchEstudianteClases(params: {
   comision_id?: number;
   materia_id?: number;
   desde?: string;
   hasta?: string;
-}): Promise<AlumnoClasesResponse> {
-  const { data } = await client.get<AlumnoClasesResponse>(`/asistencia/alumnos/clases`, {
+}): Promise<EstudianteClasesResponse> {
+  const { data } = await client.get<EstudianteClasesResponse>(`/asistencia/estudiantes/clases`, {
     params,
   });
   return data;
@@ -179,7 +179,7 @@ export async function desactivarCalendarioEvento(eventoId: number): Promise<void
   await client.delete(`/asistencia/calendario/${eventoId}`);
 }
 
-export interface AlumnoResumen {
+export interface EstudianteResumen {
   estudiante_id: number;
   dni: string;
   nombre: string;
@@ -196,7 +196,7 @@ export interface ClaseNavegacion {
   actual: boolean;
 }
 
-export interface ClaseAlumnoDetalle {
+export interface ClaseEstudianteDetalle {
   clase_id: number;
   comision: string;
   fecha: string;
@@ -205,23 +205,23 @@ export interface ClaseAlumnoDetalle {
   docentes: string[];
   docente_presente: boolean;
   docente_categoria_asistencia?: "normal" | "tarde" | "diferida";
-  alumnos: AlumnoResumen[];
+  estudiantes: EstudianteResumen[];
   otras_clases: ClaseNavegacion[];
 }
 
-export async function fetchClaseAlumnos(claseId: number): Promise<ClaseAlumnoDetalle> {
-  const { data } = await client.get<ClaseAlumnoDetalle>(`/asistencia/alumnos/clases/${claseId}`);
+export async function fetchClaseEstudiantes(claseId: number): Promise<ClaseEstudianteDetalle> {
+  const { data } = await client.get<ClaseEstudianteDetalle>(`/asistencia/estudiantes/clases/${claseId}`);
   return data;
 }
 
-export interface RegistrarAsistenciaAlumnosPayload {
+export interface RegistrarAsistenciaEstudiantesPayload {
   presentes: number[];
   tardes: number[];
   observaciones?: string;
 }
 
-export async function registrarAsistenciaAlumnos(claseId: number, payload: RegistrarAsistenciaAlumnosPayload) {
-  await client.post(`/asistencia/alumnos/clases/${claseId}/registrar`, payload);
+export async function registrarAsistenciaEstudiantes(claseId: number, payload: RegistrarAsistenciaEstudiantesPayload) {
+  await client.post(`/asistencia/estudiantes/clases/${claseId}/registrar`, payload);
 }
 
 export interface CrearJustificacionPayload {
@@ -238,16 +238,16 @@ export interface CrearJustificacionPayload {
 }
 
 export async function crearJustificacion(payload: CrearJustificacionPayload) {
-  const { data } = await client.post(`/asistencia/alumnos/justificaciones`, payload);
+  const { data } = await client.post(`/asistencia/estudiantes/justificaciones`, payload);
   return data;
 }
 
 export async function aprobarJustificacion(justificacionId: number) {
-  const { data } = await client.post(`/asistencia/alumnos/justificaciones/${justificacionId}/aprobar`);
+  const { data } = await client.post(`/asistencia/estudiantes/justificaciones/${justificacionId}/aprobar`);
   return data;
 }
 
-export interface AlumnoAsistenciaItem {
+export interface EstudianteAsistenciaItem {
   id: number;
   fecha: string;
   materia: string;
@@ -257,7 +257,7 @@ export interface AlumnoAsistenciaItem {
   observacion?: string | null;
 }
 
-export async function fetchMisAsistencias(): Promise<AlumnoAsistenciaItem[]> {
-  const { data } = await client.get<AlumnoAsistenciaItem[]>("/asistencia/alumnos/mis-asistencias");
+export async function fetchMisAsistencias(): Promise<EstudianteAsistenciaItem[]> {
+  const { data } = await client.get<EstudianteAsistenciaItem[]>("/asistencia/estudiantes/mis-asistencias");
   return data;
 }
