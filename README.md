@@ -9,7 +9,7 @@ Sistema integral para preinscripción, cursadas, notas y trámites administrativ
 
 ## Requisitos
 - Python 3.11+
-- Node.js 18+
+- Node.js 20+
 - UV (`pip install uv`)
 - MySQL en ejecución
 - Git
