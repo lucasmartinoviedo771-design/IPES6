@@ -301,7 +301,7 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
             "materia": acta.materia.nombre if acta.materia else "Desconocida",
             "libro": acta.libro,
             "folio": acta.folio,
-            "total_estudiantes": acta.total_estudiantes,
+            "total_estudiantes": acta.total_alumnos,
             "created_at": acta.created_at.isoformat() if acta.created_at else "",
             "mesa_id": mesa.id if mesa else None,
             "esta_cerrada": (mesa.planilla_cerrada_en is not None) if mesa else False
@@ -365,7 +365,7 @@ def obtener_acta(request, acta_id: int):
         libro=acta.libro,
         folio=acta.folio,
         observaciones=acta.observaciones,
-        total_estudiantes=acta.total_estudiantes,
+        total_estudiantes=acta.total_alumnos,
         total_aprobados=acta.total_aprobados or 0,
         total_desaprobados=acta.total_desaprobados or 0,
         total_ausentes=acta.total_ausentes or 0,
@@ -463,30 +463,30 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     codigo = _compute_acta_codigo(profesorado, anio, numero)
 
     estudiantes_payload = []
-    for estudiante in payload.estudiantes:
-        if estudiante.calificacion_definitiva not in ACTA_NOTA_CHOICES:
+    for estudiante_item in payload.estudiantes:
+        if estudiante_item.calificacion_definitiva not in ACTA_NOTA_CHOICES:
             return 400, ApiResponse(
                 ok=False,
-                message=f"Calificación '{estudiante.calificacion_definitiva}' inválida para el estudiante {estudiante.dni}.",
+                message=f"Calificación '{estudiante_item.calificacion_definitiva}' inválida para el estudiante {estudiante_item.dni}.",
             )
-        if estudiante.examen_escrito and estudiante.examen_escrito not in ACTA_NOTA_CHOICES:
-            return 400, ApiResponse(ok=False, message=f"Valor inválido en examen escrito para {estudiante.dni}.")
-        if estudiante.examen_oral and estudiante.examen_oral not in ACTA_NOTA_CHOICES:
-            return 400, ApiResponse(ok=False, message=f"Valor inválido en examen oral para {estudiante.dni}.")
+        if estudiante_item.examen_escrito and estudiante_item.examen_escrito not in ACTA_NOTA_CHOICES:
+            return 400, ApiResponse(ok=False, message=f"Valor inválido en examen escrito para {estudiante_item.dni}.")
+        if estudiante_item.examen_oral and estudiante_item.examen_oral not in ACTA_NOTA_CHOICES:
+            return 400, ApiResponse(ok=False, message=f"Valor inválido en examen oral para {estudiante_item.dni}.")
         
-        if _clasificar_resultado(estudiante.calificacion_definitiva) == "aprobado":
-            estudiante = Estudiante.objects.filter(dni=estudiante.dni).first()
-            if estudiante and estudiante_tiene_materia_aprobada(estudiante, materia):
+        if _clasificar_resultado(estudiante_item.calificacion_definitiva) == "aprobado":
+            est_obj = Estudiante.objects.filter(dni=estudiante_item.dni).first()
+            if est_obj and estudiante_tiene_materia_aprobada(est_obj, materia):
                 return 400, ApiResponse(
                     ok=False,
-                    message=f"El estudiante {estudiante.dni} ya tiene aprobada la materia {materia.nombre}. No se puede cargar otra nota de aprobación.",
+                    message=f"El estudiante {est_obj.dni} ya tiene aprobada la materia {materia.nombre}. No se puede cargar otra nota de aprobación.",
                 )
 
-        estudiantes_payload.append(estudiante)
+        estudiantes_payload.append(estudiante_item)
 
     categoria_counts = {"aprobado": 0, "desaprobado": 0, "ausente": 0}
-    for estudiante in estudiantes_payload:
-        categoria = _clasificar_resultado(estudiante.calificacion_definitiva)
+    for est_item in estudiantes_payload:
+        categoria = _clasificar_resultado(est_item.calificacion_definitiva)
         categoria_counts[categoria] += 1
 
     if payload.total_aprobados is not None and payload.total_aprobados != categoria_counts["aprobado"]:
@@ -564,7 +564,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             folio=payload.folio,
             libro=payload.libro or "",
             observaciones=payload.observaciones or "",
-            total_estudiantes=len(estudiantes_payload),
+            total_alumnos=len(estudiantes_payload),
             total_aprobados=categoria_counts["aprobado"],
             total_desaprobados=categoria_counts["desaprobado"],
             total_ausentes=categoria_counts["ausente"],
@@ -633,25 +633,25 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 orden=idx,
             )
 
-        for estudiante in estudiantes_payload:
+        for est_item in estudiantes_payload:
             ActaExamenEstudiante.objects.create(
                 acta=acta,
-                numero_orden=estudiante.numero_orden,
-                permiso_examen=estudiante.permiso_examen or "",
-                dni=estudiante.dni.strip(),
-                apellido_nombre=estudiante.apellido_nombre.strip(),
-                examen_escrito=estudiante.examen_escrito or "",
-                examen_oral=estudiante.examen_oral or "",
-                calificacion_definitiva=estudiante.calificacion_definitiva,
-                observaciones=estudiante.observaciones or "",
+                numero_orden=est_item.numero_orden,
+                permiso_examen=est_item.permiso_examen or "",
+                dni=est_item.dni.strip(),
+                apellido_nombre=est_item.apellido_nombre.strip(),
+                examen_escrito=est_item.examen_escrito or "",
+                examen_oral=est_item.examen_oral or "",
+                calificacion_definitiva=est_item.calificacion_definitiva,
+                observaciones=est_item.observaciones or "",
             )
             
-            estudiante = Estudiante.objects.filter(dni=estudiante.dni.strip()).first()
-            if estudiante:
+            est_obj = Estudiante.objects.filter(dni=est_item.dni.strip()).first()
+            if est_obj:
                 nota_decimal = None
                 condicion_mesa = InscripcionMesa.Condicion.DESAPROBADO
 
-                calif_upper = estudiante.calificacion_definitiva.strip().upper()
+                calif_upper = est_item.calificacion_definitiva.strip().upper()
                 if calif_upper in (str(i) for i in range(1, 11)):
                     try:
                         nota_decimal = Decimal(calif_upper)
@@ -666,7 +666,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 
                 InscripcionMesa.objects.update_or_create(
                     mesa=mesa,
-                    estudiante=estudiante,
+                    estudiante=est_obj,
                     defaults={
                         "estado": InscripcionMesa.Estado.INSCRIPTO,
                         "fecha_resultado": acta_fecha,
