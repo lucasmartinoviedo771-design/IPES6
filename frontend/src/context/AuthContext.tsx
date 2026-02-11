@@ -147,10 +147,15 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setUser(u);
       return u;
     } catch (err: any) {
+      // Si el error ya es un AppError (procesado por el interceptor de client.ts)
+      if (err.message && (err.status || err.code)) {
+        throw err;
+      }
+
       const status = err?.response?.status;
       const msg =
-        err?.response?.data?.detail ||
         err?.response?.data?.message ||
+        err?.response?.data?.detail ||
         (status === 400 ? "Datos inválidos." :
           status === 401 ? "Credenciales incorrectas." :
             "No se pudo iniciar sesión.");

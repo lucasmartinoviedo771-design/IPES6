@@ -154,7 +154,7 @@ def login(request, payload: LoginIn):
     limit = getattr(settings, "LOGIN_RATE_LIMIT_ATTEMPTS", 5)
 
     if _rate_limit_exceeded(cache_key):
-        raise AppError(429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente mÃ¡s tarde.")
+        raise AppError(429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente más tarde.")
 
     u = _resolve_user_by_identifier(payload.login)
     username = u.username if u else payload.login
@@ -163,8 +163,8 @@ def login(request, payload: LoginIn):
         attempts = cache.get(cache_key, 0) + 1
         cache.set(cache_key, attempts, timeout=window)
         if attempts >= limit:
-            raise AppError(429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente mÃ¡s tarde.")
-        raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Credenciales invÃ¡lidas.")
+            raise AppError(429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente más tarde.")
+        raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Credenciales inválidas.")
 
     cache.delete(cache_key)
     refresh = RefreshToken.for_user(user)
@@ -204,7 +204,7 @@ def change_password(request, payload: ChangePasswordIn):
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
 
     if not user.check_password(payload.current_password):
-        raise AppError(400, AppErrorCode.AUTHENTICATION_FAILED, "La contraseÃ±a actual no es correcta.")
+        raise AppError(400, AppErrorCode.AUTHENTICATION_FAILED, "La contraseña actual no es correcta.")
 
     try:
         validate_password(payload.new_password, user)
@@ -212,7 +212,7 @@ def change_password(request, payload: ChangePasswordIn):
         raise AppError(
             400,
             AppErrorCode.VALIDATION_ERROR,
-            "La nueva contraseÃ±a no cumple los requisitos.",
+            "La nueva contraseña no cumple los requisitos.",
             details=exc.messages,
         )
 

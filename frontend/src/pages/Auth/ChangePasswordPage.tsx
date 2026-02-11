@@ -8,6 +8,7 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  Typography,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { enqueueSnackbar } from "notistack";
@@ -128,7 +129,6 @@ const ChangePasswordPage: React.FC = () => {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               autoComplete="new-password"
-              helperText="Debe cumplir con los requisitos de seguridad del sistema."
               required
               InputProps={{
                 endAdornment: (
@@ -144,6 +144,39 @@ const ChangePasswordPage: React.FC = () => {
                 ),
               }}
             />
+
+            {/* Requisitos sutiles */}
+            <Box sx={{ pb: 1 }}>
+              <Stack spacing={0.5} sx={{ px: 1 }}>
+                {[
+                  { label: "Mínimo 8 caracteres", met: newPassword.length >= 8 },
+                  { label: "Al menos una letra", met: /[a-zA-Z]/.test(newPassword) },
+                  { label: "Al menos un número", met: /[0-9]/.test(newPassword) },
+                  { label: "No puede ser solo números", met: !/^\d+$/.test(newPassword) || newPassword === "" },
+                ].map((req, idx) => (
+                  <Stack key={idx} direction="row" spacing={1} alignItems="center">
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        bgcolor: newPassword === "" ? "grey.300" : req.met ? "success.main" : "error.light",
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: newPassword === "" ? "text.secondary" : req.met ? "success.main" : "error.main",
+                        fontSize: "0.7rem",
+                      }}
+                    >
+                      {req.label}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+
             <TextField
               type={showConfirmPassword ? "text" : "password"}
               label="Confirmar contraseña nueva"
@@ -151,6 +184,8 @@ const ChangePasswordPage: React.FC = () => {
               onChange={(event) => setConfirmPassword(event.target.value)}
               autoComplete="new-password"
               required
+              error={newPassword !== confirmPassword && confirmPassword !== ""}
+              helperText={newPassword !== confirmPassword && confirmPassword !== "" ? "Las contraseñas no coinciden" : ""}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -166,7 +201,18 @@ const ChangePasswordPage: React.FC = () => {
               }}
             />
             {error && <Alert severity="error">{error}</Alert>}
-            <Button type="submit" variant="contained" disabled={loading}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading || newPassword.length < 8 || newPassword !== confirmPassword || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)}
+              sx={{
+                mt: 1,
+                py: 1,
+                // Mantenemos el color coherente con el Hero si el tema no lo hace
+                backgroundImage: "linear-gradient(135deg, #7d7f6e, #b7694e)",
+                "&:disabled": { opacity: 0.6, backgroundImage: "none" }
+              }}
+            >
               {loading ? "Guardando..." : "Actualizar contraseña"}
             </Button>
           </Stack>
