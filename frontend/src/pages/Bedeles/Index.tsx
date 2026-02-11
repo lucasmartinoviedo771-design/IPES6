@@ -26,11 +26,12 @@ export default function BedelesIndex() {
         title: "Estructura académica",
         items: canManageStructure
           ? [
-              DASHBOARD_ITEMS.PROFESORADO_ABM,
-              DASHBOARD_ITEMS.PLANES_ESTUDIO_ABM,
-              DASHBOARD_ITEMS.MATERIAS_ABM,
-              DASHBOARD_ITEMS.CORRELATIVIDADES_ABM,
-            ]
+            DASHBOARD_ITEMS.CARRERAS_VIEW,
+            DASHBOARD_ITEMS.PROFESORADO_ABM,
+            DASHBOARD_ITEMS.PLANES_ESTUDIO_ABM,
+            DASHBOARD_ITEMS.MATERIAS_ABM,
+            DASHBOARD_ITEMS.CORRELATIVIDADES_ABM,
+          ]
           : [],
       },
       {
@@ -44,20 +45,20 @@ export default function BedelesIndex() {
       },
       ...(canCursoIntro
         ? [
-            {
-              title: "Gestión académica - CI",
-              items: [DASHBOARD_ITEMS.CURSO_INTRO_PANEL],
-            } satisfies RoleDashboardSection,
-          ]
+          {
+            title: "Gestión académica - CI",
+            items: [DASHBOARD_ITEMS.CURSO_INTRO_PANEL],
+          } satisfies RoleDashboardSection,
+        ]
         : []),
       {
         title: "Carga de notas",
         items: canManageNotas
           ? [
-              DASHBOARD_ITEMS.REGULARIDAD_CARGA,
-              DASHBOARD_ITEMS.ACTAS_FINALES,
-              DASHBOARD_ITEMS.EQUIV_CARGA_VALIDADA,
-            ]
+            DASHBOARD_ITEMS.REGULARIDAD_CARGA,
+            DASHBOARD_ITEMS.ACTAS_FINALES,
+            DASHBOARD_ITEMS.EQUIV_CARGA_VALIDADA,
+          ]
           : [],
       },
     ],

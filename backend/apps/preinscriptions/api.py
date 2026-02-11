@@ -138,22 +138,33 @@ def check_roles(request, allowed_roles: list[str], profesorado_id: Optional[int]
 
 @router.get("/", response=list[PreinscripcionOut], auth=JWTAuth())
 def listar_preinscripciones(
-    request, q: str | None = None,
+    request,
+    search: str | None = None,
     limit: int = 100,
     offset: int = 0,
-    include_inactivas: bool = False, profesorado_id: Optional[int] = None):
+    include_inactivas: bool = False,
+    profesorado_id: Optional[int] = None,
+    anio: Optional[int] = None
+):
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     qs = Preinscripcion.objects.select_related("alumno__user", "carrera").all().order_by("-created_at")
+    
     if not include_inactivas:
         qs = qs.filter(activa=True)
+    
+    if profesorado_id:
+        qs = qs.filter(carrera_id=profesorado_id)
+        
+    if anio:
+        qs = qs.filter(anio=anio)
 
-    if q:
+    if search:
         qs = qs.filter(
-            Q(codigo__icontains=q)
-            | Q(alumno__user__first_name__icontains=q)
-            | Q(alumno__user__last_name__icontains=q)
-            | Q(alumno__dni__icontains=q)
+            Q(codigo__icontains=search)
+            | Q(alumno__user__first_name__icontains=search)
+            | Q(alumno__user__last_name__icontains=search)
+            | Q(alumno__dni__icontains=search)
         )
 
     # Aplicar paginación
@@ -387,7 +398,7 @@ def get_checklist(request, pre_id: int, profesorado_id: Optional[int] = None):
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
     cl = getattr(pre, "checklist", None) or PreinscripcionChecklist(preinscripcion=pre)
-    data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
+    data = {k: getattr(cl, k, False) for k in ChecklistIn.__fields__}  # type: ignore
     if pre.alumno.curso_introductorio_aprobado:
         data["curso_introductorio_aprobado"] = True
     data["estado_legajo"] = cl.estado_legajo or cl.calcular_estado()

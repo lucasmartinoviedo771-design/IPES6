@@ -104,7 +104,7 @@ const ROLE_NAV_MAP: Record<string, string[]> = {
     "estudiante",
     "primeraCarga",
   ],
-  bedel: ["bedeles", "mensajes", "estudiante", "asistencia", "cursoIntro", "primeraCarga"],
+  bedel: ["bedeles", "mensajes", "estudiante", "asistencia", "cursoIntro", "primeraCarga", "carreras"],
   docente: ["docentes", "mensajes"],
   tutor: ["tutorias", "mensajes", "estudiante", "equivalencias", "reportes", "cursoIntro"],
   coordinador: ["coordinacion", "mensajes", "estudiante", "reportes", "cursoIntro"],

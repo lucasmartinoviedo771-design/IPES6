@@ -869,6 +869,11 @@ export async function updateEstudianteAdmin(dni: string, payload: EstudianteAdmi
   return data;
 }
 
+export async function eliminarEstudianteAdmin(dni: string): Promise<ApiResponseDTO> {
+  const { data } = await client.delete<ApiResponseDTO>(`/estudiantes/admin/estudiantes/${dni}`);
+  return data;
+}
+
 export async function fetchPerfilCompletar(): Promise<EstudianteAdminDetailDTO> {
   const { data } = await client.get<EstudianteAdminDetailDTO>("/estudiantes/perfil/completar");
   return data;

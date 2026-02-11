@@ -22,6 +22,10 @@ import {
   Alert,
   FormGroup,
   Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion, activarPreinscripcion, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
@@ -29,6 +33,8 @@ import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import dayjs from "dayjs";
 import { PageHero } from "@/components/ui/GradientTitles";
+
+import { client as axios } from "@/api/client";
 
 function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
   const norm = (estado || '').toLowerCase();
@@ -47,16 +53,29 @@ function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
 export default function PreinscripcionesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [q, setQ] = React.useState("");
+  const [search, setSearch] = React.useState("");
   const [inclInactivas, setInclInactivas] = React.useState(false);
+  const [profesoradoId, setProfesoradoId] = React.useState<number | "">("");
+  const [anio, setAnio] = React.useState<number | "">("");
+
+  const { data: profesorados } = useQuery<{ id: number, nombre: string }[]>({
+    queryKey: ["profesorados-list"],
+    queryFn: () => axios.get("profesorados").then(r => r.data)
+  });
+
   const { data, isLoading, isError, refetch } = useQuery<{ results: PreinscripcionDTO[] }>({
-    queryKey: ["preinscripciones", q, inclInactivas],
-    queryFn: () => listarPreinscripciones({ q, include_inactivas: inclInactivas }),
+    queryKey: ["preinscripciones", search, inclInactivas, profesoradoId, anio],
+    queryFn: () => listarPreinscripciones({
+      search: search || undefined,
+      include_inactivas: inclInactivas,
+      profesorado_id: profesoradoId || undefined,
+      anio: anio || undefined
+    }),
   });
 
   // Unificación: formalizar en esta misma vista
   const [codigoSel, setCodigoSel] = React.useState<string | null>(null);
-  const [docs, setDocs] = React.useState<{[k: string]: boolean}>({
+  const [docs, setDocs] = React.useState<{ [k: string]: boolean }>({
     dni: false,
     titulo_secundario: false,
     partida_nacimiento: false,
@@ -99,27 +118,78 @@ export default function PreinscripcionesPage() {
       />
 
       <Paper sx={{ p: 2, borderRadius: 10 }}>
-        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-          <TextField
-            label="Buscar (DNI, Apellido/Nombre, Código)"
-            size="small"
-            value={q}
-            onChange={(e)=> setQ(e.target.value)}
-            sx={{ minWidth: 360 }}
-            InputProps={{
-              sx: { borderRadius: 3 },
-            }}
-          />
-          <FormControlLabel control={<Checkbox size="small" checked={inclInactivas} onChange={(e)=> setInclInactivas(e.target.checked)} />} label="Incluir inactivas" />
-          <Button
-            startIcon={<AddIcon/>}
-            variant="contained"
-            sx={{ borderRadius: 3 }}
-            onClick={()=> navigate('/preinscripcion')}
-          >
-            Nueva Preinscripción
-          </Button>
-        </Stack>
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              label="Buscar (DNI, Apellido/Nombre, Código)"
+              size="small"
+              fullWidth
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                sx: { borderRadius: 3 },
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Profesorado</InputLabel>
+              <Select
+                value={profesoradoId}
+                label="Profesorado"
+                onChange={(e) => setProfesoradoId(e.target.value as number)}
+                sx={{ borderRadius: 3 }}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {profesorados?.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Año</InputLabel>
+              <Select
+                value={anio}
+                label="Año"
+                onChange={(e) => setAnio(e.target.value as number)}
+                sx={{ borderRadius: 3 }}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {[2022, 2023, 2024, 2025, 2026].map((y) => (
+                  <MenuItem key={y} value={y}>
+                    {y}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end">
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={inclInactivas}
+                    onChange={(e) => setInclInactivas(e.target.checked)}
+                  />
+                }
+                label="Inactivas"
+              />
+              <Button
+                startIcon={<AddIcon />}
+                variant="contained"
+                sx={{ borderRadius: 3, whiteSpace: "nowrap" }}
+                onClick={() => navigate("/preinscripcion")}
+              >
+                Nueva
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
         <TableContainer>
           <Table>
             <TableHead>
@@ -176,11 +246,11 @@ export default function PreinscripcionesPage() {
                       >
                         Ver / Editar
                       </Button>
-                      { (p as any).activa === false ? (
-                        <Button size="small" variant="outlined" onClick={async ()=> { await activarPreinscripcion(p.id); await qc.invalidateQueries({ queryKey: ["preinscripciones"] }); refetch(); }}>Activar</Button>
+                      {(p as any).activa === false ? (
+                        <Button size="small" variant="outlined" onClick={async () => { await activarPreinscripcion(p.id); await qc.invalidateQueries({ queryKey: ["preinscripciones"] }); refetch(); }}>Activar</Button>
                       ) : (
-                        <IconButton size="small" onClick={()=> onDelete(p.id)} color="error" title="Eliminar">
-                          <DeleteIcon fontSize="small"/>
+                        <IconButton size="small" onClick={() => onDelete(p.id)} color="error" title="Eliminar">
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       )}
                     </Stack>
@@ -194,11 +264,11 @@ export default function PreinscripcionesPage() {
 
       {/* Panel inline para Formalizar inscripción */}
       {codigoSel && (
-        <Paper sx={{ p:2, borderRadius: 10 }}>
+        <Paper sx={{ p: 2, borderRadius: 10 }}>
           <Stack gap={2}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="h6" fontWeight={700}>Formalizar inscripción — {codigoSel}</Typography>
-              <Button size="small" onClick={()=> setCodigoSel(null)}>Cerrar</Button>
+              <Button size="small" onClick={() => setCodigoSel(null)}>Cerrar</Button>
             </Stack>
             {msgOk && <Alert severity="success">{msgOk}</Alert>}
             {msgErr && <Alert severity="error">{msgErr}</Alert>}
@@ -206,7 +276,7 @@ export default function PreinscripcionesPage() {
               <Grid item xs={12} md={12}>
                 <PreConfirmEditor codigo={codigoSel} />
               </Grid>
-              </Grid>
+            </Grid>
           </Stack>
         </Paper>
       )}

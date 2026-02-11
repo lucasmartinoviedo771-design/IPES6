@@ -36,6 +36,12 @@ export const DASHBOARD_ITEMS = {
     icon: <SchoolIcon />,
     path: "/secretaria/profesorado",
   },
+  CARRERAS_VIEW: {
+    title: "Carreras",
+    subtitle: "Visualizá profesorados, planes vigentes y sus materias asociadas.",
+    icon: <WorkspacesIcon />,
+    path: "/carreras",
+  },
   PLANES_ESTUDIO_ABM: {
     title: "Planes de estudio",
     subtitle: "Cargar o editar la estructura académica vigente.",

@@ -33,6 +33,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/DeleteForever";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -45,6 +46,7 @@ import {
   fetchEstudianteAdminDetail,
   EstudianteAdminDetailDTO,
   updateEstudianteAdmin,
+  eliminarEstudianteAdmin,
   EstudianteAdminDocumentacionDTO,
 } from "@/api/estudiantes";
 import { fetchCarreras } from "@/api/carreras";
@@ -145,6 +147,7 @@ export default function EstudiantesAdminPage() {
   const [selectedDni, setSelectedDni] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDetailValues, setPendingDetailValues] = useState<DetailFormValues | null>(null);
 
   const anioIngresoOptions = useMemo(() => {
@@ -266,6 +269,20 @@ export default function EstudiantesAdminPage() {
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : "No se pudo actualizar";
       enqueueSnackbar(message, { variant: "error" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (dni: string) => eliminarEstudianteAdmin(dni),
+    onSuccess: (res) => {
+      enqueueSnackbar(res.message || "Estudiante eliminado", { variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ["admin-estudiantes"] });
+      handleCloseDetail();
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || error.message || "No se pudo eliminar";
+      enqueueSnackbar(msg, { variant: "error" });
+      setDeleteConfirmOpen(false);
     },
   });
 
@@ -394,6 +411,7 @@ export default function EstudiantesAdminPage() {
     setDetailOpen(false);
     setSelectedDni(null);
     setConfirmDialogOpen(false);
+    setDeleteConfirmOpen(false);
     setPendingDetailValues(null);
     form.reset();
   };
@@ -430,6 +448,11 @@ export default function EstudiantesAdminPage() {
   const confirmContextText = detailNombre
     ? `actualización de los datos del estudiante ${detailNombre}`
     : "actualización de los datos del estudiante";
+
+  const deleteContextText = detailNombre
+    ? `eliminación PERMANENTE del estudiante ${detailNombre} y todo su historial relacionado (inscripciones, notas, etc.)`
+    : "eliminación permanente de este estudiante";
+
   const condicionCalculada = detailQuery.data?.condicion_calculada ?? "";
 
   return (
@@ -1032,19 +1055,29 @@ export default function EstudiantesAdminPage() {
             <Alert severity="error">No se pudo cargar la ficha del estudiante.</Alert>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button startIcon={<CloseIcon />} onClick={handleCloseDetail}>
-            Cerrar
-          </Button>
+        <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
           <Button
-            type="submit"
-            form="estudiante-admin-form"
-            variant="contained"
-            startIcon={updateMutation.isPending ? <CircularProgress size={18} color="inherit" /> : undefined}
-            disabled={updateMutation.isPending}
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={() => setDeleteConfirmOpen(true)}
+            disabled={updateMutation.isPending || deleteMutation.isPending}
           >
-            {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+            Eliminar estudiante
           </Button>
+          <Stack direction="row" spacing={1}>
+            <Button startIcon={<CloseIcon />} onClick={handleCloseDetail}>
+              Cerrar
+            </Button>
+            <Button
+              type="submit"
+              form="estudiante-admin-form"
+              variant="contained"
+              startIcon={updateMutation.isPending ? <CircularProgress size={18} color="inherit" /> : undefined}
+              disabled={updateMutation.isPending || deleteMutation.isPending}
+            >
+              {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
       <FinalConfirmationDialog
@@ -1053,6 +1086,15 @@ export default function EstudiantesAdminPage() {
         onCancel={handleCancelDetailSave}
         contextText={confirmContextText}
         loading={updateMutation.isPending}
+      />
+      <FinalConfirmationDialog
+        open={deleteConfirmOpen}
+        onConfirm={() => selectedDni && deleteMutation.mutate(selectedDni)}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        contextText={deleteContextText}
+        loading={deleteMutation.isPending}
+        confirmColor="error"
+        confirmLabel="Sí, eliminar definitivamente"
       />
     </Box>
   );

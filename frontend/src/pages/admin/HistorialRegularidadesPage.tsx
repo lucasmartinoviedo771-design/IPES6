@@ -60,7 +60,7 @@ const HistorialRegularidadesPage: React.FC = () => {
     const filteredPlanillas = React.useMemo(() => {
         if (!planillas) return [];
         const filtered = planillas.filter(p => {
-            const year = p.fecha.toString().split('-')[0];
+            const year = p.anio_academico.toString();
             if (filterYear && year !== filterYear) return false;
             if (filterMateria && p.materia_nombre !== filterMateria) return false;
             if (filterDictado) {
@@ -98,14 +98,14 @@ const HistorialRegularidadesPage: React.FC = () => {
     const getOptions = (key: keyof PlanillaRegularidadListItem | 'year'): string[] => {
         if (!planillas) return [];
         const values = planillas.filter(p => {
-            const pYear = p.fecha.toString().split('-')[0];
+            const pYear = p.anio_academico.toString();
             if (key !== 'year' && filterYear && pYear !== filterYear) return false;
             if (key !== 'materia_nombre' && filterMateria && p.materia_nombre !== filterMateria) return false;
             if (key !== 'dictado' && filterDictado && (!p.dictado || p.dictado !== filterDictado)) return false;
             if (key !== 'anio_cursada' && filterAnioCursada && p.anio_cursada !== filterAnioCursada) return false;
             return true;
         }).map(p => {
-            if (key === 'year') return p.fecha.toString().split('-')[0];
+            if (key === 'year') return p.anio_academico.toString();
             if (key === 'dictado') return p.dictado || '';
             // @ts-ignore
             const val = p[key];

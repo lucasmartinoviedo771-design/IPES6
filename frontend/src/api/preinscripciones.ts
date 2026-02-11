@@ -57,8 +57,17 @@ export const crearInscripcion = (preId: number, carreraId: number, periodo = "20
 export const listarCarreras = () =>
   client.get(`/carreras/`).then(r => r.data);
 
-export const listarPreinscripciones = (params: { q?: string; limit?: number; offset?: number; include_inactivas?: boolean }) =>
-  client.get<PreinscripcionDTO[] | { results: PreinscripcionDTO[] }>("/preinscripciones/", { params }).then(r => (Array.isArray(r.data) ? { results: r.data } : r.data));
+export const listarPreinscripciones = (params: {
+  search?: string;
+  limit?: number;
+  offset?: number;
+  include_inactivas?: boolean;
+  profesorado_id?: number;
+  anio?: number;
+}) =>
+  client
+    .get<PreinscripcionDTO[] | { results: PreinscripcionDTO[] }>("/preinscripciones/", { params })
+    .then((r) => (Array.isArray(r.data) ? { results: r.data } : r.data));
 
 export const activarPreinscripcion = (id: number) =>
   client.post(`/preinscripciones/${id}/activar`).then(r => r.data);

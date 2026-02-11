@@ -708,7 +708,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     if profesores_qs.exists():
         docente_nombre = " / ".join([p.nombre for p in profesores_qs])
     else:
-        docente_nombre = planilla.materia.profesor_nombre or "_______________________"
+        docente_nombre = "_______________________"
 
     # Datos Generales (Tabla Azul)
     data_gen = [

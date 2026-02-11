@@ -233,6 +233,7 @@ export interface PlanillaRegularidadListItem {
   fecha: string;
   cantidad_estudiantes: number;
   estado: string;
+  anio_academico: number;
   created_at: string;
 }
 

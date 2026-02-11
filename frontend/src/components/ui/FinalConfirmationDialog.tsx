@@ -16,6 +16,7 @@ type FinalConfirmationDialogProps = {
   loading?: boolean;
   confirmLabel?: string;
   cancelLabel?: string;
+  confirmColor?: "primary" | "secondary" | "error" | "info" | "success" | "warning";
 };
 
 /**
@@ -29,6 +30,7 @@ const FinalConfirmationDialog: React.FC<FinalConfirmationDialogProps> = ({
   loading = false,
   confirmLabel = "Confirmar y Guardar",
   cancelLabel = "Cancelar",
+  confirmColor = "primary",
 }) => {
   const description = `Al confirmar, se guardarán de forma definitiva los ${contextText} que has ingresado. Tenga en cuenta que esta acción es irreversible.`;
 
@@ -46,7 +48,7 @@ const FinalConfirmationDialog: React.FC<FinalConfirmationDialogProps> = ({
         <Button onClick={onCancel} disabled={loading} color="inherit">
           {cancelLabel}
         </Button>
-        <Button onClick={onConfirm} variant="contained" disabled={loading}>
+        <Button onClick={onConfirm} variant="contained" disabled={loading} color={confirmColor}>
           {loading ? "Guardando..." : confirmLabel}
         </Button>
       </DialogActions>

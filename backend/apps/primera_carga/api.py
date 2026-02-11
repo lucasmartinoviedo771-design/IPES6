@@ -273,6 +273,7 @@ class PlanillaRegularidadListOut(Schema):
     fecha: date
     cantidad_estudiantes: int
     estado: str | None
+    anio_academico: int
     created_at: datetime | None
 
 @primera_carga_router.get(
@@ -289,18 +290,22 @@ def listar_historial_debug(request):
     response={200: list[PlanillaRegularidadListOut], 403: ApiResponse},
     auth=None
 )
-def listar_historial_regularidades(request):
-    print("DEBUG: Entrando a listar_historial_regularidades", flush=True)
+def listar_historial_regularidades(request, anio: int | None = None):
+    print(f"DEBUG: Entrando a listar_historial_regularidades, anio={anio}", flush=True)
 
     try:
-        # Listar las ultimas 100 planillas creadas
+        # Aumentamos el límite a 1000 para no perder de vista planillas anteriores
         qs = (
             PlanillaRegularidad.objects.select_related("profesorado", "materia")
-            .order_by("-created_at")[:100]
+            .order_by("-created_at")
         )
         
+        if anio:
+            qs = qs.filter(anio_academico=anio)
+        
+        qs = qs[:1000]
+
         data = []
-        # Convertir explícitamente a lista
         lista_planillas = list(qs)
 
         
@@ -333,6 +338,7 @@ def listar_historial_regularidades(request):
                 "fecha": planilla.fecha,
                 "cantidad_estudiantes": planilla.filas.count(),
                 "estado": planilla.estado,
+                "anio_academico": planilla.anio_academico,
                 "created_at": planilla.created_at,
             })
         print("DEBUG: Retornando data")

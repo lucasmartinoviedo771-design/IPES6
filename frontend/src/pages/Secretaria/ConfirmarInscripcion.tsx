@@ -15,7 +15,7 @@ export default function ConfirmarInscripcionSecretaria() {
   const query = (codigo || dni || nombre).trim();
   const { data } = useQuery({
     queryKey: ["preins-busq-sec", query],
-    queryFn: () => listarPreinscripciones({ q: query || undefined, limit: 20, offset: 0 }),
+    queryFn: () => listarPreinscripciones({ search: query || undefined, limit: 20, offset: 0 }),
 
   });
 

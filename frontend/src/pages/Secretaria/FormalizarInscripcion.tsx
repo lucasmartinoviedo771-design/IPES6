@@ -63,10 +63,11 @@ const FormalizarInscripcion: React.FC = () => {
   const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
   const [selectedProfesorado, setSelectedProfesorado] = useState<string | number>('');
+  const [selectedAnio, setSelectedAnio] = useState<string | number>('');
 
   const fetchProfesorados = async () => {
     try {
@@ -83,8 +84,9 @@ const FormalizarInscripcion: React.FC = () => {
       const response = await axios.get('preinscripciones/', {
         params: {
           search: searchQuery || undefined,
-          include_inactive: includeInactive,
-          profesorado_id: selectedProfesorado || undefined
+          include_inactivas: includeInactive,
+          profesorado_id: selectedProfesorado || undefined,
+          anio: selectedAnio || undefined
         },
       });
       setPreinscripciones(response.data);
@@ -106,7 +108,7 @@ const FormalizarInscripcion: React.FC = () => {
       fetchPreinscripciones();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, includeInactive, selectedProfesorado]);
+  }, [searchQuery, includeInactive, selectedProfesorado, selectedAnio]);
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -120,7 +122,7 @@ const FormalizarInscripcion: React.FC = () => {
   return (
     <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, margin: '0 auto' }}>
       {/* Header Banner */}
-      <Box sx={{ 
+      <Box sx={{
         background: 'linear-gradient(135deg, #a67c52 0%, #8b6b4d 100%)',
         borderRadius: 4,
         p: 4,
@@ -137,7 +139,7 @@ const FormalizarInscripcion: React.FC = () => {
             Seguimiento completo de solicitudes, documentación y estados
           </Typography>
         </Box>
-        <Box sx={{ 
+        <Box sx={{
           position: 'absolute',
           right: -50,
           top: -50,
@@ -150,10 +152,10 @@ const FormalizarInscripcion: React.FC = () => {
 
       <Paper sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.05)' }}>
         {/* Toolbar */}
-        <Box sx={{ 
-          display: 'flex', 
+        <Box sx={{
+          display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
-          gap: 3, 
+          gap: 3,
           mb: 4,
           alignItems: { xs: 'stretch', md: 'center' }
         }}>
@@ -174,7 +176,7 @@ const FormalizarInscripcion: React.FC = () => {
             }}
           />
 
-          <FormControl sx={{ minWidth: 250 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', md: 250 } }}>
             <InputLabel>Filtrar por Profesorado</InputLabel>
             <Select
               value={selectedProfesorado}
@@ -189,23 +191,40 @@ const FormalizarInscripcion: React.FC = () => {
             </Select>
           </FormControl>
 
+          <FormControl sx={{ minWidth: { xs: '100%', md: 150 } }}>
+            <InputLabel>Año</InputLabel>
+            <Select
+              value={selectedAnio}
+              label="Año"
+              onChange={(e) => setSelectedAnio(e.target.value)}
+              sx={{ borderRadius: 3, bgcolor: 'grey.50' }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value={2022}>2022</MenuItem>
+              <MenuItem value={2023}>2023</MenuItem>
+              <MenuItem value={2024}>2024</MenuItem>
+              <MenuItem value={2025}>2025</MenuItem>
+              <MenuItem value={2026}>2026</MenuItem>
+            </Select>
+          </FormControl>
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, whiteSpace: 'nowrap' }}>
             <FormControlLabel
               control={
-                <Checkbox 
-                  checked={includeInactive} 
+                <Checkbox
+                  checked={includeInactive}
                   onChange={(e) => setIncludeInactive(e.target.checked)}
                   color="primary"
                 />
               }
               label="Incluir inactivas"
             />
-            
+
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => navigate('/preinscripciones/new')}
-              sx={{ 
+              sx={{
                 borderRadius: 3,
                 px: 3,
                 py: 1.5,
@@ -276,8 +295,8 @@ const FormalizarInscripcion: React.FC = () => {
                       })}
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        label={pre.estado} 
+                      <Chip
+                        label={pre.estado}
                         size="small"
                         color={getEstadoColor(pre.estado) as any}
                         variant="outlined"
@@ -287,18 +306,18 @@ const FormalizarInscripcion: React.FC = () => {
                     <TableCell align="right">
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                         <Tooltip title="Ver / Editar">
-                          <IconButton 
+                          <IconButton
                             onClick={() => navigate(`preinscripciones/${pre.id}`)}
                             sx={{ color: '#a67c52', '&:hover': { bgcolor: 'rgba(166, 124, 82, 0.1)' } }}
                           >
-                            <ViewIcon  />
+                            <ViewIcon />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Eliminar">
-                          <IconButton 
+                          <IconButton
                             sx={{ color: 'error.main', '&:hover': { bgcolor: 'error.lighter' } }}
                           >
-                            <DeleteIcon  />
+                            <DeleteIcon />
                           </IconButton>
                         </Tooltip>
                       </Box>

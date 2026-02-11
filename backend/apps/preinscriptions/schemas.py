@@ -85,8 +85,12 @@ class PreinscripcionOut(Schema):
     fecha: datetime = Field(alias="created_at")
     created_at: datetime
     activa: bool
-    estudiante: EstudianteOut
+    estudiante: EstudianteOut | None = Field(None, alias="alumno")
     carrera: CarreraOut
+
+    @staticmethod
+    def resolve_estudiante(obj):
+        return getattr(obj, "alumno", None)
 
 
 class ChecklistIn(Schema):
@@ -100,7 +104,7 @@ class ChecklistIn(Schema):
     titulo_secundario_legalizado: bool = False
     certificado_titulo_en_tramite: bool = False
     analitico_legalizado: bool = False
-    certificado_estudiante_regular_sec: bool = False
+    certificado_alumno_regular_sec: bool = False
 
     # Detalles de adeuda (solo si corresponde)
     adeuda_materias: bool = False
