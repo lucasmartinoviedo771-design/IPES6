@@ -168,7 +168,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
     # --- 2. EVENTOS Y TRAYECTORIA ---
     preinscripciones = list(
-        Preinscripcion.objects.filter(estudiante=est).select_related("carrera").order_by("-created_at")
+        Preinscripcion.objects.filter(alumno=est).select_related("carrera").order_by("-created_at")
     )
     for pre in preinscripciones:
         eventos_raw.append(
