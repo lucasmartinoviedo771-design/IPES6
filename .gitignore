@@ -34,3 +34,11 @@ staticfiles/
 
 # Ignored PDFs
 *.pdf
+# Data and Temp
+*.csv
+*.xlsx
+*.sql
+temp/
+tmp/
+*.tmp
+backend/fix_data_safe.py
