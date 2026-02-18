@@ -250,6 +250,9 @@ def _apply_estudiante_updates(
         if payload.apellido is not None:
             user.last_name = payload.apellido.strip()
             user_updates.append("last_name")
+        if payload.activo is not None:
+            user.is_active = payload.activo
+            user_updates.append("is_active")
         if user_updates:
             user.save(update_fields=user_updates)
 
@@ -298,7 +301,7 @@ def _apply_estudiante_updates(
         else:
             datos_extra.pop("documentacion", None)
 
-    for extra_key in ("anio_ingreso", "genero", "rol_extra", "observaciones", "cuil"):
+    for extra_key in ("anio_ingreso", "genero", "rol_extra", "observaciones", "cuil", "lugar_nacimiento"):
         value = getattr(payload, extra_key)
         if value is None:
             continue
@@ -386,6 +389,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         estado_legajo=estudiante.estado_legajo,
         estado_legajo_display=estudiante.get_estado_legajo_display(),
         must_change_password=estudiante.must_change_password,
+        activo=user.is_active if user else False,
         carreras=carreras_nombres,
         legajo=estudiante.legajo or None,
         datos_extra=datos_extra,
@@ -394,6 +398,8 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         curso_introductorio_aprobado=curso_introductorio_aprobado,
         libreta_entregada=libreta_entregada,
         regularidades=regularidades_resumen,
+        lugar_nacimiento=datos_extra.get("lugar_nacimiento"),
+        genero=datos_extra.get("genero"),
     )
 
 

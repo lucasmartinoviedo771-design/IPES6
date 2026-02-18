@@ -752,6 +752,7 @@ class EstudianteAdminListItem(Schema):
     estado_legajo_display: str
     carreras: list[str] = Field(default_factory=list)
     legajo: str | None = None
+    activo: bool = True
 
 class EstudianteAdminListResponse(Schema):
     total: int
@@ -765,9 +766,12 @@ class EstudianteAdminDetail(Schema):
     telefono: str | None = None
     domicilio: str | None = None
     fecha_nacimiento: str | None = None
+    lugar_nacimiento: str | None = None
+    genero: str | None = None
     estado_legajo: str
     estado_legajo_display: str
     must_change_password: bool
+    activo: bool = True
     carreras: list[str] = Field(default_factory=list)
     legajo: str | None = None
     datos_extra: dict[str, Any] = Field(default_factory=dict)
@@ -789,7 +793,9 @@ class EstudianteAdminUpdateIn(Schema):
     domicilio: str | None = None
     estado_legajo: str | None = Field(default=None, pattern="^(COM|INC|PEN)$", description="COM, INC o PEN")
     must_change_password: bool | None = None
+    activo: bool | None = None
     fecha_nacimiento: str | None = None
+    lugar_nacimiento: str | None = None
     documentacion: EstudianteAdminDocumentacion | None = None
     anio_ingreso: str | None = None
     genero: str | None = None

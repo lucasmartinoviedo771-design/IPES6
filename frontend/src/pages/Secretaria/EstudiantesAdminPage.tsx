@@ -87,6 +87,7 @@ type DetailFormValues = {
   domicilio: string;
   estado_legajo: EstadoLegajo;
   must_change_password: boolean;
+  activo: boolean;
   fecha_nacimiento: string;
   anio_ingreso: string;
   genero: string;
@@ -96,7 +97,6 @@ type DetailFormValues = {
   curso_introductorio_aprobado: boolean;
   libreta_entregada: boolean;
 };
-
 const DEFAULT_LIMIT = 100;
 
 function useDebouncedValue<T>(value: T, delay = 400) {
@@ -243,6 +243,7 @@ export default function EstudiantesAdminPage() {
         domicilio: data.domicilio?.trim() || undefined,
         estado_legajo: data.estado_legajo || undefined,
         must_change_password: data.must_change_password,
+        activo: typeof data.activo === "boolean" ? data.activo : undefined,
         fecha_nacimiento: data.fecha_nacimiento?.trim() || undefined,
         documentacion: Object.keys(documentacionPayload).length ? documentacionPayload : undefined,
         anio_ingreso: data.anio_ingreso?.trim() || undefined,
@@ -295,6 +296,7 @@ export default function EstudiantesAdminPage() {
       domicilio: "",
       estado_legajo: "PEN",
       must_change_password: false,
+      activo: true,
       fecha_nacimiento: "",
       anio_ingreso: "",
       genero: "",
@@ -383,6 +385,7 @@ export default function EstudiantesAdminPage() {
         domicilio: detail.domicilio ?? "",
         estado_legajo: (detail.estado_legajo as EstadoLegajo) ?? "PEN",
         must_change_password: detail.must_change_password,
+        activo: detail.activo !== undefined ? detail.activo : true,
         fecha_nacimiento: detail.fecha_nacimiento ? detail.fecha_nacimiento.slice(0, 10) : "",
         anio_ingreso: toStringOrEmpty(extra.anio_ingreso),
         genero: toStringOrEmpty(extra.genero),
@@ -588,11 +591,16 @@ export default function EstudiantesAdminPage() {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        size="small"
-                        label={item.estado_legajo_display}
-                        color={estadoColorMap[item.estado_legajo] ?? "default"}
-                      />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Chip
+                          size="small"
+                          label={item.estado_legajo_display}
+                          color={estadoColorMap[item.estado_legajo] ?? "default"}
+                        />
+                        {item.activo === false && (
+                          <Chip size="small" label="Inactivo" color="error" variant="outlined" />
+                        )}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -809,6 +817,22 @@ export default function EstudiantesAdminPage() {
                             />
                           }
                           label="Forzar cambio de contraseña"
+                        />
+                      )}
+                    />
+                    <Controller
+                      name="activo"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={field.value}
+                              onChange={(event) => field.onChange(event.target.checked)}
+                              color="primary"
+                            />
+                          }
+                          label="Cuenta Activa"
                         />
                       )}
                     />

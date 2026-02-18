@@ -1522,7 +1522,25 @@ class PlanillaRegularidadFila(models.Model):
 
     class Meta:
         ordering = ["orden", "id"]
-        unique_together = ("planilla", "orden")
+        unique_together = (("planilla", "orden"),)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["planilla", "dni"],
+                name="uniq_planilla_regularidad_fila_dni",
+            ),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        qs = PlanillaRegularidadFila.objects.filter(planilla=self.planilla, dni=self.dni)
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        if qs.exists():
+            existing = qs.first()
+            raise ValidationError(
+                f"El DNI {self.dni} ya está cargado en esta planilla "
+                f"(fila #{existing.orden}: {existing.apellido_nombre})."
+            )
 
     def __str__(self) -> str:
         return f"{self.planilla.codigo} - #{self.orden} {self.apellido_nombre}"
@@ -1940,3 +1958,29 @@ class AuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"[{self.timestamp}] {self.accion} {self.detalle_accion or ''} ({self.nombre_usuario or 'sistema'})"
+
+
+class SystemLog(models.Model):
+    TIPOS = (
+        ("REGULARIDAD_MISMATCH", "Discrepancia Regularidad"),
+        ("ACTA_MISMATCH", "Discrepancia Acta Examen"),
+        ("EQUIVALENCIA_MISMATCH", "Discrepancia Equivalencia"),
+        ("IMPORT_ERROR", "Error de Importación"),
+        ("SYSTEM_ERROR", "Error del Sistema"),
+        ("SECURITY_ALERT", "Alerta de Seguridad"),
+    )
+    
+    tipo = models.CharField(max_length=50, choices=TIPOS, default="SYSTEM_ERROR")
+    mensaje = models.TextField()
+    metadata = models.JSONField(default=dict, blank=True)
+    resuelto = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Registro de Auditoría"
+        verbose_name_plural = "Registros de Auditoría"
+
+    def __str__(self):
+        return f"[{self.get_tipo_display()}] {self.mensaje[:50]}"

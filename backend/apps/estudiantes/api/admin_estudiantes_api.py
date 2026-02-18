@@ -64,6 +64,7 @@ def admin_list_estudiantes(
                 estado_legajo_display=est.get_estado_legajo_display(),
                 carreras=[c.nombre for c in est.carreras.all()],
                 legajo=est.legajo or None,
+                activo=user.is_active if user else False,
             )
         )
     return EstudianteAdminListResponse(total=total, items=items)

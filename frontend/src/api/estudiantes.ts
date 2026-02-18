@@ -798,6 +798,7 @@ export interface EstudianteAdminListItemDTO {
   estado_legajo: string;
   estado_legajo_display: string;
   carreras: string[];
+  activo?: boolean;
   legajo?: string | null;
 }
 
@@ -814,9 +815,11 @@ export interface EstudianteAdminDetailDTO {
   telefono?: string | null;
   domicilio?: string | null;
   fecha_nacimiento?: string | null;
+  lugar_nacimiento?: string | null;
   estado_legajo: string;
   estado_legajo_display: string;
   must_change_password: boolean;
+  activo?: boolean;
   carreras: string[];
   legajo?: string | null;
   datos_extra: Record<string, unknown>;
@@ -824,6 +827,7 @@ export interface EstudianteAdminDetailDTO {
   condicion_calculada?: string | null;
   curso_introductorio_aprobado?: boolean | null;
   libreta_entregada?: boolean | null;
+  genero?: string | null;
 }
 
 export interface EstudianteAdminUpdatePayload {
@@ -836,6 +840,7 @@ export interface EstudianteAdminUpdatePayload {
   estado_legajo?: string | null;
   must_change_password?: boolean | null;
   fecha_nacimiento?: string | null;
+  lugar_nacimiento?: string | null;
   documentacion?: Partial<EstudianteAdminDocumentacionDTO>;
   anio_ingreso?: string | null;
   genero?: string | null;
