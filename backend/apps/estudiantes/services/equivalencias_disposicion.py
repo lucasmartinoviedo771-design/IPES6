@@ -23,6 +23,7 @@ from core.models import (
     Regularidad,
 )
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
+from apps.primera_carga.audit_utils import verify_equivalencia_consistency
 
 
 @dataclass
@@ -263,6 +264,8 @@ def registrar_disposicion_equivalencia(
             nota=nota,
             usuario=usuario,
         )
+        # Verify consistency
+        verify_equivalencia_consistency(detalle)
 
 
     return EquivalenciaDisposicionResult(disposicion=dispo, detalles=detalles)

@@ -40,8 +40,8 @@ const cursoIntroRoles: string[] = ["estudiante", "admin", "secretaria", "bedel",
 
 export const buildEstudianteRoutes = () => (
   <>
-    <Route path="/estudiantes" element={<EstudiantesIndex />} />
     <Route element={<ProtectedRoute roles={baseRoles}><Outlet /></ProtectedRoute>}>
+      <Route path="/estudiantes" element={<EstudiantesIndex />} />
       <Route path="/estudiantes/completar-perfil" element={<CompletarPerfilPage />} />
       <Route path="/estudiantes/inscripcion-materia" element={<InscripcionMateriaPage />} />
       <Route path="/estudiantes/cambio-comision" element={<CambioComisionPage />} />
@@ -49,8 +49,6 @@ export const buildEstudianteRoutes = () => (
       <Route path="/estudiantes/mesa-examen" element={<MesaExamenPage />} />
       <Route path="/estudiantes/horarios" element={<HorarioPage />} />
       <Route path="/estudiantes/mis-asistencias" element={<MisAsistenciasPage />} />
-    </Route>
-    <Route element={<ProtectedRoute roles={estudianteSecretariaRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes/pedido-equivalencias" element={<PedidoEquivalenciasPage />} />
       <Route path="/estudiantes/certificado-regular" element={<CertificadoRegularPage />} />
       <Route path="/estudiantes/constancia-examen" element={<ConstanciaExamenPage />} />

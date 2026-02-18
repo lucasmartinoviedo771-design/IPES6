@@ -42,3 +42,24 @@ temp/
 tmp/
 *.tmp
 backend/fix_data_safe.py
+
+# Maintenance Scripts (Local)
+backend/fix_*.py
+backend/sync_*.py
+backend/cross_reference_*.py
+backend/investigate_*.py
+backend/test_*.py
+backend/scripts/analyze_*.py
+backend/scripts/generate_*.py
+backend/scripts/cross_*.py
+backend/scripts/fix_*.py
+backend/scripts/sync_*.py
+# Keep audit and logs scripts visible if needed, or ignore specific ones
+# We keep audit_database.py tracked as requested.
+
+# Temporary Checks (Local)
+backend/check_*.py
+backend/health_check_*.py
+
+# Backups
+backups/

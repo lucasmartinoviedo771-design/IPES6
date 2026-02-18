@@ -132,6 +132,19 @@ const buildAppError = (error: unknown, fallbackStatus?: number): AppError => {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status ?? fallbackStatus ?? 0;
     const data = error.response?.data;
+
+    // Detectar respuesta HTML (proxy error, Nginx 404, Django default 404/500, etc)
+    if (typeof data === "string" && (data.trim().startsWith("<!DOCTYPE html") || data.trim().startsWith("<html"))) {
+      let msg = "Error de comunicación con el servidor.";
+      if (status === 404) msg = "El recurso solicitado no fue encontrado en el servidor (404).";
+      else if (status === 500) msg = "Error interno del servidor (500).";
+      else if (status === 502) msg = "El servicio no está disponible momentáneamente (502).";
+      else if (status === 503) msg = "Servicio no disponible (503).";
+      else if (status === 504) msg = "Tiempo de espera agotado (504).";
+
+      return new AppError(status || 500, statusToCode(status), msg, undefined, undefined, error);
+    }
+
     const structured = parseStructuredError(data);
     if (structured) {
       return new AppError(

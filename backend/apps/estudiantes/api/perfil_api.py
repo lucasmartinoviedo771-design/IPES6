@@ -27,6 +27,16 @@ def estudiante_update_perfil_completar(request, payload: EstudianteAdminUpdateIn
     if not est:
         return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
 
+    # Evitamos que el estudiante modifique datos sensibles/administrativos
+    payload.dni = None
+    payload.anio_ingreso = None
+    payload.cuil = None
+    payload.observaciones = None
+    payload.rol_extra = None
+    payload.documentacion = None
+    payload.curso_introductorio_aprobado = None
+    payload.libreta_entregada = None
+
     updated, error = _apply_estudiante_updates(
         est,
         payload,

@@ -865,16 +865,12 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                       ) : estudiantes && estudiantes.length > 0 ? (
                         <Autocomplete
                           freeSolo
-                          options={estudiantes}
+                          options={initialEstudiantes.length > 0 ? initialEstudiantes : (metadata?.estudiantes ?? [])}
                           getOptionLabel={(option) => {
                             if (typeof option === "string") return option;
                             return `${option.apellido_nombre} (${option.dni})`;
                           }}
-                          value={
-                            estudiantes.find(
-                              (e) => e.apellido_nombre === estudiante.apellido_nombre && e.dni === estudiante.dni
-                            ) || estudiante.apellido_nombre
-                          }
+                          value={estudiante.apellido_nombre || ""}
                           onChange={(_, value) => {
                             if (typeof value === "string") {
                               const match = value.match(/(.*) \((\d+)\)$/);
@@ -895,10 +891,9 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
                               updateEstudiante(estudiante.internoId, { apellido_nombre: "" });
                             }
                           }}
-                          onInputChange={(_, value) => {
-                            const match = value.match(/(.*) \((\d+)\)$/);
+                          onInputChange={(_, newInputValue) => {
                             updateEstudiante(estudiante.internoId, {
-                              apellido_nombre: match ? match[1].trim() : value,
+                              apellido_nombre: newInputValue,
                             });
                           }}
                           forcePopupIcon={false}

@@ -6,6 +6,22 @@ import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
 
+const formatName = (p: any) => {
+  let apellido = p.estudiante.apellido || "";
+  let nombre = p.estudiante.nombres ?? p.estudiante.nombre ?? "";
+
+  // Heurística: si apellido NO está todo ne mayúsculas y nombre SÍ (y tiene contenido), 
+  // asumimos que están invertidos (el usuario puso el apellido en nombres).
+  // Solo aplicamos si nombre tiene algo de largo para evitar falsos positivos con iniciales.
+  const isUpper = (s: string) => s && s.length > 1 && s === s.toUpperCase();
+  const isNotUpper = (s: string) => s && s !== s.toUpperCase();
+
+  if (isNotUpper(apellido) && isUpper(nombre)) {
+    return `${nombre}, ${apellido}`;
+  }
+  return [apellido, nombre].filter(Boolean).join(", ");
+};
+
 export default function ConfirmarInscripcionSecretaria() {
   const [sp, setSp] = useSearchParams();
   const codigo = sp.get("codigo") || "";
@@ -15,7 +31,7 @@ export default function ConfirmarInscripcionSecretaria() {
   const query = (codigo || dni || nombre).trim();
   const { data } = useQuery({
     queryKey: ["preins-busq-sec", query],
-    queryFn: () => listarPreinscripciones({ search: query || undefined, limit: 20, offset: 0 }),
+    queryFn: () => listarPreinscripciones({ search: query || undefined, limit: 20, offset: 0, exclude_confirmed: true }),
 
   });
 
@@ -62,7 +78,7 @@ export default function ConfirmarInscripcionSecretaria() {
                   >
                     {(data?.results || []).map((p: any) => (
                       <MenuItem key={p.codigo} value={p.codigo}>
-                        {[p.estudiante.apellido, p.estudiante.nombres ?? p.estudiante.nombre ?? ""].filter(Boolean).join(", ")} — {p.codigo}
+                        {formatName(p)} — {p.codigo}
                       </MenuItem>
                     ))}
                   </Select>
@@ -72,7 +88,7 @@ export default function ConfirmarInscripcionSecretaria() {
             <List>
               {data?.results?.map((p: any) => (
                 <ListItem key={p.codigo} button onClick={() => setSp({ codigo: p.codigo })}>
-                  <ListItemText primary={[p.estudiante.apellido, p.estudiante.nombres ?? p.estudiante.nombre ?? ""].filter(Boolean).join(", ")} secondary={`DNI ${p.estudiante.dni} • ${p.codigo} • ${p.carrera?.nombre || ''}`} />
+                  <ListItemText primary={formatName(p)} secondary={`DNI ${p.estudiante.dni} • ${p.codigo} • ${p.carrera?.nombre || ''}`} />
                 </ListItem>
               ))}
               {!data?.results && <Typography variant="body2" color="text.secondary">Ingrese un criterio de búsqueda.</Typography>}

@@ -64,6 +64,7 @@ export const listarPreinscripciones = (params: {
   include_inactivas?: boolean;
   profesorado_id?: number;
   anio?: number;
+  exclude_confirmed?: boolean;
 }) =>
   client
     .get<PreinscripcionDTO[] | { results: PreinscripcionDTO[] }>("/preinscripciones/", { params })
@@ -215,7 +216,7 @@ export type PreDocItem = {
 
 export const apiListPreDocs = async (preId: number): Promise<PreDocItem[]> => {
   const token = localStorage.getItem("token");
-  const { data } = await client.get<{ count: number; results: PreDocItem[] }>(`/preinscripciones/${preId}/documentos`, {
+  const { data } = await client.get<{ count: number; results: PreDocItem[] }>(`/preinscripciones/uploads/${preId}/documentos`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return data.results || [];
@@ -225,7 +226,7 @@ export const apiUploadPreDoc = async (preId: number, tipo: string, file: File) =
   const token = localStorage.getItem("token");
   const form = new FormData();
   form.append('file', file);
-  const { data } = await client.post(`/preinscripciones/${preId}/documentos?tipo=${tipo}`, form, {
+  const { data } = await client.post(`/preinscripciones/uploads/${preId}/documentos?tipo=${tipo}`, form, {
     headers: {
       'Content-Type': 'multipart/form-data',
       Authorization: `Bearer ${token}`,

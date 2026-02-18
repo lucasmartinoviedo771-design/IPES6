@@ -25,6 +25,7 @@ const ActaExamenPrimeraCargaPage = lazyPage(() => import("@/pages/admin/ActaExam
 const HistorialActasPage = lazyPage(() => import("@/pages/admin/HistorialActasPage"));
 const HistorialRegularidadesPage = lazyPage(() => import("@/pages/admin/HistorialRegularidadesPage"));
 const HistorialEquivalenciasPage = lazyPage(() => import("@/pages/admin/HistorialEquivalenciasPage"));
+const SystemLogsPage = lazyPage(() => import("@/pages/SystemLogsPage"));
 
 const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
 
@@ -53,6 +54,16 @@ export const buildAdminRoutes = () => (
       element={(
         <ProtectedRoute roles={adminRoles}>
           <ActaPrintPage />
+        </ProtectedRoute>
+      )}
+    />
+    <Route
+      path="/system/logs"
+      element={(
+        <ProtectedRoute roles={["admin"]}>
+          <AppShell>
+            <SystemLogsPage />
+          </AppShell>
         </ProtectedRoute>
       )}
     />

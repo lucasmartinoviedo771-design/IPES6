@@ -46,12 +46,14 @@ type DocumentacionForm = {
 };
 
 type PerfilFormValues = {
+  nombre: string;
+  apellido: string;
+  email: string;
   telefono: string;
   domicilio: string;
   fecha_nacimiento: string;
-  anio_ingreso: string;
+  lugar_nacimiento: string;
   genero: string;
-  cuil: string;
   documentacion: DocumentacionForm;
 };
 
@@ -65,13 +67,13 @@ function normalizeDocumentacion(detail?: EstudianteAdminDocumentacionDTO | null)
     certificado_titulo_en_tramite: Boolean(detail?.certificado_titulo_en_tramite),
     analitico_legalizado: Boolean(detail?.analitico_legalizado),
     certificado_estudiante_regular_sec: Boolean(detail?.certificado_estudiante_regular_sec),
-  adeuda_materias: Boolean(detail?.adeuda_materias),
-  adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
-  escuela_secundaria: detail?.escuela_secundaria ?? "",
-  es_certificacion_docente: Boolean(detail?.es_certificacion_docente),
-  titulo_terciario_univ: Boolean(detail?.titulo_terciario_univ),
-  incumbencia: Boolean(detail?.incumbencia),
-};
+    adeuda_materias: Boolean(detail?.adeuda_materias),
+    adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
+    escuela_secundaria: detail?.escuela_secundaria ?? "",
+    es_certificacion_docente: Boolean(detail?.es_certificacion_docente),
+    titulo_terciario_univ: Boolean(detail?.titulo_terciario_univ),
+    incumbencia: Boolean(detail?.incumbencia),
+  };
 }
 
 export default function CompletarPerfilPage() {
@@ -81,16 +83,6 @@ export default function CompletarPerfilPage() {
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingValues, setPendingValues] = useState<PerfilFormValues | null>(null);
-
-  const anioIngresoOptions = useMemo(() => {
-    const start = 2010;
-    const current = new Date().getFullYear();
-    const values: string[] = [];
-    for (let year = current; year >= start; year -= 1) {
-      values.push(String(year));
-    }
-    return values;
-  }, []);
 
   const generoOptions = [
     { value: "", label: "Sin especificar" },
@@ -106,17 +98,19 @@ export default function CompletarPerfilPage() {
 
   const form = useForm<PerfilFormValues>({
     defaultValues: {
+      nombre: "",
+      apellido: "",
+      email: "",
       telefono: "",
       domicilio: "",
       fecha_nacimiento: "",
-      anio_ingreso: "",
+      lugar_nacimiento: "",
       genero: "",
-      cuil: "",
       documentacion: normalizeDocumentacion(),
     },
   });
 
-const { control, handleSubmit, reset } = form;
+  const { control, handleSubmit, reset } = form;
 
   const detailQuery = useQuery({
     queryKey: ["perfil-completar"],
@@ -129,12 +123,14 @@ const { control, handleSubmit, reset } = form;
       const extra = detail.datos_extra ?? {};
       const toStringOrEmpty = (value: unknown) => (value === null || value === undefined ? "" : String(value));
       const values: PerfilFormValues = {
+        nombre: detail.nombre ?? "",
+        apellido: detail.apellido ?? "",
+        email: detail.email ?? "",
         telefono: detail.telefono ?? "",
         domicilio: detail.domicilio ?? "",
         fecha_nacimiento: detail.fecha_nacimiento ? detail.fecha_nacimiento.slice(0, 10) : "",
-        anio_ingreso: toStringOrEmpty(extra.anio_ingreso),
-        genero: toStringOrEmpty(extra.genero),
-        cuil: toStringOrEmpty(extra.cuil),
+        lugar_nacimiento: detail.lugar_nacimiento ?? "",
+        genero: detail.genero ?? toStringOrEmpty(extra.genero),
         documentacion: normalizeDocumentacion(detail.documentacion),
       };
       reset(values);
@@ -143,42 +139,16 @@ const { control, handleSubmit, reset } = form;
 
   const mutation = useMutation({
     mutationFn: async (values: PerfilFormValues) => {
-      const documentacionPayload: Record<string, unknown> = {};
-      const doc = values.documentacion;
-      [
-        "dni_legalizado",
-        "fotos_4x4",
-        "certificado_salud",
-        "titulo_secundario_legalizado",
-        "certificado_titulo_en_tramite",
-        "analitico_legalizado",
-        "certificado_estudiante_regular_sec",
-        "adeuda_materias",
-        "es_certificacion_docente",
-        "titulo_terciario_univ",
-        "incumbencia",
-      ].forEach((key) => {
-        const current = (doc as Record<string, unknown>)[key];
-        if (typeof current === "boolean") {
-          documentacionPayload[key] = current;
-        }
-      });
-      if (typeof doc.folios_oficio === "boolean") {
-        documentacionPayload.folios_oficio = doc.folios_oficio ? 3 : 0;
-      }
-      const adeudaDetalle = doc.adeuda_materias_detalle.trim();
-      documentacionPayload.adeuda_materias_detalle = adeudaDetalle || null;
-      const escuela = doc.escuela_secundaria.trim();
-      documentacionPayload.escuela_secundaria = escuela || null;
-
+      // Solo enviamos los datos permitidos
       const payload: EstudianteAdminUpdatePayload = {
+        nombre: values.nombre.trim() || undefined,
+        apellido: values.apellido.trim() || undefined,
+        email: values.email.trim() || undefined,
         telefono: values.telefono.trim() || undefined,
         domicilio: values.domicilio.trim() || undefined,
         fecha_nacimiento: values.fecha_nacimiento.trim() || undefined,
-        anio_ingreso: values.anio_ingreso.trim() || undefined,
+        lugar_nacimiento: values.lugar_nacimiento.trim() || undefined,
         genero: values.genero.trim() || undefined,
-        cuil: values.cuil.trim() || undefined,
-        documentacion: Object.keys(documentacionPayload).length ? documentacionPayload : undefined,
       };
 
       const data = await completarPerfil(payload);
@@ -244,8 +214,8 @@ const { control, handleSubmit, reset } = form;
       <Paper elevation={1} sx={{ maxWidth: 960, margin: "0 auto", p: { xs: 2, md: 4 } }}>
         <Stack spacing={3}>
           <PageHero
-            title="Completa tu información"
-            subtitle="Necesitamos estos datos para finalizar tu inscripción. Revisá que todo esté correcto antes de guardar."
+            title="Mis Datos Personales"
+            subtitle="Mantené tu información actualizada. Los campos DNI y otros datos administrativos solo pueden ser modificados por Bedelía."
           />
 
           {detailQuery.isLoading && (
@@ -263,34 +233,65 @@ const { control, handleSubmit, reset } = form;
           {detail && (
             <Stack spacing={2}>
               <Divider />
-              <Typography fontWeight={600}>
-                {detail.apellido}, {detail.nombre} - DNI {detail.dni}
-              </Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="h6" fontWeight={600}>
+                  DNI: {detail.dni}
+                </Typography>
+                <Chip label={detail.estado_legajo_display} size="small" color={detail.estado_legajo === 'COM' ? 'success' : 'warning'} />
+              </Stack>
+
               {detail.condicion_calculada && (
                 <Typography variant="body2" color="text.secondary">
-                  Estado actual del legajo: {detail.condicion_calculada}.
+                  Condición administrativa calculada: {detail.condicion_calculada}.
                 </Typography>
               )}
 
               <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-                <Stack spacing={3}>
+                <Stack spacing={3} sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={600}>Identificación</Typography>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
-                      name="telefono"
+                      name="nombre"
                       control={control}
                       render={({ field }) => (
-                        <TextField {...field} label="Telefono de contacto" size="small" fullWidth />
+                        <TextField {...field} label="Nombre" size="small" fullWidth />
                       )}
                     />
                     <Controller
-                      name="domicilio"
+                      name="apellido"
                       control={control}
                       render={({ field }) => (
-                        <TextField {...field} label="Domicilio" size="small" fullWidth />
+                        <TextField {...field} label="Apellido" size="small" fullWidth />
                       )}
                     />
                   </Stack>
 
+                  <Typography variant="subtitle1" fontWeight={600}>Contacto y Residencia</Typography>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="email"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Correo electrónico" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="telefono"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Teléfono" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+                  <Controller
+                    name="domicilio"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Domicilio completo" size="small" fullWidth />
+                    )}
+                  />
+
+                  <Typography variant="subtitle1" fontWeight={600}>Información Personal</Typography>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
                       name="fecha_nacimiento"
@@ -307,26 +308,17 @@ const { control, handleSubmit, reset } = form;
                       )}
                     />
                     <Controller
-                      name="anio_ingreso"
+                      name="lugar_nacimiento"
                       control={control}
                       render={({ field }) => (
-                        <TextField {...field} select label="Anio de ingreso" size="small" fullWidth>
-                          <MenuItem value="">
-                            Sin especificar
-                          </MenuItem>
-                          {anioIngresoOptions.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              {option}
-                            </MenuItem>
-                          ))}
-                        </TextField>
+                        <TextField {...field} label="Lugar de nacimiento" size="small" fullWidth />
                       )}
                     />
                     <Controller
                       name="genero"
                       control={control}
                       render={({ field }) => (
-                        <TextField {...field} select label="Genero" size="small" fullWidth>
+                        <TextField {...field} select label="Género" size="small" fullWidth>
                           {generoOptions.map((option) => (
                             <MenuItem key={option.value} value={option.value}>
                               {option.label}
@@ -337,17 +329,9 @@ const { control, handleSubmit, reset } = form;
                     />
                   </Stack>
 
-                  <Controller
-                    name="cuil"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} label="CUIL" size="small" fullWidth />
-                    )}
-                  />
-
                   <Box>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 2 }}>
-                      Documentación registrada
+                      Documentación registrada (Solo lectura)
                     </Typography>
                     <Stack
                       spacing={1}
@@ -356,6 +340,7 @@ const { control, handleSubmit, reset } = form;
                         borderColor: "divider",
                         borderRadius: 1,
                         p: 2,
+                        bgcolor: 'action.hover'
                       }}
                     >
                       {docSummary.map((item) => (
@@ -373,25 +358,9 @@ const { control, handleSubmit, reset } = form;
                           />
                         </Stack>
                       ))}
-                      {docDetail?.adeuda_materias && (
-                        <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            Declaró materias adeudadas
-                          </Typography>
-                          <Typography variant="body2">
-                            {docDetail.adeuda_materias_detalle || "Sin detalle"}
-                          </Typography>
-                          {docDetail.escuela_secundaria && (
-                            <Typography variant="body2" color="text.secondary">
-                              Escuela: {docDetail.escuela_secundaria}
-                            </Typography>
-                          )}
-                        </Box>
-                      )}
                     </Stack>
-                    <Alert severity="info">
-                      La documentación se confirma exclusivamente con Secretaría. Si detectás un error en los datos,
-                      comunicate con el equipo administrativo.
+                    <Alert severity="info" sx={{ mt: 1 }}>
+                      Para añadir o corregir documentación, por favor acercate a Bedelía.
                     </Alert>
                   </Box>
 
@@ -401,7 +370,7 @@ const { control, handleSubmit, reset } = form;
                       variant="contained"
                       disabled={mutation.isPending}
                     >
-                      {mutation.isPending ? "Guardando..." : "Guardar datos"}
+                      {mutation.isPending ? "Guardando..." : "Guardar mis datos"}
                     </Button>
                   </Stack>
                 </Stack>
@@ -410,6 +379,7 @@ const { control, handleSubmit, reset } = form;
           )}
         </Stack>
       </Paper>
+
       <FinalConfirmationDialog
         open={confirmOpen}
         onConfirm={handleConfirmSave}

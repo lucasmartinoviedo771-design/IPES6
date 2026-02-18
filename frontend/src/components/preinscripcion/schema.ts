@@ -5,24 +5,41 @@ import { z } from "zod";
 dayjs.extend(isSameOrBefore);
 
 const isIsoDate = (value: string) => dayjs(value, "YYYY-MM-DD", true).isValid();
-const notFuture = (value: string) => isIsoDate(value) && dayjs(value).isSameOrBefore(dayjs(), "day");
+const isLatamDate = (value: string) => dayjs(value, "DD/MM/YYYY", true).isValid();
+
+const normalizeDate = (value: string | undefined | null): string => {
+  if (!value) return "";
+  if (isLatamDate(value)) {
+    return dayjs(value, "DD/MM/YYYY").format("YYYY-MM-DD");
+  }
+  return value;
+};
+
+const isValidDate = (value: string) => isIsoDate(value) || isLatamDate(value);
+const notFuture = (value: string) => {
+  const norm = normalizeDate(value);
+  return norm && dayjs(norm).isSameOrBefore(dayjs(), "day");
+};
 
 const baseSchema = z.object({
   // Datos personales
   nombres: z.string().min(2, "Ingresa tu nombre completo"),
   apellido: z.string().min(2, "Ingresa tu apellido"),
   dni: z.string().min(6, "DNI demasiado corto"),
-  cuil: z.string().min(11, "CUIL incompleto"),
+  cuil: z.string().min(11, "CUIL incompleto").optional().or(z.literal("")),
   fecha_nacimiento: z
     .string()
-    .refine(isIsoDate, "Fecha inválida (YYYY-MM-DD)")
-    .refine(notFuture, "La fecha no puede ser futura"),
-  nacionalidad: z.string().min(2),
-  estado_civil: z.string().min(2),
-  localidad_nac: z.string().min(2),
-  provincia_nac: z.string().min(2),
-  pais_nac: z.string().min(2),
-  domicilio: z.string().min(2),
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || isValidDate(value), "Fecha inválida (DD/MM/AAAA)")
+    .refine((value) => !value || notFuture(value), "La fecha no puede ser futura")
+    .transform(normalizeDate),
+  nacionalidad: z.string().optional().or(z.literal("")),
+  estado_civil: z.string().optional().or(z.literal("")),
+  localidad_nac: z.string().optional().or(z.literal("")),
+  provincia_nac: z.string().optional().or(z.literal("")),
+  pais_nac: z.string().optional().or(z.literal("")),
+  domicilio: z.string().optional().or(z.literal("")),
   cohorte: z
     .string()
     .optional()
@@ -33,24 +50,27 @@ const baseSchema = z.object({
     ),
 
   // Contacto
-  email: z.string().email(),
-  tel_movil: z.string().min(6, "Teléfono móvil inválido"),
+  email: z.string().regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "Email inválido").optional().or(z.literal("")),
+  tel_movil: z.string().optional().or(z.literal("")),
   tel_fijo: z.string().optional().or(z.literal("")),
 
   // Contacto de emergencia
-  emergencia_telefono: z.string().min(6, "Teléfono de emergencia requerido"),
-  emergencia_parentesco: z.string().min(2, "Parentesco requerido"),
+  emergencia_telefono: z.string().optional().or(z.literal("")),
+  emergencia_parentesco: z.string().optional().or(z.literal("")),
 
   // Secundario
-  sec_titulo: z.string().min(2),
-  sec_establecimiento: z.string().min(2),
+  sec_titulo: z.string().optional().or(z.literal("")),
+  sec_establecimiento: z.string().optional().or(z.literal("")),
   sec_fecha_egreso: z
     .string()
-    .refine(isIsoDate, "Fecha inválida (YYYY-MM-DD)")
-    .refine(notFuture, "La fecha no puede ser futura"),
-  sec_localidad: z.string().min(2),
-  sec_provincia: z.string().min(2),
-  sec_pais: z.string().min(2),
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || isValidDate(value), "Fecha inválida (DD/MM/AAAA)")
+    .refine((value) => !value || notFuture(value), "La fecha no puede ser futura")
+    .transform(normalizeDate),
+  sec_localidad: z.string().optional().or(z.literal("")),
+  sec_provincia: z.string().optional().or(z.literal("")),
+  sec_pais: z.string().optional().or(z.literal("")),
 
   // Superiores (opcionales)
   sup1_titulo: z.string().optional().or(z.literal("")),
@@ -59,8 +79,9 @@ const baseSchema = z.object({
     .string()
     .optional()
     .or(z.literal(""))
-    .refine((value) => !value || isIsoDate(value), "Fecha inválida (YYYY-MM-DD)")
-    .refine((value) => !value || notFuture(value), "La fecha no puede ser futura"),
+    .refine((value) => !value || isValidDate(value), "Fecha inválida (DD/MM/AAAA)")
+    .refine((value) => !value || notFuture(value), "La fecha no puede ser futura")
+    .transform(normalizeDate),
   sup1_localidad: z.string().optional().or(z.literal("")),
   sup1_provincia: z.string().optional().or(z.literal("")),
   sup1_pais: z.string().optional().or(z.literal("")),
@@ -110,13 +131,6 @@ export const preinscripcionSchema = baseSchema.superRefine((values, ctx) => {
       code: z.ZodIssueCode.custom,
       path: ["condicion_salud_detalle"],
       message: "Indicá la condición o el apoyo que necesitás.",
-    });
-  }
-  if (!values.consentimiento_datos) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["consentimiento_datos"],
-      message: "Debés aceptar el consentimiento expreso para continuar.",
     });
   }
 });

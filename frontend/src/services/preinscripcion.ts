@@ -21,8 +21,8 @@ async function tryGet(path: string): Promise<Carrera[] | null> {
 }
 
 export async function listarCarreras(): Promise<Carrera[]> {
-  // El endpoint correcto está en /profesorados, no /carreras
-  const out = await tryGet("/profesorados/?vigentes=true");
+  // Usamos el endpoint público de preinscripciones
+  const out = await tryGet("/preinscripciones/carreras?vigentes=true");
   return out ?? [];
 }
 

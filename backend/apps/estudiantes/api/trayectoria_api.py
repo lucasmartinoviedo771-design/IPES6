@@ -166,6 +166,67 @@ def trayectoria_estudiante(request, dni: str | None = None):
             if insc.mesa and insc.mesa.materia_id:
                 aprobadas_set.add(insc.mesa.materia_id)
 
+    # --- 3. MESAS DE EXAMEN (Lógica para mesas_raw) ---
+    inscripciones_mesa_all = (
+        InscripcionMesa.objects.filter(estudiante=est)
+        .select_related("mesa", "mesa__materia")
+        .order_by("-mesa__fecha")
+    )
+    
+    mesas_added_keys = set() # (materia_id, fecha_iso)
+
+    for insc in inscripciones_mesa_all:
+        fecha_iso = insc.mesa.fecha.isoformat()
+        key = (insc.mesa.materia_id, fecha_iso)
+        mesas_added_keys.add(key)
+        
+        estado_val = insc.estado
+        estado_lbl = insc.get_estado_display()
+        nota_str = None
+        
+        if insc.condicion:
+            estado_val = insc.condicion
+            estado_lbl = insc.get_condicion_display()
+            nota_str = _format_nota(insc.nota)
+            
+        mesas_raw.append({
+            "id": insc.id,
+            "mesa_id": insc.mesa_id,
+            "materia_id": insc.mesa.materia_id,
+            "materia_nombre": insc.mesa.materia.nombre,
+            "tipo": insc.mesa.tipo,
+            "tipo_display": insc.mesa.get_tipo_display(),
+            "fecha": fecha_iso,
+            "estado": estado_val,
+            "estado_display": estado_lbl,
+            "aula": insc.mesa.aula,
+            "nota": nota_str,
+        })
+        
+    # Agregamos Actas que no tengan inscripción correspondiente (evitar duplicados por fecha/materia)
+    for a in actas_estudiante_qs:
+        fecha_iso = a.acta.fecha.isoformat()
+        key = (a.acta.materia_id, fecha_iso)
+        
+        if key in mesas_added_keys:
+            continue
+            
+        cond_val, cond_lbl = _acta_condicion(a.calificacion_definitiva)
+        
+        mesas_raw.append({
+            "id": -a.id, # ID negativo para evitar colisión con InscripcionMesa
+            "mesa_id": a.acta.id, # Usamos ID de acta como referencia
+            "materia_id": a.acta.materia_id,
+            "materia_nombre": a.acta.materia.nombre,
+            "tipo": a.acta.tipo,
+            "tipo_display": a.acta.get_tipo_display(),
+            "fecha": fecha_iso,
+            "estado": cond_val,
+            "estado_display": cond_lbl,
+            "aula": None,
+            "nota": a.calificacion_definitiva,
+        })
+
     # --- 2. EVENTOS Y TRAYECTORIA ---
     preinscripciones = list(
         Preinscripcion.objects.filter(alumno=est).select_related("carrera").order_by("-created_at")

@@ -72,9 +72,20 @@ class PreinscripcionIn(Schema):
     domicilio_trabajo: str | None = None
 
 
+class EstudianteUpdateIn(Schema):
+    dni: str | None = None
+    nombres: str | None = None
+    apellido: str | None = None
+    cuil: str | None = None
+    fecha_nacimiento: date | None = None
+    email: str | None = None
+    telefono: str | None = None
+    domicilio: str | None = None
+
+
 class PreinscripcionUpdateIn(Schema):
     carrera_id: int | None = None
-    estudiante: EstudianteIn | None = None
+    estudiante: EstudianteUpdateIn | None = None
     datos_extra: dict | None = None
 
 

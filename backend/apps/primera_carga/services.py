@@ -51,6 +51,7 @@ from core.models import (
     User,
 )
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
+from apps.primera_carga.audit_utils import verify_regularidad_consistency
 from core.permissions import allowed_profesorados, ensure_profesorado_access
 
 
@@ -185,22 +186,24 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
         raise ValueError("La situación académica es obligatoria.")
 
     if alias_key in ALIAS_TO_SITUACION:
-        return ALIAS_TO_SITUACION[alias_key]
-
-    allowed_aliases = {_normalize_alias(item.get("alias", "")) for item in _situaciones_para_formato(formato_slug)}
-    allowed_codes = {_normalize_alias(item.get("codigo", "")) for item in _situaciones_para_formato(formato_slug)}
+        candidate = ALIAS_TO_SITUACION[alias_key]
+        if _normalize_alias(candidate) in allowed_codes:
+             return candidate
+        # If strict validation is desired, raise error here.
+        # But maybe the alias exists in the format map pointing to a different code? (Unlikely).
+        # We continue to check specific format aliases.
 
     if alias_key in allowed_codes:
         return alias_key
 
     if alias_key in allowed_aliases:
         mapped = ALIAS_TO_SITUACION.get(alias_key)
-        if mapped:
+        if mapped and _normalize_alias(mapped) in allowed_codes:
             return mapped
 
     # Permit already-normalized DB codes (REG, APR, etc.)
     for code in Regularidad.Situacion.values:
-        if alias_key == _normalize_alias(code):
+        if alias_key == _normalize_alias(code) and code in allowed_codes:
             return code
 
     raise ValueError(f"Situacion academica '{raw}' no es valida para el formato seleccionado.")
@@ -1257,7 +1260,8 @@ def crear_planilla_regularidad(
 
             datos_extra = _limpiar_datos_fila(fila_data.get("datos"), columnas)
 
-            PlanillaRegularidadFila.objects.create(
+            # Capturar objeto fila
+            fila_obj = PlanillaRegularidadFila.objects.create(
                 planilla=planilla,
                 orden=orden,
                 estudiante=estudiante,
@@ -1270,12 +1274,13 @@ def crear_planilla_regularidad(
                 datos=datos_extra,
             )
 
-            if (
-                situacion == Regularidad.Situacion.PROMOCIONADO
-                and nota_final_entera is not None
-                and nota_final_entera < 8
-            ):
-                raise ValueError(f"La nota final debe ser >= 8 para registrar una promoción en la fila {orden}.")
+            # Historical overrides: Allow Promotion even if grade < 8
+            # if (
+            #     situacion == Regularidad.Situacion.PROMOCIONADO
+            #     and nota_final_entera is not None
+            #     and nota_final_entera < 8
+            # ):
+            #     raise ValueError(f"La nota final debe ser >= 8 para registrar una promoción en la fila {orden}.")
 
             if not estudiante:
                 warnings.append(
@@ -1346,6 +1351,8 @@ def crear_planilla_regularidad(
                 fecha_cierre=fecha,
                 defaults=regularidad_defaults,
             )
+            # Verify consistency immediately
+            verify_regularidad_consistency(fila_obj)
             regularidades_registradas += 1
 
         PlanillaRegularidadHistorial.objects.create(
@@ -1540,7 +1547,7 @@ def actualizar_planilla_regularidad(
                         asist = int(math.ceil(float(asist_raw.replace(",", "."))))
                     except: pass
                 
-                PlanillaRegularidadFila.objects.create(
+                fila_obj = PlanillaRegularidadFila.objects.create(
                     planilla=planilla, orden=orden, estudiante=estudiante, dni=dni or "",
                     apellido_nombre=_normalize_value(f_data.get("apellido_nombre") or ""),
                     nota_final=nota_dec, asistencia_porcentaje=asist,
@@ -1560,6 +1567,8 @@ def actualizar_planilla_regularidad(
                             "excepcion": bool(f_data.get("excepcion")),
                         }
                     )
+                    # Verify
+                    verify_regularidad_consistency(fila_obj)
                     regularidades_registradas += 1
 
         if not dry_run:
@@ -1815,6 +1824,13 @@ def process_estudiantes_csv(file_content: str, dry_run: bool = False) -> dict:
                 skipped_count += 1
                 errors.append(f"[Fila {idx}] Error: {e}")
 
+    if errors and not dry_run:
+        SystemLog.objects.create(
+            tipo="IMPORT_ERROR",
+            mensaje=f"Error during students CSV import ({len(errors)} records skipped/failed).",
+            metadata={"total_errors": len(errors), "sample_errors": errors[:20]}
+        )
+
     return {
         "ok": not bool(errors),
         "processed": processed_count,
@@ -1964,6 +1980,13 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> dict
                 skipped_count += 1
                 errors.append(f"[Fila {idx}] Error: {e}")
 
+    if errors and not dry_run:
+        SystemLog.objects.create(
+            tipo="IMPORT_ERROR",
+            mensaje=f"Error during final folios CSV import ({len(errors)} records skipped/failed).",
+            metadata={"total_errors": len(errors), "sample_errors": errors[:20]}
+        )
+
     return {
         "ok": not bool(errors),
         "processed": processed_count,
@@ -2053,6 +2076,13 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> dict:
             except Exception as e:
                 skipped_count += 1
                 errors.append(f"[Fila {idx}] Error: {e}")
+
+    if errors and not dry_run:
+        SystemLog.objects.create(
+            tipo="IMPORT_ERROR",
+            mensaje=f"Error during equivalences CSV import ({len(errors)} records skipped/failed).",
+            metadata={"total_errors": len(errors), "sample_errors": errors[:20]}
+        )
 
     return {
         "ok": not bool(errors),

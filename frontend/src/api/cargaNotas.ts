@@ -246,6 +246,7 @@ export type ActaMetadataDocente = {
 export type ActaMetadataDTO = {
   profesorados: ActaMetadataProfesorado[];
   docentes: ActaMetadataDocente[];
+  estudiantes: Array<{ dni: string; apellido_nombre: string }>;
   nota_opciones: ActaNotaOption[];
 };
 

@@ -56,6 +56,9 @@ if 'api' not in locals():
     )
     safe_add_router("/admin/primera-carga", primera_carga_router)  # Montar el router de primera carga
     safe_add_router("/auditoria", audit_router)
+    
+    from apps.common.system_log_api import router as system_log_router
+    safe_add_router("/system/logs", system_log_router)
 
     # (opcional) si tienes otros routers, puedes montarlos aquí también:
     from .api import router as core_router

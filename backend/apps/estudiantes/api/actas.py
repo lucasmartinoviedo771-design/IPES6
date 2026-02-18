@@ -25,6 +25,7 @@ from core.models import (
     Profesorado,
 )
 from .notas_utils import normalized_user_roles, format_user_display
+from apps.primera_carga.audit_utils import verify_acta_consistency
 
 # ==============================================================================
 # SCHEMAS
@@ -124,6 +125,7 @@ class ActaMetadataDocente(Schema):
 class ActaMetadataOut(Schema):
     profesorados: list[ActaMetadataProfesorado]
     docentes: list[ActaMetadataDocente]
+    estudiantes: list[dict] = []
     nota_opciones: list[dict]
 
 # Rebuild
@@ -233,9 +235,18 @@ def _acta_metadata(user=None) -> ActaMetadataOut:
 
     nota_options = [{"value": value, "label": _nota_label(value)} for value in ACTA_NOTA_CHOICES]
 
+    estudiantes_payload = [
+        {
+            "dni": est.dni,
+            "apellido_nombre": f"{est.user.last_name}, {est.user.first_name}".strip(", "),
+        }
+        for est in Estudiante.objects.all().select_related("user").order_by("user__last_name", "user__first_name")
+    ]
+
     return ActaMetadataOut(
         profesorados=profesorados_data,
         docentes=docentes_payload,
+        estudiantes=estudiantes_payload,
         nota_opciones=nota_options,
     )
 
@@ -634,7 +645,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             )
 
         for est_item in estudiantes_payload:
-            ActaExamenEstudiante.objects.create(
+            acta_est_obj = ActaExamenEstudiante.objects.create(
                 acta=acta,
                 numero_orden=est_item.numero_orden,
                 permiso_examen=est_item.permiso_examen or "",
@@ -678,6 +689,8 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                         "cuenta_para_intentos": condicion_mesa != InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
                     }
                 )
+                # Verify consistency
+                verify_acta_consistency(acta_est_obj)
 
     return ApiResponse(
         ok=True,

@@ -485,6 +485,20 @@ export default function AppShell({ children }: PropsWithChildren) {
                 </Typography>
               )}
             </Box>
+            {hasAnyRole(user, ["estudiante"]) && (
+              <Button
+                component={Link}
+                to="/estudiantes/completar-perfil"
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  color: INSTITUTIONAL_TERRACOTTA,
+                  borderRadius: 10,
+                }}
+              >
+                Mis Datos
+              </Button>
+            )}
             <Button
               component={Link}
               to="/cambiar-password"
@@ -757,6 +771,17 @@ export default function AppShell({ children }: PropsWithChildren) {
             >
               <ListItemIcon><UploadFileIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Primera carga" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+
+          {hasAnyRole(user, ["admin"]) && (
+            <ListItemButton
+              selected={current.startsWith("/system/logs")}
+              onClick={() => navigate("/system/logs")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><FactCheckIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Alertas de Sistema" primaryTypographyProps={{ sx: { color: "#fff" } }} />
             </ListItemButton>
           )}
 

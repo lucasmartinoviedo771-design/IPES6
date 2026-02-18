@@ -136,6 +136,27 @@ def check_roles(request, allowed_roles: list[str], profesorado_id: Optional[int]
         raise HttpError(403, "Permiso denegado.")
 
 
+
+class AllowPublic:
+    def __call__(self, request):
+        return True
+
+@router.get("/carreras", response=ApiResponse, auth=AllowPublic())
+def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int] = None):
+    logger.info(f"DEBUG: listar_carreras called with vigentes={vigentes}")
+    try:
+        from core.models import Profesorado
+        qs = Profesorado.objects.all().order_by("nombre")
+        if vigentes:
+            qs = qs.filter(activo=True, inscripcion_abierta=True)
+        data = [{"id": c.id, "nombre": c.nombre} for c in qs]
+        return ApiResponse(ok=True, message=f"{len(data)} carreras", data=data)
+    except Exception as e:
+        logger.exception("Error listando carreras")
+        raise HttpError(500, "No se pudieron listar las carreras") from e
+
+
+
 @router.get("/", response=list[PreinscripcionOut], auth=JWTAuth())
 def listar_preinscripciones(
     request,
@@ -144,7 +165,8 @@ def listar_preinscripciones(
     offset: int = 0,
     include_inactivas: bool = False,
     profesorado_id: Optional[int] = None,
-    anio: Optional[int] = None
+    anio: Optional[int] = None,
+    exclude_confirmed: bool = False
 ):
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
@@ -152,6 +174,9 @@ def listar_preinscripciones(
     
     if not include_inactivas:
         qs = qs.filter(activa=True)
+    
+    if exclude_confirmed:
+        qs = qs.exclude(estado="Confirmada")
     
     if profesorado_id:
         qs = qs.filter(carrera_id=profesorado_id)
@@ -215,18 +240,6 @@ def activar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] =
     return pre
 
 
-@router.get("/carreras", response=ApiResponse)
-def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int] = None):
-    try:
-        from core.models import Profesorado
-        qs = Profesorado.objects.all().order_by("nombre")
-        if vigentes:
-            qs = qs.filter(activo=True, inscripcion_abierta=True)
-        data = [{"id": c.id, "nombre": c.nombre} for c in qs]
-        return ApiResponse(ok=True, message=f"{len(data)} carreras", data=data)
-    except Exception as e:
-        logger.exception("Error listando carreras")
-        raise HttpError(500, "No se pudieron listar las carreras") from e
 
 
 def _generar_codigo(pk: int) -> str:
