@@ -3827,6 +3827,10 @@ def list_users_admin(request):
             fn = doc.nombre
             ln = doc.apellido
             
+        if not fn and not ln:
+            fn = "SIN NOMBRE"
+            ln = "USUARIO"
+            
         res.append({
             "id": u.id,
             "username": u.username,
@@ -3885,6 +3889,10 @@ def list_users_admin_v2(request):
             doc = docente_map[u.username]
             fn = doc.nombre
             ln = doc.apellido
+            
+        if not fn and not ln:
+            fn = "SIN NOMBRE"
+            ln = "USUARIO"
             
         res.append({
             "id": u.id,
