@@ -30,6 +30,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TablePagination,
 } from "@mui/material";
 import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion, activarPreinscripcion, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
@@ -62,19 +63,23 @@ export default function PreinscripcionesPage() {
   const [inclInactivas, setInclInactivas] = React.useState(false);
   const [profesoradoId, setProfesoradoId] = React.useState<number | "">("");
   const [anio, setAnio] = React.useState<number | "">("");
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
   const { data: profesorados } = useQuery<{ id: number, nombre: string }[]>({
     queryKey: ["profesorados-list"],
     queryFn: () => axios.get("profesorados").then(r => r.data)
   });
 
-  const { data, isLoading, isError, refetch } = useQuery<{ results: PreinscripcionDTO[] }>({
-    queryKey: ["preinscripciones", search, inclInactivas, profesoradoId, anio],
+  const { data, isLoading, isError, refetch } = useQuery<{ count: number, results: PreinscripcionDTO[] }>({
+    queryKey: ["preinscripciones", search, inclInactivas, profesoradoId, anio, page, rowsPerPage],
     queryFn: () => listarPreinscripciones({
       search: search || undefined,
       include_inactivas: inclInactivas,
       profesorado_id: profesoradoId || undefined,
-      anio: anio || undefined
+      anio: anio || undefined,
+      limit: rowsPerPage,
+      offset: page * rowsPerPage
     }),
   });
 
@@ -130,7 +135,7 @@ export default function PreinscripcionesPage() {
               size="small"
               fullWidth
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               InputProps={{
                 sx: { borderRadius: 3 },
               }}
@@ -142,7 +147,7 @@ export default function PreinscripcionesPage() {
               <Select
                 value={profesoradoId}
                 label="Profesorado"
-                onChange={(e) => setProfesoradoId(e.target.value as number)}
+                onChange={(e) => { setProfesoradoId(e.target.value as number); setPage(0); }}
                 sx={{ borderRadius: 3 }}
               >
                 <MenuItem value="">Todos</MenuItem>
@@ -160,7 +165,7 @@ export default function PreinscripcionesPage() {
               <Select
                 value={anio}
                 label="Año"
-                onChange={(e) => setAnio(e.target.value as number)}
+                onChange={(e) => { setAnio(e.target.value as number); setPage(0); }}
                 sx={{ borderRadius: 3 }}
               >
                 <MenuItem value="">Todos</MenuItem>
@@ -179,7 +184,7 @@ export default function PreinscripcionesPage() {
                   <Checkbox
                     size="small"
                     checked={inclInactivas}
-                    onChange={(e) => setInclInactivas(e.target.checked)}
+                    onChange={(e) => { setInclInactivas(e.target.checked); setPage(0); }}
                   />
                 }
                 label="Inactivas"
@@ -265,6 +270,19 @@ export default function PreinscripcionesPage() {
             </TableBody>
           </Table>
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          component="div"
+          count={data?.count || 0}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          labelRowsPerPage="Filas por página"
+        />
       </Paper>
 
       {/* Modal para Formalizar inscripción */}

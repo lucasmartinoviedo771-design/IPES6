@@ -23,6 +23,7 @@ from .schemas import (
     NuevaCarreraIn,
     PreinscripcionIn,
     PreinscripcionOut,
+    PreinscripcionPaginatedOut,
     PreinscripcionUpdateIn,
     RequisitoDocumentacionOut,
     RequisitoDocumentacionUpdateIn,
@@ -157,7 +158,7 @@ def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int
 
 
 
-@router.get("/", response=list[PreinscripcionOut], auth=JWTAuth())
+@router.get("/", response=PreinscripcionPaginatedOut, auth=JWTAuth())
 def listar_preinscripciones(
     request,
     search: str | None = None,
@@ -192,10 +193,11 @@ def listar_preinscripciones(
             | Q(alumno__dni__icontains=search)
         )
 
+    total = qs.count()
     # Aplicar paginación
     qs = qs[offset : offset + limit]
 
-    return qs
+    return {"count": total, "results": list(qs)}
 
 
 @router.get("/{pre_id}", response=PreinscripcionOut, auth=JWTAuth())

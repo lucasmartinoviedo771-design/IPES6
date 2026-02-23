@@ -104,6 +104,11 @@ class PreinscripcionOut(Schema):
         return getattr(obj, "alumno", None)
 
 
+class PreinscripcionPaginatedOut(Schema):
+    count: int
+    results: list[PreinscripcionOut]
+
+
 class ChecklistIn(Schema):
     # Documentación personal
     dni_legalizado: bool = False
