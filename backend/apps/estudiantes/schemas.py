@@ -851,6 +851,7 @@ class FinalHabilitado(Schema):
     vigencia_hasta: str | None = None
     dias_restantes: int | None = None
     comentarios: list[str] = Field(default_factory=list)
+    correlativas_aprobadas: list[str] = Field(default_factory=list)
 
 class RegularidadVigenciaOut(Schema):
     materia_id: int
@@ -918,6 +919,7 @@ class CartonMateria(Schema):
     formato: str | None = None
     formato_display: str | None = None
     regularidad: CartonEvento | None = None
+    regularidades: list[CartonEvento] = Field(default_factory=list)
     final: CartonEvento | None = None
     finales: list[CartonEvento] = Field(default_factory=list)
 

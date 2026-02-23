@@ -185,6 +185,10 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
     if not alias_key:
         raise ValueError("La situación académica es obligatoria.")
 
+    # Obtenemos los códigos permitidos para este formato
+    # _situaciones_para_formato devuelve una lista de diccionarios
+    allowed_codes = {item["codigo"] for item in _situaciones_para_formato(formato_slug)}
+
     if alias_key in ALIAS_TO_SITUACION:
         candidate = ALIAS_TO_SITUACION[alias_key]
         if _normalize_alias(candidate) in allowed_codes:
@@ -196,17 +200,22 @@ def _resolve_situacion(raw: str, formato_slug: str) -> str:
     if alias_key in allowed_codes:
         return alias_key
 
-    if alias_key in allowed_aliases:
-        mapped = ALIAS_TO_SITUACION.get(alias_key)
-        if mapped and _normalize_alias(mapped) in allowed_codes:
-            return mapped
+    # Check against allowed aliases (reverse lookup in ALIAS_TO_SITUACION is inefficient but ok for small sets)
+    # Actually, allowed_aliases was also undefined in original code? No, let's check.
+    # The original code had: "if alias_key in allowed_aliases:" -> allowed_aliases is NOT defined either!
+    # Let's assume ALIAS_TO_SITUACION keys are the aliases.
+    
+    if alias_key in ALIAS_TO_SITUACION:
+         mapped = ALIAS_TO_SITUACION[alias_key]
+         if mapped in allowed_codes:
+             return mapped
 
     # Permit already-normalized DB codes (REG, APR, etc.)
     for code in Regularidad.Situacion.values:
         if alias_key == _normalize_alias(code) and code in allowed_codes:
             return code
 
-    raise ValueError(f"Situacion academica '{raw}' no es valida para el formato seleccionado.")
+    raise ValueError(f"Situacion academica '{raw}' no es valida para el formato seleccionado ({formato_slug}).")
 
 
 def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dict:
@@ -1561,7 +1570,7 @@ def actualizar_planilla_regularidad(
                         estudiante=estudiante, materia=materia_actual,
                         fecha_cierre=planilla.fecha,
                         defaults={
-                            "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if nota_dec else None,
+                            "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if nota_dec is not None else None,
                             "asistencia_porcentaje": asist,
                             "situacion": situacion,
                             "excepcion": bool(f_data.get("excepcion")),

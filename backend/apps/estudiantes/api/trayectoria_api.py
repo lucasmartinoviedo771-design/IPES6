@@ -7,6 +7,7 @@ from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
 from core.models import (
     ActaExamenEstudiante,
+    Correlatividad,
     InscripcionMateriaEstudiante,
     InscripcionMesa,
     Materia,
@@ -121,6 +122,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     alertas: list[str] = []
     carton_planes: list[dict] = []
     aprobadas_set: set[int] = set()
+    aprobadas_notas: dict[int, str] = {}
     regularizadas_set: set[int] = set()
     inscriptas_actuales_set: set[int] = set()
 
@@ -131,11 +133,13 @@ def trayectoria_estudiante(request, dni: str | None = None):
     regularidades_qs = (
         Regularidad.objects.filter(estudiante=est)
         .select_related("materia", "materia__plan_de_estudio", "materia__plan_de_estudio__profesorado")
+        .prefetch_related("materia__correlativas_requeridas__materia_correlativa")
         .order_by("-fecha_cierre")
     )
     for reg in regularidades_qs:
         if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             aprobadas_set.add(reg.materia_id)
+            aprobadas_notas[reg.materia_id] = _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
         if reg.situacion == Regularidad.Situacion.REGULAR:
             regularizadas_set.add(reg.materia_id)
 
@@ -154,6 +158,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         )
         if cond_val in ("APR", "EQUI") or is_equiv:
             aprobadas_set.add(a.acta.materia_id)
+            aprobadas_notas[a.acta.materia_id] = _format_acta_calificacion(a.calificacion_definitiva)
 
     # c. Inscripciones a Mesa con resultado APROBADO
     inscripciones_mesa_qs = (
@@ -165,6 +170,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         if insc.condicion == InscripcionMesa.Condicion.APROBADO:
             if insc.mesa and insc.mesa.materia_id:
                 aprobadas_set.add(insc.mesa.materia_id)
+                aprobadas_notas[insc.mesa.materia_id] = _format_nota(insc.nota) if insc.nota else "-"
 
     # --- 3. MESAS DE EXAMEN (Lógica para mesas_raw) ---
     inscripciones_mesa_all = (
@@ -329,6 +335,26 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 comentarios: list[str] = []
                 if dias_restantes <= 30:
                     comentarios.append("La regularidad vence en menos de 30 días.")
+                
+                # Buscar correlativas aprobadas
+                correlativas_encontradas = []
+                correlativas_ids_vistas = set()
+                
+                # Filtramos las correlativas que sean para RENDIR FINAL (APR) o CURSAR (APC)
+                # Asumimos que para habilitar mesa se requieren las anteriores aprobadas
+                for correlativa_req in reg.materia.correlativas_requeridas.all():
+                    # Si la correlativa es Tipo APR (Aprobada Para Rendir) o APC (Aprobada Para Cursar - implicito)
+                    # O si simplemente mostramos todas las requeridas aprobadas
+                    mat_corr = correlativa_req.materia_correlativa
+                    
+                    if mat_corr.id in correlativas_ids_vistas:
+                        continue
+
+                    if mat_corr.id in aprobadas_set:
+                        nota = aprobadas_notas.get(mat_corr.id, "-")
+                        correlativas_encontradas.append(f"{mat_corr.nombre} (Nota: {nota})")
+                        correlativas_ids_vistas.add(mat_corr.id)
+
                 finales_habilitados_data.append(
                     {
                         "materia_id": reg.materia_id,
@@ -337,6 +363,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                         "vigencia_hasta": vigencia_iso,
                         "dias_restantes": dias_restantes,
                         "comentarios": comentarios,
+                        "correlativas_aprobadas": correlativas_encontradas,
                     }
                 )
             else:
@@ -399,8 +426,13 @@ def trayectoria_estudiante(request, dni: str | None = None):
             "es_acta": True
         })
     
-    # --- CONSTRUCCION DEL CARTON (Verificacion de Planes) ---
-    regularidades_map = {reg.materia_id: reg for reg in regularidades_qs}
+    # regularidades_qs está ordenado por fecha descendente.
+    # Queremos agrupar TODAS las regularidades por materia.
+    regularidades_map: dict[int, list[Regularidad]] = {}
+    for reg in regularidades_qs:
+        if reg.materia_id not in regularidades_map:
+            regularidades_map[reg.materia_id] = []
+        regularidades_map[reg.materia_id].append(reg)
     # Para finales, agrupamos TODAS las inscripciones por materia
     finales_map = {}
     for insc in inscripciones_mesa_qs:
@@ -422,16 +454,22 @@ def trayectoria_estudiante(request, dni: str | None = None):
             
             carton_materias = []
             for mat in materias_plan:
-                reg = regularidades_map.get(mat.id)
-                reg_data = None
-                if reg:
-                    reg_data = {
+                regularidades_list = regularidades_map.get(mat.id, [])
+                regularidades_data = []
+                
+                # Mantenemos 'regularidad' (singular) como la más reciente para compatibilidad (opcional, pero seguro)
+                # O mejor, enviamos 'regularidades' (plural) y el frontend decide.
+                for reg in regularidades_list:
+                    regularidades_data.append({
                         "fecha": reg.fecha_cierre.isoformat(),
                         "condicion": reg.situacion,
                         "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
-                        "folio": None, # Regularidad no suele tener folio en este modelo simple
+                        "folio": None, 
                         "libro": None
-                    }
+                    })
+                
+                # Legacy field: 'regularidad' will hold the most recent one (first in list)
+                reg_data_legacy = regularidades_data[0] if regularidades_data else None
 
                 finales_list = finales_map.get(mat.id, [])
                 actas_list = actas_map.get(mat.id, [])
@@ -484,7 +522,8 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     "regimen_display": mat.get_regimen_display(),
                     "formato": mat.formato,
                     "formato_display": mat.get_formato_display(),
-                    "regularidad": reg_data,
+                    "regularidad": reg_data_legacy,
+                    "regularidades": regularidades_data,
                     "final": final_data,
                     "finales": carton_finales
                 })

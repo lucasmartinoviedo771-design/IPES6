@@ -171,8 +171,12 @@ const notifyError = (appError: AppError, config?: AppAxiosRequestConfig) => {
   if (config?.suppressErrorToast) {
     return;
   }
-  // No mostrar "No autenticado" si ya estamos en la página de login
-  if (appError.status === 401 && window.location.pathname === "/login") {
+  // No mostrar "No autenticado" genérico si ya estamos en la página de login,
+  // A MENOS que el error venga del intento de login mismo (queremos ver "Credenciales inválidas").
+  const isLoginPath = window.location.pathname === "/login";
+  const isLoginRequest = config?.url?.includes("auth/login"); // Quitamos el / inicial para URLs relativas
+
+  if (appError.status === 401 && isLoginPath && !isLoginRequest) {
     return;
   }
   toast.error(appError.message);
@@ -225,10 +229,15 @@ client.interceptors.response.use(
       return Promise.reject(appError);
     }
 
-    const isAuthRoute =
-      originalRequest?.url?.includes("/auth/login") || originalRequest?.url?.includes("/auth/refresh");
-    if (isAuthRoute || originalRequest?._retry) {
-      unauthorizedHandler?.();
+    const isLoginRoute = originalRequest?.url?.includes("auth/login");
+    const isRefreshRoute = originalRequest?.url?.includes("auth/refresh");
+
+    if (isLoginRoute || isRefreshRoute || originalRequest?._retry) {
+      // Solo ejecutamos el handler de "no autorizado" (que suele redirigir/limpiar user) 
+      // si NO es un intento de login (donde ya estamos en la pág de login y queremos manejar el error localmente)
+      if (!isLoginRoute) {
+        unauthorizedHandler?.();
+      }
       const appError = buildAppError(error, response.status);
       notifyError(appError, originalRequest);
       return Promise.reject(appError);

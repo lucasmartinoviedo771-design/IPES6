@@ -2,6 +2,10 @@ import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Paper,
   Table,
   TableBody,
@@ -30,6 +34,7 @@ import {
 import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion, activarPreinscripcion, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import dayjs from "dayjs";
 import { PageHero } from "@/components/ui/GradientTitles";
@@ -262,24 +267,37 @@ export default function PreinscripcionesPage() {
         </TableContainer>
       </Paper>
 
-      {/* Panel inline para Formalizar inscripción */}
-      {codigoSel && (
-        <Paper sx={{ p: 2, borderRadius: 10 }}>
-          <Stack gap={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="h6" fontWeight={700}>Formalizar inscripción — {codigoSel}</Typography>
-              <Button size="small" onClick={() => setCodigoSel(null)}>Cerrar</Button>
-            </Stack>
-            {msgOk && <Alert severity="success">{msgOk}</Alert>}
-            {msgErr && <Alert severity="error">{msgErr}</Alert>}
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={12}>
-                <PreConfirmEditor codigo={codigoSel} />
-              </Grid>
-            </Grid>
-          </Stack>
-        </Paper>
-      )}
+      {/* Modal para Formalizar inscripción */}
+      <Dialog
+        open={!!codigoSel}
+        onClose={() => setCodigoSel(null)}
+        fullWidth
+        maxWidth="lg"
+        PaperProps={{
+          sx: { borderRadius: 5 }
+        }}
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#fafafa', borderBottom: '1px solid #eee' }}>
+          <Typography variant="h6" fontWeight={800}>
+            Formalizar inscripción — {codigoSel}
+          </Typography>
+          <IconButton
+            aria-label="close"
+            onClick={() => setCodigoSel(null)}
+            sx={{ color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2, pt: 3 }}>
+          {msgOk && <Alert severity="success" sx={{ mb: 2 }}>{msgOk}</Alert>}
+          {msgErr && <Alert severity="error" sx={{ mb: 2 }}>{msgErr}</Alert>}
+          {codigoSel && <PreConfirmEditor codigo={codigoSel} onActionSuccess={() => setCodigoSel(null)} />}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: '1px solid #eee', bgcolor: '#fafafa' }}>
+          <Button onClick={() => setCodigoSel(null)} color="inherit">Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -109,7 +109,7 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
       espacioCurricular: materia.materia_nombre,
     };
 
-    const hasRegularidad = Boolean(materia.regularidad);
+    const hasRegularidad = Boolean((materia.regularidades && materia.regularidades.length) || materia.regularidad);
     const hasFinal = Boolean(materia.final);
 
     if (!hasRegularidad && !hasFinal) {
@@ -120,13 +120,19 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
       return;
     }
 
-    if (materia.regularidad) {
-      registros.push({
-        ...commonData,
-        tipo: 'regularidad',
-        fecha: materia.regularidad.fecha || undefined,
-        condicion: materia.regularidad.condicion || undefined,
-        nota: materia.regularidad.nota || undefined,
+    const regularidadesList = materia.regularidades && materia.regularidades.length > 0
+      ? materia.regularidades
+      : (materia.regularidad ? [materia.regularidad] : []);
+
+    if (regularidadesList.length > 0) {
+      regularidadesList.forEach(reg => {
+        registros.push({
+          ...commonData,
+          tipo: 'regularidad',
+          fecha: reg.fecha || undefined,
+          condicion: reg.condicion || undefined,
+          nota: reg.nota || undefined,
+        });
       });
     }
 

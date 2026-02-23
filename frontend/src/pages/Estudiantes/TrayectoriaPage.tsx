@@ -629,6 +629,20 @@ const TrayectoriaPage: React.FC = () => {
                                   ))}
                                 </Stack>
                               )}
+                              {item.correlativas_aprobadas && item.correlativas_aprobadas.length > 0 && (
+                                <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed', borderColor: 'divider' }}>
+                                  <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom>
+                                    Habilitado por:
+                                  </Typography>
+                                  <Stack spacing={0}>
+                                    {item.correlativas_aprobadas.map((c, i) => (
+                                      <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                        • {c}
+                                      </Typography>
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
                             </Stack>
                           </Paper>
                         </Grid>

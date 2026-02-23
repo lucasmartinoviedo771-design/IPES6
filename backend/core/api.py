@@ -14,6 +14,8 @@ from ninja.errors import HttpError
 from ninja.files import UploadedFile
 
 from apps.common.api_schemas import ApiResponse
+from apps.common.errors import AppError
+from apps.common.constants import AppErrorCode
 from .schemas import UserSchema, AsignarRolIn
 from core.auth_ninja import JWTAuth
 from core.models import (
@@ -136,10 +138,20 @@ ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
 
 
 def _normalized_user_roles(user: User) -> set[str]:
-    raw_roles = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
-    roles = set(raw_roles)
-    if "estudiantes" in raw_roles:
-        roles.add("estudiante")
+    raw_names = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
+    roles = set(raw_names)
+    for name in raw_names:
+        if name.startswith("bedel"):
+            roles.add("bedel")
+        if name.startswith("secretaria"):
+            roles.add("secretaria")
+        if name.startswith("coordinador"):
+            roles.add("coordinador")
+        if name == "estudiantes" or "estudiante" in name:
+            roles.add("estudiante")
+        if name == "docentes" or "docente" in name:
+            roles.add("docente")
+
     if user.is_superuser or user.is_staff:
         roles.add("admin")
     return roles
@@ -775,9 +787,10 @@ def list_inscriptos_materia(
     docente_profile = _docente_from_user(request.user)
 
     solo_docente = False
-    if "docente" in roles:
+    # Si es docente pero NO tiene roles de gestión/vista estructural, restringimos a sus comisiones
+    if "docente" in roles and not (roles & STRUCTURE_VIEW_ROLES):
         if not docente_profile:
-            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes comisiones asignadas.")
+            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes perfil de docente asociado o comisiones asignadas.")
         asignado = Comision.objects.filter(materia_id=materia_id, docente=docente_profile).exists()
         if not asignado:
             raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes comisiones asignadas a esta materia.")
@@ -1738,9 +1751,10 @@ def list_comisiones(
     roles = _normalized_user_roles(request.user)
     docente_profile = _docente_from_user(request.user)
 
-    if "docente" in roles:
+    # Si es docente pero NO tiene roles de gestión/vista académica profunda, restringimos a sus comisiones
+    if "docente" in roles and not (roles & ACADEMIC_VIEW_ROLES):
         if not docente_profile:
-            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes comisiones asignadas.")
+            raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tienes perfil de docente asociado o comisiones asignadas.")
         qs = Comision.objects.select_related(
             "materia__plan_de_estudio__profesorado",
             "turno",

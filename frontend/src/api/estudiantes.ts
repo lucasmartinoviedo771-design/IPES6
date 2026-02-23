@@ -364,6 +364,7 @@ export type FinalHabilitadoDTO = {
   vigencia_hasta: string | null;
   dias_restantes: number | null;
   comentarios: string[];
+  correlativas_aprobadas?: string[];
 };
 
 export type RegularidadVigenciaDTO = {
@@ -436,6 +437,7 @@ export type CartonMateriaDTO = {
   formato?: string | null;
   formato_display?: string | null;
   regularidad?: CartonEventoDTO | null;
+  regularidades?: CartonEventoDTO[] | null;
   final?: CartonEventoDTO | null;
   finales?: CartonEventoDTO[] | null;
 };

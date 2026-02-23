@@ -53,7 +53,7 @@ function FotoPreviewBox({ dataUrl }: { dataUrl?: string }) {
   );
 }
 
-export default function PreConfirmEditor({ codigo }: { codigo: string }) {
+export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: string; onActionSuccess?: () => void }) {
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["preinscripcion", codigo],
@@ -440,6 +440,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
       enqueueSnackbar("Preinscripción confirmada", { variant: "success" });
       qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
       qc.invalidateQueries({ queryKey: ["preinscripciones"] });
+      onActionSuccess?.();
     },
     onError: () => enqueueSnackbar("No se pudo confirmar", { variant: "error" })
   });
@@ -476,13 +477,21 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
 
   const mObservar = useMutation({
     mutationFn: (motivo: string) => apiObservarPreinscripcion(codigo, motivo),
-    onSuccess: () => { enqueueSnackbar("Marcada como observada", { variant: "info" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
+    onSuccess: () => {
+      enqueueSnackbar("Marcada como observada", { variant: "info" });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
+      onActionSuccess?.();
+    },
     onError: () => enqueueSnackbar("No se pudo observar", { variant: "error" })
   });
 
   const mRechazar = useMutation({
     mutationFn: (motivo: string) => apiRechazarPreinscripcion(codigo, motivo),
-    onSuccess: () => { enqueueSnackbar("Preinscripción rechazada", { variant: "warning" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
+    onSuccess: () => {
+      enqueueSnackbar("Preinscripción rechazada", { variant: "warning" });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
+      onActionSuccess?.();
+    },
     onError: () => enqueueSnackbar("No se pudo rechazar", { variant: "error" })
   });
 
@@ -508,7 +517,11 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
     onSuccess: () => {
       enqueueSnackbar("Preinscripción eliminada permanentemente", { variant: "success" });
       qc.invalidateQueries({ queryKey: ["preinscripciones"] }); // Invalidate list
-      navigate("/preinscripciones");
+      if (onActionSuccess) {
+        onActionSuccess();
+      } else {
+        navigate("/preinscripciones");
+      }
     },
     onError: () => enqueueSnackbar("No se pudo eliminar la preinscripción", { variant: "error" })
   });
@@ -638,27 +651,17 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
 
   return (
     <Stack gap={2}>
-      <Paper sx={{ p: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Box>
-            <Typography variant="h6" fontWeight={800}>Preinscripción {data?.codigo}</Typography>
-            <Box>
-              {dayjs(data?.fecha).format("DD/MM/YYYY HH:mm")} • <EstadoChip estado={data?.estado || "borrador"} />
-            </Box>
-          </Box>
-          <Stack direction="row" gap={1}>
-            <Button variant="outlined" color="warning" onClick={handleRequestObservada}>Marcar Observada</Button>
-            <Button variant="outlined" color="error" onClick={handleRequestRechazo}>Rechazar</Button>
-            <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={handleRequestEliminar}>Eliminar</Button>
-            {/* Boton Confirmar superior removido */}          </Stack>
-        </Stack>
-      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: 1 }}>
+        <Button size="small" variant="outlined" color="warning" onClick={handleRequestObservada}>Marcar Observada</Button>
+        <Button size="small" variant="outlined" color="error" onClick={handleRequestRechazo}>Rechazar</Button>
+        <Button size="small" variant="contained" color="error" onClick={handleRequestEliminar}>Eliminar</Button>
+      </Box>
 
       {/* Tabs removidos */}
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
-          <Paper component="form" onSubmit={handleSubmit(onSubmit as any, onInvalid)} sx={{ p: 2 }}>
+          <Paper component="form" onSubmit={handleSubmit(onSubmit as any, onInvalid)} variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>Datos personales</Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
@@ -993,7 +996,7 @@ export default function PreConfirmEditor({ codigo }: { codigo: string }) {
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorados asociados</Typography>
             {preinsEstudianteQ.isLoading ? (
               <Typography variant="body2" color="text.secondary">Cargando profesorados…</Typography>

@@ -25,9 +25,16 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
     # We expect a regularidad record matching this student/subject AND date
     regs = Regularidad.objects.filter(estudiante=est, materia=materia, fecha_cierre=fecha)
     
+    # Resolver logs previos para este estudiante y materia en esta planilla
+    SystemLog.objects.filter(
+        tipo="REGULARIDAD_MISMATCH",
+        metadata__dni=est.dni,
+        metadata__materia_id=materia.id,
+        metadata__planilla_id=planilla_fila.planilla.id,
+        resuelto=False
+    ).update(resuelto=True)
+
     if not regs.exists():
-        # Fallback to newest if date doesn't match exactly? No, if it's a planilla from a date, 
-        # it MUST have a corresponding record on that date.
         SystemLog.objects.create(
             tipo="REGULARIDAD_MISMATCH",
             mensaje=f"MISSING REGULARIDAD: Student {est.dni} / Subject '{materia.nombre}' has Planilla ({fecha}) but NO history record on that date.",
@@ -44,15 +51,11 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
         return
 
     target_reg = regs.first()
-    
-    # Check values
     mismatches = []
     
-    # Situacion
     if target_reg.situacion != planilla_fila.situacion:
         mismatches.append(f"Situacion: Planilla='{planilla_fila.situacion}' vs Historial='{target_reg.situacion}'")
         
-    # Nota
     nota_f = planilla_fila.nota_final
     nota_r = target_reg.nota_final_cursada
     
@@ -60,8 +63,9 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
     if nota_f is None and nota_r is None:
         nota_match = True
     elif nota_f is not None and nota_r is not None:
-            if int(nota_f) == int(nota_r):
-                nota_match = True
+        # Comparación robusta entre Decimal e Int
+        if int(nota_f) == int(nota_r):
+            nota_match = True
     
     if not nota_match:
         mismatches.append(f"Nota: Planilla={nota_f} vs Historial={nota_r}")
