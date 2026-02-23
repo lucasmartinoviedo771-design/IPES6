@@ -3806,17 +3806,35 @@ def conversations_summary(request):
 
 @router.get("/users/list", response=List[UserSchema], auth=JWTAuth())
 def list_users_admin(request):
-    docente_dnis = Docente.objects.values_list('dni', flat=True)
-    users = User.objects.filter(Q(username__in=docente_dnis) | Q(groups__name__in=['admin', 'bedel', 'docente', 'coordinador', 'tutor']) | Q(is_superuser=True) | Q(is_staff=True)).distinct().prefetch_related('groups').order_by('last_name')
-    return [
-        {
+    docentes = Docente.objects.all()
+    docente_map = {d.dni: d for d in docentes}
+    
+    users = User.objects.filter(
+        Q(username__in=docente_map.keys()) | 
+        Q(groups__name__in=['admin', 'bedel', 'docente', 'coordinador', 'tutor']) | 
+        Q(is_superuser=True) | 
+        Q(is_staff=True)
+    ).distinct().prefetch_related('groups').order_by('last_name')
+    
+    res = []
+    for u in users:
+        fn = u.first_name
+        ln = u.last_name
+        
+        # fallback to Docente table names if User table names are empty
+        if (not fn or not ln) and u.username in docente_map:
+            doc = docente_map[u.username]
+            fn = doc.nombre
+            ln = doc.apellido
+            
+        res.append({
             "id": u.id,
             "username": u.username,
-            "first_name": u.first_name,
-            "last_name": u.last_name,
+            "first_name": fn,
+            "last_name": ln,
             "groups": [g.name for g in u.groups.all()]
-        } for u in users
-    ]
+        })
+    return res
 
 @router.post("/asignar-rol", auth=JWTAuth())
 def asignar_rol(request, data: AsignarRolIn):
@@ -3847,17 +3865,35 @@ management_router = Router(tags=["management"], auth=JWTAuth())
 
 @management_router.get("/users-list", response=List[UserSchema])
 def list_users_admin_v2(request):
-    docente_dnis = Docente.objects.values_list('dni', flat=True)
-    users = User.objects.filter(Q(username__in=docente_dnis) | Q(groups__name__in=['admin', 'bedel', 'docente', 'coordinador', 'tutor']) | Q(is_superuser=True) | Q(is_staff=True)).distinct().prefetch_related('groups').order_by('last_name')
-    return [
-        {
+    docentes = Docente.objects.all()
+    docente_map = {d.dni: d for d in docentes}
+    
+    users = User.objects.filter(
+        Q(username__in=docente_map.keys()) | 
+        Q(groups__name__in=['admin', 'bedel', 'docente', 'coordinador', 'tutor']) | 
+        Q(is_superuser=True) | 
+        Q(is_staff=True)
+    ).distinct().prefetch_related('groups').order_by('last_name')
+    
+    res = []
+    for u in users:
+        fn = u.first_name
+        ln = u.last_name
+        
+        # fallback to Docente table names if User table names are empty
+        if (not fn or not ln) and u.username in docente_map:
+            doc = docente_map[u.username]
+            fn = doc.nombre
+            ln = doc.apellido
+            
+        res.append({
             "id": u.id,
             "username": u.username,
-            "first_name": u.first_name,
-            "last_name": u.last_name,
+            "first_name": fn,
+            "last_name": ln,
             "groups": [g.name for g in u.groups.all()]
-        } for u in users
-    ]
+        })
+    return res
 
 @management_router.post("/asignar-rol")
 def asignar_rol_v2(request, data: AsignarRolIn):
