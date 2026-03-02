@@ -31,6 +31,43 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const KEEP_ALIVE_INTERVAL_MS = 2 * 60 * 1000;
 const ACTIVITY_WINDOW_MS = 5 * 60 * 1000;
 
+const normalizeRolesInput = (input: unknown): string[] => {
+  if (Array.isArray(input)) {
+    return input
+      .map((r) => String(r ?? "").trim())
+      .filter((r) => r.length > 0);
+  }
+  if (typeof input === "string") {
+    const value = input.trim();
+    if (!value) return [];
+    if (value.startsWith("[") && value.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((r) => String(r ?? "").trim())
+            .filter((r) => r.length > 0);
+        }
+      } catch {
+        // no-op: fallback below
+      }
+    }
+    return value
+      .split(",")
+      .map((r) => r.trim())
+      .filter((r) => r.length > 0);
+  }
+  return [];
+};
+
+const normalizeUserPayload = (raw: any): User => {
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    ...raw,
+    roles: normalizeRolesInput(raw.roles),
+  } as User;
+};
+
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState(true);
@@ -58,8 +95,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       const { data } = await client.get(apiPath(`auth/profile/?_t=${Date.now()}`), {
         suppressErrorToast: true,
       } as any);
-      setUser(data);
-      return data;
+      const normalized = normalizeUserPayload(data);
+      setUser(normalized);
+      return normalized;
     } catch (err: any) {
       setUser(null);
       throw err;
@@ -138,7 +176,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
     try {
       const { data } = await client.post(apiPath("auth/login/"), payload);
-      const u: User = data?.user ?? null;
+      const u: User = normalizeUserPayload(data?.user);
 
       if (!u) {
         throw new Error("La respuesta del servidor no contiene datos de usuario.");

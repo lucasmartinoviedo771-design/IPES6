@@ -62,9 +62,14 @@ export function PublicOnlyRoute({
   children: JSX.Element;
 }) {
   const { user, loading } = useAuth();
+  const loc = useLocation();
   if (loading) {
     return children;
   }
   const redirectTo = getDefaultHomeRoute(user);
-  return user ? <Navigate to={redirectTo} replace /> : children;
+  // Evita bucle/blank cuando el destino calculado es la misma ruta (ej: /login)
+  if (!user || redirectTo === loc.pathname) {
+    return children;
+  }
+  return <Navigate to={redirectTo} replace />;
 }
