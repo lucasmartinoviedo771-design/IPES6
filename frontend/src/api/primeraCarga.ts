@@ -273,3 +273,29 @@ export const actualizarPlanillaRegularidad = async (
   );
   return data;
 };
+
+export interface RegularidadIndividualPayload {
+  dni: string;
+  materia_id: number;
+  profesorado_id: number;
+  plan_id?: number | null;
+  fecha: string;
+  dictado: string;
+  nota_final?: number | null;
+  asistencia?: number | null;
+  situacion: string;
+  excepcion?: boolean;
+  observaciones?: string | null;
+  force_upgrade?: boolean;
+  folio?: string | null;
+}
+
+export const registrarRegularidadIndividual = async (
+  payload: RegularidadIndividualPayload,
+): Promise<ApiResponse<PlanillaRegularidadCreateResult>> => {
+  const { data } = await api.post<ApiResponse<PlanillaRegularidadCreateResult>>(
+    '/admin/primera-carga/regularidades/individual',
+    payload,
+  );
+  return data;
+};

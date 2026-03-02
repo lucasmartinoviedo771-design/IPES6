@@ -44,6 +44,7 @@ from core.models import (
     PlanillaRegularidadDocente,
     PlanillaRegularidadFila,
     PlanillaRegularidadHistorial,
+    Preinscripcion,
     PreinscripcionChecklist,
     Profesorado,
     Regularidad,
@@ -1049,6 +1050,7 @@ def crear_planilla_regularidad(
     filas: list[dict] | None = None,
     estado: str = "final",
     dry_run: bool = False,
+    force_upgrade: bool = False,
 ) -> dict:
     # Intentamos verificar acceso estricto al profesorado
     try:
@@ -1318,7 +1320,7 @@ def crear_planilla_regularidad(
 
             # Validación: Evitar duplicados de aprobados
             if situacion in {Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO}:
-                if estudiante_tiene_materia_aprobada(estudiante, materia):
+                if not force_upgrade and estudiante_tiene_materia_aprobada(estudiante, materia):
                     warnings.append(
                         f"[Fila {orden}] El estudiante {estudiante.dni} ya tiene aprobada la materia {materia.nombre}. "
                         "Se omitió el registro de la promoción/aprobación."
@@ -1773,6 +1775,23 @@ def _import_estudiante_record(
         anio_ingreso=anio_ingreso_int,
         cohorte=cohorte_asignada,
     )
+
+    # Aseguramos que tenga una Preinscripción para que figure en "Formalizar inscripción"
+    # El usuario pidió explícitamente que aparezcan allí para completar datos (checklist, etc)
+    pre, pre_created = Preinscripcion.objects.get_or_create(
+        alumno=estudiante,
+        carrera=profesorado,
+        anio=anio_ingreso_int,
+        defaults={
+            "estado": "Enviada",
+            "activa": True,
+            "codigo": f"PRE-{anio_ingreso_int}-{estudiante.id:04d}",
+        }
+    )
+    if pre_created:
+        # Aseguramos inicializar checklist
+        PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
+
     return estudiante, student_created
 
 
@@ -2099,3 +2118,91 @@ def process_equivalencias_csv(file_content: str, dry_run: bool = False) -> dict:
         "skipped": skipped_count,
         "errors": errors,
     }
+
+
+def registrar_regularidad_individual_historica(user: User, data: dict) -> dict:
+    dni = data["dni"]
+    materia_id = data["materia_id"]
+    profesorado_id = data["profesorado_id"]
+    fecha = _parse_date(data["fecha"]) if isinstance(data["fecha"], str) else data["fecha"]
+    dictado = data.get("dictado", "ANUAL")
+    nota_final = data.get("nota_final")
+    asistencia = data.get("asistencia")
+    situacion = data["situacion"]
+    excepcion = data.get("excepcion", False)
+    force_upgrade = data.get("force_upgrade", False)
+
+    estudiante = Estudiante.objects.filter(dni=dni).first()
+    if not estudiante:
+        raise ValueError(f"Estudiante con DNI {dni} no encontrado.")
+
+    materia = Materia.objects.filter(pk=materia_id).first()
+    if not materia:
+        raise ValueError(f"Materia con ID {materia_id} no encontrada.")
+
+    # 1. Chequeo de sobreescritura (Overwrite Prevention)
+    existing_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia).order_by("-fecha_cierre").first()
+    if existing_reg:
+        es_aprobada = existing_reg.situacion in [Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO]
+        es_nueva_aprobada = situacion in [Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO]
+        
+        if es_aprobada and es_nueva_aprobada and not force_upgrade:
+            nota_vieja = existing_reg.nota_final_cursada or 0
+            nota_nueva = int(nota_final) if nota_final is not None else 0
+            if nota_nueva <= nota_vieja:
+                raise ValueError(f"PREVENTION:OVERWRITE|El alumno ya figura con un {nota_vieja} cargado en situación de promoción. ¿Forzar actualización?")
+        elif es_aprobada and not es_nueva_aprobada and not force_upgrade:
+            raise ValueError(f"PREVENTION:OVERWRITE|El alumno ya figura como APROBADO/PROMOCIONADO. ¿Forzar actualización a una situación inferior (ej. libre, regular)?")
+
+    # 2. Resolución de formato y plantilla (Auto-detect)
+    formato_obj = materia.formato
+    if isinstance(formato_obj, str):
+        formato_obj = FormatoMateria.objects.filter(slug=formato_obj).first()
+    
+    plantilla = None
+    if formato_obj:
+        plantilla = RegularidadPlantilla.objects.filter(formato=formato_obj, dictado=dictado).first()
+        if not plantilla:
+            plantilla = RegularidadPlantilla.objects.filter(formato=formato_obj, dictado="ANUAL").first()
+    
+    if not plantilla:
+        raise ValueError("No existe plantilla de regularidad para este formato de asignatura en el sistema.")
+
+    # 3. Datos Dummy/Mínimos para la cabecera e invocación de crear_planilla
+    docentes_payload = [{
+        "nombre": f"CARGA HISTÓRICA ({user.username})",
+        "rol": PlanillaRegularidadDocente.Rol.PROFESOR,
+        "orden": 1
+    }]
+    
+    filas_payload = [{
+        "orden": 1,
+        "dni": dni,
+        "apellido_nombre": f"{estudiante.user.last_name}, {estudiante.user.first_name}",
+        "nota_final": nota_final,
+        "asistencia": asistencia,
+        "situacion": situacion,
+        "excepcion": excepcion,
+        "observaciones": data.get("observaciones", f"Carga histórica individual"),
+        "datos": {},
+    }]
+
+    # Invocamos la creación "en caja negra" permitiendo el bypass de upgrade
+    result = crear_planilla_regularidad(
+        user=user,
+        profesorado_id=profesorado_id,
+        materia_id=materia_id,
+        plantilla_id=plantilla.id,
+        dictado=dictado,
+        fecha=fecha,
+        folio=data.get("folio", ""),
+        plan_resolucion=materia.plan_de_estudio.resolucion,
+        observaciones=data.get("observaciones", "Carga retrospectiva simplificada individual."),
+        docentes=docentes_payload,
+        filas=filas_payload,
+        estado="final",
+        dry_run=False,
+        force_upgrade=True # Ya validamos arriba si requerimos force o no, acá forzamos para que el motor base cree.
+    )
+
+    return result

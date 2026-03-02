@@ -263,6 +263,36 @@ def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
         return 400, ApiResponse(ok=False, message=f"Error al crear la planilla: {exc}")
 
 
+class RegularidadIndividualIn(Schema):
+    dni: str
+    materia_id: int
+    profesorado_id: int
+    plan_id: int | None = None
+    fecha: date
+    dictado: str | None = "ANUAL"
+    nota_final: float | None = None
+    asistencia: float | None = None
+    situacion: str
+    excepcion: bool = False
+    observaciones: str | None = None
+    force_upgrade: bool = False
+    folio: str | None = None
+
+
+@primera_carga_router.post(
+    "/regularidades/individual",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def registrar_regularidad_individual(request, payload: RegularidadIndividualIn):
+    try:
+        from apps.primera_carga.services import registrar_regularidad_individual_historica
+        result = registrar_regularidad_individual_historica(request.user, payload.dict())
+        return ApiResponse(ok=True, message="Regularidad registrada exitosamente.", data=result)
+    except Exception as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
+
+
 class PlanillaRegularidadListOut(Schema):
     id: int
     codigo: str
