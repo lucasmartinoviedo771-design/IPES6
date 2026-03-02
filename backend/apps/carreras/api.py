@@ -145,31 +145,7 @@ def create_plan_for_profesorado(request, profesorado_id: int, payload: PlanDeEst
     return plan
 
 
-@carreras_router.get("/planes/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
-def get_plan(request, plan_id: int):
-    plan = get_object_or_404(PlanDeEstudio, id=plan_id)
-    if getattr(request.user, "is_authenticated", False):
-        _require_view(request.user, plan.profesorado_id)
-    return plan
-
-
-@carreras_router.put("/planes/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
-def update_plan(request, plan_id: int, payload: PlanDeEstudioIn):
-    plan = get_object_or_404(PlanDeEstudio, id=plan_id)
-    _require_edit(request.user, plan.profesorado_id)
-    for attr, value in payload.dict().items():
-        setattr(plan, attr, value)
-    plan.save()
-    return plan
-
-
-@carreras_router.delete("/planes/{plan_id}", response={204: None}, auth=JWTAuth())
-def delete_plan(request, plan_id: int):
-    plan = get_object_or_404(PlanDeEstudio, id=plan_id)
-    _require_edit(request.user, plan.profesorado_id)
-    plan.vigente = False  # Soft delete
-    plan.save()
-    return 204, None
+# Planes endpoints for specific items moved to core/api.py
 
 
 @carreras_router.get("/{profesorado_id}/requisitos-documentacion", response=list[RequisitoDocumentacionOut], auth=JWTAuth())

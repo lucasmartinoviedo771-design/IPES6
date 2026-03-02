@@ -625,6 +625,25 @@ def get_plan(request, plan_id: int):
     return plan
 
 
+@router.put("/planes/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
+def update_plan(request, plan_id: int, payload: PlanDeEstudioIn):
+    plan = get_object_or_404(PlanDeEstudio, id=plan_id)
+    _ensure_structure_edit(request.user, plan.profesorado_id)
+    for attr, value in payload.dict().items():
+        setattr(plan, attr, value)
+    plan.save()
+    return plan
+
+
+@router.delete("/planes/{plan_id}", response={204: None}, auth=JWTAuth())
+def delete_plan(request, plan_id: int):
+    plan = get_object_or_404(PlanDeEstudio, id=plan_id)
+    _ensure_structure_edit(request.user, plan.profesorado_id)
+    plan.vigente = False  # Soft delete
+    plan.save()
+    return 204, None
+
+
 # Schemas for Materia
 
 

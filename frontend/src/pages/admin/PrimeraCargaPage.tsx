@@ -522,13 +522,11 @@ const PrimeraCargaPage: React.FC = () => {
       />
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%" }}>
+            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <Stack spacing={3} sx={{ height: "100%" }}>
-                <Box
-                  sx={iconBoxStyles}
-                >
+                <Box sx={iconBoxStyles}>
                   <PersonAdd fontSize="large" />
                 </Box>
                 <Box>
@@ -557,24 +555,34 @@ const PrimeraCargaPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%" }}>
+            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <Stack spacing={3} sx={{ height: "100%" }}>
-                <Box
-                  sx={iconBoxStyles}
-                >
+                <Box sx={iconBoxStyles}>
                   <FileCopy fontSize="large" />
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>
-                    Carga de Regularidades
+                    Regularidades
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Genera plantillas para registrar regularidades o promociones históricas.
+                    Registrá regularidades mediante planillas para comisiones o cargas individuales.
                   </Typography>
                 </Box>
                 <Stack spacing={1.5} sx={{ mt: "auto" }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                      "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                    }}
+                    onClick={() => setOpenPlanillaDialog(true)}
+                  >
+                    Registrar Planilla de Regulridad y Promción Completa
+                  </Button>
                   <Button
                     variant="outlined"
                     fullWidth
@@ -584,10 +592,43 @@ const PrimeraCargaPage: React.FC = () => {
                       color: INSTITUTIONAL_TERRACOTTA,
                       "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
                     }}
-                    onClick={() => setOpenPlanillaDialog(true)}
+                    onClick={() => navigate("/admin/primera-carga/historico-regularidad")}
                   >
-                    Planilla de Regularidad
+                    Registrar Planilla de Regulridad y Promción Individual
                   </Button>
+                  <Button
+                    variant="text"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      color: INSTITUTIONAL_TERRACOTTA,
+                    }}
+                    onClick={() => navigate("/admin/primera-carga/historial-regularidades")}
+                  >
+                    Ver Historico.
+                  </Button>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6} lg={3}>
+          <Card sx={cardStyles}>
+            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <Stack spacing={3} sx={{ height: "100%" }}>
+                <Box sx={iconBoxStyles}>
+                  <HistoryIcon fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Actas de Examen Final
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Emití actas de exámenes finales y consultá su historial de carga masiva.
+                  </Typography>
+                </Box>
+                <Stack spacing={1.5} sx={{ mt: "auto" }}>
                   <Button
                     variant="contained"
                     fullWidth
@@ -598,7 +639,18 @@ const PrimeraCargaPage: React.FC = () => {
                     }}
                     onClick={() => navigate("/admin/primera-carga/actas-examen")}
                   >
-                    Acta de Examen Final
+                    Registrar Actas de Examen Final
+                  </Button>
+                  <Button
+                    variant="text"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      color: INSTITUTIONAL_TERRACOTTA,
+                    }}
+                    onClick={() => navigate("/admin/primera-carga/historial-actas")}
+                  >
+                    Ver Historial.
                   </Button>
                 </Stack>
               </Stack>
@@ -606,144 +658,46 @@ const PrimeraCargaPage: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%" }}>
+            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <Stack spacing={3} sx={{ height: "100%" }}>
-                <Box
-                  sx={iconBoxStyles}
-                >
+                <Box sx={iconBoxStyles}>
                   <CompareArrows fontSize="large" />
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>
-                    Equivalencias por disposición
+                    Equivalencias
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Registrá disposiciones históricas sin validar correlatividades (solo primera carga).
+                    Registrá disposiciones de equivalencia sin validación de correlativas.
                   </Typography>
                 </Box>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  sx={{
-                    mt: "auto",
-                    borderRadius: 999,
-                    backgroundColor: INSTITUTIONAL_TERRACOTTA,
-                    "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
-                  }}
-                  onClick={() => setOpenDisposicionDialog(true)}
-                >
-                  Registrar equivalencias
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
-                <Box
-                  sx={iconBoxStyles}
-                >
-                  <HistoryIcon fontSize="large" />
-                </Box>
-                <Box>
-                  <Typography variant="h6" fontWeight={600}>
-                    Historial de Actas Cargadas
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Consultá el listado de las actas de examen cargadas masivamente.
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    mt: "auto",
-                    borderRadius: 999,
-                    borderColor: INSTITUTIONAL_TERRACOTTA,
-                    color: INSTITUTIONAL_TERRACOTTA,
-                    "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
-                  }}
-                  onClick={() => navigate("/admin/primera-carga/historial-actas")}
-                >
-                  Ver Historial
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
-                <Box
-                  sx={iconBoxStyles}
-                >
-                  <FindInPage fontSize="large" />
-                </Box>
-                <Box>
-                  <Typography variant="h6" fontWeight={600}>
-                    Historial de Regularidades
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Consultá el listado de las planillas de regularidad cargadas.
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    mt: "auto",
-                    borderRadius: 999,
-                    borderColor: INSTITUTIONAL_TERRACOTTA,
-                    color: INSTITUTIONAL_TERRACOTTA,
-                    "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
-                  }}
-                  onClick={() => navigate("/admin/primera-carga/historial-regularidades")}
-                >
-                  Ver Historial
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
-                <Box
-                  sx={iconBoxStyles}
-                >
-                  <CompareArrows fontSize="large" />
-                </Box>
-                <Box>
-                  <Typography variant="h6" fontWeight={600}>
-                    Historial de Equivalencias
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Consultá las disposiciones de equivalencia registradas.
-                  </Typography>
-                </Box>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    mt: "auto",
-                    borderRadius: 999,
-                    borderColor: INSTITUTIONAL_TERRACOTTA,
-                    color: INSTITUTIONAL_TERRACOTTA,
-                    "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
-                  }}
-                  onClick={() => navigate("/admin/primera-carga/historial-equivalencias")}
-                >
-                  Ver Historial
-                </Button>
+                <Stack spacing={1.5} sx={{ mt: "auto" }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                      "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                    }}
+                    onClick={() => setOpenDisposicionDialog(true)}
+                  >
+                    Registrar Equivalencia
+                  </Button>
+                  <Button
+                    variant="text"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      color: INSTITUTIONAL_TERRACOTTA,
+                    }}
+                    onClick={() => navigate("/admin/primera-carga/historial-equivalencias")}
+                  >
+                    Ver Historial
+                  </Button>
+                </Stack>
               </Stack>
             </CardContent>
           </Card>

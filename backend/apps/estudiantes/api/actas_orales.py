@@ -65,6 +65,9 @@ def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaO
         inscripcion = _get_inscripcion_mesa_or_404(mesa_id, inscripcion_id)
     except HttpError as exc:
         return exc.status_code, ApiResponse(ok=False, message=str(exc))
+        
+    if inscripcion.estudiante.dni == getattr(request.user, "username", ""):
+        return 403, ApiResponse(ok=False, message="No tienes permitido cargar o modificar tus propias actas orales.")
 
     temas_estudiante = [
         {"tema": item.tema, "score": item.score}

@@ -65,10 +65,15 @@ export const listarPreinscripciones = (params: {
   profesorado_id?: number;
   anio?: number;
   exclude_confirmed?: boolean;
-}) =>
+}): Promise<{ count: number; results: PreinscripcionDTO[] }> =>
   client
-    .get<PreinscripcionDTO[] | { results: PreinscripcionDTO[] }>("/preinscripciones/", { params })
-    .then((r) => (Array.isArray(r.data) ? { results: r.data } : r.data));
+    .get<any>("/preinscripciones/", { params })
+    .then((r) => {
+      if (Array.isArray(r.data)) {
+        return { count: r.data.length, results: r.data };
+      }
+      return { count: r.data.count || 0, results: r.data.results || [] };
+    });
 
 export const activarPreinscripcion = (id: number) =>
   client.post(`/preinscripciones/${id}/activar`).then(r => r.data);

@@ -50,7 +50,7 @@ def descargar_certificado_estudiante_regular(
     }
 
     # Renderizar el HTML
-    html_string = render_to_string("core/certificado_estudiante_regular_pdf.html", context)
+    html_string = render_to_string("core/certificado_alumno_regular_pdf.html", context)
     
     # Preparar la respuesta HTTP
     response = HttpResponse(content_type="application/pdf")

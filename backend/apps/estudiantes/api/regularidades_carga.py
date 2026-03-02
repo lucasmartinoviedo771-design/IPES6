@@ -500,6 +500,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
         return 400, ApiResponse(ok=False, message="No se enviaron estudiantes para guardar.")
 
     fecha = payload.fecha_cierre or date.today()
+    user_dni = getattr(request.user, "username", "")
 
     with transaction.atomic():
         for estudiante in payload.estudiantes:
@@ -541,11 +542,15 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                 else:
                     message = f"Inscripcion {estudiante.inscripcion_id} no pertenece a la comision."
                 return 400, ApiResponse(ok=False, message=message)
+                
+            estudiante_obj = inscripcion.estudiante
+            
+            if estudiante_obj.dni == user_dni:
+                 return 403, ApiResponse(ok=False, message="No tienes permitido modificar tus propias calificaciones o asistencias.")
 
             if materia.nombre.startswith("EDI: "):
-                estudiante = inscripcion.estudiante
                 try:
-                    checklist = PreinscripcionChecklist.objects.get(preinscripcion__estudiante=estudiante)
+                    checklist = PreinscripcionChecklist.objects.get(preinscripcion__estudiante=estudiante_obj)
                     if not checklist.curso_introductorio_aprobado and situacion_codigo in [
                         Regularidad.Situacion.APROBADO,
                         Regularidad.Situacion.PROMOCIONADO,
@@ -553,7 +558,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                     ]:
                             raise HttpError(
                                 400,
-                                f"El estudiante {estudiante.dni} no tiene el curso introductorio aprobado. "
+                                f"El estudiante {estudiante_obj.dni} no tiene el curso introductorio aprobado. "
                                 f"La situación de la materia EDI '{materia.nombre}' no puede ser 'Aprobado', "
                                 f"'Promocionado' o 'Regular'. Debe ser 'Condicional' o similar.",
                             )
@@ -566,7 +571,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                         raise HttpError(
                             400,
                             (
-                                f"El estudiante {estudiante.dni} no tiene un checklist de preinscripción. "
+                                f"El estudiante {estudiante_obj.dni} no tiene un checklist de preinscripción. "
                                 f"La situación de la materia EDI '{materia.nombre}' no puede ser 'Aprobado', "
                                 f"'Promocionado' o 'Regular'."
                             ),
@@ -588,14 +593,14 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                       if asistencia < piso:
                            raise HttpError(
                                400, 
-                               f"El estudiante {estudiante.dni} no cumple con la asistencia mínima ({piso}%) "
+                               f"El estudiante {estudiante_obj.dni} no cumple con la asistencia mínima ({piso}%) "
                                f"requerida para {materia.nombre} ({'con' if excepcion else 'sin'} excepción)."
                            )
                  else:
                       if asistencia < 65:
                            raise HttpError(
                                400,
-                               f"El estudiante {estudiante.dni} no cumple con la asistencia mínima (65%) "
+                               f"El estudiante {estudiante_obj.dni} no cumple con la asistencia mínima (65%) "
                                f"requerida para {materia.nombre}."
                            )
 

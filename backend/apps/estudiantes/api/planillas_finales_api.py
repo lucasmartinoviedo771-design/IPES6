@@ -167,6 +167,7 @@ def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateI
         "updated_at",
     ]
     updated = 0
+    user_dni = getattr(request.user, "username", "")
     for item in resultados:
         insc = (
             InscripcionMesa.objects.filter(id=item.inscripcion_id, mesa_id=mesa_id)
@@ -175,6 +176,10 @@ def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateI
         )
         if not insc:
             continue
+            
+        if insc.estudiante.dni == user_dni:
+            return 403, ApiResponse(ok=False, message="No tienes permitido cargar o modificar tus propias notas.")
+
         if item.condicion:
             insc.condicion = item.condicion
         if item.nota is not None:

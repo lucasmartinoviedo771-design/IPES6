@@ -432,11 +432,15 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         )
 
     from django.contrib.auth.models import User
+    user_dni = getattr(request.user, "username", "")
     
     for estudiante_data in payload.estudiantes:
         clean_dni = estudiante_data.dni.strip()
         if not clean_dni:
             continue
+        
+        if clean_dni == user_dni:
+             return 403, ApiResponse(ok=False, message="No tienes permitido generar un acta de examen que te incluya a ti mismo.")
             
         estudiante = Estudiante.objects.filter(dni=clean_dni).first()
         
