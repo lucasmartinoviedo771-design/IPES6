@@ -581,7 +581,7 @@ const PrimeraCargaPage: React.FC = () => {
                     }}
                     onClick={() => setOpenPlanillaDialog(true)}
                   >
-                    Registrar Planilla de Regulridad y Promción Completa
+                    Registrar Planilla de Regularidad y Promoción Completa
                   </Button>
                   <Button
                     variant="outlined"
@@ -594,7 +594,7 @@ const PrimeraCargaPage: React.FC = () => {
                     }}
                     onClick={() => navigate("/admin/primera-carga/historico-regularidad")}
                   >
-                    Registrar Planilla de Regulridad y Promción Individual
+                    Registrar Planilla de Regularidad y Promoción Individual
                   </Button>
                   <Button
                     variant="text"
@@ -605,7 +605,7 @@ const PrimeraCargaPage: React.FC = () => {
                     }}
                     onClick={() => navigate("/admin/primera-carga/historial-regularidades")}
                   >
-                    Ver Historico.
+                    Ver Histórico
                   </Button>
                 </Stack>
               </Stack>
