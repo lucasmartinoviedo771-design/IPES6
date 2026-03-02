@@ -63,3 +63,8 @@ backend/health_check_*.py
 
 # Backups
 backups/
+
+# Local temporary files
+Temporales/
+.gemini/
+.python-version
