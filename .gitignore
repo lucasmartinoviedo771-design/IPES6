@@ -68,3 +68,5 @@ backups/
 Temporales/
 .gemini/
 .python-version
+scripts/data_imports/import_estudiantes_excel.py
+scripts/data_imports/carrera_map.example.json
