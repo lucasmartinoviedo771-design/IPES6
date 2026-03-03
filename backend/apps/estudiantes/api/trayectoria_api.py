@@ -304,6 +304,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
     # Ya consultado arriba, recorremos para vigencias y alertas
     hoy = timezone.now().date()
+    materias_procesadas_vigencia = set()
     for reg in regularidades_qs:
         vigencia_iso = None
         vigente = None
@@ -312,7 +313,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
         # SI LA MATERIA YA ESTÁ APROBADA (por acta, mesa o reg), NO CALCULAMOS VENCIMIENTOS
         materia_ya_aprobada = reg.materia_id in aprobadas_set
         
-        if reg.situacion == Regularidad.Situacion.REGULAR and not materia_ya_aprobada:
+        # Solo procesamos vigencia/alertas para la regularidad más reciente (la primera en este loop ordenado DESC)
+        if reg.materia_id not in materias_procesadas_vigencia:
+            if reg.situacion == Regularidad.Situacion.REGULAR and not materia_ya_aprobada:
             vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
             dias_restantes = (vigencia_limite - hoy).days
             vigente = dias_restantes >= 0
@@ -368,6 +371,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 )
             else:
                 alertas.append(f"La regularidad de {reg.materia.nombre} está vencida desde {vigencia_iso}.")
+            
+            # Marcar como procesada (sea REGULAR o no) para no ver vigencias de registros anteriores
+            materias_procesadas_vigencia.add(reg.materia_id)
 
         # El resumen de regularidad (histórico) lo mostramos igual
         regularidades_resumen_data.append(
