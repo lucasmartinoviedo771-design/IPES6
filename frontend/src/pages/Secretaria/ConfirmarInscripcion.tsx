@@ -1,7 +1,10 @@
+import { useMemo, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Stack, TextField, Typography, Paper, Grid, Divider, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import { Stack, TextField, Typography, Paper, Grid, Divider, List, ListItem, ListItemText, FormControl, InputLabel, Select, MenuItem, Box, Button } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { listarPreinscripciones } from "@/api/preinscripciones";
+import { useAuth } from "@/context/AuthContext";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
@@ -24,16 +27,82 @@ const formatName = (p: any) => {
 
 export default function ConfirmarInscripcionSecretaria() {
   const [sp, setSp] = useSearchParams();
-  const codigo = sp.get("codigo") || "";
-  const dni = sp.get("dni") || "";
-  const nombre = sp.get("q") || "";
 
-  const query = (codigo || dni || nombre).trim();
+  const currentSpCodigo = sp.get("codigo") || "";
+  const currentSpDni = sp.get("dni") || "";
+  const currentSpNombre = sp.get("q") || "";
+
+  const [codigo, setCodigo] = useState(currentSpCodigo);
+  const [dni, setDni] = useState(currentSpDni);
+  const [nombre, setNombre] = useState(currentSpNombre);
+
+  const handleSearch = () => {
+    const currentSp = new URLSearchParams(sp);
+    let changed = false;
+
+    if (codigo) { currentSp.set("codigo", codigo); changed = true; }
+    else { if (currentSp.has("codigo")) { currentSp.delete("codigo"); changed = true; } }
+
+    if (dni) { currentSp.set("dni", dni); changed = true; }
+    else { if (currentSp.has("dni")) { currentSp.delete("dni"); changed = true; } }
+
+    if (nombre) { currentSp.set("q", nombre); changed = true; }
+    else { if (currentSp.has("q")) { currentSp.delete("q"); changed = true; } }
+
+    if (!codigo && !dni && !nombre) {
+      setSp(new URLSearchParams(), { replace: true });
+      return;
+    }
+
+    if (changed) {
+      setSp(currentSp, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    if (currentSpCodigo !== codigo) setCodigo(currentSpCodigo);
+    if (currentSpDni !== dni) setDni(currentSpDni);
+    if (currentSpNombre !== nombre) setNombre(currentSpNombre);
+  }, [currentSpCodigo, currentSpDni, currentSpNombre]);
+
+  const query = (currentSpCodigo || currentSpDni || currentSpNombre).trim();
   const { data } = useQuery({
     queryKey: ["preins-busq-sec", query],
     queryFn: () => listarPreinscripciones({ search: query || undefined, limit: 20, offset: 0, exclude_confirmed: true }),
-
   });
+
+  const { user } = useAuth();
+  const myProfIds = user?.profesorado_ids || [];
+
+  const results = useMemo(() => {
+    if (!data?.results) return [];
+    const base = [...data.results];
+    if (myProfIds.length === 0) return base;
+
+    return base.sort((a, b) => {
+      const aOk = myProfIds.includes(a.carrera?.id);
+      const bOk = myProfIds.includes(b.carrera?.id);
+      if (aOk && !bOk) return -1;
+      if (!aOk && bOk) return 1;
+      return 0;
+    });
+  }, [data?.results, myProfIds]);
+
+  // Auto-redirect if searching by DNI/Code and we have a preferred match
+  useEffect(() => {
+    if (currentSpCodigo || results.length === 0) return;
+
+    // Si buscamos por DNI y hay resultados, intentamos ir al que es "mío"
+    if (currentSpDni && currentSpDni.length >= 7) {
+      const mine = results.find(r => myProfIds.includes(r.carrera?.id));
+      if (mine && mine.codigo) {
+        setSp({ codigo: mine.codigo }, { replace: true });
+      } else if (results.length === 1 && results[0].codigo) {
+        // Si hay uno solo y no es mío, igual vamos para facilitar
+        setSp({ codigo: results[0].codigo }, { replace: true });
+      }
+    }
+  }, [results, currentSpCodigo, currentSpDni, myProfIds]);
 
   // La confirmación y el manejo de documentación se realizan dentro de PreConfirmEditor
 
@@ -45,21 +114,26 @@ export default function ConfirmarInscripcionSecretaria() {
         subtitle="Busca al aspirante y completá la confirmación presencial"
       />
 
-      {!codigo && (
+      {!currentSpCodigo && (
         <Paper sx={{ p: 2 }}>
           <Stack gap={2}>
             <Typography variant="h6" mb={1} fontWeight={600}>
               Buscar aspirante
             </Typography>
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <TextField size="small" label="DNI" fullWidth value={dni} onChange={(e) => setSp({ dni: e.target.value || "" })} />
+              <Grid item xs={12} md={3}>
+                <TextField size="small" label="DNI" fullWidth value={dni} onChange={(e) => setDni(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
               </Grid>
               <Grid item xs={12} md={4}>
-                <TextField size="small" label="Apellido y Nombre" fullWidth value={nombre} onChange={(e) => setSp({ q: e.target.value || "" })} />
+                <TextField size="small" label="Apellido y Nombre" fullWidth value={nombre} onChange={(e) => setNombre(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
               </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField size="small" label="Código PRE-..." fullWidth value={codigo} onChange={(e) => setSp({ codigo: e.target.value || "" })} />
+              <Grid item xs={12} md={3}>
+                <TextField size="small" label="Código PRE-..." fullWidth value={codigo} onChange={(e) => setCodigo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+              </Grid>
+              <Grid item xs={12} md={2}>
+                <Button variant="contained" fullWidth onClick={handleSearch} startIcon={<SearchIcon />}>
+                  Buscar
+                </Button>
               </Grid>
             </Grid>
             <Divider />
@@ -73,12 +147,15 @@ export default function ConfirmarInscripcionSecretaria() {
                     labelId="sel-preins"
                     label="Seleccionar preinscripto"
                     value=""
-                    onChange={(e) => setSp({ codigo: String(e.target.value) })}
-                    disabled={!data?.results || data.results.length === 0}
+                    onChange={(e) => {
+                      const val = String(e.target.value);
+                      if (val) setSp({ codigo: val });
+                    }}
+                    disabled={results.length === 0}
                   >
-                    {(data?.results || []).map((p: any) => (
-                      <MenuItem key={p.codigo} value={p.codigo}>
-                        {formatName(p)} — {p.codigo}
+                    {results.map((p: any) => (
+                      <MenuItem key={p.id} value={p.codigo} disabled={!p.codigo}>
+                        {formatName(p)} — {p.codigo || "Sin Código PRE"} {myProfIds.includes(p.carrera?.id) ? "(Tu carrera ★)" : ""}
                       </MenuItem>
                     ))}
                   </Select>
@@ -86,22 +163,48 @@ export default function ConfirmarInscripcionSecretaria() {
               </Grid>
             </Grid>
             <List>
-              {data?.results?.map((p: any) => (
-                <ListItem key={p.codigo} button onClick={() => setSp({ codigo: p.codigo })}>
-                  <ListItemText primary={formatName(p)} secondary={`DNI ${p.estudiante.dni} • ${p.codigo} • ${p.carrera?.nombre || ''}`} />
-                </ListItem>
-              ))}
-              {!data?.results && <Typography variant="body2" color="text.secondary">Ingrese un criterio de búsqueda.</Typography>}
-              {data?.results && data.results.length === 0 && <Typography variant="body2" color="text.secondary">Sin resultados.</Typography>}
+              {results.map((p: any) => {
+                const isMine = myProfIds.includes(p.carrera?.id);
+                return (
+                  <ListItem
+                    key={p.id}
+                    button
+                    disabled={!p.codigo}
+                    onClick={() => {
+                      if (p.codigo) setSp({ codigo: p.codigo });
+                    }}
+                    sx={{
+                      borderRadius: 1,
+                      mb: 0.5,
+                      borderLeft: isMine ? '5px solid #2e7d32' : 'none',
+                      bgcolor: isMine ? 'rgba(46, 125, 50, 0.04)' : 'transparent',
+                      opacity: !p.codigo ? 0.5 : 1
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {formatName(p)}
+                          {isMine && <Typography variant="caption" sx={{ bgcolor: 'success.main', color: 'white', px: 0.8, borderRadius: 1, fontWeight: 700 }}>MÍA</Typography>}
+                          {!p.codigo && <Typography variant="caption" color="error">Inscripción corrupta (Falta código PRE)</Typography>}
+                        </Box>
+                      }
+                      secondary={`${p.carrera?.nombre || ''} • DNI ${p.estudiante.dni} ${p.codigo ? `• ${p.codigo}` : ''}`}
+                    />
+                  </ListItem>
+                );
+              })}
+              {results.length === 0 && query && <Typography variant="body2" color="text.secondary">Sin resultados.</Typography>}
+              {!query && <Typography variant="body2" color="text.secondary">Ingrese un criterio de búsqueda.</Typography>}
             </List>
           </Stack>
         </Paper>
       )}
 
-      {codigo && (
+      {currentSpCodigo && (
         <Grid container spacing={2}>
           <Grid item xs={12}>
-            <PreConfirmEditor codigo={codigo} />
+            <PreConfirmEditor codigo={currentSpCodigo} />
           </Grid>
         </Grid>
       )}

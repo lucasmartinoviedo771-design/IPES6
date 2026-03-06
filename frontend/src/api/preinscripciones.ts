@@ -130,6 +130,7 @@ export type PreinscripcionUpdatePayload = {
     domicilio?: string | null;
   };
   datos_extra?: Record<string, unknown>;
+  checklist?: ChecklistDTO;
 };
 
 export async function apiUpdatePreinscripcion(codigo: string, payload: PreinscripcionUpdatePayload) {
@@ -185,7 +186,7 @@ export interface ChecklistDTO {
   titulo_secundario_legalizado: boolean;
   certificado_titulo_en_tramite: boolean;
   analitico_legalizado: boolean;
-  certificado_estudiante_regular_sec: boolean;
+  certificado_alumno_regular_sec: boolean;
 
   adeuda_materias: boolean;
   adeuda_materias_detalle?: string;
@@ -196,6 +197,7 @@ export interface ChecklistDTO {
   incumbencia?: boolean;
   estado_legajo?: string;
   curso_introductorio_aprobado?: boolean;
+  libreta_entregada?: boolean;
 }
 
 export const apiGetChecklist = async (preId: number) => {

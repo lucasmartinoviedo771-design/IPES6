@@ -36,7 +36,7 @@ type DocumentacionForm = {
   titulo_secundario_legalizado: boolean;
   certificado_titulo_en_tramite: boolean;
   analitico_legalizado: boolean;
-  certificado_estudiante_regular_sec: boolean;
+  certificado_alumno_regular_sec: boolean;
   adeuda_materias: boolean;
   adeuda_materias_detalle: string;
   escuela_secundaria: string;
@@ -66,7 +66,7 @@ function normalizeDocumentacion(detail?: EstudianteAdminDocumentacionDTO | null)
     titulo_secundario_legalizado: Boolean(detail?.titulo_secundario_legalizado),
     certificado_titulo_en_tramite: Boolean(detail?.certificado_titulo_en_tramite),
     analitico_legalizado: Boolean(detail?.analitico_legalizado),
-    certificado_estudiante_regular_sec: Boolean(detail?.certificado_estudiante_regular_sec),
+    certificado_alumno_regular_sec: Boolean(detail?.certificado_alumno_regular_sec),
     adeuda_materias: Boolean(detail?.adeuda_materias),
     adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
     escuela_secundaria: detail?.escuela_secundaria ?? "",
@@ -203,7 +203,7 @@ export default function CompletarPerfilPage() {
     { label: "Título secundario legalizado", value: Boolean(docDetail?.titulo_secundario_legalizado) },
     { label: "Certificado título en trámite", value: Boolean(docDetail?.certificado_titulo_en_tramite) },
     { label: "Analítico legalizado", value: Boolean(docDetail?.analitico_legalizado) },
-    { label: "Constancia estudiante regular", value: Boolean(docDetail?.certificado_estudiante_regular_sec) },
+    { label: "Constancia estudiante regular", value: Boolean(docDetail?.certificado_alumno_regular_sec) },
     { label: "Trayecto certificación docente", value: Boolean(docDetail?.es_certificacion_docente) },
     { label: "Título terciario/universitario", value: Boolean(docDetail?.titulo_terciario_univ) },
     { label: "Incumbencia", value: Boolean(docDetail?.incumbencia) },

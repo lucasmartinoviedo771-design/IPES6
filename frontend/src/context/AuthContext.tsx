@@ -13,6 +13,7 @@ export type User = {
   must_change_password?: boolean;
   must_complete_profile?: boolean;
   email?: string;
+  profesorado_ids?: number[] | null;
 } | null;
 
 type AuthContextType = {

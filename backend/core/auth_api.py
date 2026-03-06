@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     is_superuser: bool
     must_change_password: bool = False
     must_complete_profile: bool = False
+    profesorado_ids: list[int] | None = None
 
 
 class TokenOut(BaseModel):
@@ -95,6 +96,10 @@ def _serialize_user(user):
     estudiante = getattr(user, "estudiante", None)
     must_change = getattr(estudiante, "must_change_password", False)
     must_complete_profile = _must_complete_profile(user)
+    from .permissions import allowed_profesorados
+    allowed = allowed_profesorados(user)
+    prof_ids = list(allowed) if allowed is not None else None
+
     return {
         "dni": user.username,
         "name": (user.get_full_name() or user.first_name or user.username),
@@ -103,6 +108,7 @@ def _serialize_user(user):
         "is_superuser": user.is_superuser,
         "must_change_password": bool(must_change),
         "must_complete_profile": bool(must_complete_profile),
+        "profesorado_ids": prof_ids,
     }
 
 
@@ -198,6 +204,10 @@ def profile(request):
     if not request.user or not request.user.is_authenticated:
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
     u = request.user
+    from .permissions import allowed_profesorados
+    allowed = allowed_profesorados(u)
+    prof_ids = list(allowed) if allowed is not None else None
+
     return {
         "dni": getattr(u, "username", ""),
         "name": u.get_full_name() or u.username,
@@ -206,6 +216,7 @@ def profile(request):
         "is_superuser": u.is_superuser,
         "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)),
         "must_complete_profile": _must_complete_profile(u),
+        "profesorado_ids": prof_ids,
     }
 
 

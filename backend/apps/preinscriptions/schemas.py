@@ -83,32 +83,6 @@ class EstudianteUpdateIn(Schema):
     domicilio: str | None = None
 
 
-class PreinscripcionUpdateIn(Schema):
-    carrera_id: int | None = None
-    estudiante: EstudianteUpdateIn | None = None
-    datos_extra: dict | None = None
-
-
-class PreinscripcionOut(Schema):
-    id: int
-    codigo: str
-    estado: str
-    fecha: datetime = Field(alias="created_at")
-    created_at: datetime
-    activa: bool
-    estudiante: EstudianteOut | None = Field(None, alias="alumno")
-    carrera: CarreraOut
-
-    @staticmethod
-    def resolve_estudiante(obj):
-        return getattr(obj, "alumno", None)
-
-
-class PreinscripcionPaginatedOut(Schema):
-    count: int
-    results: list[PreinscripcionOut]
-
-
 class ChecklistIn(Schema):
     # Documentación personal
     dni_legalizado: bool = False
@@ -132,6 +106,7 @@ class ChecklistIn(Schema):
     titulo_terciario_univ: bool = False
     incumbencia: bool = False
     curso_introductorio_aprobado: bool = False
+    libreta_entregada: bool = False
 
 
 class ChecklistOut(ChecklistIn):
@@ -140,6 +115,34 @@ class ChecklistOut(ChecklistIn):
 
 ChecklistIn.model_rebuild()
 ChecklistOut.model_rebuild()
+
+
+class PreinscripcionUpdateIn(Schema):
+    carrera_id: int | None = None
+    estudiante: EstudianteUpdateIn | None = None
+    datos_extra: dict | None = None
+    checklist: ChecklistIn | None = None
+
+
+class PreinscripcionOut(Schema):
+    id: int
+    codigo: str
+    estado: str
+    fecha: datetime = Field(alias="created_at")
+    created_at: datetime
+    activa: bool
+    estudiante: EstudianteOut | None = Field(None, alias="alumno")
+    carrera: CarreraOut
+
+    @staticmethod
+    def resolve_estudiante(obj):
+        return getattr(obj, "alumno", None)
+
+
+class PreinscripcionPaginatedOut(Schema):
+    count: int
+    results: list[PreinscripcionOut]
+
 
 class NuevaCarreraIn(Schema):
     carrera_id: int

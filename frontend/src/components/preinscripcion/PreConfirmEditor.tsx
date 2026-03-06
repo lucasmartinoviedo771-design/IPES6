@@ -9,6 +9,7 @@ import {
   eliminarPreinscripcion, apiGetChecklist, apiPutChecklist, ChecklistDTO, apiListPreDocs, apiUploadPreDoc, PreinscripcionUpdatePayload,
   listarPreinscripcionesEstudiante, agregarCarreraPreinscripcion
 } from "@/api/preinscripciones";
+import { useAuth } from "@/context/AuthContext";
 import { fetchCarreras } from "@/api/carreras";
 import {
   Box, Button, Chip, CircularProgress, Grid, MenuItem, Paper, Stack, TextField, Typography, Divider, Checkbox, FormControlLabel, Switch,
@@ -77,24 +78,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     defaultValues: formDefaults,
   });
 
-  // Documentación requerida (checklist)
-  const [docs, setDocs] = useState<{ [k: string]: boolean }>({
-    dni_legalizado: false,
-    fotos_4x4: false,
-    folios_oficio_ok: false,
-    certificado_salud: false,
-    titulo_secundario_legalizado: false,
-    certificado_titulo_en_tramite: false,
-    analitico_legalizado: false,
-    certificado_estudiante_regular_sec: false,
-    adeuda_materias: false,
-    curso_introductorio_aprobado: false,
-    titulo_terciario_univ: false,
-    incumbencia: false,
-    // mirrors para compatibilidad con UI existente
-    titulo_secundario: false,
-    titulo_en_tramite: false,
-  });
+  // Eliminated separate docs state and adeudaDetalle state, now using react-hook-form
 
   // Asegurar registro del campo virtual de foto para que watch() funcione
   useEffect(() => {
@@ -208,29 +192,39 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
   useEffect(() => {
     const cl = checklistQ.data as ChecklistDTO | null | undefined;
     if (!cl) return;
-    setDocs({
-      dni_legalizado: !!cl.dni_legalizado,
-      fotos_4x4: !!cl.fotos_4x4,
-      folios_oficio_ok: (cl.folios_oficio || 0) >= 3,
-      certificado_salud: !!cl.certificado_salud,
-      titulo_secundario_legalizado: !!cl.titulo_secundario_legalizado,
-      certificado_titulo_en_tramite: !!cl.certificado_titulo_en_tramite,
-      analitico_legalizado: !!cl.analitico_legalizado,
-      certificado_estudiante_regular_sec: !!cl.certificado_estudiante_regular_sec,
-      adeuda_materias: !!cl.adeuda_materias,
-      curso_introductorio_aprobado: !!cl.curso_introductorio_aprobado,
-      titulo_terciario_univ: !!cl.titulo_terciario_univ,
-      incumbencia: !!cl.incumbencia,
-      // mirrors para la UI
-      titulo_secundario: !!cl.titulo_secundario_legalizado,
-      titulo_en_tramite: !!cl.certificado_titulo_en_tramite,
-    });
+    setValue("dni_legalizado", !!cl.dni_legalizado, { shouldDirty: false });
+    setValue("fotos_4x4", !!cl.fotos_4x4, { shouldDirty: false });
+    setValue("folios_oficio_ok", (cl.folios_oficio || 0) >= 3, { shouldDirty: false });
+    setValue("certificado_salud", !!cl.certificado_salud, { shouldDirty: false });
+    setValue("titulo_secundario_legalizado", !!cl.titulo_secundario_legalizado, { shouldDirty: false });
+    setValue("certificado_titulo_en_tramite", !!cl.certificado_titulo_en_tramite, { shouldDirty: false });
+    setValue("analitico_legalizado", !!cl.analitico_legalizado, { shouldDirty: false });
+    setValue("certificado_alumno_regular_sec", !!cl.certificado_alumno_regular_sec, { shouldDirty: false });
+    setValue("adeuda_materias", !!cl.adeuda_materias, { shouldDirty: false });
     setValue("curso_introductorio_aprobado", !!cl.curso_introductorio_aprobado, { shouldDirty: false });
-    setAdeudaDetalle({
-      materias: cl.adeuda_materias_detalle || "",
-      institucion: cl.escuela_secundaria || "",
-    });
-  }, [checklistQ.data]);
+    setValue("titulo_terciario_univ", !!cl.titulo_terciario_univ, { shouldDirty: false });
+    setValue("incumbencia", !!cl.incumbencia, { shouldDirty: false });
+
+    setValue("adeuda_materias_detalle", cl.adeuda_materias_detalle || "", { shouldDirty: false });
+    setValue("escuela_secundaria", cl.escuela_secundaria || "", { shouldDirty: false });
+  }, [checklistQ.data, setValue]);
+
+  const onSubmit = async (values: PreinscripcionForm) => {
+    console.log("Submit triggered", values);
+    setValidationErrors(null);
+    try {
+      // 1. Guardar todos los cambios primero
+      await mUpdate.mutateAsync(values);
+
+      // 2. Si se puede confirmar y aún no está confirmada, procedemos
+      if (canConfirm && data?.estado !== "confirmada") {
+        // Mostramos el diálogo de confirmación final
+        setConfirmInscripcionOpen(true);
+      }
+    } catch (error) {
+      console.error("Error en flujo unificado:", error);
+    }
+  };
 
   const mUpdate = useMutation({
     mutationFn: (values: PreinscripcionForm) => {
@@ -244,6 +238,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
         domicilio,
         fecha_nacimiento,
         carrera_id,
+        ddjj_ok, // descartamos del payload de update si no existe en backend
         ...datos_extra
       } = values;
 
@@ -258,6 +253,27 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
           domicilio: domicilio || null,
           fecha_nacimiento: fecha_nacimiento ? fecha_nacimiento : null,
         },
+        checklist: {
+          dni_legalizado: !!values.dni_legalizado,
+          fotos_4x4: !!values.fotos_4x4,
+          certificado_salud: !!values.certificado_salud,
+          folios_oficio: values.folios_oficio_ok ? 3 : 0,
+          titulo_secundario_legalizado: !!values.titulo_secundario_legalizado,
+          certificado_titulo_en_tramite: !!values.certificado_titulo_en_tramite,
+          analitico_legalizado: !!values.analitico_legalizado,
+          certificado_alumno_regular_sec: !!values.certificado_alumno_regular_sec,
+          adeuda_materias: !!values.adeuda_materias,
+          adeuda_materias_detalle: values.adeuda_materias_detalle,
+          escuela_secundaria: values.escuela_secundaria,
+          curso_introductorio_aprobado: !!values.curso_introductorio_aprobado,
+          libreta_entregada: !!values.libreta_entregada,
+          titulo_terciario_univ: !!values.titulo_terciario_univ,
+          incumbencia: !!values.incumbencia,
+          es_certificacion_docente: !!(
+            selectedCarrera?.es_certificacion_docente ||
+            (checklistQ.data as ChecklistDTO | undefined)?.es_certificacion_docente
+          ),
+        },
       };
 
       const extra = datos_extra as Record<string, unknown>;
@@ -270,13 +286,18 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
         payload.carrera_id = carreraValue;
       }
 
-      console.log("Saving payload:", payload);
       return apiUpdatePreinscripcion(codigo, payload);
     },
-    onSuccess: () => { enqueueSnackbar("Cambios guardados", { variant: "success" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] }); },
+    onSuccess: () => {
+      enqueueSnackbar("Cambios guardados", { variant: "success" });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo, "checklist"] });
+      qc.invalidateQueries({ queryKey: ["preins-busq-sec"] });
+      qc.invalidateQueries({ queryKey: ["preinscripciones"] });
+    },
     onError: (err) => {
       console.error("Save error:", err);
-      enqueueSnackbar("No se pudo guardar", { variant: "error" });
+      enqueueSnackbar("No se pudo guardar los cambios", { variant: "error" });
     }
   });
 
@@ -298,7 +319,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     onSuccess: () => { enqueueSnackbar("Foto subida", { variant: "success" }); qc.invalidateQueries({ queryKey: ["preinscripcion", data?.id, "docs"] }); },
     onError: () => enqueueSnackbar("No se pudo subir la foto", { variant: "error" })
   });
-  const [adeudaDetalle, setAdeudaDetalle] = useState<{ materias: string; institucion: string }>({ materias: "", institucion: "" });
+  const docValues = watch(); // Get all values for derived calculations
   const libretaEntregada = watch("libreta_entregada");
   const condicionSaludActiva = watch("condicion_salud_informada");
   useEffect(() => {
@@ -322,46 +343,44 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
 
   useEffect(() => {
     if (!isCertificacionDocente) {
-      setDocs((prev) => {
-        if (!prev.titulo_terciario_univ && !prev.incumbencia && !prev.certificado_estudiante_regular_sec && !prev.adeuda_materias) {
-          return prev;
-        }
-        return {
-          ...prev,
-          titulo_terciario_univ: false,
-          incumbencia: false,
-          certificado_estudiante_regular_sec: prev.certificado_estudiante_regular_sec,
-          adeuda_materias: prev.adeuda_materias,
-        };
-      });
+      if (docValues.titulo_terciario_univ || docValues.incumbencia) {
+        setValue("titulo_terciario_univ", false);
+        setValue("incumbencia", false);
+      }
     } else {
-      setDocs((prev) => ({
-        ...prev,
-        certificado_estudiante_regular_sec: false,
-        adeuda_materias: false,
-      }));
-      setAdeudaDetalle({ materias: "", institucion: "" });
+      if (docValues.certificado_alumno_regular_sec || docValues.adeuda_materias) {
+        setValue("certificado_alumno_regular_sec", false);
+        setValue("adeuda_materias", false);
+        setValue("adeuda_materias_detalle", "");
+        setValue("escuela_secundaria", "");
+      }
     }
-  }, [isCertificacionDocente]);
+  }, [isCertificacionDocente, setValue, docValues.titulo_terciario_univ, docValues.incumbencia, docValues.certificado_alumno_regular_sec, docValues.adeuda_materias]);
 
-  const docsGeneralesBase = docs.dni_legalizado && docs.fotos_4x4 && docs.certificado_salud && docs.folios_oficio_ok;
-  const docsGeneralesOk = docsGeneralesBase && (!isCertificacionDocente || docs.incumbencia);
+  const docsGeneralesBase =
+    docValues.dni_legalizado &&
+    docValues.fotos_4x4 &&
+    docValues.certificado_salud &&
+    docValues.folios_oficio_ok &&
+    docValues.curso_introductorio_aprobado &&
+    docValues.libreta_entregada;
+  const docsGeneralesOk = docsGeneralesBase && (!isCertificacionDocente || docValues.incumbencia);
   const tituloSecundarioPresentado = isCertificacionDocente
-    ? !!docs.titulo_terciario_univ
+    ? !!docValues.titulo_terciario_univ
     : !!(
-      docs.titulo_secundario_legalizado ||
-      docs.certificado_titulo_en_tramite ||
-      docs.analitico_legalizado
+      docValues.titulo_secundario_legalizado ||
+      docValues.certificado_titulo_en_tramite ||
+      docValues.analitico_legalizado
     );
 
   // Estado Regular solo si tiene el título completo (no en trámite ni solo analítico)
   const allDocs = isCertificacionDocente
-    ? !!(docsGeneralesOk && docs.titulo_terciario_univ)
-    : !!(docsGeneralesOk && docs.titulo_secundario_legalizado && !docs.adeuda_materias);
+    ? !!(docsGeneralesOk && docValues.titulo_terciario_univ)
+    : !!(docsGeneralesOk && docValues.titulo_secundario_legalizado && !docValues.adeuda_materias);
 
   const anyMainSelected = isCertificacionDocente
     ? false
-    : !!(docs.titulo_secundario_legalizado || docs.certificado_titulo_en_tramite || docs.analitico_legalizado);
+    : !!(docValues.titulo_secundario_legalizado || docValues.certificado_titulo_en_tramite || docValues.analitico_legalizado);
 
   const estudianteDni = data?.estudiante?.dni ?? "";
   const preinsEstudianteQ = useQuery({
@@ -371,7 +390,20 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     staleTime: 30_000,
   });
 
-  const preinscripcionesEstudiante = (preinsEstudianteQ.data as PreinscripcionDTO[] | undefined) ?? [];
+  const { user: authUser } = useAuth();
+  const myProfIds = authUser?.profesorado_ids || [];
+
+  const preinscripcionesEstudiante = useMemo(() => {
+    const base = (preinsEstudianteQ.data as PreinscripcionDTO[] | undefined) ?? [];
+    if (myProfIds.length === 0) return base;
+    return [...base].sort((a, b) => {
+      const aOk = myProfIds.includes(a.carrera?.id);
+      const bOk = myProfIds.includes(b.carrera?.id);
+      if (aOk && !bOk) return -1;
+      if (!aOk && bOk) return 1;
+      return 0;
+    });
+  }, [preinsEstudianteQ.data, myProfIds]);
   const existingCarreraIds = new Set<number>(
     preinscripcionesEstudiante
       .map((p: any) => p?.carrera?.id)
@@ -389,47 +421,40 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
       key === 'titulo_secundario' ? 'titulo_secundario_legalizado'
         : key === 'titulo_en_tramite' ? 'certificado_titulo_en_tramite'
           : (key as any);
-    setDocs(prev => {
-      const next = {
-        ...prev,
-        titulo_secundario_legalizado: false,
-        certificado_titulo_en_tramite: false,
-        analitico_legalizado: false,
-        titulo_secundario: false,
-        titulo_en_tramite: false,
-      } as typeof prev;
-      (next as any)[mapped] = !!checked;
-      next.titulo_secundario = mapped === 'titulo_secundario_legalizado' ? !!checked : false;
-      next.titulo_en_tramite = mapped === 'certificado_titulo_en_tramite' ? !!checked : false;
-      const anyMain = !!(next.titulo_secundario_legalizado || next.certificado_titulo_en_tramite || next.analitico_legalizado);
-      if (anyMain) {
-        next.certificado_estudiante_regular_sec = false;
-        next.adeuda_materias = false;
-        setAdeudaDetalle({ materias: "", institucion: "" });
-      }
-      return next;
-    });
+    setValue("titulo_secundario_legalizado", false);
+    setValue("certificado_titulo_en_tramite", false);
+    setValue("analitico_legalizado", false);
+
+    setValue(mapped as any, !!checked);
+
+    const anyMain = mapped === 'titulo_secundario_legalizado' || mapped === 'certificado_titulo_en_tramite' || mapped === 'analitico_legalizado' ? checked : false;
+    if (anyMain) {
+      setValue("certificado_alumno_regular_sec", false);
+      setValue("adeuda_materias", false);
+      setValue("adeuda_materias_detalle", "");
+      setValue("escuela_secundaria", "");
+    }
   };
 
-  // DDJJ / Nota compromiso (requerida si es condicional)
-  const [ddjjOk, setDdjjOk] = useState<boolean>(false);
+  // DDJJ integrada en el form state (schema)
+  const ddjjOk = watch("ddjj_ok");
   const canConfirm = allDocs || ddjjOk;
 
   const buildChecklistPayload = (): ChecklistDTO => ({
-    dni_legalizado: !!docs.dni_legalizado,
-    fotos_4x4: !!docs.fotos_4x4,
-    certificado_salud: !!docs.certificado_salud,
-    folios_oficio: docs.folios_oficio_ok ? 3 : 0,
-    titulo_secundario_legalizado: !!docs.titulo_secundario_legalizado,
-    certificado_titulo_en_tramite: !!docs.certificado_titulo_en_tramite,
-    analitico_legalizado: !!docs.analitico_legalizado,
-    certificado_estudiante_regular_sec: !!docs.certificado_estudiante_regular_sec,
-    adeuda_materias: !!docs.adeuda_materias,
-    adeuda_materias_detalle: adeudaDetalle.materias,
-    escuela_secundaria: adeudaDetalle.institucion,
-    curso_introductorio_aprobado: !!docs.curso_introductorio_aprobado,
-    titulo_terciario_univ: !!docs.titulo_terciario_univ,
-    incumbencia: !!docs.incumbencia,
+    dni_legalizado: !!docValues.dni_legalizado,
+    fotos_4x4: !!docValues.fotos_4x4,
+    certificado_salud: !!docValues.certificado_salud,
+    folios_oficio: docValues.folios_oficio_ok ? 3 : 0,
+    titulo_secundario_legalizado: !!docValues.titulo_secundario_legalizado,
+    certificado_titulo_en_tramite: !!docValues.certificado_titulo_en_tramite,
+    analitico_legalizado: !!docValues.analitico_legalizado,
+    certificado_alumno_regular_sec: !!docValues.certificado_alumno_regular_sec,
+    adeuda_materias: !!docValues.adeuda_materias,
+    adeuda_materias_detalle: docValues.adeuda_materias_detalle || "",
+    escuela_secundaria: docValues.escuela_secundaria || "",
+    curso_introductorio_aprobado: !!docValues.curso_introductorio_aprobado,
+    titulo_terciario_univ: !!docValues.titulo_terciario_univ,
+    incumbencia: !!docValues.incumbencia,
     es_certificacion_docente: isCertificacionDocente,
   });
   const mConfirm = useMutation({
@@ -439,6 +464,8 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     onSuccess: () => {
       enqueueSnackbar("Preinscripción confirmada", { variant: "success" });
       qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
+      qc.invalidateQueries({ queryKey: ["preinscripcion", codigo, "checklist"] });
+      qc.invalidateQueries({ queryKey: ["preins-busq-sec"] });
       qc.invalidateQueries({ queryKey: ["preinscripciones"] });
       onActionSuccess?.();
     },
@@ -465,14 +492,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     setConfirmInscripcionOpen(false);
   };
 
-  const mSaveChecklist = useMutation({
-    mutationFn: async () => {
-      if (!data?.id) throw new Error("ID de preinscripcion no encontrado");
-      return apiPutChecklist(data.id, buildChecklistPayload());
-    },
-    onSuccess: () => { enqueueSnackbar("Checklist guardado", { variant: "success" }); qc.invalidateQueries({ queryKey: ["preinscripcion", codigo, "checklist"] }); },
-    onError: () => enqueueSnackbar("No se pudo guardar el checklist", { variant: "error" })
-  });
+
 
 
   const mObservar = useMutation({
@@ -546,11 +566,6 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
 
   const [validationErrors, setValidationErrors] = useState<any>(null);
 
-  const onSubmit = (v: PreinscripcionForm) => {
-    console.log("Submit triggered", v);
-    setValidationErrors(null);
-    mUpdate.mutate(v);
-  };
   const onInvalid = (errors: any) => {
     console.error("Validation errors", errors);
     setValidationErrors(errors);
@@ -650,602 +665,342 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
   if (isError || !data) return <Typography color="error">No se pudo cargar la preinscripción.</Typography>;
 
   return (
-    <Stack gap={2}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: 1 }}>
-        <Button size="small" variant="outlined" color="warning" onClick={handleRequestObservada}>Marcar Observada</Button>
-        <Button size="small" variant="outlined" color="error" onClick={handleRequestRechazo}>Rechazar</Button>
-        <Button size="small" variant="contained" color="error" onClick={handleRequestEliminar}>Eliminar</Button>
-      </Box>
-
-      {/* Tabs removidos */}
-
+    <Stack gap={2} component="form" onSubmit={handleSubmit(onSubmit as any, onInvalid)}>
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
-          <Paper component="form" onSubmit={handleSubmit(onSubmit as any, onInvalid)} variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
+          <Paper variant="outlined" sx={{ p: 3, border: '1px solid #eee' }}>
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>Datos personales</Typography>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} mb={3}>
               <Grid item xs={12} md={4}>
                 <Controller name="nombres" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Nombres" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Nombres" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="apellido" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Apellido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Apellido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="dni" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="DNI" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="DNI" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="cuil" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="CUIL" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="CUIL" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="fecha_nacimiento" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Fecha de nacimiento (DD/MM/AAAA)" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Fecha de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="estado_civil" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Estado Civil" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Estado Civil" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="nacionalidad" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Nacionalidad" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Nacionalidad" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="pais_nac" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="País de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="País de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="provincia_nac" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Provincia de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Provincia de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="localidad_nac" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Localidad de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Localidad de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
             </Grid>
-            <Divider sx={{ my: 2 }} />
 
-            {/* Sección: Contacto */}
-            {/* Sección: Contacto */}
+            <Divider sx={{ my: 3 }} />
 
             <Typography variant="subtitle1" fontWeight={700} gutterBottom>Contacto</Typography>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} mb={3}>
               <Grid item xs={12} md={4}>
                 <Controller name="email" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Email" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Email" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="tel_movil" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Teléfono Móvil" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Teléfono Móvil" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller name="tel_fijo" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Teléfono fijo" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Teléfono fijo" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12}>
                 <Controller name="domicilio" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Domicilio" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Domicilio" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
-              <Grid item xs={12}><Typography variant="subtitle2">Contacto de Emergencia</Typography></Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12}><Typography variant="subtitle2" color="text.secondary">Contacto de Emergencia</Typography></Grid>
+              <Grid item xs={12} md={6}>
                 <Controller name="emergencia_telefono" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Teléfono de Emergencia" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Teléfono de Emergencia" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={6}>
                 <Controller name="emergencia_parentesco" control={control} render={({ field, fieldState }) => (
-                  <TextField {...field} label="Parentesco" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                  <TextField {...field} label="Parentesco" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
             </Grid>
 
-            {/* Sección: Estudios (Secundario y Superiores) */}
-            <Stack spacing={3}>
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Estudios</Typography>
+            <Stack spacing={3} mb={3}>
               <Box>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom>Estudios Secundarios</Typography>
+                <Typography variant="subtitle2" color="secondary" gutterBottom>Secundario</Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={8}>
                     <Controller name="sec_establecimiento" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Establecimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                      <TextField {...field} label="Establecimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                     )} />
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Controller name="sec_fecha_egreso" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Fecha de egreso (DD/MM/AAAA)" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                      <TextField {...field} label="Fecha egreso" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                     )} />
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={12} md={6}>
                     <Controller name="sec_titulo" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Título Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
-                    )} />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Controller name="sec_localidad" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Localidad" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
-                    )} />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Controller name="sec_provincia" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Provincia" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
-                    )} />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Controller name="sec_pais" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="País" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                      <TextField {...field} label="Título Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                     )} />
                   </Grid>
                 </Grid>
               </Box>
               <Box>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom>Estudios Superiores</Typography>
+                <Typography variant="subtitle2" color="secondary" gutterBottom>Superior (opcional)</Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={8}>
                     <Controller name="sup1_establecimiento" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Establecimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                      <TextField {...field} label="Establecimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                     )} />
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Controller name="sup1_fecha_egreso" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Fecha de egreso (DD/MM/AAAA)" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                      <TextField {...field} label="Fecha egreso" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                     )} />
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={12} md={6}>
                     <Controller name="sup1_titulo" control={control} render={({ field, fieldState }) => (
-                      <TextField {...field} label="Título Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} />
+                      <TextField {...field} label="Título Obtenido" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                     )} />
                   </Grid>
                 </Grid>
               </Box>
             </Stack>
 
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Accesibilidad y datos sensibles</Typography>
-            <Grid container spacing={2}>
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Accesibilidad y Salud</Typography>
+            <Grid container spacing={2} mb={3}>
               <Grid item xs={12} md={6}>
-                <Controller
-                  name="cud_informado"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={<Checkbox {...field} checked={!!field.value} />}
-                      label="El/la aspirante informó que posee CUD"
-                    />
-                  )}
-                />
+                <Controller name="cud_informado" control={control} render={({ field }) => (
+                  <FormControlLabel control={<Checkbox {...field} checked={!!field.value} />} label="Posee CUD" />
+                )} />
               </Grid>
               <Grid item xs={12} md={6}>
-                <Controller
-                  name="condicion_salud_informada"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={<Checkbox {...field} checked={!!field.value} />}
-                      label="Informó una condición de salud o ajuste requerido"
-                    />
-                  )}
-                />
+                <Controller name="condicion_salud_informada" control={control} render={({ field }) => (
+                  <FormControlLabel control={<Checkbox {...field} checked={!!field.value} />} label="Condición de salud / Apoyo" />
+                )} />
               </Grid>
               {condicionSaludActiva && (
                 <Grid item xs={12}>
-                  <Controller
-                    name="condicion_salud_detalle"
-                    control={control}
-                    render={({ field, fieldState }) => (
-                      <TextField
-                        {...field}
-                        label="Detalle de la condición o apoyo requerido"
-                        fullWidth
-                        multiline
-                        minRows={3}
-                        error={!!fieldState.error}
-                        helperText={fieldState.error?.message}
-                      />
-                    )}
-                  />
+                  <Controller name="condicion_salud_detalle" control={control} render={({ field, fieldState }) => (
+                    <TextField {...field} label="Detalle" fullWidth multiline minRows={2} error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
+                  )} />
                 </Grid>
               )}
-              <Grid item xs={12}>
-                <Controller
-                  name="consentimiento_datos"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <FormControl error={!!fieldState.error} component="fieldset" sx={{ alignItems: "flex-start" }}>
-                      <FormControlLabel
-                        control={<Checkbox {...field} checked={!!field.value} />}
-                        label="Consentimiento expreso e informado para tratar datos sensibles con fines de accesibilidad"
-                      />
-                      <FormHelperText>
-                        {fieldState.error?.message ?? "Debe estar aceptado antes de confirmar la inscripción."}
-                      </FormHelperText>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
             </Grid>
 
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorado</Typography>
-            {/* Sección: Profesorado */}
-            <Grid container spacing={2}>
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Preinscripción actual</Typography>
+            <Grid container spacing={2} mb={3}>
               <Grid item xs={12} sm={8}>
-                <Controller
-                  name="carrera_id"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <TextField
-                      {...field}
-                      select
-                      label="Profesorado"
-                      fullWidth
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      value={field.value ?? 0}
-                      onChange={(event) => {
-                        const next = Number((event.target as HTMLInputElement).value);
-                        field.onChange(next);
-                      }}
-                      SelectProps={{ displayEmpty: true }}
-                    >
-                      <MenuItem value={0} disabled>
-                        <em>{carrerasQ.isFetching ? "Cargando..." : "Seleccione..."}</em>
-                      </MenuItem>
-                      {(carrerasQ.data || []).map((c: any) => (
-                        <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
-                      ))}
-                    </TextField>
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Button
-                  fullWidth variant="outlined"
-                  onClick={() => {
-                    const currentCarrera = Number(watch("carrera_id") || 0);
-                    if (!currentCarrera) {
-                      enqueueSnackbar("Selecciona un profesorado antes de confirmar", { variant: "warning" });
-                      return;
-                    }
-                    mCambiarCarrera.mutate(currentCarrera);
-                  }}
-                  disabled={mCambiarCarrera.isPending}
-                >
-                  Cambiar Profesorado
-                </Button>
+                <Controller name="carrera_id" control={control} render={({ field, fieldState }) => (
+                  <TextField {...field} select label="Profesorado" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" value={field.value ?? 0}>
+                    <MenuItem value={0} disabled><em>Seleccione...</em></MenuItem>
+                    {(carrerasQ.data || []).map((c: any) => (
+                      <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+                    ))}
+                  </TextField>
+                )} />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <Controller
-                  name="cohorte"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <TextField
-                      {...field}
-                      label="Cohorte (año de ingreso)"
-                      fullWidth
-                      required
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message ?? "Ej: 2025"}
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
-            {/* Datos laborales */}
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Datos Laborales</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Controller
-                  name="trabaja"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControlLabel control={<Switch {...field} checked={!!field.value} />}
-                      label="¿Trabaja actualmente?" />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Controller name="empleador" control={control} render={({ field }) => (
-                  <TextField {...field} label="Empleador" fullWidth />
-                )} />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Controller name="horario_trabajo" control={control} render={({ field }) => (
-                  <TextField {...field} label="Horario de trabajo" fullWidth />
+                <Controller name="cohorte" control={control} render={({ field, fieldState }) => (
+                  <TextField {...field} label="Cohorte" fullWidth required error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
               </Grid>
               <Grid item xs={12}>
-                <Controller name="domicilio_trabajo" control={control} render={({ field }) => (
-                  <TextField {...field} label="Domicilio laboral" fullWidth />
+                <Controller name="trabaja" control={control} render={({ field }) => (
+                  <FormControlLabel control={<Switch {...field} checked={!!field.value} />} label="¿Trabaja?" />
                 )} />
               </Grid>
             </Grid>
 
             {validationErrors && (
               <Alert severity="error" sx={{ mt: 2 }}>
-                <Typography variant="subtitle2">Errores de validación:</Typography>
-                <ul>
-                  {Object.entries(validationErrors).map(([key, error]: any) => (
-                    <li key={key}>
-                      <strong>{key}:</strong> {error?.message || "Error desconocido"}
-                    </li>
-                  ))}
-                </ul>
+                <Typography variant="subtitle2">Existen errores en los datos personales o de contacto. Revise los campos marcados arriba.</Typography>
               </Alert>
             )}
-
-            <Stack direction="row" gap={1} justifyContent="flex-end" sx={{ mt: 2 }}>
-              <Button type="button" variant="outlined" onClick={() => reset()} disabled={mUpdate.isPending}>Deshacer cambios</Button>
-              <Button type="submit" variant="contained" disabled={mUpdate.isPending}>Guardar cambios</Button>
-            </Stack>
           </Paper>
         </Grid>
+
         <Grid item xs={12} md={4}>
-          <Paper variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
-            <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorados asociados</Typography>
-            {preinsEstudianteQ.isLoading ? (
-              <Typography variant="body2" color="text.secondary">Cargando profesorados…</Typography>
-            ) : preinscripcionesEstudiante.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">No se encontraron otras preinscripciones.</Typography>
-            ) : (
-              <Stack direction="column" spacing={1} mb={2}>
-                {preinscripcionesEstudiante.map((pre) => {
+          <Stack spacing={2} sx={{ position: 'sticky', top: 16 }}>
+            <Paper variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Profesorados asociados</Typography>
+              <Stack spacing={1} mb={2}>
+                {preinsEstudianteQ.isLoading ? (
+                  <Typography variant="caption">Cargando...</Typography>
+                ) : preinscripcionesEstudiante.map((pre) => {
                   const activo = pre.codigo === codigo;
+                  const esMio = myProfIds.includes(pre.carrera?.id);
                   return (
                     <Button
-                      key={pre.codigo}
-                      size="small"
-                      variant={activo ? "contained" : "outlined"}
-                      color={activo ? "success" : "primary"}
-                      onClick={() => {
-                        if (!activo) navigate(`/secretaria/confirmar-inscripcion?codigo=${pre.codigo}`);
-                      }}
+                      key={pre.codigo} size="small" variant={activo ? "contained" : "outlined"}
+                      color={activo ? (esMio ? "success" : "primary") : "primary"}
+                      onClick={() => { if (!activo) navigate(`/secretaria/confirmar-inscripcion?codigo=${pre.codigo}`); }}
+                      sx={{ textAlign: 'left', justifyContent: 'flex-start', borderStyle: esMio ? 'dashed' : 'solid' }}
                     >
-                      {pre.carrera?.nombre ?? "Carrera sin nombre"} · {pre.codigo}
+                      {esMio && <Box component="span" sx={{ mr: 1 }}>⭐</Box>}
+                      {pre.carrera?.nombre} ({pre.codigo})
                     </Button>
                   );
                 })}
               </Stack>
-            )}
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => {
-                resetAgregarCarreraForm(watch("cohorte"));
-                setAddCarreraOpen(true);
-              }}
-              disabled={availableCarreras.length === 0 || agregarCarreraMutation.isPending}
-              sx={{ mb: 2 }}
-            >
-              Agregar nuevo profesorado
-            </Button>
-            <Typography variant="subtitle1" gutterBottom>Documentación</Typography>
+              <Button fullWidth size="small" variant="outlined" onClick={() => setAddCarreraOpen(true)} disabled={availableCarreras.length === 0}>
+                Agregar nuevo profesorado
+              </Button>
+            </Paper>
 
-            <Typography variant="subtitle2" gutterBottom>Requisitos generales</Typography>
-            <Stack>
-              <FormControlLabel control={<Checkbox checked={!!docs.dni_legalizado} onChange={(_, c) => setDocs(s => ({ ...s, dni_legalizado: c }))} />} label="Fotocopia legalizada del DNI" />
-              <FormControlLabel control={<Checkbox checked={!!docs.fotos_4x4} onChange={(_, c) => setDocs(s => ({ ...s, fotos_4x4: c }))} />} label="2 fotos carnet 4×4" />
-              <FormControlLabel control={<Checkbox checked={!!docs.folios_oficio_ok} onChange={(_, c) => setDocs(s => ({ ...s, folios_oficio_ok: c }))} />} label="3 folios oficio" />
-              <FormControlLabel control={<Checkbox checked={!!docs.certificado_salud} onChange={(_, c) => setDocs(s => ({ ...s, certificado_salud: c }))} />} label="Certificado de Buena Salud" />
-              <FormControlLabel control={<Checkbox checked={!!docs.curso_introductorio_aprobado} onChange={(_, c) => { setDocs(s => ({ ...s, curso_introductorio_aprobado: c })); setValue('curso_introductorio_aprobado', !!c, { shouldDirty: true }); }} />} label="Curso Introductorio Aprobado" />
-              <FormControlLabel control={<Checkbox checked={!!libretaEntregada} onChange={(_, checked) => setValue('libreta_entregada', checked, { shouldDirty: true })} />} label="Libreta entregada" />
-              {isCertificacionDocente && (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!!docs.incumbencia}
-                      onChange={(_, c) => setDocs((s) => ({ ...s, incumbencia: c }))}
-                    />
-                  }
-                  label="Incumbencia"
-                />
+            <Paper variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>Documentación</Typography>
+
+              <Typography variant="subtitle2" gutterBottom>Requisitos generales</Typography>
+              <Stack>
+                <FormControlLabel control={<Checkbox checked={!!docValues.dni_legalizado} onChange={(_, c) => setValue("dni_legalizado", !!c, { shouldDirty: true })} />} label="DNI legalizado" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.fotos_4x4} onChange={(_, c) => setValue("fotos_4x4", !!c, { shouldDirty: true })} />} label="Fotos 4x4" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.folios_oficio_ok} onChange={(_, c) => setValue("folios_oficio_ok", !!c, { shouldDirty: true })} />} label="3 Folios oficio" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.certificado_salud} onChange={(_, c) => setValue("certificado_salud", !!c, { shouldDirty: true })} />} label="Certificado Salud" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.curso_introductorio_aprobado} onChange={(_, c) => setValue('curso_introductorio_aprobado', !!c, { shouldDirty: true })} />} label="Curso Introductorio" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.libreta_entregada} onChange={(_, c) => setValue('libreta_entregada', !!c, { shouldDirty: true })} />} label="Libreta entregada" />
+                {isCertificacionDocente && <FormControlLabel control={<Checkbox checked={!!docValues.incumbencia} onChange={(_, c) => setValue("incumbencia", !!c, { shouldDirty: true })} />} label="Incumbencia" />}
+              </Stack>
+
+              <Divider sx={{ my: 1.5 }} />
+              <Typography variant="subtitle2" gutterBottom>Secundario</Typography>
+              <Stack>
+                {isCertificacionDocente ? (
+                  <FormControlLabel control={<Checkbox checked={!!docValues.titulo_terciario_univ} onChange={(_, c) => setValue("titulo_terciario_univ", !!c, { shouldDirty: true })} />} label="Título superior" />
+                ) : (
+                  <>
+                    <FormControlLabel control={<Checkbox checked={!!docValues.titulo_secundario_legalizado} onChange={(_, c) => pickSecundario('titulo_secundario_legalizado', c)} />} label="Título secundario" />
+                    <FormControlLabel control={<Checkbox checked={!!docValues.certificado_titulo_en_tramite} onChange={(_, c) => pickSecundario('certificado_titulo_en_tramite', c)} />} label="Título en trámite" />
+                    <FormControlLabel control={<Checkbox checked={!!docValues.analitico_legalizado} onChange={(_, c) => pickSecundario('analitico_legalizado', c)} />} label="Analítico" />
+                  </>
+                )}
+                {!isCertificacionDocente && (
+                  <>
+                    <FormControlLabel control={<Checkbox checked={!!docValues.certificado_alumno_regular_sec} onChange={(_, c) => setValue("certificado_alumno_regular_sec", !!c, { shouldDirty: true })} disabled={anyMainSelected} />} label="Alumno regular sec." />
+                    <FormControlLabel control={<Checkbox checked={!!docValues.adeuda_materias} onChange={(_, c) => setValue("adeuda_materias", !!c, { shouldDirty: true })} disabled={anyMainSelected} />} label="Adeuda materias" />
+                  </>
+                )}
+              </Stack>
+
+              {docValues.adeuda_materias && (
+                <Box mt={1}>
+                  <Controller name="adeuda_materias_detalle" control={control} render={({ field }) => (
+                    <TextField {...field} label="¿Cuáles?" fullWidth size="small" sx={{ mb: 1 }} />
+                  )} />
+                  <Controller name="escuela_secundaria" control={control} render={({ field }) => (
+                    <TextField {...field} label="Escuela" fullWidth size="small" />
+                  )} />
+                </Box>
               )}
-            </Stack>
 
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" gutterBottom>Secundario</Typography>
-            <Stack>
-              {isCertificacionDocente ? (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={!!docs.titulo_terciario_univ}
-                      onChange={(_, c) => setDocs((s) => ({ ...s, titulo_terciario_univ: c }))}
-                    />
-                  }
-                  label="Título terciario / universitario"
-                />
-              ) : (
-                <>
-                  <FormControlLabel control={<Checkbox checked={!!docs.titulo_secundario} onChange={(_, c) => pickSecundario('titulo_secundario', c)} />} label="Título secundario" />
-                  <FormControlLabel control={<Checkbox checked={!!docs.titulo_en_tramite} onChange={(_, c) => pickSecundario('titulo_en_tramite', c)} />} label="Certificado de título en trámite" />
-                  <FormControlLabel control={<Checkbox checked={!!docs.analitico_legalizado} onChange={(_, c) => pickSecundario('analitico_legalizado', c)} />} label="Fotocopia de analítico legalizada" />
-                </>
-              )}
-            </Stack>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" gutterBottom>Foto 4x4</Typography>
+              <Stack direction="row" spacing={1} mb={1}>
+                <input id="foto-input" type="file" accept="image/*" style={{ display: 'none' }} onChange={(e: any) => { const f = e.target.files?.[0]; if (f) mUploadFoto.mutate(f); }} />
+                <label htmlFor="foto-input"><Button size="small" variant="outlined" component="span">Cargar archivo</Button></label>
+              </Stack>
+              {(() => {
+                const docs: any[] = (docsQ.data as any[]) || [];
+                const docFoto = docs.find(d => String(d.tipo).toLowerCase().includes('foto'));
+                return <FotoPreviewBox dataUrl={watch('foto_dataUrl') || docFoto?.url} />;
+              })()}
 
-            {!isCertificacionDocente && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Stack>
-                  <FormControlLabel control={<Checkbox checked={!!docs.certificado_estudiante_regular_sec} onChange={(_, c) => setDocs(s => ({ ...s, certificado_estudiante_regular_sec: c }))} disabled={anyMainSelected} />} label="Certificado de estudiante regular del secundario" />
-                  <FormControlLabel control={<Checkbox checked={!!docs.adeuda_materias} onChange={(_, c) => setDocs(s => ({ ...s, adeuda_materias: c }))} disabled={anyMainSelected} />} label="Si adeuda materias" />
-                  {docs.adeuda_materias && (
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={8}>
-                        <TextField label="Materias adeudadas" fullWidth value={adeudaDetalle.materias} onChange={(e) => setAdeudaDetalle(d => ({ ...d, materias: e.target.value }))} />
-                      </Grid>
-                      <Grid item xs={12} md={4}>
-                        <TextField label="Colegio o institución" fullWidth value={adeudaDetalle.institucion} onChange={(e) => setAdeudaDetalle(d => ({ ...d, institucion: e.target.value }))} />
-                      </Grid>
-                    </Grid>
-                  )}
-                </Stack>
-              </>
-            )}
+              <Divider sx={{ my: 2 }} />
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Typography variant="body2" fontWeight={600}>Estado proyectado:</Typography>
+                <Chip size="small" color={allDocs ? "success" : "warning"} label={allDocs ? "Regular" : "Condicional"} />
+              </Stack>
 
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" gutterBottom>Foto 4x4</Typography>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <input id="foto4x4-input" type="file" accept="image/png, image/jpeg" style={{ display: 'none' }}
-                onChange={(e: any) => {
-                  const f = e.target.files?.[0];
-                  if (f) mUploadFoto.mutate(f);
-                }} />
-              <label htmlFor="foto4x4-input">
-                <Button variant="outlined" component="span">Agregar/Cambiar foto</Button>
-              </label>
-            </Stack>
-            {/* Indicador visual cuando no hay foto o falla la carga */}
-            {(() => {
-              const docs: any[] = (docsQ.data as any[]) || [];
-              const docFoto = docs.find(d => String(d.tipo).toLowerCase().includes('foto'));
-              const docUrl = docFoto?.url || '';
-              return (
-                <>
-                  <FotoPreviewBox dataUrl={watch('foto_dataUrl') || docUrl} />
-                  <Typography variant="caption" color="text.secondary">
-                    {docUrl ? `Fuente: archivo (len: ${String(docUrl).length})` : 'Sin foto'}
+              {!allDocs && (
+                <Box sx={{ mt: 2, p: 1.5, bgcolor: 'warning.light', borderRadius: 2, border: '1px solid', borderColor: 'warning.main' }}>
+                  <Typography variant="caption" display="block" color="warning.dark" sx={{ mb: 1, fontWeight: 600 }}>
+                    Debe aceptar el compromiso/DDJJ para confirmar como Condicional.
                   </Typography>
-                </>
-              );
-            })()}
-            <Divider sx={{ my: 2 }} />
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2">Estado documental:</Typography>
-              <Chip
-                size="small"
-                color={allDocs ? "success" : "warning"}
-                label={allDocs ? "Regular" : "Condicional"}
-                sx={{ borderRadius: 2 }}
-              />
-            </Stack>
-            <Divider sx={{ my: 2 }} />
-            <Button sx={{ mb: 1 }} variant="outlined" onClick={() => mSaveChecklist.mutate()} disabled={mUpdate.isPending}>Guardar checklist</Button>
-            <FormControlLabel
-              control={<Checkbox checked={!!ddjjOk} onChange={(_, c) => setDdjjOk(!!c)} disabled={allDocs} />}
-              label="DDJJ / Nota compromiso"
-            />
-            <Button
-              sx={{ mt: 2 }}
-              variant="contained"
-              color="success"
-              onClick={handleConfirmInscripcionClick}
-              disabled={!canConfirm || mUpdate.isPending}
-            >
-              Confirmar Inscripción
-            </Button>
-          </Paper>
+                  <FormControlLabel
+                    control={<Checkbox checked={!!ddjjOk} onChange={(_, c) => setValue("ddjj_ok", !!c)} />}
+                    label={<Typography variant="body2">DDJJ / Compromiso aceptado</Typography>}
+                  />
+                </Box>
+              )}
+
+              <Stack gap={1} mt={3}>
+                <Button type="submit" variant="contained" color={canConfirm && data?.estado !== "confirmada" ? "success" : "primary"} disabled={mUpdate.isPending || mConfirm.isPending} fullWidth sx={{ py: 1.5, fontWeight: 700 }}>
+                  {data?.estado === "confirmada" ? "Guardar cambios" : canConfirm ? "Confirmar Inscripción" : "Guardar Borrador"}
+                </Button>
+                <Button variant="text" size="small" color="inherit" onClick={() => reset()} disabled={mUpdate.isPending}>Deshacer cambios</Button>
+              </Stack>
+
+              <Stack direction="row" spacing={1} mt={2} justifyContent="center">
+                <Button size="small" color="warning" onClick={handleRequestObservada}>Observar</Button>
+                <Button size="small" color="error" onClick={handleRequestRechazo}>Rechazar</Button>
+              </Stack>
+            </Paper>
+          </Stack>
         </Grid>
       </Grid>
-      <Dialog
-        open={addCarreraOpen}
-        onClose={() => {
-          if (!agregarCarreraMutation.isPending) {
-            setAddCarreraOpen(false);
-            resetAgregarCarreraForm();
-          }
-        }}
-        fullWidth
-        maxWidth="sm"
-      >
+
+      {/* Dialogs */}
+      <Dialog open={addCarreraOpen} onClose={() => !agregarCarreraMutation.isPending && setAddCarreraOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Agregar nuevo profesorado</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
-          {availableCarreras.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Este estudiante ya tiene cargados todos los profesorados disponibles.
-            </Typography>
-          ) : (
-            <Stack spacing={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="nueva-carrera-label">Profesorado</InputLabel>
-                <Select
-                  labelId="nueva-carrera-label"
-                  label="Profesorado"
-                  value={nuevaCarreraId === "" ? "" : String(nuevaCarreraId)}
-                  onChange={(event) => {
-                    const value = event.target.value === "" ? "" : Number(event.target.value);
-                    setNuevaCarreraId(value);
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>Seleccioná un profesorado</em>
-                  </MenuItem>
-                  {availableCarreras.map((c: any) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <TextField
-                label="Cohorte (año de ingreso)"
-                type="number"
-                size="small"
-                value={nuevaCarreraCohorte}
-                onChange={(event) => setNuevaCarreraCohorte(event.target.value)}
-                helperText="Por defecto usamos el año actual; modificalo si corresponde a una cohorte anterior."
-                inputProps={{ min: 1900, max: 2100 }}
-              />
-            </Stack>
-          )}
+          <Stack spacing={2}>
+            <TextField select label="Profesorado" fullWidth size="small" value={nuevaCarreraId} onChange={(e) => setNuevaCarreraId(Number(e.target.value))}>
+              {availableCarreras.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>)}
+            </TextField>
+            <TextField label="Cohorte" type="number" size="small" value={nuevaCarreraCohorte} onChange={(e) => setNuevaCarreraCohorte(e.target.value)} />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              if (!agregarCarreraMutation.isPending) {
-                setAddCarreraOpen(false);
-                resetAgregarCarreraForm();
-              }
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              if (typeof nuevaCarreraId === "number") {
-                const cohorteTrimmed = (nuevaCarreraCohorte ?? "").trim();
-                const cohorteParsed = cohorteTrimmed ? Number(cohorteTrimmed) : NaN;
-                const anioPayload = Number.isFinite(cohorteParsed) ? cohorteParsed : undefined;
-                agregarCarreraMutation.mutate({ carreraId: nuevaCarreraId, anio: anioPayload });
-              }
-            }}
-            disabled={availableCarreras.length === 0 || typeof nuevaCarreraId !== "number" || agregarCarreraMutation.isPending}
-          >
-            {agregarCarreraMutation.isPending ? "Agregando..." : "Agregar"}
-          </Button>
+          <Button onClick={() => setAddCarreraOpen(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={() => typeof nuevaCarreraId === "number" && agregarCarreraMutation.mutate({ carreraId: nuevaCarreraId, anio: Number(nuevaCarreraCohorte) })} disabled={agregarCarreraMutation.isPending}>Agregar</Button>
         </DialogActions>
       </Dialog>
-      <FinalConfirmationDialog
-        open={confirmInscripcionOpen}
-        onConfirm={executeConfirmInscripcion}
-        onCancel={cancelConfirmInscripcion}
-        loading={mConfirm.isPending}
-        contextText="Nuevos Registros"
-      />
-      <FinalConfirmationDialog
-        open={Boolean(criticalAction)}
-        onConfirm={executeCriticalAction}
-        onCancel={cancelCriticalAction}
-        loading={criticalActionLoading}
-        contextText={criticalContextText}
-      />
+
+      <FinalConfirmationDialog open={confirmInscripcionOpen} onConfirm={executeConfirmInscripcion} onCancel={cancelConfirmInscripcion} loading={mConfirm.isPending} contextText="Confirmación de Inscripción" />
+      <FinalConfirmationDialog open={Boolean(criticalAction)} onConfirm={executeCriticalAction} onCancel={cancelCriticalAction} loading={criticalActionLoading} contextText={criticalContextText} />
     </Stack>
   );
 }

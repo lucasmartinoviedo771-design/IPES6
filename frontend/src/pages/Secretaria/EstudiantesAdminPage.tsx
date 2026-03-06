@@ -70,7 +70,7 @@ type DetailDocumentacionForm = {
   titulo_secundario_legalizado: boolean;
   certificado_titulo_en_tramite: boolean;
   analitico_legalizado: boolean;
-  certificado_estudiante_regular_sec: boolean;
+  certificado_alumno_regular_sec: boolean;
   adeuda_materias: boolean;
   adeuda_materias_detalle: string;
   escuela_secundaria: string;
@@ -96,6 +96,34 @@ type DetailFormValues = {
   documentacion: DetailDocumentacionForm;
   curso_introductorio_aprobado: boolean;
   libreta_entregada: boolean;
+
+  // New fields
+  nacionalidad: string;
+  estado_civil: string;
+  localidad_nac: string;
+  provincia_nac: string;
+  pais_nac: string;
+  emergencia_telefono: string;
+  emergencia_parentesco: string;
+  sec_titulo: string;
+  sec_establecimiento: string;
+  sec_fecha_egreso: string;
+  sec_localidad: string;
+  sec_provincia: string;
+  sec_pais: string;
+  sup1_titulo: string;
+  sup1_establecimiento: string;
+  sup1_fecha_egreso: string;
+  sup1_localidad: string;
+  sup1_provincia: string;
+  sup1_pais: string;
+  cud_informado: boolean;
+  condicion_salud_informada: boolean;
+  condicion_salud_detalle: string;
+  trabaja: boolean;
+  empleador: string;
+  horario_trabajo: string;
+  domicilio_trabajo: string;
 };
 const DEFAULT_LIMIT = 100;
 
@@ -117,7 +145,7 @@ function normalizeDoc(detail?: EstudianteAdminDocumentacionDTO | null): DetailDo
     titulo_secundario_legalizado: Boolean(detail?.titulo_secundario_legalizado),
     certificado_titulo_en_tramite: Boolean(detail?.certificado_titulo_en_tramite),
     analitico_legalizado: Boolean(detail?.analitico_legalizado),
-    certificado_estudiante_regular_sec: Boolean(detail?.certificado_estudiante_regular_sec),
+    certificado_alumno_regular_sec: Boolean(detail?.certificado_alumno_regular_sec),
     adeuda_materias: Boolean(detail?.adeuda_materias),
     adeuda_materias_detalle: detail?.adeuda_materias_detalle ?? "",
     escuela_secundaria: detail?.escuela_secundaria ?? "",
@@ -211,7 +239,7 @@ export default function EstudiantesAdminPage() {
           "titulo_secundario_legalizado",
           "certificado_titulo_en_tramite",
           "analitico_legalizado",
-          "certificado_estudiante_regular_sec",
+          "certificado_alumno_regular_sec",
           "adeuda_materias",
           "es_certificacion_docente",
           "titulo_terciario_univ",
@@ -256,6 +284,34 @@ export default function EstudiantesAdminPage() {
         libreta_entregada: typeof data.libreta_entregada === "boolean"
           ? data.libreta_entregada
           : undefined,
+
+        // New fields
+        nacionalidad: data.nacionalidad?.trim() || undefined,
+        estado_civil: data.estado_civil?.trim() || undefined,
+        localidad_nac: data.localidad_nac?.trim() || undefined,
+        provincia_nac: data.provincia_nac?.trim() || undefined,
+        pais_nac: data.pais_nac?.trim() || undefined,
+        emergencia_telefono: data.emergencia_telefono?.trim() || undefined,
+        emergencia_parentesco: data.emergencia_parentesco?.trim() || undefined,
+        sec_titulo: data.sec_titulo?.trim() || undefined,
+        sec_establecimiento: data.sec_establecimiento?.trim() || undefined,
+        sec_fecha_egreso: data.sec_fecha_egreso?.trim() || undefined,
+        sec_localidad: data.sec_localidad?.trim() || undefined,
+        sec_provincia: data.sec_provincia?.trim() || undefined,
+        sec_pais: data.sec_pais?.trim() || undefined,
+        sup1_titulo: data.sup1_titulo?.trim() || undefined,
+        sup1_establecimiento: data.sup1_establecimiento?.trim() || undefined,
+        sup1_fecha_egreso: data.sup1_fecha_egreso?.trim() || undefined,
+        sup1_localidad: data.sup1_localidad?.trim() || undefined,
+        sup1_provincia: data.sup1_provincia?.trim() || undefined,
+        sup1_pais: data.sup1_pais?.trim() || undefined,
+        cud_informado: data.cud_informado,
+        condicion_salud_informada: data.condicion_salud_informada,
+        condicion_salud_detalle: data.condicion_salud_detalle?.trim() || undefined,
+        trabaja: data.trabaja,
+        empleador: data.empleador?.trim() || undefined,
+        horario_trabajo: data.horario_trabajo?.trim() || undefined,
+        domicilio_trabajo: data.domicilio_trabajo?.trim() || undefined,
       };
 
       return updateEstudianteAdmin(dni, payloadData);
@@ -305,6 +361,32 @@ export default function EstudiantesAdminPage() {
       documentacion: normalizeDoc(),
       curso_introductorio_aprobado: false,
       libreta_entregada: false,
+      nacionalidad: "",
+      estado_civil: "",
+      localidad_nac: "",
+      provincia_nac: "",
+      pais_nac: "",
+      emergencia_telefono: "",
+      emergencia_parentesco: "",
+      sec_titulo: "",
+      sec_establecimiento: "",
+      sec_fecha_egreso: "",
+      sec_localidad: "",
+      sec_provincia: "",
+      sec_pais: "",
+      sup1_titulo: "",
+      sup1_establecimiento: "",
+      sup1_fecha_egreso: "",
+      sup1_localidad: "",
+      sup1_provincia: "",
+      sup1_pais: "",
+      cud_informado: false,
+      condicion_salud_informada: false,
+      condicion_salud_detalle: "",
+      trabaja: false,
+      empleador: "",
+      horario_trabajo: "",
+      domicilio_trabajo: "",
     },
   });
 
@@ -330,8 +412,8 @@ export default function EstudiantesAdminPage() {
         setValue("documentacion.incumbencia" as const, false, { shouldDirty: true });
       }
     } else {
-      if (docValues.certificado_estudiante_regular_sec) {
-        setValue("documentacion.certificado_estudiante_regular_sec" as const, false, { shouldDirty: true });
+      if (docValues.certificado_alumno_regular_sec) {
+        setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
       }
       if (docValues.adeuda_materias) {
         setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
@@ -343,7 +425,7 @@ export default function EstudiantesAdminPage() {
     docValues.es_certificacion_docente,
     docValues.titulo_terciario_univ,
     docValues.incumbencia,
-    docValues.certificado_estudiante_regular_sec,
+    docValues.certificado_alumno_regular_sec,
     docValues.adeuda_materias,
     setValue,
   ]);
@@ -353,7 +435,7 @@ export default function EstudiantesAdminPage() {
       setValue(`documentacion.${key}` as const, key === target ? checked : false, { shouldDirty: true });
     });
     if (checked) {
-      setValue("documentacion.certificado_estudiante_regular_sec" as const, false, { shouldDirty: true });
+      setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
       setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
       setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
       setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
@@ -369,7 +451,7 @@ export default function EstudiantesAdminPage() {
   };
 
   const handleEstudianteRegularChange = (_: unknown, checked: boolean) => {
-    setValue("documentacion.certificado_estudiante_regular_sec" as const, checked, { shouldDirty: true });
+    setValue("documentacion.certificado_alumno_regular_sec" as const, checked, { shouldDirty: true });
   };
 
   useEffect(() => {
@@ -394,6 +476,33 @@ export default function EstudiantesAdminPage() {
         documentacion: normalizeDoc(detail.documentacion),
         curso_introductorio_aprobado: Boolean(detail.curso_introductorio_aprobado),
         libreta_entregada: Boolean(detail.libreta_entregada),
+
+        nacionalidad: toStringOrEmpty(extra.nacionalidad),
+        estado_civil: toStringOrEmpty(extra.estado_civil),
+        localidad_nac: toStringOrEmpty(extra.localidad_nac),
+        provincia_nac: toStringOrEmpty(extra.provincia_nac),
+        pais_nac: toStringOrEmpty(extra.pais_nac),
+        emergencia_telefono: toStringOrEmpty(extra.emergencia_telefono),
+        emergencia_parentesco: toStringOrEmpty(extra.emergencia_parentesco),
+        sec_titulo: toStringOrEmpty(extra.sec_titulo),
+        sec_establecimiento: toStringOrEmpty(extra.sec_establecimiento),
+        sec_fecha_egreso: extra.sec_fecha_egreso ? String(extra.sec_fecha_egreso).slice(0, 10) : "",
+        sec_localidad: toStringOrEmpty(extra.sec_localidad),
+        sec_provincia: toStringOrEmpty(extra.sec_provincia),
+        sec_pais: toStringOrEmpty(extra.sec_pais),
+        sup1_titulo: toStringOrEmpty(extra.sup1_titulo),
+        sup1_establecimiento: toStringOrEmpty(extra.sup1_establecimiento),
+        sup1_fecha_egreso: extra.sup1_fecha_egreso ? String(extra.sup1_fecha_egreso).slice(0, 10) : "",
+        sup1_localidad: toStringOrEmpty(extra.sup1_localidad),
+        sup1_provincia: toStringOrEmpty(extra.sup1_provincia),
+        sup1_pais: toStringOrEmpty(extra.sup1_pais),
+        cud_informado: Boolean(extra.cud_informado),
+        condicion_salud_informada: Boolean(extra.condicion_salud_informada),
+        condicion_salud_detalle: toStringOrEmpty(extra.condicion_salud_detalle),
+        trabaja: Boolean(extra.trabaja),
+        empleador: toStringOrEmpty(extra.empleador),
+        horario_trabajo: toStringOrEmpty(extra.horario_trabajo),
+        domicilio_trabajo: toStringOrEmpty(extra.domicilio_trabajo),
       };
       reset(formValues);
     }
@@ -718,6 +827,7 @@ export default function EstudiantesAdminPage() {
                 onSubmit={handleSubmit(onSubmit)}
               >
                 <Stack spacing={2}>
+                  <Divider>Datos Personales</Divider>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
                       name="dni"
@@ -726,6 +836,15 @@ export default function EstudiantesAdminPage() {
                         <TextField {...field} label="DNI" size="small" fullWidth />
                       )}
                     />
+                    <Controller
+                      name="cuil"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="CUIL" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
                       name="apellido"
                       control={control}
@@ -743,19 +862,17 @@ export default function EstudiantesAdminPage() {
                   </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
-                      name="anio_ingreso"
+                      name="fecha_nacimiento"
                       control={control}
                       render={({ field }) => (
-                        <TextField {...field} select label="Anio de ingreso" size="small" fullWidth>
-                          <MenuItem value="">
-                            Sin especificar
-                          </MenuItem>
-                          {anioIngresoOptions.map((option) => (
-                            <MenuItem key={option} value={option}>
-                              {option}
-                            </MenuItem>
-                          ))}
-                        </TextField>
+                        <TextField
+                          {...field}
+                          label="Fecha de nacimiento"
+                          size="small"
+                          type="date"
+                          InputLabelProps={{ shrink: true }}
+                          fullWidth
+                        />
                       )}
                     />
                     <Controller
@@ -772,8 +889,235 @@ export default function EstudiantesAdminPage() {
                       )}
                     />
                   </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="nacionalidad"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Nacionalidad" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="estado_civil"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Estado Civil" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
 
+                  <Divider>Lugar de Nacimiento</Divider>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="localidad_nac"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Localidad de Nacimiento" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="provincia_nac"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Provincia de Nacimiento" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="pais_nac"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="País de Nacimiento" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
 
+                  <Divider>Contacto y Domicilio</Divider>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="telefono"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Teléfono / Celular" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="domicilio"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Domicilio" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="emergencia_telefono"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Teléfono de Emergencia" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="emergencia_parentesco"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Parentesco Emergencia" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+
+                  <Divider>Estudios Secundarios</Divider>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="sec_titulo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Título Secundario" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="sec_establecimiento"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Establecimiento" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="sec_fecha_egreso"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Fecha Egreso" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} />
+                      )}
+                    />
+                    <Controller
+                      name="sec_localidad"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Localidad" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="sec_provincia"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Provincia" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="sec_pais"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="País" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+
+                  <Divider>Estudios Superiores</Divider>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="sup1_titulo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Título Superior" size="small" fullWidth />
+                      )}
+                    />
+                    <Controller
+                      name="sup1_establecimiento"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Establecimiento" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="sup1_fecha_egreso"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Fecha Egreso" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} />
+                      )}
+                    />
+                    <Controller
+                      name="sup1_localidad"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Localidad" size="small" fullWidth />
+                      )}
+                    />
+                  </Stack>
+
+                  <Divider>Datos Laborales</Divider>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Controller
+                      name="trabaja"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControlLabel
+                          control={<Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                          label="¿Trabaja?"
+                        />
+                      )}
+                    />
+                    <Controller
+                      name="empleador"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Empleador" size="small" fullWidth disabled={!watch("trabaja")} />
+                      )}
+                    />
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <Controller
+                      name="horario_trabajo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Horario de Trabajo" size="small" fullWidth disabled={!watch("trabaja")} />
+                      )}
+                    />
+                    <Controller
+                      name="domicilio_trabajo"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField {...field} label="Domicilio de Trabajo" size="small" fullWidth disabled={!watch("trabaja")} />
+                      )}
+                    />
+                  </Stack>
+
+                  <Divider>Accesibilidad y Salud</Divider>
+                  <Stack direction="row" spacing={2} flexWrap="wrap">
+                    <Controller
+                      name="cud_informado"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControlLabel
+                          control={<Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                          label="Posee CUD"
+                        />
+                      )}
+                    />
+                    <Controller
+                      name="condicion_salud_informada"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControlLabel
+                          control={<Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                          label="Informa condición de salud"
+                        />
+                      )}
+                    />
+                  </Stack>
+                  <Controller
+                    name="condicion_salud_detalle"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Detalle condición de salud / Apoyo necesario" size="small" multiline rows={2} fullWidth />
+                    )}
+                  />
+
+                  <Divider>Estado de Legajo y Sistema</Divider>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                     <Controller
                       name="estado_legajo"
@@ -792,31 +1136,29 @@ export default function EstudiantesAdminPage() {
                       )}
                     />
                     <Controller
-                      name="fecha_nacimiento"
+                      name="anio_ingreso"
                       control={control}
                       render={({ field }) => (
-                        <TextField
-                          {...field}
-                          label="Fecha de nacimiento"
-                          size="small"
-                          type="date"
-                          InputLabelProps={{ shrink: true }}
-                          fullWidth
-                        />
+                        <TextField {...field} select label="Año de ingreso" size="small" fullWidth>
+                          <MenuItem value="">Sin especificar</MenuItem>
+                          {anioIngresoOptions.map((option) => (
+                            <MenuItem key={option} value={option}>
+                              {option}
+                            </MenuItem>
+                          ))}
+                        </TextField>
                       )}
                     />
+                  </Stack>
+
+                  <Stack direction="row" spacing={2} flexWrap="wrap">
                     <Controller
                       name="must_change_password"
                       control={control}
                       render={({ field }) => (
                         <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={field.value}
-                              onChange={(event) => field.onChange(event.target.checked)}
-                            />
-                          }
-                          label="Forzar cambio de contraseña"
+                          control={<Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                          label="Forzar cambio de clave"
                         />
                       )}
                     />
@@ -825,26 +1167,9 @@ export default function EstudiantesAdminPage() {
                       control={control}
                       render={({ field }) => (
                         <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={field.value}
-                              onChange={(event) => field.onChange(event.target.checked)}
-                              color="primary"
-                            />
-                          }
+                          control={<Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} color="primary" />}
                           label="Cuenta Activa"
                         />
-                      )}
-                    />
-                  </Stack>
-
-
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Controller
-                      name="cuil"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} label="CUIL" size="small" fullWidth />
                       )}
                     />
                   </Stack>
@@ -853,7 +1178,7 @@ export default function EstudiantesAdminPage() {
                     name="observaciones"
                     control={control}
                     render={({ field }) => (
-                      <TextField {...field} label="Observaciones" size="small" multiline rows={3} />
+                      <TextField {...field} label="Observaciones Administrativas" size="small" multiline rows={2} fullWidth />
                     )}
                   />
 
@@ -1000,7 +1325,7 @@ export default function EstudiantesAdminPage() {
                           <FormControlLabel
                             control={
                               <Checkbox
-                                checked={Boolean(docValues.certificado_estudiante_regular_sec)}
+                                checked={Boolean(docValues.certificado_alumno_regular_sec)}
                                 onChange={handleEstudianteRegularChange}
                                 disabled={anyMainSelected}
                               />

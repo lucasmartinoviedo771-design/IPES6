@@ -58,7 +58,23 @@ export const defaultValues: PreinscripcionForm = {
   horario_trabajo: "",
   domicilio_trabajo: "",
 
-  // documentación (checkboxes)
+  // documentación (Admin)
+  dni_legalizado: false,
+  fotos_4x4: false,
+  certificado_salud: false,
+  folios_oficio_ok: false,
+  titulo_secundario_legalizado: false,
+  certificado_titulo_en_tramite: false,
+  analitico_legalizado: false,
+  certificado_alumno_regular_sec: false,
+  adeuda_materias: false,
+  adeuda_materias_detalle: "",
+  escuela_secundaria: "",
+  titulo_terciario_univ: false,
+  incumbencia: false,
+  ddjj_ok: false,
+
+  // documentación (checkboxes - Público)
   doc_dni: false,
   doc_secundario: false,
   doc_constancia_cuil: false,

@@ -734,7 +734,7 @@ class EstudianteAdminDocumentacion(Schema):
     titulo_secundario_legalizado: bool | None = None
     certificado_titulo_en_tramite: bool | None = None
     analitico_legalizado: bool | None = None
-    certificado_estudiante_regular_sec: bool | None = None
+    certificado_alumno_regular_sec: bool | None = None
     adeuda_materias: bool | None = None
     adeuda_materias_detalle: str | None = None
     escuela_secundaria: str | None = None
@@ -804,6 +804,38 @@ class EstudianteAdminUpdateIn(Schema):
     cuil: str | None = None
     curso_introductorio_aprobado: bool | None = None
     libreta_entregada: bool | None = None
+    # Datos personales adicionales
+    nacionalidad: str | None = None
+    estado_civil: str | None = None
+    localidad_nac: str | None = None
+    provincia_nac: str | None = None
+    pais_nac: str | None = None
+    # Emergencia
+    emergencia_telefono: str | None = None
+    emergencia_parentesco: str | None = None
+    # Secundario
+    sec_titulo: str | None = None
+    sec_establecimiento: str | None = None
+    sec_fecha_egreso: str | None = None
+    sec_localidad: str | None = None
+    sec_provincia: str | None = None
+    sec_pais: str | None = None
+    # Superiores
+    sup1_titulo: str | None = None
+    sup1_establecimiento: str | None = None
+    sup1_fecha_egreso: str | None = None
+    sup1_localidad: str | None = None
+    sup1_provincia: str | None = None
+    sup1_pais: str | None = None
+    # Accesibilidad
+    cud_informado: bool | None = None
+    condicion_salud_informada: bool | None = None
+    condicion_salud_detalle: str | None = None
+    # Laborales
+    trabaja: bool | None = None
+    empleador: str | None = None
+    horario_trabajo: str | None = None
+    domicilio_trabajo: str | None = None
 
 # ==========================================
 # 12. TRAYECTORIA Y PERFIL

@@ -782,7 +782,7 @@ export interface EstudianteAdminDocumentacionDTO {
   titulo_secundario_legalizado?: boolean;
   certificado_titulo_en_tramite?: boolean;
   analitico_legalizado?: boolean;
-  certificado_estudiante_regular_sec?: boolean;
+  certificado_alumno_regular_sec?: boolean;
   adeuda_materias?: boolean;
   adeuda_materias_detalle?: string;
   escuela_secundaria?: string;

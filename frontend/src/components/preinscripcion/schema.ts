@@ -114,7 +114,23 @@ const baseSchema = z.object({
   fotoW: z.number().optional(),
   fotoH: z.number().optional(),
 
-  // Checklist de documentación
+  // Checklist de documentación (Admin)
+  dni_legalizado: z.boolean().default(false),
+  fotos_4x4: z.boolean().default(false),
+  certificado_salud: z.boolean().default(false),
+  folios_oficio_ok: z.boolean().default(false),
+  titulo_secundario_legalizado: z.boolean().default(false),
+  certificado_titulo_en_tramite: z.boolean().default(false),
+  analitico_legalizado: z.boolean().default(false),
+  certificado_alumno_regular_sec: z.boolean().default(false),
+  adeuda_materias: z.boolean().default(false),
+  adeuda_materias_detalle: z.string().optional().or(z.literal("")),
+  escuela_secundaria: z.string().optional().or(z.literal("")),
+  titulo_terciario_univ: z.boolean().default(false),
+  incumbencia: z.boolean().default(false),
+  ddjj_ok: z.boolean().default(false),
+
+  // Checklist de documentación (Público - Deprecated?)
   doc_dni: z.boolean().default(false),
   doc_secundario: z.boolean().default(false),
   doc_constancia_cuil: z.boolean().default(false),

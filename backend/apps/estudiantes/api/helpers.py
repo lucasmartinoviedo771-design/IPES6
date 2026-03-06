@@ -23,6 +23,7 @@ from core.models import (
     Materia,
     MesaExamen,
     PlanDeEstudio,
+    PreinscripcionChecklist,
     Profesorado,
     Regularidad,
 )
@@ -60,7 +61,7 @@ DOCUMENTACION_FIELDS = {
     "titulo_secundario_legalizado",
     "certificado_titulo_en_tramite",
     "analitico_legalizado",
-    "certificado_estudiante_regular_sec",
+    "certificado_alumno_regular_sec",
     "adeuda_materias",
     "adeuda_materias_detalle",
     "escuela_secundaria",
@@ -301,7 +302,17 @@ def _apply_estudiante_updates(
         else:
             datos_extra.pop("documentacion", None)
 
-    for extra_key in ("anio_ingreso", "genero", "rol_extra", "observaciones", "cuil", "lugar_nacimiento"):
+    # Extra fields to store in datos_extra
+    EXTRA_KEYS = (
+        "anio_ingreso", "genero", "rol_extra", "observaciones", "cuil", "lugar_nacimiento",
+        "nacionalidad", "estado_civil", "localidad_nac", "provincia_nac", "pais_nac",
+        "emergencia_telefono", "emergencia_parentesco",
+        "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+        "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+        "condicion_salud_detalle", "empleador", "horario_trabajo", "domicilio_trabajo"
+    )
+
+    for extra_key in EXTRA_KEYS:
         value = getattr(payload, extra_key)
         if value is None:
             continue
@@ -310,10 +321,15 @@ def _apply_estudiante_updates(
         else:
             datos_extra[extra_key] = value
 
-    if payload.curso_introductorio_aprobado is not None:
-        datos_extra["curso_introductorio_aprobado"] = bool(payload.curso_introductorio_aprobado)
-    if payload.libreta_entregada is not None:
-        datos_extra["libreta_entregada"] = bool(payload.libreta_entregada)
+    # Boolean fields
+    BOOL_KEYS = (
+        "curso_introductorio_aprobado", "libreta_entregada",
+        "cud_informado", "condicion_salud_informada", "trabaja"
+    )
+    for bool_key in BOOL_KEYS:
+        value = getattr(payload, bool_key)
+        if value is not None:
+            datos_extra[bool_key] = bool(value)
 
     if mark_profile_complete and not datos_extra.get("perfil_actualizado"):
         datos_extra["perfil_actualizado"] = True
@@ -358,9 +374,40 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
     carreras_nombres = [c.nombre for c in estudiante.carreras.all()]
     datos_extra = estudiante.datos_extra or {}
     documentacion_data = _extract_documentacion(datos_extra)
+    
+    # --- Check documentation from PreinscripcionChecklist if available ---
+    checklist = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=estudiante).order_by("-updated_at").first()
+    if checklist:
+        checklist_map = {
+            "dni_legalizado": checklist.dni_legalizado,
+            "fotos_4x4": checklist.fotos_4x4,
+            "certificado_salud": checklist.certificado_salud,
+            "folios_oficio": checklist.folios_oficio,
+            "titulo_secundario_legalizado": checklist.titulo_secundario_legalizado,
+            "certificado_titulo_en_tramite": checklist.certificado_titulo_en_tramite,
+            "analitico_legalizado": checklist.analitico_legalizado,
+            "certificado_alumno_regular_sec": checklist.certificado_alumno_regular_sec,
+            "adeuda_materias": checklist.adeuda_materias,
+            "adeuda_materias_detalle": checklist.adeuda_materias_detalle,
+            "escuela_secundaria": checklist.escuela_secundaria,
+            "es_certificacion_docente": getattr(checklist, "es_certificacion_docente", False),
+            "titulo_terciario_univ": getattr(checklist, "titulo_terciario_univ", False),
+            "incumbencia": getattr(checklist, "incumbencia", False),
+        }
+        for k, v in checklist_map.items():
+            if documentacion_data.get(k) in (None, False, 0, ""):
+                documentacion_data[k] = v
+        
+        # Pull course intro from checklist if not set in student record
+        if datos_extra.get("curso_introductorio_aprobado") is None:
+            curso_introductorio_aprobado = checklist.curso_introductorio_aprobado
+        else:
+            curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
+    else:
+        curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
+
     documentacion = EstudianteAdminDocumentacion(**documentacion_data) if documentacion_data else None
     condicion = _determine_condicion(documentacion_data)
-    curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
     libreta_entregada = bool(datos_extra.get("libreta_entregada"))
     regularidades_resumen = [
         RegularidadResumen(

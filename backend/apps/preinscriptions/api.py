@@ -760,6 +760,15 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
 
     if payload.datos_extra:
         pre.datos_extra = payload.datos_extra
+
+    if payload.checklist:
+        from core.models import PreinscripcionChecklist
+        cl, _ = PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
+        for k, v in payload.checklist.dict().items():
+            setattr(cl, k, v)
+        cl.save()
+        _sync_curso_intro_flag(pre.alumno, payload.checklist.curso_introductorio_aprobado)
+
     try:
         pre.save()
     except Exception as e:
