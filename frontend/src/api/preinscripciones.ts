@@ -198,6 +198,7 @@ export interface ChecklistDTO {
   estado_legajo?: string;
   curso_introductorio_aprobado?: boolean;
   libreta_entregada?: boolean;
+  articulo_7?: boolean;
 }
 
 export const apiGetChecklist = async (preId: number) => {

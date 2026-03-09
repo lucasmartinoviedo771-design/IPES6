@@ -741,6 +741,7 @@ class EstudianteAdminDocumentacion(Schema):
     es_certificacion_docente: bool | None = None
     titulo_terciario_univ: bool | None = None
     incumbencia: bool | None = None
+    articulo_7: bool | None = None
 
 class EstudianteAdminListItem(Schema):
     dni: str

@@ -107,6 +107,9 @@ class ChecklistIn(Schema):
     incumbencia: bool = False
     curso_introductorio_aprobado: bool = False
     libreta_entregada: bool = False
+    
+    # Mayores de 25, sin título secundario (Art. 7mo)
+    articulo_7: bool = False
 
 
 class ChecklistOut(ChecklistIn):

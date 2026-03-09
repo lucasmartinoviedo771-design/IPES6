@@ -77,6 +77,7 @@ type DetailDocumentacionForm = {
   es_certificacion_docente: boolean;
   titulo_terciario_univ: boolean;
   incumbencia: boolean;
+  articulo_7: boolean;
 };
 
 type DetailFormValues = {
@@ -152,6 +153,7 @@ function normalizeDoc(detail?: EstudianteAdminDocumentacionDTO | null): DetailDo
     es_certificacion_docente: Boolean(detail?.es_certificacion_docente),
     titulo_terciario_univ: Boolean(detail?.titulo_terciario_univ),
     incumbencia: Boolean(detail?.incumbencia),
+    articulo_7: Boolean(detail?.articulo_7),
   };
 }
 
@@ -244,6 +246,7 @@ export default function EstudiantesAdminPage() {
           "es_certificacion_docente",
           "titulo_terciario_univ",
           "incumbencia",
+          "articulo_7",
         ].forEach((name) => {
           // Cast explícito a keyof DetailDocumentacionForm para acceder a 'doc'
           const key = name as keyof DetailDocumentacionForm;
@@ -390,7 +393,7 @@ export default function EstudiantesAdminPage() {
     },
   });
 
-  const { reset, control, handleSubmit, watch, setValue } = form;
+  const { reset, control, handleSubmit, watch, setValue, getValues } = form;
   const docValues = watch("documentacion");
 
   const mainDocKeys: Array<keyof DetailDocumentacionForm> = [
@@ -455,6 +458,54 @@ export default function EstudiantesAdminPage() {
   };
 
   useEffect(() => {
+    if (!docValues) return;
+
+    const docs_base = [
+      docValues.dni_legalizado,
+      docValues.certificado_salud,
+      docValues.fotos_4x4,
+      docValues.folios_oficio,
+    ];
+
+    let isComplete = false;
+
+    if (docValues.es_certificacion_docente) {
+      isComplete = docs_base.every(Boolean) && docValues.titulo_terciario_univ && docValues.incumbencia;
+    } else {
+      const altCount =
+        (docValues.titulo_secundario_legalizado ? 1 : 0) +
+        (docValues.certificado_titulo_en_tramite ? 1 : 0) +
+        (docValues.analitico_legalizado ? 1 : 0);
+
+      const hasAlt = altCount >= 1;
+      let hasExtra = true;
+      if (docValues.analitico_legalizado) {
+        hasExtra = Boolean(docValues.certificado_alumno_regular_sec);
+        if (docValues.adeuda_materias) {
+          hasExtra =
+            hasExtra &&
+            Boolean(docValues.adeuda_materias_detalle?.trim()) &&
+            Boolean(docValues.escuela_secundaria?.trim());
+        }
+      }
+
+      isComplete = docs_base.every(Boolean) && (
+        (hasAlt && hasExtra) || docValues.articulo_7
+      );
+    }
+
+    const nextEstado: EstadoLegajo = isComplete ? "COM" : "INC";
+    const currentEstado = getValues("estado_legajo");
+
+    // Solo actualizar si hay una diferencia real. Comparamos como strings para evitar fallos del compilador TS.
+    if (String(nextEstado) !== String(currentEstado)) {
+      setValue("estado_legajo", nextEstado, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [JSON.stringify(docValues), setValue, getValues]);
+
+
+
+  useEffect(() => {
     if (detailQuery.data) {
       const detail = detailQuery.data;
       const extra = detail.datos_extra ?? {};
@@ -466,7 +517,7 @@ export default function EstudiantesAdminPage() {
         telefono: detail.telefono ?? "",
         domicilio: detail.domicilio ?? "",
         estado_legajo: (detail.estado_legajo as EstadoLegajo) ?? "PEN",
-        must_change_password: detail.must_change_password,
+        must_change_password: false, // El usuario solicitó mantener esto siempre destildado por defecto al abrir.
         activo: detail.activo !== undefined ? detail.activo : true,
         fecha_nacimiento: detail.fecha_nacimiento ? detail.fecha_nacimiento.slice(0, 10) : "",
         anio_ingreso: toStringOrEmpty(extra.anio_ingreso),
@@ -1123,7 +1174,7 @@ export default function EstudiantesAdminPage() {
                       name="estado_legajo"
                       control={control}
                       render={({ field }) => (
-                        <FormControl size="small" fullWidth>
+                        <FormControl size="small" fullWidth disabled>
                           <InputLabel>Estado legajo</InputLabel>
                           <Select {...field} label="Estado legajo">
                             {ESTADO_OPTIONS.filter((option) => option.value).map((option) => (
@@ -1320,7 +1371,7 @@ export default function EstudiantesAdminPage() {
                       Complementarios
                     </Typography>
                     <Stack direction="row" spacing={2} flexWrap="wrap">
-                      {!docValues.es_certificacion_docente && (
+                      {!docValues.es_certificacion_docente && !docValues.articulo_7 && (
                         <>
                           <FormControlLabel
                             control={
@@ -1366,9 +1417,18 @@ export default function EstudiantesAdminPage() {
                           label="Incumbencia"
                         />
                       )}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={Boolean(docValues.articulo_7)}
+                            onChange={(_, checked) => setValue("documentacion.articulo_7" as const, checked, { shouldDirty: true })}
+                          />
+                        }
+                        label="Mayor de 25 años s/título (Art. 7mo)"
+                      />
                     </Stack>
 
-                    {docValues.adeuda_materias && !docValues.es_certificacion_docente && (
+                    {docValues.adeuda_materias && !docValues.es_certificacion_docente && !docValues.articulo_7 && (
                       <Stack direction={{ xs: "column", md: "row" }} spacing={2} mt={1}>
                         <Controller
                           name="documentacion.adeuda_materias_detalle"

@@ -789,6 +789,7 @@ export interface EstudianteAdminDocumentacionDTO {
   es_certificacion_docente?: boolean;
   titulo_terciario_univ?: boolean;
   incumbencia?: boolean;
+  articulo_7?: boolean;
 }
 
 export interface EstudianteAdminListItemDTO {

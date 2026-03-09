@@ -362,9 +362,13 @@ def _determine_condicion(documentacion: dict | None) -> str:
             bool(documentacion.get("analitico_legalizado")),
         )
     )
-    if requisito_basico and requisito_secundario:
+    
+    # Mayores de 25 años (Ley 24.521)
+    es_articulo_7 = bool(documentacion.get("articulo_7"))
+
+    if requisito_basico and (requisito_secundario or es_articulo_7):
         return "Regular"
-    if requisito_basico or requisito_secundario:
+    if requisito_basico or requisito_secundario or es_articulo_7:
         return "Condicional"
     return "Pendiente"
 
@@ -393,6 +397,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
             "es_certificacion_docente": getattr(checklist, "es_certificacion_docente", False),
             "titulo_terciario_univ": getattr(checklist, "titulo_terciario_univ", False),
             "incumbencia": getattr(checklist, "incumbencia", False),
+            "articulo_7": getattr(checklist, "articulo_7", False),
         }
         for k, v in checklist_map.items():
             if documentacion_data.get(k) in (None, False, 0, ""):

@@ -722,6 +722,9 @@ class PreinscripcionChecklist(models.Model):
     titulo_terciario_univ = models.BooleanField(default=False)
     incumbencia = models.BooleanField(default=False)
     curso_introductorio_aprobado = models.BooleanField(default=False)
+    
+    # Mayores de 25, sin título secundario (Art. 7mo)
+    articulo_7 = models.BooleanField(default=False)
 
     # Derivado
     estado_legajo = models.CharField(
@@ -744,6 +747,10 @@ class PreinscripcionChecklist(models.Model):
 
         if self.es_certificacion_docente:
             completos = all(docs_base + [self.titulo_terciario_univ, self.incumbencia])
+            return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
+
+        if self.articulo_7:
+            completos = all(docs_base)
             return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
 
         # Vía secundaria: una (y solo una) de las tres alternativas

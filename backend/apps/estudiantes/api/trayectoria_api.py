@@ -316,61 +316,61 @@ def trayectoria_estudiante(request, dni: str | None = None):
         # Solo procesamos vigencia/alertas para la regularidad más reciente (la primera en este loop ordenado DESC)
         if reg.materia_id not in materias_procesadas_vigencia:
             if reg.situacion == Regularidad.Situacion.REGULAR and not materia_ya_aprobada:
-            vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
-            dias_restantes = (vigencia_limite - hoy).days
-            vigente = dias_restantes >= 0
-            vigencia_iso = vigencia_limite.isoformat()
-            regularidades_vigencia_data.append(
-                {
-                    "materia_id": reg.materia_id,
-                    "materia_nombre": reg.materia.nombre,
-                    "situacion": reg.situacion,
-                    "situacion_display": reg.get_situacion_display(),
-                    "fecha_cierre": reg.fecha_cierre.isoformat(),
-                    "vigencia_hasta": vigencia_iso,
-                    "dias_restantes": dias_restantes,
-                    "vigente": vigente,
-                    "intentos_usados": intentos,
-                    "intentos_max": 3,
-                }
-            )
-            if vigente:
-                comentarios: list[str] = []
-                if dias_restantes <= 30:
-                    comentarios.append("La regularidad vence en menos de 30 días.")
-                
-                # Buscar correlativas aprobadas
-                correlativas_encontradas = []
-                correlativas_ids_vistas = set()
-                
-                # Filtramos las correlativas que sean para RENDIR FINAL (APR) o CURSAR (APC)
-                # Asumimos que para habilitar mesa se requieren las anteriores aprobadas
-                for correlativa_req in reg.materia.correlativas_requeridas.all():
-                    # Si la correlativa es Tipo APR (Aprobada Para Rendir) o APC (Aprobada Para Cursar - implicito)
-                    # O si simplemente mostramos todas las requeridas aprobadas
-                    mat_corr = correlativa_req.materia_correlativa
-                    
-                    if mat_corr.id in correlativas_ids_vistas:
-                        continue
-
-                    if mat_corr.id in aprobadas_set:
-                        nota = aprobadas_notas.get(mat_corr.id, "-")
-                        correlativas_encontradas.append(f"{mat_corr.nombre} (Nota: {nota})")
-                        correlativas_ids_vistas.add(mat_corr.id)
-
-                finales_habilitados_data.append(
+                vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
+                dias_restantes = (vigencia_limite - hoy).days
+                vigente = dias_restantes >= 0
+                vigencia_iso = vigencia_limite.isoformat()
+                regularidades_vigencia_data.append(
                     {
                         "materia_id": reg.materia_id,
                         "materia_nombre": reg.materia.nombre,
-                        "regularidad_fecha": reg.fecha_cierre.isoformat(),
+                        "situacion": reg.situacion,
+                        "situacion_display": reg.get_situacion_display(),
+                        "fecha_cierre": reg.fecha_cierre.isoformat(),
                         "vigencia_hasta": vigencia_iso,
                         "dias_restantes": dias_restantes,
-                        "comentarios": comentarios,
-                        "correlativas_aprobadas": correlativas_encontradas,
+                        "vigente": vigente,
+                        "intentos_usados": intentos,
+                        "intentos_max": 3,
                     }
                 )
-            else:
-                alertas.append(f"La regularidad de {reg.materia.nombre} está vencida desde {vigencia_iso}.")
+                if vigente:
+                    comentarios: list[str] = []
+                    if dias_restantes <= 30:
+                        comentarios.append("La regularidad vence en menos de 30 días.")
+                    
+                    # Buscar correlativas aprobadas
+                    correlativas_encontradas = []
+                    correlativas_ids_vistas = set()
+                    
+                    # Filtramos las correlativas que sean para RENDIR FINAL (APR) o CURSAR (APC)
+                    # Asumimos que para habilitar mesa se requieren las anteriores aprobadas
+                    for correlativa_req in reg.materia.correlativas_requeridas.all():
+                        # Si la correlativa es Tipo APR (Aprobada Para Rendir) o APC (Aprobada Para Cursar - implicito)
+                        # O si simplemente mostramos todas las requeridas aprobadas
+                        mat_corr = correlativa_req.materia_correlativa
+                        
+                        if mat_corr.id in correlativas_ids_vistas:
+                            continue
+
+                        if mat_corr.id in aprobadas_set:
+                            nota = aprobadas_notas.get(mat_corr.id, "-")
+                            correlativas_encontradas.append(f"{mat_corr.nombre} (Nota: {nota})")
+                            correlativas_ids_vistas.add(mat_corr.id)
+
+                    finales_habilitados_data.append(
+                        {
+                            "materia_id": reg.materia_id,
+                            "materia_nombre": reg.materia.nombre,
+                            "regularidad_fecha": reg.fecha_cierre.isoformat(),
+                            "vigencia_hasta": vigencia_iso,
+                            "dias_restantes": dias_restantes,
+                            "comentarios": comentarios,
+                            "correlativas_aprobadas": correlativas_encontradas,
+                        }
+                    )
+                else:
+                    alertas.append(f"La regularidad de {reg.materia.nombre} está vencida desde {vigencia_iso}.")
             
             # Marcar como procesada (sea REGULAR o no) para no ver vigencias de registros anteriores
             materias_procesadas_vigencia.add(reg.materia_id)
