@@ -585,7 +585,23 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                 Regularidad.Situacion.PROMOCIONADO,
                 Regularidad.Situacion.REGULAR,
             ]
-            
+
+            # Validación: situaciones aprobatorias sin ningún dato cargado son inválidas.
+            # Previene "regularidades fantasma" donde el docente no completó la fila.
+            if es_aprobatoria:
+                sin_datos = (
+                    estudiante.asistencia is None
+                    and estudiante.nota_tp is None
+                    and estudiante.nota_final is None
+                )
+                if sin_datos:
+                    raise HttpError(
+                        400,
+                        f"El estudiante {estudiante_obj.dni} tiene la situación '{estudiante.situacion}' "
+                        f"en {materia.nombre} pero no tiene asistencia ni notas cargadas. "
+                        f"Complete los datos antes de guardar."
+                    )
+
             if es_aprobatoria:
                  formato_up = (materia.formato or "").upper()
                  if formato_up in FORMATOS_TALLER:

@@ -130,13 +130,35 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # Necesitamos saber qué aprobó para NO mostrarlo en "vencimientos" o "habilitados"
     
     # a. Regularidades (Situaciones finales)
+    # Materializamos en lista para garantizar orden consistente en todos los loops
     regularidades_qs = (
         Regularidad.objects.filter(estudiante=est)
         .select_related("materia", "materia__plan_de_estudio", "materia__plan_de_estudio__profesorado")
         .prefetch_related("materia__correlativas_requeridas__materia_correlativa")
         .order_by("-fecha_cierre")
     )
-    for reg in regularidades_qs:
+    regularidades_list = list(regularidades_qs)  # evaluar una sola vez
+
+    # Pre-computar la situación más reciente de cada materia
+    # (el primero en la lista ordenada DESC es el más reciente)
+    SITUACIONES_BLOQUEANTES = {
+        Regularidad.Situacion.LIBRE_I,
+        Regularidad.Situacion.LIBRE_AT,
+        Regularidad.Situacion.DESAPROBADO_PA,
+        Regularidad.Situacion.DESAPROBADO_TP,
+    }
+    ultima_situacion_por_materia: dict[int, str] = {}
+    for reg in regularidades_list:
+        if reg.materia_id not in ultima_situacion_por_materia:
+            ultima_situacion_por_materia[reg.materia_id] = reg.situacion
+
+    # Materias cuya ultima situacion es LIBRE o DESAPROBADO -> no pueden rendir final
+    materias_bloqueadas_final: set[int] = {
+        mid for mid, sit in ultima_situacion_por_materia.items()
+        if sit in SITUACIONES_BLOQUEANTES
+    }
+
+    for reg in regularidades_list:
         if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             aprobadas_set.add(reg.materia_id)
             aprobadas_notas[reg.materia_id] = _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
@@ -305,7 +327,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # Ya consultado arriba, recorremos para vigencias y alertas
     hoy = timezone.now().date()
     materias_procesadas_vigencia = set()
-    for reg in regularidades_qs:
+    for reg in regularidades_list:  # usar la lista ya materializada
         vigencia_iso = None
         vigente = None
         dias_restantes: int | None = None
@@ -315,7 +337,10 @@ def trayectoria_estudiante(request, dni: str | None = None):
         
         # Solo procesamos vigencia/alertas para la regularidad más reciente (la primera en este loop ordenado DESC)
         if reg.materia_id not in materias_procesadas_vigencia:
-            if reg.situacion == Regularidad.Situacion.REGULAR and not materia_ya_aprobada:
+            # Verificación explicitamente defensiva: la situación más reciente de la materia
+            # debe ser REGULAR. Si es LIBRE o DESAPROBADO, está bloqueada.
+            es_bloqueada = reg.materia_id in materias_bloqueadas_final
+            if reg.situacion == Regularidad.Situacion.REGULAR and not materia_ya_aprobada and not es_bloqueada:
                 vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
                 dias_restantes = (vigencia_limite - hoy).days
                 vigente = dias_restantes >= 0
@@ -435,7 +460,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # regularidades_qs está ordenado por fecha descendente.
     # Queremos agrupar TODAS las regularidades por materia.
     regularidades_map: dict[int, list[Regularidad]] = {}
-    for reg in regularidades_qs:
+    for reg in regularidades_list:  # usar lista materializada
         if reg.materia_id not in regularidades_map:
             regularidades_map[reg.materia_id] = []
         regularidades_map[reg.materia_id].append(reg)

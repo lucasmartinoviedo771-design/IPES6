@@ -68,6 +68,7 @@ DOCUMENTACION_FIELDS = {
     "es_certificacion_docente",
     "titulo_terciario_univ",
     "incumbencia",
+    "articulo_7",
 }
 
 
