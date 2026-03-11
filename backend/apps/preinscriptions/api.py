@@ -414,8 +414,31 @@ def get_checklist(request, pre_id: int, profesorado_id: Optional[int] = None):
         raise HttpError(404, "Preinscripción no encontrada")
     cl = getattr(pre, "checklist", None) or PreinscripcionChecklist(preinscripcion=pre)
     data = {k: getattr(cl, k, False) for k in ChecklistIn.__fields__}  # type: ignore
-    if pre.alumno.curso_introductorio_aprobado:
-        data["curso_introductorio_aprobado"] = True
+
+    datos_extra = pre.alumno.datos_extra or {}
+    docs_extra = datos_extra.get("documentacion") or {}
+
+    for field in ChecklistIn.__fields__:
+        val_extra = docs_extra.get(field)
+        val_raiz = datos_extra.get(field)
+        
+        if field == "curso_introductorio_aprobado" and pre.alumno.curso_introductorio_aprobado:
+            data[field] = True
+            continue
+
+        if field == "folios_oficio":
+            val = val_extra if val_extra is not None else (val_raiz or 0)
+            if isinstance(val, int) and val > data[field]:
+                data[field] = val
+        elif isinstance(data.get(field), str) or field in ("adeuda_materias_detalle", "escuela_secundaria"):
+            val = val_extra if val_extra else (val_raiz or "")
+            if not data.get(field) and val:
+                data[field] = str(val)
+        else:
+            val = val_extra if val_extra is not None else (val_raiz or False)
+            if bool(val) and not data.get(field):
+                data[field] = True
+
     data["estado_legajo"] = cl.estado_legajo or cl.calcular_estado()
     return data
 
@@ -432,7 +455,26 @@ def put_checklist(request, pre_id: int, payload: ChecklistIn, profesorado_id: Op
     for k, v in payload.dict().items():
         setattr(cl, k, v)
     cl.save()
+    
     _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
+
+    # También actualizar el dict de documentacion general en el perfil del estudiante
+    datos_extra = pre.alumno.datos_extra or {}
+    docs_extra = datos_extra.get("documentacion") or {}
+    for k, v in payload.dict().items():
+        if k == "folios_oficio":
+            if v > docs_extra.get("folios_oficio", 0):
+                docs_extra[k] = v
+        elif isinstance(v, bool):
+            if v and not docs_extra.get(k):
+                docs_extra[k] = True
+        elif isinstance(v, str):
+            if v and not docs_extra.get(k):
+                docs_extra[k] = v
+    datos_extra["documentacion"] = docs_extra
+    pre.alumno.datos_extra = datos_extra
+    pre.alumno.save(update_fields=["datos_extra"])
+
     data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
     if pre.alumno.curso_introductorio_aprobado:
         data["curso_introductorio_aprobado"] = True
@@ -459,6 +501,22 @@ def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = Non
             setattr(cl, k, v)
         cl.save()
         _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
+
+        datos_extra = pre.alumno.datos_extra or {}
+        docs_extra = datos_extra.get("documentacion") or {}
+        for k, v in payload.dict().items():
+            if k == "folios_oficio":
+                if v > docs_extra.get("folios_oficio", 0):
+                    docs_extra[k] = v
+            elif isinstance(v, bool):
+                if v and not docs_extra.get(k):
+                    docs_extra[k] = True
+            elif isinstance(v, str):
+                if v and not docs_extra.get(k):
+                    docs_extra[k] = v
+        datos_extra["documentacion"] = docs_extra
+        pre.alumno.datos_extra = datos_extra
+        pre.alumno.save(update_fields=["datos_extra"])
 
     # Asegurar relación estudiante-carrera
     cohorte_val = str(pre.anio) if pre.anio else None

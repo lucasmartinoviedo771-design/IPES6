@@ -39,10 +39,11 @@ const formatBooleanLabel = (value?: boolean | null, trueLabel = 'Sí', falseLabe
 
 const formatCondicion = (condicion?: string | null): string => {
   if (!condicion) return '-';
-  if (condicion === 'AUJ') return 'JUS';
-  // Si queréis mantener "REGULAR" -> "En curso"
-  if (condicion === 'REGULAR') return 'En curso';
-  return condicion;
+  const val = condicion.trim().toUpperCase();
+  if (val === 'AUJ') return 'JUS';
+  if (val === 'PRO' || val === 'PROMOCIONADO') return 'PROM';
+  if (val === 'REGULAR') return 'REG';
+  return val;
 };
 
 export const CartonViewer = ({ data }: CartonViewerProps) => {
@@ -280,16 +281,21 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
 
           {/* Referencias/Leyenda */}
           <Box sx={{ mb: 4, display: 'flex', flexWrap: 'wrap', gap: 3, p: 1.5, borderRadius: 1, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'divider' }}>
-            <Box>
+            <Box sx={{ maxWidth: { xs: '100%', md: '45%' } }}>
               <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase' }}>
                 Situación Académica
               </Typography>
-              <Stack direction="row" spacing={1.5}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>REG:</b> Regular</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>PROM:</b> Promocionado</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>APR:</b> Aprobado (Directo)</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>LBI:</b> Libre Inasistencias</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>LAT:</b> Libre Antes de Tiempo</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>LIB:</b> Libre</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>DPA:</b> Desap. Parciales</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>DTP:</b> Desap. Trabajos Prácticos</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}><b>PEN:</b> Pendiente</Typography>
-              </Stack>
+              </Box>
             </Box>
             <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
             <Box>

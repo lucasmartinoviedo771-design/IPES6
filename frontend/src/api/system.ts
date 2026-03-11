@@ -17,3 +17,8 @@ export const getSystemLogs = async (resuelto: boolean = false): Promise<SystemLo
 export const resolveSystemLog = async (id: number): Promise<void> => {
     await api.post(`/system/logs/${id}/resolve`);
 };
+
+export const syncRepairSystem = async (): Promise<{ ok: boolean; message: string }> => {
+    const { data } = await api.post("/system/logs/sync-repair");
+    return data;
+};

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSystemLogs, resolveSystemLog } from "@/api/system";
+import { getSystemLogs, resolveSystemLog, syncRepairSystem } from "@/api/system";
 import { useState, useMemo } from "react";
 import {
     Box, Typography, Card, CardContent, CardActions, Button, Chip, Stack, Alert, Divider
@@ -7,6 +7,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningIcon from "@mui/icons-material/Warning";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import SyncIcon from "@mui/icons-material/Sync";
 
 export default function SystemLogsPage() {
     const queryClient = useQueryClient();
@@ -21,6 +22,18 @@ export default function SystemLogsPage() {
         mutationFn: resolveSystemLog,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["systemLogs"] });
+        },
+    });
+
+    const syncMutation = useMutation({
+        mutationFn: syncRepairSystem,
+        onSuccess: (data) => {
+            if (data.ok) {
+                alert(data.message);
+                queryClient.invalidateQueries({ queryKey: ["systemLogs"] });
+            } else {
+                alert("Error: " + data.message);
+            }
         },
     });
 
@@ -47,12 +60,27 @@ export default function SystemLogsPage() {
         <Box p={3}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" fontWeight="bold">Alertas de Sistema</Typography>
-                <Chip
-                    label={`Total: ${stats.total}`}
-                    color="primary"
-                    variant="filled"
-                    sx={{ fontWeight: "bold", px: 1 }}
-                />
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <Button
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<SyncIcon />}
+                        onClick={() => {
+                            if (window.confirm("¿Estás seguro de querer sincronizar el sistema? Esto ejecutará migraciones y recolectará archivos estáticos.")) {
+                                syncMutation.mutate();
+                            }
+                        }}
+                        disabled={syncMutation.isPending}
+                    >
+                        {syncMutation.isPending ? "Sincronizando..." : "Sincronizar Sistema"}
+                    </Button>
+                    <Chip
+                        label={`Total: ${stats.total}`}
+                        color="primary"
+                        variant="filled"
+                        sx={{ fontWeight: "bold", px: 1 }}
+                    />
+                </Stack>
             </Stack>
 
             {/* Filtros y Contadores */}
