@@ -704,7 +704,7 @@ class PreinscripcionChecklist(models.Model):
     dni_legalizado = models.BooleanField(default=False)
     fotos_4x4 = models.BooleanField(default=False)
     certificado_salud = models.BooleanField(default=False)
-    folios_oficio = models.IntegerField(default=0)
+    folios_oficio = models.BooleanField(default=False)
 
     # Titulación de nivel medio (seleccionar una de las tres alternativas)
     titulo_secundario_legalizado = models.BooleanField(default=False)
@@ -742,38 +742,21 @@ class PreinscripcionChecklist(models.Model):
             self.dni_legalizado,
             self.certificado_salud,
             self.fotos_4x4,
-            (self.folios_oficio or 0) >= 3,
+            self.folios_oficio,
         ]
 
         if self.es_certificacion_docente:
             completos = all(docs_base + [self.titulo_terciario_univ, self.incumbencia])
             return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
 
-        if self.articulo_7:
-            completos = all(docs_base)
-            return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
+        # Según usuario: "titulo en tramite no habilita legajo completo"
+        # "legajo completo es DNI true, folio true, fotos true certificado true y titulo secundario true"
+        # Exception: articulo_7
+        titulo_ok = bool(self.titulo_secundario_legalizado)
+        es_articulo_7 = bool(self.articulo_7)
 
-        # Vía secundaria: una (y solo una) de las tres alternativas
-        alternativas_cnt = sum(
-            [
-                1 if self.titulo_secundario_legalizado else 0,
-                1 if self.certificado_titulo_en_tramite else 0,
-                1 if self.analitico_legalizado else 0,
-            ]
-        )
-
-        cond_alternativas = alternativas_cnt >= 1
-
-        # Si presentó analítico, exigir constancia de alumno regular y detalle de adeuda (si marcó adeuda)
-        extra_ok = True
-        if self.analitico_legalizado:
-            extra_ok = self.certificado_alumno_regular_sec
-            if self.adeuda_materias:
-                extra_ok = (
-                    extra_ok and bool(self.adeuda_materias_detalle.strip()) and bool(self.escuela_secundaria.strip())
-                )
-
-        completos = all(docs_base + [cond_alternativas, extra_ok])
+        # Para ser COMPLETO debe tener básicos y (Título Secundario o Art 7)
+        completos = all(docs_base) and (titulo_ok or es_articulo_7)
         return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
 
     def save(self, *args, **kwargs):

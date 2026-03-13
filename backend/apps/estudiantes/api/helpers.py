@@ -356,21 +356,29 @@ def _determine_condicion(documentacion: dict | None) -> str:
             (documentacion.get("folios_oficio") or 0) >= 3,
         )
     )
-    requisito_secundario = any(
-        (
-            bool(documentacion.get("titulo_secundario_legalizado")),
-            bool(documentacion.get("certificado_titulo_en_tramite")),
-            bool(documentacion.get("analitico_legalizado")),
-        )
-    )
-    
-    # Mayores de 25 años (Ley 24.521)
+    # Requisito de titulación (Solo título completo o Analítico Legalizado cuentan para COM)
+    # Según usuario: "titulo en tramite no habilita legajo completo"
+    # "legajo completo es DNI true, folio true, fotos true certificado true y titulo secundario true"
+    # Exception: articulo_7
+    titulo_ok = bool(documentacion.get("titulo_secundario_legalizado"))
     es_articulo_7 = bool(documentacion.get("articulo_7"))
 
-    if requisito_basico and (requisito_secundario or es_articulo_7):
+    # Para ser Regular (Legajo Completo) debe tener básicos y (Título Secundario o Art 7)
+    if requisito_basico and (titulo_ok or es_articulo_7):
         return "Regular"
-    if requisito_basico or requisito_secundario or es_articulo_7:
+    
+    # Si tiene lo básico o algo de documentación, es Condicional
+    # (Incluye títulos en trámite que antes daban Regular)
+    indicadores_actividad = (
+        requisito_basico or 
+        bool(documentacion.get("titulo_secundario_legalizado")) or
+        bool(documentacion.get("certificado_titulo_en_tramite")) or
+        bool(documentacion.get("analitico_legalizado")) or
+        es_articulo_7
+    )
+    if indicadores_actividad:
         return "Condicional"
+    
     return "Pendiente"
 
 
@@ -380,6 +388,33 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
     datos_extra = estudiante.datos_extra or {}
     documentacion_data = _extract_documentacion(datos_extra)
     
+    # --- Bubble up personal / educational fields from latest Preinscripcion if missing in legajo ---
+    from core.models import Preinscripcion
+    latest_pre = Preinscripcion.objects.filter(alumno=estudiante).order_by("-id").first()
+    if latest_pre and latest_pre.datos_extra:
+        pre_extra = latest_pre.datos_extra
+        # If pre_extra has 'estudiante' nested dict (some versions do)
+        pe_sub = pre_extra.get("estudiante") if isinstance(pre_extra.get("estudiante"), dict) else {}
+        
+        campos_a_bubbling = [
+            "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
+            "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
+            "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+            "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+            "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
+            "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
+        ]
+        
+        for campo in campos_a_bubbling:
+            if datos_extra.get(campo) in (None, ""):
+                # Priorizamos pre_extra (raíz) y luego pe_sub (bloque anidado)
+                val = pre_extra.get(campo)
+                if val in (None, ""):
+                    val = pe_sub.get(campo)
+                
+                if val not in (None, ""):
+                    datos_extra[campo] = val
+
     # --- Check documentation from PreinscripcionChecklist if available ---
     checklist = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=estudiante).order_by("-updated_at").first()
     if checklist:
@@ -404,11 +439,8 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
             if documentacion_data.get(k) in (None, False, 0, ""):
                 documentacion_data[k] = v
         
-        # Pull course intro from checklist if not set in student record
-        if datos_extra.get("curso_introductorio_aprobado") is None:
-            curso_introductorio_aprobado = checklist.curso_introductorio_aprobado
-        else:
-            curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
+        # Pull flags from checklist or datos_extra
+        curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado") or (checklist and checklist.curso_introductorio_aprobado))
     else:
         curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
 

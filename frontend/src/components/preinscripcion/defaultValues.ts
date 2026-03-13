@@ -12,6 +12,7 @@ export const defaultValues: PreinscripcionForm = {
   localidad_nac: "",
   provincia_nac: "",
   pais_nac: "",
+  genero: "",
   domicilio: "",
   cohorte: "",
 
@@ -43,10 +44,6 @@ export const defaultValues: PreinscripcionForm = {
   // carrera
   carrera_id: 0,
 
-  // formalización
-  curso_introductorio_aprobado: false,
-  libreta_entregada: false,
-
   // foto
   foto_dataUrl: undefined,
   fotoW: undefined,
@@ -72,6 +69,9 @@ export const defaultValues: PreinscripcionForm = {
   escuela_secundaria: "",
   titulo_terciario_univ: false,
   incumbencia: false,
+  curso_introductorio_aprobado: false,
+  libreta_entregada: false,
+  articulo_7: false,
   ddjj_ok: false,
 
   // documentación (checkboxes - Público)

@@ -50,6 +50,7 @@ const CorrelatividadesPage = lazyPage(() => import("@/pages/Secretaria/Correlati
 const CargaNotasPage = lazyPage(() => import("@/pages/Secretaria/CargaNotasPage"));
 const ActaExamenPage = lazyPage(() => import("@/pages/Secretaria/ActaExamenPage"));
 const ConfirmarInscripcionSecretaria = lazyPage(() => import("@/pages/Secretaria/ConfirmarInscripcion"));
+const DocumentacionEstudiantesPage = lazyPage(() => import("@/pages/Secretaria/DocumentacionEstudiantesPage"));
 
 const secretariaPanelRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor"];
 const bedelesRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"];
@@ -107,6 +108,8 @@ export const buildSecretariaRoutes = () => (
       <Route path="/asistencia/reportes" element={<AsistenciaReportesPage />} />
       <Route path="/secretaria/comisiones" element={<ComisionesPage />} />
       <Route path="/secretaria/estudiantes" element={<EstudiantesAdminPage />} />
+      <Route path="/secretaria/estudiantes/:dni" element={<EstudiantesAdminPage />} />
+      <Route path="/secretaria/estudiantes-documentacion" element={<DocumentacionEstudiantesPage />} />
       <Route path="/secretaria/confirmar-inscripcion" element={<ConfirmarInscripcionSecretaria />} />
       <Route path="/secretaria/correlatividades" element={<CorrelatividadesPage />} />
       <Route path="/secretaria/carga-notas" element={<CargaNotasPage />} />

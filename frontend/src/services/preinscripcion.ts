@@ -62,13 +62,16 @@ function mapToApiPayload(v: any) {
     doc_foto4x4: !!v.doc_foto4x4,
     doc_titulo_en_tramite: !!v.doc_titulo_en_tramite,
     doc_otro: !!v.doc_otro,
-    // datos personales extra\n    nacionalidad: v.nacionalidad || null,
+    // datos personales extra
+    nacionalidad: v.nacionalidad || null,
     estado_civil: v.estado_civil || null,
+    genero: v.genero || null,
     localidad_nac: v.localidad_nac || null,
     provincia_nac: v.provincia_nac || null,
     pais_nac: v.pais_nac || null,
     // contacto extra
     tel_fijo: v.tel_fijo || null,
+    tel_movil: v.tel_movil || null,
     emergencia_telefono: v.emergencia_telefono || null,
     emergencia_parentesco: v.emergencia_parentesco || null,
     // secundario
@@ -90,6 +93,11 @@ function mapToApiPayload(v: any) {
     empleador: v.empleador || null,
     horario_trabajo: v.horario_trabajo || v.horario || null,
     domicilio_trabajo: v.domicilio_trabajo || v.dom_trabajo || null,
+    // salud y otros
+    cud_informado: !!v.cud_informado,
+    condicion_salud_informada: !!v.condicion_salud_informada,
+    condicion_salud_detalle: v.condicion_salud_detalle || null,
+    cohorte: v.cohorte || null,
     // bloque estudiante (requerido por el backend)
     estudiante: {
       dni: String(v?.estudiante?.dni ?? v.dni ?? ""),
@@ -100,6 +108,7 @@ function mapToApiPayload(v: any) {
       email: v?.estudiante?.email ?? v.email ?? null,
       telefono: v?.estudiante?.telefono ?? v.tel_movil ?? v.tel_fijo ?? null,
       domicilio: v?.estudiante?.domicilio ?? v.domicilio ?? null,
+      genero: v.genero || null,
     },
   };
 }

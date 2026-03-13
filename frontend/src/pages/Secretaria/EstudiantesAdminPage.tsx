@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   Box,
   Stack,
@@ -142,7 +143,7 @@ function normalizeDoc(detail?: EstudianteAdminDocumentacionDTO | null): DetailDo
     dni_legalizado: Boolean(detail?.dni_legalizado),
     fotos_4x4: Boolean(detail?.fotos_4x4),
     certificado_salud: Boolean(detail?.certificado_salud),
-    folios_oficio: Boolean(detail?.folios_oficio && Number(detail.folios_oficio) > 0),
+    folios_oficio: Boolean(detail?.folios_oficio),
     titulo_secundario_legalizado: Boolean(detail?.titulo_secundario_legalizado),
     certificado_titulo_en_tramite: Boolean(detail?.certificado_titulo_en_tramite),
     analitico_legalizado: Boolean(detail?.analitico_legalizado),
@@ -174,8 +175,16 @@ export default function EstudiantesAdminPage() {
   const debouncedSearch = useDebouncedValue(search);
   const [estado, setEstado] = useState<EstadoLegajo>("");
   const [carreraId, setCarreraId] = useState<number | "">("");
+  const { dni: dniParam } = useParams();
   const [selectedDni, setSelectedDni] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  useEffect(() => {
+    if (dniParam) {
+      setSelectedDni(dniParam);
+      setDetailOpen(true);
+    }
+  }, [dniParam]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDetailValues, setPendingDetailValues] = useState<DetailFormValues | null>(null);
@@ -472,26 +481,10 @@ export default function EstudiantesAdminPage() {
     if (docValues.es_certificacion_docente) {
       isComplete = docs_base.every(Boolean) && docValues.titulo_terciario_univ && docValues.incumbencia;
     } else {
-      const altCount =
-        (docValues.titulo_secundario_legalizado ? 1 : 0) +
-        (docValues.certificado_titulo_en_tramite ? 1 : 0) +
-        (docValues.analitico_legalizado ? 1 : 0);
+      const tituloSecOk = Boolean(docValues.titulo_secundario_legalizado);
+      const art7Ok = Boolean(docValues.articulo_7);
 
-      const hasAlt = altCount >= 1;
-      let hasExtra = true;
-      if (docValues.analitico_legalizado) {
-        hasExtra = Boolean(docValues.certificado_alumno_regular_sec);
-        if (docValues.adeuda_materias) {
-          hasExtra =
-            hasExtra &&
-            Boolean(docValues.adeuda_materias_detalle?.trim()) &&
-            Boolean(docValues.escuela_secundaria?.trim());
-        }
-      }
-
-      isComplete = docs_base.every(Boolean) && (
-        (hasAlt && hasExtra) || docValues.articulo_7
-      );
+      isComplete = docs_base.every(Boolean) && (tituloSecOk || art7Ok);
     }
 
     const nextEstado: EstadoLegajo = isComplete ? "COM" : "INC";
@@ -1314,7 +1307,7 @@ export default function EstudiantesAdminPage() {
                             onChange={(_, checked) => setValue("documentacion.folios_oficio" as const, checked, { shouldDirty: true })}
                           />
                         }
-                        label="Folios oficio (3)"
+                        label="Folios oficio"
                       />
                     </Stack>
 

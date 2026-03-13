@@ -810,6 +810,37 @@ export interface EstudianteAdminListResponseDTO {
   items: EstudianteAdminListItemDTO[];
 }
 
+export interface EstudianteDocumentacionListItemDTO {
+  dni: string;
+  apellido: string;
+  nombre: string;
+  condicion_administrativa: string;
+  curso_introductorio_aprobado: boolean;
+  libreta_entregada: boolean;
+  dni_legalizado: boolean;
+  fotos_4x4: boolean;
+  certificado_salud: boolean;
+  folios_oficio: number;
+  titulo_secundario_ok: boolean;
+  articulo_7: boolean;
+}
+
+export interface EstudianteDocumentacionUpdatePayload {
+  curso_introductorio_aprobado?: boolean;
+  libreta_entregada?: boolean;
+  dni_legalizado?: boolean;
+  fotos_4x4?: boolean;
+  certificado_salud?: boolean;
+  folios_oficio?: number;
+  titulo_secundario_ok?: boolean;
+  articulo_7?: boolean;
+}
+
+export interface EstudianteDocumentacionListResponseDTO {
+  total: number;
+  items: EstudianteDocumentacionListItemDTO[];
+}
+
 export interface EstudianteAdminDetailDTO {
   dni: string;
   apellido: string;
@@ -867,6 +898,11 @@ export async function fetchEstudiantesAdmin(params: EstudianteAdminListParams = 
   return data;
 }
 
+export async function fetchEstudiantesDocumentacion(params: { q?: string; carrera_id?: number; limit?: number; offset?: number } = {}): Promise<EstudianteDocumentacionListResponseDTO> {
+  const { data } = await client.get<EstudianteDocumentacionListResponseDTO>("/estudiantes/admin/estudiantes-documentacion", { params });
+  return data;
+}
+
 export async function fetchEstudianteAdminDetail(dni: string, config?: AppAxiosRequestConfig): Promise<EstudianteAdminDetailDTO> {
   const { data } = await client.get<EstudianteAdminDetailDTO>(`/estudiantes/admin/estudiantes/${dni}`, config as any);
   return data;
@@ -890,4 +926,31 @@ export async function fetchPerfilCompletar(): Promise<EstudianteAdminDetailDTO> 
 export async function completarPerfil(payload: EstudianteAdminUpdatePayload): Promise<EstudianteAdminDetailDTO> {
   const { data } = await client.put<EstudianteAdminDetailDTO>("/estudiantes/perfil/completar", payload);
   return data;
+}
+
+export interface EstudianteDocumentacionBulkUpdatePayload {
+  updates: Array<{
+    dni: string;
+    changes: EstudianteDocumentacionUpdatePayload;
+  }>;
+}
+
+export async function bulkUpdateEstudianteDocumentacion(payload: EstudianteDocumentacionBulkUpdatePayload): Promise<ApiResponseDTO> {
+  const { data } = await client.patch<ApiResponseDTO>(`/estudiantes/admin/estudiantes-documentacion-bulk`, payload);
+  return data;
+}
+
+export async function updateEstudianteDocumentacion(dni: string, payload: EstudianteDocumentacionUpdatePayload): Promise<ApiResponseDTO> {
+  const { data } = await client.patch<ApiResponseDTO>(`/estudiantes/admin/estudiantes-documentacion/${dni}`, payload);
+  return data;
+}
+
+export function getExportDocumentacionExcelUrl(params: { q?: string; carrera_id?: number } = {}): string {
+  const query = new URLSearchParams(params as any).toString();
+  return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/excel?${query}`;
+}
+
+export function getExportDocumentacionPdfUrl(params: { q?: string; carrera_id?: number } = {}): string {
+  const query = new URLSearchParams(params as any).toString();
+  return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/pdf?${query}`;
 }

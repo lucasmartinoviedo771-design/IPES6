@@ -39,6 +39,7 @@ const baseSchema = z.object({
   localidad_nac: z.string().optional().or(z.literal("")),
   provincia_nac: z.string().optional().or(z.literal("")),
   pais_nac: z.string().optional().or(z.literal("")),
+  genero: z.string().optional().or(z.literal("")),
   domicilio: z.string().optional().or(z.literal("")),
   cohorte: z
     .string()
@@ -99,10 +100,6 @@ const baseSchema = z.object({
   // Carrera
   carrera_id: z.number().int().min(1, "Selecciona una carrera"),
 
-  // Formalización
-  curso_introductorio_aprobado: z.boolean().default(false),
-  libreta_entregada: z.boolean().default(false),
-
   // Laborales
   trabaja: z.boolean().default(false),
   empleador: z.string().optional().or(z.literal("")),
@@ -128,6 +125,9 @@ const baseSchema = z.object({
   escuela_secundaria: z.string().optional().or(z.literal("")),
   titulo_terciario_univ: z.boolean().default(false),
   incumbencia: z.boolean().default(false),
+  curso_introductorio_aprobado: z.boolean().default(false),
+  libreta_entregada: z.boolean().default(false),
+  articulo_7: z.boolean().default(false),
   ddjj_ok: z.boolean().default(false),
 
   // Checklist de documentación (Público - Deprecated?)

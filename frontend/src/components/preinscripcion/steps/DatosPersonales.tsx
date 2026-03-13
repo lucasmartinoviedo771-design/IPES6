@@ -133,6 +133,27 @@ function DatosPersonales() {
       </Grid>
       <Grid item xs={12} md={4}>
         <Controller
+          name="genero"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="Género *"
+              fullWidth
+              error={Boolean(errors.genero)}
+              helperText={errors.genero?.message}
+            >
+              <MenuItem value="Masculino">Masculino</MenuItem>
+              <MenuItem value="Femenino">Femenino</MenuItem>
+              <MenuItem value="No binarie">No binarie</MenuItem>
+              <MenuItem value="Otro">Otro</MenuItem>
+            </TextField>
+          )}
+        />
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Controller
           name="pais_nac"
           control={control}
           render={({ field }) => (

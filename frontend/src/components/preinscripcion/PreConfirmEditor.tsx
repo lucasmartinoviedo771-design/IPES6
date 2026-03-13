@@ -166,7 +166,12 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
       sanitized.fecha_nacimiento ??
       "";
     sanitized.fecha_nacimiento = toDisplayDate(String(rawBirthDate));
-    sanitized.nacionalidad = String((extra as any)?.nacionalidad ?? sanitized.nacionalidad ?? "");
+    sanitized.nacionalidad = String((extra as any)?.nacionalidad ?? (estudianteDto as any)?.nacionalidad ?? sanitized.nacionalidad ?? "");
+    sanitized.estado_civil = String((extra as any)?.estado_civil ?? (estudianteDto as any)?.estado_civil ?? sanitized.estado_civil ?? "");
+    sanitized.genero = String((extra as any)?.genero ?? (estudianteDto as any)?.genero ?? sanitized.genero ?? "");
+    sanitized.pais_nac = String((extra as any)?.pais_nac ?? sanitized.pais_nac ?? "");
+    sanitized.provincia_nac = String((extra as any)?.provincia_nac ?? sanitized.provincia_nac ?? "");
+    sanitized.localidad_nac = String((extra as any)?.localidad_nac ?? sanitized.localidad_nac ?? "");
     sanitized.carrera_id = Number((data as any).carrera?.id ?? 0);
     const cohorteFallback = (extra as any)?.cohorte ?? (data as any)?.anio ?? formDefaults.cohorte ?? "";
     const cohorteResolved = cohorteFallback ? String(cohorteFallback) : String(new Date().getFullYear());
@@ -194,19 +199,21 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     if (!cl) return;
     setValue("dni_legalizado", !!cl.dni_legalizado, { shouldDirty: false });
     setValue("fotos_4x4", !!cl.fotos_4x4, { shouldDirty: false });
-    setValue("folios_oficio_ok", (cl.folios_oficio || 0) >= 3, { shouldDirty: false });
+    setValue("folios_oficio_ok", !!cl.folios_oficio, { shouldDirty: false });
     setValue("certificado_salud", !!cl.certificado_salud, { shouldDirty: false });
     setValue("titulo_secundario_legalizado", !!cl.titulo_secundario_legalizado, { shouldDirty: false });
     setValue("certificado_titulo_en_tramite", !!cl.certificado_titulo_en_tramite, { shouldDirty: false });
     setValue("analitico_legalizado", !!cl.analitico_legalizado, { shouldDirty: false });
     setValue("certificado_alumno_regular_sec", !!cl.certificado_alumno_regular_sec, { shouldDirty: false });
     setValue("adeuda_materias", !!cl.adeuda_materias, { shouldDirty: false });
-    setValue("curso_introductorio_aprobado", !!cl.curso_introductorio_aprobado, { shouldDirty: false });
     setValue("titulo_terciario_univ", !!cl.titulo_terciario_univ, { shouldDirty: false });
     setValue("incumbencia", !!cl.incumbencia, { shouldDirty: false });
 
     setValue("adeuda_materias_detalle", cl.adeuda_materias_detalle || "", { shouldDirty: false });
     setValue("escuela_secundaria", cl.escuela_secundaria || "", { shouldDirty: false });
+    setValue("curso_introductorio_aprobado", !!cl.curso_introductorio_aprobado, { shouldDirty: false });
+    setValue("libreta_entregada", !!cl.libreta_entregada, { shouldDirty: false });
+    setValue("articulo_7", !!cl.articulo_7, { shouldDirty: false });
   }, [checklistQ.data, setValue]);
 
   const onSubmit = async (values: PreinscripcionForm) => {
@@ -248,16 +255,31 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
           nombres,
           apellido,
           cuil: cuil ? cuil : null,
+          genero: values.genero || null,
           email: email || null,
           telefono: tel_movil || null,
           domicilio: domicilio || null,
           fecha_nacimiento: fecha_nacimiento ? fecha_nacimiento : null,
         },
+        datos_extra: {
+          ...datos_extra,
+          nacionalidad: values.nacionalidad || null,
+          estado_civil: values.estado_civil || null,
+          genero: values.genero || null,
+          localidad_nac: values.localidad_nac || null,
+          provincia_nac: values.provincia_nac || null,
+          pais_nac: values.pais_nac || null,
+          // contacto extra
+          tel_fijo: values.tel_fijo || null,
+          tel_movil: values.tel_movil || null,
+          emergencia_telefono: values.emergencia_telefono || null,
+          emergencia_parentesco: values.emergencia_parentesco || null,
+        },
         checklist: {
           dni_legalizado: !!values.dni_legalizado,
           fotos_4x4: !!values.fotos_4x4,
           certificado_salud: !!values.certificado_salud,
-          folios_oficio: values.folios_oficio_ok ? 3 : 0,
+          folios_oficio: !!values.folios_oficio_ok,
           titulo_secundario_legalizado: !!values.titulo_secundario_legalizado,
           certificado_titulo_en_tramite: !!values.certificado_titulo_en_tramite,
           analitico_legalizado: !!values.analitico_legalizado,
@@ -265,10 +287,11 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
           adeuda_materias: !!values.adeuda_materias,
           adeuda_materias_detalle: values.adeuda_materias_detalle,
           escuela_secundaria: values.escuela_secundaria,
-          curso_introductorio_aprobado: !!values.curso_introductorio_aprobado,
-          libreta_entregada: !!values.libreta_entregada,
           titulo_terciario_univ: !!values.titulo_terciario_univ,
           incumbencia: !!values.incumbencia,
+          curso_introductorio_aprobado: !!values.curso_introductorio_aprobado,
+          libreta_entregada: !!values.libreta_entregada,
+          articulo_7: !!values.articulo_7,
           es_certificacion_docente: !!(
             selectedCarrera?.es_certificacion_docente ||
             (checklistQ.data as ChecklistDTO | undefined)?.es_certificacion_docente
@@ -276,9 +299,9 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
         },
       };
 
-      const extra = datos_extra as Record<string, unknown>;
-      if (Object.keys(extra).length) {
-        payload.datos_extra = extra;
+      const payloadExtra = payload.datos_extra as Record<string, unknown> || {};
+      if (Object.keys(payloadExtra).length) {
+        payload.datos_extra = payloadExtra;
       }
 
       const carreraValue = Number(carrera_id);
@@ -320,7 +343,6 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     onError: () => enqueueSnackbar("No se pudo subir la foto", { variant: "error" })
   });
   const docValues = watch(); // Get all values for derived calculations
-  const libretaEntregada = watch("libreta_entregada");
   const condicionSaludActiva = watch("condicion_salud_informada");
   useEffect(() => {
     if (!condicionSaludActiva) {
@@ -361,9 +383,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     docValues.dni_legalizado &&
     docValues.fotos_4x4 &&
     docValues.certificado_salud &&
-    docValues.folios_oficio_ok &&
-    docValues.curso_introductorio_aprobado &&
-    docValues.libreta_entregada;
+    docValues.folios_oficio_ok;
   const docsGeneralesOk = docsGeneralesBase && (!isCertificacionDocente || docValues.incumbencia);
   const tituloSecundarioPresentado = isCertificacionDocente
     ? !!docValues.titulo_terciario_univ
@@ -374,9 +394,10 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     );
 
   // Estado Regular solo si tiene el título completo (no en trámite ni solo analítico)
+  // O si es mayor de 25 años sin título (Art. 7mo)
   const allDocs = isCertificacionDocente
     ? !!(docsGeneralesOk && docValues.titulo_terciario_univ)
-    : !!(docsGeneralesOk && docValues.titulo_secundario_legalizado && !docValues.adeuda_materias);
+    : !!(docsGeneralesOk && (docValues.titulo_secundario_legalizado || docValues.articulo_7));
 
   const anyMainSelected = isCertificacionDocente
     ? false
@@ -444,7 +465,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     dni_legalizado: !!docValues.dni_legalizado,
     fotos_4x4: !!docValues.fotos_4x4,
     certificado_salud: !!docValues.certificado_salud,
-    folios_oficio: docValues.folios_oficio_ok ? 3 : 0,
+    folios_oficio: !!docValues.folios_oficio_ok,
     titulo_secundario_legalizado: !!docValues.titulo_secundario_legalizado,
     certificado_titulo_en_tramite: !!docValues.certificado_titulo_en_tramite,
     analitico_legalizado: !!docValues.analitico_legalizado,
@@ -452,7 +473,6 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     adeuda_materias: !!docValues.adeuda_materias,
     adeuda_materias_detalle: docValues.adeuda_materias_detalle || "",
     escuela_secundaria: docValues.escuela_secundaria || "",
-    curso_introductorio_aprobado: !!docValues.curso_introductorio_aprobado,
     titulo_terciario_univ: !!docValues.titulo_terciario_univ,
     incumbencia: !!docValues.incumbencia,
     es_certificacion_docente: isCertificacionDocente,
@@ -707,6 +727,21 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
                 )} />
               </Grid>
               <Grid item xs={12} md={4}>
+                <Controller name="genero" control={control} render={({ field, fieldState }) => (
+                  <TextField {...field} select label="Género" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small">
+                    <MenuItem value=""><em>Seleccione...</em></MenuItem>
+                    <MenuItem value="Masculino">Masculino</MenuItem>
+                    <MenuItem value="Femenino">Femenino</MenuItem>
+                    <MenuItem value="No binarie">No binarie</MenuItem>
+                    <MenuItem value="Otro">Otro</MenuItem>
+                  </TextField>
+                )} />
+              </Grid>
+            </Grid>
+
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>Lugar de Nacimiento</Typography>
+            <Grid container spacing={2} mb={3}>
+              <Grid item xs={12} md={4}>
                 <Controller name="pais_nac" control={control} render={({ field, fieldState }) => (
                   <TextField {...field} label="País de nacimiento" fullWidth error={!!fieldState.error} helperText={fieldState.error?.message} size="small" />
                 )} />
@@ -898,10 +933,10 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
               <Stack>
                 <FormControlLabel control={<Checkbox checked={!!docValues.dni_legalizado} onChange={(_, c) => setValue("dni_legalizado", !!c, { shouldDirty: true })} />} label="DNI legalizado" />
                 <FormControlLabel control={<Checkbox checked={!!docValues.fotos_4x4} onChange={(_, c) => setValue("fotos_4x4", !!c, { shouldDirty: true })} />} label="Fotos 4x4" />
-                <FormControlLabel control={<Checkbox checked={!!docValues.folios_oficio_ok} onChange={(_, c) => setValue("folios_oficio_ok", !!c, { shouldDirty: true })} />} label="3 Folios oficio" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.folios_oficio_ok} onChange={(_, c) => setValue("folios_oficio_ok", !!c, { shouldDirty: true })} />} label="Folios oficio" />
                 <FormControlLabel control={<Checkbox checked={!!docValues.certificado_salud} onChange={(_, c) => setValue("certificado_salud", !!c, { shouldDirty: true })} />} label="Certificado Salud" />
-                <FormControlLabel control={<Checkbox checked={!!docValues.curso_introductorio_aprobado} onChange={(_, c) => setValue('curso_introductorio_aprobado', !!c, { shouldDirty: true })} />} label="Curso Introductorio" />
-                <FormControlLabel control={<Checkbox checked={!!docValues.libreta_entregada} onChange={(_, c) => setValue('libreta_entregada', !!c, { shouldDirty: true })} />} label="Libreta entregada" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.libreta_entregada} onChange={(_, c) => setValue("libreta_entregada", !!c, { shouldDirty: true })} />} label="Libreta entregada" />
+                <FormControlLabel control={<Checkbox checked={!!docValues.curso_introductorio_aprobado} onChange={(_, c) => setValue("curso_introductorio_aprobado", !!c, { shouldDirty: true })} />} label="Curso Intro. aprobado" />
                 {isCertificacionDocente && <FormControlLabel control={<Checkbox checked={!!docValues.incumbencia} onChange={(_, c) => setValue("incumbencia", !!c, { shouldDirty: true })} />} label="Incumbencia" />}
               </Stack>
 
@@ -921,6 +956,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
                   <>
                     <FormControlLabel control={<Checkbox checked={!!docValues.certificado_alumno_regular_sec} onChange={(_, c) => setValue("certificado_alumno_regular_sec", !!c, { shouldDirty: true })} disabled={anyMainSelected} />} label="Alumno regular sec." />
                     <FormControlLabel control={<Checkbox checked={!!docValues.adeuda_materias} onChange={(_, c) => setValue("adeuda_materias", !!c, { shouldDirty: true })} disabled={anyMainSelected} />} label="Adeuda materias" />
+                    <FormControlLabel control={<Checkbox checked={!!docValues.articulo_7} onChange={(_, c) => setValue("articulo_7", !!c, { shouldDirty: true })} />} label="Mayor de 25 años s/título (Art. 7mo)" />
                   </>
                 )}
               </Stack>

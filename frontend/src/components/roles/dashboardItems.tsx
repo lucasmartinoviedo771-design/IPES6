@@ -30,6 +30,12 @@ export const DASHBOARD_ITEMS = {
     icon: <PeopleIcon />,
     path: "/secretaria/estudiantes",
   },
+  STUDENT_DOCUMENTATION: {
+    title: "Documentación de estudiantes",
+    subtitle: "Listado de condicionales y regulares según documentación presentada.",
+    icon: <ChecklistIcon />,
+    path: "/secretaria/estudiantes-documentacion",
+  },
   PROFESORADO_ABM: {
     title: "Cargar profesorados",
     subtitle: "Crear y administrar carreras y sus datos generales.",

@@ -759,6 +759,41 @@ class EstudianteAdminListResponse(Schema):
     total: int
     items: list[EstudianteAdminListItem] = Field(default_factory=list)
 
+class EstudianteDocumentacionListItem(Schema):
+    dni: str
+    apellido: str
+    nombre: str
+    condicion_administrativa: str
+    curso_introductorio_aprobado: bool
+    libreta_entregada: bool
+    dni_legalizado: bool
+    fotos_4x4: bool
+    certificado_salud: bool
+    folios_oficio: int
+    titulo_secundario_ok: bool
+    articulo_7: bool
+
+class EstudianteDocumentacionListResponse(Schema):
+    total: int
+    items: list[EstudianteDocumentacionListItem] = Field(default_factory=list)
+
+class EstudianteDocumentacionUpdateIn(Schema):
+    curso_introductorio_aprobado: bool | None = None
+    libreta_entregada: bool | None = None
+    dni_legalizado: bool | None = None
+    fotos_4x4: bool | None = None
+    certificado_salud: bool | None = None
+    folios_oficio: int | None = None
+    titulo_secundario_ok: bool | None = None
+    articulo_7: bool | None = None
+
+class EstudianteDocumentacionBulkUpdateItem(Schema):
+    dni: str
+    changes: EstudianteDocumentacionUpdateIn
+
+class EstudianteDocumentacionBulkUpdateIn(Schema):
+    updates: list[EstudianteDocumentacionBulkUpdateItem]
+
 class EstudianteAdminDetail(Schema):
     dni: str
     apellido: str

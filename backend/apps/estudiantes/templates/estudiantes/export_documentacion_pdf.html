@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 4px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .yes { color: green; font-weight: bold; }
+        .no { color: red; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Control de Documentación de Estudiantes</h1>
+        <p>Fecha de generación: {{ fecha }}</p>
+        {% if q %}<p>Filtro búsqueda: "{{ q }}"</p>{% endif %}
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>DNI</th>
+                <th>Apellido y Nombre</th>
+                <th>Condición</th>
+                <th>CI</th>
+                <th>Libreta</th>
+                <th>DNI (F)</th>
+                <th>Fotos</th>
+                <th>Salud</th>
+                <th>Folios</th>
+                <th>Sec.</th>
+                <th>Art.7</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.dni }}</td>
+                <td style="text-align: left;">{{ item.apellido }}, {{ item.nombre }}</td>
+                <td>{{ item.condicion_administrativa }}</td>
+                <td>{% if item.curso_introductorio_aprobado %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+                <td>{% if item.libreta_entregada %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+                <td>{% if item.dni_legalizado %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+                <td>{% if item.fotos_4x4 %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+                <td>{% if item.certificado_salud %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+                <td>{{ item.folios_oficio }}</td>
+                <td>{% if item.titulo_secundario_ok %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+                <td>{% if item.articulo_7 %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

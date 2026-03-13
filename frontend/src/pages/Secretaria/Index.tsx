@@ -55,6 +55,7 @@ export default function SecretariaIndex() {
               icon: <AssignmentIndIcon />,
               path: "/secretaria/asignar-rol",
             },
+            DASHBOARD_ITEMS.STUDENT_DOCUMENTATION,
           ]
           : []),
       ],

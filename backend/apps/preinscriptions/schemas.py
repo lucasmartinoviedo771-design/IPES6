@@ -40,6 +40,7 @@ class PreinscripcionIn(Schema):
     # Datos personales
     nacionalidad: str | None = None
     estado_civil: str | None = None
+    genero: str | None = None
     localidad_nac: str | None = None
     provincia_nac: str | None = None
     pais_nac: str | None = None
@@ -81,6 +82,7 @@ class EstudianteUpdateIn(Schema):
     email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None
+    genero: str | None = None
 
 
 class ChecklistIn(Schema):
@@ -88,7 +90,7 @@ class ChecklistIn(Schema):
     dni_legalizado: bool = False
     fotos_4x4: bool = False
     certificado_salud: bool = False
-    folios_oficio: int = 0
+    folios_oficio: bool = False
 
     # Títulos secundarios (al menos una alternativa)
     titulo_secundario_legalizado: bool = False
@@ -106,7 +108,6 @@ class ChecklistIn(Schema):
     titulo_terciario_univ: bool = False
     incumbencia: bool = False
     curso_introductorio_aprobado: bool = False
-    libreta_entregada: bool = False
     
     # Mayores de 25, sin título secundario (Art. 7mo)
     articulo_7: bool = False

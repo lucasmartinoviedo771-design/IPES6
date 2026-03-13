@@ -462,10 +462,7 @@ def put_checklist(request, pre_id: int, payload: ChecklistIn, profesorado_id: Op
     datos_extra = pre.alumno.datos_extra or {}
     docs_extra = datos_extra.get("documentacion") or {}
     for k, v in payload.dict().items():
-        if k == "folios_oficio":
-            if v > docs_extra.get("folios_oficio", 0):
-                docs_extra[k] = v
-        elif isinstance(v, bool):
+        if isinstance(v, bool):
             if v and not docs_extra.get(k):
                 docs_extra[k] = True
         elif isinstance(v, str):
@@ -503,18 +500,59 @@ def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = Non
         _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
 
         datos_extra = pre.alumno.datos_extra or {}
+        # Sincronizar campos generales de datos_extra de la preinscripción al estudiante
+        campos_sync = [
+            "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
+            "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
+            "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+            "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+            "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
+            "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
+        ]
+        pre_extra = pre.datos_extra or {}
+        for campo in campos_sync:
+            val = pre_extra.get(campo)
+            if val is not None and val != "":
+                datos_extra[campo] = val
+        
+        # Copiar campos adicionales de pre_extra a datos_extra del alumno
+        # Consideramos tanto la raíz como el bloque 'estudiante'
+        est_nested = pre_extra.get("estudiante") if isinstance(pre_extra.get("estudiante"), dict) else {}
+        
+        campos_a_sincronizar = [
+            "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
+            "tel_fijo", "tel_movil", "emergencia_telefono", "emergencia_parentesco",
+            "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+            "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+            "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
+            "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
+        ]
+        
+        for campo in campos_a_sincronizar:
+            # Priorizamos lo que venga en la raíz de la preinscripción
+            val = pre_extra.get(campo)
+            if val in (None, ""):
+                val = est_nested.get(campo)
+            
+            if val not in (None, ""):
+                datos_extra[campo] = val
+
         docs_extra = datos_extra.get("documentacion") or {}
         for k, v in payload.dict().items():
-            if k == "folios_oficio":
-                if v > docs_extra.get("folios_oficio", 0):
-                    docs_extra[k] = v
-            elif isinstance(v, bool):
+            if isinstance(v, bool):
                 if v and not docs_extra.get(k):
                     docs_extra[k] = True
             elif isinstance(v, str):
                 if v and not docs_extra.get(k):
                     docs_extra[k] = v
+        
         datos_extra["documentacion"] = docs_extra
+        # También persistir curso_introductorio y libreta en datos_extra si vienen en payload
+        if payload.curso_introductorio_aprobado is not None:
+             datos_extra["curso_introductorio_aprobado"] = payload.curso_introductorio_aprobado
+        if payload.libreta_entregada is not None:
+             datos_extra["libreta_entregada"] = payload.libreta_entregada
+
         pre.alumno.datos_extra = datos_extra
         pre.alumno.save(update_fields=["datos_extra"])
 
@@ -674,20 +712,30 @@ def _serialize_pre(pre: 'Preinscripcion'):
     user_email = getattr(u, "email", "") if u else ""
 
     extra = copy.deepcopy(pre.datos_extra or {})  # ensure we never mutate DB state
-    estudiante_extra = extra.get("estudiante") if isinstance(extra.get("estudiante"), dict) else {}
-    estudiante_extra = getattr(a, "datos_extra", {}) or {}
+    pre_estudiante_extra = extra.get("estudiante") if isinstance(extra.get("estudiante"), dict) else {}
+    persisted_estudiante_extra = getattr(a, "datos_extra", {}) or {}
 
     def ensure_extra(field: str):
-        if extra.get(field):
+        # Si ya está en la raíz de extra (preinscripción), no tocamos
+        if extra.get(field) not in (None, ""):
             return
-        for source in (estudiante_extra, estudiante_extra):
+        # Buscamos en el bloque anidado de la preinscripción o en el persistido del alumno
+        for source in (pre_estudiante_extra, persisted_estudiante_extra):
             if isinstance(source, dict):
                 value = source.get(field)
                 if value not in (None, ""):
                     extra[field] = value
                     return
 
-    for campo in ("nacionalidad", "estado_civil", "localidad_nac", "provincia_nac", "pais_nac"):
+    campos_a_bubbling = [
+        "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
+        "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
+        "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+        "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+        "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
+        "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
+    ]
+    for campo in campos_a_bubbling:
         ensure_extra(campo)
 
     return {

@@ -20,7 +20,9 @@ export default function BedelesIndex() {
     () => [
       {
         title: "Usuarios y roles",
-        items: canManageStudents ? [DASHBOARD_ITEMS.STUDENT_MANAGEMENT] : [],
+        items: canManageStudents
+          ? [DASHBOARD_ITEMS.STUDENT_MANAGEMENT, DASHBOARD_ITEMS.STUDENT_DOCUMENTATION]
+          : [],
       },
       {
         title: "Estructura académica",

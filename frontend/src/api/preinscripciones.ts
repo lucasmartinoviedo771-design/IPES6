@@ -128,6 +128,7 @@ export type PreinscripcionUpdatePayload = {
     email?: string | null;
     telefono?: string | null;
     domicilio?: string | null;
+    genero?: string | null;
   };
   datos_extra?: Record<string, unknown>;
   checklist?: ChecklistDTO;
@@ -181,7 +182,7 @@ export interface ChecklistDTO {
   dni_legalizado: boolean;
   fotos_4x4: boolean;
   certificado_salud: boolean;
-  folios_oficio: number; // cantidad
+  folios_oficio: boolean;
 
   titulo_secundario_legalizado: boolean;
   certificado_titulo_en_tramite: boolean;
