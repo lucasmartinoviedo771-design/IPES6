@@ -32,7 +32,7 @@ from .models import (
     AsistenciaEstudiante,
     AsistenciaDocente,
     ClaseProgramada,
-    CalendarioEvento,
+    CalendarioAsistenciaEvento,
     CursoEstudianteSnapshot,
     DocenteMarcacionLog,
     Justificacion,
@@ -210,7 +210,7 @@ def _resolver_event_scope(payload: AsistenciaCalendarioEventoIn):
             raise HttpError(404, "El docente indicado no existe.")
     return {"comision": comision, "plan": plan, "profesorado": profesorado, "docente": docente}
 
-def _evento_to_schema(evento: CalendarioEvento) -> AsistenciaCalendarioEventoOut:
+def _evento_to_schema(evento: CalendarioAsistenciaEvento) -> AsistenciaCalendarioEventoOut:
     profesorado_nombre = evento.profesorado.nombre if evento.profesorado_id else None
     plan_resolucion = evento.plan.resolucion if evento.plan_id else None
     comision_nombre = evento.comision.codigo if evento.comision_id else None
