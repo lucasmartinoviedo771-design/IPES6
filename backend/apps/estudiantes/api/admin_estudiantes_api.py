@@ -34,15 +34,17 @@ def admin_list_estudiantes(
 ):
     _ensure_admin(request)
     qs = (
-        Estudiante.objects.select_related("user")
+        Estudiante.objects.select_related("persona", "user")
         .prefetch_related("carreras")
-        .order_by("user__last_name", "user__first_name", "dni")
+        .order_by("persona__apellido", "persona__nombre", "persona__dni")
     )
     if q:
         q_clean = q.strip()
         if q_clean:
             qs = qs.filter(
-                Q(dni__icontains=q_clean)
+                Q(persona__dni__icontains=q_clean)
+                | Q(persona__nombre__icontains=q_clean)
+                | Q(persona__apellido__icontains=q_clean)
                 | Q(user__first_name__icontains=q_clean)
                 | Q(user__last_name__icontains=q_clean)
                 | Q(legajo__icontains=q_clean)
@@ -101,16 +103,18 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
     
     allowed_ids = allowed_profesorados(request.user)
     qs = (
-        Estudiante.objects.select_related("user")
+        Estudiante.objects.select_related("persona", "user")
         .prefetch_related("carreras")
-        .order_by("user__last_name", "user__first_name", "dni")
+        .order_by("persona__apellido", "persona__nombre", "persona__dni")
     )
     
     if q:
         q_clean = q.strip()
         if q_clean:
             qs = qs.filter(
-                Q(dni__icontains=q_clean)
+                Q(persona__dni__icontains=q_clean)
+                | Q(persona__nombre__icontains=q_clean)
+                | Q(persona__apellido__icontains=q_clean)
                 | Q(user__first_name__icontains=q_clean)
                 | Q(user__last_name__icontains=q_clean)
             )
@@ -273,44 +277,49 @@ def _perform_documentacion_update(est, payload):
     datos_extra = est.datos_extra or {}
     updated_est = False
     
+    upd_fields = []
     if payload.libreta_entregada is not None:
-        datos_extra["libreta_entregada"] = payload.libreta_entregada
-        updated_est = True
+        est.libreta_entregada = payload.libreta_entregada
+        upd_fields.append("libreta_entregada")
     
     if payload.curso_introductorio_aprobado is not None:
         est.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
-        datos_extra["curso_introductorio_aprobado"] = payload.curso_introductorio_aprobado
-        updated_est = True
+        upd_fields.append("curso_introductorio_aprobado")
 
-    # Los campos de documentación técnica van preferentemente al Checklist si existe,
-    # y también a datos_extra["documentacion"] para compatibilidad.
-    doc_updates = {}
-    if payload.dni_legalizado is not None: doc_updates["dni_legalizado"] = payload.dni_legalizado
-    if payload.fotos_4x4 is not None: doc_updates["fotos_4x4"] = payload.fotos_4x4
-    if payload.certificado_salud is not None: doc_updates["certificado_salud"] = payload.certificado_salud
-    if payload.folios_oficio is not None: doc_updates["folios_oficio"] = payload.folios_oficio
-    if payload.articulo_7 is not None: doc_updates["articulo_7"] = payload.articulo_7
+    # Documentación técnica
+    if payload.dni_legalizado is not None: 
+        est.dni_legalizado = payload.dni_legalizado
+        upd_fields.append("dni_legalizado")
+    if payload.fotos_4x4 is not None: 
+        est.fotos_4x4 = payload.fotos_4x4
+        upd_fields.append("fotos_4x4")
+    if payload.certificado_salud is not None: 
+        est.certificado_salud = payload.certificado_salud
+        upd_fields.append("certificado_salud")
+    if payload.folios_oficio is not None: 
+        est.folios_oficio = payload.folios_oficio
+        upd_fields.append("folios_oficio")
+    if payload.articulo_7 is not None: 
+        est.articulo_7 = payload.articulo_7
+        upd_fields.append("articulo_7")
     
     if payload.titulo_secundario_ok is not None:
-        doc_updates["titulo_secundario_legalizado"] = payload.titulo_secundario_ok
+        est.titulo_secundario_legalizado = payload.titulo_secundario_ok
+        upd_fields.append("titulo_secundario_legalizado")
 
-    if doc_updates:
-        current_doc = datos_extra.get("documentacion") or {}
-        current_doc.update(doc_updates)
-        datos_extra["documentacion"] = current_doc
-        updated_est = True
+    if upd_fields:
+        est.save(update_fields=upd_fields)
         
         if checklist:
-            for k, v in doc_updates.items():
-                if hasattr(checklist, k):
-                    setattr(checklist, k, v)
+            if payload.dni_legalizado is not None: checklist.dni_legalizado = payload.dni_legalizado
+            if payload.fotos_4x4 is not None: checklist.fotos_4x4 = payload.fotos_4x4
+            if payload.certificado_salud is not None: checklist.certificado_salud = payload.certificado_salud
+            if payload.folios_oficio is not None: checklist.folios_oficio = payload.folios_oficio
+            if payload.articulo_7 is not None: checklist.articulo_7 = payload.articulo_7
+            if payload.titulo_secundario_ok is not None: checklist.titulo_secundario_legalizado = payload.titulo_secundario_ok
             if payload.curso_introductorio_aprobado is not None:
                 checklist.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
             checklist.save()
-
-    if updated_est:
-        est.datos_extra = datos_extra
-        est.save(update_fields=["datos_extra", "curso_introductorio_aprobado"])
 
 
 @estudiantes_router.patch(
@@ -325,7 +334,7 @@ def admin_update_estudiante_documentacion(
     _ensure_admin(request)
     from core.permissions import allowed_profesorados
     
-    est = get_object_or_404(Estudiante, dni=dni)
+    est = get_object_or_404(Estudiante, persona__dni=dni)
     
     # Verificación de permisos para Bedeles: deben tener acceso a al menos una carrera del estudiante
     allowed_ids = allowed_profesorados(request.user)
@@ -356,7 +365,7 @@ def admin_bulk_update_estudiante_documentacion(
     
     updated_count = 0
     for update_item in payload.updates:
-        est = Estudiante.objects.filter(dni=update_item.dni).first()
+        est = Estudiante.objects.filter(persona__dni=update_item.dni).first()
         if not est:
             continue
             
@@ -377,7 +386,7 @@ def admin_bulk_update_estudiante_documentacion(
 )
 def admin_get_estudiante(request, dni: str):
     _ensure_admin(request)
-    est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(dni=dni).first()
+    est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
     return _build_admin_detail(est)
@@ -389,7 +398,7 @@ def admin_get_estudiante(request, dni: str):
 )
 def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn):
     _ensure_admin(request)
-    est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(dni=dni).first()
+    est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
 
@@ -413,7 +422,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
 def admin_delete_estudiante(request, dni: str):
     _ensure_admin(request)
     # Buscamos por DNI
-    est = Estudiante.objects.filter(dni=dni).first()
+    est = Estudiante.objects.filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
 

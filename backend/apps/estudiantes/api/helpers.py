@@ -113,7 +113,7 @@ def _ensure_admin(request):
 
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     if dni:
-        return Estudiante.objects.filter(dni=dni).first()
+        return Estudiante.objects.filter(persona__dni=dni).first()
     if isinstance(request.user, AnonymousUser):
         return None
     return getattr(request.user, "estudiante", None)
@@ -176,11 +176,10 @@ def _parse_optional_date(value: str | None):
     return None
 
 
-def _extract_documentacion(datos_extra: dict | None) -> dict:
-    if not datos_extra:
+def _extract_documentacion(est: Estudiante) -> dict:
+    if not est:
         return {}
-    raw = datos_extra.get("documentacion") or {}
-    return {key: raw.get(key) for key in DOCUMENTACION_FIELDS if key in raw}
+    return {key: getattr(est, key) for key in DOCUMENTACION_FIELDS if hasattr(est, key)}
 
 
 def _listar_carreras_detalle(est: Estudiante, carreras: Iterable[Profesorado] | None = None) -> list[dict]:
@@ -228,7 +227,7 @@ def _apply_estudiante_updates(
     if payload.dni is not None:
         new_dni = payload.dni.strip()
         if new_dni and new_dni != est.dni:
-            if Estudiante.objects.filter(dni=new_dni).exclude(id=est.id).exists():
+            if Estudiante.objects.filter(persona__dni=new_dni).exclude(id=est.id).exists():
                 return False, (400, ApiResponse(ok=False, message=f"El DNI {new_dni} ya está registrado."))
             
             est.dni = new_dni
@@ -288,55 +287,58 @@ def _apply_estudiante_updates(
         est.fecha_nacimiento = new_date
         fields_to_update.add("fecha_nacimiento")
 
-    datos_extra = dict(est.datos_extra or {})
-
     if payload.documentacion is not None:
         doc_updates = payload.documentacion.model_dump(exclude_unset=True)
-        current_doc = dict(datos_extra.get("documentacion") or {})
         for key, value in doc_updates.items():
-            if value is None or isinstance(value, str) and not value.strip():
-                current_doc.pop(key, None)
-            else:
-                current_doc[key] = value
-        if current_doc:
-            datos_extra["documentacion"] = current_doc
-        else:
-            datos_extra.pop("documentacion", None)
+            if hasattr(est, key):
+                setattr(est, key, value)
+                fields_to_update.add(key)
 
-    # Extra fields to store in datos_extra
-    EXTRA_KEYS = (
-        "anio_ingreso", "genero", "rol_extra", "observaciones", "cuil", "lugar_nacimiento",
-        "nacionalidad", "estado_civil", "localidad_nac", "provincia_nac", "pais_nac",
-        "emergencia_telefono", "emergencia_parentesco",
+    # Fields to store directly in models (Persona or Estudiante)
+    PERSONA_KEYS = (
+        "genero", "cuil", "lugar_nacimiento", "nacionalidad", 
+        "localidad_nac", "provincia_nac", "pais_nac",
+        "estado_civil"
+    )
+    
+    if est.persona:
+        persona_updates = []
+        for key in PERSONA_KEYS:
+            value = getattr(payload, key, None)
+            if value is not None:
+                if key == "estado_civil" and value:
+                    value = value[:3].upper()
+                setattr(est.persona, key, value)
+                persona_updates.append(key)
+        
+        # Especial handling for emergency contact in Persona
+        if payload.emergencia_telefono is not None:
+            est.persona.telefono_emergencia = payload.emergencia_telefono
+            persona_updates.append("telefono_emergencia")
+        if payload.emergencia_parentesco is not None:
+            est.persona.parentesco_emergencia = payload.emergencia_parentesco
+            persona_updates.append("parentesco_emergencia")
+            
+        if persona_updates:
+            est.persona.save(update_fields=persona_updates)
+
+    ESTUDIANTE_KEYS = (
+        "anio_ingreso", "cohorte", "observaciones",
         "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
         "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
-        "condicion_salud_detalle", "empleador", "horario_trabajo", "domicilio_trabajo"
-    )
-
-    for extra_key in EXTRA_KEYS:
-        value = getattr(payload, extra_key)
-        if value is None:
-            continue
-        if value == "":
-            datos_extra.pop(extra_key, None)
-        else:
-            datos_extra[extra_key] = value
-
-    # Boolean fields
-    BOOL_KEYS = (
+        "condicion_salud_detalle", "empleador", "horario_trabajo", "domicilio_trabajo",
         "curso_introductorio_aprobado", "libreta_entregada",
         "cud_informado", "condicion_salud_informada", "trabaja"
     )
-    for bool_key in BOOL_KEYS:
-        value = getattr(payload, bool_key)
+
+    for key in ESTUDIANTE_KEYS:
+        value = getattr(payload, key, None)
         if value is not None:
-            datos_extra[bool_key] = bool(value)
+            setattr(est, key, value)
+            fields_to_update.add(key)
 
-    if mark_profile_complete and not datos_extra.get("perfil_actualizado"):
-        datos_extra["perfil_actualizado"] = True
-
-    if datos_extra != (est.datos_extra or {}):
-        est.datos_extra = datos_extra
+    if mark_profile_complete and not est.datos_extra.get("perfil_actualizado"):
+        est.datos_extra["perfil_actualizado"] = True
         fields_to_update.add("datos_extra")
 
     if fields_to_update:
@@ -384,37 +386,10 @@ def _determine_condicion(documentacion: dict | None) -> str:
 
 def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
     user = estudiante.user if estudiante.user_id else None
+    persona = estudiante.persona
     carreras_nombres = [c.nombre for c in estudiante.carreras.all()]
-    datos_extra = estudiante.datos_extra or {}
-    documentacion_data = _extract_documentacion(datos_extra)
+    documentacion_data = _extract_documentacion(estudiante)
     
-    # --- Bubble up personal / educational fields from latest Preinscripcion if missing in legajo ---
-    from core.models import Preinscripcion
-    latest_pre = Preinscripcion.objects.filter(alumno=estudiante).order_by("-id").first()
-    if latest_pre and latest_pre.datos_extra:
-        pre_extra = latest_pre.datos_extra
-        # If pre_extra has 'estudiante' nested dict (some versions do)
-        pe_sub = pre_extra.get("estudiante") if isinstance(pre_extra.get("estudiante"), dict) else {}
-        
-        campos_a_bubbling = [
-            "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
-            "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
-            "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
-            "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
-            "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
-            "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
-        ]
-        
-        for campo in campos_a_bubbling:
-            if datos_extra.get(campo) in (None, ""):
-                # Priorizamos pre_extra (raíz) y luego pe_sub (bloque anidado)
-                val = pre_extra.get(campo)
-                if val in (None, ""):
-                    val = pe_sub.get(campo)
-                
-                if val not in (None, ""):
-                    datos_extra[campo] = val
-
     # --- Check documentation from PreinscripcionChecklist if available ---
     checklist = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=estudiante).order_by("-updated_at").first()
     if checklist:
@@ -439,14 +414,13 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
             if documentacion_data.get(k) in (None, False, 0, ""):
                 documentacion_data[k] = v
         
-        # Pull flags from checklist or datos_extra
-        curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado") or (checklist and checklist.curso_introductorio_aprobado))
+        curso_introductorio_aprobado = estudiante.curso_introductorio_aprobado or (checklist and checklist.curso_introductorio_aprobado)
     else:
-        curso_introductorio_aprobado = bool(datos_extra.get("curso_introductorio_aprobado"))
+        curso_introductorio_aprobado = estudiante.curso_introductorio_aprobado
 
     documentacion = EstudianteAdminDocumentacion(**documentacion_data) if documentacion_data else None
     condicion = _determine_condicion(documentacion_data)
-    libreta_entregada = bool(datos_extra.get("libreta_entregada"))
+    
     regularidades_resumen = [
         RegularidadResumen(
             id=reg.id,
@@ -463,13 +437,43 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         )
         for reg in Regularidad.objects.filter(estudiante=estudiante).select_related("materia").order_by("-fecha_cierre")
     ]
+    
+    extra_data = {
+        "anio_ingreso": estudiante.anio_ingreso,
+        "cohorte": estudiante.cohorte,
+        "observaciones": estudiante.observaciones,
+        "lugar_nacimiento": persona.lugar_nacimiento if persona else None,
+        "genero": persona.genero if persona else None,
+        "cuil": persona.cuil if persona else None,
+        "nacionalidad": persona.nacionalidad if persona else None,
+        "estado_civil": persona.estado_civil if persona else None,
+        "localidad_nac": persona.localidad_nac if persona else None,
+        "provincia_nac": persona.provincia_nac if persona else None,
+        "pais_nac": persona.pais_nac if persona else None,
+        "emergencia_telefono": persona.telefono_emergencia if persona else None,
+        "emergencia_parentesco": persona.parentesco_emergencia if persona else None,
+        "trabaja": estudiante.trabaja,
+        "empleador": estudiante.empleador,
+        "horario_trabajo": estudiante.horario_trabajo,
+        "domicilio_trabajo": estudiante.domicilio_trabajo,
+        "cud_informado": estudiante.cud_informado,
+        "condicion_salud_informada": estudiante.condicion_salud_informada,
+        "condicion_salud_detalle": estudiante.condicion_salud_detalle,
+        "sec_titulo": estudiante.sec_titulo,
+        "sec_establecimiento": estudiante.sec_establecimiento,
+        "sec_fecha_egreso": estudiante.sec_fecha_egreso,
+        "sec_localidad": estudiante.sec_localidad,
+        "sec_provincia": estudiante.sec_provincia,
+        "sec_pais": estudiante.sec_pais,
+    }
+
     return EstudianteAdminDetail(
         dni=estudiante.dni,
-        apellido=user.last_name if user else "",
-        nombre=user.first_name if user else "",
-        email=user.email if user else None,
-        telefono=estudiante.telefono or None,
-        domicilio=estudiante.domicilio or None,
+        apellido=estudiante.apellido,
+        nombre=estudiante.nombre,
+        email=estudiante.email,
+        telefono=estudiante.telefono,
+        domicilio=estudiante.domicilio,
         fecha_nacimiento=(estudiante.fecha_nacimiento.isoformat() if estudiante.fecha_nacimiento else None),
         estado_legajo=estudiante.estado_legajo,
         estado_legajo_display=estudiante.get_estado_legajo_display(),
@@ -477,14 +481,14 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         activo=user.is_active if user else False,
         carreras=carreras_nombres,
         legajo=estudiante.legajo or None,
-        datos_extra=datos_extra,
+        datos_extra=extra_data,
         documentacion=documentacion,
         condicion_calculada=condicion,
         curso_introductorio_aprobado=curso_introductorio_aprobado,
-        libreta_entregada=libreta_entregada,
+        libreta_entregada=estudiante.libreta_entregada,
         regularidades=regularidades_resumen,
-        lugar_nacimiento=datos_extra.get("lugar_nacimiento"),
-        genero=datos_extra.get("genero"),
+        lugar_nacimiento=persona.lugar_nacimiento if persona else None,
+        genero=persona.genero if persona else None,
     )
 
 

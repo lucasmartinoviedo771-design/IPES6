@@ -21,7 +21,9 @@ import {
   TableContainer,
   Divider,
   MenuItem,
+  Autocomplete,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -37,6 +39,8 @@ import {
   TrayectoriaMesaDTO,
   RegularidadVigenciaDTO,
   RegularidadResumenDTO,
+  fetchEstudiantesAdmin,
+  EstudianteAdminListItemDTO,
 } from '@/api/estudiantes';
 import { CartonTabPanel } from "@/features/estudiantes/carton/CartonTabPanel";
 import { PageHero } from "@/components/ui/GradientTitles";
@@ -114,6 +118,12 @@ const TrayectoriaPage: React.FC = () => {
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroMetadata, setFiltroMetadata] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+
+  // Estudiante search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOptions, setSearchOptions] = useState<EstudianteAdminListItemDTO[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchInputValue, setSearchInputValue] = useState('');
 
   const queryKey = useMemo(() => ['trayectoria', canGestionar ? (dniQuery || '').trim() : 'self'], [canGestionar, dniQuery]);
   const trayectoriaQ = useQuery<TrayectoriaDTO>({
@@ -237,6 +247,34 @@ const TrayectoriaPage: React.FC = () => {
   }, [trayectoria?.regularidades_vigencia]);
   const recomendaciones = trayectoria?.recomendaciones;
 
+  useEffect(() => {
+    let active = true;
+
+    if (searchInputValue.trim().length < 2) {
+      setSearchOptions([]);
+      return undefined;
+    }
+
+    setSearchLoading(true);
+    const timer = setTimeout(() => {
+      fetchEstudiantesAdmin({ q: searchInputValue, limit: 10 })
+        .then((res) => {
+          if (active) {
+            setSearchOptions(res.items);
+            setSearchLoading(false);
+          }
+        })
+        .catch(() => {
+          if (active) setSearchLoading(false);
+        });
+    }, 400);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [searchInputValue]);
+
   const handleBuscar = () => {
     setDniQuery(dniInput.trim());
   };
@@ -274,15 +312,58 @@ const TrayectoriaPage: React.FC = () => {
       {canGestionar && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+            <Autocomplete
+              open={searchOpen}
+              onOpen={() => setSearchOpen(true)}
+              onClose={() => setSearchOpen(false)}
+              inputValue={searchInputValue}
+              onInputChange={(_, newValue) => setSearchInputValue(newValue)}
+              options={searchOptions}
+              loading={searchLoading}
+              getOptionLabel={(option) => `${option.apellido}, ${option.nombre} (${option.dni})`}
+              isOptionEqualToValue={(option, value) => option.dni === value.dni}
+              onChange={(_, value) => {
+                if (value) {
+                  setDniInput(value.dni);
+                  setDniQuery(value.dni);
+                }
+              }}
+              filterOptions={(x) => x} // Backend already filters
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Buscar por Nombre, Apellido o DNI"
+                  size="small"
+                  sx={{ minWidth: 280 }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <Stack direction="row" alignItems="center" spacing={1} sx={{ pl: 1 }}>
+                        <SearchIcon fontSize="small" color="action" />
+                        {params.InputProps.startAdornment}
+                      </Stack>
+                    ),
+                    endAdornment: (
+                      <>
+                        {searchLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
             <TextField
-              label="DNI estudiante"
+              label="DNI manual"
               value={dniInput}
               size="small"
               onChange={(e) => setDniInput(e.target.value)}
               onKeyDown={handleEnter}
-              sx={{ minWidth: 200 }}
+              sx={{ maxWidth: 160 }}
+              helperText="O presiona Enter aquí"
             />
-            <Button variant="contained" size="small" onClick={handleBuscar}>
+            <Button variant="contained" size="small" onClick={handleBuscar} sx={{ height: 40 }}>
               Consultar
             </Button>
           </Stack>

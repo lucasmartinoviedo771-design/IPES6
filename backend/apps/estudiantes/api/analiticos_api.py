@@ -29,7 +29,7 @@ def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
 
     estudiante = None
     if payload.dni:
-        estudiante = Estudiante.objects.filter(dni=payload.dni).first()
+        estudiante = Estudiante.objects.filter(persona__dni=payload.dni).first()
     elif not isinstance(request.user, AnonymousUser):
         estudiante = getattr(request.user, "estudiante", None)
 

@@ -292,7 +292,7 @@ def listar_pedidos_equivalencia(
     qs = _pedido_queryset().order_by("-updated_at")
     if can_manage_equivalencias(request.user):
         if dni:
-            qs = qs.filter(estudiante__dni=dni)
+            qs = qs.filter(estudiante__persona__dni=dni)
     else:
         est = resolve_estudiante(request, dni)
         if not est:
@@ -832,7 +832,7 @@ def exportar_pedidos_equivalencia(
             "estudiante__user",
         )
         .prefetch_related("materias")
-        .order_by("profesorado_destino_nombre", "estudiante__dni")
+        .order_by("profesorado_destino_nombre", "estudiante__persona__dni")
     )
     if profesorado_id:
         qs = qs.filter(profesorado_destino_id=profesorado_id)

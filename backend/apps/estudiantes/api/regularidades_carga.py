@@ -348,7 +348,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
             .order_by(
                 "estudiante__user__last_name",
                 "estudiante__user__first_name",
-                "estudiante__dni",
+                "estudiante__persona__dni",
             )
         )
 
@@ -407,7 +407,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
         .order_by(
             "estudiante__user__last_name",
             "estudiante__user__first_name",
-            "estudiante__dni",
+            "estudiante__persona__dni",
         )
     )
     if anio_virtual is not None:

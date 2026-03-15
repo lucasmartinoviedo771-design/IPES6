@@ -106,7 +106,7 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
         return # Cannot verify if mesa doesn't exist (though it should have been created)
 
     # Find InscripcionMesa
-    insc = InscripcionMesa.objects.filter(mesa=mesa, estudiante__dni=dni).first()
+    insc = InscripcionMesa.objects.filter(mesa=mesa, estudiante__persona__dni=dni).first()
     
     if not insc:
         SystemLog.objects.create(

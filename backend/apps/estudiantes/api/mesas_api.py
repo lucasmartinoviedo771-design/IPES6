@@ -117,7 +117,7 @@ def listar_mesas_estudiante(
     estudiante_para_rendir = est if solo_rendibles else None
     if solo_rendibles and not estudiante_para_rendir:
         if dni:
-            estudiante_para_rendir = Estudiante.objects.filter(dni=dni).first()
+            estudiante_para_rendir = Estudiante.objects.filter(persona__dni=dni).first()
         elif not isinstance(request.user, AnonymousUser):
             estudiante_para_rendir = getattr(request.user, "estudiante", None)
 
@@ -125,7 +125,7 @@ def listar_mesas_estudiante(
     aprobadas_rendir_set = set()
     if estudiante_para_rendir:
         from core.models import ActaExamenEstudiante
-        actas = ActaExamenEstudiante.objects.filter(dni=estudiante_para_rendir.dni)
+        actas = ActaExamenEstudiante.objects.filter(persona__dni=estudiante_para_rendir.dni)
         for a in actas:
             # Simplificamos: si tiene acta con nota o es equiv, ya la paso
             if a.calificacion_definitiva or a.permiso_examen == "EQUIV":
@@ -264,7 +264,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
 
             # Validamos si ya la aprobó por Acta o Equivalencia
             from core.models import ActaExamenEstudiante
-            ya_aprobo_acta = ActaExamenEstudiante.objects.filter(dni=est.dni, acta__materia=mesa.materia).exists()
+            ya_aprobo_acta = ActaExamenEstudiante.objects.filter(persona__dni=est.dni, acta__materia=mesa.materia).exists()
             if ya_aprobo_acta:
                  return 400, {"message": "Materia ya aprobada por examen o equivalencia."}
 
@@ -336,7 +336,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     elif mesa.modalidad == MesaExamen.Modalidad.LIBRE:
         # 1. Check if already approved/promoted (Actas or Regularidad)
         from core.models import ActaExamenEstudiante
-        ya_aprobo_acta = ActaExamenEstudiante.objects.filter(dni=est.dni, acta__materia=mesa.materia).exists()
+        ya_aprobo_acta = ActaExamenEstudiante.objects.filter(persona__dni=est.dni, acta__materia=mesa.materia).exists()
         if ya_aprobo_acta:
              return 400, {"message": "Materia ya aprobada por examen o equivalencia."}
 

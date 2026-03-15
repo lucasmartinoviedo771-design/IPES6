@@ -105,5 +105,5 @@ def listar_disposiciones_equivalencia(
     ).prefetch_related("detalles__materia")
 
     if dni:
-        qs = qs.filter(estudiante__dni=dni)
+        qs = qs.filter(estudiante__persona__dni=dni)
     return [_serialize_disposicion_schema(dispo) for dispo in qs.order_by("-creado_en")]

@@ -350,7 +350,7 @@ def _regularidad_metadata_for_user(user: User, include_all: bool = False) -> dic
     return result
 
 def obtener_docentes_metadata():
-    docente_qs = Docente.objects.order_by("apellido", "nombre")
+    docente_qs = Docente.objects.select_related("persona").order_by("persona__apellido", "persona__nombre")
     docentes = [
         {
             "id": docente.id,
@@ -364,13 +364,18 @@ def obtener_docentes_metadata():
 def obtener_estudiantes_metadata():
     # Traemos todos los estudiantes para el autocompletado
     # Optimizamos con prefetch de carreras (profesorados)
-    estudiantes_qs = Estudiante.objects.all().select_related("user").prefetch_related("carreras").order_by("user__last_name", "user__first_name")
+    estudiantes_qs = (
+        Estudiante.objects.all()
+        .select_related("persona", "user")
+        .prefetch_related("carreras")
+        .order_by("persona__apellido", "persona__nombre")
+    )
     
     data = []
     for est in estudiantes_qs:
         data.append({
             "dni": est.dni,
-            "apellido_nombre": f"{est.user.last_name}, {est.user.first_name}".strip(", "),
+            "apellido_nombre": f"{est.apellido}, {est.nombre}".strip(", "),
             # OPTIMIZACION CRITICA: Usar .all() para aprovechar el prefetch_related.
             # .values_list() dispara una query nueva por cada alumno (N+1).
             "profesorados": [c.id for c in est.carreras.all()]
@@ -1141,7 +1146,7 @@ def crear_planilla_regularidad(
             if docente_id:
                 docente_obj = Docente.objects.filter(pk=docente_id).first()
             elif dni_docente:
-                docente_obj = Docente.objects.filter(dni=dni_docente).first()
+                docente_obj = Docente.objects.filter(persona__dni=dni_docente).first()
 
             PlanillaRegularidadDocente.objects.create(
                 planilla=planilla,
@@ -1172,12 +1177,12 @@ def crear_planilla_regularidad(
                 prefix = f"HIS-{profesorado.id:02d}-"
                 # Contar cuantos HIS-{prof_id}- existen para calcular el próximo
                 # Buscamos en Estudiante directamente. Es una operación algo costosa pero aceptable para first-load.
-                count = Estudiante.objects.filter(dni__startswith=prefix).count()
+                count = Estudiante.objects.filter(persona__dni__startswith=prefix).count()
                 seq = count + 1
                 new_dni = f"{prefix}{seq:04d}"
                 
                 # Verificar colisión simple (por si acaso borraron uno intermedio o concurrencia simple)
-                while Estudiante.objects.filter(dni=new_dni).exists():
+                while Estudiante.objects.filter(persona__dni=new_dni).exists():
                     seq += 1
                     new_dni = f"{prefix}{seq:04d}"
                 
@@ -1191,7 +1196,7 @@ def crear_planilla_regularidad(
                 if dni in dnis_usados:
                     raise ValueError(f"El DNI {dni} aparece más de una vez en la planilla.")
                 dnis_usados.add(dni)
-            estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
+            estudiante = Estudiante.objects.filter(persona__dni=dni).first() if dni else None
 
             # --- Lazy Student Creation (Similar a Actas) ---
             if not estudiante and dni:
@@ -1215,10 +1220,20 @@ def crear_planilla_regularidad(
                             last_name=last_name
                         )
                     
+                    # Buscar o crear Persona
+                    from core.models import Persona
+                    persona_obj, _ = Persona.objects.update_or_create(
+                        dni=dni,
+                        defaults={
+                            "nombre": first_name,
+                            "apellido": last_name
+                        }
+                    )
+                    
                     # Crear Estudiante
                     estudiante = Estudiante.objects.create(
                         user=user_obj,
-                        dni=dni,
+                        persona=persona_obj,
                         estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
                     )
                     
@@ -1527,7 +1542,7 @@ def actualizar_planilla_regularidad(
                 if not nombre: continue
                 dni = _normalize_value(d_data.get("dni"))
                 docente_id = d_data.get("docente_id")
-                d_obj = Docente.objects.filter(pk=docente_id).first() if docente_id else (Docente.objects.filter(dni=dni).first() if dni else None)
+                d_obj = Docente.objects.filter(pk=docente_id).first() if docente_id else (Docente.objects.filter(persona__dni=dni).first() if dni else None)
                 
                 PlanillaRegularidadDocente.objects.create(
                     planilla=planilla, docente=d_obj, nombre=nombre, dni=dni,
@@ -1543,7 +1558,7 @@ def actualizar_planilla_regularidad(
             for idx, f_data in enumerate(filas, start=1):
                 orden = f_data.get("orden") or idx
                 dni = _normalize_value(f_data.get("dni"))
-                estudiante = Estudiante.objects.filter(dni=dni).first() if dni else None
+                estudiante = Estudiante.objects.filter(persona__dni=dni).first() if dni else None
                 
                 situacion = _resolve_situacion(f_data.get("situacion", ""), planilla.materia.formato)
                 nota_raw = f_data.get("nota_final")
@@ -1706,25 +1721,31 @@ def _import_estudiante_record(
     except ValueError as exc:
         raise ValueError(f"anio_ingreso inválido: {anio_ingreso_val}") from exc
 
-    estudiante, student_created = Estudiante.objects.get_or_create(
+    from core.models import Persona
+    persona, _ = Persona.objects.update_or_create(
         dni=dni,
         defaults={
-            "user": user,
+            "nombre": first_name,
+            "apellido": last_name,
+            "email": email,
             "fecha_nacimiento": fecha_nacimiento,
             "telefono": telefono,
             "domicilio": domicilio,
+            "cuil": cuil_valor,
+            "genero": genero[:1].upper() if genero else None,
+        }
+    )
+
+    estudiante, student_created = Estudiante.objects.get_or_create(
+        persona=persona,
+        defaults={
+            "user": user,
             "estado_legajo": _normalize_estado_legajo(estado_legajo),
             "must_change_password": must_change,
             "legajo": legajo_valor or None,
-            "datos_extra": _merge_datos_extra(
-                {},
-                anio_ingreso=anio_ingreso_val,
-                genero=genero,
-                rol_extra=rol_extra,
-                observaciones=observaciones,
-                cuil=cuil_valor,
-                cohorte=cohorte,
-            ),
+            "anio_ingreso": anio_ingreso_val,
+            "cohorte": cohorte,
+            "observaciones": observaciones,
         },
     )
 
@@ -1733,15 +1754,9 @@ def _import_estudiante_record(
         if estudiante.user_id != user.id:
             estudiante.user = user
             updated_student = True
-        if estudiante.fecha_nacimiento != fecha_nacimiento:
-            estudiante.fecha_nacimiento = fecha_nacimiento
-            updated_student = True
-        if estudiante.telefono != telefono:
-            estudiante.telefono = telefono
-            updated_student = True
-        if estudiante.domicilio != domicilio:
-            estudiante.domicilio = domicilio
-            updated_student = True
+        
+        # Note: Person data is already updated by update_or_create above
+        
         estado_normalizado = _normalize_estado_legajo(estado_legajo)
         if estado_normalizado and estudiante.estado_legajo != estado_normalizado:
             estudiante.estado_legajo = estado_normalizado
@@ -1752,18 +1767,16 @@ def _import_estudiante_record(
         if legajo_valor and estudiante.legajo != legajo_valor:
             estudiante.legajo = legajo_valor
             updated_student = True
-        merged_extra = _merge_datos_extra(
-            estudiante.datos_extra,
-            anio_ingreso=anio_ingreso_val,
-            genero=genero,
-            rol_extra=rol_extra,
-            observaciones=observaciones,
-            cuil=cuil_valor,
-            cohorte=cohorte,
-        )
-        if merged_extra != (estudiante.datos_extra or {}):
-            estudiante.datos_extra = merged_extra
+        if anio_ingreso_val and estudiante.anio_ingreso != anio_ingreso_val:
+            estudiante.anio_ingreso = anio_ingreso_val
             updated_student = True
+        if cohorte and estudiante.cohorte != cohorte:
+            estudiante.cohorte = cohorte
+            updated_student = True
+        if observaciones and estudiante.observaciones != observaciones:
+            estudiante.observaciones = observaciones
+            updated_student = True
+
         if updated_student:
             estudiante.save()
     else:
@@ -1963,11 +1976,11 @@ def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> dict
                         "Materia, Tipo Mesa, Modalidad Mesa, Fecha Mesa, Folio y Libro son campos requeridos."
                     )
 
-                estudiante = Estudiante.objects.filter(dni=dni).first()
+                estudiante = Estudiante.objects.filter(persona__dni=dni).first()
                 if not estudiante:
                     raise ValueError(f"Estudiante con DNI {dni} no encontrado.")
 
-                materia = Materia.objects.filter(nombre=materia_nombre).first()
+                materia = Materia.objects.filter(persona__nombre=materia_nombre).first()
                 if not materia:
                     raise ValueError(f"Materia '{materia_nombre}' no encontrada.")
 
@@ -2132,7 +2145,7 @@ def registrar_regularidad_individual_historica(user: User, data: dict) -> dict:
     excepcion = data.get("excepcion", False)
     force_upgrade = data.get("force_upgrade", False)
 
-    estudiante = Estudiante.objects.filter(dni=dni).first()
+    estudiante = Estudiante.objects.filter(persona__dni=dni).first()
     if not estudiante:
         raise ValueError(f"Estudiante con DNI {dni} no encontrado.")
 

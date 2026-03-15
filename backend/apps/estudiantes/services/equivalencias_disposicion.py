@@ -277,7 +277,7 @@ def resolver_contexto_equivalencia(
     profesorado_id: int,
     plan_id: int,
 ) -> tuple[Estudiante, Profesorado, PlanDeEstudio]:
-    estudiante = Estudiante.objects.select_related("user").filter(dni=dni).first()
+    estudiante = Estudiante.objects.select_related("user").filter(persona__dni=dni).first()
     if not estudiante:
         raise ValueError("No se encontró el estudiante indicado.")
     profesorado = Profesorado.objects.filter(id=profesorado_id).first()

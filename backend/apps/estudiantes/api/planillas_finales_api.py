@@ -74,7 +74,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
     inscripciones = (
         InscripcionMesa.objects.filter(mesa_id=mesa_id)
         .select_related("estudiante__user")
-        .order_by("estudiante__user__last_name", "estudiante__user__first_name", "estudiante__dni")
+        .order_by("estudiante__user__last_name", "estudiante__user__first_name", "estudiante__persona__dni")
     )
     estudiantes = []
     for insc in inscripciones:

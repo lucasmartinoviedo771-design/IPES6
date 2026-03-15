@@ -224,7 +224,7 @@ def _acta_metadata(user=None) -> ActaMetadataOut:
             nombre=f"{doc.apellido}, {doc.nombre}".strip(", "),
             dni=doc.dni or None,
         )
-        for doc in Docente.objects.order_by("apellido", "nombre", "id")
+        for doc in Docente.objects.select_related("persona").order_by("persona__apellido", "persona__nombre", "id")
     ]
     
     NOTA_NUMERIC_VALUES = [str(i) for i in range(1, 11)]
@@ -238,9 +238,9 @@ def _acta_metadata(user=None) -> ActaMetadataOut:
     estudiantes_payload = [
         {
             "dni": est.dni,
-            "apellido_nombre": f"{est.user.last_name}, {est.user.first_name}".strip(", "),
+            "apellido_nombre": f"{est.apellido}, {est.nombre}".strip(", "),
         }
-        for est in Estudiante.objects.all().select_related("user").order_by("user__last_name", "user__first_name")
+        for est in Estudiante.objects.all().select_related("persona", "user").order_by("persona__apellido", "persona__nombre")
     ]
 
     return ActaMetadataOut(
@@ -442,7 +442,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         if clean_dni == user_dni:
              return 403, ApiResponse(ok=False, message="No tienes permitido generar un acta de examen que te incluya a ti mismo.")
             
-        estudiante = Estudiante.objects.filter(dni=clean_dni).first()
+        estudiante = Estudiante.objects.filter(persona__dni=clean_dni).first()
         
         if not estudiante:
             nombre_completo = estudiante_data.apellido_nombre.strip()
@@ -464,9 +464,17 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 user.set_password(f"pass{clean_dni}")
                 user.save()
             
+            from core.models import Persona
+            persona, _ = Persona.objects.update_or_create(
+                dni=clean_dni,
+                defaults={
+                    "nombre": first_name,
+                    "apellido": last_name,
+                }
+            )
             estudiante = Estudiante.objects.create(
                 user=user,
-                dni=clean_dni,
+                persona=persona,
                 legajo=None,
                 estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
             )
@@ -490,7 +498,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             return 400, ApiResponse(ok=False, message=f"Valor inválido en examen oral para {estudiante_item.dni}.")
         
         if _clasificar_resultado(estudiante_item.calificacion_definitiva) == "aprobado":
-            est_obj = Estudiante.objects.filter(dni=estudiante_item.dni).first()
+            est_obj = Estudiante.objects.filter(persona__dni=estudiante_item.dni).first()
             if est_obj and estudiante_tiene_materia_aprobada(est_obj, materia):
                 return 400, ApiResponse(
                     ok=False,
@@ -526,7 +534,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             dni_clean = (docente_data.dni or "").strip()
             
             if dni_clean:
-                existing_doc = Docente.objects.filter(dni=dni_clean).first()
+                existing_doc = Docente.objects.filter(persona__dni=dni_clean).first()
                 if existing_doc:
                     docente_data.docente_id = existing_doc.id
                 else:
@@ -538,10 +546,16 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                         apellido = nombre_clean
                         nombre = "."
 
-                    new_doc = Docente.objects.create(
+                    from core.models import Persona
+                    persona, _ = Persona.objects.update_or_create(
                         dni=dni_clean,
-                        apellido=apellido,
-                        nombre=nombre
+                        defaults={
+                            "nombre": nombre,
+                            "apellido": apellido
+                        }
+                    )
+                    new_doc = Docente.objects.create(
+                        persona=persona
                     )
                     docente_data.docente_id = new_doc.id
 
@@ -556,10 +570,16 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                     apellido = nombre_clean
                     nombre = "."
                 
-                new_doc = Docente.objects.create(
+                from core.models import Persona
+                persona, _ = Persona.objects.get_or_create(
                     dni=fake_dni,
-                    apellido=apellido,
-                    nombre=nombre
+                    defaults={
+                        "nombre": nombre,
+                        "apellido": apellido
+                    }
+                )
+                new_doc = Docente.objects.create(
+                    persona=persona
                 )
                 docente_data.docente_id = new_doc.id
                 docente_data.dni = fake_dni
@@ -661,7 +681,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 observaciones=est_item.observaciones or "",
             )
             
-            est_obj = Estudiante.objects.filter(dni=est_item.dni.strip()).first()
+            est_obj = Estudiante.objects.filter(persona__dni=est_item.dni.strip()).first()
             if est_obj:
                 nota_decimal = None
                 condicion_mesa = InscripcionMesa.Condicion.DESAPROBADO

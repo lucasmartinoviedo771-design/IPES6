@@ -91,27 +91,95 @@ class PlanDeEstudio(models.Model):
         return f"{self.profesorado.nombre} - Plan {self.resolucion}"
 
 
-class Docente(models.Model):
-    nombre = models.CharField(max_length=100)
-    apellido = models.CharField(max_length=100)
-    dni = models.CharField(max_length=20, unique=True, help_text="DNI del docente")
+class Persona(models.Model):
+    class EstadoCivil(models.TextChoices):
+        SOLTERO = "SOL", "Soltero/a"
+        CASADO = "CAS", "Casado/a"
+        DIVORCIADO = "DIV", "Divorciado/a"
+        VIUDO = "VIU", "Viudo/a"
+        CONVIVIENTE = "CON", "Conviviente"
+        OTRO = "OTR", "Otro"
+
+    GENERO_CHOICES = [
+        ("M", "Masculino"),
+        ("F", "Femenino"),
+        ("X", "No binario / Otro"),
+    ]
+
+    dni = models.CharField(max_length=20, unique=True, db_index=True)
+    cuil = models.CharField(max_length=20, blank=True, null=True, db_index=True)
+    nombre = models.CharField(max_length=150)
+    apellido = models.CharField(max_length=150)
     email = models.EmailField(max_length=255, blank=True, null=True)
     telefono = models.CharField(max_length=50, blank=True, null=True)
-    cuil = models.CharField(
-        max_length=13,
-        unique=True,
-        null=True,
-        blank=True,
-        help_text="CUIL sin guiones (opcional)",
-    )
-    fecha_nacimiento = models.DateField(
-        blank=True,
-        null=True,
-        help_text="Fecha de nacimiento del docente (opcional)",
-    )
+    telefono_emergencia = models.CharField(max_length=50, blank=True, null=True)
+    parentesco_emergencia = models.CharField(max_length=100, blank=True, null=True)
+    fecha_nacimiento = models.DateField(blank=True, null=True)
+    genero = models.CharField(max_length=1, choices=GENERO_CHOICES, blank=True, null=True)
+    nacionalidad = models.CharField(max_length=100, blank=True, default="Argentina")
+    domicilio = models.CharField(max_length=255, blank=True, null=True)
+    localidad = models.CharField(max_length=150, blank=True, null=True)
+    provincia = models.CharField(max_length=150, blank=True, default="Tierra del Fuego")
+    pais = models.CharField(max_length=100, blank=True, default="Argentina")
+
+    lugar_nacimiento = models.CharField(max_length=255, blank=True, null=True)
+    estado_civil = models.CharField(max_length=3, choices=EstadoCivil.choices, blank=True, null=True)
+    localidad_nac = models.CharField(max_length=150, blank=True, null=True)
+    provincia_nac = models.CharField(max_length=150, blank=True, null=True)
+    pais_nac = models.CharField(max_length=150, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Persona"
+        verbose_name_plural = "Personas"
+        ordering = ["apellido", "nombre"]
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre} (DNI: {self.dni})"
+
+
+class Docente(models.Model):
+    persona = models.OneToOneField(
+        "Persona",
+        on_delete=models.CASCADE,
+        related_name="docente_perfil",
+        null=True,
+        blank=True,
+    )
+    @property
+    def nombre(self):
+        return self.persona.nombre if self.persona else ""
+
+    @property
+    def apellido(self):
+        return self.persona.apellido if self.persona else ""
+
+    @property
+    def dni(self):
+        return self.persona.dni if self.persona else ""
+
+    @property
+    def email(self):
+        return self.persona.email if self.persona else ""
+
+    @property
+    def telefono(self):
+        return self.persona.telefono if self.persona else ""
+
+    @property
+    def cuil(self):
+        return self.persona.cuil if self.persona else ""
+
+    @property
+    def fecha_nacimiento(self):
+        return self.persona.fecha_nacimiento if self.persona else None
+
+    def __str__(self):
+        if self.persona:
+            return f"{self.persona.apellido}, {self.persona.nombre} (DNI: {self.persona.dni})"
+        return f"Docente ID: {self.id}"
 
 
 class UserProfile(models.Model):
@@ -120,6 +188,13 @@ class UserProfile(models.Model):
     Proporciona funcionalidad adicional como cambio de contraseña obligatorio.
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    persona = models.OneToOneField(
+        "Persona",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="user_profile",
+    )
     must_change_password = models.BooleanField(
         default=False,
         help_text="Si está activo, el usuario debe cambiar la contraseña al iniciar sesión.",
@@ -311,6 +386,13 @@ class Estudiante(models.Model):
         PENDIENTE = "PEN", "Pendiente de Revisión"
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="estudiante")
+    persona = models.OneToOneField(
+        "Persona",
+        on_delete=models.CASCADE,
+        related_name="estudiante_perfil",
+        null=True,
+        blank=True,
+    )
     legajo = models.CharField(
         max_length=20,
         unique=True,
@@ -318,10 +400,6 @@ class Estudiante(models.Model):
         blank=True,
         help_text="Número de legajo único del estudiante",
     )
-    dni = models.CharField(max_length=10, unique=True)
-    fecha_nacimiento = models.DateField(null=True, blank=True)
-    telefono = models.CharField(max_length=20, blank=True)
-    domicilio = models.CharField(max_length=255, blank=True)
     carreras = models.ManyToManyField(
         Profesorado,
         through="EstudianteCarrera",
@@ -336,11 +414,92 @@ class Estudiante(models.Model):
         default=False,
         help_text="Indica si tiene aprobado el Curso Introductorio.",
     )
+    # Datos Académicos
+    anio_ingreso = models.IntegerField(null=True, blank=True)
+    cohorte = models.CharField(max_length=50, null=True, blank=True)
+    observaciones = models.TextField(blank=True, null=True)
+    libreta_entregada = models.BooleanField(default=False)
+    
+    # Datos de Educación Secundaria
+    sec_titulo = models.CharField(max_length=255, blank=True, null=True)
+    sec_establecimiento = models.CharField(max_length=255, blank=True, null=True)
+    sec_fecha_egreso = models.CharField(max_length=100, blank=True, null=True) # A veces no es una fecha exacta
+    sec_localidad = models.CharField(max_length=150, blank=True, null=True)
+    sec_provincia = models.CharField(max_length=150, blank=True, null=True)
+    sec_pais = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Datos Laborales y Salud
+    trabaja = models.BooleanField(default=False)
+    empleador = models.CharField(max_length=255, blank=True, null=True)
+    horario_trabajo = models.CharField(max_length=255, blank=True, null=True)
+    domicilio_trabajo = models.CharField(max_length=255, blank=True, null=True)
+    cud_informado = models.BooleanField(default=False)
+    condicion_salud_informada = models.BooleanField(default=False)
+    condicion_salud_detalle = models.TextField(blank=True, null=True)
+    
+    # Flags de Documentación (Migrados de datos_extra)
+    dni_legalizado = models.BooleanField(default=False)
+    fotos_4x4 = models.BooleanField(default=False)
+    certificado_salud = models.BooleanField(default=False)
+    folios_oficio = models.IntegerField(default=0)
+    titulo_secundario_legalizado = models.BooleanField(default=False)
+    certificado_titulo_en_tramite = models.BooleanField(default=False)
+    analitico_legalizado = models.BooleanField(default=False)
+    articulo_7 = models.BooleanField(default=False)
+
     datos_extra = models.JSONField(default=dict, blank=True)
     documentacion_presentada = models.ManyToManyField(Documento, blank=True, related_name="estudiantes_que_presentaron")
 
+    @property
+    def dni(self):
+        return self.persona.dni if self.persona else ""
+
+    @property
+    def fecha_nacimiento(self):
+        return self.persona.fecha_nacimiento if self.persona else None
+
+    @property
+    def telefono(self):
+        return self.persona.telefono if self.persona else ""
+
+    @property
+    def domicilio(self):
+        return self.persona.domicilio if self.persona else ""
+
     def __str__(self):
-        return f"{self.user.get_full_name()} (DNI: {self.dni})"
+        if self.persona:
+            return f"{self.persona.apellido}, {self.persona.nombre} (DNI: {self.persona.dni})"
+        return f"Estudiante sin persona vinculada (ID: {self.id})"
+
+    @property
+    def dni_clean(self):
+        return self.persona.dni if self.persona else self.dni
+
+    @property
+    def nombre(self):
+        if self.persona:
+            return self.persona.nombre
+        return self.user.first_name
+
+    @property
+    def apellido(self):
+        if self.persona:
+            return self.persona.apellido
+        return self.user.last_name
+
+    @property
+    def email(self):
+        if self.persona:
+            return self.persona.email
+        return self.user.email
+
+    @property
+    def telefono_clean(self):
+        return self.persona.telefono if self.persona else self.telefono
+
+    @property
+    def domicilio_clean(self):
+        return self.persona.domicilio if self.persona else self.domicilio
 
     def asignar_profesorado(
         self,
@@ -1974,3 +2133,43 @@ class SystemLog(models.Model):
 
     def __str__(self):
         return f"[{self.get_tipo_display()}] {self.mensaje[:50]}"
+
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=Persona)
+def sync_user_from_persona(sender, instance, **kwargs):
+    """
+    Sincroniza los datos en el modelo User cuando cambia la Persona.
+    Incluye Nombre, Apellido y DNI (como username).
+    """
+    user = None
+    # 1. Intentar por UserProfile (Administrativos/Docentes con login)
+    if hasattr(instance, "user_profile"):
+        user = instance.user_profile.user
+    # 2. Intentar por Estudiante (Alumnos)
+    elif hasattr(instance, "estudiante_perfil"):
+        user = instance.estudiante_perfil.user
+
+    if user:
+        update_fields = []
+        
+        # Sincronizar Username (DNI)
+        if user.username != instance.dni:
+            user.username = instance.dni
+            update_fields.append("username")
+            
+        # Sincronizar Nombre
+        if user.first_name != instance.nombre:
+            user.first_name = instance.nombre
+            update_fields.append("first_name")
+            
+        # Sincronizar Apellido
+        if user.last_name != instance.apellido:
+            user.last_name = instance.apellido
+            update_fields.append("last_name")
+
+        if update_fields:
+            user.save(update_fields=update_fields)

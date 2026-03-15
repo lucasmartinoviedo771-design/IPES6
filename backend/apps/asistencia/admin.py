@@ -39,7 +39,7 @@ class ClaseProgramadaAdmin(admin.ModelAdmin):
 class AsistenciaEstudianteAdmin(admin.ModelAdmin):
     list_display = ("clase", "estudiante", "estado", "registrado_via", "registrado_en")
     list_filter = ("estado", "registrado_via")
-    search_fields = ("estudiante__dni", "estudiante__user__first_name", "estudiante__user__last_name")
+    search_fields = ("estudiante__persona__dni", "estudiante__user__first_name", "estudiante__user__last_name")
 
 
 @admin.register(AsistenciaDocente)
@@ -54,7 +54,7 @@ class AsistenciaDocenteAdmin(admin.ModelAdmin):
         "registrado_en",
     )
     list_filter = ("estado", "registrado_via", "marcacion_categoria", "alerta")
-    search_fields = ("docente__dni", "docente__apellido", "docente__nombre")
+    search_fields = ("docente__persona__dni", "docente__apellido", "docente__nombre")
     autocomplete_fields = ("docente", "clase", "justificacion", "registrado_por")
 
 
@@ -97,5 +97,5 @@ class CalendarioAsistenciaEventoAdmin(admin.ModelAdmin):
         "activo",
     )
     list_filter = ("tipo", "subtipo", "activo", "turno", "profesorado")
-    search_fields = ("nombre", "motivo", "docente__apellido", "docente__dni", "comision__codigo")
+    search_fields = ("nombre", "motivo", "docente__apellido", "docente__persona__dni", "comision__codigo")
     date_hierarchy = "fecha_desde"

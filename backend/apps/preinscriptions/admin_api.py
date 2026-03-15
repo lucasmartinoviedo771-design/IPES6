@@ -43,7 +43,7 @@ def list_preinscriptions(
         qs = qs.filter(carrera_id=carrera_id)
     if search:
         qs = qs.filter(
-            Q(estudiante__dni__icontains=search) |
+            Q(estudiante__persona__dni__icontains=search) |
             Q(estudiante__user__first_name__icontains=search) |
             Q(estudiante__user__last_name__icontains=search)
         )

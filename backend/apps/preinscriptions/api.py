@@ -190,7 +190,7 @@ def listar_preinscripciones(
             Q(codigo__icontains=search)
             | Q(alumno__user__first_name__icontains=search)
             | Q(alumno__user__last_name__icontains=search)
-            | Q(alumno__dni__icontains=search)
+            | Q(alumno__persona__dni__icontains=search)
         )
 
     total = qs.count()
@@ -272,64 +272,55 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
     data_dict.pop("honeypot", None)
     try:
         from django.contrib.auth.models import User
-        from core.models import Estudiante, Preinscripcion
+        from core.models import Persona, Estudiante, Preinscripcion
         estudiante_data = payload.estudiante
         dni = estudiante_data.dni
-        email = estudiante_data.email
 
-        # 1. Buscar o crear el Estudiante y el User asociado, usando DNI como clave.
-        estudiante = Estudiante.objects.filter(dni=dni).first()
-
-        if estudiante:
-            # Si el estudiante ya existe, actualizar sus datos y los del usuario asociado.
-            user = estudiante.user
-            user.first_name = estudiante_data.nombres
-            user.last_name = estudiante_data.apellido
-            # Solo actualizar email si se proporciona uno nuevo.
-            if email and user.email != email:
-                # Opcional: verificar si el nuevo email ya está en uso por otro usuario.
-                if User.objects.filter(email=email).exclude(pk=user.pk).exists():
-                    raise HttpError(409, f"El email '{email}' ya está en uso por otro usuario.")
-                user.email = email
-            user.save()
-
-            estudiante.fecha_nacimiento = estudiante_data.fecha_nacimiento
-            estudiante.telefono = estudiante_data.telefono
-            estudiante.domicilio = estudiante_data.domicilio
-            from contextlib import suppress
-
-            with suppress(Exception):
-                # cuil puede ser opcional
-                estudiante.cuil = getattr(estudiante_data, "cuil", None)
-            estudiante.save()
-        else:
-            # Si el estudiante no existe, crear un nuevo User y Estudiante.
-            # El username del User se basa en el DNI para garantizar unicidad.
-            user, user_created = User.objects.get_or_create(
-                username=dni,
-                defaults={
-                    "first_name": estudiante_data.nombres,
-                    "last_name": estudiante_data.apellido,
-                    "email": email,
-                },
-            )
-            if not user_created:
-                # Si el username (DNI) ya existía, es un caso anómalo.
-                # Se podría actualizar el email, pero es mejor registrar el problema.
-                logger.warning(
-                    f"Se intentó crear un estudiante con DNI {dni}, pero ya existía un User con ese username."
-                )
-                if email and user.email != email:
-                    user.email = email
-                    user.save()
-
+        # 1. Buscamos o creamos la Persona (el corazón de la identidad)
+        persona, _ = Persona.objects.update_or_create(
+            dni=dni,
+            defaults={
+                "nombre": estudiante_data.nombres,
+                "apellido": estudiante_data.apellido,
+                "email": estudiante_data.email,
+                "telefono": estudiante_data.telefono,
+                "domicilio": estudiante_data.domicilio,
+                "fecha_nacimiento": estudiante_data.fecha_nacimiento,
+                "cuil": getattr(estudiante_data, "cuil", None),
+            }
+        )
+        # 2. Buscamos o creamos el Estudiante vinculado a esa Persona
+        estudiante = Estudiante.objects.filter(persona=persona).first()
+        if not estudiante:
+            # Si no existía el estudiante, lo creamos y lo vinculamos al User
+            user, _ = User.objects.get_or_create(username=dni, defaults={
+                "email": persona.email,
+                "first_name": persona.nombre,
+                "last_name": persona.apellido
+            })
             estudiante = Estudiante.objects.create(
                 user=user,
-                dni=dni,
-                fecha_nacimiento=estudiante_data.fecha_nacimiento,
-                telefono=estudiante_data.telefono,
-                domicilio=estudiante_data.domicilio,
+                persona=persona,
+                dni=dni, # Mantener por compatibilidad temporal en Fase 2
+                fecha_nacimiento=persona.fecha_nacimiento,
+                telefono=persona.telefono,
+                domicilio=persona.domicilio,
             )
+        else:
+            # Si ya existía, actualizamos datos por compatibilidad
+            estudiante.fecha_nacimiento = persona.fecha_nacimiento
+            estudiante.telefono = persona.telefono
+            estudiante.domicilio = persona.domicilio
+            if estudiante.dni != dni:
+                estudiante.dni = dni
+            estudiante.save()
+
+            # Sincronizar User
+            user = estudiante.user
+            if user.first_name != persona.nombre or user.last_name != persona.apellido:
+                user.first_name = persona.nombre
+                user.last_name = persona.apellido
+                user.save(update_fields=['first_name', 'last_name'])
 
         # 2. Buscar o crear la Preinscripción.
         current_year = datetime.now().year
@@ -772,7 +763,7 @@ def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = Non
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     preins = (
         Preinscripcion.objects.select_related("alumno__user", "carrera")
-        .filter(alumno__dni=dni)
+        .filter(alumno__persona__dni=dni)
         .order_by("-anio", "-created_at")
     )
     return [_serialize_pre(p) for p in preins]

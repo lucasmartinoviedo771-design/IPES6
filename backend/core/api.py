@@ -163,13 +163,13 @@ def _docente_from_user(user) -> Docente | None:
     lookup = Q()
     username = (getattr(user, "username", "") or "").strip()
     if username:
-        lookup |= Q(dni__iexact=username)
+        lookup |= Q(persona__dni__iexact=username)
     email = (getattr(user, "email", "") or "").strip()
     if email:
-        lookup |= Q(email__iexact=email)
+        lookup |= Q(persona__email__iexact=email)
     if not lookup:
         return None
-    return Docente.objects.filter(lookup).first()
+    return Docente.objects.select_related("persona").filter(lookup).first()
 
 
 def _assignable_roles_for_user(user: User) -> set[str]:
@@ -817,7 +817,7 @@ def list_inscriptos_materia(
     else:
         _ensure_structure_view(request.user, materia.plan_de_estudio.profesorado_id)
 
-    inscripciones = InscripcionMateriaEstudiante.objects.select_related("estudiante__user", "comision").filter(
+    inscripciones = InscripcionMateriaEstudiante.objects.select_related("estudiante__user", "estudiante__persona", "comision").filter(
         materia_id=materia_id
     )
 
@@ -831,9 +831,9 @@ def list_inscriptos_materia(
 
     resultado: list[MateriaInscriptoOut] = []
     for inscripcion in inscripciones.order_by(
-        "estudiante__user__last_name",
-        "estudiante__user__first_name",
-        "estudiante__dni",
+        "estudiante__persona__apellido",
+        "estudiante__persona__nombre",
+        "estudiante__persona__dni",
     ):
         estudiante = inscripcion.estudiante
         user = getattr(estudiante, "user", None)
@@ -1122,7 +1122,7 @@ class HorarioCatedraDetalleOut(Schema):
 @router.get("/docentes", response=list[DocenteOut], auth=JWTAuth())
 def list_docentes(request):
     _ensure_structure_view(request.user)
-    docentes = Docente.objects.all().order_by("apellido", "nombre")
+    docentes = Docente.objects.all().select_related("persona").order_by("persona__apellido", "persona__nombre")
     
     # Optimizamos: Traemos todos los usuarios posibles de un solo viaje
     # Para evitar 400 queries, hacemos un mapa en memoria
@@ -3413,7 +3413,7 @@ def search_users(request, q: str = Query(...)):
         | Q(last_name__icontains=query)
         | Q(username__icontains=query)
         | Q(email__icontains=query)
-        | Q(estudiante__dni__icontains=query)
+        | Q(estudiante__persona__dni__icontains=query)
     )
     users = (
         User.objects.filter(like, is_active=True)

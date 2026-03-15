@@ -109,7 +109,6 @@ const preferPlan = <T extends PreferiblePlan>(planes: T[]): T | null => {
   return [...planes].sort((a, b) => (b.anio_inicio || 0) - (a.anio_inicio || 0))[0] ?? null;
 };
 const PedidoEquivalenciasPage: React.FC = () => {
-  console.log("PedidoEquivalenciasPage RENDERING", new Date().toISOString());
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useAuth();
@@ -226,7 +225,6 @@ const PedidoEquivalenciasPage: React.FC = () => {
   }, [canGestionar, dniObjetivo, requiereDni, enqueueSnackbar]);
 
   useEffect(() => {
-    console.log("useEffect [fetchPedidos] triggered");
     setSelectedId(null);
     setForm(buildInitialForm());
     setMaterias([buildEmptyMateria()]);
@@ -548,24 +546,10 @@ const PedidoEquivalenciasPage: React.FC = () => {
       setEliminandoId(null);
     }
   };
-  useEffect(() => {
-    console.log("PedidoEquivalenciasPage MOUNTED");
-    return () => console.log("PedidoEquivalenciasPage UNMOUNTED");
-  }, []);
 
   return (
     <Box sx={{ p: 3 }}>
-      <BackButton
-        fallbackPath="/estudiantes"
-        onClick={() => {
-          console.log("BackButton Clicked - Attempting navigation");
-          setSelectedId(null);
-          setTimeout(() => {
-            console.log("Calling navigate('/estudiantes')");
-            navigate("/estudiantes", { replace: true });
-          }, 0);
-        }}
-      />
+      <BackButton fallbackPath="/estudiantes" />
       <PageHero
         title="Pedido de equivalencias"
         subtitle="Generá la nota oficial (Anexo A o B) y gestioná tus presentaciones ante Secretaría."

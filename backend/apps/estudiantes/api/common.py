@@ -39,7 +39,7 @@ def ensure_admin(request) -> None:
 
 def resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     if dni:
-        return Estudiante.objects.filter(dni=dni).first()
+        return Estudiante.objects.filter(persona__dni=dni).first()
     if isinstance(request.user, AnonymousUser):
         return None
     return getattr(request.user, "estudiante", None)

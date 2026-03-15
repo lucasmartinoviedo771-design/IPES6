@@ -97,13 +97,13 @@ def _docente_from_user(user) -> Docente | None:
     lookup = Q()
     username = (getattr(user, "username", "") or "").strip()
     if username:
-        lookup |= Q(dni__iexact=username)
+        lookup |= Q(persona__dni__iexact=username)
     email = (getattr(user, "email", "") or "").strip()
     if email:
-        lookup |= Q(email__iexact=email)
+        lookup |= Q(persona__email__iexact=email)
     if not lookup:
         return None
-    return Docente.objects.filter(lookup).first()
+    return Docente.objects.select_related("persona").filter(lookup).first()
 
 
 def _get_profesorado_id_from_comision(comision: Comision) -> int | None:
@@ -313,7 +313,7 @@ def listar_clases_docente(
     if desde > hasta:
         raise HttpError(400, "La fecha 'desde' no puede ser posterior a 'hasta'.")
 
-    docente = Docente.objects.filter(dni=dni).first()
+    docente = Docente.objects.filter(persona__dni=dni).first()
     if not docente:
         raise HttpError(404, "No se encontró un docente con ese DNI.")
 

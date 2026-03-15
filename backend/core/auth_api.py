@@ -34,7 +34,7 @@ def _resolve_user_by_identifier(ident: str):
             try:
                 from apps.personas.models import Perfil
 
-                p = Perfil.objects.filter(dni=ident).select_related("user").first()
+                p = Perfil.objects.filter(persona__dni=ident).select_related("user").first()
                 if p and p.user:
                     u = p.user
             except Exception:

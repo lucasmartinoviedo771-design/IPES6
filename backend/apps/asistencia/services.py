@@ -171,7 +171,7 @@ def _docente_nombre_snapshot(docente: Docente | None) -> str:
 def _resolver_estudiante(snapshot: CursoEstudianteSnapshot) -> Estudiante | None:
     if snapshot.estudiante_id:
         return snapshot.estudiante
-    return Estudiante.objects.filter(dni=snapshot.dni).first()
+    return Estudiante.objects.filter(persona__dni=snapshot.dni).first()
 
 
 def _obtener_clases_del_turno(clase: ClaseProgramada):

@@ -214,7 +214,7 @@ def _serialize_ci_registro(registro: CursoIntroductorioRegistro) -> CursoIntroRe
     cohorte = registro.cohorte
     profesorado = registro.profesorado
     turno = registro.turno
-    nombre = estudiante.user.get_full_name() if estudiante and estudiante.user else ""
+    nombre = estudiante.nombre if estudiante else ""
     return CursoIntroRegistroOut(
         id=registro.id,
         estudiante_id=estudiante.id,
@@ -434,8 +434,7 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
             curso_introductorio_aprobado=False, 
             carreras__isnull=False
         )
-        .only("id", "dni", "user_id") # Solo traemos campos mínimos
-        .select_related("user")
+        .select_related("persona", "user")
         .prefetch_related("carreras_detalle__profesorado")
         .distinct()
     )
@@ -467,7 +466,7 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
             CursoIntroPendienteOut(
                 estudiante_id=est.id,
                 estudiante_dni=est.dni,
-                estudiante_nombre=est.user.get_full_name() if est.user_id else "",
+                estudiante_nombre=est.nombre,
                 profesorados=profesorados,
                 anio_ingreso=profesorados[0].get("anio_ingreso") if profesorados else None,
             )
