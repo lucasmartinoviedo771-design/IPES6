@@ -3,6 +3,7 @@ from decimal import Decimal
 import uuid
 
 from django.db import transaction
+from apps.common.date_utils import format_date, format_datetime
 from django.db.models import Max
 from django.utils import timezone
 from django.utils.text import slugify
@@ -308,12 +309,12 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
         result.append({
             "id": acta.id,
             "codigo": acta.codigo,
-            "fecha": acta.fecha.isoformat(),
+            "fecha": format_date(acta.fecha),
             "materia": acta.materia.nombre if acta.materia else "Desconocida",
             "libro": acta.libro,
             "folio": acta.folio,
             "total_estudiantes": acta.total_alumnos,
-            "created_at": acta.created_at.isoformat() if acta.created_at else "",
+            "created_at": format_datetime(acta.created_at),
             "mesa_id": mesa.id if mesa else None,
             "esta_cerrada": (mesa.planilla_cerrada_en is not None) if mesa else False
         })
@@ -368,7 +369,7 @@ def obtener_acta(request, acta_id: int):
     return ActaDetailLocal(
         id=acta.id,
         codigo=acta.codigo,
-        fecha=acta.fecha.isoformat(),
+        fecha=format_date(acta.fecha),
         profesorado=acta.profesorado.nombre,
         materia=acta.materia.nombre if acta.materia else "Desconocida",
         materia_anio=acta.materia.anio_cursada if acta.materia else None,
@@ -381,7 +382,7 @@ def obtener_acta(request, acta_id: int):
         total_desaprobados=acta.total_desaprobados or 0,
         total_ausentes=acta.total_ausentes or 0,
         created_by=format_user_display(acta.created_by),
-        created_at=acta.created_at.isoformat() if acta.created_at else None,
+        created_at=format_datetime(acta.created_at),
         mesa_id=mesa.id if mesa else None,
         esta_cerrada=(mesa.planilla_cerrada_en is not None) if mesa else False,
         estudiantes=estudiantes_list,

@@ -18,6 +18,7 @@ from core.models import (
     Regularidad,
     InscripcionMateriaEstudiante,
 )
+from apps.common.date_utils import format_date, format_datetime
 
 from ..schemas import InscripcionMesaIn, InscripcionMesaOut, MesaExamenIn, MesaExamenOut
 from .helpers import (
@@ -155,7 +156,7 @@ def listar_mesas_estudiante(
             },
             "tipo": m.tipo,
             "codigo": m.codigo,
-            "fecha": m.fecha.isoformat(),
+            "fecha": format_date(m.fecha),
             "hora_desde": str(m.hora_desde) if m.hora_desde else None,
             "hora_hasta": str(m.hora_hasta) if m.hora_hasta else None,
             "aula": m.aula,

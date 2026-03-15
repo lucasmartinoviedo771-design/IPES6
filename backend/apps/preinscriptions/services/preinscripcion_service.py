@@ -3,6 +3,7 @@ import logging
 from django.db import transaction
 from django.contrib.auth.models import User, Group
 from core.models import Persona, Estudiante, Preinscripcion, PreinscripcionChecklist
+from apps.common.date_utils import format_date
 from apps.preinscriptions.schemas import PreinscripcionIn
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ def convert_dates_to_iso(data_dict):
     from datetime import date
     for key, value in data_dict.items():
         if isinstance(value, date):
-            data_dict[key] = value.isoformat()
+            data_dict[key] = format_date(value)
         elif isinstance(value, dict):
             data_dict[key] = convert_dates_to_iso(value)
     return data_dict

@@ -195,7 +195,7 @@ def obtener_estudiantes_metadata():
         for e in estudiantes_qs
     ]
 
-def _regularidad_metadata_for_user(user: DjangoUser, include_all: bool = False) -> dict:
+def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) -> dict:
     allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
     cache_key = f"reg_metadata_u{user.id}_a{include_all}"
     if allowed is not None:

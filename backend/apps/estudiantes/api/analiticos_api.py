@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.contrib.auth.models import AnonymousUser
 
 from apps.common.api_schemas import ApiResponse
+from apps.common.date_utils import format_datetime
 from core.auth_ninja import JWTAuth
 from core.models import Estudiante, PedidoAnalitico, PlanDeEstudio, Profesorado, VentanaHabilitacion
 
@@ -87,7 +88,7 @@ def listar_pedidos_analitico(request, ventana_id: int):
                 profesorado=pedido.profesorado.nombre if pedido.profesorado_id else None,
                 anio_cursada=None,
                 cohorte=pedido.cohorte,
-                fecha_solicitud=pedido.created_at.isoformat(),
+                fecha_solicitud=format_datetime(pedido.created_at),
             )
         )
     return salida

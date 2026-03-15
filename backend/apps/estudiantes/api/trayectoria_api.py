@@ -39,6 +39,7 @@ from .helpers import (
     _resolve_estudiante,
     _to_iso,
 )
+from apps.common.date_utils import format_date, format_datetime
 from .router import estudiantes_router
 
 
@@ -204,8 +205,8 @@ def trayectoria_estudiante(request, dni: str | None = None):
     mesas_added_keys = set() # (materia_id, fecha_iso)
 
     for insc in inscripciones_mesa_all:
-        fecha_iso = insc.mesa.fecha.isoformat()
-        key = (insc.mesa.materia_id, fecha_iso)
+        fecha_str = format_date(insc.mesa.fecha)
+        key = (insc.mesa.materia_id, fecha_str)
         mesas_added_keys.add(key)
         
         estado_val = insc.estado
@@ -224,7 +225,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
             "materia_nombre": insc.mesa.materia.nombre,
             "tipo": insc.mesa.tipo,
             "tipo_display": insc.mesa.get_tipo_display(),
-            "fecha": fecha_iso,
+            "fecha": fecha_str,
             "estado": estado_val,
             "estado_display": estado_lbl,
             "aula": insc.mesa.aula,
@@ -233,8 +234,8 @@ def trayectoria_estudiante(request, dni: str | None = None):
         
     # Agregamos Actas que no tengan inscripción correspondiente (evitar duplicados por fecha/materia)
     for a in actas_estudiante_qs:
-        fecha_iso = a.acta.fecha.isoformat()
-        key = (a.acta.materia_id, fecha_iso)
+        fecha_str = format_date(a.acta.fecha)
+        key = (a.acta.materia_id, fecha_str)
         
         if key in mesas_added_keys:
             continue
@@ -248,7 +249,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
             "materia_nombre": a.acta.materia.nombre,
             "tipo": a.acta.tipo,
             "tipo_display": a.acta.get_tipo_display(),
-            "fecha": fecha_iso,
+            "fecha": fecha_str,
             "estado": cond_val,
             "estado_display": cond_lbl,
             "aula": None,
@@ -264,7 +265,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
             {
                 "id": f"pre-{pre.id}",
                 "tipo": "preinscripcion",
-                "fecha": _to_iso(pre.created_at or pre.updated_at),
+                "fecha": format_datetime(pre.created_at or pre.updated_at),
                 "titulo": f"Preinscripción a {pre.carrera.nombre}",
                 "subtitulo": pre.estado,
                 "detalle": None,
@@ -305,7 +306,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
             {
                 "id": f"insc-{insc.id}",
                 "tipo": "inscripcion_materia",
-                "fecha": _to_iso(insc.created_at or insc.updated_at),
+                "fecha": format_datetime(insc.created_at or insc.updated_at),
                 "titulo": f"Inscripción a {insc.materia.nombre}",
                 "subtitulo": f"Año académico {insc.anio}",
                 "detalle": detalle,
@@ -344,15 +345,15 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
                 dias_restantes = (vigencia_limite - hoy).days
                 vigente = dias_restantes >= 0
-                vigencia_iso = vigencia_limite.isoformat()
+                vigencia_str = format_date(vigencia_limite)
                 regularidades_vigencia_data.append(
                     {
                         "materia_id": reg.materia_id,
                         "materia_nombre": reg.materia.nombre,
                         "situacion": reg.situacion,
                         "situacion_display": reg.get_situacion_display(),
-                        "fecha_cierre": reg.fecha_cierre.isoformat(),
-                        "vigencia_hasta": vigencia_iso,
+                        "fecha_cierre": format_date(reg.fecha_cierre),
+                        "vigencia_hasta": vigencia_str,
                         "dias_restantes": dias_restantes,
                         "vigente": vigente,
                         "intentos_usados": intentos,
@@ -387,15 +388,15 @@ def trayectoria_estudiante(request, dni: str | None = None):
                         {
                             "materia_id": reg.materia_id,
                             "materia_nombre": reg.materia.nombre,
-                            "regularidad_fecha": reg.fecha_cierre.isoformat(),
-                            "vigencia_hasta": vigencia_iso,
+                            "regularidad_fecha": format_date(reg.fecha_cierre),
+                            "vigencia_hasta": vigencia_str,
                             "dias_restantes": dias_restantes,
                             "comentarios": comentarios,
                             "correlativas_aprobadas": correlativas_encontradas,
                         }
                     )
                 else:
-                    alertas.append(f"La regularidad de {reg.materia.nombre} está vencida desde {vigencia_iso}.")
+                    alertas.append(f"La regularidad de {reg.materia.nombre} está vencida desde {vigencia_str}.")
             
             # Marcar como procesada (sea REGULAR o no) para no ver vigencias de registros anteriores
             materias_procesadas_vigencia.add(reg.materia_id)
@@ -408,7 +409,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 "materia_nombre": reg.materia.nombre,
                 "situacion": reg.situacion,
                 "situacion_display": reg.get_situacion_display(),
-                "fecha_cierre": reg.fecha_cierre.isoformat(),
+                "fecha_cierre": format_date(reg.fecha_cierre),
                 "nota_tp": (
                     float(reg.nota_trabajos_practicos) if reg.nota_trabajos_practicos is not None else None
                 ),
@@ -416,7 +417,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 "asistencia": reg.asistencia_porcentaje,
                 "excepcion": reg.excepcion,
                 "observaciones": reg.observaciones,
-                "vigencia_hasta": vigencia_iso,
+                "vigencia_hasta": vigencia_str,
                 "vigente": vigente,
                 "dias_restantes": dias_restantes,
             }
@@ -447,7 +448,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     folio_val = f"Disp. {fol_str}"
         
         actas_map[mid].append({
-            "fecha": a.acta.fecha.isoformat(),
+            "fecha": format_date(a.acta.fecha),
             "condicion": cond_val,
             "condicion_display": cond_label,
             "nota": a.calificacion_definitiva,
@@ -492,7 +493,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 # O mejor, enviamos 'regularidades' (plural) y el frontend decide.
                 for reg in regularidades_list:
                     regularidades_data.append({
-                        "fecha": reg.fecha_cierre.isoformat(),
+                        "fecha": format_date(reg.fecha_cierre),
                         "condicion": reg.situacion,
                         "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
                         "folio": None, 
@@ -509,11 +510,11 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 
                 # 1. Agregar Inscripciones a Mesa
                 for f in finales_list:
-                    fecha_key = f.mesa.fecha.isoformat()
+                    fecha_str_f = format_date(f.mesa.fecha)
                     # Normalizar condicion para comparacion
                     c_val = f.condicion if f.condicion else "INS"
-                    merged_finales[fecha_key] = {
-                        "fecha": fecha_key,
+                    merged_finales[fecha_str_f] = {
+                        "fecha": fecha_str_f,
                         "condicion": c_val,
                         "nota": _format_nota(f.nota),
                         "folio": f.folio,
@@ -575,7 +576,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         carreras_detalle=carreras_detalle_data,
         email=est.user.email if est.user_id else None,
         telefono=est.telefono or None,
-        fecha_nacimiento=(est.fecha_nacimiento.isoformat() if est.fecha_nacimiento else None),
+        fecha_nacimiento=format_date(est.fecha_nacimiento),
         curso_introductorio=None,
         promedio_general=None,
         libreta_entregada=est.libreta_entregada,
@@ -616,7 +617,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         regularizadas=sorted(regularizadas_set),
         inscriptas_actuales=sorted(inscriptas_actuales_set),
         carton=carton_planes,
-        updated_at=timezone.now().isoformat(),
+        updated_at=format_datetime(timezone.now()),
     )
 
     return trayectoria

@@ -7,14 +7,14 @@ class ConversationParticipantOut(Schema):
     name: str
     roles: list[str]
     can_reply: bool
-    last_read_at: datetime | None
+    last_read_at: str | None
 
 class MessageOut(Schema):
     id: int
     author_id: int | None
     author_name: str
     body: str
-    created_at: datetime
+    created_at: str
     attachment_url: str | None
     attachment_name: str | None
 
@@ -25,7 +25,7 @@ class ConversationSummaryOut(Schema):
     status: str
     is_massive: bool
     allow_student_reply: bool
-    last_message_at: datetime | None
+    last_message_at: str | None
     unread: bool
     sla: str | None
     participants: list[ConversationParticipantOut]

@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from apps.common.api_schemas import ApiResponse
 from core.models import Estudiante, EstudianteCarrera
 from core.permissions import allowed_profesorados, ensure_roles, ensure_profesorado_access
+from apps.common.date_utils import format_datetime
 
 from ..schemas import (
     EstudianteAdminDetail,
@@ -221,7 +222,7 @@ def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, ca
 
     context = {
         "items": items,
-        "fecha": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "fecha": format_datetime(datetime.datetime.now()),
         "q": q,
     }
     

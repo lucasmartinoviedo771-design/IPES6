@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.utils import timezone
+from apps.common.date_utils import format_date, format_datetime
 
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
@@ -93,7 +94,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
                 "nota": float(insc.nota) if insc.nota is not None else None,
                 "folio": insc.folio,
                 "libro": insc.libro,
-                "fecha_resultado": insc.fecha_resultado.isoformat() if insc.fecha_resultado else None,
+                "fecha_resultado": format_date(insc.fecha_resultado),
                 "cuenta_para_intentos": insc.cuenta_para_intentos,
                 "observaciones": insc.observaciones,
             }
@@ -120,7 +121,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
         plan_resolucion=plan.resolucion if plan else None,
         tipo=mesa.tipo,
         modalidad=mesa.modalidad,
-        fecha=mesa.fecha.isoformat(),
+        fecha=format_date(mesa.fecha),
         hora_desde=hora_desde,
         hora_hasta=hora_hasta,
         mesa_codigo=mesa.codigo,
@@ -130,7 +131,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
         condiciones=_mesa_planilla_condiciones(),
         estudiantes=estudiantes,
         esta_cerrada=esta_cerrada,
-        cerrada_en=mesa.planilla_cerrada_en.isoformat() if mesa.planilla_cerrada_en else None,
+        cerrada_en=format_datetime(mesa.planilla_cerrada_en),
         cerrada_por=_format_user_display(mesa.planilla_cerrada_por),
         puede_editar=(not esta_cerrada) or can_override,
         puede_cerrar=not esta_cerrada,
@@ -329,7 +330,7 @@ def listar_constancias_examen(request, dni: str | None = None):
                 profesorado_id=profesorado.id if profesorado else None,
                 plan_resolucion=plan.resolucion if plan else None,
                 mesa_codigo=mesa.codigo,
-                mesa_fecha=mesa.fecha.isoformat(),
+                mesa_fecha=format_date(mesa.fecha),
                 mesa_hora_desde=str(mesa.hora_desde)[:5] if mesa.hora_desde else None,
                 mesa_hora_hasta=_calc_hora_hasta(insc, mesa),
                 mesa_tipo=mesa.get_tipo_display(),

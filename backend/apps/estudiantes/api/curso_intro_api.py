@@ -32,6 +32,7 @@ from ..schemas import (
     CursoIntroVentanaOut,
 )
 from .router import estudiantes_router
+from apps.common.date_utils import format_date, format_datetime
 
 CI_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "curso_intro"}
 CI_FULL_ACCESS_ROLES = {"admin", "secretaria"}
@@ -190,10 +191,9 @@ def _serialize_ci_cohorte(cohorte: CursoIntroductorioCohorte) -> CursoIntroCohor
         profesorado_nombre=profesorado.nombre if profesorado else None,
         turno_id=turno.id if turno else None,
         turno_nombre=turno.nombre if turno else None,
-        ventana_id=ventana.id if ventana else None,
         ventana_tipo=ventana.get_tipo_display() if ventana else None,
-        fecha_inicio=cohorte.fecha_inicio.isoformat() if cohorte.fecha_inicio else None,
-        fecha_fin=cohorte.fecha_fin.isoformat() if cohorte.fecha_fin else None,
+        fecha_inicio=format_date(cohorte.fecha_inicio),
+        fecha_fin=format_date(cohorte.fecha_fin),
         cupo=cohorte.cupo,
         observaciones=cohorte.observaciones or "",
     )
@@ -202,8 +202,8 @@ def _serialize_ci_cohorte(cohorte: CursoIntroductorioCohorte) -> CursoIntroCohor
 def _serialize_ci_ventana(ventana: VentanaHabilitacion) -> CursoIntroVentanaOut:
     return CursoIntroVentanaOut(
         id=ventana.id,
-        desde=ventana.desde.isoformat(),
-        hasta=ventana.hasta.isoformat(),
+        desde=format_date(ventana.desde),
+        hasta=format_date(ventana.hasta),
         activo=ventana.activo,
         periodo=ventana.periodo,
     )
@@ -232,7 +232,7 @@ def _serialize_ci_registro(registro: CursoIntroductorioRegistro) -> CursoIntroRe
         nota_final=float(registro.nota_final) if registro.nota_final is not None else None,
         observaciones=registro.observaciones or "",
         es_historico=registro.es_historico,
-        resultado_at=registro.resultado_at.isoformat() if registro.resultado_at else None,
+        resultado_at=format_datetime(registro.resultado_at),
     )
 
 

@@ -40,6 +40,7 @@ from .services import (
     generate_classes_for_range,
     sync_course_snapshots,
 )
+from apps.common.date_utils import format_date, format_datetime
 from .api_helpers import (
     _resolve_scope,
     _ensure_authenticated_scope,
@@ -149,8 +150,8 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
     otras_clases = [
         ClaseNavegacionOut(
             id=c.id,
-            fecha=c.fecha,
-            descripcion=f"Clase del {c.fecha.strftime('%d/%m')}",
+            fecha=format_date(c.fecha),
+            descripcion=f"Clase del {format_date(c.fecha)}",
             actual=(c.id == clase.id)
         )
         for c in otras_clases_qs
@@ -159,7 +160,7 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
     return ClaseEstudianteDetalleOut(
         clase_id=clase.id,
         comision=str(clase.comision),
-        fecha=clase.fecha,
+        fecha=format_date(clase.fecha),
         horario=f"{clase.hora_inicio.strftime('%H:%M')} - {clase.hora_fin.strftime('%H:%M')}" if clase.hora_inicio and clase.hora_fin else None,
         materia=str(clase.comision.materia) if clase.comision.materia else str(clase.comision),
         docentes=docentes,
@@ -243,7 +244,7 @@ def listar_clases_estudiantes(
     clases_out = [
         EstudianteClaseListadoOut(
             clase_id=clase.id,
-            fecha=clase.fecha,
+            fecha=format_date(clase.fecha),
             materia=clase.comision.materia.nombre,
             comision=clase.comision.codigo,
             turno=clase.comision.turno.nombre if clase.comision.turno_id else None,
@@ -320,7 +321,7 @@ def listar_mis_asistencias(request: HttpRequest):
         data.append(
             EstudianteAsistenciaItemOut(
                 id=asist.id,
-                fecha=asist.clase.fecha,
+                fecha=format_date(asist.clase.fecha),
                 materia=asist.clase.comision.materia.nombre,
                 comision=asist.clase.comision.codigo,
                 estado=asist.estado,

@@ -21,7 +21,7 @@ class EstudianteOut(Schema):
     email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None
-    fecha_nacimiento: date | None = None  # Changed to date
+    fecha_nacimiento: str | None = None  # Changed to str
 
 
 class CarreraOut(Schema):
@@ -132,8 +132,8 @@ class PreinscripcionOut(Schema):
     id: int
     codigo: str
     estado: str
-    fecha: datetime = Field(alias="created_at")
-    created_at: datetime
+    fecha: str = Field(alias="created_at")
+    created_at: str | None
     activa: bool
     estudiante: EstudianteOut | None = Field(None, alias="alumno")
     carrera: CarreraOut

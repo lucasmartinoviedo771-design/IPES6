@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from apps.common.date_utils import format_date, format_datetime
 
 from typing import Any
 from django.http import HttpResponse
@@ -304,7 +305,7 @@ class PlanillaRegularidadListOut(Schema):
     cantidad_estudiantes: int
     estado: str | None
     anio_academico: int
-    created_at: datetime | None
+    created_at: str | None
 
 @primera_carga_router.get(
     "/regularidades/historial-debug",
@@ -365,11 +366,11 @@ def listar_historial_regularidades(request, anio: int | None = None):
                 "materia_nombre": planilla.materia.nombre,
                 "anio_cursada": str(planilla.materia.anio_cursada) if planilla.materia.anio_cursada else "-",
                 "dictado": dictado_val,
-                "fecha": planilla.fecha,
+                "fecha": format_date(planilla.fecha),
                 "cantidad_estudiantes": planilla.filas.count(),
                 "estado": planilla.estado,
                 "anio_academico": planilla.anio_academico,
-                "created_at": planilla.created_at,
+                "created_at": format_datetime(planilla.created_at),
             })
         print("DEBUG: Retornando data")
         return data

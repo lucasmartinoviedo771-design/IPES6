@@ -294,6 +294,7 @@ def resolver_contexto_equivalencia(
         raise ValueError("El plan de estudio no pertenece al profesorado indicado.")
     return estudiante, profesorado, plan
 
+from apps.common.date_utils import format_date, format_datetime
 
 def serialize_disposicion(dispo: EquivalenciaDisposicion, detalles=None) -> dict:
     detalles = detalles or list(dispo.detalles.select_related("materia"))
@@ -303,14 +304,14 @@ def serialize_disposicion(dispo: EquivalenciaDisposicion, detalles=None) -> dict
         "estudiante_dni": dispo.estudiante.dni,
         "estudiante_nombre": dispo.estudiante.user.get_full_name() if dispo.estudiante.user_id else "",
         "numero_disposicion": dispo.numero_disposicion,
-        "fecha_disposicion": dispo.fecha_disposicion.isoformat(),
+        "fecha_disposicion": format_date(dispo.fecha_disposicion),
         "profesorado_id": dispo.profesorado_id,
         "profesorado_nombre": dispo.profesorado.nombre,
         "plan_id": dispo.plan_id,
         "plan_resolucion": dispo.plan.resolucion,
         "observaciones": dispo.observaciones,
         "creado_por": dispo.creado_por.get_full_name() if dispo.creado_por else None,
-        "creado_en": dispo.creado_en.isoformat(),
+        "creado_en": format_datetime(dispo.creado_en),
         "detalles": [
             {
                 "id": detalle.id,

@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from apps.common.date_utils import format_date
 from apps.common.api_schemas import ApiResponse
 from core.models import Materia, Regularidad
 
@@ -26,8 +25,8 @@ def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
     vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
     return {
         "vigente": True,
-        "fecha_cierre": reg.fecha_cierre.isoformat(),
-        "hasta": vigencia_limite.isoformat(),
+        "fecha_cierre": format_date(reg.fecha_cierre),
+        "hasta": format_date(vigencia_limite),
         "intentos_usados": intentos,
         "intentos_max": 3,
     }

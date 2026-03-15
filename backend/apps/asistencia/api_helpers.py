@@ -32,11 +32,12 @@ from .models import (
     AsistenciaEstudiante,
     AsistenciaDocente,
     ClaseProgramada,
-    CalendarioAsistenciaEvento,
+    CalendarioEvento,
     CursoEstudianteSnapshot,
     DocenteMarcacionLog,
     Justificacion,
 )
+from apps.common.date_utils import format_date, format_datetime
 from .schemas import (
     EstudianteResumenOut,
     EstudianteClasesResponse,
@@ -209,9 +210,7 @@ def _resolver_event_scope(payload: AsistenciaCalendarioEventoIn):
             raise HttpError(404, "El docente indicado no existe.")
     return {"comision": comision, "plan": plan, "profesorado": profesorado, "docente": docente}
 
-def _evento_to_schema(evento: CalendarioAsistenciaEvento) -> AsistenciaCalendarioEventoOut:
-    turno_id, turno_nombre = _turno_to_dict(evento.turno)
-    docente_id, docente_nombre = _docente_to_dict(evento.docente)
+def _evento_to_schema(evento: CalendarioEvento) -> AsistenciaCalendarioEventoOut:
     profesorado_nombre = evento.profesorado.nombre if evento.profesorado_id else None
     plan_resolucion = evento.plan.resolucion if evento.plan_id else None
     comision_nombre = evento.comision.codigo if evento.comision_id else None
@@ -219,24 +218,24 @@ def _evento_to_schema(evento: CalendarioAsistenciaEvento) -> AsistenciaCalendari
         id=evento.id,
         nombre=evento.nombre,
         tipo=evento.tipo,
-        subtipo=evento.subtipo,
-        fecha_desde=evento.fecha_desde,
-        fecha_hasta=evento.fecha_hasta,
-        turno_id=turno_id,
-        turno_nombre=turno_nombre,
+        subtipo=evento.subtipo or "",
+        fecha_desde=format_date(evento.fecha_desde),
+        fecha_hasta=format_date(evento.fecha_hasta),
+        turno_id=evento.turno_id,
+        turno_nombre=evento.turno.nombre if evento.turno_id else None,
         profesorado_id=evento.profesorado_id,
-        profesorado_nombre=profesorado_nombre,
+        profesorado_nombre=evento.profesorado.nombre if evento.profesorado_id else None,
         plan_id=evento.plan_id,
-        plan_resolucion=plan_resolucion,
+        plan_resolucion=evento.plan.resolucion if evento.plan_id else None,
         comision_id=evento.comision_id,
-        comision_nombre=comision_nombre,
-        docente_id=docente_id,
-        docente_nombre=docente_nombre,
+        comision_nombre=evento.comision.codigo if evento.comision_id else None,
+        docente_id=evento.docente_id,
+        docente_nombre=str(evento.docente) if evento.docente_id else None,
         aplica_docentes=evento.aplica_docentes,
         aplica_estudiantes=evento.aplica_estudiantes,
-        motivo=evento.motivo or None,
+        motivo=evento.motivo,
         activo=evento.activo,
-        creado_en=evento.creado_en,
+        creado_en=format_datetime(evento.creado_en),
     )
 
 def _build_horario(hora_inicio, hora_fin) -> str | None:
@@ -251,3 +250,141 @@ def _calcular_ventanas(clase: ClaseProgramada):
     if not data:
         return None, None, None, ""
     return data
+
+def _docente_nombre(docente: Docente) -> str:
+    partes = [docente.apellido or "", docente.nombre or ""]
+    nombre = " ".join(part.strip() for part in partes if part).strip()
+    return nombre or docente.dni
+
+def _justificacion_queryset_with_scope(
+    queryset,
+    roles: set[str],
+    staff_profesorados: set[int],
+    docente_profile: Docente | None,
+    *,
+    for_manage: bool = False,
+):
+    if roles & {"admin", "secretaria"}:
+        return queryset
+    if "bedel" in roles:
+        if not staff_profesorados:
+            raise HttpError(403, "No tenés profesorados asignados.")
+        return queryset.filter(
+            detalles__clase__comision__materia__plan_de_estudio__profesorado_id__in=staff_profesorados
+        ).distinct()
+    if "coordinador" in roles:
+        if for_manage:
+            raise HttpError(403, "Los coordinadores solo poseen acceso de lectura.")
+        if not staff_profesorados:
+            raise HttpError(403, "No tenés profesorados asignados.")
+        return queryset.filter(
+            detalles__clase__comision__materia__plan_de_estudio__profesorado_id__in=staff_profesorados
+        ).distinct()
+    if docente_profile:
+        if for_manage:
+            raise HttpError(403, "Los docentes no pueden gestionar justificaciones.")
+        return queryset.filter(
+            Q(detalles__docente=docente_profile) | Q(detalles__clase__comision__docente=docente_profile)
+        ).distinct()
+    raise HttpError(403, "No tenés permisos para operar sobre justificaciones.")
+
+def _estudiante_display(estudiante: Estudiante | None) -> str | None:
+    if not estudiante:
+        return None
+    user = getattr(estudiante, "user", None)
+    if user:
+        full_name = user.get_full_name().strip()
+        if full_name:
+            return full_name
+        if user.username:
+            return user.username
+    return getattr(estudiante.persona, "dni", None) if estudiante.persona else None
+
+def _docente_display(docente: Docente | None) -> str | None:
+    if not docente:
+        return None
+    partes = [docente.apellido or "", docente.nombre or ""]
+    nombre = " ".join(part.strip() for part in partes if part.strip()).strip()
+    return nombre or docente.dni
+
+def _user_display(user) -> str | None:
+    if not user:
+        return None
+    full_name = user.get_full_name().strip()
+    return full_name or user.username
+
+def _serialize_justificacion_summary(justificacion: Justificacion) -> JustificacionListItemOut:
+    detalles = list(justificacion.detalles.all())
+    comision = next((d.clase.comision for d in detalles if d.clase_id and d.clase.comision_id), None)
+    materia = comision.materia if comision else None
+    profesorado = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio_id else None
+    estudiante_ref = next((d.estudiante for d in detalles if d.estudiante_id), None)
+    docente_ref = next((d.docente for d in detalles if d.docente_id), None)
+    return JustificacionListItemOut(
+        id=justificacion.id,
+        tipo=justificacion.tipo,
+        estado=justificacion.estado,
+        origen=justificacion.origen,
+        motivo=justificacion.motivo,
+        vigencia_desde=format_date(justificacion.vigencia_desde),
+        vigencia_hasta=format_date(justificacion.vigencia_hasta),
+        comision_id=comision.id if comision else None,
+        comision=comision.codigo if comision else None,
+        materia=materia.nombre if materia else None,
+        profesorado_id=profesorado.id if profesorado else None,
+        profesorado=profesorado.nombre if profesorado else None,
+        estudiante_id=estudiante_ref.id if estudiante_ref else None,
+        estudiante=_estudiante_display(estudiante_ref),
+        docente_id=docente_ref.id if docente_ref else None,
+        docente=_docente_display(docente_ref),
+        creado_en=format_datetime(justificacion.creado_en),
+        aprobado_en=format_datetime(justificacion.aprobado_en),
+    )
+
+def _serialize_justificacion_detail(justificacion: Justificacion) -> JustificacionDetailOut:
+    detalles = list(justificacion.detalles.all())
+    detalles_out = []
+    for d in detalles:
+        detalles_out.append(
+            {
+                "id": d.id,
+                "clase_id": d.clase_id,
+                "clase_fecha": d.clase.fecha if d.clase_id else None,
+                "clase_horario": _build_horario(d.clase.hora_inicio, d.clase.hora_fin) if d.clase_id else None,
+                "estudiante_id": d.estudiante_id,
+                "estudiante": _estudiante_display(d.estudiante),
+                "docente_id": d.docente_id,
+                "docente": _docente_display(d.docente),
+            }
+        )
+    comision = next((d.clase.comision for d in detalles if d.clase_id and d.clase.comision_id), None)
+    materia = comision.materia if comision else None
+    profesorado = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio_id else None
+    estudiante_ref = next((d.estudiante for d in detalles if d.estudiante_id), None)
+    docente_ref = next((d.docente for d in detalles if d.docente_id), None)
+    
+    return JustificacionDetailOut(
+        id=justificacion.id,
+        tipo=justificacion.tipo,
+        estado=justificacion.estado,
+        origen=justificacion.origen,
+        motivo=justificacion.motivo,
+        observaciones=justificacion.observaciones or None,
+        archivo_url=justificacion.archivo_url or None,
+        vigencia_desde=format_date(justificacion.vigencia_desde),
+        vigencia_hasta=format_date(justificacion.vigencia_hasta),
+        comision_id=comision.id if comision else None,
+        comision=comision.codigo if comision else None,
+        materia=materia.nombre if materia else None,
+        profesorado_id=profesorado.id if profesorado else None,
+        profesorado=profesorado.nombre if profesorado else None,
+        estudiante_id=estudiante_ref.id if estudiante_ref else None,
+        estudiante=_estudiante_display(estudiante_ref),
+        docente_id=docente_ref.id if docente_ref else None,
+        docente=_docente_display(docente_ref),
+        creado_en=format_datetime(justificacion.creado_en),
+        creado_por=_user_display(justificacion.creado_por),
+        aprobado_en=format_datetime(justificacion.aprobado_en),
+        aprobado_por=_user_display(justificacion.aprobado_por),
+        detalles=detalles_out,
+    )

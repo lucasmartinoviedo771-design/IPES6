@@ -913,8 +913,7 @@ export default function EstudiantesAdminPage() {
                           {...field}
                           label="Fecha de nacimiento"
                           size="small"
-                          type="date"
-                          InputLabelProps={{ shrink: true }}
+                          placeholder="DD/MM/AAAA"
                           fullWidth
                         />
                       )}
@@ -1031,7 +1030,13 @@ export default function EstudiantesAdminPage() {
                       name="sec_fecha_egreso"
                       control={control}
                       render={({ field }) => (
-                        <TextField {...field} label="Fecha Egreso" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} />
+                        <TextField 
+                          {...field} 
+                          label="Fecha Egreso" 
+                          size="small" 
+                          fullWidth 
+                          placeholder="DD/MM/AAAA"
+                        />
                       )}
                     />
                     <Controller

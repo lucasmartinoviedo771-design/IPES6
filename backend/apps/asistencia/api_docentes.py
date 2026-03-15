@@ -31,6 +31,7 @@ from .api_helpers import (
     _calcular_ventanas,
     _build_horario,
 )
+from apps.common.date_utils import format_date, format_datetime
 
 router = Router(tags=["asistencia-docentes"], auth=JWTAuth())
 
@@ -112,7 +113,7 @@ def listar_clases_docente(
         clases_out.append(
             DocenteClaseOut(
                 id=clase.id,
-                fecha=clase.fecha,
+                fecha=format_date(clase.fecha),
                 comision_id=clase.comision_id,
                 materia=clase.comision.materia.nombre,
                 materia_id=materia.id if materia else 0,
@@ -125,10 +126,10 @@ def listar_clases_docente(
                 ya_registrada=bool(
                     asistencia and asistencia.estado == AsistenciaDocente.Estado.PRESENTE
                 ),
-                registrada_en=asistencia.registrado_en if asistencia else None,
-                ventana_inicio=ventana_inicio,
-                ventana_fin=ventana_fin,
-                umbral_tarde=umbral_tarde,
+                registrada_en=format_datetime(asistencia.registrado_en) if asistencia else None,
+                ventana_inicio=format_datetime(ventana_inicio),
+                ventana_fin=format_datetime(ventana_fin),
+                umbral_tarde=format_datetime(umbral_tarde),
                 plan_id=plan.id if plan else None,
                 plan_resolucion=plan.resolucion if plan else None,
                 profesorado_id=profesorado.id if profesorado else None,
@@ -144,7 +145,7 @@ def listar_clases_docente(
 
     historial = [
         DocenteHistorialOut(
-            fecha=registro.clase.fecha,
+            fecha=format_date(registro.clase.fecha),
             turno=registro.clase.comision.turno.nombre if registro.clase.comision.turno_id else "",
             estado=registro.get_estado_display(),
             observacion=registro.observaciones or None,
@@ -284,7 +285,7 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     return DocenteMarcarPresenteOut(
         clase_id=clase.id,
         estado=asistencia.estado,
-        registrada_en=asistencia.registrado_en,
+        registrada_en=format_datetime(asistencia.registrado_en),
         categoria=asistencia.marcacion_categoria,
         alerta=alerta,
         alerta_tipo=alerta_tipo or None,

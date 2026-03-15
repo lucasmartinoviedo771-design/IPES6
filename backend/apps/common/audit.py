@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Any, Mapping
+from apps.common.date_utils import format_date, format_datetime
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.db import transaction
@@ -136,8 +137,10 @@ def _json_safe(value: Any):
         return value
     if isinstance(value, Decimal):
         return float(value)
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
+    if isinstance(value, datetime):
+        return format_datetime(value)
+    if isinstance(value, date):
+        return format_date(value)
     if isinstance(value, Mapping):
         return {k: _json_safe(v) for k, v in value.items()}
     if isinstance(value, (list, tuple, set)):

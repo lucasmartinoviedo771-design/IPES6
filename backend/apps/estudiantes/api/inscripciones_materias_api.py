@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from django.utils import timezone
+from apps.common.date_utils import format_datetime
 
 from apps.common.api_schemas import ApiResponse
 from core.permissions import ensure_roles
@@ -224,8 +225,8 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 estado_display=ins.get_estado_display(),
                 comision_actual=_comision_to_resumen(comision_visible),
                 comision_solicitada=_comision_to_resumen(ins.comision_solicitada),
-                fecha_creacion=(ins.created_at or timezone.now()).isoformat(),
-                fecha_actualizacion=(ins.updated_at or ins.created_at or timezone.now()).isoformat(),
+                fecha_creacion=format_datetime(ins.created_at),
+                fecha_actualizacion=format_datetime(ins.updated_at or ins.created_at),
             )
         )
     return items

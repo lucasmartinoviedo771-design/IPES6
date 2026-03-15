@@ -264,9 +264,8 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
             render={({ field }) => (
               <TextField
                 {...field}
-                type="date"
                 label="Fecha de cierre"
-                InputLabelProps={{ shrink: true }}
+                placeholder="DD/MM/AAAA"
                 sx={{ width: { xs: "100%", md: 220 } }}
                 disabled={readOnly}
               />

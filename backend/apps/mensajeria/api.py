@@ -5,6 +5,7 @@ from django.db.models import Case, CharField, F, Q, Value, When
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import File, Router, Query, Form
+from apps.common.date_utils import format_datetime
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
 
@@ -206,7 +207,7 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
         res.append(ConversationSummaryOut(
             id=c.id, subject=c.subject, topic=c.topic.name if c.topic else None,
             status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
-            last_message_at=c.last_message_at, unread=unread,
+            last_message_at=format_datetime(c.last_message_at), unread=unread,
             sla=_compute_sla_indicator(c, p),
             participants=[], # Opcional: llenar si es necesario
             last_message_excerpt=None # Opcional
@@ -261,11 +262,11 @@ def get_conversation(request, conversation_id: int):
     return ConversationDetailOut(
         id=c.id, subject=c.subject, topic=c.topic.name if c.topic else None,
         status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
-        last_message_at=c.last_message_at, unread=False, sla=None,
+        last_message_at=format_datetime(c.last_message_at), unread=False, sla=None,
         participants=[], # Llenar participantes
         messages=[MessageOut(
             id=m.id, author_id=m.author_id, author_name=m.author.get_full_name() or m.author.username,
-            body=m.body, created_at=m.created_at,
+            body=m.body, created_at=format_datetime(m.created_at),
             attachment_url=m.attachment.url if m.attachment else None,
             attachment_name=m.attachment.name if m.attachment else None
         ) for m in messages]
@@ -287,7 +288,7 @@ def post_message(request, conversation_id: int, body: str = Form(...), attachmen
     
     return MessageOut(
         id=msg.id, author_id=msg.author_id, author_name=msg.author.get_full_name() or msg.author.username,
-        body=msg.body, created_at=msg.created_at,
+        body=msg.body, created_at=format_datetime(msg.created_at),
         attachment_url=msg.attachment.url if msg.attachment else None,
         attachment_name=msg.attachment.name if msg.attachment else None
     )

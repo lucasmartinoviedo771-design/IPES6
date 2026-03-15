@@ -2,6 +2,7 @@
 
 import csv
 from datetime import datetime
+from apps.common.date_utils import format_date, format_datetime, parse_date
 
 from django.db import transaction
 from django.http import HttpResponse
@@ -78,27 +79,17 @@ def _serialize_pedido_equivalencia(pedido: PedidoEquivalencia, user) -> PedidoEq
     ]
     ventana_label = ""
     if pedido.ventana_id:
-        desde = pedido.ventana.desde.strftime("%d/%m/%Y") if pedido.ventana.desde else ""
-        hasta = pedido.ventana.hasta.strftime("%d/%m/%Y") if pedido.ventana.hasta else ""
+        desde = format_date(pedido.ventana.desde) if pedido.ventana.desde else ""
+        hasta = format_date(pedido.ventana.hasta) if pedido.ventana.hasta else ""
         ventana_label = f"{pedido.ventana.get_tipo_display()} ({desde} - {hasta})"
     estudiante_nombre = pedido.estudiante.user.get_full_name() if pedido.estudiante.user_id else None
     timeline = {
-        "formulario_descargado_en": pedido.formulario_descargado_en.isoformat()
-        if pedido.formulario_descargado_en
-        else None,
-        "inscripcion_verificada_en": pedido.inscripcion_verificada_en.isoformat()
-        if pedido.inscripcion_verificada_en
-        else None,
-        "documentacion_registrada_en": pedido.documentacion_registrada_en.isoformat()
-        if pedido.documentacion_registrada_en
-        else None,
-        "evaluacion_registrada_en": pedido.evaluacion_registrada_en.isoformat()
-        if pedido.evaluacion_registrada_en
-        else None,
-        "titulos_registrado_en": pedido.titulos_registrado_en.isoformat()
-        if pedido.titulos_registrado_en
-        else None,
-        "notificado_en": pedido.notificado_en.isoformat() if pedido.notificado_en else None,
+        "formulario_descargado_en": format_datetime(pedido.formulario_descargado_en),
+        "inscripcion_verificada_en": format_datetime(pedido.inscripcion_verificada_en),
+        "documentacion_registrada_en": format_datetime(pedido.documentacion_registrada_en),
+        "evaluacion_registrada_en": format_datetime(pedido.evaluacion_registrada_en),
+        "titulos_registrado_en": format_datetime(pedido.titulos_registrado_en),
+        "notificado_en": format_datetime(pedido.notificado_en),
     }
     return PedidoEquivalenciaOut(
         id=pedido.id,
@@ -119,9 +110,9 @@ def _serialize_pedido_equivalencia(pedido: PedidoEquivalencia, user) -> PedidoEq
         establecimiento_provincia=pedido.establecimiento_provincia or None,
         ventana_id=pedido.ventana_id,
         ventana_label=ventana_label,
-        created_at=pedido.created_at.isoformat(),
-        updated_at=pedido.updated_at.isoformat(),
-        bloqueado_en=pedido.bloqueado_en.isoformat() if pedido.bloqueado_en else None,
+        created_at=format_datetime(pedido.created_at),
+        updated_at=format_datetime(pedido.updated_at),
+        bloqueado_en=format_datetime(pedido.bloqueado_en),
         puede_editar=_puede_editar_pedido_equivalencia(pedido, user),
         estudiante_dni=pedido.estudiante.dni,
         estudiante_nombre=estudiante_nombre,
@@ -129,25 +120,17 @@ def _serialize_pedido_equivalencia(pedido: PedidoEquivalencia, user) -> PedidoEq
         documentacion_presentada=pedido.documentacion_presentada,
         documentacion_detalle=pedido.documentacion_detalle or None,
         documentacion_cantidad=pedido.documentacion_cantidad,
-        documentacion_registrada_en=pedido.documentacion_registrada_en.isoformat()
-        if pedido.documentacion_registrada_en
-        else None,
+        documentacion_registrada_en=format_datetime(pedido.documentacion_registrada_en),
         evaluacion_observaciones=pedido.evaluacion_observaciones or None,
-        evaluacion_registrada_en=pedido.evaluacion_registrada_en.isoformat()
-        if pedido.evaluacion_registrada_en
-        else None,
+        evaluacion_registrada_en=format_datetime(pedido.evaluacion_registrada_en),
         resultado_final=pedido.resultado_final,
         titulos_documento_tipo=pedido.titulos_documento_tipo,
         titulos_nota_numero=pedido.titulos_nota_numero or None,
-        titulos_nota_fecha=pedido.titulos_nota_fecha.isoformat() if pedido.titulos_nota_fecha else None,
+        titulos_nota_fecha=format_date(pedido.titulos_nota_fecha),
         titulos_disposicion_numero=pedido.titulos_disposicion_numero or None,
-        titulos_disposicion_fecha=pedido.titulos_disposicion_fecha.isoformat()
-        if pedido.titulos_disposicion_fecha
-        else None,
+        titulos_disposicion_fecha=format_date(pedido.titulos_disposicion_fecha),
         titulos_observaciones=pedido.titulos_observaciones or None,
-        titulos_registrado_en=pedido.titulos_registrado_en.isoformat()
-        if pedido.titulos_registrado_en
-        else None,
+        titulos_registrado_en=format_datetime(pedido.titulos_registrado_en),
         materias=materias,
         timeline=timeline,
     )
@@ -178,15 +161,7 @@ def _is_estudiante_ipes(estudiante: Estudiante) -> bool:
 
 
 def _parse_date(value: str | None):
-    if not value:
-        return None
-    value = value.strip()
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").date()
-    except ValueError:
-        raise HttpError(400, f"Formato de fecha inválido: {value}")
+    return parse_date(value)
 
 
 def _calcular_resultado_final(pedido: PedidoEquivalencia) -> str:

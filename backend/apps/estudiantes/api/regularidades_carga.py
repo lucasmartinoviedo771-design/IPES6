@@ -20,6 +20,7 @@ from core.models import (
     RegularidadPlanillaLock,
     PreinscripcionChecklist,
 )
+from apps.common.date_utils import format_date, format_datetime
 from .notas_utils import (
     normalized_user_roles,
     docente_from_user,
@@ -54,7 +55,7 @@ class RegularidadPlanillaOut(Schema):
     plan_id: int | None = None
     plan_resolucion: str | None = None
     docentes: list[str] = []
-    fecha_cierre: date | None = None
+    fecha_cierre: str | None = None
     esta_cerrada: bool
     cerrada_en: str | None = None
     cerrada_por: str | None = None
@@ -90,7 +91,7 @@ class RegularidadCargaEstudiante(Schema):
 
 class RegularidadCargaIn(Schema):
     comision_id: int  # Id real o negativo vritual
-    fecha_cierre: date | None = None
+    fecha_cierre: str | None = None
     estudiantes: list[RegularidadCargaEstudiante]
 
 class RegularidadCierreIn(Schema):
@@ -376,9 +377,9 @@ def obtener_planilla_regularidad(request, comision_id: int):
             plan_id=plan.id if plan else None,
             plan_resolucion=plan.resolucion if plan else None,
             docentes=docentes,
-            fecha_cierre=fecha_cierre,
+            fecha_cierre=format_date(fecha_cierre),
             esta_cerrada=esta_cerrada,
-            cerrada_en=lock.cerrado_en.isoformat() if lock else None,
+            cerrada_en=format_datetime(lock.cerrado_en) if lock else None,
             cerrada_por=format_user_display(lock.cerrado_por) if lock else None,
             puede_editar=(not esta_cerrada) or can_override_lock,
             puede_cerrar=not esta_cerrada,
@@ -437,9 +438,9 @@ def obtener_planilla_regularidad(request, comision_id: int):
         plan_id=plan.id if plan else None,
         plan_resolucion=plan.resolucion if plan else None,
         docentes=[],
-        fecha_cierre=fecha_cierre,
+        fecha_cierre=format_date(fecha_cierre),
         esta_cerrada=esta_cerrada,
-        cerrada_en=lock.cerrado_en.isoformat() if lock else None,
+        cerrada_en=format_datetime(lock.cerrado_en) if lock else None,
         cerrada_por=format_user_display(lock.cerrado_por),
         puede_editar=(not esta_cerrada) or can_override_lock,
         puede_cerrar=not esta_cerrada,

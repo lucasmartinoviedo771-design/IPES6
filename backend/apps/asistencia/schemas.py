@@ -11,7 +11,7 @@ class DocenteInfoOut(Schema):
 
 class DocenteClaseOut(Schema):
     id: int
-    fecha: date
+    fecha: str
     comision_id: int
     materia: str
     materia_id: int
@@ -22,10 +22,10 @@ class DocenteClaseOut(Schema):
     puede_marcar: bool
     editable_staff: bool
     ya_registrada: bool
-    registrada_en: Optional[datetime]
-    ventana_inicio: Optional[datetime]
-    ventana_fin: Optional[datetime]
-    umbral_tarde: Optional[datetime]
+    registrada_en: Optional[str]
+    ventana_inicio: Optional[str]
+    ventana_fin: Optional[str]
+    umbral_tarde: Optional[str]
     plan_id: Optional[int]
     plan_resolucion: Optional[str]
     profesorado_id: Optional[int]
@@ -33,7 +33,7 @@ class DocenteClaseOut(Schema):
 
 
 class DocenteHistorialOut(Schema):
-    fecha: date
+    fecha: str
     turno: str
     estado: str
     observacion: Optional[str]
@@ -55,7 +55,7 @@ class DocenteMarcarPresenteIn(Schema):
 class DocenteMarcarPresenteOut(Schema):
     clase_id: int
     estado: str
-    registrada_en: datetime
+    registrada_en: str
     categoria: str
     alerta: bool
     alerta_tipo: Optional[str]
@@ -76,7 +76,7 @@ class EstudianteResumenOut(Schema):
 
 class ClaseNavegacionOut(Schema):
     id: int
-    fecha: date
+    fecha: str
     descripcion: str
     actual: bool = False
 
@@ -84,7 +84,7 @@ class ClaseNavegacionOut(Schema):
 class ClaseEstudianteDetalleOut(Schema):
     clase_id: int
     comision: str
-    fecha: date
+    fecha: str
     horario: Optional[str]
     materia: str
     docentes: List[str]
@@ -103,8 +103,8 @@ class RegistrarAsistenciaEstudiantesIn(Schema):
 class JustificacionCreateIn(Schema):
     tipo: str  # estudiante | docente
     motivo: str
-    vigencia_desde: date
-    vigencia_hasta: date
+    vigencia_desde: str
+    vigencia_hasta: str
     origen: str = "posterior"
     comision_id: int
     estudiante_id: Optional[int] = None
@@ -121,7 +121,7 @@ class JustificacionOut(Schema):
 class JustificacionDetalleOut(Schema):
     id: int
     clase_id: int
-    fecha: date
+    fecha: str
     comision_id: Optional[int]
     comision: Optional[str]
     materia: Optional[str]
@@ -138,8 +138,8 @@ class JustificacionListItemOut(Schema):
     estado: str
     origen: str
     motivo: str
-    vigencia_desde: date
-    vigencia_hasta: date
+    vigencia_desde: str
+    vigencia_hasta: str
     comision_id: Optional[int]
     comision: Optional[str]
     materia: Optional[str]
@@ -149,8 +149,8 @@ class JustificacionListItemOut(Schema):
     estudiante: Optional[str] = None
     docente_id: Optional[int] = None
     docente: Optional[str] = None
-    creado_en: datetime
-    aprobado_en: Optional[datetime]
+    creado_en: str
+    aprobado_en: Optional[str]
 
 
 class JustificacionDetailOut(Schema):
@@ -161,8 +161,8 @@ class JustificacionDetailOut(Schema):
     motivo: str
     observaciones: Optional[str]
     archivo_url: Optional[str]
-    vigencia_desde: date
-    vigencia_hasta: date
+    vigencia_desde: str
+    vigencia_hasta: str
     comision_id: Optional[int]
     comision: Optional[str]
     materia: Optional[str]
@@ -172,9 +172,9 @@ class JustificacionDetailOut(Schema):
     estudiante: Optional[str]
     docente_id: Optional[int]
     docente: Optional[str]
-    creado_en: datetime
+    creado_en: str
     creado_por: Optional[str]
-    aprobado_en: Optional[datetime]
+    aprobado_en: Optional[str]
     aprobado_por: Optional[str]
     detalles: List[JustificacionDetalleOut]
 
@@ -190,7 +190,7 @@ class DocenteDniLogIn(Schema):
 
 class EstudianteClaseListadoOut(Schema):
     clase_id: int
-    fecha: date
+    fecha: str
     materia: str
     comision: str
     turno: Optional[str]
@@ -228,8 +228,8 @@ class AsistenciaCalendarioEventoOut(Schema):
     nombre: str
     tipo: str
     subtipo: str
-    fecha_desde: date
-    fecha_hasta: date
+    fecha_desde: str
+    fecha_hasta: str
     turno_id: Optional[int]
     turno_nombre: Optional[str]
     profesorado_id: Optional[int]
@@ -244,12 +244,12 @@ class AsistenciaCalendarioEventoOut(Schema):
     aplica_estudiantes: bool
     motivo: Optional[str]
     activo: bool
-    creado_en: datetime
+    creado_en: str
 
 
 class EstudianteAsistenciaItemOut(Schema):
     id: int
-    fecha: date
+    fecha: str
     materia: str
     comision: str
     estado: str

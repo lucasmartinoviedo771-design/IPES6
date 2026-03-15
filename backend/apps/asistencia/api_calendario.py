@@ -3,7 +3,8 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from core.models import Turno, CalendarioAsistenciaEvento
+from core.models import Turno
+from .models import CalendarioAsistenciaEvento
 from core.auth_ninja import JWTAuth
 
 from .schemas import (

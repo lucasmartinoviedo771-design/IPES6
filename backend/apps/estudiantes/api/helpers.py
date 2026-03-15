@@ -5,6 +5,8 @@ from collections.abc import Iterable
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
+from apps.common.date_utils import format_date, format_datetime, parse_date
+
 from django.contrib.auth.models import AnonymousUser, User
 from django.db.models import Q
 
@@ -163,17 +165,7 @@ def _user_can_override_planilla_lock(user) -> bool:
 
 
 def _parse_optional_date(value: str | None):
-    if not value:
-        return None
-    trimmed = value.strip()
-    if not trimmed:
-        return None
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
-        try:
-            return datetime.strptime(trimmed, fmt).date()
-        except ValueError:
-            continue
-    return None
+    return parse_date(value)
 
 
 def _extract_documentacion(est: Estudiante) -> dict:
@@ -275,7 +267,7 @@ def _apply_estudiante_updates(
 
     if payload.fecha_nacimiento is not None:
         raw_fecha = payload.fecha_nacimiento or ""
-        new_date = _parse_optional_date(raw_fecha)
+        new_date = parse_date(raw_fecha)
         if new_date is None and raw_fecha.strip():
             return False, (
                 400,
@@ -428,7 +420,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
             materia_nombre=reg.materia.nombre if reg.materia_id and reg.materia else "",
             situacion=reg.situacion,
             situacion_display=reg.get_situacion_display(),
-            fecha_cierre=reg.fecha_cierre.isoformat(),
+            fecha_cierre=format_date(reg.fecha_cierre),
             nota_tp=(float(reg.nota_trabajos_practicos) if reg.nota_trabajos_practicos is not None else None),
             nota_final=reg.nota_final_cursada,
             asistencia=reg.asistencia_porcentaje,
@@ -461,7 +453,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         "condicion_salud_detalle": estudiante.condicion_salud_detalle,
         "sec_titulo": estudiante.sec_titulo,
         "sec_establecimiento": estudiante.sec_establecimiento,
-        "sec_fecha_egreso": estudiante.sec_fecha_egreso,
+        "sec_fecha_egreso": format_date(estudiante.sec_fecha_egreso),
         "sec_localidad": estudiante.sec_localidad,
         "sec_provincia": estudiante.sec_provincia,
         "sec_pais": estudiante.sec_pais,
@@ -474,7 +466,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         email=estudiante.email,
         telefono=estudiante.telefono,
         domicilio=estudiante.domicilio,
-        fecha_nacimiento=(estudiante.fecha_nacimiento.isoformat() if estudiante.fecha_nacimiento else None),
+        fecha_nacimiento=format_date(estudiante.fecha_nacimiento),
         estado_legajo=estudiante.estado_legajo,
         estado_legajo_display=estudiante.get_estado_legajo_display(),
         must_change_password=estudiante.must_change_password,
@@ -550,7 +542,9 @@ def _to_iso(value):
     if not value:
         return None
     if isinstance(value, datetime):
-        return value.isoformat()
+        return format_datetime(value)
+    if isinstance(value, date):
+        return format_date(value)
     return str(value)
 
 

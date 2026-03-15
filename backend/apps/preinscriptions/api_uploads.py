@@ -11,6 +11,7 @@ from core.auth_ninja import JWTAuth
 
 from .models_uploads import PreinscripcionArchivo
 from .upload_utils import is_allowed
+from apps.common.date_utils import format_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def listar_documentos(request, pid: int, q: str | None = None):
             "tamano": x.tamano,
             "content_type": x.content_type,
             "url": request.build_absolute_uri(x.archivo.url) if x.archivo else None,
-            "creado_en": x.creado_en.isoformat(),
+            "creado_en": format_datetime(x.creado_en),
         }
         for x in qs
     ]

@@ -4,6 +4,7 @@ import logging
 from datetime import date, datetime
 
 import requests
+from apps.common.date_utils import format_date, format_datetime
 from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
@@ -37,7 +38,7 @@ from .services.requisitos import sync_profesorado_requisitos
 def convert_dates_to_iso(data_dict):
     for key, value in data_dict.items():
         if isinstance(value, date):
-            data_dict[key] = value.isoformat()
+            data_dict[key] = format_date(value)
         elif isinstance(value, dict):
             data_dict[key] = convert_dates_to_iso(value)
     return data_dict
@@ -459,7 +460,7 @@ def _serialize_pre(pre: 'Preinscripcion'):
         "id": pre.id,
         "codigo": pre.codigo,
         "estado": pre.estado.lower() if pre.estado else "enviada",
-        "fecha": getattr(pre, "created_at", None),
+        "fecha": format_datetime(pre.created_at),
         "estudiante": {
             "dni": getattr(a, "dni", ""),
             "nombre": user_first_name,
@@ -467,11 +468,12 @@ def _serialize_pre(pre: 'Preinscripcion'):
             "email": user_email,
             "telefono": getattr(a, "telefono", ""),
             "domicilio": getattr(a, "domicilio", ""),
-            "fecha_nacimiento": getattr(a, "fecha_nacimiento", None),
+            "fecha_nacimiento": format_date(getattr(a, "fecha_nacimiento", None)),
             "cuil": getattr(pre, "cuil", ""),
         },
         "carrera": {"id": pre.carrera_id, "nombre": getattr(pre.carrera, "nombre", "")},
         "datos_extra": extra,
+        "created_at": format_datetime(pre.created_at),
     }
 
 
