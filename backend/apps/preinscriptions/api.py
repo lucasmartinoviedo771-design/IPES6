@@ -12,10 +12,12 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
+from .router import preins_router as router
+
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
 from core.models import VentanaHabilitacion
-from core.permissions import ensure_profesorado_access, ensure_roles
+from core.permissions import ensure_profesorado_access, ensure_roles, get_user_roles
 
 from .schemas import (
     ChecklistIn,
@@ -120,25 +122,24 @@ def _verify_recaptcha(token: str | None, remote_ip: str) -> bool:
     return True
 
 
-router = Router(tags=["preinscriptions"])
+
 PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
 
 
-def check_roles(request, allowed_roles: list[str], profesorado_id: Optional[int] = None):
-    if not request.user or not request.user.is_authenticated:
-        raise HttpError(401, "Unauthorized")
 
-    user_roles = {g.lower() for g in request.user.groups.values_list("name", flat=True)}
-    if request.user.is_staff:
-        user_roles.add("admin")
-    allowed = {role.lower() for role in allowed_roles}
-    if not user_roles.intersection(allowed):
-        raise HttpError(403, "Permiso denegado.")
 
 
 
 class AllowPublic:
+    def __call__(self, request):
+        return True
+
+def check_roles(request, roles, profesorado_id=None):
+    ensure_roles(request.user, roles)
+    if profesorado_id is not None:
+        ensure_profesorado_access(request.user, profesorado_id, role_filter=roles)
+
     def __call__(self, request):
         return True
 
@@ -209,6 +210,19 @@ def obtener_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] =
         raise HttpError(404, "Preinscripción no encontrada")
     return pre
 
+@router.get("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
+def obtener_checklist(request, pre_id: int, profesorado_id: Optional[int] = None):
+    from core.models import Preinscripcion, PreinscripcionChecklist
+    check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
+    pre = Preinscripcion.objects.filter(id=pre_id).first()
+    if not pre:
+        raise HttpError(404, "Preinscripción no encontrada")
+    cl = getattr(pre, "checklist", None)
+    if not cl:
+        cl, _ = PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
+    return cl
+
+
 
 @router.delete("/{pre_id}", response={204: None, 404: ApiResponse}, auth=JWTAuth())
 def eliminar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] = None):
@@ -248,137 +262,6 @@ def _generar_codigo(pk: int) -> str:
     return f"PRE-{datetime.now().year}-{pk:04d}"
 
 
-@router.post("", response=ApiResponse)
-@transaction.atomic
-def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optional[int] = None):
-    """Crea o actualiza una preinscripción.
-    La lógica es centrada en el Estudiante, usando el DNI como identificador principal.
-    """
-    _check_rate_limit(request)
-    if payload.honeypot:
-        raise HttpError(400, "Solicitud inválida.")
-    ventana_activa = _ventana_preinscripcion_activa()
-    if not ventana_activa:
-        raise HttpError(
-            403,
-            "El período de preinscripción no está habilitado actualmente. "
-            "Consultá las fechas publicadas por la institución.",
-        )
-    remote_ip = _client_ip(request)
-    if not _verify_recaptcha(getattr(payload, "captcha_token", None), remote_ip):
-        raise HttpError(400, "No pudimos validar el reCAPTCHA. Intentá nuevamente.")
-    data_dict = payload.dict()
-    data_dict.pop("captcha_token", None)
-    data_dict.pop("honeypot", None)
-    try:
-        from django.contrib.auth.models import User
-        from core.models import Persona, Estudiante, Preinscripcion
-        estudiante_data = payload.estudiante
-        dni = estudiante_data.dni
-
-        # 1. Buscamos o creamos la Persona (el corazón de la identidad)
-        persona, _ = Persona.objects.update_or_create(
-            dni=dni,
-            defaults={
-                "nombre": estudiante_data.nombres,
-                "apellido": estudiante_data.apellido,
-                "email": estudiante_data.email,
-                "telefono": estudiante_data.telefono,
-                "domicilio": estudiante_data.domicilio,
-                "fecha_nacimiento": estudiante_data.fecha_nacimiento,
-                "cuil": getattr(estudiante_data, "cuil", None),
-            }
-        )
-        # 2. Buscamos o creamos el Estudiante vinculado a esa Persona
-        estudiante = Estudiante.objects.filter(persona=persona).first()
-        if not estudiante:
-            # Si no existía el estudiante, lo creamos y lo vinculamos al User
-            user, _ = User.objects.get_or_create(username=dni, defaults={
-                "email": persona.email,
-                "first_name": persona.nombre,
-                "last_name": persona.apellido
-            })
-            estudiante = Estudiante.objects.create(
-                user=user,
-                persona=persona,
-                dni=dni, # Mantener por compatibilidad temporal en Fase 2
-                fecha_nacimiento=persona.fecha_nacimiento,
-                telefono=persona.telefono,
-                domicilio=persona.domicilio,
-            )
-        else:
-            # Si ya existía, actualizamos datos por compatibilidad
-            estudiante.fecha_nacimiento = persona.fecha_nacimiento
-            estudiante.telefono = persona.telefono
-            estudiante.domicilio = persona.domicilio
-            if estudiante.dni != dni:
-                estudiante.dni = dni
-            estudiante.save()
-
-            # Sincronizar User
-            user = estudiante.user
-            if user.first_name != persona.nombre or user.last_name != persona.apellido:
-                user.first_name = persona.nombre
-                user.last_name = persona.apellido
-                user.save(update_fields=['first_name', 'last_name'])
-
-        # 2. Buscar o crear la Preinscripción.
-        current_year = datetime.now().year
-        # 2. Buscar o crear la Preinscripción.
-        current_year = datetime.now().year
-        try:
-            preinscripcion = Preinscripcion.objects.get(
-                alumno=estudiante,
-                carrera_id=payload.carrera_id,
-                anio=current_year,
-            )
-            created = False
-        except Preinscripcion.DoesNotExist:
-            preinscripcion = Preinscripcion.objects.create(
-                alumno=estudiante,
-                carrera_id=payload.carrera_id,
-                anio=current_year,
-            )
-            # Assign other fields after creation
-            preinscripcion.estado = "Enviada"
-            preinscripcion.foto_4x4_dataurl = payload.foto_4x4_dataurl
-            preinscripcion.datos_extra = convert_dates_to_iso(data_dict.copy())
-            preinscripcion.cuil = estudiante_data.cuil
-            preinscripcion.save()
-            created = True
-
-        if not created:
-            # If object already existed, update its fields
-            preinscripcion.estado = "Enviada"
-            preinscripcion.datos_extra = convert_dates_to_iso(data_dict.copy())
-            preinscripcion.cuil = estudiante_data.cuil
-            preinscripcion.save()
-
-        if created or not preinscripcion.codigo:
-            preinscripcion.codigo = _generar_codigo(preinscripcion.id)
-            preinscripcion.save()
-
-        res = {
-            "id": preinscripcion.id,
-            "codigo": preinscripcion.codigo,
-            "estado": preinscripcion.estado,
-        }
-        logger.info(
-            "Preinscripción %s id=%s codigo=%s",
-            "creada" if created else "actualizada",
-            preinscripcion.id,
-            preinscripcion.codigo,
-        )
-        return ApiResponse(ok=True, message="Preinscripción enviada", data=res)
-
-    except Exception as e:
-        logger.exception("Fallo creando preinscripción")
-        raise HttpError(500, "No se pudo procesar la solicitud.") from e
-
-
-# === Checklist & Confirmacion ===
-
-
 def _get_pre_by_codigo(codigo: str) -> 'Preinscripcion':
     from core.models import Preinscripcion
     pre = Preinscripcion.objects.filter(codigo__iexact=codigo).select_related("alumno", "carrera").first()
@@ -396,194 +279,37 @@ def _sync_curso_intro_flag(estudiante, nuevo_valor: bool | None):
         estudiante.save(update_fields=["curso_introductorio_aprobado"])
 
 
-@router.get("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
-def get_checklist(request, pre_id: int, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion, PreinscripcionChecklist
-    check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = Preinscripcion.objects.filter(id=pre_id).select_related("alumno").first()
-    if not pre:
-        raise HttpError(404, "Preinscripción no encontrada")
-    cl = getattr(pre, "checklist", None) or PreinscripcionChecklist(preinscripcion=pre)
-    data = {k: getattr(cl, k, False) for k in ChecklistIn.__fields__}  # type: ignore
-
-    datos_extra = pre.alumno.datos_extra or {}
-    docs_extra = datos_extra.get("documentacion") or {}
-
-    for field in ChecklistIn.__fields__:
-        val_extra = docs_extra.get(field)
-        val_raiz = datos_extra.get(field)
-        
-        if field == "curso_introductorio_aprobado" and pre.alumno.curso_introductorio_aprobado:
-            data[field] = True
-            continue
-
-        if field == "folios_oficio":
-            val = val_extra if val_extra is not None else (val_raiz or 0)
-            if isinstance(val, int) and val > data[field]:
-                data[field] = val
-        elif isinstance(data.get(field), str) or field in ("adeuda_materias_detalle", "escuela_secundaria"):
-            val = val_extra if val_extra else (val_raiz or "")
-            if not data.get(field) and val:
-                data[field] = str(val)
-        else:
-            val = val_extra if val_extra is not None else (val_raiz or False)
-            if bool(val) and not data.get(field):
-                data[field] = True
-
-    data["estado_legajo"] = cl.estado_legajo or cl.calcular_estado()
-    return data
-
-
-@router.put("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
-@transaction.atomic
-def put_checklist(request, pre_id: int, payload: ChecklistIn, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion, PreinscripcionChecklist
-    check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = Preinscripcion.objects.filter(id=pre_id).select_related("alumno").first()
-    if not pre:
-        raise HttpError(404, "Preinscripción no encontrada")
-    cl, _ = PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
-    for k, v in payload.dict().items():
-        setattr(cl, k, v)
-    cl.save()
+@router.post("", response=ApiResponse)
+def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optional[int] = None):
+    _check_rate_limit(request)
+    if payload.honeypot: raise HttpError(400, "Solicitud inválida.")
     
-    _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
+    ventana_activa = _ventana_preinscripcion_activa()
+    if not ventana_activa:
+        raise HttpError(403, "El período de preinscripción no está habilitado actualmente.")
 
-    # También actualizar el dict de documentacion general en el perfil del estudiante
-    datos_extra = pre.alumno.datos_extra or {}
-    docs_extra = datos_extra.get("documentacion") or {}
-    for k, v in payload.dict().items():
-        if isinstance(v, bool):
-            if v and not docs_extra.get(k):
-                docs_extra[k] = True
-        elif isinstance(v, str):
-            if v and not docs_extra.get(k):
-                docs_extra[k] = v
-    datos_extra["documentacion"] = docs_extra
-    pre.alumno.datos_extra = datos_extra
-    pre.alumno.save(update_fields=["datos_extra"])
+    if not _verify_recaptcha(getattr(payload, "captcha_token", None), _client_ip(request)):
+        raise HttpError(400, "Fallo validación reCAPTCHA.")
 
-    data = {k: getattr(cl, k) for k in ChecklistIn.__fields__}  # type: ignore
-    if pre.alumno.curso_introductorio_aprobado:
-        data["curso_introductorio_aprobado"] = True
-    data["estado_legajo"] = cl.estado_legajo
-    return data
+    from .services.preinscripcion_service import PreinscripcionService
+    preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload)
+    
+    return ApiResponse(ok=True, message="Preinscripción enviada", data={
+        "id": preinscripcion.id,
+        "codigo": preinscripcion.codigo,
+        "estado": preinscripcion.estado,
+    })
 
 
 @router.post("/by-code/{codigo}/confirmar", response=ApiResponse, auth=JWTAuth())
-@transaction.atomic
 def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = None, profesorado_id: Optional[int] = None):
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    """Confirma la preinscripción, actualiza checklist y estado de legajo.
-
-    - Si viene payload: actualiza checklist antes de confirmar.
-    - Cambia estado de Preinscripcion a 'Confirmada'.
-    - Agrega la carrera al estudiante si no está presente.
-    """
     pre = _get_pre_by_codigo(codigo)
-    from django.contrib.auth.models import Group
-    from core.models import PreinscripcionChecklist, Estudiante
-    if payload:
-        cl, _ = PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
-        for k, v in payload.dict().items():
-            setattr(cl, k, v)
-        cl.save()
-        _sync_curso_intro_flag(pre.alumno, payload.curso_introductorio_aprobado)
-
-        datos_extra = pre.alumno.datos_extra or {}
-        # Sincronizar campos generales de datos_extra de la preinscripción al estudiante
-        campos_sync = [
-            "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
-            "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
-            "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
-            "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
-            "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
-            "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
-        ]
-        pre_extra = pre.datos_extra or {}
-        for campo in campos_sync:
-            val = pre_extra.get(campo)
-            if val is not None and val != "":
-                datos_extra[campo] = val
-        
-        # Copiar campos adicionales de pre_extra a datos_extra del alumno
-        # Consideramos tanto la raíz como el bloque 'estudiante'
-        est_nested = pre_extra.get("estudiante") if isinstance(pre_extra.get("estudiante"), dict) else {}
-        
-        campos_a_sincronizar = [
-            "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
-            "tel_fijo", "tel_movil", "emergencia_telefono", "emergencia_parentesco",
-            "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
-            "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
-            "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
-            "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
-        ]
-        
-        for campo in campos_a_sincronizar:
-            # Priorizamos lo que venga en la raíz de la preinscripción
-            val = pre_extra.get(campo)
-            if val in (None, ""):
-                val = est_nested.get(campo)
-            
-            if val not in (None, ""):
-                datos_extra[campo] = val
-
-        docs_extra = datos_extra.get("documentacion") or {}
-        for k, v in payload.dict().items():
-            if isinstance(v, bool):
-                if v and not docs_extra.get(k):
-                    docs_extra[k] = True
-            elif isinstance(v, str):
-                if v and not docs_extra.get(k):
-                    docs_extra[k] = v
-        
-        datos_extra["documentacion"] = docs_extra
-        # También persistir curso_introductorio y libreta en datos_extra si vienen en payload
-        if payload.curso_introductorio_aprobado is not None:
-             datos_extra["curso_introductorio_aprobado"] = payload.curso_introductorio_aprobado
-        if payload.libreta_entregada is not None:
-             datos_extra["libreta_entregada"] = payload.libreta_entregada
-
-        pre.alumno.datos_extra = datos_extra
-        pre.alumno.save(update_fields=["datos_extra"])
-
-    # Asegurar relación estudiante-carrera
-    cohorte_val = str(pre.anio) if pre.anio else None
-    pre.alumno.asignar_profesorado(
-        pre.carrera,
-        anio_ingreso=pre.anio,
-        cohorte=cohorte_val,
-    )
-    pre.estado = "Confirmada"
-    pre.save(update_fields=["estado"])
-
-    estudiante = pre.alumno
-    user = estudiante.user
-    default_password = f"Pass{estudiante.dni}"
-    user.set_password(default_password)
-    user.save(update_fields=["password"])
-
-    estudiante_group, _ = Group.objects.get_or_create(name="estudiante")
-    user.groups.add(estudiante_group)
-
-    estudiante.must_change_password = True
-    estudiante.save(update_fields=["must_change_password"])
-
-    logger.info(
-        "Pre %s confirmada. Legajo=%s",
-        pre.codigo,
-        getattr(pre.checklist, "estado_legajo", "PEN"),
-    )
-    return ApiResponse(
-        ok=True,
-        message="Preinscripción confirmada",
-        data={
-            "codigo": pre.codigo,
-            "estado": pre.estado,
-            "legajo": getattr(pre.checklist, "estado_legajo", "PEN"),
-            "password_inicial": default_password,
-        },
-    )
+    
+    from .services.preinscripcion_service import PreinscripcionService
+    res = PreinscripcionService.confirm_preinscripcion(pre, payload.dict() if payload else None)
+    
+    return ApiResponse(ok=True, message="Preinscripción confirmada", data=res)
 
 
 def _serialize_requisito(req) -> RequisitoDocumentacionOut:

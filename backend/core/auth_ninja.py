@@ -2,8 +2,7 @@ from functools import wraps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from ninja.security.base import AuthBase
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from rest_framework_simplejwt.tokens import UntypedToken
+from .authentication.jwt_service import JWTService
 
 from apps.common.constants import AppErrorCode
 from apps.common.errors import AppError
@@ -31,16 +30,11 @@ class JWTAuth(AuthBase):
         if not token:
             return None
 
-        try:
-            untyped = UntypedToken(token)
-            user_id = untyped.payload.get("user_id")
-            if not user_id:
-                return None
-            user = User.objects.get(pk=user_id)
+        user = JWTService.get_user_from_token(token)
+        if user:
             request.user = user
             return user
-        except (InvalidToken, TokenError, User.DoesNotExist):
-            return None
+        return None
 
 
 def ensure_roles(required_roles: list[str]):

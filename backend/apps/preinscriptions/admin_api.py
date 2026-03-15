@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.db import transaction
 
-router = Router()
+from .router import preins_admin_router as router
 
 class PreinscripcionOut(Schema):
     id: int

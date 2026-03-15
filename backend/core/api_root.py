@@ -3,7 +3,12 @@ from ninja import NinjaAPI
 
 from apps.estudiantes.api import estudiantes_router as estudiantes_api_router  # Importar el router de estudiantes
 from apps.estudiantes.carga_notas_api import carga_notas_router
-from apps.carreras.api import carreras_router  # Importar el router de carreras
+from apps.carreras.api import profesorados_router, planes_router, materias_router
+from apps.carreras.comisiones_api import router as comisiones_router
+from apps.carreras.correlatividades_api import router as correlatividades_router
+from apps.calendario.api import router as calendario_router
+from apps.mensajeria.api import router as mensajeria_router
+from apps.docentes.api import router as docentes_router
 from apps.guias.api import router as guias_router
 from apps.health_api import health  # Health check
 from apps.asistencia.api import (
@@ -23,20 +28,25 @@ if 'api' not in locals():
     def safe_add_router(prefix, router):
         try:
             api.add_router(prefix, router)
-        except ConfigError:
-            pass
+        except ConfigError as e:
+            print(f"Error mounting router at {prefix}: {e}")
 
     # ⬇ importa el router del módulo de preinscripciones
-    from apps.preinscriptions.api import router as preins_router
+    from apps.preinscriptions.router import preins_router, preins_admin_router
     from apps.preinscriptions.api_uploads import router as preins_uploads_router
     
     safe_add_router("/preinscripciones", preins_router)
     safe_add_router("/preinscripciones/uploads", preins_uploads_router)
-
-    from apps.preinscriptions.admin_api import router as preins_admin_router
     safe_add_router("/preinscripciones/admin", preins_admin_router)
     
-    safe_add_router("/profesorados", carreras_router)
+    safe_add_router("/profesorados", profesorados_router)
+    safe_add_router("/planes", planes_router)
+    safe_add_router("/materias", materias_router)
+    safe_add_router("/comisiones", comisiones_router)
+    safe_add_router("/", correlatividades_router)
+    safe_add_router("/", calendario_router)
+    safe_add_router("/mensajes", mensajeria_router)
+    safe_add_router("/docentes", docentes_router)
     safe_add_router("/estudiantes", estudiantes_api_router)  # Montar el router de estudiantes
     safe_add_router("/estudiantes/carga-notas", carga_notas_router)
     
@@ -49,7 +59,9 @@ if 'api' not in locals():
     safe_add_router("/", guias_router)
     
     from apps.metrics.api import router as metrics_router
+    from apps.metrics.dashboard_api import router as dashboard_router
     safe_add_router("/reportes", metrics_router)
+    safe_add_router("/", dashboard_router)
     
     from apps.primera_carga.api import (
         primera_carga_router,
@@ -60,11 +72,10 @@ if 'api' not in locals():
     from apps.common.system_log_api import router as system_log_router
     safe_add_router("/system/logs", system_log_router)
 
-    # (opcional) si tienes otros routers, puedes montarlos aquí también:
-    from .api import router as core_router
-    from .auth_api import router as auth_router
+    # from .api import router as core_router # Ya no es necesario
+    from apps.management.auth_api import router as auth_router
     safe_add_router("/auth", auth_router)
 
-    from .api import management_router
-    safe_add_router("/management", management_router)
-    safe_add_router("/", core_router)
+    from apps.management import management_router
+    safe_add_router("/", management_router)
+    # safe_add_router("/", core_router) # Ya no es necesario

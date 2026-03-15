@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 
 from apps.common.api_schemas import ApiResponse
 from core.models import Estudiante, EstudianteCarrera
+from core.permissions import allowed_profesorados, ensure_roles, ensure_profesorado_access
 
 from ..schemas import (
     EstudianteAdminDetail,
@@ -16,11 +17,16 @@ from ..schemas import (
     EstudianteDocumentacionUpdateIn,
     EstudianteDocumentacionBulkUpdateIn,
 )
-from .helpers import _apply_estudiante_updates, _build_admin_detail, _ensure_admin
-from .router import estudiantes_router
+from .router import estudiantes_router as router
+from ..services.estudiante_service import EstudianteService
+from .helpers import (
+    _ensure_admin,
+    _apply_estudiante_updates,
+    _build_admin_detail,
+)
 
 
-@estudiantes_router.get(
+@router.get(
     "/admin/estudiantes",
     response=EstudianteAdminListResponse,
 )
@@ -33,51 +39,11 @@ def admin_list_estudiantes(
     offset: int = 0,
 ):
     _ensure_admin(request)
-    qs = (
-        Estudiante.objects.select_related("persona", "user")
-        .prefetch_related("carreras")
-        .order_by("persona__apellido", "persona__nombre", "persona__dni")
-    )
-    if q:
-        q_clean = q.strip()
-        if q_clean:
-            qs = qs.filter(
-                Q(persona__dni__icontains=q_clean)
-                | Q(persona__nombre__icontains=q_clean)
-                | Q(persona__apellido__icontains=q_clean)
-                | Q(user__first_name__icontains=q_clean)
-                | Q(user__last_name__icontains=q_clean)
-                | Q(legajo__icontains=q_clean)
-            )
-    if carrera_id:
-        qs = qs.filter(carreras__id=carrera_id)
-    if estado_legajo:
-        qs = qs.filter(estado_legajo=estado_legajo.upper())
-
-    total = qs.count()
-    qs = qs[offset : offset + limit] if limit else qs[offset:]
-
-    items = []
-    for est in qs:
-        user = est.user if est.user_id else None
-        items.append(
-            EstudianteAdminListItem(
-                dni=est.dni,
-                apellido=user.last_name if user else "",
-                nombre=user.first_name if user else "",
-                email=user.email if user else None,
-                telefono=est.telefono or None,
-                estado_legajo=est.estado_legajo,
-                estado_legajo_display=est.get_estado_legajo_display(),
-                carreras=[c.nombre for c in est.carreras.all()],
-                legajo=est.legajo or None,
-                activo=user.is_active if user else False,
-            )
-        )
-    return EstudianteAdminListResponse(total=total, items=items)
+    filters = {"q": q, "carrera_id": carrera_id, "estado_legajo": estado_legajo}
+    return EstudianteService.list_estudiantes_admin(filters, limit, offset)
 
 
-@estudiantes_router.get(
+@router.get(
     "/admin/estudiantes-documentacion",
     response=EstudianteDocumentacionListResponse,
 )
@@ -99,7 +65,7 @@ def admin_list_estudiantes_documentacion(
 
 def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
     from core.models import PreinscripcionChecklist
-    from core.permissions import allowed_profesorados
+
     
     allowed_ids = allowed_profesorados(request.user)
     qs = (
@@ -190,7 +156,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
     return items
 
 
-@estudiantes_router.get("/admin/estudiantes-documentacion/export/excel")
+@router.get("/admin/estudiantes-documentacion/export/excel")
 def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, carrera_id: int | None = None):
     _ensure_admin(request)
     items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
@@ -243,7 +209,7 @@ def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, 
     return response
 
 
-@estudiantes_router.get("/admin/estudiantes-documentacion/export/pdf")
+@router.get("/admin/estudiantes-documentacion/export/pdf")
 def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, carrera_id: int | None = None):
     _ensure_admin(request)
     items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
@@ -322,7 +288,7 @@ def _perform_documentacion_update(est, payload):
             checklist.save()
 
 
-@estudiantes_router.patch(
+@router.patch(
     "/admin/estudiantes-documentacion/{dni}",
     response=ApiResponse,
 )
@@ -332,7 +298,7 @@ def admin_update_estudiante_documentacion(
     payload: EstudianteDocumentacionUpdateIn,
 ):
     _ensure_admin(request)
-    from core.permissions import allowed_profesorados
+
     
     est = get_object_or_404(Estudiante, persona__dni=dni)
     
@@ -350,7 +316,7 @@ def admin_update_estudiante_documentacion(
     return ApiResponse(ok=True, message="Documentación actualizada correctamente.")
 
 
-@estudiantes_router.patch(
+@router.patch(
     "/admin/estudiantes-documentacion-bulk",
     response=ApiResponse,
 )
@@ -359,7 +325,7 @@ def admin_bulk_update_estudiante_documentacion(
     payload: EstudianteDocumentacionBulkUpdateIn,
 ):
     _ensure_admin(request)
-    from core.permissions import allowed_profesorados
+
     
     allowed_ids = allowed_profesorados(request.user)
     
@@ -380,7 +346,7 @@ def admin_bulk_update_estudiante_documentacion(
     return ApiResponse(ok=True, message=f"Se actualizaron {updated_count} estudiantes.")
 
 
-@estudiantes_router.get(
+@router.get(
     "/admin/estudiantes/{dni}",
     response={200: EstudianteAdminDetail, 404: ApiResponse},
 )
@@ -392,7 +358,7 @@ def admin_get_estudiante(request, dni: str):
     return _build_admin_detail(est)
 
 
-@estudiantes_router.put(
+@router.put(
     "/admin/estudiantes/{dni}",
     response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
 )
@@ -415,7 +381,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     return _build_admin_detail(est)
 
 
-@estudiantes_router.delete(
+@router.delete(
     "/admin/estudiantes/{dni}",
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
 )

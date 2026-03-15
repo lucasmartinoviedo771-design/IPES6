@@ -7,14 +7,14 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse, HttpResponseRedirect
 from ninja import Router
 from pydantic import BaseModel
-from rest_framework_simplejwt.tokens import RefreshToken
+from core.authentication.jwt_service import JWTService
 import requests
 from urllib.parse import urlencode
 
 from apps.common.constants import AppErrorCode
 from apps.common.error_schemas import ErrorResponse
 from apps.common.errors import AppError
-from .auth_ninja import JWTAuth
+from core.auth_ninja import JWTAuth
 
 router = Router()  # <- IMPORTANTE
 
@@ -96,7 +96,7 @@ def _serialize_user(user):
     estudiante = getattr(user, "estudiante", None)
     must_change = getattr(estudiante, "must_change_password", False)
     must_complete_profile = _must_complete_profile(user)
-    from .permissions import allowed_profesorados
+    from core.permissions import allowed_profesorados
     allowed = allowed_profesorados(user)
     prof_ids = list(allowed) if allowed is not None else None
 
@@ -113,11 +113,12 @@ def _serialize_user(user):
 
 
 def _set_access_cookie(response: JsonResponse, access_token: str):
-    access_token_lifetime = settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"]
+    # Definimos la expiración manualmente ahora que no usamos SimpleJWT para esto
+    max_age = 2 * 3600  # 2 horas
     cookie_kwargs = {
         "key": settings.JWT_ACCESS_COOKIE_NAME,
         "value": access_token,
-        "max_age": int(access_token_lifetime.total_seconds()),
+        "max_age": max_age,
         "httponly": True,
         "path": settings.JWT_COOKIE_PATH,
     }
@@ -130,11 +131,11 @@ def _set_access_cookie(response: JsonResponse, access_token: str):
 
 
 def _set_refresh_cookie(response: JsonResponse, refresh_token: str):
-    refresh_token_lifetime = settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
+    max_age = 7 * 24 * 3600  # 7 días
     cookie_kwargs = {
         "key": settings.JWT_REFRESH_COOKIE_NAME,
         "value": refresh_token,
-        "max_age": int(refresh_token_lifetime.total_seconds()),
+        "max_age": max_age,
         "httponly": True,
         "path": settings.JWT_COOKIE_PATH,
     }
@@ -185,16 +186,18 @@ def login(request, payload: LoginIn):
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Credenciales inválidas.")
 
     cache.delete(cache_key)
-    refresh = RefreshToken.for_user(user)
+    
+    access_token = JWTService.create_access_token(user.id)
+    refresh_token = JWTService.create_refresh_token(user.id)
 
     response_body = {
-        "access": str(refresh.access_token),
-        "refresh": str(refresh),
+        "access": access_token,
+        "refresh": refresh_token,
         "user": _serialize_user(user),
     }
     response = JsonResponse(response_body)
-    _set_access_cookie(response, str(refresh.access_token))
-    _set_refresh_cookie(response, str(refresh))
+    _set_access_cookie(response, access_token)
+    _set_refresh_cookie(response, refresh_token)
 
     return response
 
@@ -204,7 +207,7 @@ def profile(request):
     if not request.user or not request.user.is_authenticated:
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
     u = request.user
-    from .permissions import allowed_profesorados
+    from core.permissions import allowed_profesorados
     allowed = allowed_profesorados(u)
     prof_ids = list(allowed) if allowed is not None else None
 
@@ -267,26 +270,27 @@ def refresh_token(request, payload: RefreshIn | None = None):
     if not token_value:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Refresh token inválido.")
 
-    try:
-        incoming = RefreshToken(token_value)
-    except Exception:
+    payload_decoded = JWTService.decode_token(token_value)
+    if not payload_decoded or payload_decoded.get("type") != "refresh":
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Refresh token inválido.")
 
-    user_id = incoming.get("user_id")
+    user_id = payload_decoded.get("user_id")
     User = get_user_model()
     user = User.objects.filter(id=user_id).first()
     if not user:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Usuario no encontrado.")
 
-    new_refresh = RefreshToken.for_user(user)
+    new_access = JWTService.create_access_token(user.id)
+    new_refresh = JWTService.create_refresh_token(user.id)
+    
     response_body = {
-        "access": str(new_refresh.access_token),
-        "refresh": str(new_refresh),
+        "access": new_access,
+        "refresh": new_refresh,
         "user": _serialize_user(user),
     }
     response = JsonResponse(response_body)
-    _set_access_cookie(response, str(new_refresh.access_token))
-    _set_refresh_cookie(response, str(new_refresh))
+    _set_access_cookie(response, new_access)
+    _set_refresh_cookie(response, new_refresh)
     return response
 
 
@@ -370,11 +374,12 @@ def google_callback(request, code: str | None = None, error: str | None = None):
             f"Tu cuenta de Google ({email}) no esta habilitada en el sistema. Usa tu usuario y contrasena o pedi acceso al administrador.",
         )
 
-    refresh = RefreshToken.for_user(user)
+    access_token = JWTService.create_access_token(user.id)
+    refresh_token = JWTService.create_refresh_token(user.id)
     
     # Redireccionar al frontend
     response = HttpResponseRedirect(settings.FRONTEND_URL + "/auth/callback")
     
-    _set_access_cookie(response, str(refresh.access_token))
-    _set_refresh_cookie(response, str(refresh))
+    _set_access_cookie(response, access_token)
+    _set_refresh_cookie(response, refresh_token)
     return response

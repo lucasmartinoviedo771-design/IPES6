@@ -20,25 +20,53 @@ _UNRESTRICTED_ROLES = {
 }
 
 
+STRUCTURE_VIEW_ROLES = {
+    "admin", "secretaria", "bedel", "coordinador", "tutor",
+    "jefes", "jefa_aaee", "consulta",
+}
+STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
+ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
+ACADEMIC_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
+VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "estudiante"}
+PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel"}
+GLOBAL_OVERVIEW_ROLES = {
+    "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
+    "tutor", "coordinador", "consulta",
+}
+ALL_ROLES: set[str] = {
+    "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
+    "tutor", "coordinador", "consulta",
+}
+ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
+    "admin": list(ALL_ROLES),
+    "secretaria": [role for role in ALL_ROLES if role != "admin"],
+    "jefa_aaee": ["bedel", "tutor", "coordinador"],
+}
+
 def _ensure_authenticated(user: User | None) -> User:
     if not user or not user.is_authenticated:
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
     return user
 
 
-def _group_names(user: User) -> set[str]:
+def get_user_roles(user: User) -> set[str]:
     raw_names = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
-    expanded = set(raw_names)
+    roles = set(raw_names)
     for name in raw_names:
         if name.startswith("bedel"):
-            expanded.add("bedel")
+            roles.add("bedel")
         if name.startswith("secretaria"):
-            expanded.add("secretaria")
+            roles.add("secretaria")
         if name.startswith("coordinador"):
-            expanded.add("coordinador")
-        if name == "estudiantes":
-            expanded.add("estudiante")
-    return expanded
+            roles.add("coordinador")
+        if name == "estudiantes" or "estudiante" in name:
+            roles.add("estudiante")
+        if name == "docentes" or "docente" in name:
+            roles.add("docente")
+
+    if user.is_superuser or user.is_staff:
+        roles.add("admin")
+    return roles
 
 
 def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
@@ -46,7 +74,7 @@ def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
     if user.is_superuser or user.is_staff:
         return
     allowed = {role.lower() for role in allowed_roles}
-    groups = _group_names(user)
+    groups = get_user_roles(user)
     if not groups.intersection(allowed):
         raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos suficientes para realizar esta acción.")
 
@@ -55,10 +83,8 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
     user = _ensure_authenticated(user)
     if user.is_superuser:
         return None
-    groups = _group_names(user)
-    print(f"DEBUG: User={user}, Groups={groups}, IsSuper={user.is_superuser}, IsStaff={user.is_staff}")
+    groups = get_user_roles(user)
     if groups.intersection(_UNRESTRICTED_ROLES):
-        print("DEBUG: Unrestricted role match")
         return None
     relevant_roles = _LIMITED_ROLES
     if role_filter:

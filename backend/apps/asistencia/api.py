@@ -19,6 +19,13 @@ from core.models import (
     Turno,
     StaffAsignacion,
 )
+from core.permissions import (
+    allowed_profesorados,
+    ensure_profesorado_access,
+    ensure_roles,
+    get_user_roles,
+)
+from apps.docentes.services.docente_service import DocenteService
 from core.auth_ninja import JWTAuth
 
 from .models import (
@@ -68,15 +75,7 @@ estudiantes_router = Router(tags=["asistencia-estudiantes"], auth=JWTAuth())
 calendario_router = Router(tags=["asistencia-calendario"], auth=JWTAuth())
 
 
-def _normalized_user_roles(user) -> set[str]:
-    if not user or not user.is_authenticated:
-        return set()
-    roles = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
-    if getattr(user, "is_staff", False):
-        roles.add("admin")
-    if getattr(user, "is_superuser", False):
-        roles.add("admin")
-    return roles
+
 
 
 def _staff_profesorados(user, roles: set[str]) -> set[int]:
@@ -91,19 +90,7 @@ def _staff_profesorados(user, roles: set[str]) -> set[int]:
     return set(asignaciones.values_list("profesorado_id", flat=True))
 
 
-def _docente_from_user(user) -> Docente | None:
-    if not user or not user.is_authenticated:
-        return None
-    lookup = Q()
-    username = (getattr(user, "username", "") or "").strip()
-    if username:
-        lookup |= Q(persona__dni__iexact=username)
-    email = (getattr(user, "email", "") or "").strip()
-    if email:
-        lookup |= Q(persona__email__iexact=email)
-    if not lookup:
-        return None
-    return Docente.objects.select_related("persona").filter(lookup).first()
+
 
 
 def _get_profesorado_id_from_comision(comision: Comision) -> int | None:
@@ -118,9 +105,9 @@ def _get_profesorado_id_from_comision(comision: Comision) -> int | None:
 
 def _resolve_scope(request: HttpRequest) -> tuple[set[str], set[int], Docente | None]:
     user = getattr(request, "user", None)
-    roles = _normalized_user_roles(user)
+    roles = get_user_roles(user)
     staff_profesorados = _staff_profesorados(user, roles)
-    docente_profile = _docente_from_user(user)
+    docente_profile = DocenteService.get_docente_from_user(user)
     return roles, staff_profesorados, docente_profile
 
 
@@ -345,7 +332,7 @@ def listar_clases_docente(
         for registro in AsistenciaDocente.objects.filter(clase__in=clases, docente=docente)
     }
 
-    roles_usuario = _normalized_user_roles(getattr(request, "user", None))
+    roles_usuario = get_user_roles(getattr(request, "user", None))
     puede_editar_staff = bool(roles_usuario & {"admin", "secretaria", "bedel"})
 
     now = timezone.now()
@@ -452,7 +439,7 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     alerta_motivo = ""
     categoria = AsistenciaDocente.MarcacionCategoria.NORMAL
     detalle_log = "Presente registrado"
-    roles_usuario = _normalized_user_roles(getattr(request, "user", None))
+    roles_usuario = get_user_roles(getattr(request, "user", None))
     staff_override = payload.via == "staff" or bool(roles_usuario & {"admin", "secretaria", "bedel"})
 
     if ventanas[0] and ventanas[1] and ventanas[2]:
@@ -704,7 +691,7 @@ def listar_clases_estudiantes(
     if materia_id:
         comisiones_qs = comisiones_qs.filter(materia_id=materia_id)
 
-    roles = _normalized_user_roles(getattr(request, "user", None))
+    roles = get_user_roles(getattr(request, "user", None))
     if not roles:
         raise HttpError(401, "AutenticaciAA3n requerida.")
 
@@ -789,11 +776,11 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
     
     # ValidaciAA3n: El docente debe haber marcado su asistencia primero
     # Solo aplicamos esto si el usuario es el docente titular de la clase (no staff/admin)
-    roles = _normalized_user_roles(getattr(request, "user", None))
+    roles = get_user_roles(getattr(request, "user", None))
     es_staff = bool(roles & {"admin", "secretaria", "bedel"})
     
     if not es_staff:
-        docente_profile = _docente_from_user(request.user)
+        docente_profile = DocenteService.get_docente_from_user(request.user)
         if docente_profile and clase.docente_id == docente_profile.id:
             docente_presente = AsistenciaDocente.objects.filter(
                 clase=clase,

@@ -77,8 +77,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "rest_framework",
-    "rest_framework_simplejwt",
     "corsheaders",
     "core",
     "apps.carreras",
@@ -237,29 +235,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
-# REST_FRAMEWORK + SimpleJWT
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",  # Bearer JWT
-        "rest_framework.authentication.SessionAuthentication",  # Para admin / sesión
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",  # Ajustá a gusto a nivel vista
-    ),
-}
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "ALGORITHM": "HS256",
-    # por defecto usa settings.SECRET_KEY como SIGNING_KEY (suficiente)
-    "AUTH_HEADER_TYPES": ("Bearer",),  # <— importante para "Authorization: Bearer <token>"
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-}
 
 # === JWT Cookies ==========================================================
 JWT_ACCESS_COOKIE_NAME = "jwt_access_token"

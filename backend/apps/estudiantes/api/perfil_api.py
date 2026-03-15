@@ -4,10 +4,10 @@ from apps.common.api_schemas import ApiResponse
 
 from ..schemas import EstudianteAdminDetail, EstudianteAdminUpdateIn
 from .helpers import _apply_estudiante_updates, _build_admin_detail, _resolve_estudiante
-from .router import estudiantes_router
+from .router import estudiantes_router as router
 
 
-@estudiantes_router.get(
+@router.get(
     "/perfil/completar",
     response={200: EstudianteAdminDetail, 404: ApiResponse},
 )
@@ -18,7 +18,7 @@ def estudiante_get_perfil_completar(request):
     return _build_admin_detail(est)
 
 
-@estudiantes_router.put(
+@router.put(
     "/perfil/completar",
     response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
 )
