@@ -972,6 +972,7 @@ class RecomendacionesOut(Schema):
 
 class CartonEvento(Schema):
     fecha: str | None = None
+    fecha_iso: str | None = None
     condicion: str | None = None
     nota: str | None = None
     folio: str | None = None

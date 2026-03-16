@@ -130,6 +130,7 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
           ...commonData,
           tipo: 'regularidad',
           fecha: reg.fecha || undefined,
+          fecha_iso: reg.fecha_iso || undefined,
           condicion: reg.condicion || undefined,
           nota: reg.nota || undefined,
         });
@@ -149,6 +150,7 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
           ...commonData,
           tipo: 'final',
           fecha: fin.fecha || undefined,
+          fecha_iso: fin.fecha_iso || undefined,
           condicion: fin.condicion || undefined,
           nota: fin.nota || undefined,
           folio: fin.folio || undefined,
@@ -174,8 +176,8 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
       return a.espacioCurricular.localeCompare(b.espacioCurricular);
     }
 
-    const dateA = a.fecha ? new Date(a.fecha).getTime() : 0;
-    const dateB = b.fecha ? new Date(b.fecha).getTime() : 0;
+    const dateA = a.fecha_iso ? new Date(a.fecha_iso).getTime() : (a.fecha ? new Date(a.fecha).getTime() : 0);
+    const dateB = b.fecha_iso ? new Date(b.fecha_iso).getTime() : (b.fecha ? new Date(b.fecha).getTime() : 0);
     if (dateA !== dateB) return dateA - dateB;
 
     if (a.tipo !== b.tipo) {

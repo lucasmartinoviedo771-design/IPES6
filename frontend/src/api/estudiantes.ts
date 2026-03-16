@@ -421,6 +421,7 @@ export type TrayectoriaCarreraDetalleDTO = {
 
 export type CartonEventoDTO = {
   fecha?: string | null;
+  fecha_iso?: string | null;
   condicion?: string | null;
   nota?: string | null;
   folio?: string | null;

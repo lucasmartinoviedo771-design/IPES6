@@ -450,6 +450,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         
         actas_map[mid].append({
             "fecha": format_date(a.acta.fecha),
+            "fecha_iso": a.acta.fecha.isoformat() if hasattr(a.acta.fecha, 'isoformat') else str(a.acta.fecha),
             "condicion": cond_val,
             "condicion_display": cond_label,
             "nota": a.calificacion_definitiva,
@@ -495,6 +496,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 for reg in regularidades_list:
                     regularidades_data.append({
                         "fecha": format_date(reg.fecha_cierre),
+                        "fecha_iso": reg.fecha_cierre.isoformat() if hasattr(reg.fecha_cierre, 'isoformat') else str(reg.fecha_cierre),
                         "condicion": reg.situacion,
                         "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
                         "folio": None, 
@@ -516,6 +518,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     c_val = f.condicion if f.condicion else "INS"
                     merged_finales[fecha_str_f] = {
                         "fecha": fecha_str_f,
+                        "fecha_iso": f.mesa.fecha.isoformat() if hasattr(f.mesa.fecha, 'isoformat') else str(f.mesa.fecha),
                         "condicion": c_val,
                         "nota": _format_nota(f.nota),
                         "folio": f.folio,

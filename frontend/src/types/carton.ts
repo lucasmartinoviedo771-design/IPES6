@@ -25,6 +25,7 @@ export interface ExamRecord {
   cuatrimestre: string;
   espacioCurricular: string;
   fecha?: string;
+  fecha_iso?: string;
   condicion?: string;
   nota?: string | number;
   folio?: string;
