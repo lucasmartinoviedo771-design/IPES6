@@ -257,7 +257,9 @@ export interface EstudianteAsistenciaItem {
   observacion?: string | null;
 }
 
-export async function fetchMisAsistencias(): Promise<EstudianteAsistenciaItem[]> {
-  const { data } = await client.get<EstudianteAsistenciaItem[]>("/asistencia/estudiantes/mis-asistencias");
+export async function fetchMisAsistencias(dni?: string): Promise<EstudianteAsistenciaItem[]> {
+  const { data } = await client.get<EstudianteAsistenciaItem[]>("/asistencia/estudiantes/mis-asistencias", {
+    params: dni ? { dni } : {}
+  });
   return data;
 }

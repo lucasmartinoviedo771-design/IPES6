@@ -18,18 +18,23 @@ import {
   TableHead,
   TableRow,
   Typography,
+  TextField,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
 import {
   CheckCircle,
   Cancel,
   AccessTime,
   EventNote,
+  Search,
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 
 import { fetchMisAsistencias, EstudianteAsistenciaItem } from "@/api/asistencia";
 import { PageHero } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
+import { useAuth } from "@/context/AuthContext";
 
 const EstadoChip = ({ estado, justificada }: { estado: string; justificada: boolean }) => {
   const normalized = estado.toLowerCase();
@@ -56,10 +61,27 @@ const EstadoChip = ({ estado, justificada }: { estado: string; justificada: bool
 };
 
 export default function MisAsistenciasPage() {
+  const { user } = useAuth();
+  const [searchDni, setSearchDni] = React.useState("");
+  const [activeDni, setActiveDni] = React.useState("");
+
+  const roles = (user?.roles ?? []).map((r) => (r || "").toLowerCase());
+  const isStaff = roles.some((r) =>
+    ["admin", "secretaria", "bedel", "coordinador", "tutor", "jefatura"].includes(r)
+  );
+
   const { data: asistencias, isLoading, isError } = useQuery({
-    queryKey: ["mis-asistencias"],
-    queryFn: fetchMisAsistencias,
+    queryKey: ["mis-asistencias", activeDni],
+    queryFn: () => fetchMisAsistencias(activeDni || undefined),
+    retry: false,
+    enabled: !isStaff || !!activeDni,  // Staff solo busca si hay un DNI activo
   });
+
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setActiveDni(searchDni);
+  };
 
   const stats = useMemo(() => {
     if (!asistencias) return null;
@@ -107,9 +129,31 @@ export default function MisAsistenciasPage() {
         <BackButton fallbackPath="/estudiantes" />
         <Stack spacing={3} mt={2}>
           <PageHero
-            title="Mis Asistencias"
-            subtitle="Historial completo de tu presentismo por materia."
+            title={isStaff && activeDni ? `Asistencia: ${activeDni}` : "Mis Asistencias"}
+            subtitle={isStaff ? "Consultá el presentismo de cualquier estudiante por DNI." : "Historial completo de tu presentismo por materia."}
           />
+
+          {isStaff && (
+            <Paper component="form" onSubmit={handleSearch} sx={{ p: 2, display: "flex", gap: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Buscar por DNI o Legajo"
+                value={searchDni}
+                onChange={(e) => setSearchDni(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <IconButton color="primary" type="submit" sx={{ bgcolor: "primary.main", color: "white", "&:hover": { bgcolor: "primary.dark" } }}>
+                <Search />
+              </IconButton>
+            </Paper>
+          )}
 
           {/* Resumen Global */}
           <Grid container spacing={2}>
@@ -194,45 +238,56 @@ export default function MisAsistenciasPage() {
             </Grid>
           </Paper>
 
-          {/* Listado Detallado */}
-          <Paper sx={{ p: 0, overflow: "hidden" }}>
-            <Box p={2} borderBottom="1px solid #eee">
-              <Typography variant="h6">Historial Detallado</Typography>
+          {asistencias ? (
+            <>
+              {/* Listado Detallado */}
+              <Paper sx={{ p: 0, overflow: "hidden" }}>
+                <Box p={2} borderBottom="1px solid #eee">
+                  <Typography variant="h6">Historial Detallado</Typography>
+                </Box>
+                <TableContainer sx={{ maxHeight: 600 }}>
+                  <Table stickyHeader size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Fecha</TableCell>
+                        <TableCell>Materia</TableCell>
+                        <TableCell>Comisión</TableCell>
+                        <TableCell>Estado</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {asistencias.map((item) => (
+                        <TableRow key={item.id} hover>
+                          <TableCell>{dayjs(item.fecha).format("DD/MM/YYYY")}</TableCell>
+                          <TableCell>{item.materia}</TableCell>
+                          <TableCell>{item.comision}</TableCell>
+                          <TableCell>
+                            <EstadoChip estado={item.estado} justificada={item.justificada} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {asistencias.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} align="center">
+                            <Typography color="text.secondary" sx={{ py: 4 }}>
+                              No se encontraron registros de asistencia.
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </>
+          ) : !isLoading && !isError && isStaff && !activeDni ? (
+            <Box sx={{ py: 8, textAlign: "center" }}>
+              <EventNote sx={{ fontSize: 60, color: "text.disabled", mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                Ingresá un DNI para ver el historial de asistencias
+              </Typography>
             </Box>
-            <TableContainer sx={{ maxHeight: 600 }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Fecha</TableCell>
-                    <TableCell>Materia</TableCell>
-                    <TableCell>Comisión</TableCell>
-                    <TableCell>Estado</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {asistencias?.map((item) => (
-                    <TableRow key={item.id} hover>
-                      <TableCell>{dayjs(item.fecha).format("DD/MM/YYYY")}</TableCell>
-                      <TableCell>{item.materia}</TableCell>
-                      <TableCell>{item.comision}</TableCell>
-                      <TableCell>
-                        <EstadoChip estado={item.estado} justificada={item.justificada} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {asistencias?.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        <Typography color="text.secondary" sx={{ py: 4 }}>
-                          No tenés registros de asistencia todavía.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+          ) : null}
         </Stack>
       </Container>
     </Box>

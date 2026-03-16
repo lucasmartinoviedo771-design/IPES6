@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from ninja import Schema, Field
 
 class MesaDocenteOut(Schema):
@@ -86,7 +86,7 @@ class DashboardPreinsDetalle(Schema):
     codigo: str
     estudiante: str
     carrera: str | None
-    fecha: str | None
+    fecha: datetime | None
 
 class DashboardPreinscripciones(Schema):
     total: int
@@ -109,13 +109,13 @@ class DashboardRegularidad(Schema):
     profesorado: str | None
     situacion: str
     nota: str | None
-    fecha: str
+    fecha: date | datetime | str
 
 class DashboardVentana(Schema):
     id: int
     tipo: str
-    desde: str
-    hasta: str
+    desde: date | datetime | str
+    hasta: date | datetime | str
     activo: bool
     estado: str
 
@@ -123,7 +123,7 @@ class DashboardPedidoAnalitico(Schema):
     id: int
     estudiante: str
     dni: str
-    fecha: str
+    fecha: date | datetime | str
     motivo: str
     profesorado: str | None
 
@@ -136,7 +136,7 @@ class DashboardCambioComision(Schema):
     comision_actual: str | None
     comision_solicitada: str | None
     estado: str
-    actualizado: str
+    actualizado: date | datetime | str
 
 class DashboardHorario(Schema):
     profesorado_id: int

@@ -16,12 +16,12 @@ class EstudianteIn(Schema):
 
 class EstudianteOut(Schema):
     dni: str
-    nombres: str = Field(alias="user.first_name")
-    apellido: str = Field(alias="user.last_name")
+    nombres: str = Field(alias="nombre")
+    apellido: str
     email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None
-    fecha_nacimiento: str | None = None  # Changed to str
+    fecha_nacimiento: date | None = None
 
 
 class CarreraOut(Schema):
@@ -132,8 +132,8 @@ class PreinscripcionOut(Schema):
     id: int
     codigo: str
     estado: str
-    fecha: str = Field(alias="created_at")
-    created_at: str | None
+    fecha: datetime = Field(alias="created_at")
+    created_at: datetime | None = None
     activa: bool
     estudiante: EstudianteOut | None = Field(None, alias="alumno")
     carrera: CarreraOut

@@ -302,13 +302,23 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
             registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
 
 @router.get("/mis-asistencias", response=List[EstudianteAsistenciaItemOut])
-def listar_mis_asistencias(request: HttpRequest):
+def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
     if not request.user.is_authenticated:
         raise HttpError(401, "Autenticación requerida.")
 
-    estudiante = Estudiante.objects.filter(user=request.user).first()
-    if not estudiante:
-        raise HttpError(404, "No se encontró un perfil de estudiante asociado a tu usuario.")
+    roles = get_user_roles(request.user)
+    is_staff = bool(roles & {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefatura"})
+
+    if dni:
+        if not is_staff:
+            raise HttpError(403, "No tenés permisos para ver la asistencia de otros estudiantes.")
+        estudiante = Estudiante.objects.filter(Q(persona__dni=dni) | Q(legajo=dni)).first()
+        if not estudiante:
+            raise HttpError(404, f"No se encontró un estudiante con DNI/Legajo {dni}.")
+    else:
+        estudiante = Estudiante.objects.filter(user=request.user).first()
+        if not estudiante:
+            raise HttpError(404, "No se encontró un perfil de estudiante asociado a tu usuario.")
 
     asistencias = (
         AsistenciaEstudiante.objects.filter(estudiante=estudiante)
