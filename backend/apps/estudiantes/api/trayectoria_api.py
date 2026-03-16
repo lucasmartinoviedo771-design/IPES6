@@ -330,6 +330,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     materias_procesadas_vigencia = set()
     for reg in regularidades_list:  # usar la lista ya materializada
         vigencia_iso = None
+        vigencia_str = None
         vigente = None
         dias_restantes: int | None = None
         
