@@ -196,9 +196,10 @@ export default function AnalisisMateriaPage() {
     
     // Create CSV content with BOM for UTF-8 Excel support
     const BOM = '\uFEFF';
-    const headers = ['Profesorado', 'Espacio Curricular', 'DNI', 'Apellido', 'Nombre', 'Cohorte', 'Situación', '¿Habilitado?', 'Observaciones'];
+    const headers = ['Profesorado', 'Año', 'Espacio Curricular', 'DNI', 'Apellido', 'Nombre', 'Cohorte', 'Situación', '¿Habilitado?', 'Observaciones'];
     const rows = dataToExport.map(s => [
         selectedProf.nombre,
+        selectedMateria?.anio_cursada || '',
         result.materia_nombre,
         s.dni,
         s.apellido,
