@@ -98,7 +98,8 @@ def _resolve_scope(request: HttpRequest) -> tuple[set[str], set[int], Docente | 
     user = getattr(request, "user", None)
     roles = get_user_roles(user)
     staff_profesorados = _staff_profesorados(user, roles)
-    docente_profile = DocenteService.get_docente_from_user(user)
+    # Buscar perfil de docente ligado al usuario actual (vía Persona -> UserProfile)
+    docente_profile = Docente.objects.filter(persona__user_profile__user=user).first() if user and user.is_authenticated else None
     return roles, staff_profesorados, docente_profile
 
 def _ensure_authenticated_scope(roles: set[str], docente_profile: Docente | None):

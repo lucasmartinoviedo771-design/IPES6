@@ -136,9 +136,9 @@ def _resolve_docente_from_user(user) -> Docente | None:
     username = (getattr(user, "username", "") or "").strip()
     email = (getattr(user, "email", "") or "").strip()
     if username:
-        lookup |= Q(dni__iexact=username)
+        lookup |= Q(persona__dni__iexact=username)
     if email:
-        lookup |= Q(email__iexact=email)
+        lookup |= Q(persona__email__iexact=email)
     if not lookup:
         return None
     return Docente.objects.filter(lookup).first()

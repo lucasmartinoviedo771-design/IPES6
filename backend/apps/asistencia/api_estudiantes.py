@@ -179,7 +179,7 @@ def listar_clases_estudiantes(
     hasta: date | None = None,
 ) -> EstudianteClasesResponse:
     if not comision_id and not materia_id:
-        raise HttpError(400, "Debes indicar una comisión o una materia para filtrar.")
+        return EstudianteClasesResponse(clases=[])
 
     desde = desde or date.today()
     hasta = hasta or desde
@@ -199,7 +199,7 @@ def listar_clases_estudiantes(
     if not roles & {"admin", "secretaria"}:
         profesorados_limit = _staff_profesorados(getattr(request, "user", None), roles)
         if profesorados_limit:
-            comisiones_qs = comisiones_qs.filter(materia__profesorado_id__in=profesorados_limit)
+            comisiones_qs = comisiones_qs.filter(materia__plan_de_estudio__profesorado_id__in=profesorados_limit)
         elif roles & {"bedel", "coordinador", "tutor"}:
             raise HttpError(403, "No tenés profesorados asignados para consultar asistencia.")
 
@@ -273,7 +273,7 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
     es_staff = bool(roles & {"admin", "secretaria", "bedel"})
     
     if not es_staff:
-        docente_profile = DocenteService.get_docente_from_user(request.user)
+        docente_profile = Docente.objects.filter(persona__user_profile__user=request.user).first()
         if docente_profile and clase.docente_id == docente_profile.id:
             docente_presente = AsistenciaDocente.objects.filter(
                 clase=clase,
@@ -316,7 +316,12 @@ def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
         if not estudiante:
             raise HttpError(404, f"No se encontró un estudiante con DNI/Legajo {dni}.")
     else:
+        # Intento directo por la relación 'user' que tiene el modelo Estudiante
         estudiante = Estudiante.objects.filter(user=request.user).first()
+        if not estudiante:
+            # Fallback por DNI si la relación 'user' no está seteada pero coinciden datos
+            estudiante = Estudiante.objects.filter(persona__dni=request.user.username).first()
+            
         if not estudiante:
             raise HttpError(404, "No se encontró un perfil de estudiante asociado a tu usuario.")
 

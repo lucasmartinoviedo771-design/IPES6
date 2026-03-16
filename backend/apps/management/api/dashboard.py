@@ -40,7 +40,7 @@ def global_overview(request):
                 to_attr="dashboard_comisiones",
             )
         )
-        .order_by("-total_catedras", "apellido", "nombre")[:6]
+        .order_by("-total_catedras", "persona__apellido", "persona__nombre")[:6]
     )
 
     docentes = []

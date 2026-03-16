@@ -106,10 +106,10 @@ def docente_from_user(user) -> Docente | None:
     lookup = Q()
     username = (getattr(user, "username", "") or "").strip()
     if username:
-        lookup |= Q(dni__iexact=username)
+        lookup |= Q(persona__dni__iexact=username)
     email = (getattr(user, "email", "") or "").strip()
     if email:
-        lookup |= Q(email__iexact=email)
+        lookup |= Q(persona__email__iexact=email)
     if not lookup:
         return None
     return Docente.objects.filter(lookup).first()
