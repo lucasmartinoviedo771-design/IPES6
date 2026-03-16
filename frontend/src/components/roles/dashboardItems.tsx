@@ -66,6 +66,12 @@ export const DASHBOARD_ITEMS = {
     icon: <LinkIcon />,
     path: "/secretaria/correlatividades",
   },
+  CORRELATIVIDADES_ANALISIS: {
+    title: "Análisis por materia",
+    subtitle: "Consultá estudiantes habilitados por correlatividades.",
+    icon: <InsightsIcon />,
+    path: "/secretaria/correlatividades/analisis",
+  },
   FORMALIZAR_INSCRIPCION: {
     title: "Formalizar inscripción",
     subtitle: "Confirmá preinscripciones y documentación presentada.",

@@ -22,6 +22,7 @@ from ..schemas import (
     EstudianteResumen,
     FinalHabilitado,
     HistorialEstudiante,
+    MateriaSugerida,
     RegularidadResumen,
     RegularidadVigenciaOut,
     RecomendacionesOut,
@@ -604,8 +605,69 @@ def trayectoria_estudiante(request, dni: str | None = None):
     )
     alertas = list(dict.fromkeys(alertas))
 
+    # --- 4. MATERIAS SUGERIDAS (Habilitadas para inscribirse) ---
+    materias_sugeridas_data = []
+    
+    # Obtenemos todas las materias de todos los planes del estudiante
+    todas_las_materias_plan = set()
+    for plan_data in carton_planes:
+        for mat_data in plan_data["materias"]:
+            todas_las_materias_plan.add(mat_data["materia_id"])
+
+    # Consultamos las materias y sus correlativas en un solo query eficiente
+    materias_info = Materia.objects.filter(id__in=todas_las_materias_plan).prefetch_related(
+        "correlativas_requeridas",
+        "correlativas_requeridas__materia_correlativa"
+    )
+
+    for mat in materias_info:
+        # 1. Ignorar si ya está aprobada o en curso
+        if mat.id in aprobadas_set or mat.id in inscriptas_actuales_set:
+            continue
+            
+        # 2. Verificar correlatividades para CURSAR (APC y RPC)
+        correlativas = mat.correlativas_requeridas.all()
+        habilitada = True
+        motivos = []
+        
+        # Si no tiene correlativas, está habilitada por defecto (ej: 1er año)
+        if not correlativas:
+            # Podríamos opcionalmente saltar materias de 1er año si el alumno ya es avanzado,
+            # pero por ahora mostramos todo lo pendiente que pueda cursar.
+            pass
+        else:
+            for corr in correlativas:
+                if corr.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR:
+                    if corr.materia_correlativa_id not in aprobadas_set:
+                        habilitada = False
+                        break
+                    else:
+                        motivos.append(f"{corr.materia_correlativa.nombre} (Aprobada)")
+                elif corr.tipo == Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR:
+                    es_reg = corr.materia_correlativa_id in regularizadas_set
+                    es_aprob = corr.materia_correlativa_id in aprobadas_set
+                    if not (es_reg or es_aprob):
+                        habilitada = False
+                        break
+                    else:
+                        estado = "Aprobada" if es_aprob else "Regular"
+                        motivos.append(f"{corr.materia_correlativa.nombre} ({estado})")
+                # El tipo APR (Aprobada para Rendir) no bloquea la CURSADA, solo el FINAL.
+
+        if habilitada:
+            materias_sugeridas_data.append({
+                "materia_id": mat.id,
+                "materia_nombre": mat.nombre,
+                "anio": mat.anio_cursada,
+                "cuatrimestre": mat.get_regimen_display(),
+                "motivos": motivos
+            })
+
+    # Ordenar sugeridas por año y nombre
+    materias_sugeridas_data.sort(key=lambda x: (x["anio"], x["materia_nombre"]))
+
     recomendaciones = RecomendacionesOut(
-        materias_sugeridas=[],
+        materias_sugeridas=[MateriaSugerida(**item) for item in materias_sugeridas_data],
         finales_habilitados=[FinalHabilitado(**item) for item in finales_habilitados_data],
         alertas=alertas,
     )

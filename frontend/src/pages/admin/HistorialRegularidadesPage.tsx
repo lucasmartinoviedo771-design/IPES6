@@ -19,14 +19,16 @@ import {
     Tooltip,
     Autocomplete,
     TextField,
-    TableSortLabel
+    TableSortLabel,
+    TablePagination
 } from '@mui/material';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
 import PrintIcon from '@mui/icons-material/Print';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
-
+import { useAuth } from '@/context/AuthContext';
+import { hasRole } from '@/utils/roles';
 import { listarHistorialRegularidades, PlanillaRegularidadListItem } from '@/api/primeraCarga';
 import PlanillaRegularidadDialog from './PlanillaRegularidadDialog';
 
@@ -41,10 +43,20 @@ const HistorialRegularidadesPage: React.FC = () => {
     const [filterMateria, setFilterMateria] = React.useState<string | null>(null);
     const [filterDictado, setFilterDictado] = React.useState<string | null>(null);
     const [filterAnioCursada, setFilterAnioCursada] = React.useState<string | null>(null);
+    const [filterProfesorado, setFilterProfesorado] = React.useState<string | null>(null);
+
+    const { user } = useAuth();
+    const isAdminOrSecretaria = React.useMemo(() => 
+        hasRole(user, 'admin') || hasRole(user, 'secretaria'), 
+    [user]);
 
     // Sort states
     const [orderBy, setOrderBy] = React.useState<keyof PlanillaRegularidadListItem | 'fecha'>('fecha');
     const [orderDirection, setOrderDirection] = React.useState<'asc' | 'desc'>('desc');
+
+    // Pagination state
+    const [page, setPage] = React.useState(0);
+    const [rowsPerPage, setRowsPerPage] = React.useState(25);
 
     const { data: planillas, isLoading, isError, refetch } = useQuery({
         queryKey: ['regularidades-historial'],
@@ -67,6 +79,7 @@ const HistorialRegularidadesPage: React.FC = () => {
                 if (!p.dictado || p.dictado !== filterDictado) return false;
             }
             if (filterAnioCursada && p.anio_cursada !== filterAnioCursada) return false;
+            if (filterProfesorado && p.profesorado_nombre !== filterProfesorado) return false;
             return true;
         });
 
@@ -76,8 +89,14 @@ const HistorialRegularidadesPage: React.FC = () => {
 
             // Special handling for dates
             if (orderBy === 'fecha') {
-                valueA = new Date(a.fecha).getTime();
-                valueB = new Date(b.fecha).getTime();
+                const dateA = a.fecha.includes('/') ? 
+                    new Date(a.fecha.split('/').reverse().join('-')) : 
+                    new Date(a.fecha);
+                const dateB = b.fecha.includes('/') ? 
+                    new Date(b.fecha.split('/').reverse().join('-')) : 
+                    new Date(b.fecha);
+                valueA = dateA.getTime();
+                valueB = dateB.getTime();
             }
             // Special handling for strings to ignore case
             else if (typeof valueA === 'string') {
@@ -93,7 +112,11 @@ const HistorialRegularidadesPage: React.FC = () => {
             }
             return 0;
         });
-    }, [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada, orderBy, orderDirection]);
+    }, [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada, filterProfesorado, orderBy, orderDirection]);
+
+    const paginatedPlanillas = React.useMemo(() => {
+        return filteredPlanillas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredPlanillas, page, rowsPerPage]);
 
     const getOptions = (key: keyof PlanillaRegularidadListItem | 'year'): string[] => {
         if (!planillas) return [];
@@ -103,6 +126,7 @@ const HistorialRegularidadesPage: React.FC = () => {
             if (key !== 'materia_nombre' && filterMateria && p.materia_nombre !== filterMateria) return false;
             if (key !== 'dictado' && filterDictado && (!p.dictado || p.dictado !== filterDictado)) return false;
             if (key !== 'anio_cursada' && filterAnioCursada && p.anio_cursada !== filterAnioCursada) return false;
+            if (key !== 'profesorado_nombre' && filterProfesorado && p.profesorado_nombre !== filterProfesorado) return false;
             return true;
         }).map(p => {
             if (key === 'year') return p.anio_academico.toString();
@@ -117,8 +141,9 @@ const HistorialRegularidadesPage: React.FC = () => {
 
     const years = React.useMemo(() => getOptions('year'), [planillas, filterMateria, filterDictado, filterAnioCursada]);
     const materiasOptions = React.useMemo(() => getOptions('materia_nombre'), [planillas, filterYear, filterDictado, filterAnioCursada]);
-    const dictadosOptions = React.useMemo(() => getOptions('dictado'), [planillas, filterYear, filterMateria, filterAnioCursada]);
-    const aniosCursadaOptions = React.useMemo(() => getOptions('anio_cursada'), [planillas, filterYear, filterMateria, filterDictado]);
+    const dictadosOptions = React.useMemo(() => getOptions('dictado'), [planillas, filterYear, filterMateria, filterAnioCursada, filterProfesorado]);
+    const aniosCursadaOptions = React.useMemo(() => getOptions('anio_cursada'), [planillas, filterYear, filterMateria, filterDictado, filterProfesorado]);
+    const profesoradosOptions = React.useMemo(() => getOptions('profesorado_nombre'), [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada]);
 
     const handleOpenDialog = (id: number, mode: 'edit' | 'view') => {
         setSelectedId(id);
@@ -199,13 +224,28 @@ const HistorialRegularidadesPage: React.FC = () => {
                                 />
                             </Box>
 
-                            {(filterYear || filterMateria || filterDictado || filterAnioCursada) && (
+                            {/* Profesorado Filter (Admin/Secretaria only) */}
+                            {isAdminOrSecretaria && (
+                                <Box sx={{ flexGrow: 1, minWidth: 200 }}>
+                                    <Autocomplete
+                                        options={profesoradosOptions}
+                                        value={filterProfesorado}
+                                        onChange={(_, newValue) => setFilterProfesorado(newValue)}
+                                        renderInput={(params) => <TextField {...params} label="Profesorado" size="small" />}
+                                        fullWidth
+                                    />
+                                </Box>
+                            )}
+
+                            {(filterYear || filterMateria || filterDictado || filterAnioCursada || filterProfesorado) && (
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <IconButton onClick={() => {
                                         setFilterYear(null);
                                         setFilterMateria(null);
                                         setFilterDictado(null);
                                         setFilterAnioCursada(null);
+                                        setFilterProfesorado(null);
+                                        setPage(0);
                                     }} color="error" size="small">
                                         <Box component="span" sx={{ fontSize: '0.875rem', mr: 0.5 }}>Limpiar</Box>
                                         <EditIcon sx={{ display: 'none' }} /> {/* Dummy */}
@@ -280,10 +320,14 @@ const HistorialRegularidadesPage: React.FC = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredPlanillas?.map((planilla) => {
-                                    // Evitar el desfase de zona horaria de JS al parsear YYYY-MM-DD
-                                    const [year, month, day] = planilla.fecha.toString().split('-');
-                                    const fechaFormateada = `${day}/${month}/${year}`;
+                                {paginatedPlanillas?.map((planilla) => {
+                                    // If already DD/MM/YYYY just use it, otherwise try to reformat
+                                    const fechaFormateada = planilla.fecha.includes('/') ? 
+                                        planilla.fecha : 
+                                        (() => {
+                                            const [year, month, day] = planilla.fecha.toString().split('-');
+                                            return day && month && year ? `${day}/${month}/${year}` : planilla.fecha;
+                                        })();
 
                                     return (
                                         <TableRow key={planilla.id} hover>
@@ -349,6 +393,18 @@ const HistorialRegularidadesPage: React.FC = () => {
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    <TablePagination
+                        component="div"
+                        count={filteredPlanillas.length}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={(_, newPage) => setPage(newPage)}
+                        onRowsPerPageChange={(event) => {
+                            setRowsPerPage(parseInt(event.target.value, 10));
+                            setPage(0);
+                        }}
+                        labelRowsPerPage="Filas por página"
+                    />
                 </>
             )}
 

@@ -42,7 +42,7 @@ export default function BedelesIndex() {
           ...(canFormalize ? [DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION] : []),
           ...(canManageAnaliticos ? [DASHBOARD_ITEMS.ANALYTICOS] : []),
           ...(canManageEquivalencias ? [DASHBOARD_ITEMS.EQUIV_LISTADO_GENERAL] : []),
-          ...(canManageStructure ? [DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES] : []),
+          ...(canManageStructure ? [DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES, DASHBOARD_ITEMS.CORRELATIVIDADES_ANALISIS] : []),
         ],
       },
       ...(canCursoIntro

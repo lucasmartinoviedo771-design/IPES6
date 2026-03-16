@@ -27,6 +27,7 @@ from apps.primera_carga.services import (
     process_folios_finales_csv,
 )
 from core.auth_ninja import JWTAuth, ensure_roles
+from core.permissions import allowed_profesorados
 from core.models import PlanillaRegularidad
 
 primera_carga_router = Router(tags=["primera_carga"], auth=JWTAuth())
@@ -192,6 +193,7 @@ class RegularidadFilaIn(Schema):
     situacion: str
     excepcion: bool | None = False
     datos: dict[str, str] | None = None
+    observaciones: str | None = None
 
 
 class PlanillaRegularidadCreateIn(Schema):
@@ -319,9 +321,9 @@ def listar_historial_debug(request):
 @primera_carga_router.get(
     "/regularidades/historial",
     response={200: list[PlanillaRegularidadListOut], 403: ApiResponse},
-    auth=None
 )
-def listar_historial_regularidades(request, anio: int | None = None):
+@ensure_roles(["admin", "secretaria", "bedel"])
+def listar_historial_regularidades(request, anio: int | None = None, profesorado_id: int | None = None):
     print(f"DEBUG: Entrando a listar_historial_regularidades, anio={anio}", flush=True)
 
     try:
@@ -331,8 +333,19 @@ def listar_historial_regularidades(request, anio: int | None = None):
             .order_by("-created_at")
         )
         
+        # Filtro por permisos: Bedel solo ve los suyos, Secretaria/Admin ven todos
+        allowed = allowed_profesorados(request.user, role_filter={"bedel"})
+        if allowed is not None:
+            qs = qs.filter(profesorado_id__in=allowed)
+        
         if anio:
             qs = qs.filter(anio_academico=anio)
+        
+        if profesorado_id:
+            # Si el usuario tiene restricciones (es Bedel), verificar que el profesorado_id solicitado sea de los suyos
+            if allowed is not None and profesorado_id not in allowed:
+                return 403, ApiResponse(ok=False, message="No tiene permisos sobre este profesorado.")
+            qs = qs.filter(profesorado_id=profesorado_id)
         
         qs = qs[:1000]
 
@@ -366,7 +379,7 @@ def listar_historial_regularidades(request, anio: int | None = None):
                 "materia_nombre": planilla.materia.nombre,
                 "anio_cursada": str(planilla.materia.anio_cursada) if planilla.materia.anio_cursada else "-",
                 "dictado": dictado_val,
-                "fecha": format_date(planilla.fecha),
+                "fecha": planilla.fecha,
                 "cantidad_estudiantes": planilla.filas.count(),
                 "estado": planilla.estado,
                 "anio_academico": planilla.anio_academico,

@@ -22,5 +22,6 @@ from . import mesas_api  # noqa: F401
 from . import planillas_finales_api  # noqa: F401
 from . import reportes_api  # noqa: F401
 from . import certificados_api  # noqa: F401
+from . import analisis_api  # noqa: F401
 
 __all__ = ["estudiantes_router"]

@@ -497,10 +497,21 @@ const InscripcionMateriaPage: React.FC = () => {
     }
 
 
+    const cumplidas: string[] = [];
+    materia.correlativasRegular.forEach((id) => {
+      const name = materiaById.get(id)?.nombre || `Materia ${id}`;
+      if (historial.aprobadas.includes(id)) cumplidas.push(`${name} (Aprobada)`);
+      else if (historial.regularizadas.includes(id)) cumplidas.push(`${name} (Regular)`);
+    });
+    materia.correlativasAprob.forEach((id) => {
+      const name = materiaById.get(id)?.nombre || `Materia ${id}`;
+      if (historial.aprobadas.includes(id)) cumplidas.push(`${name} (Aprobada)`);
+    });
+
     return {
       ...materia,
       status: "habilitada",
-      motivos: [],
+      motivos: cumplidas,
       faltantesRegular: [],
       faltantesAprob: [],
     };
@@ -780,6 +791,20 @@ const InscripcionMateriaPage: React.FC = () => {
                                 <Chip size="small" color="success" label="Correlativas cumplidas" />
                                 {materia.status === "habilitada" && <Chip size="small" color="primary" label={STATUS_LABEL[materia.status]} />}
                               </Stack>
+                              {materia.motivos.length > 0 && (
+                                <Box sx={{ mt: 1.5 }}>
+                                  <Typography variant="caption" fontWeight={700} color="text.secondary" display="block">
+                                    Habilitada por:
+                                  </Typography>
+                                  <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                                    {materia.motivos.map((motivo, idx) => (
+                                      <Typography key={idx} variant="caption" color="text.secondary" sx={{ display: "block", fontStyle: "italic" }}>
+                                        • {motivo}
+                                      </Typography>
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
                             </Box>
                             <Stack spacing={1} minWidth={240}>
                               <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#fff" }}>

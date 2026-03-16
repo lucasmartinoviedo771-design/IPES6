@@ -2,14 +2,15 @@ export const formatDateToDDMMYYYY = (dateInput?: string | Date | null): string =
   if (!dateInput) return '—';
 
   try {
+    // If it's already a string and looks like DD/MM/YYYY, return it as is
+    if (typeof dateInput === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
+      return dateInput;
+    }
+
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     
     // Check for invalid date
     if (isNaN(date.getTime())) {
-      // If it's a string and looks like DD/MM/YYYY, return it as is
-      if (typeof dateInput === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
-        return dateInput;
-      }
       return typeof dateInput === 'string' ? dateInput : '—';
     }
 

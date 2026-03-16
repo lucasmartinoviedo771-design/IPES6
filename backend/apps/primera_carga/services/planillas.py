@@ -346,6 +346,11 @@ def actualizar_planilla_regularidad(
     if observaciones is not None: planilla.observaciones = observaciones
     if estado: planilla.estado = estado
     if datos_adicionales is not None: planilla.datos_adicionales = datos_adicionales
+    
+    # Capturar estado anterior para limpieza de regularidades
+    old_fecha = planilla.fecha
+    old_materia_id = planilla.materia_id
+    old_estudiante_ids = list(planilla.filas.filter(estudiante__isnull=False).values_list('estudiante_id', flat=True))
 
     atomic_ctx = transaction.atomic if not dry_run else _atomic_rollback
     with atomic_ctx():
@@ -361,6 +366,13 @@ def actualizar_planilla_regularidad(
                 PlanillaRegularidadDocente.objects.create(planilla=planilla, docente=d_obj, nombre=nombre, dni=dni, rol=d_data.get("rol") or "profesor", orden=d_data.get("orden") or idx)
         
         if filas is not None:
+            # Limpiar regularidades anteriores asociadas a esta planilla para evitar duplicados si cambia la fecha o materia
+            Regularidad.objects.filter(
+                estudiante_id__in=old_estudiante_ids,
+                materia_id=old_materia_id,
+                fecha_cierre=old_fecha
+            ).delete()
+
             planilla.filas.all().delete()
             columnas = planilla.plantilla.columnas or []
             materia_actual = planilla.materia
@@ -376,18 +388,32 @@ def actualizar_planilla_regularidad(
                 try: asist = int(math.ceil(float(str(f_data.get("asistencia") or "").replace(",", "."))))
                 except: pass
                 
+                datos_extra_limpios = _limpiar_datos_fila(f_data.get("datos"), columnas)
                 fila_obj = PlanillaRegularidadFila.objects.create(
                     planilla=planilla, orden=orden, estudiante=estudiante, dni=dni or "",
                     apellido_nombre=_normalize_value(f_data.get("apellido_nombre") or ""),
                     nota_final=nota_dec, asistencia_porcentaje=asist, situacion=situacion,
-                    excepcion=bool(f_data.get("excepcion")), datos=_limpiar_datos_fila(f_data.get("datos"), columnas)
+                    excepcion=bool(f_data.get("excepcion")), datos=datos_extra_limpios,
                 )
                 if estudiante:
+                    # Buscamos la inscripción para vincular la regularidad
+                    inscripcion = InscripcionMateriaEstudiante.objects.filter(
+                        estudiante=estudiante, materia=materia_actual
+                    ).order_by("-anio").first()
+                    
+                    # Extraer nota de prácticos si está en los datos extra
+                    nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra_limpios)
+
                     Regularidad.objects.update_or_create(
                         estudiante=estudiante, materia=materia_actual, fecha_cierre=planilla.fecha,
                         defaults={
+                            "inscripcion": inscripcion,
+                            "nota_trabajos_practicos": nota_tp_decimal,
                             "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if nota_dec is not None else None,
-                            "asistencia_porcentaje": asist, "situacion": situacion, "excepcion": bool(f_data.get("excepcion")),
+                            "asistencia_porcentaje": asist, 
+                            "situacion": situacion, 
+                            "excepcion": bool(f_data.get("excepcion")),
+                            "observaciones": (f_data.get("observaciones") or "").strip(),
                         }
                     )
                     verify_regularidad_consistency(fila_obj)
