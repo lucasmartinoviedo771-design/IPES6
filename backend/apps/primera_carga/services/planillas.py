@@ -20,6 +20,7 @@ from core.models import (
     RegularidadPlantilla,
 )
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
+from apps.estudiantes.api.notas_utils import alias_desde_situacion
 from apps.primera_carga.audit_utils import verify_regularidad_consistency
 from core.permissions import ensure_profesorado_access
 
@@ -215,7 +216,7 @@ def crear_planilla_regularidad(
             nota_final_decimal = None
             if nota_final_raw not in (None, "", [], "---"):
                 try:
-                    nota_final_decimal = Decimal(str(nota_final_raw)).quantize(Decimal("0.1"))
+                    nota_final_decimal = Decimal(str(nota_final_raw)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
                 except (InvalidOperation, ValueError):
                     raise ValueError(f"La nota final de la fila {orden} debe ser un número válido o '---'.")
             
@@ -273,7 +274,7 @@ def crear_planilla_regularidad(
             regularidades_registradas += 1
 
         PlanillaRegularidadHistorial.objects.create(
-            planilla=planilla, accion=PlanillaRegularidadHistorial.Accion.CREACION, user=user,
+            planilla=planilla, accion=PlanillaRegularidadHistorial.Accion.CREACION, usuario=user,
             payload={"numero": numero, "filas": len(filas), "docentes": len(docentes), "regularidades": regularidades_registradas, "warnings": warnings}
         )
 
@@ -296,8 +297,9 @@ def obtener_planilla_regularidad_detalle(planilla_id: int) -> dict:
     for f in planilla.filas.all().order_by("orden", "id"):
         filas.append({
             "orden": f.orden, "dni": f.dni, "apellido_nombre": f.apellido_nombre,
-            "nota_final": float(f.nota_final) if f.nota_final else None,
-            "asistencia": f.asistencia_porcentaje, "situacion": f.situacion,
+            "nota_final": str(int(f.nota_final)) if f.nota_final is not None else "---",
+            "asistencia": str(int(f.asistencia_porcentaje)) if f.asistencia_porcentaje is not None else "---",
+            "situacion": alias_desde_situacion(f.situacion) or f.situacion,
             "excepcion": f.excepcion, "datos": f.datos,
         })
     return {
@@ -347,6 +349,8 @@ def actualizar_planilla_regularidad(
     if estado: planilla.estado = estado
     if datos_adicionales is not None: planilla.datos_adicionales = datos_adicionales
     
+    planilla.updated_by = user
+    
     # Capturar estado anterior para limpieza de regularidades
     old_fecha = planilla.fecha
     old_materia_id = planilla.materia_id
@@ -383,7 +387,7 @@ def actualizar_planilla_regularidad(
                 situacion = _resolve_situacion(f_data.get("situacion", ""), planilla.materia.formato)
                 nota_dec = None
                 if f_data.get("nota_final") not in (None, "", "---"):
-                    nota_dec = Decimal(str(f_data.get("nota_final"))).quantize(Decimal("0.1"))
+                    nota_dec = Decimal(str(f_data.get("nota_final"))).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
                 asist = None
                 try: asist = int(math.ceil(float(str(f_data.get("asistencia") or "").replace(",", "."))))
                 except: pass
@@ -417,6 +421,17 @@ def actualizar_planilla_regularidad(
                         }
                     )
                     verify_regularidad_consistency(fila_obj)
+        
+        PlanillaRegularidadHistorial.objects.create(
+            planilla=planilla, 
+            accion=PlanillaRegularidadHistorial.Accion.EDICION, 
+            usuario=user,
+            payload={
+                "filas": len(filas) if filas is not None else None,
+                "docentes": len(docentes) if docentes is not None else None,
+            }
+        )
+
         if not dry_run:
             pdf_bytes = _render_planilla_regularidad_pdf(planilla)
             planilla.pdf.save(f"{planilla.codigo}.pdf", ContentFile(pdf_bytes), save=True)

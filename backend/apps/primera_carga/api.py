@@ -26,6 +26,7 @@ from apps.primera_carga.services import (
     process_estudiantes_csv,
     process_folios_finales_csv,
 )
+from apps.primera_carga.services.mesas_pandemia import registrar_mesa_pandemia
 from core.auth_ninja import JWTAuth, ensure_roles
 from core.permissions import allowed_profesorados
 from core.models import PlanillaRegularidad
@@ -446,3 +447,107 @@ def actualizar_planilla_endpoint(request, planilla_id: int, payload: PlanillaReg
         return 404, ApiResponse(ok=False, message=str(exc))
     except Exception as exc:
         return 400, ApiResponse(ok=False, message=f"Error al actualizar la planilla: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Mesas Pandemia / Notas Históricas
+# ---------------------------------------------------------------------------
+
+class MesaPandemiaFilaIn(Schema):
+    apellido_nombre: str
+    dni: str | None = None
+    nota_raw: str | None = None          # "7", "AUSENTE", "LIBRE", etc.
+    comision_obs: str | None = None      # texto libre: comisión / otro prof.
+    observaciones: str | None = None
+
+
+class MesaPandemiaIn(Schema):
+    profesorado_id: int
+    materia_id: int
+    fecha: date
+    tipo: str = "EXT"                    # FIN, EXT, ESP
+    docente_nombre: str | None = None
+    folio: str | None = None
+    libro: str | None = None
+    observaciones: str | None = None
+    filas: list[MesaPandemiaFilaIn]
+    dry_run: bool = False
+
+
+@primera_carga_router.post(
+    "/mesas-pandemia",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
+    try:
+        result = registrar_mesa_pandemia(
+            user=request.user,
+            profesorado_id=payload.profesorado_id,
+            materia_id=payload.materia_id,
+            fecha=payload.fecha,
+            tipo=payload.tipo,
+            docente_nombre=payload.docente_nombre or "",
+            folio=payload.folio or "",
+            libro=payload.libro or "",
+            observaciones=payload.observaciones or "",
+            filas=[f.dict() for f in payload.filas],
+            dry_run=payload.dry_run,
+        )
+        msg = "Carga de notas procesada (dry-run)." if payload.dry_run else "Notas de mesa registradas correctamente."
+        return ApiResponse(ok=True, message=msg, data=result)
+    except ValueError as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
+    except Exception as exc:
+        import traceback; traceback.print_exc()
+        return 400, ApiResponse(ok=False, message=f"Error al procesar la carga: {exc}")
+
+
+@primera_carga_router.get(
+    "/mesas-pandemia",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def listar_historico_mesas_pandemia(request):
+    """
+    Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'.
+    Filtra buscando la palabra PANDEMIA en el folio o libro de las inscripciones.
+    Solo retorna las mesas vinculadas a los profesorados del Bedel en curso.
+    """
+    from core.models import MesaExamen
+    from django.db.models import Count
+    from core.permissions import allowed_profesorados
+
+    user = request.user
+    allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
+    
+    # Buscamos mesas que tengan alguna inscripción marcada como PANDEMIA (folio o libro)
+    qs = MesaExamen.objects.filter(inscripciones__folio__icontains="PANDEMIA") | \
+         MesaExamen.objects.filter(inscripciones__libro__icontains="PANDEMIA")
+    
+    if allowed is not None:
+        if not allowed:
+            return ApiResponse(ok=True, message="Listado histórico.", data=[])
+        qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
+
+    qs = qs.select_related("materia__plan_de_estudio__profesorado", "docente_presidente__persona").distinct().annotate(
+        cantidad_estudiantes=Count("inscripciones")
+    ).order_by("-fecha")[:200]
+
+    data = []
+    for mesa in qs:
+        docente = "—"
+        if mesa.docente_presidente and mesa.docente_presidente.persona:
+            docente = f"{mesa.docente_presidente.persona.apellido}, {mesa.docente_presidente.persona.nombre}"
+        
+        data.append({
+            "id": mesa.id,
+            "materia_nombre": mesa.materia.nombre,
+            "profesorado_nombre": mesa.materia.plan_de_estudio.profesorado.nombre,
+            "fecha": mesa.fecha,
+            "tipo": mesa.tipo,
+            "cantidad_estudiantes": mesa.cantidad_estudiantes,
+            "docente_presidente": docente,
+        })
+        
+    return ApiResponse(ok=True, message="Listado histórico.", data=data)

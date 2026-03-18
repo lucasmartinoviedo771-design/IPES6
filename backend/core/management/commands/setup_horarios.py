@@ -77,11 +77,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Setting up initial Turno and Bloque data..."))
 
         for turno_cfg in TURNOS_CONFIG:
-            turno, created = Turno.objects.get_or_create(nombre=turno_cfg["nombre"])
-            if created:
+            nombre_cfg = turno_cfg["nombre"]
+            # Intentar buscar por nombre insensible a mayúsculas antes de crear uno nuevo
+            turno = Turno.objects.filter(nombre__iexact=nombre_cfg).first()
+            if not turno:
+                turno = Turno.objects.create(nombre=nombre_cfg)
                 self.stdout.write(self.style.SUCCESS(f"Created Turno: {turno.nombre}"))
             else:
-                self.stdout.write(self.style.WARNING(f"Turno already exists: {turno.nombre}"))
+                self.stdout.write(self.style.WARNING(f"Turno already exists (match found): {turno.nombre}"))
 
             weekday_blocks = turno_cfg.get("blocks_weekday", [])
             saturday_blocks = turno_cfg.get("blocks_saturday")

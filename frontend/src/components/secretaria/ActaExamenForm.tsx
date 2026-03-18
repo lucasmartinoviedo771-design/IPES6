@@ -35,6 +35,8 @@ import {
   buscarMesaPorCodigo,
   crearActaExamen,
   fetchActaMetadata,
+  actualizarActaExamen,
+  obtenerActa,
 } from "@/api/cargaNotas";
 import OralExamActaDialog, { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
 import { fetchEstudianteAdminDetail } from "@/api/estudiantes";
@@ -82,6 +84,7 @@ type ActaExamenFormProps = {
   successMessage?: string;
   initialEstudiantes?: Array<{ dni: string; apellido_nombre: string }>;
   headerAction?: React.ReactNode;
+  editId?: number;
 };
 
 const createEmptyDocentes = (): DocenteState[] =>
@@ -121,6 +124,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   successMessage = "Acta generada correctamente.",
   initialEstudiantes = [],
   headerAction,
+  editId,
 }) => {
   const queryClient = useQueryClient();
   const metadataQuery = useQuery<ActaMetadataDTO>({
@@ -148,10 +152,57 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   const [confirmActaOpen, setConfirmActaOpen] = useState(false);
   const [pendingActaPayload, setPendingActaPayload] = useState<ActaCreatePayload | null>(null);
 
+  const [isEditing, setIsEditing] = useState(!!editId);
+  const [isInitialPopulated, setIsInitialPopulated] = useState(false);
+
+  const { data: actaParaEditar, isLoading: isLoadingActa } = useQuery({
+    queryKey: ["acta-edicion", editId],
+    queryFn: () => obtenerActa(editId!),
+    enabled: !!editId,
+  });
+
   const metadata = metadataQuery.data;
   const notaOptions = metadata?.nota_opciones ?? [];
 
-  const profesorados = metadata?.profesorados ?? [];
+  const profesorados = useMemo(() => {
+    const list = [...(metadata?.profesorados ?? [])];
+    if (!!editId && actaParaEditar && actaParaEditar.profesorado_id) {
+      const alreadyInMetadata = list.some((p) => String(p.id) === String(actaParaEditar.profesorado_id));
+      if (!alreadyInMetadata) {
+        list.push({
+          id: actaParaEditar.profesorado_id,
+          nombre: actaParaEditar.profesorado || "Cargando...",
+          planes: [
+            {
+              id: actaParaEditar.plan_id!,
+              resolucion: actaParaEditar.plan_resolucion || "Cargando...",
+              materias: [
+                {
+                  id: actaParaEditar.materia_id!,
+                  nombre: actaParaEditar.materia || "Cargando...",
+                  anio_cursada: actaParaEditar.materia_anio || 1,
+                  plan_id: actaParaEditar.plan_id!,
+                  plan_resolucion: actaParaEditar.plan_resolucion || ""
+                }
+              ]
+            }
+          ],
+        });
+      }
+    }
+    // Final deduplication by ID to be safe
+    const uniqueList: typeof list = [];
+    const seen = new Set();
+    list.forEach(p => {
+      const sid = String(p.id);
+      if (!seen.has(sid)) {
+        seen.add(sid);
+        uniqueList.push(p);
+      }
+    });
+    return uniqueList;
+  }, [metadata, actaParaEditar, editId]);
+
   const docentesDisponibles = metadata?.docentes ?? [];
 
   const applyMesaSeleccionada = (mesa: MesaResumenDTO) => {
@@ -230,14 +281,48 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     [profesorados, profesoradoId],
   );
 
-  const planesDisponibles = selectedProfesorado?.planes ?? [];
+  const planesDisponibles = useMemo(() => {
+    const list = [...(selectedProfesorado?.planes ?? [])];
+    if (!!editId && actaParaEditar && String(actaParaEditar.profesorado_id) === profesoradoId) {
+       if (actaParaEditar.plan_id && !list.some(p => String(p.id) === String(actaParaEditar.plan_id))) {
+          list.push({
+             id: actaParaEditar.plan_id,
+             resolucion: actaParaEditar.plan_resolucion || "Sin definir",
+             materias: [
+               {
+                 id: actaParaEditar.materia_id!,
+                 nombre: actaParaEditar.materia || "Sin definir",
+                 anio_cursada: actaParaEditar.materia_anio || 1,
+                 plan_id: actaParaEditar.plan_id!,
+                 plan_resolucion: actaParaEditar.plan_resolucion || ""
+               }
+             ]
+          });
+       }
+    }
+    return list;
+  }, [selectedProfesorado, editId, actaParaEditar, profesoradoId]);
 
   const selectedPlan = useMemo(
     () => planesDisponibles.find((p) => String(p.id) === planId),
     [planesDisponibles, planId],
   );
 
-  const materiasDisponibles = selectedPlan?.materias ?? [];
+  const materiasDisponibles = useMemo(() => {
+    const list = [...(selectedPlan?.materias ?? [])];
+    if (!!editId && actaParaEditar && String(actaParaEditar.plan_id) === planId) {
+       if (actaParaEditar.materia_id && !list.some(m => String(m.id) === String(actaParaEditar.materia_id))) {
+          list.push({
+            id: actaParaEditar.materia_id,
+            nombre: actaParaEditar.materia || "Sin definir",
+            anio_cursada: actaParaEditar.materia_anio || 1,
+            plan_id: actaParaEditar.plan_id!,
+            plan_resolucion: actaParaEditar.plan_resolucion || ""
+          });
+       }
+    }
+    return list;
+  }, [selectedPlan, editId, actaParaEditar, planId]);
 
   const selectedMateria = useMemo(
     () => materiasDisponibles.find((m) => String(m.id) === materiaId),
@@ -248,18 +333,88 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
     ? `acta de examen de ${selectedMateria?.nombre ?? "la mesa seleccionada"}`
     : "acta de examen final";
 
+  // Populate if editing
   useEffect(() => {
+    // Wait for both to be available for a perfect sync, or just acta para editar for basic fields
+    if (!!editId && actaParaEditar && !isInitialPopulated) {
+      if (actaParaEditar.tipo) setTipo(actaParaEditar.tipo as "REG" | "LIB");
+      
+      // Load IDs
+      if (actaParaEditar.profesorado_id) {
+        setProfesoradoId(String(actaParaEditar.profesorado_id));
+      }
+      if (actaParaEditar.plan_id) {
+        setPlanId(String(actaParaEditar.plan_id));
+      }
+      if (actaParaEditar.materia_id) {
+        setMateriaId(String(actaParaEditar.materia_id));
+      }
+
+      if (actaParaEditar.fecha) {
+        const parts = actaParaEditar.fecha.split("/");
+        if (parts.length === 3) {
+          setFecha(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else {
+          setFecha(actaParaEditar.fecha);
+        }
+      }
+      setFolio(actaParaEditar.folio || "");
+      setLibro(actaParaEditar.libro || "");
+      setObservaciones(actaParaEditar.observaciones || "");
+
+      // If metadata is also ready, we consider population "fully complete" and safe for cleanups
+      if (metadata) {
+         if (actaParaEditar.docentes && actaParaEditar.docentes.length > 0) {
+            const loadedDocentes = actaParaEditar.docentes.map((d: any) => ({
+              rol: d.rol,
+              docente_id: Number(d.docente_id) || null,
+              nombre: d.nombre || "",
+              dni: d.dni || "",
+              inputValue: d.nombre || "",
+            }));
+            const finalDocentes = createEmptyDocentes().map(emptyDoc => {
+              const found = loadedDocentes.find(ld => ld.rol === emptyDoc.rol);
+              return found || emptyDoc;
+            });
+            setDocentes(finalDocentes);
+          }
+
+          if (actaParaEditar.estudiantes && actaParaEditar.estudiantes.length > 0) {
+            setEstudiantes(
+              actaParaEditar.estudiantes.map((e: any, index: number) => ({
+                internoId: `${index}-${Date.now()}`,
+                numero_orden: e.numero_orden || index + 1,
+                permiso_examen: e.permiso_examen || "",
+                dni: e.dni,
+                apellido_nombre: e.apellido_nombre,
+                examen_escrito: e.examen_escrito || "",
+                examen_oral: e.examen_oral || "",
+                calificacion_definitiva: e.calificacion_definitiva,
+                observaciones: e.observaciones || "",
+              }))
+            );
+          }
+          setIsInitialPopulated(true);
+      }
+    }
+  }, [editId, actaParaEditar, metadata, isInitialPopulated]);
+
+  useEffect(() => {
+    if (!!editId && !isInitialPopulated) return; 
+    if (!metadata) return; // Wait for metadata to be fully loaded before doing any clearing
     if (selectedPlan && !selectedPlan.materias.some((m) => String(m.id) === materiaId)) {
       setMateriaId("");
     }
-  }, [selectedPlan, materiaId]);
+  }, [selectedPlan, materiaId, editId, isInitialPopulated, metadata]);
 
   useEffect(() => {
+    if (!!editId && !isInitialPopulated) return;
+    if (!metadata) return; // Wait for metadata to be fully loaded before doing any clearing
     if (selectedProfesorado && !selectedProfesorado.planes.some((p) => String(p.id) === planId)) {
       setPlanId("");
       setMateriaId("");
     }
-  }, [selectedProfesorado, planId]);
+  }, [selectedProfesorado, planId, editId, isInitialPopulated, metadata]);
 
   const summary = useMemo(() => {
     const total = estudiantes.length;
@@ -292,6 +447,21 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
       enqueueSnackbar(error?.response?.data?.message || "No se pudo generar el acta.", { variant: "error" });
     },
   });
+
+  const { mutate: updateMutation, isPending: isUpdating } = useMutation({
+    mutationFn: (payload: ActaCreatePayload) => actualizarActaExamen(editId!, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["acta-examen-metadata"] });
+      enqueueSnackbar(successMessage || "Acta actualizada correctamente.", { variant: "success" });
+      setConfirmActaOpen(false);
+    },
+    onError: (error: any) => {
+      enqueueSnackbar(error?.response?.data?.message || "No se pudo actualizar el acta.", { variant: "error" });
+    },
+  });
+
+  const isCreating = mutation.isPending;
+  const isSaving = isCreating || isUpdating;
 
   const handleAgregarEstudiante = () => {
     setEstudiantes((prev) => [...prev, createEmptyEstudiante(prev.length + 1)]);
@@ -538,7 +708,11 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 
   const handleConfirmActaSubmit = () => {
     if (!pendingActaPayload) return;
-    mutation.mutate(pendingActaPayload);
+    if (isEditing) {
+      updateMutation(pendingActaPayload);
+    } else {
+      mutation.mutate(pendingActaPayload);
+    }
   };
 
   const handleCancelActaSubmit = () => {
@@ -1026,10 +1200,10 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
             variant="contained"
             size="large"
             onClick={handleSubmit}
-            disabled={mutation.isPending}
-            startIcon={mutation.isPending ? <CircularProgress size={18} color="inherit" /> : undefined}
+            disabled={isSaving}
+            startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : undefined}
           >
-            {mutation.isPending ? "Generando..." : "Generar acta"}
+            {isSaving ? (isEditing ? "Actualizando..." : "Generando...") : (isEditing ? "Actualizar acta" : "Generar acta")}
           </Button>
         </Stack>
       </Stack>
@@ -1056,7 +1230,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
         onConfirm={handleConfirmActaSubmit}
         onCancel={handleCancelActaSubmit}
         contextText={confirmActaContext}
-        loading={mutation.isPending}
+        loading={isSaving}
       />
     </>
   );

@@ -184,13 +184,13 @@ def obtener_estudiantes_metadata():
         .prefetch_related("carreras")
         .order_by("persona__apellido", "persona__nombre")
     )
-    # Actually I should complete the conversion here
     return [
         {
             "id": e.id,
+            "apellido_nombre": f"{e.apellido}, {e.nombre}".strip(", "),
             "nombre": f"{e.apellido}, {e.nombre}".strip(", "),
             "dni": e.dni,
-            "carreras": [c.nombre for c in e.carreras.all()]
+            "profesorados": [c.id for c in e.carreras.all()]
         }
         for e in estudiantes_qs
     ]
@@ -214,7 +214,7 @@ def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) ->
     profes_qs = Profesorado.objects.filter(activo=True).order_by("nombre")
     if allowed is not None:
         if not allowed:
-            return {"profesorados": [], "plantillas": []}
+            return {"profesorados": [], "plantillas": [], "docentes": [], "estudiantes": []}
         profes_qs = profes_qs.filter(id__in=allowed)
 
     materias_prefetch = Materia.objects.all().only(

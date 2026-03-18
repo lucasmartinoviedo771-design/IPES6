@@ -256,16 +256,21 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
     onBlocksSelected(newSelection.size, newSelection);
   };
 
+  const handleVirtualBlockClick = () => {
+    alert('Este turno no tiene los bloques horarios inicializados en el sistema. Por favor, contacte al administrador para configurar los horarios de este turno o verifique si existe otro turno similar con el nombre correcto.');
+  };
+
   const turnoNombreEfectivo = bloques[0]?.turno_nombre ?? turnoNombre ?? null;
   const turnoKey = turnoKeyFromMeta(turnoId, turnoNombreEfectivo);
 
 // Si el backend envía `bloques`, seguimos usándolos; si no, generamos la grilla del turno
-const hasBloques = bloquesReady && bloques.length > 0;
-const canUseFallback = bloquesReady && !hasBloques && turnoKey;
+const hasRealBloques = bloquesReady && bloques.length > 0;
+const canUseFallback = bloquesReady && !hasRealBloques && turnoKey;
+const isLoading = !bloquesReady && turnoId;
 
 // L–V (usa grilla del turno M/T/V si no hay datos del backend)
 let timeSlotsLV: string[] = [];
-  if (hasBloques) {
+if (hasRealBloques) {
   timeSlotsLV = Array.from(new Set(
     bloques
       .filter(b => b.dia >= 1 && b.dia <= 5)
@@ -288,9 +293,9 @@ let timeSlotsLV: string[] = [];
 
 // Sábado (si no hay backend, usamos su propia grilla)
 let timeSlotsSab: string[] = [];
-if (hasBloques) {
+if (hasRealBloques) {
   timeSlotsSab = Array.from(new Set(
-    sabadoBloques.map(b => `${b.hora_desde}-${b.hora_hasta}`)
+    sabadoBloques.map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
   )).sort();
 } else if (canUseFallback) {
   const meta = GRILLAS.sabado;
@@ -329,6 +334,13 @@ if (hasBloques) {
   return (
     <div>
       {/* Selector de Materia movido a Filtros */}
+
+      {canUseFallback && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 text-amber-700 text-sm">
+          <p className="font-bold">Advertencia:</p>
+          <p>La grilla que se muestra es referencial. Este turno no tiene bloques horarios configurados en el sistema y no permitirá guardar cambios.</p>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="timetable w-full">
@@ -369,9 +381,7 @@ if (hasBloques) {
 
                       const recreoRanges =
                         turnoKey && GRILLAS[turnoKey] ? GRILLAS[turnoKey].breaks : [];
-                      const isBreakByTime = recreoRanges.some(
-                        (r) => r.from === from && r.to === to,
-                      );
+                      const isBreakByTime = inBreak(parseHM(from), parseHM(to), recreoRanges);
                       const isRecreo = !!bloque?.es_recreo || isBreakByTime;
 
                       const isOccupied = bloque ? occupiedBlocks.has(bloque.id) : false;
@@ -389,13 +399,17 @@ if (hasBloques) {
                           key={`${slot}-${d.id}`}
                           className={className}
                           onClick={() => {
-                            if (!bloque || isRecreo || isOccupied) return;
+                            if (!bloque) {
+                              handleVirtualBlockClick();
+                              return;
+                            }
+                            if (isRecreo || isOccupied) return;
                             handleBlockClick(bloque.id);
                           }}
-                          title={isRecreo ? "Recreo" : isOccupied ? "Ocupado" : "Disponible"}
-                          aria-disabled={!!(isRecreo || isOccupied)}
+                          title={!bloque ? "Bloque no configurado" : isRecreo ? "Recreo" : isOccupied ? "Ocupado" : "Disponible"}
+                          aria-disabled={!bloque || !!(isRecreo || isOccupied)}
                         >
-                          {isRecreo ? "Recreo" : isOccupied ? "Ocupado" : ""}
+                          {!bloque ? "?" : isRecreo ? "Recreo" : isOccupied ? "Ocupado" : ""}
                         </td>
                       );
                     })}
@@ -414,7 +428,7 @@ if (hasBloques) {
                       const [fromS, toS] = slotSab.split("-");
                       const isBreakSab =
                         !!bloqueSab?.es_recreo ||
-                        GRILLAS.sabado.breaks.some((r) => r.from === fromS && r.to === toS);
+                        inBreak(parseHM(fromS), parseHM(toS), GRILLAS.sabado.breaks);
                       const isOccupiedSab = bloqueSab ? occupiedBlocks.has(bloqueSab.id) : false;
                       const isSelectedSab = bloqueSab ? selectedBlocks.has(bloqueSab.id) : false;
                       const classNameSab = [
@@ -427,15 +441,19 @@ if (hasBloques) {
                         <td
                           className={classNameSab}
                           onClick={() => {
-                            if (!bloqueSab || isBreakSab || isOccupiedSab) return;
+                            if (!bloqueSab) {
+                              handleVirtualBlockClick();
+                              return;
+                            }
+                            if (isBreakSab || isOccupiedSab) return;
                             handleBlockClick(bloqueSab.id);
                           }}
                           title={
-                            isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : "Disponible"
+                            !bloqueSab ? "Bloque no configurado" : isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : "Disponible"
                           }
-                          aria-disabled={!!(isBreakSab || isOccupiedSab)}
+                          aria-disabled={!bloqueSab || !!(isBreakSab || isOccupiedSab)}
                         >
-                          {isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : ""}
+                          {!bloqueSab ? "?" : isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : ""}
                         </td>
                       );
                     })()}
@@ -460,11 +478,13 @@ if (hasBloques) {
           <button
             type="button"
             className="btn"
-            disabled={botonDeshabilitado}
+            disabled={botonDeshabilitado || !hasRealBloques}
             onClick={onGuardar}
             title={
               !selectedMateria
                 ? "Seleccione materia"
+                : !hasRealBloques
+                ? "Este turno no tiene bloques configurados"
                 : botonDeshabilitado
                 ? esMateriaFlexible
                   ? "No puede exceder las horas requeridas para esta práctica/residencia."

@@ -27,10 +27,13 @@ def _serialize_comision(comision: Comision) -> ComisionOut:
         codigo=comision.codigo,
         turno_id=comision.turno_id,
         docente_id=comision.docente_id,
+        docente_nombre=str(comision.docente) if comision.docente else None,
         horario_id=comision.horario_id,
         cupo_maximo=comision.cupo_maximo,
         observaciones=comision.observaciones,
-        estado=comision.estado
+        estado=comision.estado,
+        rol=comision.rol,
+        orden=comision.orden
     )
 
 def _restrict_comisiones_queryset(user, qs):
@@ -59,6 +62,7 @@ def list_comisiones(
     anio_lectivo: int | None = None,
     turno_id: int | None = None,
     estado: str | None = None,
+    rol: str | None = None,
 ):
     _require_view(request.user)
     qs = Comision.objects.select_related(
@@ -74,6 +78,7 @@ def list_comisiones(
     if anio_lectivo: qs = qs.filter(anio_lectivo=anio_lectivo)
     if turno_id: qs = qs.filter(turno_id=turno_id)
     if estado: qs = qs.filter(estado=estado.upper())
+    if rol: qs = qs.filter(rol=rol.upper())
 
     qs = qs.order_by("-anio_lectivo", "materia__nombre", "codigo")
     return [_serialize_comision(com) for com in qs]
@@ -94,6 +99,8 @@ def create_comision(request, payload: ComisionIn):
         horario_id=payload.horario_id,
         cupo_maximo=payload.cupo_maximo,
         estado=estado,
+        rol=(payload.rol or Comision.Rol.TITULAR).upper(),
+        orden=payload.orden or 1,
         observaciones=payload.observaciones or "",
     )
     return _serialize_comision(comision)

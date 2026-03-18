@@ -10,7 +10,8 @@ from core.models import (
     Bloque, 
     HorarioCatedra, 
     HorarioCatedraDetalle, 
-    Materia
+    Materia,
+    Comision
 )
 from core.permissions import ensure_roles, ensure_profesorado_access
 from apps.common.api_schemas import ApiResponse
@@ -85,11 +86,13 @@ def create_bloque(request, turno_id: int, payload: BloqueIn):
 # --- HORARIOS CATEDRA ---
 
 @router.get("/horarios_catedra", response=list[HorarioCatedraOut], auth=JWTAuth())
-def list_horarios_catedra(request, espacio_id: int | None = None, turno_id: int | None = None):
+def list_horarios_catedra(request, espacio_id: int | None = None, turno_id: int | None = None, cuatrimestre: str | None = None, anio_cursada: int | None = None):
     _ensure_structure_view(request.user)
     qs = HorarioCatedra.objects.all().select_related("espacio", "turno")
     if espacio_id: qs = qs.filter(espacio_id=espacio_id)
     if turno_id: qs = qs.filter(turno_id=turno_id)
+    if cuatrimestre: qs = qs.filter(cuatrimestre=cuatrimestre)
+    if anio_cursada: qs = qs.filter(anio_cursada=anio_cursada)
     
     return qs.annotate(
         espacio_nombre=F("espacio__nombre"),
@@ -100,7 +103,12 @@ def list_horarios_catedra(request, espacio_id: int | None = None, turno_id: int 
 def create_horario_catedra(request, payload: HorarioCatedraIn):
     materia = get_object_or_404(Materia, id=payload.espacio_id)
     _ensure_structure_edit(request.user, materia.plan_de_estudio.profesorado_id)
-    hc = HorarioCatedra.objects.create(**payload.dict())
+    hc, _ = HorarioCatedra.objects.get_or_create(
+        espacio=materia,
+        turno_id=payload.turno_id,
+        anio_cursada=payload.anio_cursada,
+        cuatrimestre=payload.cuatrimestre
+    )
     return hc
 
 @router.get("/horarios_catedra/{horario_id}", response=HorarioCatedraOut, auth=JWTAuth())
@@ -147,17 +155,46 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     # ... (Omitida por brevedad en este script inicial, pero debe incluirse)
     # [Para seguir el plan, incluiré la lógica completa]
     
-    conflictos = HorarioCatedraDetalle.objects.filter(
+    # 1. Conflicto por Alumnos (Mismo Plan + Mismo Año de Carrera + Mismo Turno + Mismo Cuatrimestre)
+    # Esto permite que 1er año y 2do año del mismo profesorado tengan clases al mismo tiempo.
+    conflictos_alumnos = HorarioCatedraDetalle.objects.filter(
         bloque=bloque,
         horario_catedra__anio_cursada=hc.anio_cursada,
         horario_catedra__turno=hc.turno,
         horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
+        horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
         horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre)
     ).exclude(horario_catedra=hc)
 
-    if conflictos.exists():
-        # ... logic for conflict response
-        return 409, ApiResponse(ok=False, message="Espacio ya ocupado.")
+    if conflictos_alumnos.exists():
+        conf = conflictos_alumnos.select_related('horario_catedra__espacio').first()
+        return 409, ApiResponse(
+            ok=False, 
+            message=f"Espacio ocupado por {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.anio_cursada}º año)"
+        )
+
+    # 2. Conflicto por Docente (Mismo docente en cualquier año/profesorado en este bloque)
+    # Buscamos qué docentes están asignados a esta materia en este año lectivo
+    docentes_ids = Comision.objects.filter(
+        materia=hc.espacio,
+        anio_lectivo=hc.anio_cursada
+    ).values_list('docente_id', flat=True).distinct()
+    docentes_ids = [d for d in docentes_ids if d]
+
+    if docentes_ids:
+        conflictos_docente = HorarioCatedraDetalle.objects.filter(
+            bloque=bloque,
+            horario_catedra__anio_cursada=hc.anio_cursada,
+            horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
+            horario_catedra__comisiones__docente_id__in=docentes_ids
+        ).exclude(horario_catedra=hc)
+        
+        if conflictos_docente.exists():
+            conf = conflictos_docente.select_related('horario_catedra__espacio').first()
+            return 409, ApiResponse(
+                ok=False, 
+                message=f"Conflicto de docente: El docente asignado ya tiene clase en {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.plan_de_estudio.profesorado.nombre})"
+            )
 
     detalle, _ = HorarioCatedraDetalle.objects.get_or_create(horario_catedra=hc, bloque=bloque)
     return detalle

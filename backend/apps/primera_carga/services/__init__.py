@@ -5,6 +5,7 @@ from .planillas import (
     crear_planilla_regularidad,
     obtener_planilla_regularidad_detalle,
     actualizar_planilla_regularidad,
+    _render_planilla_regularidad_pdf,
 )
 from .importacion import (
     process_estudiantes_csv,

@@ -28,7 +28,7 @@ import PersonAdd from '@mui/icons-material/PersonAdd';
 import FileCopy from '@mui/icons-material/FileCopy';
 import CompareArrows from '@mui/icons-material/CompareArrows';
 import HistoryIcon from '@mui/icons-material/History';
-import FindInPage from '@mui/icons-material/FindInPage';
+import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 
 import {
   crearEstudianteInicial,
@@ -38,17 +38,19 @@ import {
 import { EquivalenciaDisposicionPayload, fetchEstudianteAdminDetail } from '@/api/estudiantes';
 import { listarProfesorados, ProfesoradoDTO } from '@/api/cargaNotas';
 import PlanillaRegularidadDialog from './PlanillaRegularidadDialog';
-import EquivalenciaDisposicionDialog from "@/components/equivalencias/EquivalenciaDisposicionDialog";
-import { PageHero } from "@/components/ui/GradientTitles";
+import EquivalenciaDisposicionDialog from '@/components/equivalencias/EquivalenciaDisposicionDialog';
+import NotaMesaPandemiaDialog from './NotaMesaPandemiaDialog';
+import { PageHero } from '@/components/ui/GradientTitles';
 import {
   ICON_GRADIENT,
   INSTITUTIONAL_TERRACOTTA,
   INSTITUTIONAL_TERRACOTTA_DARK,
   INSTITUTIONAL_GREEN,
-} from "@/styles/institutionalColors";
+} from '@/styles/institutionalColors';
 
-
-
+// ---------------------------------------------------------------------------
+// StudentManualDialog
+// ---------------------------------------------------------------------------
 
 type StudentFormValues = {
   dni: string;
@@ -138,7 +140,10 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
     },
   });
 
-  const profesorados = useMemo<ProfesoradoDTO[]>(() => profesoradosQuery.data ?? [], [profesoradosQuery.data]);
+  const profesorados = useMemo<ProfesoradoDTO[]>(
+    () => profesoradosQuery.data ?? [],
+    [profesoradosQuery.data],
+  );
 
   const onSubmit = async (values: StudentFormValues) => {
     if (!values.profesoradoId) {
@@ -159,7 +164,6 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
       await fetchEstudianteAdminDetail(dni, { suppressErrorToast: true });
       dniExiste = true;
     } catch (error: any) {
-      // El error puede ser un AppError (con propiedad status) o un error de Axios directo
       const status = error.status || error?.response?.status;
       if (status === 404) {
         dniExiste = false;
@@ -171,12 +175,12 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
       setCheckingDni(false);
     }
 
-    if (abortar) {
-      return;
-    }
+    if (abortar) return;
 
     if (dniExiste) {
-      enqueueSnackbar(`Ya existe un estudiante registrado con el DNI ${dni}.`, { variant: 'warning' });
+      enqueueSnackbar(`Ya existe un estudiante registrado con el DNI ${dni}.`, {
+        variant: 'warning',
+      });
       return;
     }
 
@@ -337,18 +341,14 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
                 <Controller
                   name="telefono"
                   control={control}
-                  render={({ field }) => (
-                    <TextField {...field} label="Teléfono" fullWidth />
-                  )}
+                  render={({ field }) => <TextField {...field} label="Teléfono" fullWidth />}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <Controller
                   name="domicilio"
                   control={control}
-                  render={({ field }) => (
-                    <TextField {...field} label="Domicilio" fullWidth />
-                  )}
+                  render={({ field }) => <TextField {...field} label="Domicilio" fullWidth />}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -379,27 +379,21 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
                 <Controller
                   name="cohorte"
                   control={control}
-                  render={({ field }) => (
-                    <TextField {...field} label="Cohorte" fullWidth />
-                  )}
+                  render={({ field }) => <TextField {...field} label="Cohorte" fullWidth />}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <Controller
                   name="genero"
                   control={control}
-                  render={({ field }) => (
-                    <TextField {...field} label="Género" fullWidth />
-                  )}
+                  render={({ field }) => <TextField {...field} label="Género" fullWidth />}
                 />
               </Grid>
               <Grid item xs={12}>
                 <Controller
                   name="rol_extra"
                   control={control}
-                  render={({ field }) => (
-                    <TextField {...field} label="Rol extra" fullWidth />
-                  )}
+                  render={({ field }) => <TextField {...field} label="Rol extra" fullWidth />}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -415,9 +409,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
                 <Controller
                   name="cuil"
                   control={control}
-                  render={({ field }) => (
-                    <TextField {...field} label="CUIL" fullWidth />
-                  )}
+                  render={({ field }) => <TextField {...field} label="CUIL" fullWidth />}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -457,7 +449,10 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
           </Box>
 
           {mutation.isError && (
-            <Alert severity="error">{(mutation.error as any)?.response?.data?.message || 'No se pudo guardar el estudiante.'}</Alert>
+            <Alert severity="error">
+              {(mutation.error as any)?.response?.data?.message ||
+                'No se pudo guardar el estudiante.'}
+            </Alert>
           )}
           {mutation.isSuccess && (
             <Alert severity="success">{mutation.data.message}</Alert>
@@ -481,13 +476,20 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
   );
 };
 
+// ---------------------------------------------------------------------------
+// PrimeraCargaPage
+// ---------------------------------------------------------------------------
+
 const PrimeraCargaPage: React.FC = () => {
   const navigate = useNavigate();
   const [openStudentDialog, setOpenStudentDialog] = useState(false);
   const [openPlanillaDialog, setOpenPlanillaDialog] = useState(false);
   const [openDisposicionDialog, setOpenDisposicionDialog] = useState(false);
+  const [openMesaPandemiaDialog, setOpenMesaPandemiaDialog] = useState(false);
 
-  const handleRegistrarDisposicionPrimeraCarga = async (payload: EquivalenciaDisposicionPayload) => {
+  const handleRegistrarDisposicionPrimeraCarga = async (
+    payload: EquivalenciaDisposicionPayload,
+  ) => {
     await registrarDisposicionEquivalenciaPrimeraCarga(payload);
   };
 
@@ -496,19 +498,19 @@ const PrimeraCargaPage: React.FC = () => {
     height: 64,
     borderRadius: 14,
     background: ICON_GRADIENT,
-    color: "common.white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 18px 35px rgba(0,0,0,0.15)",
+    color: 'common.white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 18px 35px rgba(0,0,0,0.15)',
   };
 
   const cardStyles = {
-    height: "100%",
+    height: '100%',
     borderRadius: 14,
-    border: "1px solid rgba(125,127,110,0.25)",
-    boxShadow: "0 20px 40px rgba(15,23,42,0.08)",
-    backgroundColor: "#fff",
+    border: '1px solid rgba(125,127,110,0.25)',
+    boxShadow: '0 20px 40px rgba(15,23,42,0.08)',
+    backgroundColor: '#fff',
   };
 
   return (
@@ -522,10 +524,12 @@ const PrimeraCargaPage: React.FC = () => {
       />
 
       <Grid container spacing={3}>
+
+        {/* ── Carga de Estudiantes ── */}
         <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack spacing={3} sx={{ height: '100%' }}>
                 <Box sx={iconBoxStyles}>
                   <PersonAdd fontSize="large" />
                 </Box>
@@ -541,10 +545,10 @@ const PrimeraCargaPage: React.FC = () => {
                   variant="contained"
                   fullWidth
                   sx={{
-                    mt: "auto",
+                    mt: 'auto',
                     borderRadius: 999,
                     backgroundColor: INSTITUTIONAL_TERRACOTTA,
-                    "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                    '&:hover': { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
                   }}
                   onClick={() => setOpenStudentDialog(true)}
                 >
@@ -555,10 +559,11 @@ const PrimeraCargaPage: React.FC = () => {
           </Card>
         </Grid>
 
+        {/* ── Regularidades ── */}
         <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack spacing={3} sx={{ height: '100%' }}>
                 <Box sx={iconBoxStyles}>
                   <FileCopy fontSize="large" />
                 </Box>
@@ -570,14 +575,14 @@ const PrimeraCargaPage: React.FC = () => {
                     Registrá regularidades mediante planillas para comisiones o cargas individuales.
                   </Typography>
                 </Box>
-                <Stack spacing={1.5} sx={{ mt: "auto" }}>
+                <Stack spacing={1.5} sx={{ mt: 'auto' }}>
                   <Button
                     variant="contained"
                     fullWidth
                     sx={{
                       borderRadius: 999,
                       backgroundColor: INSTITUTIONAL_TERRACOTTA,
-                      "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                      '&:hover': { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
                     }}
                     onClick={() => setOpenPlanillaDialog(true)}
                   >
@@ -590,20 +595,17 @@ const PrimeraCargaPage: React.FC = () => {
                       borderRadius: 999,
                       borderColor: INSTITUTIONAL_TERRACOTTA,
                       color: INSTITUTIONAL_TERRACOTTA,
-                      "&:hover": { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                      '&:hover': { borderColor: INSTITUTIONAL_TERRACOTTA_DARK },
                     }}
-                    onClick={() => navigate("/admin/primera-carga/historico-regularidad")}
+                    onClick={() => navigate('/admin/primera-carga/historico-regularidad')}
                   >
                     Registrar Planilla de Regularidad y Promoción Individual
                   </Button>
                   <Button
                     variant="text"
                     fullWidth
-                    sx={{
-                      borderRadius: 999,
-                      color: INSTITUTIONAL_TERRACOTTA,
-                    }}
-                    onClick={() => navigate("/admin/primera-carga/historial-regularidades")}
+                    sx={{ borderRadius: 999, color: INSTITUTIONAL_TERRACOTTA }}
+                    onClick={() => navigate('/admin/primera-carga/historial-regularidades')}
                   >
                     Ver Histórico
                   </Button>
@@ -613,10 +615,11 @@ const PrimeraCargaPage: React.FC = () => {
           </Card>
         </Grid>
 
+        {/* ── Actas de Examen Final ── */}
         <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack spacing={3} sx={{ height: '100%' }}>
                 <Box sx={iconBoxStyles}>
                   <HistoryIcon fontSize="large" />
                 </Box>
@@ -628,27 +631,24 @@ const PrimeraCargaPage: React.FC = () => {
                     Emití actas de exámenes finales y consultá su historial de carga masiva.
                   </Typography>
                 </Box>
-                <Stack spacing={1.5} sx={{ mt: "auto" }}>
+                <Stack spacing={1.5} sx={{ mt: 'auto' }}>
                   <Button
                     variant="contained"
                     fullWidth
                     sx={{
                       borderRadius: 999,
                       backgroundColor: INSTITUTIONAL_TERRACOTTA,
-                      "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                      '&:hover': { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
                     }}
-                    onClick={() => navigate("/admin/primera-carga/actas-examen")}
+                    onClick={() => navigate('/admin/primera-carga/actas-examen')}
                   >
                     Registrar Actas de Examen Final
                   </Button>
                   <Button
                     variant="text"
                     fullWidth
-                    sx={{
-                      borderRadius: 999,
-                      color: INSTITUTIONAL_TERRACOTTA,
-                    }}
-                    onClick={() => navigate("/admin/primera-carga/historial-actas")}
+                    sx={{ borderRadius: 999, color: INSTITUTIONAL_TERRACOTTA }}
+                    onClick={() => navigate('/admin/primera-carga/historial-actas')}
                   >
                     Ver Historial.
                   </Button>
@@ -658,10 +658,60 @@ const PrimeraCargaPage: React.FC = () => {
           </Card>
         </Grid>
 
+        {/* ── Notas de Mesa – Pandemia ── */}
         <Grid item xs={12} md={6} lg={3}>
           <Card sx={cardStyles}>
-            <CardContent sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-              <Stack spacing={3} sx={{ height: "100%" }}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack spacing={3} sx={{ height: '100%' }}>
+                <Box
+                  sx={{
+                    ...iconBoxStyles,
+                    background: 'linear-gradient(135deg, #b06000 0%, #7a3b00 100%)',
+                  }}
+                >
+                  <AssignmentLateIcon fontSize="large" />
+                </Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Notas de Mesa — Pandemia
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Cargá notas de mesas tomadas durante el período especial 2020.
+                    Folio/Libro se marcan como <strong>PANDEMIA</strong>. Nota aprobatoria: ≥ 6.
+                  </Typography>
+                </Box>
+                <Stack spacing={1.5} sx={{ mt: 'auto' }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      borderRadius: 999,
+                      backgroundColor: '#b06000',
+                      '&:hover': { backgroundColor: '#7a3b00' },
+                    }}
+                    onClick={() => setOpenMesaPandemiaDialog(true)}
+                  >
+                    Registrar notas de mesa
+                  </Button>
+                  <Button
+                    variant="text"
+                    fullWidth
+                    sx={{ borderRadius: 999, color: '#b06000' }}
+                    onClick={() => navigate('/admin/primera-carga/historial-mesas-pandemia')}
+                  >
+                    Ver Historial
+                  </Button>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* ── Equivalencias ── */}
+        <Grid item xs={12} md={6} lg={3}>
+          <Card sx={cardStyles}>
+            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Stack spacing={3} sx={{ height: '100%' }}>
                 <Box sx={iconBoxStyles}>
                   <CompareArrows fontSize="large" />
                 </Box>
@@ -673,14 +723,14 @@ const PrimeraCargaPage: React.FC = () => {
                     Registrá disposiciones de equivalencia sin validación de correlativas.
                   </Typography>
                 </Box>
-                <Stack spacing={1.5} sx={{ mt: "auto" }}>
+                <Stack spacing={1.5} sx={{ mt: 'auto' }}>
                   <Button
                     variant="contained"
                     fullWidth
                     sx={{
                       borderRadius: 999,
                       backgroundColor: INSTITUTIONAL_TERRACOTTA,
-                      "&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
+                      '&:hover': { backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK },
                     }}
                     onClick={() => setOpenDisposicionDialog(true)}
                   >
@@ -689,11 +739,8 @@ const PrimeraCargaPage: React.FC = () => {
                   <Button
                     variant="text"
                     fullWidth
-                    sx={{
-                      borderRadius: 999,
-                      color: INSTITUTIONAL_TERRACOTTA,
-                    }}
-                    onClick={() => navigate("/admin/primera-carga/historial-equivalencias")}
+                    sx={{ borderRadius: 999, color: INSTITUTIONAL_TERRACOTTA }}
+                    onClick={() => navigate('/admin/primera-carga/historial-equivalencias')}
                   >
                     Ver Historial
                   </Button>
@@ -702,9 +749,19 @@ const PrimeraCargaPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
       </Grid>
 
-      <StudentManualDialog open={openStudentDialog} onClose={() => setOpenStudentDialog(false)} />
+      {/* ── Dialogs ── */}
+      <StudentManualDialog
+        open={openStudentDialog}
+        onClose={() => setOpenStudentDialog(false)}
+      />
+
+      <NotaMesaPandemiaDialog
+        open={openMesaPandemiaDialog}
+        onClose={() => setOpenMesaPandemiaDialog(false)}
+      />
 
       <EquivalenciaDisposicionDialog
         open={openDisposicionDialog}

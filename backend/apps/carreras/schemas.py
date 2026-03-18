@@ -71,10 +71,13 @@ class ComisionOut(Schema):
     codigo: str
     turno_id: int
     docente_id: int | None = None
+    docente_nombre: str | None = None
     horario_id: int | None = None
     cupo_maximo: int | None = None
     observaciones: str | None = None
     estado: str | None = None
+    rol: str | None = None
+    orden: int | None = 1
 
 class ComisionIn(Schema):
     materia_id: int
@@ -86,6 +89,8 @@ class ComisionIn(Schema):
     cupo_maximo: int | None = None
     observaciones: str | None = None
     estado: str | None = None
+    rol: str | None = None
+    orden: int | None = 1
 
 class CorrelatividadSetIn(Schema):
     regular_para_cursar: list[int] = []

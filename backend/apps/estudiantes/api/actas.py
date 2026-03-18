@@ -81,7 +81,12 @@ class ActaListItem(Schema):
 class ActaDetailLocal(Schema):
     id: int
     codigo: str
+    codigo: str
     fecha: str
+    tipo: str | None = "REG"
+    profesorado_id: int | None = None
+    materia_id: int | None = None
+    plan_id: int | None = None
     profesorado: str
     materia: str
     materia_anio: int | None = None
@@ -370,6 +375,10 @@ def obtener_acta(request, acta_id: int):
         id=acta.id,
         codigo=acta.codigo,
         fecha=format_date(acta.fecha),
+        tipo=acta.tipo,
+        profesorado_id=acta.profesorado_id,
+        materia_id=acta.materia_id,
+        plan_id=acta.plan_id,
         profesorado=acta.profesorado.nombre,
         materia=acta.materia.nombre if acta.materia else "Desconocida",
         materia_anio=acta.materia.anio_cursada if acta.materia else None,
@@ -688,7 +697,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 condicion_mesa = InscripcionMesa.Condicion.DESAPROBADO
 
                 calif_upper = est_item.calificacion_definitiva.strip().upper()
-                if calif_upper in (str(i) for i in range(1, 11)):
+                if calif_upper in [str(i) for i in range(1, 11)]:
                     try:
                         nota_decimal = Decimal(calif_upper)
                         if nota_decimal >= 6: 
@@ -722,3 +731,134 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         message="Acta de examen generada correctamente y reflejada en trayectoria.",
         data=ActaCreateOutLocal(id=acta.id, codigo=acta.codigo).dict(),
     )
+
+
+@router.put(
+    "/actas/{acta_id}",
+    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Body(...)):
+    from decimal import Decimal
+    from django.db import transaction
+    
+    acta = ActaExamen.objects.filter(id=acta_id).first()
+    if not acta:
+        return 404, ApiResponse(ok=False, message="Acta no encontrada.")
+    
+    mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=acta.tipo).first()
+    if mesa and mesa.planilla_cerrada_en is not None:
+        return 400, ApiResponse(ok=False, message="El acta está ligada a una mesa cerrada. Ábrela primero.")
+
+    NOTA_NUMERIC_VALUES = [str(i) for i in range(1, 11)]
+    ACTA_NOTA_CHOICES = NOTA_NUMERIC_VALUES + [
+        ActaExamenEstudiante.NOTA_AUSENTE_JUSTIFICADO,
+        ActaExamenEstudiante.NOTA_AUSENTE_INJUSTIFICADO,
+    ]
+
+    estudiantes_payload = []
+    for estudiante_item in payload.estudiantes:
+        if estudiante_item.calificacion_definitiva not in ACTA_NOTA_CHOICES:
+            return 400, ApiResponse(
+                ok=False,
+                message=f"Calificación '{estudiante_item.calificacion_definitiva}' inválida para el estudiante {estudiante_item.dni}.",
+            )
+        estudiantes_payload.append(estudiante_item)
+
+    categoria_counts = {"aprobado": 0, "desaprobado": 0, "ausente": 0}
+    for est_item in estudiantes_payload:
+        categoria = _clasificar_resultado(est_item.calificacion_definitiva)
+        categoria_counts[categoria] += 1
+
+    usuario = getattr(request, "user", None)
+    with transaction.atomic():
+        acta.folio = payload.folio
+        acta.libro = payload.libro or ""
+        acta.observaciones = payload.observaciones or ""
+        acta.total_alumnos = len(estudiantes_payload)
+        acta.total_aprobados = categoria_counts["aprobado"]
+        acta.total_desaprobados = categoria_counts["desaprobado"]
+        acta.total_ausentes = categoria_counts["ausente"]
+        acta.updated_by = usuario if getattr(usuario, "is_authenticated", False) else None
+        acta.save()
+
+        acta.docentes.all().delete()
+        for idx, docente_data in enumerate(payload.docentes or [], start=1):
+            rol = (
+                docente_data.rol
+                if docente_data.rol in dict(ActaExamenDocente.Rol.choices)
+                else ActaExamenDocente.Rol.PRESIDENTE
+            )
+            doc_id = docente_data.docente_id
+            doc_obj = Docente.objects.filter(id=doc_id).first() if doc_id else None
+            ActaExamenDocente.objects.create(
+                acta=acta,
+                docente=doc_obj,
+                nombre=docente_data.nombre.strip(),
+                dni=(docente_data.dni or "").strip(),
+                rol=rol,
+                orden=idx,
+            )
+
+        acta.estudiantes.all().delete()
+        if mesa:
+            pass  # We do not delete all InscripcionMesa to not break other records, only ones in this acta
+            InscripcionMesa.objects.filter(mesa=mesa, folio=payload.folio).delete()
+
+        for est_item in estudiantes_payload:
+            acta_est_obj = ActaExamenEstudiante.objects.create(
+                acta=acta,
+                numero_orden=est_item.numero_orden,
+                permiso_examen=est_item.permiso_examen or "",
+                dni=est_item.dni.strip(),
+                apellido_nombre=est_item.apellido_nombre.strip(),
+                examen_escrito=est_item.examen_escrito or "",
+                examen_oral=est_item.examen_oral or "",
+                calificacion_definitiva=est_item.calificacion_definitiva,
+                observaciones=est_item.observaciones or "",
+            )
+            
+            est_obj = Estudiante.objects.filter(persona__dni=est_item.dni.strip()).first()
+            if est_obj and mesa:
+                nota_decimal = None
+                condicion_mesa = InscripcionMesa.Condicion.DESAPROBADO
+                calif_upper = est_item.calificacion_definitiva.strip().upper()
+                if calif_upper in [str(i) for i in range(1, 11)]:
+                    try:
+                        nota_decimal = Decimal(calif_upper)
+                        if nota_decimal >= 6: 
+                             condicion_mesa = InscripcionMesa.Condicion.APROBADO
+                    except:
+                        pass
+                elif calif_upper == ActaExamenEstudiante.NOTA_AUSENTE_JUSTIFICADO:
+                     condicion_mesa = InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
+                elif calif_upper == ActaExamenEstudiante.NOTA_AUSENTE_INJUSTIFICADO:
+                     condicion_mesa = InscripcionMesa.Condicion.AUSENTE
+                
+                InscripcionMesa.objects.update_or_create(
+                    mesa=mesa,
+                    estudiante=est_obj,
+                    defaults={
+                        "estado": InscripcionMesa.Estado.INSCRIPTO,
+                        "condicion": condicion_mesa,
+                        "nota": nota_decimal,
+                        "folio": payload.folio,
+                        "libro": payload.libro,
+                        "observaciones": "Carga por Acta de Examen (Edición)",
+                        "cuenta_para_intentos": condicion_mesa != InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
+                    }
+                )
+                verify_acta_consistency(acta_est_obj)
+
+    return ApiResponse(ok=True, message="Acta de examen actualizada correctamente.", data={})
+
+@router.put(
+    "/actas/{acta_id}/header",
+    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def actualizar_cabecera_acta(request, acta_id: int):
+    # Ya incluimos esta funcionalidad en actualizar_acta_examen completo o lo habilitamos aqui
+    return ApiResponse(ok=False, message="Por favor, reabra el acta y actualice todos los datos.")

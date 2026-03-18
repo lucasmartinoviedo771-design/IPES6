@@ -623,6 +623,10 @@ class Bloque(models.Model):
     hora_hasta = models.TimeField()
     es_recreo = models.BooleanField(default=False)
 
+    @property
+    def dia_display(self):
+        return self.get_dia_display()
+
     def __str__(self):
         return f"{self.get_dia_display()} {self.hora_desde}-{self.hora_hasta} ({self.turno.nombre})"
 
@@ -675,6 +679,12 @@ class Comision(models.Model):
         ABIERTA = "ABI", "Abierta"
         CERRADA = "CER", "Cerrada"
         SUSPENDIDA = "SUS", "Suspendida"
+        LICENCIA = "LIC", "En Licencia"
+
+    class Rol(models.TextChoices):
+        TITULAR = "TIT", "Titular"
+        INTERINO = "INT", "Interino"
+        SUPLENTE = "SUP", "Suplente"
 
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="comisiones")
     anio_lectivo = models.IntegerField(help_text="Año académico en el que se dicta la comisión")
@@ -696,13 +706,15 @@ class Comision(models.Model):
     )
     cupo_maximo = models.IntegerField(null=True, blank=True)
     estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.ABIERTA)
+    rol = models.CharField(max_length=3, choices=Rol.choices, default=Rol.TITULAR)
+    orden = models.PositiveIntegerField(default=1, help_text="Orden de jerarquía/suplencia")
     observaciones = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("materia", "anio_lectivo", "codigo")
-        ordering = ["anio_lectivo", "materia__nombre", "codigo"]
+        unique_together = ("materia", "anio_lectivo", "codigo", "docente", "rol", "orden")
+        ordering = ["anio_lectivo", "materia__nombre", "codigo", "orden"]
 
     def __str__(self):
         return f"{self.materia.nombre} - {self.codigo} ({self.anio_lectivo})"
@@ -1341,7 +1353,7 @@ class EquivalenciaDisposicionDetalle(models.Model):
         unique_together = [("disposicion", "materia")]
 
     def __str__(self):
-        return f"{self.nombre} ({self.formato or 'formato no indicado'})"
+        return f"{self.materia.nombre} - Nota: {self.nota}"
 
 
 class MesaExamen(models.Model):

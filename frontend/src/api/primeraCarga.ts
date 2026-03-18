@@ -75,6 +75,7 @@ export const registrarDisposicionEquivalenciaPrimeraCarga = async (
   const { data } = await api.post<EquivalenciaDisposicionDTO>(
     "/admin/primera-carga/equivalencias/disposiciones",
     payload,
+    { suppressErrorToast: true } as any
   );
   return data;
 };
@@ -298,4 +299,85 @@ export const registrarRegularidadIndividual = async (
     payload,
   );
   return data;
+};
+
+// ---------------------------------------------------------------------------
+// Mesas Pandemia / Notas Históricas
+// ---------------------------------------------------------------------------
+
+export interface MesaPandemiaFila {
+  apellido_nombre: string;
+  dni?: string;
+  nota_raw?: string;         // "7", "AUSENTE", "LIBRE", etc.
+  comision_obs?: string;     // comisión / otro profesorado (texto libre)
+  observaciones?: string;
+}
+
+export interface MesaPandemiaPayload {
+  profesorado_id: number;
+  materia_id: number;
+  fecha: string;             // YYYY-MM-DD
+  tipo?: string;             // "FIN" | "EXT" | "ESP"  (default "EXT")
+  docente_nombre?: string;
+  folio?: string;
+  libro?: string;
+  observaciones?: string;
+  filas: MesaPandemiaFila[];
+  dry_run?: boolean;
+}
+
+export interface MesaPandemiaFilaResult {
+  fila: number;
+  dni?: string;
+  apellido_nombre?: string;
+  nota_raw?: string;
+  condicion?: string;
+  nota?: number | null;
+  estado: 'aprobado' | 'desaprobado' | 'ausente' | 'omitida' | 'error';
+  mensaje?: string;
+  inscripcion_id?: number;
+  mesa_id?: number;
+  actualizada?: boolean;
+}
+
+export interface MesaPandemiaResult {
+  ok: boolean;
+  dry_run: boolean;
+  mesa_id: number | null;
+  materia_nombre: string;
+  fecha: string;
+  tipo: string;
+  total_filas: number;
+  procesadas: number;
+  omitidas: number;
+  errores_count: number;
+  warnings: string[];
+  results: MesaPandemiaFilaResult[];
+}
+
+export const registrarMesaPandemia = async (
+  payload: MesaPandemiaPayload,
+): Promise<ApiResponse<MesaPandemiaResult>> => {
+  const { data } = await api.post<ApiResponse<MesaPandemiaResult>>(
+    '/admin/primera-carga/mesas-pandemia',
+    payload,
+  );
+  return data;
+};
+
+export interface MesaPandemiaHistoricoItem {
+  id: number;
+  materia_nombre: string;
+  profesorado_nombre: string;
+  fecha: string;
+  tipo: string;
+  cantidad_estudiantes: number;
+  docente_presidente: string;
+}
+
+export const listarHistoricoMesasPandemia = async (): Promise<MesaPandemiaHistoricoItem[]> => {
+  const { data } = await api.get<ApiResponse<MesaPandemiaHistoricoItem[]>>(
+    '/admin/primera-carga/mesas-pandemia'
+  );
+  return data.data;
 };

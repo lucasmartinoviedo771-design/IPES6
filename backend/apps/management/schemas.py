@@ -40,6 +40,8 @@ class MesaOut(Schema):
     cupo: int
     codigo: str | None = None
     docentes: list[MesaDocenteOut] = Field(default_factory=list)
+    esta_cerrada: bool = False
+
 
 class VentanaIn(Schema):
     tipo: str

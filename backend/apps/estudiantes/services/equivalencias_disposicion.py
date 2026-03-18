@@ -179,7 +179,7 @@ def _crear_acta_equivalencia(
             "folio": numero_disposicion,
             "libro": "",
             "observaciones": "Equivalencia otorgada.",
-            "total_estudiantes": 1,
+            "total_alumnos": 1,
             "total_aprobados": 1,
             "total_desaprobados": 0,
             "total_ausentes": 0,

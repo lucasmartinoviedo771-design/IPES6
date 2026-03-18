@@ -194,6 +194,8 @@ export async function listarMesasFinales(params?: {
   cuatrimestre?: string;
   materia_id?: number;
   codigo?: string;
+  desde?: string;
+  hasta?: string;
 }) {
   const { data } = await client.get<MesaResumenDTO[]>("/mesas", {
     params,
@@ -305,6 +307,10 @@ export interface ActaDetailDTO {
   id: number;
   codigo: string;
   fecha: string;
+  tipo?: string | null;
+  profesorado_id?: number | null;
+  materia_id?: number | null;
+  plan_id?: number | null;
   profesorado: string;
   materia: string;
   materia_anio?: number | null;
@@ -405,6 +411,14 @@ export async function fetchActaMetadata(): Promise<ActaMetadataDTO> {
 export async function crearActaExamen(payload: ActaCreatePayload) {
   const { data } = await client.post<ApiResponse<ActaCreateResult>>(
     "/estudiantes/carga-notas/actas",
+    payload,
+  );
+  return data;
+}
+
+export async function actualizarActaExamen(actaId: number, payload: ActaCreatePayload) {
+  const { data } = await client.put<ApiResponse<ActaCreateResult>>(
+    `/estudiantes/carga-notas/actas/${actaId}`,
     payload,
   );
   return data;

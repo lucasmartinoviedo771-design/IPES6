@@ -35,6 +35,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
 import { useNavigate } from 'react-router-dom';
 import { enqueueSnackbar } from 'notistack';
+import { useAuth } from '@/context/AuthContext';
+import { hasRole } from '@/utils/roles';
 
 import { listarActas, obtenerActa, actualizarCabeceraActa, ActaFilter } from '@/api/cargaNotas';
 import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
@@ -45,6 +47,8 @@ dayjs.extend(timezone);
 
 const HistorialActasPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const canEditActa = React.useMemo(() => hasRole(user, 'admin') || hasRole(user, 'secretaria') || hasRole(user, 'bedel'), [user]);
     const [selectedActaId, setSelectedActaId] = useState<number | null>(null);
 
     // Filtros
@@ -181,6 +185,16 @@ const HistorialActasPage: React.FC = () => {
                                                 <PrintIcon />
                                             </IconButton>
                                         </Tooltip>
+                                        {canEditActa && !acta.esta_cerrada && (
+                                            <Tooltip title="Editar Acta de Examen">
+                                                <IconButton
+                                                    color="primary"
+                                                    onClick={() => navigate(`/admin/primera-carga/actas-examen?editId=${acta.id}`)}
+                                                >
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
                                         <Tooltip title="Ver detalle">
                                             <IconButton color="primary" onClick={() => setSelectedActaId(acta.id)}>
                                                 <VisibilityIcon />
@@ -214,6 +228,11 @@ const HistorialActasPage: React.FC = () => {
 
 // Componente Local para el detalle
 const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () => void }> = ({ open, actaId, onClose }) => {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const isAdminOrSecretaria = React.useMemo(() => hasRole(user, 'admin') || hasRole(user, 'secretaria'), [user]);
+    const canEditActa = React.useMemo(() => hasRole(user, 'admin') || hasRole(user, 'secretaria') || hasRole(user, 'bedel'), [user]);
+
     const { data: acta, isLoading } = useQuery({
         queryKey: ['acta-detalle', actaId],
         queryFn: () => obtenerActa(actaId),
@@ -417,13 +436,22 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                 )}
             </DialogContent>
             <DialogActions>
-                {acta?.esta_cerrada && acta.mesa_id && (
+                {acta?.esta_cerrada && acta.mesa_id && isAdminOrSecretaria && (
                     <Button
                         onClick={handleReopen}
                         color="warning"
                         disabled={reopenMutation.isPending || isEditingHeader}
                     >
                         {reopenMutation.isPending ? "Reabriendo..." : "Reabrir Planilla"}
+                    </Button>
+                )}
+                {!acta?.esta_cerrada && canEditActa && (
+                    <Button 
+                        startIcon={<EditIcon />} 
+                        onClick={() => navigate(`/admin/primera-carga/actas-examen?editId=${actaId}`)}
+                        color="primary"
+                    >
+                        Editar Planilla
                     </Button>
                 )}
                 <Button startIcon={<PrintIcon />} onClick={() => window.open(`/admin/actas/${actaId}/print`, '_blank')}>

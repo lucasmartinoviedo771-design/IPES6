@@ -233,7 +233,14 @@ def registrar_regularidad_individual_historica(user: User, data: dict) -> dict:
     estudiante = Estudiante.objects.filter(persona__dni=dni).first()
     if not estudiante: raise ValueError(f"Estudiante {dni} no encontrado.")
     materia = Materia.objects.get(pk=data["materia_id"])
-    plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato).first()
+    # Mapeo de formato de materia (ASI, MOD, TAL) a slug de RegularidadFormato (asignatura, modulo, taller)
+    formato_map = {
+        "ASI": "asignatura",
+        "MOD": "modulo",
+        "TAL": "taller",
+    }
+    slug_formato = formato_map.get(materia.formato, materia.formato.lower())
+    plantilla = RegularidadPlantilla.objects.filter(formato__slug=slug_formato).first()
     if not plantilla: raise ValueError("No existe plantilla para este formato.")
     
     docentes = [{"nombre": f"CARGA HISTÓRICA ({user.username})", "rol": "profesor", "orden": 1}]

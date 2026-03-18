@@ -191,8 +191,17 @@ const HistoricoRegularidadPage: React.FC = () => {
                                             controllerField.value ||
                                             null
                                         }
-                                        onInputChange={(_, val) => {
-                                            controllerField.onChange(val);
+                                        onInputChange={(_, val, reason) => {
+                                            if (reason === 'input') {
+                                                // Solo actualizamos el valor si es puramente numérico (DNI directo)
+                                                // o si es la entrada inicial del usuario.
+                                                // Si el usuario borra todo, limpiamos.
+                                                if (val === '') {
+                                                    controllerField.onChange('');
+                                                } else if (/^\d+$/.test(val)) {
+                                                    controllerField.onChange(val);
+                                                }
+                                            }
                                         }}
                                         onChange={(_, val) => {
                                             if (typeof val === 'string') {

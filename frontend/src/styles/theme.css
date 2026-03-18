@@ -130,6 +130,12 @@ select:focus, input:focus{ border-color:var(--brand); box-shadow:var(--ring); }
   cursor: not-allowed;
 }
 
+.timetable__cell--empty {
+  background: #f9fafb;
+  border-right: 1px solid #f1efec;
+  cursor: default;
+}
+
 .timetable__cell--selected {
   background: #f97316; /* naranja */
   color: #fff;

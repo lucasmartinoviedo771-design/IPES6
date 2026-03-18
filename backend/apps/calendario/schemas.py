@@ -25,6 +25,10 @@ class BloqueOut(Schema):
     dia_display: str
     turno_nombre: str
 
+    @staticmethod
+    def resolve_dia_display(obj):
+        return obj.get_dia_display()
+
 class HorarioCatedraIn(Schema):
     espacio_id: int
     turno_id: int
@@ -40,6 +44,14 @@ class HorarioCatedraOut(Schema):
     espacio_nombre: str
     turno_nombre: str
 
+    @staticmethod
+    def resolve_espacio_nombre(obj):
+        return obj.espacio.nombre if hasattr(obj, 'espacio') else ""
+
+    @staticmethod
+    def resolve_turno_nombre(obj):
+        return obj.turno.nombre if hasattr(obj, 'turno') else ""
+
 class HorarioCatedraDetalleIn(Schema):
     bloque_id: int
 
@@ -50,3 +62,15 @@ class HorarioCatedraDetalleOut(Schema):
     bloque_dia: int
     bloque_hora_desde: time
     bloque_hora_hasta: time
+
+    @staticmethod
+    def resolve_bloque_dia(obj):
+        return obj.bloque.dia
+
+    @staticmethod
+    def resolve_bloque_hora_desde(obj):
+        return obj.bloque.hora_desde
+
+    @staticmethod
+    def resolve_bloque_hora_hasta(obj):
+        return obj.bloque.hora_hasta

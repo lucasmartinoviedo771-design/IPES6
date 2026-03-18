@@ -13,11 +13,11 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
     p = m.plan_de_estudio
     docentes = []
     if mesa.docente_presidente:
-        docentes.append(MesaDocenteOut(rol="Presidente", docente_id=mesa.docente_presidente_id, nombre=mesa.docente_presidente.persona.nombre_completo, dni=mesa.docente_presidente.persona.dni))
+        docentes.append(MesaDocenteOut(rol="Presidente", docente_id=mesa.docente_presidente_id, nombre=f"{mesa.docente_presidente.persona.apellido}, {mesa.docente_presidente.persona.nombre}", dni=mesa.docente_presidente.persona.dni))
     if mesa.docente_vocal1:
-        docentes.append(MesaDocenteOut(rol="Vocal 1", docente_id=mesa.docente_vocal1_id, nombre=mesa.docente_vocal1.persona.nombre_completo, dni=mesa.docente_vocal1.persona.dni))
+        docentes.append(MesaDocenteOut(rol="Vocal 1", docente_id=mesa.docente_vocal1_id, nombre=f"{mesa.docente_vocal1.persona.apellido}, {mesa.docente_vocal1.persona.nombre}", dni=mesa.docente_vocal1.persona.dni))
     if mesa.docente_vocal2:
-        docentes.append(MesaDocenteOut(rol="Vocal 2", docente_id=mesa.docente_vocal2_id, nombre=mesa.docente_vocal2.persona.nombre_completo, dni=mesa.docente_vocal2.persona.dni))
+        docentes.append(MesaDocenteOut(rol="Vocal 2", docente_id=mesa.docente_vocal2_id, nombre=f"{mesa.docente_vocal2.persona.apellido}, {mesa.docente_vocal2.persona.nombre}", dni=mesa.docente_vocal2.persona.dni))
 
     return MesaOut(
         id=mesa.id,
@@ -37,7 +37,8 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         aula=mesa.aula,
         cupo=mesa.cupo or 0,
         codigo=mesa.codigo,
-        docentes=docentes
+        docentes=docentes,
+        esta_cerrada=mesa.planilla_cerrada_en is not None
     )
 
 @management_router.get("/mesas", response=list[MesaOut], auth=JWTAuth())

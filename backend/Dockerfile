@@ -50,8 +50,8 @@ RUN mkdir -p /app/staticfiles /app/media && \
     chown -R appuser:appgroup /app/staticfiles /app/media && \
     chmod -R 775 /app/staticfiles /app/media
 
-# Asignar permisos al resto del directorio de trabajo
-RUN chown -R appuser:appgroup /app
+# No aplicamos chown recursivo a todo /app para no duplicar capas ni ralentizar el build.
+# Con haber asignado permisos a staticfiles y media arriba es suficiente.
 
 # Cambiar al usuario no-root
 USER appuser

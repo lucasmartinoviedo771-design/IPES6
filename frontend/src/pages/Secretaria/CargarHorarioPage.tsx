@@ -78,7 +78,8 @@ const CargarHorarioPage: React.FC = () => {
         };
         if (materiaRegimen === 'PCU' || materiaRegimen === 'SCU') {
           params.cuatrimestre = materiaRegimen;
-        } else if (materiaRegimen !== 'ANU' && filters.cuatrimestre) {
+        } else if (filters.cuatrimestre) {
+          // Si es ANU o cualquier otro caso con cuatrimestre seleccionado, lo usamos
           params.cuatrimestre = filters.cuatrimestre === 1 ? 'PCU' : 'SCU';
         }
 
@@ -106,7 +107,7 @@ const CargarHorarioPage: React.FC = () => {
         setHorasAsignadas(0);
       }
     }
-  }, [selectedMateriaId, filters.turnoId, filters.anioLectivo]);
+  }, [selectedMateriaId, filters.turnoId, filters.anioLectivo, filters.cuatrimestre]);
 
   useEffect(() => {
     fetchHorario();
@@ -156,36 +157,43 @@ const CargarHorarioPage: React.FC = () => {
       let cuatrimestreValue: string | null = null;
       if (materiaRegimen === 'PCU' || materiaRegimen === 'SCU') {
         cuatrimestreValue = materiaRegimen;
-      } else if (materiaRegimen !== 'ANU' && filters.cuatrimestre) {
+      } else if (filters.cuatrimestre) {
         cuatrimestreValue = filters.cuatrimestre === 1 ? 'PCU' : 'SCU';
       }
 
-      const horarioCatedraPayload = {
-        espacio_id: selectedMateriaId,
-        turno_id: filters.turnoId,
-        anio_cursada: filters.anioLectivo,
-        cuatrimestre: cuatrimestreValue,
+      const saveToCuatri = async (cuatri: string | null) => {
+        const payload = {
+          espacio_id: selectedMateriaId,
+          turno_id: filters.turnoId,
+          anio_cursada: filters.anioLectivo,
+          cuatrimestre: cuatri,
+        };
+        const response = await api.post<HorarioCatedraDTO>('/horarios_catedra', payload);
+        const hcId = response.data.id;
+
+        const extDetRes = await api.get<HorarioCatedraDetalleOut[]>(`/horarios_catedra/${hcId}/detalles`);
+        const extIds = new Set(extDetRes.data.map((d) => d.bloque_id));
+        const extMap = new Map(extDetRes.data.map((d) => [d.bloque_id, d.id]));
+
+        const toAdd = [...selectedBlocks].filter(x => !extIds.has(x));
+        const toDel = [...extIds].filter(x => !selectedBlocks.has(x));
+
+        for (const bId of toAdd) {
+          await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId });
+        }
+        for (const bId of toDel) {
+          const detId = extMap.get(bId);
+          if (detId) await api.delete(`/horarios_catedra_detalles/${detId}`);
+        }
+        return hcId;
       };
 
-      const response = await api.post<HorarioCatedraDTO>('/horarios_catedra', horarioCatedraPayload);
-      const horarioCatedraId = response.data.id;
+      await saveToCuatri(cuatrimestreValue);
 
-      const existingDetallesResponse = await api.get<HorarioCatedraDetalleOut[]>(`/horarios_catedra/${horarioCatedraId}/detalles`);
-      const existingBlockIds = new Set(existingDetallesResponse.data.map((d) => d.bloque_id));
-      const existingDetalleMap = new Map(existingDetallesResponse.data.map((d) => [d.bloque_id, d.id]));
-
-      const blocksToAdd = new Set([...selectedBlocks].filter(x => !existingBlockIds.has(x)));
-      const blocksToDelete = new Set([...existingBlockIds].filter(x => !selectedBlocks.has(x)));
-
-      for (const bloqueId of blocksToAdd) {
-        await api.post(`/horarios_catedra/${horarioCatedraId}/detalles`, { bloque_id: bloqueId });
-      }
-
-      for (const bloqueId of blocksToDelete) {
-        const detalleId = existingDetalleMap.get(bloqueId);
-        if (detalleId) {
-          await api.delete(`/horarios_catedra_detalles/${detalleId}`);
-        }
+      // Duplicación automática para Anuales si se guarda en el primer cuatrimestre
+      if (materiaRegimen === 'ANU' && filters.cuatrimestre === 1) {
+        console.log('Duplicando horario anual al segundo cuatrimestre...');
+        await saveToCuatri('SCU');
       }
 
       alert('Horario guardado exitosamente!');

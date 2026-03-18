@@ -92,6 +92,8 @@ type FinalFiltersState = {
   materiaId: number | null;
   anio: number | null;
   cuatrimestre: string | null;
+  estadoPlanilla: "TODAS" | "ABIERTAS" | "CERRADAS";
+  anioMesa: number | null;
 };
 
 type FinalRowState = {
@@ -170,6 +172,8 @@ const CargaNotasPage: React.FC = () => {
     materiaId: null,
     anio: null,
     cuatrimestre: null,
+    estadoPlanilla: "TODAS",
+    anioMesa: null,
   });
   const [ventanasFinales, setVentanasFinales] = useState<VentanaDto[]>([]);
   const [finalPlanes, setFinalPlanes] = useState<PlanDTO[]>([]);
@@ -302,6 +306,10 @@ const CargaNotasPage: React.FC = () => {
     if (finalFilters.anio) params.anio = finalFilters.anio;
     if (finalFilters.cuatrimestre) params.cuatrimestre = finalFilters.cuatrimestre;
     if (finalFilters.materiaId) params.materia_id = finalFilters.materiaId;
+    if (finalFilters.anioMesa) {
+      params.desde = `${finalFilters.anioMesa}-01-01`;
+      params.hasta = `${finalFilters.anioMesa}-12-31`;
+    }
 
     const loadMesas = async () => {
       setFinalLoadingMesas(true);
@@ -329,6 +337,7 @@ const CargaNotasPage: React.FC = () => {
   }, [
     isFinalsMode,
     finalFilters.anio,
+    finalFilters.anioMesa,
     finalFilters.cuatrimestre,
     finalFilters.modalidad,
     finalFilters.materiaId,
@@ -1617,6 +1626,41 @@ const CargaNotasPage: React.FC = () => {
                       </MenuItem>
                     ))}
                   </TextField>
+                  <TextField
+                    select
+                    label="Estado Planilla"
+                    size="small"
+                    sx={{ minWidth: 160 }}
+                    value={finalFilters.estadoPlanilla}
+                    onChange={(event) =>
+                      setFinalFilters((prev) => ({
+                        ...prev,
+                        estadoPlanilla: event.target.value as "TODAS" | "ABIERTAS" | "CERRADAS",
+                      }))
+                    }
+                  >
+                    <MenuItem value="TODAS">Todas</MenuItem>
+                    <MenuItem value="ABIERTAS">Solo Abiertas</MenuItem>
+                    <MenuItem value="CERRADAS">Solo Cerradas</MenuItem>
+                  </TextField>
+                  <TextField
+                    select
+                    label="Año de Mesa"
+                    size="small"
+                    sx={{ minWidth: 130 }}
+                    value={finalFilters.anioMesa ?? ""}
+                    onChange={(event) =>
+                      setFinalFilters((prev) => ({
+                        ...prev,
+                        anioMesa: event.target.value === "" ? null : Number(event.target.value),
+                      }))
+                    }
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    {Array.from({ length: new Date().getFullYear() - 2018 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                      <MenuItem key={year} value={year}>{year}</MenuItem>
+                    ))}
+                  </TextField>
                 </Stack>
 
                 {finalError && (
@@ -1638,7 +1682,13 @@ const CargaNotasPage: React.FC = () => {
                       </Stack>
                     </Grid>
                   ) : finalMesas.length ? (
-                    finalMesas.map((mesa) => {
+                    finalMesas
+                      .filter((mesa: any) => {
+                        if (finalFilters.estadoPlanilla === "ABIERTAS") return !mesa.esta_cerrada;
+                        if (finalFilters.estadoPlanilla === "CERRADAS") return mesa.esta_cerrada;
+                        return true;
+                      })
+                      .map((mesa: any) => {
                       const fecha = mesa.fecha ? mesa.fecha.split("-").reverse().join("/") : "-";
                       const horaDesde = mesa.hora_desde ? mesa.hora_desde.slice(0, 5) : "";
                       const horaHasta = mesa.hora_hasta ? mesa.hora_hasta.slice(0, 5) : "";
