@@ -733,7 +733,8 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     )
 
 
-@router.put(
+@router.api_operation(
+    ["PUT", "POST"],
     "/actas/{acta_id}",
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
