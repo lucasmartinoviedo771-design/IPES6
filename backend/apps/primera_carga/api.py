@@ -539,7 +539,26 @@ def listar_historico_mesas_pandemia(request):
         docente = "—"
         if mesa.docente_presidente and mesa.docente_presidente.persona:
             docente = f"{mesa.docente_presidente.persona.apellido}, {mesa.docente_presidente.persona.nombre}"
+        else:
+            # Intentar extraer de las observaciones de la primera inscripción
+            primera_insc = mesa.inscripciones.filter(observaciones__icontains="Docente:").first()
+            if primera_insc:
+                # Extraer "Docente: APELLIDO, Nombre"
+                import re
+                match = re.search(r"Docente:\s*([^|;]+)", primera_insc.observaciones)
+                if match:
+                    docente = match.group(1).strip()
         
+        # Opcional: incluir un resumen de estudiantes y sus notas para "ver las notas"
+        inscripciones_data = []
+        for insc in mesa.inscripciones.select_related("estudiante__persona").all():
+            inscripciones_data.append({
+                "dni": insc.estudiante.dni,
+                "nombre": f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}" if insc.estudiante.persona else insc.estudiante.dni,
+                "nota": str(insc.nota) if insc.nota is not None else insc.condicion,
+                "condicion": insc.condicion,
+            })
+
         data.append({
             "id": mesa.id,
             "materia_nombre": mesa.materia.nombre,
@@ -548,6 +567,8 @@ def listar_historico_mesas_pandemia(request):
             "tipo": mesa.tipo,
             "cantidad_estudiantes": mesa.cantidad_estudiantes,
             "docente_presidente": docente,
+            "estudiantes_detalle": inscripciones_data,
         })
         
     return ApiResponse(ok=True, message="Listado histórico.", data=data)
+

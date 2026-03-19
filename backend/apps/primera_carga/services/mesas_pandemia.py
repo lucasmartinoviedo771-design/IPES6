@@ -133,14 +133,16 @@ def registrar_mesa_pandemia(
             },
         )
 
-        # Si la mesa ya existía y tiene docente presidente, no sobreescribimos
-        if mesa_created and docente_nombre:
+        # Si la mesa ya existía o el docente no está asignado, intentar resolverlo
+        if (mesa_created or not mesa.docente_presidente_id) and docente_nombre:
+            nombre_limpio = docente_nombre.split()[0].replace(",", "").strip() if docente_nombre else ""
             docente_obj = Docente.objects.filter(
-                persona__apellido__icontains=docente_nombre.split()[0] if docente_nombre else ""
+                persona__apellido__icontains=nombre_limpio
             ).first()
-            mesa.docente_presidente = docente_obj
-            mesa.aula = ""
-            mesa.save(update_fields=["docente_presidente"])
+            if docente_obj:
+                mesa.docente_presidente = docente_obj
+                mesa.save(update_fields=["docente_presidente"])
+
 
         for idx, fila in enumerate(filas, start=1):
             dni = (fila.get("dni") or "").strip()
