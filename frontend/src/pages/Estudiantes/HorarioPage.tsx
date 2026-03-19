@@ -29,6 +29,7 @@ import {
 import { getDefaultHomeRoute, hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
 import { listarPlanes, listarProfesorados, PlanDTO, ProfesoradoDTO } from "@/api/cargaNotas";
 import HorarioTablaCard from "@/features/estudiantes/horario/HorarioTablaCard";
+import InstitutionalScheduleFormat from "@/features/estudiantes/horario/InstitutionalScheduleFormat";
 import { useAuth } from "@/context/AuthContext";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import BackButton from "@/components/ui/BackButton";
@@ -72,6 +73,8 @@ const HorarioPage: React.FC = () => {
   const [turnoFilter, setTurnoFilter] = useState<SelectValue>("");
   const [anioFilter, setAnioFilter] = useState<SelectValue>("");
   const [cuatrFilter, setCuatrFilter] = useState<SelectValue>("");
+  const [isPrintMode, setIsPrintMode] = useState(false);
+  const [salonTemplate, setSalonTemplate] = useState("1ºC");
 
   const carrerasQuery = useQuery({
     queryKey: ["estudiantes", "carreras-activas", targetDni],
@@ -446,9 +449,34 @@ const HorarioPage: React.FC = () => {
             >
               Descargar PDF
             </Button>
+            {canGestionar && (
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<DownloadIcon />}
+                onClick={() => setIsPrintMode(!isPrintMode)}
+                disabled={!tablasFiltradas.length}
+                sx={{ bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" } }}
+              >
+                {isPrintMode ? "Vista Estándar" : "Modo Impresión (4 años)"}
+              </Button>
+            )}
           </Stack>
         </Grid>
       </Grid>
+
+      {isPrintMode && (
+        <Box sx={{ mb: 2, p: 2, bgcolor: "grey.100", borderRadius: 2 }}>
+           <Typography variant="body2" mb={1}>
+             Escribe el salón base (ej. 1ºC) y autocompletaremos los otros años:
+           </Typography>
+           <input 
+             value={salonTemplate} 
+             onChange={(e) => setSalonTemplate(e.target.value)}
+             style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+           />
+        </Box>
+      )}
 
       <Typography variant="h6" mb={1} mt={3}>
         Filtros de visualización
@@ -513,6 +541,25 @@ const HorarioPage: React.FC = () => {
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
           <CircularProgress />
+        </Box>
+      ) : isPrintMode ? (
+        <Box ref={exportRef} sx={{ p: 1, bgcolor: "white" }}>
+            <Stack spacing={4}>
+                {tablasAgrupadas.map(([anio, items]) => {
+                  const baseSalon = salonTemplate.replace(/^\d+/, ""); // "ºC"
+                  const salon = `${anio}${baseSalon}`;
+                  return (
+                    <Box key={anio}>
+                         {/* Solo el primer turno disponible por año para el reporte consolidado */}
+                         <InstitutionalScheduleFormat 
+                            tabla={items[0]} 
+                            salon={salon} 
+                            cuatrimestre={cuatrFilter || undefined} 
+                        />
+                    </Box>
+                  );
+                })}
+            </Stack>
         </Box>
       ) : (
         <Box ref={exportRef}>
