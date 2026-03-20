@@ -13,7 +13,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { Download as DownloadIcon, Refresh as RefreshIcon } from "@mui/icons-material";
+import { Download as DownloadIcon, Refresh as RefreshIcon, Visibility as VisibilityIcon } from "@mui/icons-material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 import html2canvas from "html2canvas";
@@ -56,6 +56,14 @@ const CUATRIMESTRE_LABEL: Record<string, string> = {
   "2C": "2.do Cuatrimestre",
 };
 
+const AÑO_LABELS: Record<number, string> = {
+    1: "1er Año",
+    2: "2do Año",
+    3: "3er Año",
+    4: "4to Año",
+    5: "5to Año",
+};
+
 const HorarioPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const exportRef = useRef<HTMLDivElement>(null);
@@ -66,21 +74,23 @@ const HorarioPage: React.FC = () => {
   const dniParam = searchParams.get("dni");
   const canGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
   const isEstudiante = hasAnyRole(user, ["estudiante"]);
-  const targetDni = dniParam || (isEstudiante && !canGestionar ? user?.dni : undefined);
+  
+  // Si soy admin/gestor y no hay DNI en la URL, NO actúo como estudiante aunque tenga el rol.
+  const isActingAsEstudiante = isEstudiante && (!canGestionar || !!dniParam);
+  const targetDni = dniParam || (isActingAsEstudiante ? user?.dni : undefined);
 
   const [profesoradoId, setProfesoradoId] = useState<SelectValue>("");
   const [planId, setPlanId] = useState<SelectValue>("");
   const [turnoFilter, setTurnoFilter] = useState<SelectValue>("");
   const [anioFilter, setAnioFilter] = useState<SelectValue>("");
-  const [cuatrFilter, setCuatrFilter] = useState<SelectValue>("");
+  const [cuatrFilter, setCuatrFilter] = useState<SelectValue>("1C");
   const [isPrintMode, setIsPrintMode] = useState(false);
-  const [salonTemplate, setSalonTemplate] = useState("1ºC");
 
   const carrerasQuery = useQuery({
     queryKey: ["estudiantes", "carreras-activas", targetDni],
     queryFn: () => obtenerCarrerasActivas({ dni: targetDni ?? undefined }),
     staleTime: 5 * 60 * 1000,
-    enabled: !!targetDni || isEstudiante,
+    enabled: !!targetDni, // Solo si tenemos un DNI objetivo (el propio o de un alumno buscado)
   });
 
   const profesoradosQuery = useCarreras();
@@ -88,7 +98,7 @@ const HorarioPage: React.FC = () => {
   const planesAdminQuery = useQuery({
     queryKey: ["estudiantes", "profesorados", "planes", profesoradoId],
     queryFn: () => listarPlanes(Number(profesoradoId)),
-    enabled: !isEstudiante && Boolean(profesoradoId),
+    enabled: !isActingAsEstudiante && Boolean(profesoradoId),
   });
 
   const ventanasCalendarioQuery = useQuery<VentanaDto[]>({
@@ -99,17 +109,17 @@ const HorarioPage: React.FC = () => {
 
   useEffect(() => {
     if (!profesoradoId) {
-      if ((isEstudiante || targetDni) && carrerasQuery.data && carrerasQuery.data.length > 0) {
+      if (targetDni && carrerasQuery.data && carrerasQuery.data.length > 0) {
         setProfesoradoId(String(carrerasQuery.data[0].profesorado_id));
       }
-      if (!isEstudiante && !targetDni && profesoradosQuery.data && profesoradosQuery.data.length > 0) {
+      if (!targetDni && profesoradosQuery.data && profesoradosQuery.data.length > 0) {
         setProfesoradoId(String(profesoradosQuery.data[0].id));
       }
     }
-  }, [isEstudiante, targetDni, carrerasQuery.data, profesoradosQuery.data, profesoradoId]);
+  }, [targetDni, carrerasQuery.data, profesoradosQuery.data, profesoradoId]);
 
   const planesDisponibles = useMemo<PlanOption[]>(() => {
-    if (isEstudiante || targetDni) {
+    if (targetDni) {
       if (!carrerasQuery.data) return [];
       const selected = carrerasQuery.data.find(
         (item) => item.profesorado_id === Number(profesoradoId),
@@ -120,7 +130,7 @@ const HorarioPage: React.FC = () => {
       id: plan.id,
       resolucion: plan.resolucion,
     }));
-  }, [isEstudiante, targetDni, carrerasQuery.data, planesAdminQuery.data, profesoradoId]);
+  }, [targetDni, carrerasQuery.data, planesAdminQuery.data, profesoradoId]);
 
   useEffect(() => {
     if (!planesDisponibles.length) {
@@ -366,12 +376,12 @@ const HorarioPage: React.FC = () => {
   };
 
   const loading =
-    carrerasQuery.isLoading ||
+    (!!targetDni && carrerasQuery.isLoading) ||
     profesoradosQuery.isLoading ||
     planesAdminQuery.isLoading ||
     horarioQuery.isLoading;
   const sinCarreras =
-    isEstudiante && !loading && (!carrerasQuery.data || carrerasQuery.data.length === 0);
+    !!targetDni && !loading && (!carrerasQuery.data || carrerasQuery.data.length === 0);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -381,21 +391,18 @@ const HorarioPage: React.FC = () => {
         subtitle="Selecciona el profesorado y plan que deseas consultar. Podés filtrar por turno, año y cuatrimestre y descargar el resultado en PDF."
       />
 
-      <Grid container spacing={2} sx={{ mb: 2 }}>
+      <Grid container spacing={2} sx={{ mb: 3, alignItems: "center" }}>
         <Grid item xs={12} md={4}>
-          <Typography variant="h6" mb={1}>
-            Selección de Carrera
-          </Typography>
           <FormControl fullWidth size="small">
-            <InputLabel id="carrera-select-label">Profesorado</InputLabel>
+            <InputLabel id="carrera-select-label">Profesorado (Carrera)</InputLabel>
             <Select
               labelId="carrera-select-label"
-              label="Profesorado"
+              label="Profesorado (Carrera)"
               value={profesoradoId}
               onChange={handleCarreraChange}
               disabled={carrerasQuery.isLoading}
             >
-              {isEstudiante
+              {targetDni
                 ? carrerasQuery.data?.map((carrera: TrayectoriaCarreraDetalleDTO) => (
                   <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
                     {carrera.nombre}
@@ -409,16 +416,16 @@ const HorarioPage: React.FC = () => {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <FormControl
             fullWidth
             size="small"
             disabled={!planesDisponibles.length || (!isEstudiante && planesAdminQuery.isLoading)}
           >
-            <InputLabel id="plan-select-label">Plan</InputLabel>
+            <InputLabel id="plan-select-label">Plan / Resolución</InputLabel>
             <Select
               labelId="plan-select-label"
-              label="Plan"
+              label="Plan / Resolución"
               value={planId}
               onChange={handlePlanChange}
             >
@@ -431,32 +438,37 @@ const HorarioPage: React.FC = () => {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={5}>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button
               variant="outlined"
+              size="small"
               startIcon={<RefreshIcon />}
               onClick={handleRefresh}
               disabled={!profesoradoId || !planId || horarioQuery.isFetching}
+              sx={{ minWidth: "110px" }}
             >
               Actualizar
             </Button>
             <Button
               variant="contained"
+              size="small"
               startIcon={<DownloadIcon />}
               onClick={handleDownloadPDF}
               disabled={!tablasFiltradas.length}
+              sx={{ minWidth: "130px", bgcolor: "#a0522d", "&:hover": { bgcolor: "#8b4513" } }}
             >
               Descargar PDF
             </Button>
             {canGestionar && (
               <Button
                 variant="contained"
+                size="small"
                 color="secondary"
-                startIcon={<DownloadIcon />}
+                startIcon={isPrintMode ? <VisibilityIcon /> : <DownloadIcon />}
                 onClick={() => setIsPrintMode(!isPrintMode)}
                 disabled={!tablasFiltradas.length}
-                sx={{ bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" } }}
+                sx={{ bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" }, minWidth: "180px" }}
               >
                 {isPrintMode ? "Vista Estándar" : "Modo Impresión (4 años)"}
               </Button>
@@ -465,22 +477,13 @@ const HorarioPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      {isPrintMode && (
-        <Box sx={{ mb: 2, p: 2, bgcolor: "grey.100", borderRadius: 2 }}>
-           <Typography variant="body2" mb={1}>
-             Escribe el salón base (ej. 1ºC) y autocompletaremos los otros años:
-           </Typography>
-           <input 
-             value={salonTemplate} 
-             onChange={(e) => setSalonTemplate(e.target.value)}
-             style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-           />
-        </Box>
-      )}
+      {/* Eliminamos el cuadro de texto manual de salón */}
 
-      <Typography variant="h6" mb={1} mt={3}>
-        Filtros de visualización
-      </Typography>
+      <Box sx={{ mt: 1, mb: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+        <Typography variant="overline" sx={{ fontWeight: "bold", color: "text.secondary" }}>
+          Filtros de visualización
+        </Typography>
+      </Box>
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} md={4}>
           <FormControl fullWidth size="small" disabled={!turnosDisponibles.length}>
@@ -527,7 +530,6 @@ const HorarioPage: React.FC = () => {
               value={cuatrFilter}
               onChange={(event) => setCuatrFilter(event.target.value)}
             >
-              <MenuItem value="">Todos</MenuItem>
               {["1C", "2C"].map((cuatr) => (
                 <MenuItem key={cuatr} value={cuatr}>
                   {CUATRIMESTRE_LABEL[cuatr] ?? cuatr}
@@ -544,22 +546,34 @@ const HorarioPage: React.FC = () => {
         </Box>
       ) : isPrintMode ? (
         <Box ref={exportRef} sx={{ p: 1, bgcolor: "white" }}>
-            <Stack spacing={4}>
-                {tablasAgrupadas.map(([anio, items]) => {
-                  const baseSalon = salonTemplate.replace(/^\d+/, ""); // "ºC"
-                  const salon = `${anio}${baseSalon}`;
-                  return (
-                    <Box key={anio}>
-                         {/* Solo el primer turno disponible por año para el reporte consolidado */}
-                         <InstitutionalScheduleFormat 
-                            tabla={items[0]} 
-                            salon={salon} 
-                            cuatrimestre={cuatrFilter || undefined} 
-                        />
-                    </Box>
-                  );
-                })}
-            </Stack>
+            {!cuatrFilter ? (
+                <Box sx={{ p: 4, textAlign: "center", border: "2px dashed #ccc", borderRadius: 4, mt: 4 }}>
+                    <Typography variant="h5" color="text.secondary" gutterBottom>
+                        Debes seleccionar un Cuatrimestre
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                        Para generar el reporte institucional sin errores de solapamiento, por favor selecciona 
+                        <b> 1.er Cuatrimestre</b> o <b>2.do Cuatrimestre</b> en los filtros de arriba.
+                    </Typography>
+                </Box>
+            ) : (
+                <Stack spacing={4}>
+                    {tablasAgrupadas.map(([anio, items]) => {
+                      // El shorthand del cuatrimestre seleccionado
+                      const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
+                      return (
+                        <Box key={anio}>
+                             {/* Solo el primer turno disponible por año para el reporte consolidado */}
+                             <InstitutionalScheduleFormat 
+                                tabla={items[0]} 
+                                salon={shorthand} 
+                                cuatrimestre={cuatrFilter || undefined} 
+                            />
+                        </Box>
+                      );
+                    })}
+                </Stack>
+            )}
         </Box>
       ) : (
         <Box ref={exportRef}>
@@ -576,7 +590,7 @@ const HorarioPage: React.FC = () => {
               {tablasAgrupadas.map(([anio, items]) => (
                 <Box key={anio} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 2 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>
-                    {items[0].anio_plan_label || `Año ${anio}`}
+                    {items[0].anio_plan_label || AÑO_LABELS[anio] || `Año ${anio}`}
                   </Typography>
                   <Stack spacing={2}>
                     {items

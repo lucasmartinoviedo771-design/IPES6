@@ -71,7 +71,7 @@ def analizar_habilitados_materia(request, materia_id: int):
     )
 
     # Estado académico por DNI
-    # Usamos un dict plano para evitar lints de defaultdict
+    student_id_to_dni = {est.id: est.persona.dni for est in estudiantes_list}
     student_academic_state: Dict[str, Dict[str, Set[int]]] = {}
     for est in estudiantes_list:
         student_academic_state[est.persona.dni] = {
@@ -81,9 +81,7 @@ def analizar_habilitados_materia(request, materia_id: int):
         }
 
     for r in regularidades:
-        # Necesitamos el DNI del estudiante de la regularidad. R tiene estudiante_id.
-        # Buscamos en el mapeo id -> dni
-        dni = next((e.persona.dni for e in estudiantes_list if e.id == r.estudiante_id), None)
+        dni = student_id_to_dni.get(r.estudiante_id)
         if not dni: continue
         
         if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
@@ -102,9 +100,21 @@ def analizar_habilitados_materia(request, materia_id: int):
         if cond_val == "APR" or is_equiv:
             student_academic_state[a.dni]["aprobadas"].add(a.acta.materia_id)
 
+    # También considerar InscripcionMesa (ej. notas cargadas históricamente por Pandemia)
+    mesas_aprobadas = InscripcionMesa.objects.filter(
+        mesa__materia_id__in=plan_materias_ids,
+        estudiante_id__in=estudiantes_ids,
+        condicion=InscripcionMesa.Condicion.APROBADO,
+        estado=InscripcionMesa.Estado.INSCRIPTO
+    ).select_related("mesa")
+    
+    for m in mesas_aprobadas:
+        dni = student_id_to_dni.get(m.estudiante_id)
+        if dni:
+            student_academic_state[dni]["aprobadas"].add(m.mesa.materia_id)
+
     for i in inscripciones:
-        # i has estudiante_id
-        dni = next((e.persona.dni for e in estudiantes_list if e.id == i.estudiante_id), None)
+        dni = student_id_to_dni.get(i.estudiante_id)
         if not dni: continue
         student_academic_state[dni]["en_curso"].add(i.materia_id)
 

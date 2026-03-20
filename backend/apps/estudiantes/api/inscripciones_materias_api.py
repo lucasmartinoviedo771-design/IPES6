@@ -8,9 +8,11 @@ from apps.common.date_utils import format_datetime
 from apps.common.api_schemas import ApiResponse
 from core.permissions import ensure_roles
 from core.models import (
+    ActaExamenEstudiante,
     Correlatividad,
     HorarioCatedraDetalle,
     InscripcionMateriaEstudiante,
+    InscripcionMesa,
     Materia,
     Regularidad,
     VentanaHabilitacion,
@@ -116,28 +118,51 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         )
     )
 
-    def ultima_situacion(mid: int):
-        r = Regularidad.objects.filter(estudiante=est, materia_id=mid).order_by("-fecha_cierre").first()
-        return r.situacion if r else None
+    # Optimizamos carga de aprobadas (Regularidad + Actas + Mesas Pandemia)
+    aprobadas_ids = set()
+    regulares_ids = set()
+    
+    materias_interes = list(set(req_reg + req_apr))
+
+    # 1. Regularidades
+    for r in Regularidad.objects.filter(estudiante=est, materia_id__in=materias_interes):
+        if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+            aprobadas_ids.add(r.materia_id)
+        elif r.situacion == Regularidad.Situacion.REGULAR:
+            regulares_ids.add(r.materia_id)
+
+    # 2. Actas (Incluye equivalencias)
+    from .helpers import _acta_condicion
+    for a in ActaExamenEstudiante.objects.filter(dni=est.dni, acta__materia_id__in=materias_interes).select_related("acta"):
+        cond_val, _ = _acta_condicion(a.calificacion_definitiva)
+        is_equiv = (
+            (a.permiso_examen == "EQUIV") or 
+            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
+            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
+        )
+        if cond_val == "APR" or is_equiv:
+            aprobadas_ids.add(a.acta.materia_id)
+
+    # 3. Mesas Pandemia (InscripcionMesa)
+    for insc in InscripcionMesa.objects.filter(
+        estudiante=est, 
+        mesa__materia_id__in=materias_interes,
+        condicion=InscripcionMesa.Condicion.APROBADO,
+        estado=InscripcionMesa.Estado.INSCRIPTO
+    ):
+        aprobadas_ids.add(insc.mesa.materia_id)
 
     faltan = []
     for mid in req_reg:
-        s = ultima_situacion(mid)
-        if s not in (
-            Regularidad.Situacion.REGULAR,
-            Regularidad.Situacion.APROBADO,
-            Regularidad.Situacion.PROMOCIONADO,
-        ):
+        if mid not in regulares_ids and mid not in aprobadas_ids:
             m = Materia.objects.filter(id=mid).first()
             faltan.append(f"Regular en {m.nombre if m else mid}")
+            
     for mid in req_apr:
-        s = ultima_situacion(mid)
-        if s not in (
-            Regularidad.Situacion.APROBADO,
-            Regularidad.Situacion.PROMOCIONADO,
-        ):
+        if mid not in aprobadas_ids:
             m = Materia.objects.filter(id=mid).first()
             faltan.append(f"Aprobada {m.nombre if m else mid}")
+            
     if faltan:
         return 400, ApiResponse(
             ok=False,

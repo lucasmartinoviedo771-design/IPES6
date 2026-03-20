@@ -26,12 +26,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Menu,
+  ListItemText,
+  ListItemIcon,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { enqueueSnackbar } from 'notistack';
 
 import {
@@ -44,6 +47,7 @@ import {
   PlanillaRegularidadCreateResult,
   obtenerPlanillaRegularidadDetalle,
   actualizarPlanillaRegularidad,
+  listarHistorialRegularidades,
 } from '@/api/primeraCarga';
 
 type PlanillaDocenteFormValues = {
@@ -198,6 +202,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   mode = 'create'
 }) => {
   const isReadOnly = mode === 'view';
+  const queryClient = useQueryClient();
 
   const {
     control,
@@ -239,6 +244,46 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     queryFn: () => obtenerPlanillaRegularidadDetalle(planillaId!),
     enabled: open && !!planillaId,
   });
+
+  const historyQuery = useQuery({
+    queryKey: ['primera-carga', 'regularidades', 'historial'],
+    queryFn: listarHistorialRegularidades,
+    enabled: open,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const [historyMenuAnchor, setHistoryMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const isHistoryOpen = Boolean(historyMenuAnchor);
+
+  const handleOpenHistory = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setHistoryMenuAnchor(event.currentTarget);
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryMenuAnchor(null);
+  };
+
+  const handleImportFromPlanilla = async (prevPlanillaId: number) => {
+    handleCloseHistory();
+    try {
+      const resp = await obtenerPlanillaRegularidadDetalle(prevPlanillaId);
+      if (resp.ok && resp.data.filas) {
+        const currentFilas = getValues('filas');
+        // Si la primera fila está vacía, reemplazamos todo. Si no, preguntamos o concatenamos.
+        // Por simplicidad en Primera Carga, reemplazamos las filas por las de la planilla previa.
+        const nuevasFilas = resp.data.filas.map((f, idx) => ({
+          ...buildDefaultRow(idx),
+          dni: f.dni,
+          apellido_nombre: f.apellido_nombre,
+          orden: idx + 1
+        }));
+        replaceFilas(nuevasFilas);
+        enqueueSnackbar(`Se importaron ${nuevasFilas.length} estudiantes de la planilla ${resp.data.codigo}`, { variant: 'success' });
+      }
+    } catch (error) {
+      enqueueSnackbar('Error al importar estudiantes', { variant: 'error' });
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -341,6 +386,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       return crearPlanillaRegularidad(payload);
     },
     onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['primera-carga', 'regularidades', 'historial'] });
       enqueueSnackbar(data.message, { variant: 'success' });
       // ... (warnings logic same as before) ...
       if (typeof data.data?.regularidades_registradas === 'number') {
@@ -378,14 +424,15 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
       if (!variables.dry_run && !planillaId && persistStudents) {
         // Si es creación y quiere persistir estudiantes:
-        // 1. Guardamos la lista de estudiantes limpia
-        const currentFilas = getValues('filas');
-        const preservedFilas = currentFilas.map((f, idx) => ({
+        // 1. Guardamos la lista de estudiantes retornada por el servidor (ya tiene los HIS- DNIs creados)
+        const serverFilas = data.data?.filas || getValues('filas');
+        const preservedFilas = serverFilas.map((f, idx) => ({
           ...buildDefaultRow(idx),
           dni: f.dni,
           apellido_nombre: f.apellido_nombre,
           orden: idx + 1
         }));
+
 
         // 2. Reseteamos formulario pero volvemos a poner las filas
         // Cuidado: reset() borra todo. Mejor estrategia: setValue manual de campos cabecera.
@@ -1381,7 +1428,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                           label="DNI"
                           fullWidth
                           size="small"
-                          inputProps={{ maxLength: 10, inputMode: 'numeric' }}
+                          inputProps={{ maxLength: 20 }}
                           disabled={isReadOnly}
                         />
                       )}
@@ -1493,6 +1540,49 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                     >
                       Agregar
                     </Button>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="primary"
+                      startIcon={historyQuery.isFetching ? <CircularProgress size={16} /> : <ContentCopyIcon fontSize="small" />}
+                      onClick={handleOpenHistory}
+                      disabled={isReadOnly || historyQuery.isFetching}
+                      sx={{ textTransform: 'none', px: 1, minWidth: 'auto' }}
+                    >
+                      Importar de otra planilla
+                    </Button>
+
+                    <Menu
+                      anchorEl={historyMenuAnchor}
+                      open={isHistoryOpen}
+                      onClose={handleCloseHistory}
+                      PaperProps={{
+                        sx: { maxHeight: 300, width: '350px' }
+                      }}
+                    >
+                      <Box sx={{ px: 2, py: 1 }}>
+                        <Typography variant="overline" fontWeight={700}>Planillas recientes</Typography>
+                      </Box>
+                      <Divider />
+                      {historyQuery.data?.filter(p => !profesoradoId || p.profesorado_id === Number(profesoradoId)).length === 0 ? (
+                        <MenuItem disabled>No hay planillas previas para esta carrera</MenuItem>
+                      ) : (
+                        historyQuery.data
+                          ?.filter(p => !profesoradoId || p.profesorado_id === Number(profesoradoId))
+                          .slice(0, 10)
+                          .map((p) => (
+                            <MenuItem key={p.id} onClick={() => handleImportFromPlanilla(p.id)}>
+                              <ListItemText 
+                                primary={`${p.materia_nombre} (${p.fecha})`}
+                                secondary={`${p.cantidad_estudiantes} estudiantes - Folio: ${p.folio || '-'}`}
+                                primaryTypographyProps={{ variant: 'body2', noWrap: true }}
+                                secondaryTypographyProps={{ variant: 'caption' }}
+                              />
+                            </MenuItem>
+                          ))
+                      )}
+                    </Menu>
                   </Box>
 
                   <Tooltip title="Restablecer filas (limpiar)">
@@ -1687,8 +1777,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                               fullWidth
                               placeholder="DNI"
                               inputProps={{
-                                maxLength: 9,
-                                inputMode: 'numeric',
+                                maxLength: 20,
                                 sx: { fontSize: '0.85rem', px: 0.5 }
                               }}
                               onBlur={(event) => {
@@ -1696,7 +1785,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                                 handleStudentDniBlur(index, event.target.value);
                               }}
                               onChange={(event) => {
-                                const val = event.target.value.replace(/\D/g, '');
+                                let val = event.target.value;
+                                if (!val.startsWith('HIS-')) {
+                                  val = val.replace(/\D/g, '');
+                                }
                                 controllerField.onChange(val);
                                 if (val.length >= 7) {
                                   handleStudentDniBlur(index, val);

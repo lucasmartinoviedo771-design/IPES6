@@ -1035,12 +1035,17 @@ class HorarioDia(Schema):
 
 class HorarioFranja(Schema):
     orden: int
+    posicion: int = 0
     desde: str
     hasta: str
+    es_recreo: bool = False
+    desde_sec: str | None = None
+    hasta_sec: str | None = None
 
 class HorarioCelda(Schema):
     dia_numero: int
     franja_orden: int
+    franja_posicion: int = 0
     dia: str
     desde: str
     hasta: str

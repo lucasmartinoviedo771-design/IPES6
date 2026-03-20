@@ -300,6 +300,7 @@ def registrar_regularidad_individual(request, payload: RegularidadIndividualIn):
 class PlanillaRegularidadListOut(Schema):
     id: int
     codigo: str
+    profesorado_id: int
     profesorado_nombre: str
     materia_nombre: str
     anio_cursada: str | None
@@ -307,6 +308,7 @@ class PlanillaRegularidadListOut(Schema):
     fecha: date
     cantidad_estudiantes: int
     estado: str | None
+    folio: str | None = None
     anio_academico: int
     created_at: str | None
 
@@ -376,6 +378,7 @@ def listar_historial_regularidades(request, anio: int | None = None, profesorado
             data.append({
                 "id": planilla.id,
                 "codigo": planilla.codigo,
+                "profesorado_id": planilla.profesorado_id,
                 "profesorado_nombre": planilla.profesorado.nombre,
                 "materia_nombre": planilla.materia.nombre,
                 "anio_cursada": str(planilla.materia.anio_cursada) if planilla.materia.anio_cursada else "-",
@@ -383,6 +386,7 @@ def listar_historial_regularidades(request, anio: int | None = None, profesorado
                 "fecha": planilla.fecha,
                 "cantidad_estudiantes": planilla.filas.count(),
                 "estado": planilla.estado,
+                "folio": planilla.folio,
                 "anio_academico": planilla.anio_academico,
                 "created_at": format_datetime(planilla.created_at),
             })

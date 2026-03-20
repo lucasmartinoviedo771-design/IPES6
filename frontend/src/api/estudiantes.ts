@@ -516,13 +516,18 @@ export type HorarioDiaDTO = {
 
 export type HorarioFranjaDTO = {
   orden: number;
+  posicion: number;
   desde: string;
   hasta: string;
+  es_recreo?: boolean;
+  desde_sec?: string;
+  hasta_sec?: string;
 };
 
 export type HorarioCeldaDTO = {
   dia_numero: number;
   franja_orden: number;
+  franja_posicion: number;
   dia: string;
   desde: string;
   hasta: string;

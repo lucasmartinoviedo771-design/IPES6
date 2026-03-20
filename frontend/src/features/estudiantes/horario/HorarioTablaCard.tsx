@@ -13,6 +13,7 @@ const REGIMEN_LABEL: Record<string, string> = {
 
 const formatRegimen = (regimen?: string | null, cuatrimestre?: string | null) => {
   const base = regimen ? (REGIMEN_LABEL[regimen] ?? regimen) : "";
+  if (base === "Anual") return base; // Si es anual, chau extra.
   const extra =
     cuatrimestre && cuatrimestre !== regimen ? (REGIMEN_LABEL[cuatrimestre] ?? cuatrimestre) : "";
   if (base && extra) return `${base} - ${extra}`;
@@ -67,16 +68,7 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
           {materia.materia_nombre}
         </Typography>
         <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-            {materia.comisiones.map((codigo) => (
-              <Chip
-                key={`${key}-com-${codigo}`}
-                size="small"
-                label={`Comision ${codigo}`}
-                variant="outlined"
-              />
-            ))}
-          </Stack>
+          {/* Se eliminan las etiquetas de comisiones por pedido del usuario */}
           <Typography variant="caption" color="text.secondary">
             Docentes: {materia.docentes.length ? materia.docentes.join("; ") : "Vacante"}
           </Typography>
@@ -176,54 +168,85 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
                 {dia.nombre}
               </Box>
             ))}
-            {franjas.map((franja) => (
-              <React.Fragment key={franja.orden}>
-                <Box
-                  sx={{
-                    p: 1.5,
-                    borderBottom: "1px solid",
-                    borderColor: "divider",
-                    bgcolor: "grey.100",
-                    fontWeight: 600,
-                  }}
-                >
-                  {franja.desde} - {franja.hasta}
-                </Box>
-                {dias.map((dia) => {
-                  const entry = celdas.get(cellKey(dia.numero, franja.orden));
-                  const materias =
-                    entry?.materias.filter((materia) => {
-                      if (!cuatrimestre) return true;
-                      if (materia.regimen === "ANUAL") return true;
-                      const valor = materia.cuatrimestre || materia.regimen;
-                      return valor === cuatrimestre;
-                    }) ?? [];
-                  return (
-                    <Box
-                      key={`${franja.orden}-${dia.numero}`}
-                      sx={{
-                        p: materias.length ? 1 : 1.5,
-                        minHeight: 96,
-                        borderBottom: "1px solid",
-                        borderColor: "divider",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                        bgcolor: materias.length ? "grey.50" : "background.default",
-                      }}
-                    >
-                      {materias.length
-                        ? materias.map(renderMateria)
-                        : (
-                          <Typography variant="caption" color="text.secondary">
-                            -
-                          </Typography>
-                        )}
-                    </Box>
-                  );
-                })}
-              </React.Fragment>
-            ))}
+            {franjas.map((franja) => {
+              const [h1, m1] = franja.desde.split(":").map(Number);
+              const [h2, m2] = franja.hasta.split(":").map(Number);
+              const duration = (h2 * 60 + m2) - (h1 * 60 + m1);
+              const isRecreo = franja.es_recreo || (duration > 0 && duration <= 15);
+
+              if (isRecreo) {
+                return (
+                  <Box 
+                    key={franja.orden} 
+                    sx={{ 
+                      gridColumn: `1 / span ${dias.length + 1}`,
+                      p: 0.5,
+                      bgcolor: "grey.100",
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 2
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: "bold", color: "text.secondary" }}>{franja.desde}</Typography>
+                    <Typography variant="overline" sx={{ fontWeight: "bold", fontStyle: "italic", letterSpacing: 2, color: "text.secondary" }}>
+                      • RECREO •
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: "bold", color: "text.secondary" }}>{franja.hasta}</Typography>
+                  </Box>
+                );
+              }
+
+              return (
+                <React.Fragment key={franja.orden}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                      bgcolor: "grey.100",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {franja.desde} - {franja.hasta}
+                  </Box>
+                  {dias.map((dia) => {
+                    const entry = celdas.get(cellKey(dia.numero, franja.orden));
+                    const materias =
+                      entry?.materias.filter((materia) => {
+                        if (!cuatrimestre) return true;
+                        const valor = materia.cuatrimestre || (materia.regimen !== "ANUAL" ? materia.regimen : null);
+                        return valor === cuatrimestre;
+                      }) ?? [];
+                    return (
+                      <Box
+                        key={`${franja.orden}-${dia.numero}`}
+                        sx={{
+                          p: materias.length ? 1 : 1.5,
+                          minHeight: 96,
+                          borderBottom: "1px solid",
+                          borderColor: "divider",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          bgcolor: materias.length ? "grey.50" : "background.default",
+                        }}
+                      >
+                        {materias.length
+                          ? materias.map(renderMateria)
+                          : (
+                            <Typography variant="caption" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
+                      </Box>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
           </Box>
         </Box>
         {tabla.observaciones && (

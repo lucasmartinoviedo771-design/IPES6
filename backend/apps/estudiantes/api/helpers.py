@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 
 from apps.common.date_utils import format_date, format_datetime, parse_date
@@ -606,9 +606,70 @@ def _construir_tablas_horario(
         if not items:
             continue
 
-        dias: dict[int, str] = {}
-        franjas_raw: dict[tuple[str, str], None] = {}
-        celdas_dict: dict[tuple[int, tuple[str, str]], list[HorarioMateriaCelda]] = defaultdict(list)
+        # 1. Recolectar y normalizar todos los bloques del turno
+        bloques_raw_all = list(Bloque.objects.filter(turno_id=turno_id).order_by("dia", "hora_desde"))
+        
+        def _n(t): return t.replace(second=0, microsecond=0) if t else None
+
+        # 2. Skeletons independientes (Alineación pedagógica por módulo)
+        tiempos_lv = sorted(
+            {_n(b.hora_desde) for b in bloques_raw_all if 1 <= b.dia <= 5}, 
+            key=lambda t: (t.hour, t.minute)
+        )
+        tiempos_sab = sorted(
+            {_n(b.hora_desde) for b in bloques_raw_all if b.dia == 6},
+            key=lambda t: (t.hour, t.minute)
+        )
+        
+        hora_a_pos_lv = {h: i for i, h in enumerate(tiempos_lv)}
+        hora_a_pos_sab = {h: i for i, h in enumerate(tiempos_sab)}
+        recreos_set = {_n(b.hora_desde) for b in bloques_raw_all if b.es_recreo}
+
+        # 3. Construir las franjas (rows) pedagógicas
+        max_filas = max(len(tiempos_lv), len(tiempos_sab), 0)
+        franjas: list[HorarioFranja] = []
+        hc_contador = 0
+        
+        # Mapa de bloque_id -> posición global
+        bloque_id_a_pos = {}
+        for b in bloques_raw_all:
+            h_norm = _n(b.hora_desde)
+            if 1 <= b.dia <= 5:
+                bloque_id_a_pos[b.id] = hora_a_pos_lv.get(h_norm)
+            elif b.dia == 6:
+                bloque_id_a_pos[b.id] = hora_a_pos_sab.get(h_norm)
+
+        for i in range(max_filas):
+            h_lv = tiempos_lv[i] if i < len(tiempos_lv) else None
+            h_sab = tiempos_sab[i] if i < len(tiempos_sab) else None
+            
+            # Fin de bloque para labels
+            h_lv_fin = next((_n(b.hora_hasta) for b in bloques_raw_all if 1 <= b.dia <= 5 and _n(b.hora_desde) == h_lv), None) if h_lv else None
+            h_sab_fin = next((_n(b.hora_hasta) for b in bloques_raw_all if b.dia == 6 and _n(b.hora_desde) == h_sab), None) if h_sab else None
+            
+            # Es recreo si cualquiera de los dos carriles en esta posición lo es
+            is_recreo = (h_lv in recreos_set) or (h_sab in recreos_set)
+            
+            if is_recreo:
+                val_orden = 0
+            else:
+                hc_contador += 1
+                val_orden = hc_contador
+            
+            franjas.append(
+                HorarioFranja(
+                    orden=val_orden,
+                    posicion=i,
+                    desde=_format_time(h_lv) if h_lv else (_format_time(h_sab) if h_sab else "-"),
+                    hasta=_format_time(h_lv_fin) if h_lv_fin else (_format_time(h_sab_fin) if h_sab_fin else "-"),
+                    es_recreo=is_recreo,
+                    desde_sec=_format_time(h_sab) if h_sab else None,
+                    hasta_sec=_format_time(h_sab_fin) if h_sab_fin else None
+                )
+            )
+
+
+        celdas_dict: dict[tuple[int, int], list[HorarioMateriaCelda]] = defaultdict(list)
         cuatrimestres_set: set[str] = set()
 
         for horario in items:
@@ -617,74 +678,51 @@ def _construir_tablas_horario(
                 cuatrimestres_set.add(regimen_label)
 
             comisiones = list(horario.comisiones.select_related("docente"))
-            docentes = sorted(
-                {
-                    (
-                        f"{c.docente.apellido}, {c.docente.nombre}"
-                        if c.docente and c.docente.apellido
-                        else (c.docente.nombre if c.docente else "")
-                    )
-                    for c in comisiones
-                    if c.docente_id
-                }
-            )
+            if not comisiones:
+                comisiones = list(horario.espacio.comisiones.filter(anio_lectivo=horario.anio_cursada).select_related("docente"))
+
+            docentes = sorted({(f"{c.docente.apellido}, {c.docente.nombre}" if c.docente and c.docente.apellido else (c.docente.nombre if c.docente else "")) for c in comisiones if c.docente_id})
             docentes = [doc for doc in docentes if doc]
             comision_codigos = sorted({c.codigo for c in comisiones if c.codigo})
-            observaciones = sorted({c.observaciones for c in comisiones if c.observaciones})
-            observaciones_text = "; ".join(observaciones) if observaciones else None
+            observaciones_text = "; ".join(sorted({c.observaciones for c in comisiones if c.observaciones})) or None
 
             detalles = list(horario.detalles.select_related("bloque"))
-            if not detalles:
-                continue
-
             for detalle in detalles:
                 bloque = detalle.bloque
-                dia_num = bloque.dia
-                dia_nombre = Bloque.DIA_CHOICES[dia_num - 1][1] if 0 < dia_num <= len(Bloque.DIA_CHOICES) else str(dia_num)
-                dias[dia_num] = dia_nombre
-                franja_key = (
-                    _format_time(bloque.hora_desde),
-                    _format_time(bloque.hora_hasta),
-                )
-                franjas_raw[franja_key] = None
+                pos = bloque_id_a_pos.get(bloque.id)
+                if pos is None: continue
 
-                materia = horario.espacio
+                materia_obj = horario.espacio
                 materia_entry = HorarioMateriaCelda(
-                    materia_id=materia.id,
-                    materia_nombre=materia.nombre,
+                    materia_id=materia_obj.id,
+                    materia_nombre=materia_obj.nombre,
                     comisiones=comision_codigos,
                     docentes=docentes,
                     observaciones=observaciones_text,
-                    regimen=_normalizar_regimen(materia.regimen),
+                    regimen=_normalizar_regimen(materia_obj.regimen),
                     cuatrimestre=regimen_label,
                     es_cuatrimestral=regimen_label in {"1C", "2C"},
                 )
-                celdas_dict[(dia_num, franja_key)].append(materia_entry)
+                celdas_dict[(bloque.dia, pos)].append(materia_entry)
 
-        if not franjas_raw:
-            continue
-
-        franjas_sorted = sorted(franjas_raw.keys(), key=lambda item: item)
-        franjas: list[HorarioFranja] = []
-        franja_orden: dict[tuple[str, str], int] = {}
-        for idx, (desde, hasta) in enumerate(franjas_sorted, start=1):
-            franjas.append(HorarioFranja(orden=idx, desde=desde, hasta=hasta))
-            franja_orden[(desde, hasta)] = idx
-
+        dias: dict[int, str] = {}
+        for b in bloques_raw_all:
+            if b.dia not in dias:
+                dias[b.dia] = Bloque.DIA_CHOICES[b.dia - 1][1] if 0 < b.dia <= len(Bloque.DIA_CHOICES) else str(b.dia)
         dias_list = [HorarioDia(numero=numero, nombre=nombre) for numero, nombre in sorted(dias.items())]
 
         celdas: list[HorarioCelda] = []
         for dia in dias_list:
-            for desde, hasta in franjas_sorted:
-                orden = franja_orden[(desde, hasta)]
-                materias = celdas_dict.get((dia.numero, (desde, hasta)), [])
+            for pos, franja in enumerate(franjas):
+                materias = celdas_dict.get((dia.numero, pos), [])
                 celdas.append(
                     HorarioCelda(
                         dia_numero=dia.numero,
-                        franja_orden=orden,
+                        franja_orden=franja.orden,
+                        franja_posicion=pos,
                         dia=dia.nombre,
-                        desde=desde,
-                        hasta=hasta,
+                        desde=franja.desde,
+                        hasta=franja.hasta,
                         materias=materias,
                     )
                 )
@@ -720,7 +758,7 @@ def _anio_plan_label(numero: int) -> str:
     if not numero:
         return "Plan general"
     base = ORDINALES.get(numero, f"{numero}to")
-    return f"{base} anio"
+    return f"{base} año"
 
 
 def _anio_regular_label(numero: int) -> str:

@@ -206,7 +206,9 @@ export interface PlanillaRegularidadCreateResult {
   pdf_url?: string | null;
   warnings?: string[];
   regularidades_registradas?: number;
+  filas?: PlanillaRegularidadFilaPayload[];
 }
+
 
 interface ApiResponse<T> {
   ok: boolean;
@@ -227,6 +229,7 @@ export const crearPlanillaRegularidad = async (
 export interface PlanillaRegularidadListItem {
   id: number;
   codigo: string;
+  profesorado_id: number;
   profesorado_nombre: string;
   materia_nombre: string;
   anio_cursada: string;
@@ -234,9 +237,12 @@ export interface PlanillaRegularidadListItem {
   fecha: string;
   cantidad_estudiantes: number;
   estado: string;
+  folio?: string | null;
   anio_academico: number;
   created_at: string;
 }
+
+
 
 export const listarHistorialRegularidades = async (): Promise<PlanillaRegularidadListItem[]> => {
   const { data } = await api.get<PlanillaRegularidadListItem[]>(

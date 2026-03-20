@@ -10,7 +10,16 @@ const PROFESORADO_COLORS: Record<number, string> = {
   4: "#D9E1F2", // Inglés (Azul)
   5: "#E2EFDA", // Primaria
   6: "#FCE4D6", // Inicial
+  17: "#FCD5B4", // Historia
   // Se pueden añadir más según sea necesario
+};
+
+const cleanProfesoradoName = (name: string) => {
+  return name
+    .replace(/Profesorado de Educación Secundaria en/gi, "")
+    .replace(/Profesorado de Educación/gi, "")
+    .replace(/Profesorado en/gi, "")
+    .trim();
 };
 
 const DEFAULT_COLOR = "#F2F2F2";
@@ -21,7 +30,7 @@ type InstitutionalScheduleFormatProps = {
   cuatrimestre?: string;
 };
 
-const cellKey = (dia: number, orden: number) => `${dia}-${orden}`;
+const cellKey = (dia: number, posicion: number) => `${dia}-${posicion}`;
 
 const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = ({
   tabla,
@@ -31,45 +40,54 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
   const bgColor = PROFESORADO_COLORS[tabla.profesorado_id] || DEFAULT_COLOR;
 
   const dias = useMemo(() => [...tabla.dias].sort((a, b) => a.numero - b.numero), [tabla.dias]);
-  const franjas = useMemo(() => [...tabla.franjas].sort((a, b) => a.orden - b.orden), [tabla.franjas]);
+  const franjas = useMemo(() => [...tabla.franjas].sort((a, b) => a.posicion - b.posicion), [tabla.franjas]);
 
   const celdas = useMemo(() => {
     const map = new Map<string, any>();
     tabla.celdas.forEach((celda) => {
-      map.set(cellKey(celda.dia_numero, celda.franja_orden), celda);
+      map.set(cellKey(celda.dia_numero, celda.franja_posicion), celda);
     });
     return map;
   }, [tabla.celdas]);
 
-  const renderMateria = (materia: HorarioMateriaCeldaDTO) => {
+  const renderMateria = (materia: HorarioMateriaCeldaDTO, isMulti: boolean) => {
     // Si queremos filtrar por cuatrimestre
-    if (cuatrimestre && materia.regimen !== "ANUAL" && materia.cuatrimestre !== cuatrimestre) {
+    if (cuatrimestre && materia.cuatrimestre !== cuatrimestre) {
         return null;
     }
 
     return (
       <Box 
+        key={materia.materia_id}
         sx={{ 
           position: "relative",
           width: "100%", 
-          height: "100%", 
+          flex: 1,
           display: "flex", 
           flexDirection: "column", 
           justifyContent: "center",
           alignItems: "center",
           textAlign: "center",
-          p: 0.5,
+          p: 0.2,
+          minHeight: isMulti ? "40px" : "60px",
+          borderBottom: isMulti ? "1px dashed #ccc" : "none",
+          "&:last-child": { borderBottom: "none" },
           ...(materia.es_cuatrimestral && {
-             background: `linear-gradient(to top right, transparent calc(50% - 0.5px), #bdbdbd, transparent calc(50% + 0.5px))`
+             background: `linear-gradient(to top right, transparent calc(50% - 0.5px), #e0e0e0, transparent calc(50% + 0.5px))`
           })
         }}
       >
-        <Typography variant="caption" sx={{ fontWeight: "600", fontSize: "0.75rem", lineHeight: 1.1 }}>
+        <Typography variant="caption" sx={{ fontWeight: "600", fontSize: "0.7rem", lineHeight: 1.1, color: "black" }}>
           {materia.materia_nombre}
         </Typography>
-        <Typography variant="caption" sx={{ fontSize: "0.65rem", mt: 0.5, fontStyle: "italic" }}>
+        <Typography variant="caption" sx={{ fontSize: "0.55rem", mt: 0.2, fontStyle: "italic", color: "#333" }}>
           {materia.docentes.length ? `Prof. ${materia.docentes[0]}` : "Sin Docente"}
         </Typography>
+        {materia.es_cuatrimestral && !cuatrimestre && (
+            <Typography variant="caption" sx={{ position: "absolute", bottom: 0, right: 2, fontSize: "0.5rem", fontWeight: "bold", opacity: 0.7 }}>
+                {materia.cuatrimestre}
+            </Typography>
+        )}
       </Box>
     );
   };
@@ -93,8 +111,8 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         textAlign: "center",
         borderBottom: "none"
       }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: "bold", textTransform: "uppercase" }}>
-          PROFESORADO DE EDUCACIÓN SECUNDARIA EN {tabla.profesorado_nombre.replace("Profesorado de Educación Secundaria en ", "")}
+        <Typography variant="subtitle1" sx={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "1.1rem" }}>
+          PROFESORADO EN {cleanProfesoradoName(tabla.profesorado_nombre)}
         </Typography>
         <Typography variant="caption" sx={{ fontWeight: "bold" }}>
           Plan Nº {tabla.plan_resolucion || "---"}
@@ -113,71 +131,127 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         px: 4
       }}>
         <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem" }}>
-          TURNO {tabla.turno_nombre.toUpperCase()}
+          {tabla.turno_nombre.toUpperCase()}
         </Typography>
-        <Typography sx={{ fontWeight: "bold", fontSize: "1.2rem", textDecoration: "underline" }}>
-          {tabla.anio_plan_label.toUpperCase()}
+        <Typography sx={{ fontWeight: "bold", fontSize: "1.4rem", textDecoration: "underline", flex: 1, textAlign: "center", ml: 12 }}>
+          {tabla.anio_plan_label.toUpperCase().replace("ANIO", "AÑO")}
         </Typography>
-        <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem" }}>
-          Salón: {salon}
+        <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem", minWidth: "100px", textAlign: "right" }}>
+          {salon}
         </Typography>
       </Box>
 
       {/* TABLA DE HORARIOS */}
-      <Box sx={{ display: "grid", gridTemplateColumns: "70px 35px repeat(6, 1fr) 35px 70px", border: "1px solid black" }}>
+      <Box sx={{ 
+          display: "grid", 
+          gridTemplateColumns: `70px 35px repeat(${dias.length}, 1fr) 35px 70px`, 
+          border: "1px solid black" 
+      }}>
         {/* Cabecera de tabla */}
-        {[ "H. R.", "H.C.", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "H.C.", "H. R." ].map((head, i) => (
-          <Box key={i} sx={{ 
-            border: "1px solid black", 
-            p: 0.5, 
-            textAlign: "center", 
-            fontWeight: "bold", 
-            fontSize: "0.7rem",
-            bgcolor: i < 2 || i > 7 ? "#E0E0E0" : "transparent"
-          }}>
-            {head}
-          </Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H. R.</Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H.C.</Box>
+        {dias.map((dia) => (
+           <Box key={dia.numero} sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem" }}>
+             {dia.nombre.toUpperCase()}
+           </Box>
         ))}
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H.C.</Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H. R.</Box>
 
         {/* Filas de horarios */}
-        {franjas.map((franja, fIdx) => (
-          <React.Fragment key={franja.orden}>
-            {/* Hora Reloj (Izquierda) */}
-            <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>
-              {franja.desde}<br/>{franja.hasta}
-            </Box>
-            {/* Hora Cátedra (Izquierda) */}
-            <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
-              {franja.orden}º
-            </Box>
+        {franjas.map((franja, index) => {
+          const [h1, m1] = franja.desde.split(":").map(Number);
+          const [h2, m2] = franja.hasta.split(":").map(Number);
+          const duration = (h2 * 60 + m2) - (h1 * 60 + m1);
+          const isRecreo = franja.es_recreo || (duration > 0 && duration <= 15);
 
-            {/* Días de la semana */}
-            {dias.map((dia) => {
-              const entry = celdas.get(cellKey(dia.numero, franja.orden));
-              const materias = entry?.materias || [];
-              return (
-                <Box key={dia.numero} sx={{ 
-                  border: "1px solid black", 
-                  minHeight: "50px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  {materias.map(renderMateria)}
+          if (isRecreo) {
+            return (
+              <React.Fragment key={`recreo-${index}`}>
+                 {/* Reloj Izquierdo Recreo */}
+                <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                  {franja.desde}<br/>{franja.hasta}
                 </Box>
-              );
-            })}
+                {/* Cat Izquierda Recreo */}
+                <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                  -
+                </Box>
 
-            {/* Hora Cátedra (Derecha) */}
-            <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
-              {franja.orden}º
-            </Box>
-             {/* Hora Reloj (Derecha) */}
-             <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold" }}>
-              {franja.desde}<br/>{franja.hasta}
-            </Box>
-          </React.Fragment>
-        ))}
+                {/* BANNER CENTRADO RECREO - Solo ocupa las columnas de los días (3 a 8 inclusive) */}
+                <Box 
+                  sx={{ 
+                    gridColumn: "3 / 9", 
+                    bgcolor: "#F5F5F5", 
+                    border: "1px solid black",
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center",
+                    py: 0.3,
+                    gap: 4
+                  }}
+                >
+                  <Typography sx={{ fontWeight: "bold", fontStyle: "italic", fontSize: "0.8rem", letterSpacing: 3, color: "#444" }}>
+                    • R E C R E O •
+                  </Typography>
+                </Box>
+
+                {/* Cat Derecha Recreo */}
+                <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                  -
+                </Box>
+                {/* Reloj Derecho Recreo */}
+                <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                  {franja.desde_sec || franja.desde}<br/>{franja.hasta_sec || franja.hasta}
+                </Box>
+              </React.Fragment>
+            );
+          }
+
+          return (
+            <React.Fragment key={franja.orden}>
+              {/* Hora Reloj (Izquierda) */}
+              <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                {franja.desde}<br/>{franja.hasta}
+              </Box>
+              {/* Hora Cátedra (Izquierda) */}
+              <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                {franja.orden > 0 ? `${franja.orden}º` : ""}
+              </Box>
+
+              {/* Días de la semana */}
+              {dias.map((dia) => {
+                const entry = celdas.get(cellKey(dia.numero, franja.posicion));
+                const materias = entry?.materias || [];
+                return (
+                  <Box key={dia.numero} sx={{ 
+                    border: "1px solid black", 
+                    minHeight: "85px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    justifyContent: "stretch",
+                    bgcolor: materias.length > 0 ? "white" : "transparent",
+                    overflow: "hidden"
+                  }}>
+                    {materias
+                      .filter((m: HorarioMateriaCeldaDTO) => !cuatrimestre || m.cuatrimestre === cuatrimestre)
+                      .map((m: HorarioMateriaCeldaDTO) => renderMateria(m, false))
+                    }
+                  </Box>
+                );
+              })}
+
+              {/* Hora Cátedra (Derecha) */}
+              <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                {franja.orden > 0 ? `${franja.orden}º` : ""}
+              </Box>
+               {/* Hora Reloj (Derecha) */}
+               <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                {franja.desde_sec || franja.desde}<br/>{franja.hasta_sec || franja.hasta}
+              </Box>
+            </React.Fragment>
+          );
+        })}
       </Box>
 
       {/* PIE DE PAGINA / OBSERVACIONES */}
