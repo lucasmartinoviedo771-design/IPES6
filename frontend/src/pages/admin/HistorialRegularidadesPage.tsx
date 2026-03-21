@@ -60,7 +60,7 @@ const HistorialRegularidadesPage: React.FC = () => {
 
     const { data: planillas, isLoading, isError, refetch } = useQuery({
         queryKey: ['regularidades-historial'],
-        queryFn: listarHistorialRegularidades,
+        queryFn: () => listarHistorialRegularidades(),
     });
 
     const handleRequestSort = (property: keyof PlanillaRegularidadListItem) => {

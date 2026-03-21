@@ -335,6 +335,8 @@ export type ActaFilter = {
   materia?: string;
   libro?: string;
   folio?: string;
+  ordering?: string;
+  anio_cursada_materia?: string | number;
 };
 
 export async function listarActas(filters?: ActaFilter) {
@@ -344,6 +346,8 @@ export async function listarActas(filters?: ActaFilter) {
     if (filters.materia && filters.materia.trim() !== "") params.materia = filters.materia;
     if (filters.libro && filters.libro.trim() !== "") params.libro = filters.libro;
     if (filters.folio && filters.folio.trim() !== "") params.folio = filters.folio;
+    if (filters.ordering) params.ordering = filters.ordering;
+    if (filters.anio_cursada_materia) params.anio_cursada_materia = filters.anio_cursada_materia;
   }
 
   const { data } = await client.get<ActaListItemDTO[]>("/estudiantes/carga-notas/actas", {

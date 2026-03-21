@@ -247,7 +247,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
   const historyQuery = useQuery({
     queryKey: ['primera-carga', 'regularidades', 'historial'],
-    queryFn: listarHistorialRegularidades,
+    queryFn: () => listarHistorialRegularidades(),
     enabled: open,
     staleTime: 1000 * 60 * 5,
   });

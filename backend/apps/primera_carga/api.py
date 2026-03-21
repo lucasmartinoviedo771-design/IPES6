@@ -326,14 +326,18 @@ def listar_historial_debug(request):
     response={200: list[PlanillaRegularidadListOut], 403: ApiResponse},
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
-def listar_historial_regularidades(request, anio: int | None = None, profesorado_id: int | None = None):
+def listar_historial_regularidades(request, anio: int | None = None, profesorado_id: int | None = None, ordering: str = "-created_at"):
     print(f"DEBUG: Entrando a listar_historial_regularidades, anio={anio}", flush=True)
 
     try:
         # Aumentamos el límite a 1000 para no perder de vista planillas anteriores
+        allowed_ordering = ["id", "-id", "created_at", "-created_at", "fecha", "-fecha", "materia__nombre", "-materia__nombre"]
+        if ordering not in allowed_ordering:
+            ordering = "-created_at"
+            
         qs = (
             PlanillaRegularidad.objects.select_related("profesorado", "materia")
-            .order_by("-created_at")
+            .order_by(ordering)
         )
         
         # Filtro por permisos: Bedel solo ve los suyos, Secretaria/Admin ven todos
@@ -512,7 +516,7 @@ def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
-def listar_historico_mesas_pandemia(request):
+def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
     """
     Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'.
     Filtra buscando la palabra PANDEMIA en el folio o libro de las inscripciones.
@@ -534,9 +538,13 @@ def listar_historico_mesas_pandemia(request):
             return ApiResponse(ok=True, message="Listado histórico.", data=[])
         qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
 
+    allowed_ordering = ["id", "-id", "fecha", "-fecha", "materia__nombre", "-materia__nombre", "cantidad_estudiantes", "-cantidad_estudiantes"]
+    if ordering not in allowed_ordering:
+        ordering = "-fecha"
+
     qs = qs.select_related("materia__plan_de_estudio__profesorado", "docente_presidente__persona").distinct().annotate(
         cantidad_estudiantes=Count("inscripciones")
-    ).order_by("-fecha")[:200]
+    ).order_by(ordering)[:200]
 
     data = []
     for mesa in qs:

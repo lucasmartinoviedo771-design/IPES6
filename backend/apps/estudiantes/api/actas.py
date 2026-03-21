@@ -278,7 +278,7 @@ def obtener_acta_metadata(request):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
-def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, incluir_equivalencias: bool = False):
+def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, anio_cursada_materia: int = None, incluir_equivalencias: bool = False, ordering: str = "-id"):
     user = request.user
     roles = normalized_user_roles(user)
     
@@ -302,11 +302,18 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
         qs = qs.filter(libro__icontains=libro)
     if folio:
         qs = qs.filter(folio__icontains=folio)
+    if anio_cursada_materia:
+        qs = qs.filter(materia__anio_cursada=anio_cursada_materia)
 
-    has_filters = any([anio, materia, libro, folio])
+    has_filters = any([anio, materia, libro, folio, anio_cursada_materia])
     limit = 200 if has_filters else 50
+    
+    # Validar ordering para evitar errores de BD
+    allowed_ordering = ["id", "-id", "fecha", "-fecha", "materia__nombre", "-materia__nombre", "total_alumnos", "-total_alumnos"]
+    if ordering not in allowed_ordering:
+        ordering = "-id"
 
-    actas = qs.select_related("materia").order_by("-id")[:limit]
+    actas = qs.select_related("materia").order_by(ordering)[:limit]
     
     result = []
     for acta in actas:
@@ -314,7 +321,7 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
         result.append({
             "id": acta.id,
             "codigo": acta.codigo,
-            "fecha": format_date(acta.fecha),
+            "fecha": acta.fecha.isoformat() if acta.fecha else None,
             "materia": acta.materia.nombre if acta.materia else "Desconocida",
             "libro": acta.libro,
             "folio": acta.folio,

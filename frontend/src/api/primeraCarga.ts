@@ -244,9 +244,10 @@ export interface PlanillaRegularidadListItem {
 
 
 
-export const listarHistorialRegularidades = async (): Promise<PlanillaRegularidadListItem[]> => {
+export const listarHistorialRegularidades = async (params?: { anio?: number, profesorado_id?: number, ordering?: string }): Promise<PlanillaRegularidadListItem[]> => {
   const { data } = await api.get<PlanillaRegularidadListItem[]>(
     '/admin/primera-carga/regularidades/historial',
+    { params }
   );
   return data;
 };
@@ -381,9 +382,10 @@ export interface MesaPandemiaHistoricoItem {
   docente_presidente: string;
 }
 
-export const listarHistoricoMesasPandemia = async (): Promise<MesaPandemiaHistoricoItem[]> => {
+export const listarHistoricoMesasPandemia = async (params?: { ordering?: string }): Promise<MesaPandemiaHistoricoItem[]> => {
   const { data } = await api.get<ApiResponse<MesaPandemiaHistoricoItem[]>>(
-    '/admin/primera-carga/mesas-pandemia'
+    '/admin/primera-carga/mesas-pandemia',
+    { params }
   );
   return data.data;
 };

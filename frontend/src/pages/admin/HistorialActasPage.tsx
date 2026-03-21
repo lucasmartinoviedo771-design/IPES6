@@ -24,7 +24,12 @@ import {
     CircularProgress,
     Chip,
     Alert,
-    TextField
+    TextField,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Select,
+    TableSortLabel
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
@@ -56,7 +61,9 @@ const HistorialActasPage: React.FC = () => {
         anio: '',
         materia: '',
         libro: '',
-        folio: ''
+        folio: '',
+        ordering: '-id',
+        anio_cursada_materia: ''
     });
     const [activeFilters, setActiveFilters] = useState({});
 
@@ -70,9 +77,17 @@ const HistorialActasPage: React.FC = () => {
     };
 
     const handleClear = () => {
-        const empty = { anio: '', materia: '', libro: '', folio: '' };
+        const empty = { anio: '', materia: '', libro: '', folio: '', ordering: '-id', anio_cursada_materia: '' };
         setFilters(empty);
         setActiveFilters({});
+    };
+
+    const handleRequestSort = (property: string) => {
+        const isAsc = filters.ordering === property;
+        const newOrdering = isAsc ? `-${property}` : property;
+        const newFilters = { ...filters, ordering: newOrdering };
+        setFilters(newFilters);
+        setActiveFilters(newFilters); // Aplicar inmediatamente al hacer click en cabecera
     };
 
     return (
@@ -112,16 +127,48 @@ const HistorialActasPage: React.FC = () => {
                             size="small"
                             value={filters.libro}
                             onChange={(e) => setFilters({ ...filters, libro: e.target.value })}
-                            sx={{ width: 100 }}
+                            sx={{ width: 80 }}
                         />
                         <TextField
                             label="Folio"
                             size="small"
                             value={filters.folio}
                             onChange={(e) => setFilters({ ...filters, folio: e.target.value })}
-                            sx={{ width: 100 }}
+                            sx={{ width: 80 }}
                         />
+                        <FormControl size="small" sx={{ width: 80 }}>
+                            <InputLabel>Año</InputLabel>
+                            <Select
+                                value={filters.anio_cursada_materia}
+                                label="Año"
+                                onChange={(e) => setFilters({ ...filters, anio_cursada_materia: e.target.value })}
+                            >
+                                <MenuItem value=""><em>-</em></MenuItem>
+                                <MenuItem value={1}>1°</MenuItem>
+                                <MenuItem value={2}>2°</MenuItem>
+                                <MenuItem value={3}>3°</MenuItem>
+                                <MenuItem value={4}>4°</MenuItem>
+                            </Select>
+                        </FormControl>
                     </Stack>
+
+                    <FormControl size="small" sx={{ width: { xs: '100%', md: 220 } }}>
+                        <InputLabel>Ordenar por</InputLabel>
+                        <Select
+                            label="Ordenar por"
+                            value={filters.ordering}
+                            onChange={(e) => setFilters({ ...filters, ordering: e.target.value })}
+                        >
+                            <MenuItem value="-id">Más recientes (ID)</MenuItem>
+                            <MenuItem value="id">Más antiguos (ID)</MenuItem>
+                            <MenuItem value="-fecha">Fecha (Recientes primero)</MenuItem>
+                            <MenuItem value="fecha">Fecha (Antiguos primero)</MenuItem>
+                            <MenuItem value="materia__nombre">Materia (A-Z)</MenuItem>
+                            <MenuItem value="-materia__nombre">Materia (Z-A)</MenuItem>
+                            <MenuItem value="-total_alumnos">Más estudiantes</MenuItem>
+                            <MenuItem value="total_alumnos">Menos estudiantes</MenuItem>
+                        </Select>
+                    </FormControl>
                     <Button
                         variant="contained"
                         onClick={handleSearch}
@@ -157,12 +204,44 @@ const HistorialActasPage: React.FC = () => {
                     <Table>
                         <TableHead sx={{ bgcolor: 'grey.100' }}>
                             <TableRow>
-                                <TableCell><b>ID</b></TableCell>
-                                <TableCell><b>Fecha</b></TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={filters.ordering === 'id' || filters.ordering === '-id'}
+                                        direction={filters.ordering === 'id' ? 'asc' : 'desc'}
+                                        onClick={() => handleRequestSort('id')}
+                                    >
+                                        <b>ID</b>
+                                    </TableSortLabel>
+                                </TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={filters.ordering === 'fecha' || filters.ordering === '-fecha'}
+                                        direction={filters.ordering === 'fecha' ? 'asc' : 'desc'}
+                                        onClick={() => handleRequestSort('fecha')}
+                                    >
+                                        <b>Fecha</b>
+                                    </TableSortLabel>
+                                </TableCell>
                                 <TableCell><b>Código Interino</b></TableCell>
-                                <TableCell><b>Materia</b></TableCell>
+                                <TableCell>
+                                    <TableSortLabel
+                                        active={filters.ordering === 'materia__nombre' || filters.ordering === '-materia__nombre'}
+                                        direction={filters.ordering === 'materia__nombre' ? 'asc' : 'desc'}
+                                        onClick={() => handleRequestSort('materia__nombre')}
+                                    >
+                                        <b>Materia</b>
+                                    </TableSortLabel>
+                                </TableCell>
                                 <TableCell><b>Libro/Folio</b></TableCell>
-                                <TableCell align="center"><b>Estudiantes</b></TableCell>
+                                <TableCell align="center">
+                                    <TableSortLabel
+                                        active={filters.ordering === 'total_alumnos' || filters.ordering === '-total_alumnos'}
+                                        direction={filters.ordering === 'total_alumnos' ? 'asc' : 'desc'}
+                                        onClick={() => handleRequestSort('total_alumnos')}
+                                    >
+                                        <b>Estudiantes</b>
+                                    </TableSortLabel>
+                                </TableCell>
                                 <TableCell align="right"><b>Acciones</b></TableCell>
                             </TableRow>
                         </TableHead>
@@ -170,7 +249,11 @@ const HistorialActasPage: React.FC = () => {
                             {actas?.map((acta) => (
                                 <TableRow key={acta.id} hover>
                                     <TableCell>{acta.id}</TableCell>
-                                    <TableCell>{dayjs.utc(acta.fecha).format('DD/MM/YYYY')}</TableCell>
+                                    <TableCell>
+                                        {acta.fecha && dayjs.utc(acta.fecha).isValid() 
+                                            ? dayjs.utc(acta.fecha).format('DD/MM/YYYY') 
+                                            : '--/--/----'}
+                                    </TableCell>
                                     <TableCell>
                                         <Chip label={acta.codigo} size="small" variant="outlined" />
                                     </TableCell>

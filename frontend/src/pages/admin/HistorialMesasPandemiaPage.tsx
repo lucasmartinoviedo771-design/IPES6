@@ -25,6 +25,7 @@ import {
   Button,
   TextField,
   MenuItem,
+  TableSortLabel,
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -43,10 +44,17 @@ const HistorialMesasPandemiaPage: React.FC = () => {
   const [editData, setEditData] = useState<any[]>([]);
   const [condiciones, setCondiciones] = useState<any[]>([]);
   const [loadingPlanilla, setLoadingPlanilla] = useState(false);
+  const [ordering, setOrdering] = useState<string>('-fecha');
+
+  const handleRequestSort = (property: string) => {
+    const isAsc = ordering === property;
+    const newOrdering = isAsc ? `-${property}` : property;
+    setOrdering(newOrdering);
+  };
 
   const query = useQuery({
-    queryKey: ['historial-mesas-pandemia'],
-    queryFn: listarHistoricoMesasPandemia,
+    queryKey: ['historial-mesas-pandemia', ordering],
+    queryFn: () => listarHistoricoMesasPandemia({ ordering }),
   });
 
   const mutation = useMutation({
@@ -139,6 +147,27 @@ const HistorialMesasPandemiaPage: React.FC = () => {
           </Stack>
         </Box>
 
+        {/* FILTROS DE ORDENAMIENTO */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+          <TextField
+            select
+            label="Ordenar por"
+            size="small"
+            value={ordering}
+            onChange={(e) => setOrdering(e.target.value)}
+            sx={{ width: 250 }}
+          >
+             <MenuItem value="-fecha">Fecha (Más recientes primero)</MenuItem>
+             <MenuItem value="fecha">Fecha (Más antiguas primero)</MenuItem>
+             <MenuItem value="-id">ID Mesa (Mayor a menor)</MenuItem>
+             <MenuItem value="id">ID Mesa (Menor a mayor)</MenuItem>
+             <MenuItem value="materia__nombre">Materia (A-Z)</MenuItem>
+             <MenuItem value="-materia__nombre">Materia (Z-A)</MenuItem>
+             <MenuItem value="-cantidad_estudiantes">Más estudiantes</MenuItem>
+             <MenuItem value="cantidad_estudiantes">Menos estudiantes</MenuItem>
+          </TextField>
+        </Box>
+
         {/* CONTENIDO (TABLA) */}
         <Card variant="outlined">
           {query.isLoading ? (
@@ -158,12 +187,44 @@ const HistorialMesasPandemiaPage: React.FC = () => {
               <Table size="medium">
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell>ID Mesa</TableCell>
-                    <TableCell>Fecha</TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={ordering === 'id' || ordering === '-id'}
+                        direction={ordering === 'id' ? 'asc' : 'desc'}
+                        onClick={() => handleRequestSort('id')}
+                      >
+                        ID Mesa
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={ordering === 'fecha' || ordering === '-fecha'}
+                        direction={ordering === 'fecha' ? 'asc' : 'desc'}
+                        onClick={() => handleRequestSort('fecha')}
+                      >
+                        Fecha
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell>Profesorado</TableCell>
-                    <TableCell>Materia</TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={ordering === 'materia__nombre' || ordering === '-materia__nombre'}
+                        direction={ordering === 'materia__nombre' ? 'asc' : 'desc'}
+                        onClick={() => handleRequestSort('materia__nombre')}
+                      >
+                        Materia
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell>Docente a cargo</TableCell>
-                    <TableCell align="center">Estudiantes</TableCell>
+                    <TableCell align="center">
+                      <TableSortLabel
+                        active={ordering === 'cantidad_estudiantes' || ordering === '-cantidad_estudiantes'}
+                        direction={ordering === 'cantidad_estudiantes' ? 'asc' : 'desc'}
+                        onClick={() => handleRequestSort('cantidad_estudiantes')}
+                      >
+                        Estudiantes
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
