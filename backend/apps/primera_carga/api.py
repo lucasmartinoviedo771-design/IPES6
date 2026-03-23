@@ -1,10 +1,14 @@
+import logging
 from datetime import date, datetime
 from apps.common.date_utils import format_date, format_datetime
+from apps.primera_carga.services.historial import get_historial_regularidades, get_historico_mesas_pandemia
 
 from typing import Any
 from django.http import HttpResponse
 from ninja import File, Form, Router, Schema
 from ninja.files import UploadedFile
+
+logger = logging.getLogger(__name__)
 
 from apps.estudiantes.schemas import (
     EquivalenciaDisposicionCreateIn,
@@ -229,15 +233,12 @@ def regularidades_metadata(request, include_all: bool = False):
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
 def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
-    print(f"DEBUG: Iniciando crear_planilla. Materia={payload.materia_id}, Filas={len(payload.filas)}", flush=True)
+    logger.debug("Iniciando crear_planilla. Materia=%s, Filas=%s", payload.materia_id, len(payload.filas))
     try:
         estado = payload.estado or PlanillaRegularidad.Estado.FINAL
         if estado not in PlanillaRegularidad.Estado.values:
-            print(f"DEBUG ERROR: Estado inválido {estado}", flush=True)
+            logger.warning("Estado inválido: %s", estado)
             return 400, ApiResponse(ok=False, message="Estado de planilla inválido.")
-        
-        # Log payload para debug (truncar filas si son muchas)
-        # print(f"DEBUG Payload: {payload.dict()}", flush=True)
 
         result = crear_planilla_regularidad(
             user=request.user,
@@ -258,12 +259,10 @@ def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
         message = "Planilla generada (dry-run)." if payload.dry_run else "Planilla generada correctamente."
         return ApiResponse(ok=True, message=message, data=result)
     except ValueError as exc:
-        print(f"DEBUG ValueError en crear_planilla: {exc}", flush=True)
+        logger.warning("ValueError en crear_planilla: %s", exc)
         return 400, ApiResponse(ok=False, message=str(exc))
     except Exception as exc:
-        print(f"DEBUG Exception en crear_planilla: {exc}", flush=True)
-        import traceback
-        traceback.print_exc()
+        logger.exception("Exception en crear_planilla: %s", exc)
         return 400, ApiResponse(ok=False, message=f"Error al crear la planilla: {exc}")
 
 
@@ -313,94 +312,15 @@ class PlanillaRegularidadListOut(Schema):
     created_at: str | None
 
 @primera_carga_router.get(
-    "/regularidades/historial-debug",
-    response={200: list[PlanillaRegularidadListOut]},
-    auth=None
-)
-def listar_historial_debug(request):
-    print("DEBUG: Endpoint debug alcanzado", flush=True)
-    return []
-
-@primera_carga_router.get(
     "/regularidades/historial",
     response={200: list[PlanillaRegularidadListOut], 403: ApiResponse},
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
 def listar_historial_regularidades(request, anio: int | None = None, profesorado_id: int | None = None, ordering: str = "-created_at"):
-    print(f"DEBUG: Entrando a listar_historial_regularidades, anio={anio}", flush=True)
-
-    try:
-        # Aumentamos el límite a 1000 para no perder de vista planillas anteriores
-        allowed_ordering = ["id", "-id", "created_at", "-created_at", "fecha", "-fecha", "materia__nombre", "-materia__nombre"]
-        if ordering not in allowed_ordering:
-            ordering = "-created_at"
-            
-        qs = (
-            PlanillaRegularidad.objects.select_related("profesorado", "materia")
-            .order_by(ordering)
-        )
-        
-        # Filtro por permisos: Bedel solo ve los suyos, Secretaria/Admin ven todos
-        allowed = allowed_profesorados(request.user, role_filter={"bedel"})
-        if allowed is not None:
-            qs = qs.filter(profesorado_id__in=allowed)
-        
-        if anio:
-            qs = qs.filter(anio_academico=anio)
-        
-        if profesorado_id:
-            # Si el usuario tiene restricciones (es Bedel), verificar que el profesorado_id solicitado sea de los suyos
-            if allowed is not None and profesorado_id not in allowed:
-                return 403, ApiResponse(ok=False, message="No tiene permisos sobre este profesorado.")
-            qs = qs.filter(profesorado_id=profesorado_id)
-        
-        qs = qs[:1000]
-
-        data = []
-        lista_planillas = list(qs)
-
-        
-        
-        # Mapping helpers
-        regimen_map = {
-            "ANU": "ANUAL",
-            "PCU": "1C",
-            "SCU": "2C"
-        }
-
-        for planilla in lista_planillas:
-            # Robust dictado resolution
-            dictado_val = planilla.dictado
-            if not dictado_val and planilla.plantilla:
-                dictado_val = planilla.plantilla.dictado
-            
-            if not dictado_val:
-                # Fallback to materia regimen
-                reg = planilla.materia.regimen
-                dictado_val = regimen_map.get(reg, "ANUAL")
-
-            data.append({
-                "id": planilla.id,
-                "codigo": planilla.codigo,
-                "profesorado_id": planilla.profesorado_id,
-                "profesorado_nombre": planilla.profesorado.nombre,
-                "materia_nombre": planilla.materia.nombre,
-                "anio_cursada": str(planilla.materia.anio_cursada) if planilla.materia.anio_cursada else "-",
-                "dictado": dictado_val,
-                "fecha": planilla.fecha,
-                "cantidad_estudiantes": planilla.filas.count(),
-                "estado": planilla.estado,
-                "folio": planilla.folio,
-                "anio_academico": planilla.anio_academico,
-                "created_at": format_datetime(planilla.created_at),
-            })
-        print("DEBUG: Retornando data")
-        return data
-    except Exception as e:
-        print(f"DEBUG ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+    data, error = get_historial_regularidades(request.user, anio=anio, profesorado_id=profesorado_id, ordering=ordering)
+    if error:
+        return 403, ApiResponse(ok=False, message=error)
+    return data
 
 @primera_carga_router.get(
     "/regularidades/planillas/{planilla_id}/pdf",
@@ -507,7 +427,7 @@ def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
     except ValueError as exc:
         return 400, ApiResponse(ok=False, message=str(exc))
     except Exception as exc:
-        import traceback; traceback.print_exc()
+        logger.exception("Error al procesar la carga: %s", exc)
         return 400, ApiResponse(ok=False, message=f"Error al procesar la carga: {exc}")
 
 
@@ -517,70 +437,7 @@ def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
 def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
-    """
-    Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'.
-    Filtra buscando la palabra PANDEMIA en el folio o libro de las inscripciones.
-    Solo retorna las mesas vinculadas a los profesorados del Bedel en curso.
-    """
-    from core.models import MesaExamen
-    from django.db.models import Count
-    from core.permissions import allowed_profesorados
-
-    user = request.user
-    allowed = allowed_profesorados(user, role_filter={"bedel", "secretaria"})
-    
-    # Buscamos mesas que tengan alguna inscripción marcada como PANDEMIA (folio o libro)
-    qs = MesaExamen.objects.filter(inscripciones__folio__icontains="PANDEMIA") | \
-         MesaExamen.objects.filter(inscripciones__libro__icontains="PANDEMIA")
-    
-    if allowed is not None:
-        if not allowed:
-            return ApiResponse(ok=True, message="Listado histórico.", data=[])
-        qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
-
-    allowed_ordering = ["id", "-id", "fecha", "-fecha", "materia__nombre", "-materia__nombre", "cantidad_estudiantes", "-cantidad_estudiantes"]
-    if ordering not in allowed_ordering:
-        ordering = "-fecha"
-
-    qs = qs.select_related("materia__plan_de_estudio__profesorado", "docente_presidente__persona").distinct().annotate(
-        cantidad_estudiantes=Count("inscripciones")
-    ).order_by(ordering)[:200]
-
-    data = []
-    for mesa in qs:
-        docente = "—"
-        if mesa.docente_presidente and mesa.docente_presidente.persona:
-            docente = f"{mesa.docente_presidente.persona.apellido}, {mesa.docente_presidente.persona.nombre}"
-        else:
-            # Intentar extraer de las observaciones de la primera inscripción
-            primera_insc = mesa.inscripciones.filter(observaciones__icontains="Docente:").first()
-            if primera_insc:
-                # Extraer "Docente: APELLIDO, Nombre"
-                import re
-                match = re.search(r"Docente:\s*([^|;]+)", primera_insc.observaciones)
-                if match:
-                    docente = match.group(1).strip()
-        
-        # Opcional: incluir un resumen de estudiantes y sus notas para "ver las notas"
-        inscripciones_data = []
-        for insc in mesa.inscripciones.select_related("estudiante__persona").all():
-            inscripciones_data.append({
-                "dni": insc.estudiante.dni,
-                "nombre": f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}" if insc.estudiante.persona else insc.estudiante.dni,
-                "nota": str(insc.nota) if insc.nota is not None else insc.condicion,
-                "condicion": insc.condicion,
-            })
-
-        data.append({
-            "id": mesa.id,
-            "materia_nombre": mesa.materia.nombre,
-            "profesorado_nombre": mesa.materia.plan_de_estudio.profesorado.nombre,
-            "fecha": mesa.fecha,
-            "tipo": mesa.tipo,
-            "cantidad_estudiantes": mesa.cantidad_estudiantes,
-            "docente_presidente": docente,
-            "estudiantes_detalle": inscripciones_data,
-        })
-        
+    """Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'."""
+    data = get_historico_mesas_pandemia(request.user, ordering=ordering)
     return ApiResponse(ok=True, message="Listado histórico.", data=data)
 

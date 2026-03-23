@@ -1,5 +1,4 @@
 // src/main.tsx
-console.log('[App] inicio de main.tsx');
 import * as React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -8,12 +7,10 @@ import App from "./App";
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastBridge } from "@/utils/toast";
 import "./styles/theme.css";
-console.log('[App] Importaciones base completadas');
 
 // MUI base (si usás Theme)
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { theme } from "./theme";
-console.log('[App] Tema cargado:', theme);
 
 // ✅ Date pickers (ES)
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -23,7 +20,6 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import "dayjs/locale/es";
 dayjs.extend(customParseFormat);
 dayjs.locale("es");
-console.log('[App] Dayjs configurado');
 
 import { ErrorBoundary } from "react-error-boundary";
 import { SnackbarProvider } from "notistack";
@@ -38,8 +34,6 @@ window.addEventListener("unhandledrejection", (e) => {
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
-console.log('[App] QueryClient creado');
-console.log('[App] Renderizando AppContent...');
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

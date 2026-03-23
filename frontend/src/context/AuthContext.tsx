@@ -61,11 +61,12 @@ const normalizeRolesInput = (input: unknown): string[] => {
   return [];
 };
 
-const normalizeUserPayload = (raw: any): User => {
+const normalizeUserPayload = (raw: unknown): User => {
   if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
   return {
-    ...raw,
-    roles: normalizeRolesInput(raw.roles),
+    ...r,
+    roles: normalizeRolesInput(r.roles),
   } as User;
 };
 
@@ -75,7 +76,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [bootstrapped, setBootstrapped] = useState(false); // evita doble fetch inicial
   const [roleOverride, setRoleOverrideState] = useState<string | null>(() => {
     try {
-      return localStorage.getItem("roleOverride") || null;
+      return sessionStorage.getItem("roleOverride") || null;
     } catch {
       return null;
     }
@@ -278,9 +279,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     setRoleOverrideState(normalized);
     try {
       if (normalized) {
-        localStorage.setItem("roleOverride", normalized);
+        sessionStorage.setItem("roleOverride", normalized);
       } else {
-        localStorage.removeItem("roleOverride");
+        sessionStorage.removeItem("roleOverride");
       }
     } catch {
       /* ignore */
@@ -292,7 +293,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setGlobalRoleOverride(null);
       setRoleOverrideState(null);
       try {
-        localStorage.removeItem("roleOverride");
+        sessionStorage.removeItem("roleOverride");
       } catch {
         /* ignore */
       }
@@ -307,7 +308,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setGlobalRoleOverride(null);
       setRoleOverrideState(null);
       try {
-        localStorage.removeItem("roleOverride");
+        sessionStorage.removeItem("roleOverride");
       } catch {
         /* ignore */
       }

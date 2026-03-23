@@ -1,4 +1,5 @@
 import React, { useId, useRef } from "react";
+import { compressImage } from "@/utils/compressImage";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -45,41 +46,32 @@ const CarreraDocumentacion: React.FC<Props> = ({
       return;
     }
 
-    if (!/^image\/(png|jpe?g)$/i.test(selectedFile.type)) {
-      alert("Formato inválido. Solo JPG o PNG.");
+    if (!/^image\/(png|jpe?g|webp|heic|heif)$/i.test(selectedFile.type)) {
+      alert("Formato inválido. Solo JPG, PNG o WEBP.");
       e.target.value = "";
       if (typeof onFileChange === "function") onFileChange(null);
       return;
     }
 
-    if (selectedFile.size > maxBytes) {
-      const mb = (maxBytes / (1024 * 1024)).toFixed(1);
-      alert(`La imagen supera el tamaño máximo (${mb} MB).`);
-      e.target.value = "";
-      if (typeof onFileChange === "function") onFileChange(null);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string | null;
-      if (result) {
-        setValue("foto_dataUrl", result, { shouldDirty: true });
+    compressImage(selectedFile)
+      .then(({ dataUrl, file: compressed }) => {
+        setValue("foto_dataUrl", dataUrl, { shouldDirty: true });
         const img = new Image();
         img.onload = () => {
           setValue("fotoW", img.width, { shouldDirty: true });
           setValue("fotoH", img.height, { shouldDirty: true });
         };
-        img.src = result;
-      } else {
+        img.src = dataUrl;
+        if (typeof onFileChange === "function") onFileChange(compressed);
+      })
+      .catch(() => {
+        alert("No se pudo procesar la imagen. Intentá con otro archivo.");
+        e.target.value = "";
+        if (typeof onFileChange === "function") onFileChange(null);
         setValue("foto_dataUrl", undefined, { shouldDirty: true });
         setValue("fotoW", undefined, { shouldDirty: true });
         setValue("fotoH", undefined, { shouldDirty: true });
-      }
-    };
-    reader.readAsDataURL(selectedFile);
-
-    if (typeof onFileChange === "function") onFileChange(selectedFile);
+      });
   };
 
   const handleRemove = () => {

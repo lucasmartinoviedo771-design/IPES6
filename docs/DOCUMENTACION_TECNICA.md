@@ -47,7 +47,7 @@ IPES6 es una aplicación web full-stack:
 
 ## 4. Pendientes y Desafíos Técnicos (Issues)
 
-- **Actualización Vite 7**: Resolver vulnerabilidades moderadas en `esbuild`.
+- ~~**Actualización Vite 7**: Resolver vulnerabilidades moderadas en `esbuild`.~~ *(¡Superado y migrado exitosamente a Vite 8.0.1!)*
 - **Unificación de Esquemas**: Evitar duplicidad entre `components/preinscripcion/schema.ts` y `features/preinscripcion/schema.ts`.
 - **Validación de Ventanas**: Mover validación de fechas de `VentanaHabilitacion` al servidor (actualmente solo en frontend).
 

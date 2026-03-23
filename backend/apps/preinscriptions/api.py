@@ -1,24 +1,17 @@
 from typing import Optional
-import copy
 import logging
-from datetime import date, datetime
+from datetime import datetime
 
-import requests
-from apps.common.date_utils import format_date, format_datetime
-from django.conf import settings
-from django.core.cache import cache
-from django.db import transaction
-from django.db.models import Q  # Importar Q
-from django.utils import timezone
-from ninja import Router
+from django.db import transaction, DatabaseError, IntegrityError
+from django.db.models import Q
 from ninja.errors import HttpError
+import copy
 
 from .router import preins_router as router
 
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
-from core.models import VentanaHabilitacion
-from core.permissions import ensure_profesorado_access, ensure_roles, get_user_roles
+from core.permissions import ensure_profesorado_access, ensure_roles
 
 from .schemas import (
     ChecklistIn,
@@ -32,121 +25,30 @@ from .schemas import (
     RequisitoDocumentacionUpdateIn,
 )
 from .services.requisitos import sync_profesorado_requisitos
-
-
-# Helper function to convert dates in a dictionary to ISO format strings
-def convert_dates_to_iso(data_dict):
-    for key, value in data_dict.items():
-        if isinstance(value, date):
-            data_dict[key] = format_date(value)
-        elif isinstance(value, dict):
-            data_dict[key] = convert_dates_to_iso(value)
-    return data_dict
-
+from .services.rate_limiting import check_rate_limit, client_ip, verify_recaptcha
+from .services.ventanas import ventana_preinscripcion_activa
+from .services.serializers import serialize_pre
+from .services.preinscripcion_service import PreinscripcionService
 
 logger = logging.getLogger(__name__)
 
-
-def _ventana_preinscripcion_activa():
-    """Retorna la ventana de preinscripción activa (si existe)."""
-    hoy = timezone.now().date()
-    return (
-        VentanaHabilitacion.objects.filter(
-            tipo=VentanaHabilitacion.Tipo.PREINSCRIPCION,
-            desde__lte=hoy,
-            hasta__gte=hoy,
-            activo=True,
-        )
-        .order_by("-desde")
-        .first()
-    )
-
-
-def _client_ip(request) -> str:
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(",")[0].strip()
-        if ip:
-            return ip
-    return request.META.get("REMOTE_ADDR", "") or ""
-
-
-def _check_rate_limit(request) -> None:
-    limit = getattr(settings, "PREINS_RATE_LIMIT_PER_HOUR", 0)
-    if not limit:
-        return
-    ip = _client_ip(request) or "unknown"
-    cache_key = f"preins:rate:{ip}"
-    added = cache.add(cache_key, 1, timeout=3600)
-    if added:
-        return
-    try:
-        count = cache.incr(cache_key)
-    except ValueError:
-        cache.set(cache_key, 1, timeout=3600)
-        count = 1
-    if count > limit:
-        raise HttpError(
-            429,
-            "Demasiadas preinscripciones desde tu red. Intentá nuevamente más tarde.",
-        )
-
-
-def _verify_recaptcha(token: str | None, remote_ip: str) -> bool:
-    secret = getattr(settings, "RECAPTCHA_SECRET_KEY", "")
-    if not secret:
-        return True
-    if not token:
-        return False
-    try:
-        response = requests.post(
-            "https://www.google.com/recaptcha/api/siteverify",
-            data={
-                "secret": secret,
-                "response": token,
-                "remoteip": remote_ip,
-            },
-            timeout=5,
-        )
-        data = response.json()
-    except requests.RequestException as exc:
-        logger.warning("No se pudo verificar reCAPTCHA: %s", exc)
-        return False
-    if not data.get("success"):
-        logger.info("reCAPTCHA rechazado: %s", data)
-        return False
-    score = data.get("score")
-    min_score = getattr(settings, "RECAPTCHA_MIN_SCORE", 0.3)
-    if score is not None and score < min_score:
-        logger.info("reCAPTCHA score bajo (%s)", score)
-        return False
-    return True
-
-
-
 PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
-
-
-
-
 
 
 class AllowPublic:
     def __call__(self, request):
         return True
 
+
 def check_roles(request, roles, profesorado_id=None):
     ensure_roles(request.user, roles)
     if profesorado_id is not None:
         ensure_profesorado_access(request.user, profesorado_id, role_filter=roles)
 
-    def __call__(self, request):
-        return True
 
 @router.get("/carreras", response=ApiResponse, auth=AllowPublic())
 def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int] = None):
-    logger.info(f"DEBUG: listar_carreras called with vigentes={vigentes}")
     try:
         from core.models import Profesorado
         qs = Profesorado.objects.all().order_by("nombre")
@@ -154,10 +56,9 @@ def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int
             qs = qs.filter(activo=True, inscripcion_abierta=True)
         data = [{"id": c.id, "nombre": c.nombre} for c in qs]
         return ApiResponse(ok=True, message=f"{len(data)} carreras", data=data)
-    except Exception as e:
+    except DatabaseError as e:
         logger.exception("Error listando carreras")
         raise HttpError(500, "No se pudieron listar las carreras") from e
-
 
 
 @router.get("/", response=PreinscripcionPaginatedOut, auth=JWTAuth())
@@ -169,24 +70,26 @@ def listar_preinscripciones(
     include_inactivas: bool = False,
     profesorado_id: Optional[int] = None,
     anio: Optional[int] = None,
-    exclude_confirmed: bool = False
+    exclude_confirmed: bool = False,
 ):
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
+
+    limit = max(1, min(limit, 500))
+    offset = max(0, offset)
+    if search:
+        search = search[:100]
+
     qs = Preinscripcion.objects.select_related("alumno__user", "carrera").all().order_by("-created_at")
-    
+
     if not include_inactivas:
         qs = qs.filter(activa=True)
-    
     if exclude_confirmed:
         qs = qs.exclude(estado="Confirmada")
-    
     if profesorado_id:
         qs = qs.filter(carrera_id=profesorado_id)
-        
     if anio:
         qs = qs.filter(anio=anio)
-
     if search:
         qs = qs.filter(
             Q(codigo__icontains=search)
@@ -196,9 +99,7 @@ def listar_preinscripciones(
         )
 
     total = qs.count()
-    # Aplicar paginación
-    qs = qs[offset : offset + limit]
-
+    qs = qs[offset: offset + limit]
     return {"count": total, "results": list(qs)}
 
 
@@ -210,6 +111,7 @@ def obtener_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] =
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
     return pre
+
 
 @router.get("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
 def obtener_checklist(request, pre_id: int, profesorado_id: Optional[int] = None):
@@ -224,8 +126,8 @@ def obtener_checklist(request, pre_id: int, profesorado_id: Optional[int] = None
     return cl
 
 
-
 @router.delete("/{pre_id}", response={204: None, 404: ApiResponse}, auth=JWTAuth())
+@transaction.atomic
 def eliminar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] = None):
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
@@ -233,15 +135,13 @@ def eliminar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] 
     if not pre:
         return 404, ApiResponse(ok=False, message="No encontrada")
     pre.activa = False
-    try:
-        pre.estado = "Borrador"
-        pre.save(update_fields=["activa", "estado"])
-    except Exception:
-        pre.save(update_fields=["activa"])
+    pre.estado = "Borrador"
+    pre.save(update_fields=["activa", "estado"])
     return 204, None
 
 
 @router.post("/{pre_id}/activar", response=PreinscripcionOut, auth=JWTAuth())
+@transaction.atomic
 def activar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] = None):
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
@@ -249,52 +149,24 @@ def activar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] =
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada")
     pre.activa = True
-    try:
-        pre.estado = "Enviada"
-        pre.save(update_fields=["activa", "estado"])
-    except Exception:
-        pre.save(update_fields=["activa"])
+    pre.estado = "Enviada"
+    pre.save(update_fields=["activa", "estado"])
     return pre
-
-
-
-
-def _generar_codigo(pk: int) -> str:
-    return f"PRE-{datetime.now().year}-{pk:04d}"
-
-
-def _get_pre_by_codigo(codigo: str) -> 'Preinscripcion':
-    from core.models import Preinscripcion
-    pre = Preinscripcion.objects.filter(codigo__iexact=codigo).select_related("alumno", "carrera").first()
-    if not pre:
-        raise HttpError(404, "Preinscripción no encontrada")
-    return pre
-
-
-def _sync_curso_intro_flag(estudiante, nuevo_valor: bool | None):
-    if nuevo_valor is None:
-        return
-    aprobado = bool(nuevo_valor)
-    if estudiante.curso_introductorio_aprobado != aprobado:
-        estudiante.curso_introductorio_aprobado = aprobado
-        estudiante.save(update_fields=["curso_introductorio_aprobado"])
 
 
 @router.post("", response=ApiResponse)
 def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optional[int] = None):
-    _check_rate_limit(request)
-    if payload.honeypot: raise HttpError(400, "Solicitud inválida.")
-    
-    ventana_activa = _ventana_preinscripcion_activa()
-    if not ventana_activa:
+    check_rate_limit(request)
+    if payload.honeypot:
+        raise HttpError(400, "Solicitud inválida.")
+
+    if not ventana_preinscripcion_activa():
         raise HttpError(403, "El período de preinscripción no está habilitado actualmente.")
 
-    if not _verify_recaptcha(getattr(payload, "captcha_token", None), _client_ip(request)):
+    if not verify_recaptcha(getattr(payload, "captcha_token", None), client_ip(request)):
         raise HttpError(400, "Fallo validación reCAPTCHA.")
 
-    from .services.preinscripcion_service import PreinscripcionService
     preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload)
-    
     return ApiResponse(ok=True, message="Preinscripción enviada", data={
         "id": preinscripcion.id,
         "codigo": preinscripcion.codigo,
@@ -305,11 +177,8 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
 @router.post("/by-code/{codigo}/confirmar", response=ApiResponse, auth=JWTAuth())
 def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = None, profesorado_id: Optional[int] = None):
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
-    
-    from .services.preinscripcion_service import PreinscripcionService
+    pre = PreinscripcionService.get_by_codigo(codigo)
     res = PreinscripcionService.confirm_preinscripcion(pre, payload.dict() if payload else None)
-    
     return ApiResponse(ok=True, message="Preinscripción confirmada", data=res)
 
 
@@ -335,14 +204,11 @@ def _serialize_requisito(req) -> RequisitoDocumentacionOut:
 )
 def listar_requisitos_documentacion(request, prof_id: int, profesorado_id: Optional[int] = None):
     from core.models import Profesorado
-
     ensure_roles(request.user, DOC_ALLOWED_ROLES)
     ensure_profesorado_access(request.user, prof_id, role_filter=DOC_ALLOWED_ROLES)
-
     profesorado = Profesorado.objects.filter(id=prof_id).first()
     if not profesorado:
         raise HttpError(404, "Profesorado no encontrado")
-
     qs = sync_profesorado_requisitos(profesorado).order_by("categoria", "orden", "codigo")
     return [_serialize_requisito(req) for req in qs]
 
@@ -354,12 +220,11 @@ def listar_requisitos_documentacion(request, prof_id: int, profesorado_id: Optio
 )
 def actualizar_requisitos_documentacion(
     request, prof_id: int,
-    payload: list[RequisitoDocumentacionUpdateIn], profesorado_id: Optional[int] = None):
+    payload: list[RequisitoDocumentacionUpdateIn], profesorado_id: Optional[int] = None,
+):
     from core.models import Profesorado, ProfesoradoRequisitoDocumentacion
-
     ensure_roles(request.user, DOC_ALLOWED_ROLES)
     ensure_profesorado_access(request.user, prof_id, role_filter=DOC_ALLOWED_ROLES)
-
     profesorado = Profesorado.objects.filter(id=prof_id).first()
     if not profesorado:
         raise HttpError(404, "Profesorado no encontrado")
@@ -419,70 +284,11 @@ def actualizar_requisitos_documentacion(
     ]
 
 
-def _serialize_pre(pre: 'Preinscripcion'):
-    from core.models import Preinscripcion
-    a = pre.alumno
-    u = getattr(a, "user", None)  # u can be None
-
-    # Define helper function or variables to safely get user attributes
-    user_first_name = getattr(u, "first_name", "") if u else ""
-    user_last_name = getattr(u, "last_name", "") if u else ""
-    user_email = getattr(u, "email", "") if u else ""
-
-    extra = copy.deepcopy(pre.datos_extra or {})  # ensure we never mutate DB state
-    pre_estudiante_extra = extra.get("estudiante") if isinstance(extra.get("estudiante"), dict) else {}
-    persisted_estudiante_extra = getattr(a, "datos_extra", {}) or {}
-
-    def ensure_extra(field: str):
-        # Si ya está en la raíz de extra (preinscripción), no tocamos
-        if extra.get(field) not in (None, ""):
-            return
-        # Buscamos en el bloque anidado de la preinscripción o en el persistido del alumno
-        for source in (pre_estudiante_extra, persisted_estudiante_extra):
-            if isinstance(source, dict):
-                value = source.get(field)
-                if value not in (None, ""):
-                    extra[field] = value
-                    return
-
-    campos_a_bubbling = [
-        "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
-        "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
-        "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
-        "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
-        "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
-        "cud_informado", "condicion_salud_informada", "condicion_salud_detalle"
-    ]
-    for campo in campos_a_bubbling:
-        ensure_extra(campo)
-
-    return {
-        "id": pre.id,
-        "codigo": pre.codigo,
-        "estado": pre.estado.lower() if pre.estado else "enviada",
-        "fecha": format_datetime(pre.created_at),
-        "estudiante": {
-            "dni": getattr(a, "dni", ""),
-            "nombre": user_first_name,
-            "apellido": user_last_name,
-            "email": user_email,
-            "telefono": getattr(a, "telefono", ""),
-            "domicilio": getattr(a, "domicilio", ""),
-            "fecha_nacimiento": format_date(getattr(a, "fecha_nacimiento", None)),
-            "cuil": getattr(pre, "cuil", ""),
-        },
-        "carrera": {"id": pre.carrera_id, "nombre": getattr(pre.carrera, "nombre", "")},
-        "datos_extra": extra,
-        "created_at": format_datetime(pre.created_at),
-    }
-
-
 @router.get("/by-code/{codigo}", auth=JWTAuth())
 def obtener_por_codigo(request, codigo: str, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
-    return _serialize_pre(pre)
+    pre = PreinscripcionService.get_by_codigo(codigo)
+    return serialize_pre(pre)
 
 
 @router.get("/estudiante/{dni}", auth=JWTAuth())
@@ -494,7 +300,7 @@ def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = Non
         .filter(alumno__persona__dni=dni)
         .order_by("-anio", "-created_at")
     )
-    return [_serialize_pre(p) for p in preins]
+    return [serialize_pre(p) for p in preins]
 
 
 @router.post(
@@ -506,7 +312,7 @@ def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = Non
 def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_id: Optional[int] = None):
     from core.models import Profesorado, Preinscripcion, PreinscripcionChecklist
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
+    pre = PreinscripcionService.get_by_codigo(codigo)
     carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
     if not carrera:
         return 404, ApiResponse(ok=False, message="Profesorado no encontrado.")
@@ -524,43 +330,43 @@ def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_i
         )
 
     try:
-        datos_extra = copy.deepcopy(pre.datos_extra or {})
-        nueva_kwargs = {
-            "alumno": pre.alumno,
-            "carrera": carrera,
-            "anio": anio,
-            "estado": "Enviada",
-            "activa": True,
-            "datos_extra": datos_extra,
-            "cuil": pre.cuil,
-        }
-        foto_4x4 = getattr(pre, "foto_4x4_dataurl", None)
-        if foto_4x4:
-            nueva_kwargs["foto_4x4_dataurl"] = foto_4x4
-        nueva = Preinscripcion.objects.create(**nueva_kwargs)
-        nueva.codigo = _generar_codigo(nueva.id)
-        nueva.save(update_fields=["codigo"])
-        PreinscripcionChecklist.objects.create(preinscripcion=nueva)
-    except Exception as e:
+        with transaction.atomic():
+            datos_extra = copy.deepcopy(pre.datos_extra or {})
+            nueva_kwargs = {
+                "alumno": pre.alumno,
+                "carrera": carrera,
+                "anio": anio,
+                "estado": "Enviada",
+                "activa": True,
+                "datos_extra": datos_extra,
+                "cuil": pre.cuil,
+            }
+            foto_4x4 = getattr(pre, "foto_4x4_dataurl", None)
+            if foto_4x4:
+                nueva_kwargs["foto_4x4_dataurl"] = foto_4x4
+            nueva = Preinscripcion.objects.create(**nueva_kwargs)
+            nueva.codigo = f"PRE-{datetime.now().year}-{nueva.id:04d}"
+            nueva.save(update_fields=["codigo"])
+            PreinscripcionChecklist.objects.create(preinscripcion=nueva)
+    except IntegrityError as e:
+        logger.exception("Conflicto al agregar profesorado %s al estudiante %s", carrera.id, pre.alumno_id)
+        raise HttpError(409, "Ya existe una preinscripción para esa combinación.") from e
+    except DatabaseError as e:
         logger.exception("No se pudo agregar profesorado %s al estudiante %s", carrera.id, pre.alumno_id)
         raise HttpError(500, "No se pudo procesar la solicitud.") from e
 
     return ApiResponse(
         ok=True,
         message="Se agregó un nuevo profesorado para el estudiante.",
-        data=_serialize_pre(nueva),
+        data=serialize_pre(nueva),
     )
-
-
-
 
 
 @router.put("/by-code/{codigo}", auth=JWTAuth())
 @transaction.atomic
 def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
+    pre = PreinscripcionService.get_by_codigo(codigo)
     if payload.estudiante:
         estudiante = payload.estudiante
         u = pre.alumno.user
@@ -582,7 +388,6 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
 
     if payload.carrera_id:
         pre.carrera_id = payload.carrera_id
-
     if payload.datos_extra:
         pre.datos_extra = payload.datos_extra
 
@@ -592,21 +397,23 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
         for k, v in payload.checklist.dict().items():
             setattr(cl, k, v)
         cl.save()
-        _sync_curso_intro_flag(pre.alumno, payload.checklist.curso_introductorio_aprobado)
+        PreinscripcionService.sync_curso_intro_flag(pre.alumno, payload.checklist.curso_introductorio_aprobado)
 
     try:
         pre.save()
-    except Exception as e:
-        logger.exception("Error guardando preinscripción")
-        raise HttpError(500, f"Error interno al guardar la preinscripción: {e}") from e
-    return _serialize_pre(pre)
+    except IntegrityError as e:
+        logger.exception("Conflicto al guardar preinscripción %s", pre.id)
+        raise HttpError(409, "No se pudo guardar: conflicto de datos.") from e
+    except DatabaseError as e:
+        logger.exception("Error de BD al guardar preinscripción %s", pre.id)
+        raise HttpError(500, "Error interno al guardar la preinscripción.") from e
+    return serialize_pre(pre)
 
 
 @router.post("/by-code/{codigo}/observar", auth=JWTAuth())
 def observar(request, codigo: str, motivo: str | None = None, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
+    pre = PreinscripcionService.get_by_codigo(codigo)
     pre.estado = "Observada"
     pre.save(update_fields=["estado"])
     return {"ok": True, "message": "Observada"}
@@ -614,9 +421,8 @@ def observar(request, codigo: str, motivo: str | None = None, profesorado_id: Op
 
 @router.post("/by-code/{codigo}/rechazar", auth=JWTAuth())
 def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
+    pre = PreinscripcionService.get_by_codigo(codigo)
     pre.estado = "Rechazada"
     pre.save(update_fields=["estado"])
     return {"ok": True, "message": "Rechazada"}
@@ -624,33 +430,10 @@ def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: Op
 
 @router.post("/by-code/{codigo}/cambiar-carrera", auth=JWTAuth())
 def cambiar_carrera(request, codigo: str, carrera_id: int, profesorado_id: Optional[int] = None):
-    from core.models import Preinscripcion, InscripcionMateriaEstudiante, Regularidad, InscripcionMesa
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = _get_pre_by_codigo(codigo)
-    carrera_actual = pre.carrera
-    estudiante = pre.alumno
-
-    hay_inscripciones = InscripcionMateriaEstudiante.objects.filter(
-        estudiante=estudiante,
-        materia__plan_de_estudio__profesorado_id=carrera_actual.id,
-    ).exists()
-    hay_regularidades = Regularidad.objects.filter(
-        estudiante=estudiante,
-        materia__plan_de_estudio__profesorado_id=carrera_actual.id,
-    ).exists()
-    hay_mesas = InscripcionMesa.objects.filter(
-        estudiante=estudiante,
-        mesa__materia__plan_de_estudio__profesorado_id=carrera_actual.id,
-    ).exists()
-
-    if hay_inscripciones or hay_regularidades or hay_mesas:
-        return 400, ApiResponse(
-            ok=False,
-            message=(
-                "No se puede cambiar el profesorado porque el estudiante ya registra inscripciones o notas en esta carrera."
-            ),
-        )
-
-    pre.carrera_id = carrera_id
-    pre.save(update_fields=["carrera"])
-    return _serialize_pre(pre)
+    pre = PreinscripcionService.get_by_codigo(codigo)
+    updated_pre, error_msg = PreinscripcionService.cambiar_carrera(pre, carrera_id)
+    if error_msg:
+        from apps.common.api_schemas import ApiResponse as _ApiResponse
+        return 400, _ApiResponse(ok=False, message=error_msg)
+    return serialize_pre(updated_pre)

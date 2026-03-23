@@ -1,27 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import Box from "@mui/material/Box";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import Typography from "@mui/material/Typography";
-import Stack from "@mui/material/Stack";
-import Paper from "@mui/material/Paper";
 import Alert from "@mui/material/Alert";
-import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import Table from "@mui/material/Table";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableCell from "@mui/material/TableCell";
-import TableBody from "@mui/material/TableBody";
-import TableContainer from "@mui/material/TableContainer";
 import Divider from "@mui/material/Divider";
-import MenuItem from "@mui/material/MenuItem";
-import Autocomplete from "@mui/material/Autocomplete";
-import SearchIcon from '@mui/icons-material/Search';
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -33,12 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   obtenerTrayectoriaEstudiante,
   TrayectoriaDTO,
-  TrayectoriaEventoDTO,
-  TrayectoriaMesaDTO,
   RegularidadVigenciaDTO,
-  RegularidadResumenDTO,
-  fetchEstudiantesAdmin,
-  EstudianteAdminListItemDTO,
 } from '@/api/estudiantes';
 import { CartonTabPanel } from "@/features/estudiantes/carton/CartonTabPanel";
 import { PageHero } from "@/components/ui/GradientTitles";
@@ -46,61 +31,13 @@ import BackButton from "@/components/ui/BackButton";
 import { useAuth } from '@/context/AuthContext';
 import { hasAnyRole } from '@/utils/roles';
 
-function a11yProps(index: number) {
-  return {
-    id: `trayectoria-tab-${index}`,
-    'aria-controls': `trayectoria-panel-${index}`,
-  };
-}
-
-function TabPanel({ children, value, index }: { children: React.ReactNode; value: number; index: number }) {
-  return (
-    <div role="tabpanel" hidden={value !== index} id={`trayectoria-panel-${index}`} aria-labelledby={`trayectoria-tab-${index}`}>
-      {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
-    </div>
-  );
-}
-
-const EVENT_TYPE_LABEL: Record<TrayectoriaEventoDTO['tipo'], string> = {
-  preinscripcion: 'Preinscripcion',
-  inscripcion_materia: 'Inscripcion',
-  regularidad: 'Regularidad',
-  mesa: 'Mesa',
-  tramite: 'Tramite',
-  nota: 'Nota',
-};
-
-const REGIMEN_LABEL: Record<string, string> = {
-  ANU: 'Anual',
-  PCU: '1° Cuat.',
-  SCU: '2° Cuat.',
-};
-
-const formatRegimen = (value?: string | null, fallback?: string | null) => {
-  if (!value) return fallback ?? '-';
-  return REGIMEN_LABEL[value] ?? value;
-};
-
-const formatDate = (value?: string | null) => {
-  if (!value) return '-';
-
-  // Si coincide con formato YYYY-MM-DD (con o sin hora), priorizamos la parte de fecha
-  const dateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (dateMatch) {
-    const [, y, m, d] = dateMatch;
-    return `${d}/${m}/${y}`;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-};
-
-const notaToString = (nota?: number | null) => {
-  if (nota === null || nota === undefined) return '-';
-  if (Number.isInteger(nota)) return String(nota);
-  return nota.toFixed(1).replace(/\\.?0+$/, '');
-};
+import { TabPanel } from './trayectoria/TabPanel';
+import { a11yProps, formatDate } from './trayectoria/utils';
+import EstudianteBuscador from './trayectoria/EstudianteBuscador';
+import TabHistorial from './trayectoria/TabHistorial';
+import TabMesasYRegularidades from './trayectoria/TabMesasYRegularidades';
+import TabRecomendaciones from './trayectoria/TabRecomendaciones';
+import TabVigencias from './trayectoria/TabVigencias';
 
 const TrayectoriaPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user: null }) as any;
@@ -110,18 +47,7 @@ const TrayectoriaPage: React.FC = () => {
   const [tab, setTab] = useState(0);
   const [dniInput, setDniInput] = useState(dniParam || '');
   const [dniQuery, setDniQuery] = useState(dniParam || '');
-  const [filtroTipo, setFiltroTipo] = useState('');
-  const [filtroFecha, setFiltroFecha] = useState('');
-  const [filtroDetalle, setFiltroDetalle] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [filtroMetadata, setFiltroMetadata] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-
-  // Estudiante search state
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchOptions, setSearchOptions] = useState<EstudianteAdminListItemDTO[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchInputValue, setSearchInputValue] = useState('');
 
   const queryKey = useMemo(() => ['trayectoria', canGestionar ? (dniQuery || '').trim() : 'self'], [canGestionar, dniQuery]);
   const trayectoriaQ = useQuery<TrayectoriaDTO>({
@@ -135,66 +61,14 @@ const TrayectoriaPage: React.FC = () => {
   const eventos = trayectoria?.historial ?? [];
   const regularidades = trayectoria?.regularidades ?? [];
   const planesCarton = trayectoria?.carton ?? [];
+  const mesas = trayectoria?.mesas ?? [];
 
-  const tiposEventos = useMemo<TrayectoriaEventoDTO['tipo'][]>(() => {
-    const unique = new Set<TrayectoriaEventoDTO['tipo']>();
-    eventos.forEach((ev: TrayectoriaEventoDTO) => unique.add(ev.tipo));
-    return Array.from(unique);
-  }, [eventos]);
+  const vigencias = useMemo<RegularidadVigenciaDTO[]>(() => {
+    const list = [...(trayectoria?.regularidades_vigencia ?? [])];
+    return list.sort((a, b) => a.vigencia_hasta.localeCompare(b.vigencia_hasta));
+  }, [trayectoria?.regularidades_vigencia]);
 
-  const eventosFiltrados = useMemo(() => {
-    const fechaFilter = filtroFecha.trim().toLowerCase();
-    const detalleFilter = filtroDetalle.trim().toLowerCase();
-    const estadoFilter = filtroEstado.trim().toLowerCase();
-    const metadataFilter = filtroMetadata.trim().toLowerCase();
-
-    return eventos.filter((evento: TrayectoriaEventoDTO) => {
-      if (filtroTipo && evento.tipo !== filtroTipo) {
-        return false;
-      }
-
-      if (fechaFilter) {
-        const fechaRaw = (evento.fecha || '').toLowerCase();
-        const fechaFormateada = formatDate(evento.fecha).toLowerCase();
-        if (!fechaRaw.includes(fechaFilter) && !fechaFormateada.includes(fechaFilter)) {
-          return false;
-        }
-      }
-
-      if (detalleFilter) {
-        const textoDetalle = [
-          evento.titulo,
-          evento.subtitulo,
-          evento.detalle,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!textoDetalle.includes(detalleFilter)) {
-          return false;
-        }
-      }
-
-      if (estadoFilter) {
-        const estadoTexto = (evento.estado || '').toLowerCase();
-        if (!estadoTexto.includes(estadoFilter)) {
-          return false;
-        }
-      }
-
-      if (metadataFilter) {
-        const metadataTexto = Object.entries(evento.metadata || {})
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(' ')
-          .toLowerCase();
-        if (!metadataTexto.includes(metadataFilter)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [eventos, filtroTipo, filtroFecha, filtroDetalle, filtroEstado, filtroMetadata]);
+  const recomendaciones = trayectoria?.recomendaciones;
 
   useEffect(() => {
     if (!planesCarton.length) {
@@ -224,65 +98,14 @@ const TrayectoriaPage: React.FC = () => {
 
     const nombres = trayectoria?.estudiante?.carreras ?? [];
     nombres.forEach((nombre: string, index: number) => {
-      if (usedNombres.has(nombre)) {
-        return;
-      }
-      chips.push({
-        id: `carrera-${index}`,
-        label: nombre,
-        detalle: null,
-        disabled: true,
-      });
+      if (usedNombres.has(nombre)) return;
+      chips.push({ id: `carrera-${index}`, label: nombre, detalle: null, disabled: true });
     });
 
     return chips;
   }, [planesCarton, trayectoria?.estudiante?.carreras]);
 
-  const mesas = trayectoria?.mesas ?? [];
-  const vigencias = useMemo<RegularidadVigenciaDTO[]>(() => {
-    const list = [...(trayectoria?.regularidades_vigencia ?? [])];
-    return list.sort((a, b) => a.vigencia_hasta.localeCompare(b.vigencia_hasta));
-  }, [trayectoria?.regularidades_vigencia]);
-  const recomendaciones = trayectoria?.recomendaciones;
-
-  useEffect(() => {
-    let active = true;
-
-    if (searchInputValue.trim().length < 2) {
-      setSearchOptions([]);
-      return undefined;
-    }
-
-    setSearchLoading(true);
-    const timer = setTimeout(() => {
-      fetchEstudiantesAdmin({ q: searchInputValue, limit: 10 })
-        .then((res) => {
-          if (active) {
-            setSearchOptions(res.items);
-            setSearchLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) setSearchLoading(false);
-        });
-    }, 400);
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [searchInputValue]);
-
-  const handleBuscar = () => {
-    setDniQuery(dniInput.trim());
-  };
-
-  const handleEnter = (evt: React.KeyboardEvent<HTMLInputElement>) => {
-    if (evt.key === 'Enter') {
-      evt.preventDefault();
-      handleBuscar();
-    }
-  };
+  const handleBuscar = () => setDniQuery(dniInput.trim());
 
   const estudiante = trayectoria?.estudiante;
 
@@ -308,64 +131,12 @@ const TrayectoriaPage: React.FC = () => {
       />
 
       {canGestionar && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
-            <Autocomplete
-              open={searchOpen}
-              onOpen={() => setSearchOpen(true)}
-              onClose={() => setSearchOpen(false)}
-              inputValue={searchInputValue}
-              onInputChange={(_, newValue) => setSearchInputValue(newValue)}
-              options={searchOptions}
-              loading={searchLoading}
-              getOptionLabel={(option) => `${option.apellido}, ${option.nombre} (${option.dni})`}
-              isOptionEqualToValue={(option, value) => option.dni === value.dni}
-              onChange={(_, value) => {
-                if (value) {
-                  setDniInput(value.dni);
-                  setDniQuery(value.dni);
-                }
-              }}
-              filterOptions={(x) => x} // Backend already filters
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Buscar por Nombre, Apellido o DNI"
-                  size="small"
-                  sx={{ minWidth: 280 }}
-                  InputProps={{
-                    ...params.InputProps,
-                    startAdornment: (
-                      <Stack direction="row" alignItems="center" spacing={1} sx={{ pl: 1 }}>
-                        <SearchIcon fontSize="small" color="action" />
-                        {params.InputProps.startAdornment}
-                      </Stack>
-                    ),
-                    endAdornment: (
-                      <>
-                        {searchLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-            />
-            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-            <TextField
-              label="DNI manual"
-              value={dniInput}
-              size="small"
-              onChange={(e) => setDniInput(e.target.value)}
-              onKeyDown={handleEnter}
-              sx={{ maxWidth: 160 }}
-              helperText="O presiona Enter aquí"
-            />
-            <Button variant="contained" size="small" onClick={handleBuscar} sx={{ height: 40 }}>
-              Consultar
-            </Button>
-          </Stack>
-        </Paper>
+        <EstudianteBuscador
+          dniInput={dniInput}
+          setDniInput={setDniInput}
+          onBuscar={handleBuscar}
+          onSelectEstudiante={(dni) => { setDniInput(dni); setDniQuery(dni); }}
+        />
       )}
 
       {estudiante && (
@@ -427,134 +198,8 @@ const TrayectoriaPage: React.FC = () => {
           <Divider />
           <Box sx={{ p: 2 }}>
             <TabPanel value={tab} index={0}>
-              {eventos.length === 0 ? (
-                <Alert severity="info">Sin eventos registrados en la trayectoria.</Alert>
-              ) : (
-                <Stack spacing={2}>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap">
-                    <TextField
-                      select
-                      size="small"
-                      label="Tipo"
-                      value={filtroTipo}
-                      onChange={(e) => setFiltroTipo(e.target.value)}
-                      sx={{ minWidth: 180 }}
-                    >
-                      <MenuItem value="">Todos</MenuItem>
-                      {tiposEventos.map((tipo) => (
-                        <MenuItem key={tipo} value={tipo}>{EVENT_TYPE_LABEL[tipo]}</MenuItem>
-                      ))}
-                    </TextField>
-                    <TextField
-                      size="small"
-                      label="Fecha (texto)"
-                      value={filtroFecha}
-                      onChange={(e) => setFiltroFecha(e.target.value)}
-                      sx={{ minWidth: 180 }}
-                      placeholder="Ej: 2025-10 o 10/2025"
-                    />
-                    <TextField
-                      size="small"
-                      label="Detalle"
-                      value={filtroDetalle}
-                      onChange={(e) => setFiltroDetalle(e.target.value)}
-                      sx={{ minWidth: 220 }}
-                    />
-                    <TextField
-                      size="small"
-                      label="Estado"
-                      value={filtroEstado}
-                      onChange={(e) => setFiltroEstado(e.target.value)}
-                      sx={{ minWidth: 180 }}
-                    />
-                    <TextField
-                      size="small"
-                      label="Datos extra"
-                      value={filtroMetadata}
-                      onChange={(e) => setFiltroMetadata(e.target.value)}
-                      sx={{ minWidth: 220 }}
-                    />
-                    {(filtroTipo || filtroFecha || filtroDetalle || filtroEstado || filtroMetadata) && (
-                      <Button variant="text" size="small" onClick={() => {
-                        setFiltroTipo('');
-                        setFiltroFecha('');
-                        setFiltroDetalle('');
-                        setFiltroEstado('');
-                        setFiltroMetadata('');
-                      }}>
-                        Limpiar filtros
-                      </Button>
-                    )}
-                  </Stack>
-
-                  {eventosFiltrados.length === 0 ? (
-                    <Alert severity="info">No se encontraron eventos con los filtros aplicados.</Alert>
-                  ) : (
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ width: 120 }}>Tipo</TableCell>
-                            <TableCell sx={{ width: 170 }}>Fecha</TableCell>
-                            <TableCell sx={{ width: 320 }}>Detalle</TableCell>
-                            <TableCell sx={{ width: 90 }}>Estado</TableCell>
-                            <TableCell sx={{ width: 420 }}>Datos extra</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {eventosFiltrados.map((evento) => {
-                            const metadata = Object.entries(evento.metadata || {}).filter(([, value]) => value !== undefined && value !== null && value !== '');
-                            const fechaLegible = formatDate(evento.fecha);
-                            return (
-                              <TableRow key={evento.id}>
-                                <TableCell sx={{ width: 120 }}>
-                                  <Chip label={EVENT_TYPE_LABEL[evento.tipo]} size="small" color="primary" />
-                                </TableCell>
-                                <TableCell sx={{ width: 170 }}>{fechaLegible}</TableCell>
-                                <TableCell sx={{ width: 320 }}>
-                                  <Typography variant="subtitle2" fontWeight={600}>{evento.titulo}</Typography>
-                                  {evento.subtitulo && (
-                                    <Typography variant="body2" color="text.secondary">{evento.subtitulo}</Typography>
-                                  )}
-                                  {evento.detalle && (
-                                    <Typography variant="body2" color="text.secondary">{evento.detalle}</Typography>
-                                  )}
-                                </TableCell>
-                                <TableCell sx={{ width: 90 }}>
-                                  {evento.estado ? (
-                                    <Chip label={evento.estado} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 22 }} />
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">-</Typography>
-                                  )}
-                                </TableCell>
-                                <TableCell sx={{ width: 420 }}>
-                                  {metadata.length ? (
-                                    <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                                      {metadata.map(([key, value]) => (
-                                        <Chip
-                                          key={`${evento.id}-${key}`}
-                                          label={`${key}: ${value}`}
-                                          size="small"
-                                          variant="outlined"
-                                          sx={{ fontSize: '0.75rem', height: 22 }}
-                                        />
-                                      ))}
-                                    </Stack>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">-</Typography>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
-                </Stack>
-              )}
+              <TabHistorial eventos={eventos} />
             </TabPanel>
-
             <TabPanel value={tab} index={1}>
               {trayectoria && (
                 <CartonTabPanel
@@ -564,215 +209,14 @@ const TrayectoriaPage: React.FC = () => {
                 />
               )}
             </TabPanel>
-
             <TabPanel value={tab} index={2}>
-              <Stack spacing={3}>
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>Regularidades recientes</Typography>
-                  {regularidades.length === 0 ? (
-                    <Alert severity="info">Sin registros de regularidad.</Alert>
-                  ) : (
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Materia</TableCell>
-                          <TableCell>Situacion</TableCell>
-                          <TableCell>Fecha cierre</TableCell>
-                          <TableCell>Vigencia</TableCell>
-                          <TableCell>Nota</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {regularidades.map((reg: RegularidadResumenDTO) => (
-                          <TableRow key={`reg-${reg.id}`}>
-                            <TableCell>{reg.materia_nombre}</TableCell>
-                            <TableCell>{reg.situacion_display}</TableCell>
-                            <TableCell>{formatDate(reg.fecha_cierre)}</TableCell>
-                            <TableCell>
-                              {reg.vigencia_hasta ? (
-                                <Stack direction="row" spacing={1} alignItems="center">
-                                  <Typography variant="body2">{formatDate(reg.vigencia_hasta)}</Typography>
-                                  {typeof reg.dias_restantes === 'number' && (
-                                    <Chip label={`${reg.dias_restantes} días`} size="small" color={reg.dias_restantes >= 0 ? 'success' : 'error'} />
-                                  )}
-                                </Stack>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {reg.nota_final !== undefined && reg.nota_final !== null
-                                ? notaToString(reg.nota_final)
-                                : (reg.nota_tp !== undefined && reg.nota_tp !== null ? notaToString(reg.nota_tp) : '-')}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>Mesas de examen</Typography>
-                  {mesas.length === 0 ? (
-                    <Alert severity="info">Sin inscripciones a mesas registradas.</Alert>
-                  ) : (
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Fecha</TableCell>
-                          <TableCell>Materia</TableCell>
-                          <TableCell>Tipo</TableCell>
-                          <TableCell>Estado</TableCell>
-                          <TableCell>Aula</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {mesas.map((mesa: TrayectoriaMesaDTO) => (
-                          <TableRow key={`mesa-${mesa.id}`}>
-                            <TableCell>{formatDate(mesa.fecha)}</TableCell>
-                            <TableCell>{mesa.materia_nombre}</TableCell>
-                            <TableCell>{mesa.tipo_display}</TableCell>
-                            <TableCell>{mesa.estado_display}</TableCell>
-                            <TableCell>{mesa.aula || '-'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </Box>
-              </Stack>
+              <TabMesasYRegularidades regularidades={regularidades} mesas={mesas} />
             </TabPanel>
-
             <TabPanel value={tab} index={3}>
-              <Stack spacing={2}>
-                {(recomendaciones?.alertas ?? []).map((alerta: string, idx: number) => (
-                  <Alert key={`alerta-${idx}`} severity="warning">{alerta}</Alert>
-                ))}
-
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>Materias sugeridas</Typography>
-                  {(recomendaciones?.materias_sugeridas ?? []).length === 0 ? (
-                    <Alert severity="info">No hay materias sugeridas en este momento.</Alert>
-                  ) : (
-                    <Grid container spacing={2}>
-                      {(recomendaciones?.materias_sugeridas ?? []).map((mat) => (
-                        <Grid item xs={12} md={6} key={`sug-${mat.materia_id}`}>
-                          <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                            <Stack spacing={1}>
-                              <Typography variant="subtitle1" fontWeight={700}>{mat.materia_nombre}</Typography>
-                              <Stack direction="row" spacing={1}>
-                                <Chip label={`Año ${mat.anio}`} size="small" color="primary" />
-                                <Chip label={mat.cuatrimestre} size="small" />
-                              </Stack>
-                              <Stack spacing={0.5}>
-                                {mat.motivos.map((motivo, idx) => (
-                                  <Typography key={idx} variant="body2" color="text.secondary">• {motivo}</Typography>
-                                ))}
-                              </Stack>
-                              {mat.alertas.length > 0 && (
-                                <Alert severity="warning" variant="outlined">
-                                  {mat.alertas.join(' / ')}
-                                </Alert>
-                              )}
-                            </Stack>
-                          </Paper>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  )}
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>Finales habilitados</Typography>
-                  {(recomendaciones?.finales_habilitados ?? []).length === 0 ? (
-                    <Alert severity="info">No hay finales habilitados pendientes.</Alert>
-                  ) : (
-                    <Grid container spacing={2}>
-                      {(recomendaciones?.finales_habilitados ?? []).map((item) => (
-                        <Grid item xs={12} md={6} key={`final-${item.materia_id}`}>
-                          <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                            <Stack spacing={1}>
-                              <Typography variant="subtitle1" fontWeight={700}>{item.materia_nombre}</Typography>
-                              <Typography variant="body2">Regularidad: {formatDate(item.regularidad_fecha)}</Typography>
-                              <Typography variant="body2">Vigencia hasta: {item.vigencia_hasta ? formatDate(item.vigencia_hasta) : '-'}</Typography>
-                              {typeof item.dias_restantes === 'number' && (
-                                <Chip
-                                  label={`${item.dias_restantes} días`}
-                                  size="small"
-                                  color={item.dias_restantes >= 0 ? 'success' : 'error'}
-                                />
-                              )}
-                              {item.comentarios.length > 0 && (
-                                <Stack spacing={0.5}>
-                                  {item.comentarios.map((comentario, idx) => (
-                                    <Typography key={idx} variant="body2" color="text.secondary">• {comentario}</Typography>
-                                  ))}
-                                </Stack>
-                              )}
-                              {item.correlativas_aprobadas && item.correlativas_aprobadas.length > 0 && (
-                                <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed', borderColor: 'divider' }}>
-                                  <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom>
-                                    Habilitado por:
-                                  </Typography>
-                                  <Stack spacing={0}>
-                                    {item.correlativas_aprobadas.map((c, i) => (
-                                      <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                        • {c}
-                                      </Typography>
-                                    ))}
-                                  </Stack>
-                                </Box>
-                              )}
-                            </Stack>
-                          </Paper>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  )}
-                </Box>
-              </Stack>
+              <TabRecomendaciones recomendaciones={recomendaciones!} />
             </TabPanel>
-
             <TabPanel value={tab} index={4}>
-              {vigencias.length === 0 ? (
-                <Alert severity="info">No se registran regularidades vigentes.</Alert>
-              ) : (
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Materia</TableCell>
-                      <TableCell>Situacion</TableCell>
-                      <TableCell>Fecha cierre</TableCell>
-                      <TableCell>Vigencia hasta</TableCell>
-                      <TableCell>Intentos</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {vigencias.map((vig: RegularidadVigenciaDTO) => (
-                      <TableRow key={`vig-${vig.materia_id}`}>
-                        <TableCell>{vig.materia_nombre}</TableCell>
-                        <TableCell>{vig.situacion_display}</TableCell>
-                        <TableCell>{formatDate(vig.fecha_cierre)}</TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="body2">{formatDate(vig.vigencia_hasta)}</Typography>
-                            <Chip
-                              label={vig.vigente ? 'Vigente' : 'Vencida'}
-                              size="small"
-                              color={vig.vigente ? 'success' : 'error'}
-                            />
-                            <Chip
-                              label={`${vig.dias_restantes} días`}
-                              size="small"
-                              color={vig.dias_restantes >= 0 ? 'primary' : 'error'}
-                            />
-                          </Stack>
-                        </TableCell>
-                        <TableCell>{vig.intentos_usados} / {vig.intentos_max}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+              <TabVigencias vigencias={vigencias} />
             </TabPanel>
           </Box>
         </Paper>

@@ -1,5 +1,7 @@
 from datetime import datetime
 import logging
+import secrets
+import string
 from django.db import transaction
 from django.contrib.auth.models import User, Group
 from core.models import Persona, Estudiante, Preinscripcion, PreinscripcionChecklist
@@ -19,6 +21,11 @@ def convert_dates_to_iso(data_dict):
 
 def _generar_codigo(pk: int) -> str:
     return f"PRE-{datetime.now().year}-{pk:04d}"
+
+def _generar_password_segura() -> str:
+    """Genera una contraseña aleatoria de 12 caracteres (letras + dígitos)."""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(12))
 
 class PreinscripcionService:
     @staticmethod
@@ -126,7 +133,7 @@ class PreinscripcionService:
         # Auth & Password
         estudiante = pre.alumno
         user = estudiante.user
-        default_password = f"Pass{estudiante.dni}"
+        default_password = _generar_password_segura()
         user.set_password(default_password)
         user.save(update_fields=["password"])
 
@@ -142,3 +149,51 @@ class PreinscripcionService:
             "legajo": getattr(pre.checklist, "estado_legajo", "PEN"),
             "password_inicial": default_password,
         }
+
+    @staticmethod
+    def get_by_codigo(codigo: str):
+        from core.models import Preinscripcion
+        from ninja.errors import HttpError
+        pre = Preinscripcion.objects.filter(codigo__iexact=codigo).select_related("alumno", "carrera").first()
+        if not pre:
+            raise HttpError(404, "Preinscripción no encontrada")
+        return pre
+
+    @staticmethod
+    def sync_curso_intro_flag(estudiante, nuevo_valor) -> None:
+        if nuevo_valor is None:
+            return
+        aprobado = bool(nuevo_valor)
+        if estudiante.curso_introductorio_aprobado != aprobado:
+            estudiante.curso_introductorio_aprobado = aprobado
+            estudiante.save(update_fields=["curso_introductorio_aprobado"])
+
+    @staticmethod
+    @transaction.atomic
+    def cambiar_carrera(pre, carrera_id: int) -> dict | tuple:
+        from core.models import InscripcionMateriaEstudiante, Regularidad, InscripcionMesa
+        from ninja.errors import HttpError
+        carrera_actual = pre.carrera
+        estudiante = pre.alumno
+
+        hay_inscripciones = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=estudiante,
+            materia__plan_de_estudio__profesorado_id=carrera_actual.id,
+        ).exists()
+        hay_regularidades = Regularidad.objects.filter(
+            estudiante=estudiante,
+            materia__plan_de_estudio__profesorado_id=carrera_actual.id,
+        ).exists()
+        hay_mesas = InscripcionMesa.objects.filter(
+            estudiante=estudiante,
+            mesa__materia__plan_de_estudio__profesorado_id=carrera_actual.id,
+        ).exists()
+
+        if hay_inscripciones or hay_regularidades or hay_mesas:
+            return None, (
+                "No se puede cambiar el profesorado porque el estudiante ya registra inscripciones o notas en esta carrera."
+            )
+
+        pre.carrera_id = carrera_id
+        pre.save(update_fields=["carrera"])
+        return pre, None

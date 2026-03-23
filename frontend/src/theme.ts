@@ -1,4 +1,3 @@
-console.log('[Theme] Entrando a theme.ts');
 import { createTheme } from "@mui/material";
 
 const PRIMARY_TERRACOTTA = "#B7694E";
@@ -83,4 +82,3 @@ export const theme = createTheme({
     },
   },
 });
-console.log('[Theme] createTheme completado');

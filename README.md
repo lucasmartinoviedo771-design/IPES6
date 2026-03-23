@@ -4,7 +4,7 @@ Sistema integral para preinscripción, cursadas, notas y trámites administrativ
 
 ## Arquitectura
 - **Backend:** Django 5 + Django Ninja + MySQL. Gestión de dependencias con `uv`.
-- **Frontend:** React 18 + Vite 7 + TypeScript + MUI. Sincronización con TanStack Query.
+- **Frontend:** React 18 + Vite 8 + TypeScript + MUI. Sincronización con TanStack Query.
 - **Infraestructura:** Despliegue en contenedores Docker (Nginx como proxy inverso).
 
 ## Documentación Consolidada

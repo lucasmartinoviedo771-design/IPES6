@@ -35,7 +35,7 @@ def list_preinscriptions(
     carrera_id: Optional[int] = None,
     search: Optional[str] = None
 ):
-    qs = Preinscripcion.objects.all().select_related('estudiante__user', 'carrera')
+    qs = Preinscripcion.objects.all().select_related('estudiante', 'estudiante__user', 'carrera')
     
     if anio:
         qs = qs.filter(anio=anio)

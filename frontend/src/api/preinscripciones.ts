@@ -1,5 +1,6 @@
 import { client } from "@/api/client";
 import dayjs from "dayjs";
+import type { PreinscripcionForm } from "@/components/preinscripcion/schema";
 
 export interface ApiResponse<T = unknown> {
   ok: boolean;
@@ -9,7 +10,7 @@ export interface ApiResponse<T = unknown> {
 
 const d = (s?: string) => (s ? dayjs(s).format("YYYY-MM-DD") : null);
 
-export function mapFormToPayload(v: any) {
+export function mapFormToPayload(v: PreinscripcionForm) {
   return {
     // personales
     apellido: v.apellido, nombres: v.nombres, dni: v.dni, cuil: v.cuil,
@@ -22,7 +23,7 @@ export function mapFormToPayload(v: any) {
     emergencia_telefono: v.emergencia_telefono,
     emergencia_parentesco: v.emergencia_parentesco,
     // laborales
-    trabaja: !!v.trabaja, empleador: v.empleador, horario: v.horario, dom_trabajo: v.dom_trabajo,
+    trabaja: !!v.trabaja, empleador: v.empleador, horario: v.horario_trabajo,
     // estudios
     sec_titulo: v.sec_titulo, sec_establecimiento: v.sec_establecimiento,
     sec_fecha_egreso: d(v.sec_fecha_egreso),
@@ -45,7 +46,7 @@ export const obtenerPreinscripcion = (id: number) =>
 export const obtenerPorCodigo = (codigo: string) =>
   client.get(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`).then(r => r.data);
 
-export const patchPreByCodigo = (codigo: string, values: any) =>
+export const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
   client.patch(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`, mapFormToPayload(values)).then(r => r.data);
 
 export const confirmarPreinscripcionById = (id: number, data: any) =>
@@ -109,7 +110,9 @@ export interface PreinscripcionDTO {
     cuil?: string;
   };
   carrera: { id: number; nombre: string; es_certificacion_docente?: boolean };
-  // ...otros campos que ya tengas
+  anio?: number;
+  datos_extra?: Record<string, unknown>;
+  foto_4x4_dataurl?: string;
 }
 
 export async function apiGetPreinscripcionByCodigo(codigo: string) {

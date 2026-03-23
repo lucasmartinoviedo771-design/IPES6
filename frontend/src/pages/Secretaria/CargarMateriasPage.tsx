@@ -28,6 +28,18 @@ import { toast } from "@/utils/toast";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
 
+interface PlanDeEstudio {
+  id: number;
+  profesorado_id: number;
+  resolucion: string;
+}
+
+interface Profesorado {
+  id: number;
+  nombre: string;
+  duracion_anios: number;
+}
+
 interface Materia {
   id: number;
   plan_de_estudio_id: number;
@@ -75,7 +87,7 @@ export default function CargarMateriasPage() {
   const { planId } = useParams<{ planId: string }>();
   const currentPlanId = planId ? parseInt(planId) : null;
 
-  const { data: planDeEstudio, isLoading: isLoadingPlanDeEstudio } = useQuery<any>({
+  const { data: planDeEstudio, isLoading: isLoadingPlanDeEstudio } = useQuery<PlanDeEstudio | null>({
     queryKey: ["planDeEstudio", currentPlanId],
     queryFn: async () => {
       if (!currentPlanId) return null;
@@ -85,7 +97,7 @@ export default function CargarMateriasPage() {
     enabled: !!currentPlanId,
   });
 
-  const { data: profesorado, isLoading: isLoadingProfesorado } = useQuery<any>({
+  const { data: profesorado, isLoading: isLoadingProfesorado } = useQuery<Profesorado | null>({
     queryKey: ["profesorado", planDeEstudio?.profesorado_id],
     queryFn: async () => {
       if (!planDeEstudio?.profesorado_id) return null;
@@ -216,8 +228,8 @@ export default function CargarMateriasPage() {
       reset();
       toast.success("Materia creada exitosamente");
     },
-    onError: (error: any) => {
-      console.error("Materia POST error:", error.response?.data);
+    onError: (error: Error) => {
+      console.error("Materia POST error:", (error as any).response?.data);
       toast.error("Error al crear la materia");
     },
   });
@@ -236,8 +248,8 @@ export default function CargarMateriasPage() {
       reset();
       toast.success("Materia actualizada exitosamente");
     },
-    onError: (error: any) => {
-      console.error("Materia PUT error:", error.response?.data);
+    onError: (error: Error) => {
+      console.error("Materia PUT error:", (error as any).response?.data);
       toast.error("Error al actualizar la materia");
     },
   });
@@ -254,8 +266,8 @@ export default function CargarMateriasPage() {
       queryClient.invalidateQueries({ queryKey: ["materias", currentPlanId] });
       toast.success("Materia eliminada exitosamente");
     },
-    onError: (error: any) => {
-      console.error("Materia DELETE error:", error.response?.data);
+    onError: (error: Error) => {
+      console.error("Materia DELETE error:", (error as any).response?.data);
       toast.error("Error al eliminar la materia");
     },
   });
@@ -319,7 +331,7 @@ export default function CargarMateriasPage() {
               onChange={(e) => setFilterAnio(e.target.value as number | '')}
             >
               <MenuItem value="">Todos</MenuItem>
-              {profesorado?.duracion_anios && Array.from({ length: profesorado.duracion_anios }, (_, i) => i + 1).map(year => (
+              {Array.from({ length: profesorado?.duracion_anios ?? 0 }, (_, i) => i + 1).map(year => (
                 <MenuItem key={year} value={year}>{year}° Año</MenuItem>
               ))}
             </Select>
@@ -538,7 +550,7 @@ export default function CargarMateriasPage() {
               onChange={(e) => setFilterAnio(e.target.value as number | '')}
             >
               <MenuItem value="">Todos</MenuItem>
-              {profesorado?.duracion_anios && Array.from({ length: profesorado.duracion_anios }, (_, i) => i + 1).map(year => (
+              {Array.from({ length: profesorado?.duracion_anios ?? 0 }, (_, i) => i + 1).map(year => (
                 <MenuItem key={year} value={year}>{year}º Año</MenuItem>
               ))}
             </Select>
@@ -602,33 +614,33 @@ export default function CargarMateriasPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>ID</TableCell>
-                  <TableCell sortDirection={sortBy==='anio' ? sortDir : false as any}>
-                    <TableSortLabel active={sortBy==='anio'} direction={sortBy==='anio'?sortDir:'asc'} onClick={() => { setSortBy('anio'); setSortDir(d=> (sortBy!=='anio' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                  <TableCell sortDirection={sortBy==='anio' ? sortDir : false}>
+                    <TableSortLabel active={sortBy==='anio'} direction={sortBy==='anio'?sortDir:'asc'} onClick={() => { setSortBy('anio'); setSortDir(d=> sortBy!=='anio' ? 'asc' : (d==='asc'?'desc':'asc')); }}>
                       Año
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sortDirection={sortBy==='nombre' ? sortDir : false as any}>
-                    <TableSortLabel active={sortBy==='nombre'} direction={sortBy==='nombre'?sortDir:'asc'} onClick={() => { setSortBy('nombre'); setSortDir(d=> (sortBy!=='nombre' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                  <TableCell sortDirection={sortBy==='nombre' ? sortDir : false}>
+                    <TableSortLabel active={sortBy==='nombre'} direction={sortBy==='nombre'?sortDir:'asc'} onClick={() => { setSortBy('nombre'); setSortDir(d=> sortBy!=='nombre' ? 'asc' : (d==='asc'?'desc':'asc')); }}>
                       Nombre
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sortDirection={sortBy==='horas' ? sortDir : false as any}>
-                    <TableSortLabel active={sortBy==='horas'} direction={sortBy==='horas'?sortDir:'asc'} onClick={() => { setSortBy('horas'); setSortDir(d=> (sortBy!=='horas' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                  <TableCell sortDirection={sortBy==='horas' ? sortDir : false}>
+                    <TableSortLabel active={sortBy==='horas'} direction={sortBy==='horas'?sortDir:'asc'} onClick={() => { setSortBy('horas'); setSortDir(d=> sortBy!=='horas' ? 'asc' : (d==='asc'?'desc':'asc')); }}>
                       Carga Horaria
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sortDirection={sortBy==='formato' ? sortDir : false as any}>
-                    <TableSortLabel active={sortBy==='formato'} direction={sortBy==='formato'?sortDir:'asc'} onClick={() => { setSortBy('formato'); setSortDir(d=> (sortBy!=='formato' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                  <TableCell sortDirection={sortBy==='formato' ? sortDir : false}>
+                    <TableSortLabel active={sortBy==='formato'} direction={sortBy==='formato'?sortDir:'asc'} onClick={() => { setSortBy('formato'); setSortDir(d=> sortBy!=='formato' ? 'asc' : (d==='asc'?'desc':'asc')); }}>
                       Formato
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sortDirection={sortBy==='tipo_formacion' ? sortDir : false as any}>
-                    <TableSortLabel active={sortBy==='tipo_formacion'} direction={sortBy==='tipo_formacion'?sortDir:'asc'} onClick={() => { setSortBy('tipo_formacion'); setSortDir(d=> (sortBy!=='tipo_formacion' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                  <TableCell sortDirection={sortBy==='tipo_formacion' ? sortDir : false}>
+                    <TableSortLabel active={sortBy==='tipo_formacion'} direction={sortBy==='tipo_formacion'?sortDir:'asc'} onClick={() => { setSortBy('tipo_formacion'); setSortDir(d=> sortBy!=='tipo_formacion' ? 'asc' : (d==='asc'?'desc':'asc')); }}>
                       Formación
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sortDirection={sortBy==='regimen' ? sortDir : false as any}>
-                    <TableSortLabel active={sortBy==='regimen'} direction={sortBy==='regimen'?sortDir:'asc'} onClick={() => { setSortBy('regimen'); setSortDir(d=> (sortBy!=='regimen' ? 'asc' : (d==='asc'?'desc':'asc')) as any); }}>
+                  <TableCell sortDirection={sortBy==='regimen' ? sortDir : false}>
+                    <TableSortLabel active={sortBy==='regimen'} direction={sortBy==='regimen'?sortDir:'asc'} onClick={() => { setSortBy('regimen'); setSortDir(d=> sortBy!=='regimen' ? 'asc' : (d==='asc'?'desc':'asc')); }}>
                       Cursada
                     </TableSortLabel>
                   </TableCell>
