@@ -2,6 +2,7 @@
 
 services:
   db:
+    container_name: ipes6-db-dev
     image: mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
     restart: always
@@ -24,6 +25,7 @@ services:
       - .env
 
   backend:
+    container_name: ipes6-backend-dev
     build:
       context: .
       dockerfile: Dockerfile
@@ -55,6 +57,7 @@ services:
       - "127.0.0.1:8000:8000"
 
   frontend:
+    container_name: ipes6-frontend-dev
     build:
       context: ../frontend
       dockerfile: Dockerfile
