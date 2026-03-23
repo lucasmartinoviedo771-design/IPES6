@@ -1,5 +1,7 @@
 // src/components/preinscripcion/steps/DatosPersonales.tsx
-import { Grid, MenuItem, TextField } from "@mui/material";
+import Grid from "@mui/material/Grid";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import { Controller, useFormContext } from "react-hook-form";

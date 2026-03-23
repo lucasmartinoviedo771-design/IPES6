@@ -1,9 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getSystemLogs, resolveSystemLog, syncRepairSystem } from "@/api/system";
 import { useState, useMemo } from "react";
-import {
-    Box, Typography, Card, CardContent, CardActions, Button, Chip, Stack, Alert, Divider
-} from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardActions from "@mui/material/CardActions";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
+import Alert from "@mui/material/Alert";
+import Divider from "@mui/material/Divider";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningIcon from "@mui/icons-material/Warning";
 import FilterListIcon from "@mui/icons-material/FilterList";

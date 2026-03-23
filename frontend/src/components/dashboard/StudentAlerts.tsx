@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Alert, AlertTitle, Stack, Box, Collapse } from "@mui/material";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import Collapse from "@mui/material/Collapse";
 import { getMisAlertas, CorrelativaCaidaItem } from "@/api/reportes";
 
 export default function StudentAlerts() {

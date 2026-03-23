@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { Box, CircularProgress } from "@mui/material";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole, hasAllRoles } from "@/utils/roles";

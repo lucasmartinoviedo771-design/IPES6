@@ -1,20 +1,19 @@
 import { useRef } from 'react';
-import {
-  Box,
-  Paper,
-  Button,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Grid,
-  Stack,
-  Divider,
-} from '@mui/material';
-import { Download, Print } from '@mui/icons-material';
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import Divider from "@mui/material/Divider";
+import Download from "@mui/icons-material/Download";
+import Print from "@mui/icons-material/Print";
 import { useSnackbar } from 'notistack';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';

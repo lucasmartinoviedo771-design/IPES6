@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import { Box, Typography, Stack } from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Stack from "@mui/material/Stack";
 import { HorarioTablaDTO, HorarioMateriaCeldaDTO } from "@/api/estudiantes";
 
 // Colores institucionales por profesorado (ajustables)

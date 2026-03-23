@@ -1,4 +1,7 @@
-import { Box, Stack, Typography, SxProps, Theme } from "@mui/material";
+import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import type { SxProps, Theme } from "@mui/material";
 import { ReactNode } from "react";
 import {
   INSTITUTIONAL_TERRACOTTA,

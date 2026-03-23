@@ -1,6 +1,12 @@
 // src/components/preinscripcion/steps/Confirmacion.tsx
 import { useFormContext } from "react-hook-form";
-import { Button, Box, Grid, Typography, Divider, Checkbox, FormControlLabel } from "@mui/material";
+import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import { generarPlanillaPDF, DocsFlags } from "@/utils/pdf"; // <-- importa el helper
 import { PreinscripcionForm } from "../schema";
 import React, { useEffect, useState } from "react";

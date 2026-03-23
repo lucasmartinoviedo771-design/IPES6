@@ -1,13 +1,15 @@
 import { Outlet, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/router/guards";
 
-import DashboardPage from "@/pages/DashboardPage";
-import PreinscripcionesPage from "@/pages/PreinscripcionesPage";
-import MensajesInboxPage from "@/pages/Mensajes/InboxPage";
-import CarrerasPage from "@/pages/CarrerasPage";
-import MateriaInscriptosPage from "@/pages/MateriaInscriptosPage";
-import ReportesPage from "@/pages/ReportesPage";
-import ConfirmarInscripcionPage from "@/pages/ConfirmarInscripcionPage";
+import { lazyPage } from "@/utils/lazy";
+
+const DashboardPage = lazyPage(() => import("@/pages/DashboardPage"));
+const PreinscripcionesPage = lazyPage(() => import("@/pages/PreinscripcionesPage"));
+const MensajesInboxPage = lazyPage(() => import("@/pages/Mensajes/InboxPage"));
+const CarrerasPage = lazyPage(() => import("@/pages/CarrerasPage"));
+const MateriaInscriptosPage = lazyPage(() => import("@/pages/MateriaInscriptosPage"));
+const ReportesPage = lazyPage(() => import("@/pages/ReportesPage"));
+const ConfirmarInscripcionPage = lazyPage(() => import("@/pages/ConfirmarInscripcionPage"));
 
 const managementRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente"];
 const preinscripcionesRoles: string[] = ["admin", "secretaria", "bedel"];

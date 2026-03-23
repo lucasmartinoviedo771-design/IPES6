@@ -1,26 +1,10 @@
-import { ReactNode, Suspense, lazy } from "react";
+import { ReactNode } from "react";
 import { Navigate, Route } from "react-router-dom";
-import { Box, CircularProgress } from "@mui/material";
-
 import { PublicOnlyRoute } from "@/router/guards";
+import { lazyPage } from "@/utils/lazy";
 
 type PublicRoutesProps = {
   preinscripcionElement: ReactNode;
-};
-
-const SuspenseFallback = (
-  <Box p={4} textAlign="center">
-    <CircularProgress size={24} />
-  </Box>
-);
-
-const lazyPage = (importer: () => Promise<{ default: React.ComponentType<any> }>) => {
-  const Component = lazy(importer);
-  return () => (
-    <Suspense fallback={SuspenseFallback}>
-      <Component />
-    </Suspense>
-  );
 };
 
 const LoginPage = lazyPage(() => import("@/pages/LoginPage"));

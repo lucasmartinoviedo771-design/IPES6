@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Alert, Stack, TextField, MenuItem, Typography } from '@mui/material';
+import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import Typography from "@mui/material/Typography";
 
 import { CartonViewer } from './CartonViewer';
 import { CartonData, StudentInfo, ExamRecord } from '@/types/carton';

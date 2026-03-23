@@ -1,25 +1,21 @@
 import { useMemo } from "react";
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Stack,
-  Paper,
-} from "@mui/material";
-import {
-  TrendingUp,
-  Event,
-  CompareArrows,
-  School,
-  Assignment,
-  CalendarMonth,
-  VerifiedUser,
-  EventNote,
-  AccessTime,
-  ManageAccounts,
-} from "@mui/icons-material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Grid from "@mui/material/Grid";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Stack from "@mui/material/Stack";
+import Paper from "@mui/material/Paper";
+import TrendingUp from "@mui/icons-material/TrendingUp";
+import Event from "@mui/icons-material/Event";
+import CompareArrows from "@mui/icons-material/CompareArrows";
+import School from "@mui/icons-material/School";
+import Assignment from "@mui/icons-material/Assignment";
+import CalendarMonth from "@mui/icons-material/CalendarMonth";
+import VerifiedUser from "@mui/icons-material/VerifiedUser";
+import EventNote from "@mui/icons-material/EventNote";
+import AccessTime from "@mui/icons-material/AccessTime";
+import ManageAccounts from "@mui/icons-material/ManageAccounts";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
@@ -31,7 +27,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { fetchCursoIntroEstado } from "@/api/cursoIntro";
 import { getMisAlertas, CorrelativaCaidaItem } from "@/api/reportes";
-import { Alert, AlertTitle } from "@mui/material";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 
 type EventCard = {
   title: string;

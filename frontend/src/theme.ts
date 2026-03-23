@@ -1,4 +1,5 @@
-import { createTheme } from "@mui/material/styles";
+console.log('[Theme] Entrando a theme.ts');
+import { createTheme } from "@mui/material";
 
 const PRIMARY_TERRACOTTA = "#B7694E";
 const PRIMARY_TERRACOTTA_DARK = "#9f4f37";
@@ -12,7 +13,6 @@ export const theme = createTheme({
     secondary: { main: SECONDARY_OLIVE, contrastText: "#ffffff" },
     background: { default: "#f3f4ef", paper: "#ffffff" },
     text: { primary: TEXT_COLOR, secondary: TEXT_COLOR },
-    grey: { 100: "#f8faf0", 200: "#e3e5dc", 300: "#c5c7bc" },
   },
   shape: { borderRadius: 2 },
   typography: {
@@ -83,3 +83,4 @@ export const theme = createTheme({
     },
   },
 });
+console.log('[Theme] createTheme completado');

@@ -1,30 +1,26 @@
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
-import {
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Container,
-  Divider,
-  Grid,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import Alert from "@mui/material/Alert";
+import Avatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import type { ChipProps } from "@mui/material";
-import {
-  AccessTime,
-  CalendarToday,
-  CheckCircle,
-  History,
-  Person,
-  Schedule,
-} from "@mui/icons-material";
+import AccessTime from "@mui/icons-material/AccessTime";
+import CalendarToday from "@mui/icons-material/CalendarToday";
+import CheckCircle from "@mui/icons-material/CheckCircle";
+import History from "@mui/icons-material/History";
+import Person from "@mui/icons-material/Person";
+import Schedule from "@mui/icons-material/Schedule";
 
 import {
   DocenteClase,

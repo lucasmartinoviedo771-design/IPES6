@@ -1,7 +1,11 @@
 import React, { forwardRef } from 'react';
-import {
-  Box, Paper, Typography, Divider, Grid, Stack, Avatar
-} from '@mui/material';
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import Avatar from "@mui/material/Avatar";
 
 type Valores = {
   // PERSONALES

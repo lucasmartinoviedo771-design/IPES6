@@ -1,5 +1,13 @@
 import { useEffect } from "react";
-import { Alert, FormControlLabel, Grid, TextField, Typography, Checkbox, Stack, FormControl, FormHelperText } from "@mui/material";
+import Alert from "@mui/material/Alert";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Grid from "@mui/material/Grid";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import Checkbox from "@mui/material/Checkbox";
+import Stack from "@mui/material/Stack";
+import FormControl from "@mui/material/FormControl";
+import FormHelperText from "@mui/material/FormHelperText";
 import { Controller, useFormContext } from "react-hook-form";
 import { PreinscripcionForm } from "../schema";
 

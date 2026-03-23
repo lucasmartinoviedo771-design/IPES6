@@ -1,4 +1,5 @@
-import { Grid, TextField } from "@mui/material";
+import Grid from "@mui/material/Grid";
+import TextField from "@mui/material/TextField";
 import { Controller, useFormContext } from "react-hook-form";
 import { PreinscripcionForm } from "../schema";
 

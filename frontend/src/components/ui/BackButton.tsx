@@ -1,5 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Button, ButtonProps } from "@mui/material";
+import Button from "@mui/material/Button";
+import type { ButtonProps } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { INSTITUTIONAL_TERRACOTTA, INSTITUTIONAL_TERRACOTTA_DARK } from "@/styles/institutionalColors";
 

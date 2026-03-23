@@ -1,5 +1,12 @@
 import React, { useId, useRef } from "react";
-import { Box, Button, Stack, Typography, FormControl, InputLabel, Select, MenuItem } from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import { useFormContext } from "react-hook-form";
 
 import { PreinscripcionForm } from "../schema";

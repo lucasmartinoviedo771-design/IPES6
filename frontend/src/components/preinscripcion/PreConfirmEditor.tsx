@@ -11,10 +11,32 @@ import {
 } from "@/api/preinscripciones";
 import { useAuth } from "@/context/AuthContext";
 import { fetchCarreras } from "@/api/carreras";
-import {
-  Box, Button, Chip, CircularProgress, Grid, MenuItem, Paper, Stack, TextField, Typography, Divider, Checkbox, FormControlLabel, Switch,
-  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, Select, List, ListItemButton, ListItemText, FormHelperText, Alert
-} from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Grid from "@mui/material/Grid";
+import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import Divider from "@mui/material/Divider";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import FormHelperText from "@mui/material/FormHelperText";
+import Alert from "@mui/material/Alert";
 import dayjs from "dayjs";
 import { enqueueSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";

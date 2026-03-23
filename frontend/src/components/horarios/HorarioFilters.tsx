@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { client as axios } from '@/api/client';
-import { Grid, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import Grid from "@mui/material/Grid";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import type { SelectChangeEvent } from '@mui/material/Select';
 
 interface Profesorado {

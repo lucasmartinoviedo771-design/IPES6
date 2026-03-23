@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { Box } from "@mui/material"; // o divs + CSS, como prefieras
+import Box from "@mui/material/Box"; // o divs + CSS, como prefieras
 import dayjs from "dayjs";
 
 type Values = {

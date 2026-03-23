@@ -2,7 +2,6 @@
   "name": "ipes6-frontend-clean",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "start": "vite",
     "dev": "vite --host",
@@ -50,10 +49,10 @@
     "@testing-library/react": "^16.3.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.2",
+    "@vitejs/plugin-react": "^6.0.0",
     "jsdom": "^27.2.0",
-    "typescript": "^5.5.4",
-    "vite": "^7.2.2",
-    "vitest": "^4.0.10"
+    "typescript": "^5.9.2",
+    "vite": "^8.0.1",
+    "vitest": "^4.1.0"
   }
 }

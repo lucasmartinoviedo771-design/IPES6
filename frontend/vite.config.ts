@@ -1,5 +1,5 @@
 
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath } from 'url';
@@ -28,8 +28,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: [
+      '@emotion/react',
+      '@emotion/styled',
+      'react-google-recaptcha-v3'
+    ],
+  },
   build: {
-    // Volvemos al splitting por defecto de Vite para evitar ciclos entre chunks (react-vendor/vendor).
+    minify: true,
+    sourcemap: true,
     chunkSizeWarningLimit: 2100,
   },
   test: {
@@ -38,4 +46,3 @@ export default defineConfig({
     setupFiles: './src/test/setupTests.ts',
   },
 })
-

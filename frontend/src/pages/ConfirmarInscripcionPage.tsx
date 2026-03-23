@@ -1,5 +1,8 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Button, Stack, TextField, Paper } from "@mui/material";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Paper from "@mui/material/Paper";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import { PageHero } from "@/components/ui/GradientTitles";
 

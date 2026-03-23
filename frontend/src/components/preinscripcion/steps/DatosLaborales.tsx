@@ -1,4 +1,7 @@
-import { FormControlLabel, Grid, Switch, TextField } from "@mui/material";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Grid from "@mui/material/Grid";
+import Switch from "@mui/material/Switch";
+import TextField from "@mui/material/TextField";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { PreinscripcionForm } from "../schema";

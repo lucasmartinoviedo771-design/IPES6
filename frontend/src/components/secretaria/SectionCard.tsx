@@ -1,5 +1,10 @@
 import { ReactNode } from "react";
-import { Card, CardContent, Grid, Stack, Typography, Box } from "@mui/material";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
 import { useNavigate } from "react-router-dom";
 import {
   ICON_GRADIENT,

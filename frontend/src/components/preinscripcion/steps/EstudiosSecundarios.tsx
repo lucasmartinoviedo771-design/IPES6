@@ -1,6 +1,9 @@
 import React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { TextField, Grid, Typography, Box } from "@mui/material";
+import TextField from "@mui/material/TextField";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
 import dayjs from "dayjs";
 import { PreinscripcionForm } from "../schema";
 

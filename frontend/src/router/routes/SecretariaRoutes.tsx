@@ -1,24 +1,7 @@
 import { Outlet, Route } from "react-router-dom";
-import { Suspense, lazy } from "react";
-import { Box, CircularProgress } from "@mui/material";
-
 import { ProtectedRoute } from "@/router/guards";
 import ErrorBoundary from "@/debug/ErrorBoundary";
-
-const SuspenseFallback = (
-  <Box p={4} textAlign="center">
-    <CircularProgress size={24} />
-  </Box>
-);
-
-const lazyPage = (importer: () => Promise<{ default: React.ComponentType<any> }>) => {
-  const Component = lazy(importer);
-  return () => (
-    <Suspense fallback={SuspenseFallback}>
-      <Component />
-    </Suspense>
-  );
-};
+import { lazyPage } from "@/utils/lazy";
 
 const SecretariaIndex = lazyPage(() => import("@/pages/Secretaria/Index"));
 const BedelesIndex = lazyPage(() => import("@/pages/Bedeles/Index"));
