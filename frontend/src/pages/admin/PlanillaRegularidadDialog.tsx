@@ -33,6 +33,8 @@ import {
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import HistoryIcon from '@mui/icons-material/History';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { enqueueSnackbar } from 'notistack';
@@ -268,9 +270,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     try {
       const resp = await obtenerPlanillaRegularidadDetalle(prevPlanillaId);
       if (resp.ok && resp.data.filas) {
-        const currentFilas = getValues('filas');
-        // Si la primera fila está vacía, reemplazamos todo. Si no, preguntamos o concatenamos.
-        // Por simplicidad en Primera Carga, reemplazamos las filas por las de la planilla previa.
+        // En Primera Carga, reemplazamos las filas por las de la planilla previa.
         const nuevasFilas = resp.data.filas.map((f, idx) => ({
           ...buildDefaultRow(idx),
           dni: f.dni,
@@ -282,6 +282,57 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       }
     } catch (error) {
       enqueueSnackbar('Error al importar estudiantes', { variant: 'error' });
+    }
+  };
+
+  const handleCopyStudents = () => {
+    // Obtenemos los alumnos actuales del listado
+    const filas = getValues('filas');
+    const validos = filas
+      .filter(f => f.dni && f.dni.trim() !== '')
+      .map(f => ({
+        dni: f.dni.trim(),
+        apellido_nombre: f.apellido_nombre?.trim() || ''
+      }));
+
+    if (validos.length === 0) {
+      enqueueSnackbar('No hay estudiantes con DNI cargado para copiar.', { variant: 'warning' });
+      return;
+    }
+
+    try {
+      localStorage.setItem('ipes_students_export_buffer', JSON.stringify(validos));
+      enqueueSnackbar(`${validos.length} estudiantes copiados al buffer para exportar/reutilizar.`, { variant: 'info' });
+    } catch (err) {
+      enqueueSnackbar('Error al acceder al almacenamiento local.', { variant: 'error' });
+    }
+  };
+
+  const handlePasteStudents = () => {
+    try {
+      const raw = localStorage.getItem('ipes_students_export_buffer');
+      if (!raw) {
+        enqueueSnackbar('No hay una lista de estudiantes copiada previamente.', { variant: 'warning' });
+        return;
+      }
+
+      const buffer = JSON.parse(raw);
+      if (!Array.isArray(buffer) || buffer.length === 0) {
+        enqueueSnackbar('La lista copiada está vacía o es inválida.', { variant: 'warning' });
+        return;
+      }
+
+      const nuevasFilas = buffer.map((item, idx) => ({
+        ...buildDefaultRow(idx),
+        dni: item.dni,
+        apellido_nombre: item.apellido_nombre,
+        orden: idx + 1
+      }));
+
+      replaceFilas(nuevasFilas);
+      enqueueSnackbar(`Se pegaron ${nuevasFilas.length} estudiantes desde el buffer.`, { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar('Error al recuperar la lista de estudiantes.', { variant: 'error' });
     }
   };
 
@@ -1515,6 +1566,19 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                     Sugerir situaciones académicas
                   </Button>
                 )}
+                {/* Exportar/Copiar listado - Disponible siempre incluso en Solo Lectura */}
+                <Tooltip title="Exportar/Copiar lista de estudiantes para usar en otra planilla">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<ContentCopyIcon fontSize="small" />}
+                    onClick={handleCopyStudents}
+                    sx={{ borderRadius: 2, textTransform: 'none', ml: 1 }}
+                  >
+                    Exportar alumnos
+                  </Button>
+                </Tooltip>
               </Box>
               {!isReadOnly && (
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -1545,13 +1609,27 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                       variant="outlined"
                       size="small"
                       color="primary"
-                      startIcon={historyQuery.isFetching ? <CircularProgress size={16} /> : <ContentCopyIcon fontSize="small" />}
+                      startIcon={historyQuery.isFetching ? <CircularProgress size={16} /> : <HistoryIcon fontSize="small" />}
                       onClick={handleOpenHistory}
                       disabled={isReadOnly || historyQuery.isFetching}
                       sx={{ textTransform: 'none', px: 1, minWidth: 'auto' }}
                     >
                       Importar de otra planilla
                     </Button>
+
+                    <Tooltip title="Pegar lista de estudiantes exportada/copiada previamente">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="success"
+                        startIcon={<ContentPasteIcon fontSize="small" />}
+                        onClick={handlePasteStudents}
+                        disabled={isReadOnly}
+                        sx={{ textTransform: 'none', px: 1, minWidth: 'auto' }}
+                      >
+                        Pegar alumnos
+                      </Button>
+                    </Tooltip>
 
                     <Menu
                       anchorEl={historyMenuAnchor}
@@ -1758,6 +1836,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                                   fullWidth
                                   placeholder="Apellido y nombre"
                                   required
+                                  autoComplete="off"
                                 />
                               )}
                               noOptionsText="No se encontraron estudiantes"
@@ -1778,7 +1857,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                               placeholder="DNI"
                               inputProps={{
                                 maxLength: 20,
-                                sx: { fontSize: '0.85rem', px: 0.5 }
+                                sx: { fontSize: '0.85rem', px: 0.5 },
+                                autoComplete: 'off'
                               }}
                               onBlur={(event) => {
                                 controllerField.onBlur();
@@ -1834,7 +1914,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                                     },
                                     maxLength: 3,
                                     readOnly: softDisabled,
-                                    tabIndex: softDisabled ? -1 : undefined
+                                    tabIndex: softDisabled ? -1 : undefined,
+                                    autoComplete: 'off'
                                   }}
                                   onBlur={() => calculateSituacionForRow(index)}
                                   onChange={(e) => {
@@ -1874,7 +1955,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                               fullWidth
                               inputProps={{
                                 sx: { textAlign: 'center', px: 0.5 },
-                                maxLength: 3
+                                maxLength: 3,
+                                autoComplete: 'off'
                               }}
                               onBlur={() => calculateSituacionForRow(index)}
                               onChange={(e) => {
@@ -1911,7 +1993,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
                               fullWidth
                               inputProps={{
                                 sx: { textAlign: 'center', px: 0.5 },
-                                maxLength: 3
+                                maxLength: 3,
+                                autoComplete: 'off'
                               }}
                               onBlur={(e) => handleAsistenciaBlur(index, e)}
                               onChange={(e) => {

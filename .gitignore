@@ -16,6 +16,9 @@ archives/
 node_modules/
 dist/
 build/
+.pnpm-store/
+frontend/.pnpm-store/
+*.tsbuildinfo
 
 # Python
 __pycache__/
