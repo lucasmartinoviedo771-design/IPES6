@@ -166,6 +166,12 @@ class Estudiante(models.Model):
 
 
 class EstudianteCarrera(models.Model):
+    class EstadoAcademico(models.TextChoices):
+        ACTIVO = "ACT", "Activo"
+        BAJA = "BAJ", "Baja / Abandono"
+        EGRESADO = "EGR", "Egresado"
+        SUSPENDIDO = "SUS", "Suspendido"
+
     estudiante = models.ForeignKey(
         "Estudiante",
         on_delete=models.CASCADE,
@@ -182,6 +188,12 @@ class EstudianteCarrera(models.Model):
         help_text="Año de ingreso/cohorte del estudiante en este profesorado.",
     )
     cohorte = models.CharField(max_length=32, blank=True, default="")
+    estado_academico = models.CharField(
+        max_length=3,
+        choices=EstadoAcademico.choices,
+        default=EstadoAcademico.ACTIVO,
+        help_text="Estado académico del estudiante en esta carrera.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

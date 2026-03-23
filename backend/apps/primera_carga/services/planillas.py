@@ -145,12 +145,37 @@ def crear_planilla_regularidad(
             nombre = docente_data.get("nombre", "").strip()
             if not nombre: continue
             dni_docente = _normalize_value(docente_data.get("dni"))
+            
+            if not dni_docente and nombre:
+                prefix = f"DOC-HIS-"
+                from core.models.base import Persona
+                count = Persona.objects.filter(dni__startswith=prefix).count()
+                seq = count + 1
+                new_dni = f"{prefix}{seq:04d}"
+                while Persona.objects.filter(dni=new_dni).exists():
+                    seq += 1
+                    new_dni = f"{prefix}{seq:04d}"
+                dni_docente = new_dni
+
             docente_obj = None
             docente_id = docente_data.get("docente_id")
             if docente_id:
                 docente_obj = Docente.objects.filter(pk=docente_id).first()
             elif dni_docente:
                 docente_obj = Docente.objects.filter(persona__dni=dni_docente).first()
+
+            if not docente_obj and dni_docente:
+                if "," in nombre:
+                    last_name, first_name = [p.strip() for p in nombre.split(",", 1)]
+                else:
+                    last_name, first_name = nombre, "-"
+                from core.models.base import Persona
+                persona_obj, _ = Persona.objects.update_or_create(
+                    dni=dni_docente,
+                    defaults={"nombre": first_name, "apellido": last_name}
+                )
+                docente_obj, _ = Docente.objects.get_or_create(persona=persona_obj)
+                warnings.append(f"[Docentes] Se creó el docente {dni_docente} automáticamente.")
 
             PlanillaRegularidadDocente.objects.create(
                 planilla=planilla, docente=docente_obj, nombre=nombre, dni=dni_docente,
@@ -366,7 +391,32 @@ def actualizar_planilla_regularidad(
                 nombre = d_data.get("nombre", "").strip()
                 if not nombre: continue
                 dni = _normalize_value(d_data.get("dni"))
+                
+                if not dni and nombre:
+                    prefix = f"DOC-HIS-"
+                    from core.models.base import Persona
+                    count = Persona.objects.filter(dni__startswith=prefix).count()
+                    seq = count + 1
+                    new_dni = f"{prefix}{seq:04d}"
+                    while Persona.objects.filter(dni=new_dni).exists():
+                        seq += 1
+                        new_dni = f"{prefix}{seq:04d}"
+                    dni = new_dni
+
                 d_obj = Docente.objects.filter(pk=d_data.get("docente_id")).first() if d_data.get("docente_id") else (Docente.objects.filter(persona__dni=dni).first() if dni else None)
+                
+                if not d_obj and dni:
+                    if "," in nombre:
+                        last_name, first_name = [p.strip() for p in nombre.split(",", 1)]
+                    else:
+                        last_name, first_name = nombre, "-"
+                    from core.models.base import Persona
+                    persona_obj, _ = Persona.objects.update_or_create(
+                        dni=dni,
+                        defaults={"nombre": first_name, "apellido": last_name}
+                    )
+                    d_obj, _ = Docente.objects.get_or_create(persona=persona_obj)
+                
                 PlanillaRegularidadDocente.objects.create(planilla=planilla, docente=d_obj, nombre=nombre, dni=dni, rol=d_data.get("rol") or "profesor", orden=d_data.get("orden") or idx)
         
         if filas is not None:
@@ -383,7 +433,36 @@ def actualizar_planilla_regularidad(
             for idx, f_data in enumerate(filas, start=1):
                 orden = f_data.get("orden") or idx
                 dni = _normalize_value(f_data.get("dni"))
+                
+                if not dni and f_data.get("apellido_nombre"):
+                    prefix = f"HIS-{planilla.profesorado.id:02d}-"
+                    count = Estudiante.objects.filter(persona__dni__startswith=prefix).count()
+                    seq = count + 1
+                    new_dni = f"{prefix}{seq:04d}"
+                    while Estudiante.objects.filter(persona__dni=new_dni).exists():
+                        seq += 1
+                        new_dni = f"{prefix}{seq:04d}"
+                    dni = new_dni
+                
                 estudiante = Estudiante.objects.filter(persona__dni=dni).first() if dni else None
+                
+                if not estudiante and dni:
+                    apellido_nombre = _normalize_value(f_data.get("apellido_nombre"))
+                    if apellido_nombre:
+                        if "," in apellido_nombre:
+                            last_name, first_name = [p.strip() for p in apellido_nombre.split(",", 1)]
+                        else:
+                            last_name, first_name = apellido_nombre, "-"
+                        user_obj = User.objects.filter(username=dni).first()
+                        if not user_obj:
+                            user_obj = User.objects.create_user(username=dni, password=dni, first_name=first_name, last_name=last_name)
+                        from core.models.base import Persona
+                        persona_obj, _ = Persona.objects.update_or_create(dni=dni, defaults={"nombre": first_name, "apellido": last_name})
+                        estudiante = Estudiante.objects.create(user=user_obj, persona=persona_obj, estado_legajo=Estudiante.EstadoLegajo.PENDIENTE)
+                        try:
+                            estudiante.asignar_profesorado(planilla.profesorado)
+                        except: pass
+                
                 situacion = _resolve_situacion(f_data.get("situacion", ""), planilla.materia.formato)
                 nota_dec = None
                 if f_data.get("nota_final") not in (None, "", "---"):
