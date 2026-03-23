@@ -33,3 +33,10 @@ dist/
 *.sql
 *.sql.gz
 *.csv
+
+# Local tests and scripts (Only in DEV)
+test_*.py
+conftest*.py
+Temporal/
+*.py.backup
+*.old
