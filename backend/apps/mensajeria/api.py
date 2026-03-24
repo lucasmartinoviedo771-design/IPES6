@@ -211,10 +211,10 @@ def search_users(request, q: str):
     # También permitir buscar por rol "bedel" o por el nombre de la carrera/profesorado
     q_low = q.lower()
     if "bedel" in q_low or q_low in "bedel":
-        query |= Q(staffasignacion__rol="bedel")
+        query |= Q(asignaciones_profesorado__rol="bedel")
     
     # Búsqueda por nombre de profesorado asignado
-    query |= Q(staffasignacion__profesorado__nombre__icontains=q)
+    query |= Q(asignaciones_profesorado__profesorado__nombre__icontains=q)
 
     users = User.objects.filter(query, is_active=True).distinct()[:20]
     res = []
