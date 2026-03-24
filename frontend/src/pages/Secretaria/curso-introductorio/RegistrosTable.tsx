@@ -183,7 +183,7 @@ const RegistrosTable: React.FC<Props> = ({
                   <TableRow key={registro.id} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>
-                        {registro.estudiante_nombre || "Sin nombre"}
+                        {registro.estudiante_apellido ? `${registro.estudiante_apellido}, ` : ""}{registro.estudiante_nombre || "Sin nombre"}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         DNI {registro.estudiante_dni}

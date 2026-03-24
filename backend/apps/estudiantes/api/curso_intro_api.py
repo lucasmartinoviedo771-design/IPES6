@@ -218,7 +218,8 @@ def _serialize_ci_registro(registro: CursoIntroductorioRegistro) -> CursoIntroRe
     return CursoIntroRegistroOut(
         id=registro.id,
         estudiante_id=estudiante.id,
-        estudiante_nombre=nombre,
+        estudiante_nombre=estudiante.nombre if estudiante else "",
+        estudiante_apellido=estudiante.apellido if estudiante else "",
         estudiante_dni=estudiante.dni,
         profesorado_id=profesorado.id if profesorado else None,
         profesorado_nombre=profesorado.nombre if profesorado else None,
@@ -467,6 +468,7 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
                 estudiante_id=est.id,
                 estudiante_dni=est.dni,
                 estudiante_nombre=est.nombre,
+                estudiante_apellido=est.apellido,
                 profesorados=profesorados,
                 anio_ingreso=profesorados[0].get("anio_ingreso") if profesorados else None,
             )

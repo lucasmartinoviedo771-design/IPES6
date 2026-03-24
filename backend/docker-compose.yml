@@ -14,9 +14,9 @@ services:
       start_period: 15s
     environment:
       MYSQL_DATABASE: ${DB_NAME:-ipes6}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_USER: ${DB_USER:-ipes_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-ipes2024}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
     ports:

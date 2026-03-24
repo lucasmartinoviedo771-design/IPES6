@@ -1,10 +1,17 @@
+"""
+API de Inscripción a Materias (Cursadas).
+Gestiona el ciclo de vida de la inscripción de alumnos a las cátedras.
+Incluye un motor de validación riguroso que verifica:
+1. Ventanas de habilitación temporales (fechas de inscripción).
+2. Compatibilidad de régimen (1C, 2C, Anual) según el periodo activo.
+3. Cumplimiento de correlatividades (Regulares y Aprobadas).
+4. Detección de colisiones/superposiciones horarias entre materias.
+"""
+
 from __future__ import annotations
-
 from datetime import datetime
-
 from django.utils import timezone
 from apps.common.date_utils import format_datetime
-
 from apps.common.api_schemas import ApiResponse
 from core.permissions import ensure_roles
 from core.models import (
@@ -35,6 +42,7 @@ from .router import estudiantes_router
 
 
 def _comision_to_resumen(comision):
+    """Auxiliar: Convierte una instancia de Comisión en un resumen para el frontend."""
     if not comision:
         return None
     materia = comision.materia
@@ -43,6 +51,7 @@ def _comision_to_resumen(comision):
     horario = comision.horario
     turno = comision.turno
     docente = comision.docente
+    
     detalles: list[dict] = []
     if horario:
         detalles = [
@@ -54,6 +63,7 @@ def _comision_to_resumen(comision):
             }
             for det in horario.detalles.select_related("bloque").all()
         ]
+        
     return {
         "id": comision.id,
         "codigo": comision.codigo,
@@ -72,17 +82,28 @@ def _comision_to_resumen(comision):
     response={200: InscripcionMateriaOut, 400: ApiResponse, 404: ApiResponse},
 )
 def inscripcion_materia(request, payload: InscripcionMateriaIn):
+    """
+    Solicita la inscripción a una materia para el ciclo lectivo actual.
+    
+    Flujo de Validación:
+    1. Identidad: Verifica que el usuario tenga permiso sobre el DNI (Alumno propio o Bedel).
+    2. Ventana: Comprueba si existe una 'VentanaHabilitacion' de tipo MATERIAS activa.
+    3. Régimen: Si la ventana es para 2C, bloquea materias Anuales o de 1C.
+    4. Correlatividades: Consulta el motor de correlatividades consolidado (Actas + Regularidades).
+    5. Colisión Horaria: Analiza los bloques horarios de la materia contra las ya inscriptas en el año.
+    """
     _ensure_estudiante_access(request, getattr(payload, "dni", None))
     est = _resolve_estudiante(request, getattr(payload, "dni", None))
     if not est:
-        return 400, ApiResponse(ok=False, message="No se encontró el estudiante (inicie sesión)")
+        return 400, ApiResponse(ok=False, message="Estudiante no identificado.")
+        
     mat = Materia.objects.filter(id=payload.materia_id).first()
     if not mat:
-        return 404, ApiResponse(ok=False, message="Materia no encontrada")
+        return 404, ApiResponse(ok=False, message="Materia no encontrada.")
 
     anio_actual = datetime.now().year
 
-    # 2. Validar Ventana de Inscripción Activa
+    # --- 1. VALIDACIÓN DE VENTANA TEMPORAL ---
     hoy = timezone.now().date()
     ventana = VentanaHabilitacion.objects.filter(
         tipo=VentanaHabilitacion.Tipo.MATERIAS,
@@ -92,9 +113,9 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     ).first()
 
     if not ventana:
-        return 400, ApiResponse(ok=False, message="No hay un periodo de inscripción a materias activo en este momento.")
+        return 400, ApiResponse(ok=False, message="Periodo de inscripción cerrado o no iniciado.")
 
-    # 3. Validar Periodo (Cuatrimestre)
+    # Validación de régimen (Cuatrimestres)
     if ventana.periodo:
         allowed_regimens = []
         if ventana.periodo == '1C_ANUALES':
@@ -105,33 +126,25 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             allowed_regimens = [Materia.TipoCursada.SEGUNDO_CUATRIMESTRE]
         
         if mat.regimen not in allowed_regimens:
-             return 400, ApiResponse(ok=False, message=f"La materia {mat.nombre} no corresponde al periodo de inscripción habilitado.")
+             return 400, ApiResponse(ok=False, message=f"La materia {mat.nombre} no corresponde a este turno de inscripción.")
 
-    req_reg = list(
-        _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list(
-            "materia_correlativa_id", flat=True
-        )
-    )
-    req_apr = list(
-        _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list(
-            "materia_correlativa_id", flat=True
-        )
-    )
+    # --- 2. VALIDACIÓN DE CORRELATIVIDADES ---
+    req_reg = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
+    req_apr = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
 
-    # Optimizamos carga de aprobadas (Regularidad + Actas + Mesas Pandemia)
+    # Consolidación de estado académico del alumno
     aprobadas_ids = set()
     regulares_ids = set()
-    
     materias_interes = list(set(req_reg + req_apr))
 
-    # 1. Regularidades
+    # 1. Por Regularidades (Cursadas cerradas)
     for r in Regularidad.objects.filter(estudiante=est, materia_id__in=materias_interes):
         if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             aprobadas_ids.add(r.materia_id)
         elif r.situacion == Regularidad.Situacion.REGULAR:
             regulares_ids.add(r.materia_id)
 
-    # 2. Actas (Incluye equivalencias)
+    # 2. Por Actas de Examen / Equivalencias (Resultado final)
     from .helpers import _acta_condicion
     for a in ActaExamenEstudiante.objects.filter(dni=est.dni, acta__materia_id__in=materias_interes).select_related("acta"):
         cond_val, _ = _acta_condicion(a.calificacion_definitiva)
@@ -143,7 +156,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         if cond_val == "APR" or is_equiv:
             aprobadas_ids.add(a.acta.materia_id)
 
-    # 3. Mesas Pandemia (InscripcionMesa)
+    # 3. Por Inscripciones a Mesa (Auditoría de aprobación rápida)
     for insc in InscripcionMesa.objects.filter(
         estudiante=est, 
         mesa__materia_id__in=materias_interes,
@@ -152,6 +165,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     ):
         aprobadas_ids.add(insc.mesa.materia_id)
 
+    # Reporte de faltantes
     faltan = []
     for mid in req_reg:
         if mid not in regulares_ids and mid not in aprobadas_ids:
@@ -164,24 +178,12 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             faltan.append(f"Aprobada {m.nombre if m else mid}")
             
     if faltan:
-        return 400, ApiResponse(
-            ok=False,
-            message="Correlatividades no cumplidas para cursar",
-            data={"faltantes": faltan},
-        )
+        return 400, ApiResponse(ok=False, message="No cumple correlatividades exigidas.", data={"faltantes": faltan})
 
-    detalles_cand = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "bloque").filter(
-        horario_catedra__espacio=mat
-    )
-    cand = [
-        (
-            d.horario_catedra.turno_id,
-            d.bloque.dia,
-            d.bloque.hora_desde,
-            d.bloque.hora_hasta,
-        )
-        for d in detalles_cand
-    ]
+    # --- 3. DETECCIÓN DE SUPERPOSICIÓN HORARIA ---
+    detalles_cand = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "bloque").filter(horario_catedra__espacio=mat)
+    cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in detalles_cand]
+    
     if cand:
         actuales = InscripcionMateriaEstudiante.objects.filter(estudiante=est, anio=anio_actual)
         if actuales.exists():
@@ -190,18 +192,14 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             )
             for d in det_act:
                 for t, dia, desde, hasta in cand:
-                    if (
-                        t == d.horario_catedra.turno_id
-                        and dia == d.bloque.dia
-                        and not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)
-                    ):
-                        return 400, ApiResponse(
-                            ok=False,
-                            message="Superposición horaria con otra materia inscripta",
-                        )
+                    # Si coinciden en Turno y Día, verificamos solapamiento de horas
+                    if (t == d.horario_catedra.turno_id and dia == d.bloque.dia and 
+                        not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)):
+                        return 400, ApiResponse(ok=False, message="Existe una superposición horaria con otra materia del ciclo actual.")
 
+    # Registro de la inscripción (Estado PENDIENTE por defecto)
     InscripcionMateriaEstudiante.objects.get_or_create(estudiante=est, materia=mat, anio=anio_actual)
-    return {"message": "Inscripción a materia registrada"}
+    return {"message": "Inscripción registrada correctamente."}
 
 
 @estudiantes_router.get(
@@ -209,10 +207,11 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     response={200: list[MateriaInscriptaItem], 400: ApiResponse},
 )
 def materias_inscriptas(request, anio: int | None = None, dni: str | None = None):
+    """Retorna la lista de inscripciones (cursadas) históricas o del ciclo actual del alumno."""
     _ensure_estudiante_access(request, dni)
     est = _resolve_estudiante(request, dni)
     if not est:
-        return 400, ApiResponse(ok=False, message="No se encontró el estudiante.")
+        return 400, ApiResponse(ok=False, message="Estudiante no encontrado.")
 
     qs = (
         InscripcionMateriaEstudiante.objects.filter(estudiante=est)
@@ -262,9 +261,13 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
 )
 def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: CancelarInscripcionIn):
+    """
+    Cancela una inscripción vigente. Solo para estados PENDIENTE o CONFIRMADA.
+    Requiere que el usuario tenga rol de gestión (Bedel/Admin).
+    """
     est = _resolve_estudiante(request, payload.dni)
     if not est:
-        return 400, ApiResponse(ok=False, message="No se encontró el estudiante.")
+        return 400, ApiResponse(ok=False, message="Estudiante no encontrado.")
 
     inscripcion = (
         InscripcionMateriaEstudiante.objects.filter(id=inscripcion_id, estudiante=est)
@@ -278,11 +281,9 @@ def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: Cancelar
         InscripcionMateriaEstudiante.Estado.CONFIRMADA,
         InscripcionMateriaEstudiante.Estado.PENDIENTE,
     ):
-        return 400, ApiResponse(
-            ok=False,
-            message="Solo se pueden cancelar inscripciones confirmadas o pendientes.",
-        )
+        return 400, ApiResponse(ok=False, message="Solo se pueden cancelar inscripciones activas (Confirmadas o Pendientes).")
 
+    # Auditoría de permisos (Solo personal docente/admin puede anular cursadas formalmente)
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
 
     inscripcion.estado = InscripcionMateriaEstudiante.Estado.ANULADA
@@ -290,9 +291,10 @@ def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: Cancelar
     inscripcion.comision_solicitada = None
     inscripcion.save(update_fields=["estado", "comision", "comision_solicitada", "updated_at"])
 
-    return ApiResponse(ok=True, message="Inscripción cancelada exitosamente.")
+    return ApiResponse(ok=True, message="Inscripción anulada correctamente.")
 
 
 @estudiantes_router.post("/cambio-comision", response=CambioComisionOut)
 def cambio_comision(request, payload: CambioComisionIn):
+    """Registra una solicitud de cambio de comisión por parte del alumno."""
     return {"message": "Solicitud de cambio de comisión recibida."}

@@ -16,7 +16,7 @@ from apps.common.error_schemas import ErrorResponse
 from apps.common.errors import AppError
 from core.auth_ninja import JWTAuth
 
-router = Router()  # <- IMPORTANTE
+router = Router(auth=None)  # <- Permitimos acceso público a login, etc.
 
 
 class LoginIn(BaseModel):

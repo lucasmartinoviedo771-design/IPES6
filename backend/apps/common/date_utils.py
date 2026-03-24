@@ -1,14 +1,23 @@
+"""
+Utilidades para el manejo y formateo de fechas.
+Centraliza las reglas de representación de fechas (DD/MM/YYYY) para 
+asegurar una experiencia de usuario consistente en reportes y formularios.
+"""
+
 from datetime import date, datetime
-from typing import Any
+
 
 def format_date(d: date | datetime | str | None) -> str | None:
-    """Format a date or datetime object as DD/MM/YYYY."""
+    """
+    Formatea una fecha u objeto datetime al estándar regional 'DD/MM/YYYY'.
+    Soporta la conversión desde cadenas ISO (YYYY-MM-DD).
+    """
     if d is None:
         return None
     if isinstance(d, (date, datetime)):
         return d.strftime("%d/%m/%Y")
     if isinstance(d, str):
-        # Already a string, return as is or try to reformat if it looks like ISO
+        # Intento de re-formateo si viene en formato ISO desde la BD
         if len(d) == 10 and "-" in d:
              try:
                  dt = datetime.strptime(d, "%Y-%m-%d")
@@ -18,16 +27,24 @@ def format_date(d: date | datetime | str | None) -> str | None:
         return d
     return str(d)
 
+
 def format_datetime(dt: datetime | None) -> str | None:
-    """Format a datetime object as DD/MM/YYYY HH:MM."""
+    """
+    Formatea un objeto datetime al estándar regional 'DD/MM/YYYY HH:MM'.
+    Utilizado principalmente en registros de auditoría y logs.
+    """
     if dt is None:
         return None
     if isinstance(dt, datetime):
         return dt.strftime("%d/%m/%Y %H:%M")
     return str(dt)
 
+
 def parse_date(value: str | None) -> date | None:
-    """Parse a date string in various formats."""
+    """
+    Intenta convertir una cadena de texto en un objeto date de Python.
+    Soporta múltiples formatos comunes (%d/%m/%Y, %Y-%m-%d).
+    """
     if not value:
         return None
     trimmed = value.strip()

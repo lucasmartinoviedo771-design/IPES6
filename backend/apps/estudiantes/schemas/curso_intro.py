@@ -36,6 +36,7 @@ class CursoIntroRegistroOut(Schema):
     id: int
     estudiante_id: int
     estudiante_nombre: str
+    estudiante_apellido: str
     estudiante_dni: str
     profesorado_id: int | None = None
     profesorado_nombre: str | None = None
@@ -70,6 +71,7 @@ class CursoIntroPendienteOut(Schema):
     estudiante_id: int
     estudiante_dni: str
     estudiante_nombre: str
+    estudiante_apellido: str
     profesorados: list[dict] = Field(default_factory=list)
     anio_ingreso: int | None = None
 

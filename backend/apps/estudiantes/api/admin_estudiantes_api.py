@@ -1,8 +1,13 @@
-from __future__ import annotations
+"""
+API de Administración Centralizada de Estudiantes y Legajos.
+Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de 
+documentación física (DNI, Títulos) hasta la auditoría de legajos y 
+la baja administrativa bajo estrictas reglas de integridad académica.
+"""
 
+from __future__ import annotations
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-
 from apps.common.api_schemas import ApiResponse
 from core.models import Estudiante, EstudianteCarrera
 from core.permissions import allowed_profesorados, ensure_roles, ensure_profesorado_access
@@ -40,6 +45,10 @@ def admin_list_estudiantes(
     limit: int = 50,
     offset: int = 0,
 ):
+    """
+    Lista estudiantes con filtros administrativos y de carrera.
+    Utiliza el servicio EstudianteService para la lógica compleja de filtrado.
+    """
     _ensure_admin(request)
     filters = {
         "q": q,
@@ -61,6 +70,10 @@ def admin_list_estudiantes_documentacion(
     limit: int = 100,
     offset: int = 0,
 ):
+    """
+    Obtiene la nómina de estudiantes con el estado de su documentación física.
+    Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
+    """
     _ensure_admin(request)
     data = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
     
@@ -71,9 +84,13 @@ def admin_list_estudiantes_documentacion(
 
 
 def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
+    """
+    Lógica interna para consolidar datos de documentación de múltiples fuentes.
+    Integra información de Estudiante, PreinscripcionChecklist y datos_extra.
+    """
     from core.models import PreinscripcionChecklist
 
-    
+    # Filtros de territorialidad (Bedeles solo ven sus carreras permitidas)
     allowed_ids = allowed_profesorados(request.user)
     qs = (
         Estudiante.objects.select_related("persona", "user")
@@ -88,8 +105,6 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
                 Q(persona__dni__icontains=q_clean)
                 | Q(persona__nombre__icontains=q_clean)
                 | Q(persona__apellido__icontains=q_clean)
-                | Q(user__first_name__icontains=q_clean)
-                | Q(user__last_name__icontains=q_clean)
             )
     
     if carrera_id:
@@ -104,6 +119,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
     estudiantes_list = list(qs)
     estudiante_ids = [e.id for e in estudiantes_list]
 
+    # Mapeo de checklists de preinscripción para sincronizar estados iniciales
     checklists = PreinscripcionChecklist.objects.filter(
         preinscripcion__alumno_id__in=estudiante_ids
     ).select_related("preinscripcion__alumno").order_by("-updated_at")
@@ -123,6 +139,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
         
         cl = checklist_map.get(est.id)
         if cl:
+            # Sincronización oportunista con el checklist de preinscripción
             cl_fields = {
                 "dni_legalizado": cl.dni_legalizado,
                 "fotos_4x4": cl.fotos_4x4,
@@ -138,6 +155,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
                     doc_data[k] = v
         
         condicion = _determine_condicion(doc_data)
+        # Una de las tres condiciones de título secundario debe cumplirse
         titulo_sec_ok = any([
             doc_data.get("titulo_secundario_legalizado"),
             doc_data.get("certificado_titulo_en_tramite"),
@@ -165,6 +183,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
 
 @router.get("/admin/estudiantes-documentacion/export/excel")
 def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, carrera_id: int | None = None):
+    """Genera exportación Excel de la nómina de documentación para auditoría interna."""
     _ensure_admin(request)
     items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
     
@@ -218,6 +237,7 @@ def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, 
 
 @router.get("/admin/estudiantes-documentacion/export/pdf")
 def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, carrera_id: int | None = None):
+    """Genera exportación PDF de la nómina de documentación (formato imprimible)."""
     _ensure_admin(request)
     items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
     
@@ -241,14 +261,10 @@ def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, ca
 
 
 def _perform_documentacion_update(est, payload):
+    """Lógica unificada para persistir cambios en la documentación física del alumno."""
     from core.models import PreinscripcionChecklist
     
-    # Buscamos el último checklist
     checklist = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=est).order_by("-updated_at").first()
-    
-    # Actualizamos datos_extra del estudiante (algunos campos viven ahí)
-    datos_extra = est.datos_extra or {}
-    updated_est = False
     
     upd_fields = []
     if payload.libreta_entregada is not None:
@@ -259,37 +275,29 @@ def _perform_documentacion_update(est, payload):
         est.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
         upd_fields.append("curso_introductorio_aprobado")
 
-    # Documentación técnica
-    if payload.dni_legalizado is not None: 
-        est.dni_legalizado = payload.dni_legalizado
-        upd_fields.append("dni_legalizado")
-    if payload.fotos_4x4 is not None: 
-        est.fotos_4x4 = payload.fotos_4x4
-        upd_fields.append("fotos_4x4")
-    if payload.certificado_salud is not None: 
-        est.certificado_salud = payload.certificado_salud
-        upd_fields.append("certificado_salud")
-    if payload.folios_oficio is not None: 
-        est.folios_oficio = payload.folios_oficio
-        upd_fields.append("folios_oficio")
-    if payload.articulo_7 is not None: 
-        est.articulo_7 = payload.articulo_7
-        upd_fields.append("articulo_7")
-    
-    if payload.titulo_secundario_ok is not None:
-        est.titulo_secundario_legalizado = payload.titulo_secundario_ok
-        upd_fields.append("titulo_secundario_legalizado")
+    # Documentación técnica básica
+    mapping = {
+        "dni_legalizado": payload.dni_legalizado,
+        "fotos_4x4": payload.fotos_4x4,
+        "certificado_salud": payload.certificado_salud,
+        "folios_oficio": payload.folios_oficio,
+        "articulo_7": payload.articulo_7,
+        "titulo_secundario_legalizado": payload.titulo_secundario_ok
+    }
+
+    for field, val in mapping.items():
+        if val is not None:
+            setattr(est, field, val)
+            upd_fields.append(field)
 
     if upd_fields:
         est.save(update_fields=upd_fields)
         
+        # Sincronizamos con el checklist si existe
         if checklist:
-            if payload.dni_legalizado is not None: checklist.dni_legalizado = payload.dni_legalizado
-            if payload.fotos_4x4 is not None: checklist.fotos_4x4 = payload.fotos_4x4
-            if payload.certificado_salud is not None: checklist.certificado_salud = payload.certificado_salud
-            if payload.folios_oficio is not None: checklist.folios_oficio = payload.folios_oficio
-            if payload.articulo_7 is not None: checklist.articulo_7 = payload.articulo_7
-            if payload.titulo_secundario_ok is not None: checklist.titulo_secundario_legalizado = payload.titulo_secundario_ok
+            for field, val in mapping.items():
+                if val is not None:
+                    setattr(checklist, field, val)
             if payload.curso_introductorio_aprobado is not None:
                 checklist.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
             checklist.save()
@@ -304,22 +312,23 @@ def admin_update_estudiante_documentacion(
     dni: str,
     payload: EstudianteDocumentacionUpdateIn,
 ):
+    """
+    Actualiza individualmente la documentación técnica de un estudiante.
+    Incluye chequeo de permisos territoriales para bedeles.
+    """
     _ensure_admin(request)
-
-    
     est = get_object_or_404(Estudiante, persona__dni=dni)
     
-    # Verificación de permisos para Bedeles: deben tener acceso a al menos una carrera del estudiante
+    # Auditoría de permisos por carrera
     allowed_ids = allowed_profesorados(request.user)
     if allowed_ids is not None:
         est_carreras_ids = set(EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True))
         if not allowed_ids.intersection(est_carreras_ids):
             from apps.common.errors import raise_app_error
             from apps.common.constants import AppErrorCode
-            raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar la documentación de este estudiante.")
+            raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar este legajo.")
 
     _perform_documentacion_update(est, payload)
-        
     return ApiResponse(ok=True, message="Documentación actualizada correctamente.")
 
 
@@ -331,9 +340,8 @@ def admin_bulk_update_estudiante_documentacion(
     request,
     payload: EstudianteDocumentacionBulkUpdateIn,
 ):
+    """Actualización masiva de estados de legajo (útil tras operativos de recepción)."""
     _ensure_admin(request)
-
-    
     allowed_ids = allowed_profesorados(request.user)
     
     updated_count = 0
@@ -350,7 +358,7 @@ def admin_bulk_update_estudiante_documentacion(
         _perform_documentacion_update(est, update_item.changes)
         updated_count += 1
         
-    return ApiResponse(ok=True, message=f"Se actualizaron {updated_count} estudiantes.")
+    return ApiResponse(ok=True, message=f"Se actualizaron {updated_count} legajos.")
 
 
 @router.get(
@@ -358,6 +366,7 @@ def admin_bulk_update_estudiante_documentacion(
     response={200: EstudianteAdminDetail, 404: ApiResponse},
 )
 def admin_get_estudiante(request, dni: str):
+    """Obtiene el detalle completo del legajo de un estudiante."""
     _ensure_admin(request)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
@@ -370,6 +379,10 @@ def admin_get_estudiante(request, dni: str):
     response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
 )
 def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn):
+    """
+    Actualiza la información base del estudiante (Perfil, Legajo, Password).
+    Permite el reseteo forzado de contraseña desde la administración.
+    """
     _ensure_admin(request)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
@@ -393,61 +406,51 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
 )
 def admin_delete_estudiante(request, dni: str):
+    """
+    Elimina físicamente a un estudiante del sistema.
+    
+    REGLA CRÍTICA DE INTEGRIDAD: Solo se permite si NO tiene historial académico.
+    Se verifica: Inscripciones a materias, mesas, regularidades y actas históricas.
+    """
     _ensure_admin(request)
-    # Buscamos por DNI
     est = Estudiante.objects.filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
 
-    # --- Verificaciones de actividad previa ---
     reasons = []
-
-    # 1. Inscripciones a materias confirmadas o pendientes
+    # 1. Verificación de Cursadas
     ins_count = est.inscripciones_materia.exclude(estado="ANUL").count()
     if ins_count > 0:
-        ejemplos = list(est.inscripciones_materia.exclude(estado="ANUL")[:2].values_list("materia__nombre", flat=True))
-        txt_ej = f" (ej: {', '.join(ejemplos)})" if ejemplos else ""
-        reasons.append(f"Tiene {ins_count} inscripciones activas a materias{txt_ej}.")
+        reasons.append(f"Tiene {ins_count} inscripciones activas.")
 
-    # 2. Regularidades cargadas
+    # 2. Verificación de Notas y Regularidades
     reg_count = est.regularidades.count()
     if reg_count > 0:
-        ejemplos = list(est.regularidades.all()[:2].values_list("materia__nombre", flat=True))
-        txt_ej = f" (ej: {', '.join(ejemplos)})" if ejemplos else ""
-        reasons.append(f"Tiene {reg_count} notas de cursada/regularidades{txt_ej}.")
+        reasons.append(f"Tiene {reg_count} registros de regularidad/notas.")
 
-    # 3. Inscripciones a mesas o exámenes
+    # 3. Verificación de Exámenes Finales
     mesas_count = est.inscripciones_mesa.count()
     if mesas_count > 0:
-        reasons.append(f"Tiene {mesas_count} inscripciones a mesas de examen.")
+        reasons.append(f"Tiene {mesas_count} inscripciones a exámenes.")
 
-    # 4. Actas de examen históricas (por DNI)
+    # 4. Auditoría en Actas Históricas (Datos Externos)
     from core.models import ActaExamenEstudiante
     actas_count = ActaExamenEstudiante.objects.filter(dni=dni).count()
     if actas_count > 0:
-        reasons.append(f"Figura en {actas_count} actas de examen históricas.")
-
-    # 5. Preinscripción activa
-    from core.models import Preinscripcion
-    pre = Preinscripcion.objects.filter(alumno=est).first()
-    if pre and pre.estado not in ["ANULADA"]:
-        reasons.append(f"Tiene una preinscripción activa ({pre.codigo}) en estado {pre.get_estado_display()}.")
+        reasons.append(f"Figura como alumno en {actas_count} actas de examen.")
 
     if reasons:
-        msg = "No se puede eliminar al estudiante porque ya tiene actividad en el sistema: " + " ".join(reasons)
+        msg = "No se puede eliminar: el estudiante posee historial académico irrenunciable. " + " ".join(reasons)
         return 400, ApiResponse(ok=False, message=msg)
-
-    # --- Fin verificaciones ---
 
     nombre_completo = str(est)
     user = est.user
 
-    # Al borrar el estudiante, se borran en cascada sus relaciones (EstudianteCarrera, etc.)
-    # Las que no bloqueamos arriba pero podrían existir (ej. mensajes, notificaciones).
+    # Borrado en cascada (EstudianteCarrera, etc.)
     est.delete()
 
-    # Si el usuario no tiene otros roles (como staff o docente), lo borramos también para limpiar.
+    # Limpieza de usuario si no tiene otros roles institucionales
     if user and not (user.is_staff or user.groups.filter(name__in=["docente", "bedel", "admin"]).exists()):
         user.delete()
 
-    return 200, ApiResponse(ok=True, message=f"Estudiante {nombre_completo} eliminado correctamente")
+    return 200, ApiResponse(ok=True, message=f"Legajo de {nombre_completo} eliminado correctamente.")

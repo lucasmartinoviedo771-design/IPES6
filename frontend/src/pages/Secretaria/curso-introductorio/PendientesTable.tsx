@@ -85,7 +85,7 @@ const PendientesTable: React.FC<Props> = ({
                   <TableRow key={pendiente.estudiante_id} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight={600}>
-                        {pendiente.estudiante_nombre || "Sin nombre"}
+                        {pendiente.estudiante_apellido ? `${pendiente.estudiante_apellido}, ` : ""}{pendiente.estudiante_nombre || "Sin nombre"}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         DNI {pendiente.estudiante_dni}

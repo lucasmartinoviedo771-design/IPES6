@@ -14,6 +14,15 @@ Para facilitar la lectura y evitar la dispersión de archivos, la documentación
 - 🛠️ [**DOCUMENTACION_TECNICA.md**](docs/DOCUMENTACION_TECNICA.md): Guía de instalación (Docker), arquitectura, matriz de roles y tareas pendientes.
 - 📜 [**REGLAS_NEGOCIO.md**](docs/REGLAS_NEGOCIO.md): Lógica de preinscripción, correlatividades y validaciones del sistema.
 - 📘 [**MANUAL_USUARIO.md**](docs/MANUAL_USUARIO.md): Guías de uso para Alumnos, Bedeles, Secretaría y Administradores.
+- 🛡️ [**security_audit_ipes6.md**](docs/security_audit_ipes6.md): Informe de auditoría de seguridad y mitigaciones (Marzo 2026).
+
+## Seguridad y Hardening (Actualización Marzo 2026)
+Tras una auditoría exhaustiva de ciberseguridad, se han implementado las siguientes mejoras:
+- **Protección de Diagnóstico:** El profiler `Silk` ahora requiere autenticación obligatoria y permisos de superusuario.
+- **Autenticación Zero Trust:** Implementación de `JWTAuth` declarativo global en toda la API de Django Ninja.
+- **Gestión de Secretos:** Eliminación de fallbacks de claves por defecto; el sistema ahora exige variables de entorno seguras para arrancar.
+- **Políticas de Navegador:** Endurecimiento de la CSP (eliminación de `unsafe-eval`) y configuración de cookies `SameSite=Lax`.
+- **Estandarización Documental (Marzo 2026):** Refactorización integral de todo el código fuente aplicando estándares PEP 257 (Backend) y TSDoc/JSDoc (Frontend). Se eliminaron comentarios redundantes y se documentó la lógica de negocio compleja (SLA, Trayectorias, Validaciones).
 
 ## Puesta en marcha rápida
 

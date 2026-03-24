@@ -1,22 +1,22 @@
-// src/api/client.ts
-import axios, { AxiosError, AxiosRequestConfig } from "axios";
+/**
+ * @module API/Client
+ * @description Cliente base de comunicaciones HTTP utilizando Axios para el SIGED IPES.
+ * Centraliza la lógica de autenticación, manejo global de errores,
+ * refresco automático de tokens via cookies y notificaciones (Toasts).
+ */
+
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { toast } from "@/utils/toast";
 
-const fallbackBase = (() => {
-  if (typeof window === "undefined") {
-    return "http://localhost:8000/api";
-  }
-  const currentOrigin = window.location.origin;
-  const isLocalOrigin = /^(https?:\/\/)?(localhost|127\.0\.0\.1)/i.test(currentOrigin);
-  if (isLocalOrigin) {
-    return "http://localhost:8000/api";
-  }
-  return `${currentOrigin.replace(/\/$/, "")}/api`;
-})();
-
+/**
+ * Prefijo base para todas las llamadas a la API del backend.
+ */
 const BASE = "/api";
 const REFRESH_ENDPOINT = "auth/refresh/";
 
+/**
+ * Estructura de error estandarizada del backend Django Ninja.
+ */
 export interface ErrorResponse {
   error_code: string;
   message: string;
@@ -24,6 +24,10 @@ export interface ErrorResponse {
   request_id?: string;
 }
 
+/**
+ * Clase de Error unificada para el frontend.
+ * Convierte errores de Axios en una estructura predecible con códigos de negocio.
+ */
 export class AppError extends Error {
   status: number;
   code: string;
@@ -52,14 +56,22 @@ export class AppError extends Error {
 const DEFAULT_ERROR_MESSAGE = "Ocurrió un error inesperado.";
 const NETWORK_ERROR_MESSAGE = "No se pudo conectar con el servidor. Verificá tu conexión.";
 
+/**
+ * Configuración extendida para peticiones individuales.
+ */
 export type AppAxiosRequestConfig = AxiosRequestConfig & {
+  /** Marca interna para evitar bucles de reintento */
   _retry?: boolean;
+  /** Evita mostrar el Toast automático si el llamador desea manejar el error */
   suppressErrorToast?: boolean;
 };
 
+/**
+ * Instancia global de Axios configurada con soporte para Cookies de sesión.
+ */
 export const client = axios.create({
   baseURL: BASE,
-  withCredentials: true, // IMPORTANT: Set to true to send cookies
+  withCredentials: true,
 });
 
 type RetriableConfig = AppAxiosRequestConfig;
@@ -67,138 +79,36 @@ type RetriableConfig = AppAxiosRequestConfig;
 let unauthorizedHandler: (() => void) | null = null;
 let refreshPromise: Promise<void> | null = null;
 
+/**
+ * Setea el manejador de cierre de sesión (AuthContext).
+ */
 export function setUnauthorizedHandler(handler: (() => void) | null) {
   unauthorizedHandler = handler;
 }
 
+/**
+ * Helpers para extracción de mensajes en respuestas de error complejas.
+ */
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const candidateKeys = ["message", "detail", "error"];
 
 const extractString = (value: unknown): string | null => {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed || null;
-  }
-  if (Array.isArray(value)) {
-    const first = value.map(extractString).find(Boolean);
-    return first ?? null;
-  }
+  if (typeof value === "string") return value.trim() || null;
+  if (Array.isArray(value)) return value.map(extractString).find(Boolean) ?? null;
   if (isRecord(value)) {
     for (const key of candidateKeys) {
-      const result = extractString(value[key]);
-      if (result) return result;
-    }
-    for (const nested of Object.values(value)) {
-      const result = extractString(nested);
-      if (result) return result;
+      const res = extractString(value[key]);
+      if (res) return res;
     }
   }
   return null;
 };
 
-const statusToCode = (status?: number): string => {
-  if (!status) return "UNKNOWN";
-  if (status === 400) return "BAD_REQUEST";
-  if (status === 401) return "AUTHENTICATION_REQUIRED";
-  if (status === 403) return "PERMISSION_DENIED";
-  if (status === 404) return "NOT_FOUND";
-  if (status === 409) return "CONFLICT";
-  if (status === 422) return "VALIDATION_ERROR";
-  if (status === 429) return "RATE_LIMITED";
-  if (status >= 500) return "INTERNAL_ERROR";
-  return "UNKNOWN";
-};
-
-const parseStructuredError = (data: unknown): ErrorResponse | null => {
-  if (!isRecord(data)) return null;
-  if (typeof data.error_code === "string" && typeof data.message === "string") {
-    const structured: ErrorResponse = {
-      error_code: data.error_code,
-      message: data.message,
-      details: data.details,
-      request_id: typeof data.request_id === "string" ? data.request_id : undefined,
-    };
-    return structured;
-  }
-  return null;
-};
-
-const buildAppError = (error: unknown, fallbackStatus?: number): AppError => {
-  if (error instanceof AppError) {
-    return error;
-  }
-  if (axios.isAxiosError(error)) {
-    const status = error.response?.status ?? fallbackStatus ?? 0;
-    const data = error.response?.data;
-
-    // Detectar respuesta HTML (proxy error, Nginx 404, Django default 404/500, etc)
-    if (typeof data === "string" && (data.trim().startsWith("<!DOCTYPE html") || data.trim().startsWith("<html"))) {
-      let msg = "Error de comunicación con el servidor.";
-      if (status === 404) msg = "El recurso solicitado no fue encontrado en el servidor (404).";
-      else if (status === 500) msg = "Error interno del servidor (500).";
-      else if (status === 502) msg = "El servicio no está disponible momentáneamente (502).";
-      else if (status === 503) msg = "Servicio no disponible (503).";
-      else if (status === 504) msg = "Tiempo de espera agotado (504).";
-
-      return new AppError(status || 500, statusToCode(status), msg, undefined, undefined, error);
-    }
-
-    const structured = parseStructuredError(data);
-    if (structured) {
-      return new AppError(
-        status || 500,
-        structured.error_code,
-        structured.message || DEFAULT_ERROR_MESSAGE,
-        structured.details,
-        structured.request_id,
-        error,
-      );
-    }
-    const fallbackMessage =
-      extractString(data) || error.message || DEFAULT_ERROR_MESSAGE;
-    const details = isRecord(data) ? data : undefined;
-    return new AppError(status || 500, statusToCode(status), fallbackMessage, details, undefined, error);
-  }
-
-  const genericMessage =
-    error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
-  return new AppError(fallbackStatus || 500, "UNKNOWN", genericMessage, undefined, undefined, error);
-};
-
-const notifyError = (appError: AppError, config?: AppAxiosRequestConfig) => {
-  if (config?.suppressErrorToast) {
-    return;
-  }
-  // No mostrar "No autenticado" genérico si ya estamos en la página de login,
-  // A MENOS que el error venga del intento de login mismo (queremos ver "Credenciales inválidas").
-  const isLoginPath = window.location.pathname === "/login";
-  const isLoginRequest = config?.url?.includes("auth/login"); // Quitamos el / inicial para URLs relativas
-
-  if (appError.status === 401 && isLoginPath && !isLoginRequest) {
-    return;
-  }
-  toast.error(appError.message);
-};
-
-const enqueueRefresh = () => {
-  if (!refreshPromise) {
-    const refreshConfig: AppAxiosRequestConfig = { suppressErrorToast: true };
-    refreshPromise = client.post(REFRESH_ENDPOINT, undefined, refreshConfig)
-      .then(() => {
-        refreshPromise = null;
-      })
-      .catch((err) => {
-        refreshPromise = null;
-        throw err;
-      });
-  }
-  return refreshPromise;
-};
-
-export const requestSessionRefresh = () => enqueueRefresh();
-
+/**
+ * Interceptor de Petición: Inyección de Token CSRF para métodos mutativos.
+ */
 client.interceptors.request.use((config) => {
   const method = (config.method || "").toLowerCase();
   if (!["get", "head", "options"].includes(method)) {
@@ -211,61 +121,71 @@ client.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
+/**
+ * Interceptor de Respuesta: Gestión de Autenticación y Errores Globales.
+ */
 client.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const { response, config } = error;
-    const originalRequest = config as RetriableConfig;
+  (response: AxiosResponse) => response,
+  async (error: AxiosError<ErrorResponse>) => {
+    const config = error.config as RetriableConfig | undefined;
+    const status = error.response?.status;
+    const data = error.response?.data;
 
-    if (!response) {
-      const networkError = new AppError(0, "NETWORK_ERROR", NETWORK_ERROR_MESSAGE, undefined, undefined, error);
-      notifyError(networkError, originalRequest);
-      return Promise.reject(networkError);
-    }
-
-    if (response.status !== 401) {
-      const appError = buildAppError(error, response.status);
-      notifyError(appError, originalRequest);
-      return Promise.reject(appError);
-    }
-
-    const isLoginRoute = originalRequest?.url?.includes("auth/login");
-    const isRefreshRoute = originalRequest?.url?.includes("auth/refresh");
-
-    if (isLoginRoute || isRefreshRoute || originalRequest?._retry) {
-      // Solo ejecutamos el handler de "no autorizado" (que suele redirigir/limpiar user) 
-      // si NO es un intento de login (donde ya estamos en la pág de login y queremos manejar el error localmente)
-      if (!isLoginRoute) {
-        unauthorizedHandler?.();
+    // --- REFRECHO AUTOMÁTICO (401) ---
+    const isAuthRoute = config?.url?.includes("auth/");
+    if (status === 401 && config && !config._retry && !isAuthRoute) {
+      config._retry = true;
+      if (!refreshPromise) {
+        refreshPromise = client.post(REFRESH_ENDPOINT)
+          .then(() => { refreshPromise = null; })
+          .catch((re) => {
+            refreshPromise = null;
+            unauthorizedHandler?.();
+            throw re;
+          });
       }
-      const appError = buildAppError(error, response.status);
-      notifyError(appError, originalRequest);
-      return Promise.reject(appError);
+      await refreshPromise;
+      return client(config);
     }
 
-    originalRequest._retry = true;
-    try {
-      await enqueueRefresh();
-      return client(originalRequest);
-    } catch (refreshError) {
-      unauthorizedHandler?.();
-      const appError = buildAppError(refreshError, (refreshError as AxiosError).response?.status);
-      notifyError(appError, originalRequest);
-      return Promise.reject(appError);
+    // --- NORMALIZACIÓN DE ERRORES ---
+    let code = "UNKNOWN";
+    let message = DEFAULT_ERROR_MESSAGE;
+    let details: unknown = undefined;
+    
+    if (!error.response) {
+      code = "NETWORK_ERROR";
+      message = NETWORK_ERROR_MESSAGE;
+    } else {
+      code = data?.error_code || `HTTP_${status}`;
+      message = data?.message || extractString(data) || message;
+      details = data?.details;
     }
-  },
+
+    const appError = new AppError(status || 0, code, message, details, data?.request_id, error);
+
+    // Notificación automática al usuario
+    const isLoginFailure = isAuthRoute && config?.url?.includes("login");
+    const suppress = config?.suppressErrorToast || (status === 401 && !isLoginFailure);
+    
+    if (!suppress) {
+      toast.error(message);
+    }
+
+    return Promise.reject(appError);
+  }
 );
 
-export const apiPath = (path: string) => path;
-
+/**
+ * Utilidades exportadas.
+ */
 export const api = client;
-
 export default client;
 
 export function getCookie(name: string) {
   const value = document.cookie
     .split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${name}=`));
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${name}=`));
   return value ? decodeURIComponent(value.split("=")[1]) : null;
 }

@@ -32,6 +32,7 @@ export type CursoIntroRegistroDTO = {
   id: number;
   estudiante_id: number;
   estudiante_nombre: string;
+  estudiante_apellido: string;
   estudiante_dni: string;
   profesorado_id?: number | null;
   profesorado_nombre?: string | null;
@@ -60,6 +61,7 @@ export type CursoIntroPendienteDTO = {
   estudiante_id: number;
   estudiante_dni: string;
   estudiante_nombre: string;
+  estudiante_apellido: string;
   profesorados: Array<{ id: number | null; nombre: string; anio_ingreso?: number | null }>;
   anio_ingreso?: number | null;
 };

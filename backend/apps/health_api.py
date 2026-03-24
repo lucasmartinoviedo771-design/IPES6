@@ -1,7 +1,7 @@
 from django.db import connection
 from ninja import Router
 
-router = Router(tags=["health"])
+router = Router(tags=["health"], auth=None)
 
 
 @router.get("/health")

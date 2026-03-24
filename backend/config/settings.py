@@ -55,14 +55,15 @@ if not SECRET_KEY:
             "SECRET_KEY no está configurada. "
             "Define la variable de entorno SECRET_KEY con un valor seguro en producción."
         )
-    SECRET_KEY = "dev-insecure-change-me"
+    # En desarrollo, forzamos que se defina algo, no dejamos un valor por defecto "famoso"
+    raise RuntimeError("SECRET_KEY no definida en el entorno (.env)")
 
 # Rate limiting para login (fall back sensato en desarrollo)
 LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "5"))
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
 
 # Hosts permitidos (¡ajusta con tu dominio real!)
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]", "192.168.1.83"])
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])  # ej: http://localhost:5173, https://tu-dominio
 
 # Cookies seguras en prod
@@ -87,13 +88,18 @@ INSTALLED_APPS = [
     "apps.metrics",
 ]
 
-# Profiling con silk (puede activarse en producción de forma segura)
+# Profiling con silk (debe estar protegido siempre)
 ENABLE_PROFILING = env_bool("ENABLE_PROFILING", default=DEBUG)
 if ENABLE_PROFILING:
     INSTALLED_APPS.append("silk")
-    SILKY_AUTHENTICATION = False  # Cambiado a False para evitar redirecciones al login de Django
-    SILKY_AUTHORISATION = False
-    # Podríamos agregar una validación personalizada aquí luego si es necesario
+    # VULN-001 FIX: Obligar a que el usuario esté autenticado y sea superuser
+    SILKY_AUTHENTICATION = True
+    SILKY_AUTHORISATION = True
+
+    def check_silk_access(user):
+        return user.is_authenticated and user.is_superuser
+
+    SILKY_PERMISSIONS = check_silk_access
 
 # === Middleware =========================================================
 MIDDLEWARE = [
@@ -267,19 +273,22 @@ if IS_PROD:
     # IMPORTANTE: SameSite='None' requiere Secure=True sí o sí.
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
     # X-Frame, X-Content-Type, etc.
     X_FRAME_OPTIONS = "DENY"
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "same-origin"
 
-    # SameSite: si front y back son dominios distintos y usás cookies cross-site, usa 'None'
-    SESSION_COOKIE_SAMESITE = "None"
-    CSRF_COOKIE_SAMESITE = "None"
+    # SameSite: 'Lax' es más seguro que 'None' y suficiente si están en subdominios
+    # o si se usa el proxy de Nginx adecuadamente.
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
 else:
     # Desarrollo
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+    RECAPTCHA_MIN_SCORE = 0.3 # En dev permitimos un umbral más bajo para pruebas
 

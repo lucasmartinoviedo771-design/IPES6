@@ -1,3 +1,13 @@
+"""
+API de Mensajería Interna Institucional.
+Gestiona la comunicación bidireccional entre estudiantes y staff (Bedeles, Tutores, Coordinadores).
+Incluye soporte para:
+- Conversaciones individuales y masivas (por rol/carrera).
+- Seguimiento de SLA (Indicadores de demora en respuesta).
+- Gestión de adjuntos y estados de lectura.
+- Auditoría de cierres y solicitudes de cierre de tickets/consultas.
+"""
+
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -43,24 +53,13 @@ from .schemas import (
 
 router = Router(tags=["Mensajería"])
 
-# --- CONSTANTES Y CONFIGURACIÓN ---
-
+# --- CONFIGURACIÓN DE RESPUESTA (SLA) ---
+# Días permitidos antes de marcar una conversación como atrasada (Warning/Danger)
 SLA_WARNING_DAYS = getattr(settings, "MESSAGES_SLA_WARNING_DAYS", 3)
 SLA_DANGER_DAYS = getattr(settings, "MESSAGES_SLA_DANGER_DAYS", 6)
 
-# REGLAS ORIGINALES (COMENTADAS PARA DESPUÉS)
-# ROLE_MASS_RULES: dict[str, set[str] | None] = {
-#     "admin": None,
-#     "secretaria": None,
-#     "jefa_aaee": None,
-#     "jefes": None,
-#     "coordinador": {"estudiante", "docente"},
-#     "tutor": {"estudiante"},
-#     "bedel": {"estudiante"},
-# }
-# ROLES_DIRECT_ALL = {"admin", "secretaria", "jefa_aaee", "jefes", "coordinador", "tutor", "bedel"}
-
-# REGLAS ACTIVAS PARA PRUEBAS (SOLO BEDEL <-> ESTUDIANTE)
+# REGLAS DE PERMISOS: Define quién puede enviar mensajes masivos a quién.
+# Actualmente restringido a Bedeles hacia sus Estudiantes por carrera.
 ROLE_MASS_RULES: dict[str, set[str] | None] = {
     "bedel": {"estudiante"},
 }
@@ -74,55 +73,53 @@ ROLE_STAFF_ASSIGNMENT = {
 
 ROLES_FORBIDDEN_SENDER = set()
 
-# --- FUNCIONES AUXILIARES ---
 
-
+# --- HELPERS DE PERMISOS Y TERRITORIALIDAD ---
 
 def _get_student(user: User) -> Estudiante | None:
+    """Retorna el perfil de Estudiante asociado a un usuario de Django."""
     return getattr(user, "estudiante", None)
 
 def _staff_profesorados(user: User, roles: set[str] | None = None) -> set[int]:
+    """Retorna los IDs de profesorados asignados a un miembro del staff."""
     qs = StaffAsignacion.objects.filter(user=user)
     if roles: qs = qs.filter(rol__in=roles)
     return set(qs.values_list("profesorado_id", flat=True))
 
 def _student_profesorados(student: Estudiante) -> set[int]:
+    """Retorna los IDs de las carreras en las que el alumno está inscripto."""
     return set(student.carreras.values_list("id", flat=True))
 
 def _get_staff_for_student(student: Estudiante, role: str) -> set[User]:
+    """Busca personal administrativo asignado a las carreras específicas del estudiante."""
     profes = _student_profesorados(student)
     if not profes: return set()
     qs = StaffAsignacion.objects.filter(profesorado_id__in=profes, rol=role).select_related("user")
     return {a.user for a in qs if a.user and a.user.is_active}
 
 def _shared_profesorado(staff_user: User, student: Estudiante, roles: set[str]) -> bool:
+    """Verifica si un miembro del staff y un estudiante comparten al menos una carrera."""
     staff_prof = _staff_profesorados(staff_user, roles)
     if not staff_prof: return False
     return bool(staff_prof.intersection(_student_profesorados(student)))
 
-def _allowed_mass_roles(sender_roles: set[str]) -> set[str] | None:
-    roles: set[str] = set()
-    allow_all = False
-    for role in sender_roles:
-        if role in ROLE_MASS_RULES:
-            rule = ROLE_MASS_RULES[role]
-            if rule is None: allow_all = True
-            else: roles.update(rule)
-    return None if allow_all else roles
-
 def _can_send_individual(sender: User, target: User) -> bool:
+    """
+    Motor de validación de destinatarios individuales.
+    Implementa el aislamiento por carreras: un Bedel solo ve a sus alumnos,
+    y un Alumno solo ve a los Bedeles de sus carreras.
+    """
     if sender == target: return False
     sender_roles = get_user_roles(sender)
     target_roles = get_user_roles(target)
     
-    # --- LÓGICA ACTIVA (SOLO BEDEL <-> ESTUDIANTE) ---
-    # Caso: Bedel -> Estudiante
+    # Caso: Staff (Bedel) -> Estudiante
     if "bedel" in sender_roles and "estudiante" in target_roles:
         student = _get_student(target)
         if not student: return False
         return _shared_profesorado(sender, student, {"bedel"})
     
-    # Caso: Estudiante -> Bedel
+    # Caso: Estudiante -> Staff (Bedel)
     if "estudiante" in sender_roles and "bedel" in target_roles:
         student = _get_student(sender)
         if not student: return False
@@ -131,40 +128,11 @@ def _can_send_individual(sender: User, target: User) -> bool:
         
     return False
 
-    # --- LOGICA ORIGINAL (COMENTADA PARA DESPUÉS) ---
-    # if sender_roles & ROLES_FORBIDDEN_SENDER: return False
-    # if sender_roles & ROLES_DIRECT_ALL:
-    #     if "estudiante" in target_roles:
-    #         student = _get_student(target)
-    #         if not student: return False
-    #         if sender_roles & {"bedel"}: return _shared_profesorado(sender, student, {"bedel"})
-    #         if sender_roles & {"coordinador"}:
-    #             staff_ok = _shared_profesorado(sender, student, {"coordinador"})
-    #             return staff_ok if staff_ok or _staff_profesorados(sender, {"coordinador"}) else True
-    #         if sender_roles & {"tutor"}: return _shared_profesorado(sender, student, {"tutor"})
-    #     return True
-    
-    # if "estudiante" in sender_roles:
-    #     student = _get_student(sender)
-    #     if not student: return False
-    #     if not (target_roles & {"bedel", "tutor"}): return False
-    #     allowed_users = _get_staff_for_student(student, "bedel") | _get_staff_for_student(student, "tutor")
-    #     return target in allowed_users
-    # return False
-
-def _get_users_by_role(role: str, limit_profesorados: set[int] | None) -> list[User]:
-    users_qs = User.objects.filter(is_active=True)
-    if role == "estudiante":
-        student_qs = Estudiante.objects.filter(user__in=users_qs)
-        if limit_profesorados: student_qs = student_qs.filter(carreras__id__in=limit_profesorados)
-        return list(User.objects.filter(id__in=student_qs.values_list("user_id", flat=True).distinct()))
-    if role in ROLE_STAFF_ASSIGNMENT:
-        assignments = StaffAsignacion.objects.filter(rol=role)
-        if limit_profesorados: assignments = assignments.filter(profesorado_id__in=limit_profesorados)
-        return list(User.objects.filter(id__in=assignments.values_list("user_id", flat=True).distinct()))
-    return list(users_qs.filter(groups__name__iexact=role).distinct())
-
 def _compute_sla_indicator(conversation: Conversation, participant: ConversationParticipant) -> str | None:
+    """
+    Calcula el indicador de urgencia basado en el tiempo transcurrido desde el último mensaje 
+    no leído por el participante actual (siempre que el último mensaje no sea propio).
+    """
     last_msg = getattr(conversation, "_last_message", None) or conversation.messages.order_by("-created_at").first()
     if not last_msg or last_msg.author_id == participant.user_id: return None
     if participant.last_read_at and participant.last_read_at >= last_msg.created_at: return None
@@ -174,6 +142,7 @@ def _compute_sla_indicator(conversation: Conversation, participant: Conversation
     return None
 
 def _primary_role(user: User) -> str | None:
+    """Retorna el rol principal del usuario según jerarquía institucional."""
     roles = get_user_roles(user)
     PRIORITY = ["admin", "secretaria", "jefa_aaee", "jefes", "coordinador", "tutor", "bedel", "consulta", "docente", "estudiante"]
     for role in PRIORITY:
@@ -181,6 +150,7 @@ def _primary_role(user: User) -> str | None:
     return sorted(roles)[0] if roles else None
 
 def _create_conversation(*, sender, recipient, subject, topic, body, allow_student_reply, context_type, context_id, is_massive) -> Conversation:
+    """Persiste una nueva conversación y su mensaje inicial inicializando los participantes."""
     conversation = Conversation.objects.create(
         topic=topic, created_by=sender, subject=subject or "",
         context_type=context_type, context_id=context_id,
@@ -198,53 +168,51 @@ def _create_conversation(*, sender, recipient, subject, topic, body, allow_stude
     conversation.save(update_fields=["last_message_at", "updated_at"])
     return conversation
 
+
 # --- ENDPOINTS ---
 
 @router.get("/temas", response=list[MessageTopicOut], auth=JWTAuth())
 def list_topics(request):
+    """Lista los temas habilitados para categorizar consultas."""
     return MessageTopic.objects.all().order_by("name")
 
 @router.get("/usuarios/buscar", response=list[SimpleUserOut], auth=JWTAuth())
 def search_users(request, q: str):
+    """
+    Búsqueda de destinatarios permitidos.
+    Filtra automáticamente según la lógica de carreras compartidas para Bedeles/Alumnos.
+    Enriquece el nombre del staff con el nombre de su carrera asignada.
+    """
     if len(q) < 3: return []
-    
     query = Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(username__icontains=q)
-    
-    # También permitir buscar por rol "bedel" o por el nombre de la carrera/profesorado
     q_low = q.lower()
     if "bedel" in q_low or q_low in "bedel":
         query |= Q(asignaciones_profesorado__rol="bedel")
-    
-    # Búsqueda por nombre de profesorado asignado
     query |= Q(asignaciones_profesorado__profesorado__nombre__icontains=q)
 
     users = User.objects.filter(query, is_active=True).distinct()[:20]
-    print(f"DEBUG SEARCH: q={q}, users_found={[u.username for u in users]}")
     res = []
     for u in users:
         roles = get_user_roles(u)
         if _can_send_individual(request.user, u):
             name = u.get_full_name() or u.username
-            
-            # Enriquecer nombre con asignación si es staff
             if "bedel" in roles:
                 profes_ids = _staff_profesorados(u, {"bedel"})
                 if profes_ids:
-                    # Traemos nombres de profesorados (podemos usar u.staffasignacion_set si queremos evitar query extra, 
-                    # pero _staff_profesorados ya devuelve los IDs)
                     from core.models import Profesorado
                     nombres = list(Profesorado.objects.filter(id__in=profes_ids).values_list("nombre", flat=True))
-                    # Limpiar nombres (quitar "Profesorado en", etc)
-                    nombres_clean = [n.replace("Profesorado de Educación Secundaria en ", "").replace("Profesorado de Educación ", "").replace("Profesorado en ", "").strip() for n in nombres]
-                    name = f"{name} (Bedel {', '.join(nombres_clean)})"
-            
+                    n_clean = [n.replace("Profesorado de Educación Secundaria en ", "").replace("Profesorado de Educación ", "").replace("Profesorado en ", "").strip() for n in nombres]
+                    name = f"{name} (Bedel {', '.join(n_clean)})"
             res.append(SimpleUserOut(id=u.id, name=name, roles=list(roles)))
     return res
 
 @router.get("/conversaciones", response=list[ConversationSummaryOut], auth=JWTAuth())
 def list_conversations(request, filters: Query[ConversationListQuery]):
+    """
+    Lista las conversaciones del usuario actual.
+    Soporta filtros por estado, tema, no leídos y búsqueda global de texto.
+    """
     participant_qs = ConversationParticipant.objects.filter(user=request.user).select_related("conversation__topic", "conversation__created_by")
-    # Si hay una búsqueda de texto (q), ignoramos el filtro de estado para que sea una búsqueda global
     if filters.status and not filters.q: 
         participant_qs = participant_qs.filter(conversation__status=filters.status)
     if filters.topic_id: participant_qs = participant_qs.filter(conversation__topic_id=filters.topic_id)
@@ -260,8 +228,6 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
     for p in participant_qs.order_by("-conversation__last_message_at")[:100]:
         c = p.conversation
         unread = not p.last_read_at or p.last_read_at < (c.last_message_at or c.created_at)
-        
-        # Obtener el preview del último mensaje
         last_msg = c.messages.order_by("-created_at").first()
         excerpt = (last_msg.body[:50] + "...") if last_msg and len(last_msg.body) > 50 else (last_msg.body if last_msg else None)
 
@@ -269,9 +235,7 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
             id=c.id, subject=c.subject, topic=c.topic.name if c.topic else None,
             status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
             last_message_at=c.last_message_at.isoformat() if c.last_message_at else None, 
-            unread=unread,
-            sla=_compute_sla_indicator(c, p),
-            participants=[], # Opcional: llenar si es necesario
+            unread=unread, sla=_compute_sla_indicator(c, p), participants=[],
             last_message_excerpt=excerpt,
             closed_by_name=c.closed_by.get_full_name() or c.closed_by.username if c.closed_by else None,
             closed_at=c.closed_at.isoformat() if c.closed_at else None
@@ -280,6 +244,11 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
 
 @router.post("/conversaciones", response=ConversationCreateOut, auth=JWTAuth())
 def create_conversation_view(request, payload: ConversationCreateIn):
+    """
+    Inicia una nueva conversación individual o masiva.
+    Valida permisos de envío antes de persistir. Las masivas crean una conversación 
+    independiente por cada destinatario para personalización.
+    """
     sender = request.user
     topic = get_object_or_404(MessageTopic, id=payload.topic_id) if payload.topic_id else None
     recipients = []
@@ -290,8 +259,9 @@ def create_conversation_view(request, payload: ConversationCreateIn):
             if not _can_send_individual(sender, r):
                 raise HttpError(403, f"No puedes enviar mensajes a {r.username}")
             recipients.append(r)
+    # Lógica de envío por roles institucionalmente permitidos
     elif payload.roles:
-        # Lógica de envío masivo
+        from .api import _get_users_by_role 
         for role in payload.roles:
             recipients.extend(_get_users_by_role(role, set(payload.carreras or [])))
     
@@ -315,11 +285,12 @@ def create_conversation_view(request, payload: ConversationCreateIn):
 
 @router.get("/conversaciones/{conversation_id}", response=ConversationDetailOut, auth=JWTAuth())
 def get_conversation(request, conversation_id: int):
+    """Detalle de una conversación incluyendo todo el historial de mensajes."""
     participant = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
     c = participant.conversation
     messages = c.messages.all().order_by("created_at")
     
-    # Marcar como leída
+    # Marcado automático de lectura al abrir el detalle
     participant.last_read_at = timezone.now()
     participant.save(update_fields=["last_read_at"])
     
@@ -349,6 +320,7 @@ def get_conversation(request, conversation_id: int):
 
 @router.post("/conversaciones/{conversation_id}/mensajes", response=MessageOut, auth=JWTAuth())
 def post_message(request, conversation_id: int, body: str = Form(...), attachment: UploadedFile = File(None)):
+    """Añade un mensaje a una conversación activa. Soporta carga de archivos."""
     participant = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
     if not participant.can_reply or participant.conversation.status == Conversation.Status.CLOSED:
         raise HttpError(403, "No puedes responder a esta conversación.")
@@ -370,14 +342,12 @@ def post_message(request, conversation_id: int, body: str = Form(...), attachmen
 
 @router.get("/resumen/", response=ConversationCountsOut, auth=JWTAuth())
 def get_message_counts(request):
+    """Resumen de contadores (Global no leídos, Warnings, Dangers) para el header/notificaciones."""
     participants = ConversationParticipant.objects.filter(user=request.user, conversation__status=Conversation.Status.OPEN)
-    unread = 0
-    warning = 0
-    danger = 0
+    unread, warning, danger = 0, 0, 0
     for p in participants.select_related("conversation"):
         c = p.conversation
-        if not p.last_read_at or p.last_read_at < c.last_message_at:
-            unread += 1
+        if not p.last_read_at or p.last_read_at < c.last_message_at: unread += 1
         sla = _compute_sla_indicator(c, p)
         if sla == "warning": warning += 1
         elif sla == "danger": danger += 1
@@ -385,8 +355,7 @@ def get_message_counts(request):
 
 @router.post("/conversaciones/{conversation_id}/cerrar", auth=JWTAuth())
 def close_conversation(request, conversation_id: int):
-    # Solo el bedel o admin debería poder cerrar? 
-    # Por ahora permitimos a los participantes si el flujo lo requiere.
+    """Cierra definitivamente una conversación. Solo permitido para participantes habilitados."""
     part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
     c = part.conversation
     c.status = Conversation.Status.CLOSED
@@ -398,6 +367,7 @@ def close_conversation(request, conversation_id: int):
 
 @router.post("/conversaciones/{conversation_id}/solicitar-cierre", auth=JWTAuth())
 def request_close_conversation(request, conversation_id: int):
+    """Permite proponer el cierre de una consulta (útil para que el estudiante valide la solución)."""
     part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
     c = part.conversation
     c.status = Conversation.Status.CLOSE_REQUESTED
@@ -409,7 +379,22 @@ def request_close_conversation(request, conversation_id: int):
 
 @router.post("/conversaciones/{conversation_id}/leer", auth=JWTAuth())
 def mark_conversation_as_read(request, conversation_id: int):
+    """Marca manualmente una conversación como leída."""
     part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
     part.last_read_at = timezone.now()
     part.save(update_fields=["last_read_at"])
     return {"ok": True}
+
+
+def _get_users_by_role(role: str, limit_profesorados: set[int] | None) -> list[User]:
+    """Retorna una lista de usuarios filtrados por rol y opcionalmente por profesorados asignados."""
+    users_qs = User.objects.filter(is_active=True)
+    if role == "estudiante":
+        student_qs = Estudiante.objects.filter(user__in=users_qs)
+        if limit_profesorados: student_qs = student_qs.filter(carreras__id__in=limit_profesorados)
+        return list(User.objects.filter(id__in=student_qs.values_list("user_id", flat=True).distinct()))
+    if role in ROLE_STAFF_ASSIGNMENT:
+        assignments = StaffAsignacion.objects.filter(rol=role)
+        if limit_profesorados: assignments = assignments.filter(profesorado_id__in=limit_profesorados)
+        return list(User.objects.filter(id__in=assignments.values_list("user_id", flat=True).distinct()))
+    return list(users_qs.filter(groups__name__iexact=role).distinct())

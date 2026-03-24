@@ -48,8 +48,16 @@ IPES6 es una aplicación web full-stack:
 ## 4. Pendientes y Desafíos Técnicos (Issues)
 
 - ~~**Actualización Vite 7**: Resolver vulnerabilidades moderadas en `esbuild`.~~ *(¡Superado y migrado exitosamente a Vite 8.0.1!)*
+- ~~**Auditoría de Seguridad**: Realizar hardening de secretos, auth y diagnóstico.~~ *(¡Finalizado Marzo 2026 - Ver [security_audit_ipes6.md](security_audit_ipes6.md))!*
 - **Unificación de Esquemas**: Evitar duplicidad entre `components/preinscripcion/schema.ts` y `features/preinscripcion/schema.ts`.
 - **Validación de Ventanas**: Mover validación de fechas de `VentanaHabilitacion` al servidor (actualmente solo en frontend).
+
+## 5. Medidas de Seguridad Aplicadas (Hardening)
+
+- **Auth Ninja Global**: Toda la API Ninja utiliza `JWTAuth()` por defecto. Solo las rutas explícitamente marcadas como `auth=None` son públicas.
+- **Silk Restricted**: El profiler de Django Silk está restringido a superusuarios mediante `SILKY_AUTHENTICATION=True` y `SILKY_PERMISSIONS`.
+- **Cookie Security**: `SESSION_COOKIE_SAMESITE = 'Lax'` y `CSRF_COOKIE_SAMESITE = 'Lax'` para mayor protección CSRF en el mismo origen.
+- **Nginx CSP**: Se ha removido `'unsafe-eval'` de la política de Content Security Policy para prevenir vectores XSS avanzados.
 
 ---
 *Última actualización: Marzo 2026*
