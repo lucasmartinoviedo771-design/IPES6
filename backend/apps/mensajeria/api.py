@@ -244,7 +244,9 @@ def search_users(request, q: str):
 @router.get("/conversaciones", response=list[ConversationSummaryOut], auth=JWTAuth())
 def list_conversations(request, filters: Query[ConversationListQuery]):
     participant_qs = ConversationParticipant.objects.filter(user=request.user).select_related("conversation__topic", "conversation__created_by")
-    if filters.status: participant_qs = participant_qs.filter(conversation__status=filters.status)
+    # Si hay una búsqueda de texto (q), ignoramos el filtro de estado para que sea una búsqueda global
+    if filters.status and not filters.q: 
+        participant_qs = participant_qs.filter(conversation__status=filters.status)
     if filters.topic_id: participant_qs = participant_qs.filter(conversation__topic_id=filters.topic_id)
     if filters.unread:
         participant_qs = participant_qs.filter(Q(last_read_at__isnull=True) | Q(last_read_at__lt=F("conversation__last_message_at")))
