@@ -218,6 +218,7 @@ def search_users(request, q: str):
     query |= Q(asignaciones_profesorado__profesorado__nombre__icontains=q)
 
     users = User.objects.filter(query, is_active=True).distinct()[:20]
+    print(f"DEBUG SEARCH: q={q}, users_found={[u.username for u in users]}")
     res = []
     for u in users:
         roles = get_user_roles(u)
@@ -246,6 +247,11 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
     if filters.topic_id: participant_qs = participant_qs.filter(conversation__topic_id=filters.topic_id)
     if filters.unread:
         participant_qs = participant_qs.filter(Q(last_read_at__isnull=True) | Q(last_read_at__lt=F("conversation__last_message_at")))
+    if filters.q:
+        participant_qs = participant_qs.filter(
+            Q(conversation__subject__icontains=filters.q) |
+            Q(conversation__messages__body__icontains=filters.q)
+        ).distinct()
     
     res = []
     for p in participant_qs.order_by("-conversation__last_message_at")[:100]:

@@ -5,6 +5,7 @@ export interface ConversationFilters {
   status?: ConversationStatus | "";
   unreadOnly?: boolean;
   topicId?: number | "";
+  q?: string;
 }
 
 export interface NewConversationDialogProps {
@@ -17,6 +18,7 @@ export const DEFAULT_FILTERS: ConversationFilters = {
   status: "open",
   unreadOnly: false,
   topicId: "",
+  q: "",
 };
 
 export const ROLE_OPTIONS = [

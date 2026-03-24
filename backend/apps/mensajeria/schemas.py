@@ -53,6 +53,7 @@ class ConversationListQuery(Schema):
     status: str | None = None
     topic_id: int | None = None
     unread: bool | None = False
+    q: str | None = None
 
 class ConversationCountsOut(Schema):
     unread: int

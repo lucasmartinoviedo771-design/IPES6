@@ -12,6 +12,8 @@ import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import InputAdornment from "@mui/material/InputAdornment";
+import SearchIcon from "@mui/icons-material/Search";
 import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
@@ -48,6 +50,21 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     <Paper variant="outlined" sx={{ p: 1.5, height: "100%", minHeight: 520 }}>
       <Stack spacing={1.5}>
         <TextField
+          label="Buscar mensajes..."
+          size="small"
+          fullWidth
+          value={filters.q ?? ""}
+          onChange={(e) => onFilterChange({ ...filters, q: e.target.value })}
+          autoComplete="off"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
           label="Estado"
           select
           size="small"
@@ -59,7 +76,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           <MenuItem value="">Todos</MenuItem>
           <MenuItem value="open">Abiertas</MenuItem>
           <MenuItem value="close_requested">Cierre solicitado</MenuItem>
-          <MenuItem value="closed">Cerradas</MenuItem>
+          <MenuItem value="closed">Archivadas</MenuItem>
         </TextField>
         <FormControlLabel
           control={

@@ -79,6 +79,7 @@ export interface ConversationListFilters {
   status?: ConversationStatus;
   topic_id?: number;
   unread?: boolean;
+  q?: string;
 }
 
 export const listarTemasMensajes = async (): Promise<MessageTopicDTO[]> => {
