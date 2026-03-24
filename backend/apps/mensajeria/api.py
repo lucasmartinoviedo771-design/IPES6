@@ -205,7 +205,17 @@ def list_topics(request):
 @router.get("/usuarios/buscar", response=list[SimpleUserOut], auth=JWTAuth())
 def search_users(request, q: str):
     if len(q) < 3: return []
+    
     query = Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(username__icontains=q)
+    
+    # También permitir buscar por rol "bedel" o por el nombre de la carrera/profesorado
+    q_low = q.lower()
+    if "bedel" in q_low or q_low in "bedel":
+        query |= Q(staffasignacion__rol="bedel")
+    
+    # Búsqueda por nombre de profesorado asignado
+    query |= Q(staffasignacion__profesorado__nombre__icontains=q)
+
     users = User.objects.filter(query, is_active=True).distinct()[:20]
     res = []
     for u in users:
