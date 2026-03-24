@@ -33,6 +33,7 @@ from .schemas import (
     ConversationCreateOut,
     ConversationDetailOut,
     ConversationListQuery,
+    ConversationParticipantOut,
     ConversationSummaryOut,
     MessageOut,
     MessageTopicOut,
@@ -319,7 +320,11 @@ def get_conversation(request, conversation_id: int):
         status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
         last_message_at=c.last_message_at.isoformat() if c.last_message_at else None,
         unread=False, sla=None,
-        participants=[], # Llenar participantes si es necesario
+        participants=[ConversationParticipantOut(
+            id=p.id, user_id=p.user_id, name=p.user.get_full_name() or p.user.username,
+            roles=list(get_user_roles(p.user)), can_reply=p.can_reply,
+            last_read_at=format_datetime(p.last_read_at)
+        ) for p in c.participants.all().select_related("user")],
         last_message_excerpt=excerpt,
         messages=[MessageOut(
             id=m.id, author_id=m.author_id, author_name=m.author.get_full_name() or m.author.username,
