@@ -40,6 +40,8 @@ export interface ConversationSummaryDTO {
   sla?: "warning" | "danger" | null;
   participants: ParticipantDTO[];
   last_message_excerpt?: string | null;
+  closed_by_name?: string | null;
+  closed_at?: string | null;
 }
 
 export interface ConversationDetailDTO extends ConversationSummaryDTO {

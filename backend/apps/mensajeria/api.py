@@ -272,7 +272,9 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
             unread=unread,
             sla=_compute_sla_indicator(c, p),
             participants=[], # Opcional: llenar si es necesario
-            last_message_excerpt=excerpt
+            last_message_excerpt=excerpt,
+            closed_by_name=c.closed_by.get_full_name() or c.closed_by.username if c.closed_by else None,
+            closed_at=c.closed_at.isoformat() if c.closed_at else None
         ))
     return res
 
@@ -335,6 +337,8 @@ def get_conversation(request, conversation_id: int):
             last_read_at=format_datetime(p.last_read_at)
         ) for p in c.participants.all().select_related("user")],
         last_message_excerpt=excerpt,
+        closed_by_name=c.closed_by.get_full_name() or c.closed_by.username if c.closed_by else None,
+        closed_at=c.closed_at.isoformat() if c.closed_at else None,
         messages=[MessageOut(
             id=m.id, author_id=m.author_id, author_name=m.author.get_full_name() or m.author.username,
             body=m.body, created_at=m.created_at.isoformat(),

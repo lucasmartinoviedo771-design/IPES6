@@ -1,4 +1,5 @@
 import React from "react";
+import dayjs from "dayjs";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -113,7 +114,10 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({
           <Divider sx={{ my: 2 }} />
 
           {conversationDetail.status === "closed" ? (
-            <Alert severity="info">La conversación está cerrada.</Alert>
+            <Alert severity="info">
+              La conversación fue archivada por <strong>{conversationDetail.closed_by_name || "un administrador"}</strong>
+              {conversationDetail.closed_at ? ` el ${dayjs(conversationDetail.closed_at).format("DD/MM/YYYY HH:mm")}` : "."}
+            </Alert>
           ) : conversationDetail.participants.find((p) => p.user_id === userId)?.can_reply ? (
             <Stack spacing={1.5}>
               <TextField

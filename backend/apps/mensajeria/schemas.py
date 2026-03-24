@@ -30,6 +30,8 @@ class ConversationSummaryOut(Schema):
     sla: str | None
     participants: list[ConversationParticipantOut]
     last_message_excerpt: str | None
+    closed_by_name: str | None = None
+    closed_at: str | None = None
 
 class ConversationDetailOut(ConversationSummaryOut):
     messages: list[MessageOut]
