@@ -12,6 +12,7 @@ from ninja.files import UploadedFile
 from core.auth_ninja import JWTAuth
 from core.models import (
     Conversation,
+    ConversationAudit,
     ConversationParticipant,
     Docente,
     Estudiante,
@@ -375,3 +376,34 @@ def get_message_counts(request):
         if sla == "warning": warning += 1
         elif sla == "danger": danger += 1
     return {"unread": unread, "sla_warning": warning, "sla_danger": danger}
+
+@router.post("/conversaciones/{conversation_id}/cerrar", auth=JWTAuth())
+def close_conversation(request, conversation_id: int):
+    # Solo el bedel o admin debería poder cerrar? 
+    # Por ahora permitimos a los participantes si el flujo lo requiere.
+    part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
+    c = part.conversation
+    c.status = Conversation.Status.CLOSED
+    c.closed_by = request.user
+    c.closed_at = timezone.now()
+    c.save(update_fields=["status", "closed_by", "closed_at"])
+    ConversationAudit.objects.create(conversation=c, actor=request.user, action=ConversationAudit.Action.CLOSED)
+    return {"ok": True}
+
+@router.post("/conversaciones/{conversation_id}/solicitar-cierre", auth=JWTAuth())
+def request_close_conversation(request, conversation_id: int):
+    part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
+    c = part.conversation
+    c.status = Conversation.Status.CLOSE_REQUESTED
+    c.close_requested_by = request.user
+    c.close_requested_at = timezone.now()
+    c.save(update_fields=["status", "close_requested_by", "close_requested_at"])
+    ConversationAudit.objects.create(conversation=c, actor=request.user, action=ConversationAudit.Action.CLOSE_REQUESTED)
+    return {"ok": True}
+
+@router.post("/conversaciones/{conversation_id}/leer", auth=JWTAuth())
+def mark_conversation_as_read(request, conversation_id: int):
+    part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
+    part.last_read_at = timezone.now()
+    part.save(update_fields=["last_read_at"])
+    return {"ok": True}
