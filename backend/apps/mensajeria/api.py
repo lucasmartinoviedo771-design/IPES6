@@ -209,8 +209,23 @@ def search_users(request, q: str):
     users = User.objects.filter(query, is_active=True).distinct()[:20]
     res = []
     for u in users:
+        roles = get_user_roles(u)
         if _can_send_individual(request.user, u):
-            res.append(SimpleUserOut(id=u.id, name=u.get_full_name() or u.username, roles=list(get_user_roles(u))))
+            name = u.get_full_name() or u.username
+            
+            # Enriquecer nombre con asignación si es staff
+            if "bedel" in roles:
+                profes_ids = _staff_profesorados(u, {"bedel"})
+                if profes_ids:
+                    # Traemos nombres de profesorados (podemos usar u.staffasignacion_set si queremos evitar query extra, 
+                    # pero _staff_profesorados ya devuelve los IDs)
+                    from core.models import Profesorado
+                    nombres = list(Profesorado.objects.filter(id__in=profes_ids).values_list("nombre", flat=True))
+                    # Limpiar nombres (quitar "Profesorado en", etc)
+                    nombres_clean = [n.replace("Profesorado de Educación Secundaria en ", "").replace("Profesorado de Educación ", "").replace("Profesorado en ", "").strip() for n in nombres]
+                    name = f"{name} (Bedel {', '.join(nombres_clean)})"
+            
+            res.append(SimpleUserOut(id=u.id, name=name, roles=list(roles)))
     return res
 
 @router.get("/conversaciones", response=list[ConversationSummaryOut], auth=JWTAuth())
