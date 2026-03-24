@@ -149,7 +149,7 @@ export const obtenerResumenMensajes = async (): Promise<ConversationCountsDTO> =
 };
 
 export const buscarUsuariosMensajes = async (query: string): Promise<SimpleUserDTO[]> => {
-  const { data } = await client.get<SimpleUserDTO[]>("/usuarios/buscar", {
+  const { data } = await client.get<SimpleUserDTO[]>("/mensajes/usuarios/buscar", {
     params: { q: query },
   });
   return data;

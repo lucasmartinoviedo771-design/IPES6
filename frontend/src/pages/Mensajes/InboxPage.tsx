@@ -44,7 +44,7 @@ const MensajesInboxPage: React.FC = () => {
   const [replyBody, setReplyBody] = useState("");
   const [replyAttachment, setReplyAttachment] = useState<File | null>(null);
 
-  const canCreateMessages = user ? hasAnyRole(user, ["admin", "secretaria", "bedel"]) : false;
+  const canCreateMessages = user ? hasAnyRole(user, ["admin", "secretaria", "bedel", "estudiante"]) : false;
 
   const { data: summary } = useQuery<ConversationCountsDTO>({
     queryKey: ["mensajes", "resumen"],

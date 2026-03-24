@@ -46,19 +46,23 @@ router = Router(tags=["Mensajería"])
 SLA_WARNING_DAYS = getattr(settings, "MESSAGES_SLA_WARNING_DAYS", 3)
 SLA_DANGER_DAYS = getattr(settings, "MESSAGES_SLA_DANGER_DAYS", 6)
 
+# REGLAS ORIGINALES (COMENTADAS PARA DESPUÉS)
+# ROLE_MASS_RULES: dict[str, set[str] | None] = {
+#     "admin": None,
+#     "secretaria": None,
+#     "jefa_aaee": None,
+#     "jefes": None,
+#     "coordinador": {"estudiante", "docente"},
+#     "tutor": {"estudiante"},
+#     "bedel": {"estudiante"},
+# }
+# ROLES_DIRECT_ALL = {"admin", "secretaria", "jefa_aaee", "jefes", "coordinador", "tutor", "bedel"}
+
+# REGLAS ACTIVAS PARA PRUEBAS (SOLO BEDEL <-> ESTUDIANTE)
 ROLE_MASS_RULES: dict[str, set[str] | None] = {
-    "admin": None,
-    "secretaria": None,
-    "jefa_aaee": None,
-    "jefes": None,
-    "coordinador": {"estudiante", "docente"},
-    "tutor": {"estudiante"},
     "bedel": {"estudiante"},
 }
-
-ROLES_DIRECT_ALL = {
-    "admin", "secretaria", "jefa_aaee", "jefes", "coordinador", "tutor", "bedel",
-}
+ROLES_DIRECT_ALL = {"bedel"}
 
 ROLE_STAFF_ASSIGNMENT = {
     "bedel": {"bedel"},
@@ -107,27 +111,44 @@ def _allowed_mass_roles(sender_roles: set[str]) -> set[str] | None:
 def _can_send_individual(sender: User, target: User) -> bool:
     if sender == target: return False
     sender_roles = get_user_roles(sender)
-    if sender_roles & ROLES_FORBIDDEN_SENDER: return False
     target_roles = get_user_roles(target)
     
-    if sender_roles & ROLES_DIRECT_ALL:
-        if "estudiante" in target_roles:
-            student = _get_student(target)
-            if not student: return False
-            if sender_roles & {"bedel"}: return _shared_profesorado(sender, student, {"bedel"})
-            if sender_roles & {"coordinador"}:
-                staff_ok = _shared_profesorado(sender, student, {"coordinador"})
-                return staff_ok if staff_ok or _staff_profesorados(sender, {"coordinador"}) else True
-            if sender_roles & {"tutor"}: return _shared_profesorado(sender, student, {"tutor"})
-        return True
+    # --- LÓGICA ACTIVA (SOLO BEDEL <-> ESTUDIANTE) ---
+    # Caso: Bedel -> Estudiante
+    if "bedel" in sender_roles and "estudiante" in target_roles:
+        student = _get_student(target)
+        if not student: return False
+        return _shared_profesorado(sender, student, {"bedel"})
     
-    if "estudiante" in sender_roles:
+    # Caso: Estudiante -> Bedel
+    if "estudiante" in sender_roles and "bedel" in target_roles:
         student = _get_student(sender)
         if not student: return False
-        if not (target_roles & {"bedel", "tutor"}): return False
-        allowed_users = _get_staff_for_student(student, "bedel") | _get_staff_for_student(student, "tutor")
-        return target in allowed_users
+        allowed_bedels = _get_staff_for_student(student, "bedel")
+        return target in allowed_bedels
+        
     return False
+
+    # --- LOGICA ORIGINAL (COMENTADA PARA DESPUÉS) ---
+    # if sender_roles & ROLES_FORBIDDEN_SENDER: return False
+    # if sender_roles & ROLES_DIRECT_ALL:
+    #     if "estudiante" in target_roles:
+    #         student = _get_student(target)
+    #         if not student: return False
+    #         if sender_roles & {"bedel"}: return _shared_profesorado(sender, student, {"bedel"})
+    #         if sender_roles & {"coordinador"}:
+    #             staff_ok = _shared_profesorado(sender, student, {"coordinador"})
+    #             return staff_ok if staff_ok or _staff_profesorados(sender, {"coordinador"}) else True
+    #         if sender_roles & {"tutor"}: return _shared_profesorado(sender, student, {"tutor"})
+    #     return True
+    
+    # if "estudiante" in sender_roles:
+    #     student = _get_student(sender)
+    #     if not student: return False
+    #     if not (target_roles & {"bedel", "tutor"}): return False
+    #     allowed_users = _get_staff_for_student(student, "bedel") | _get_staff_for_student(student, "tutor")
+    #     return target in allowed_users
+    # return False
 
 def _get_users_by_role(role: str, limit_profesorados: set[int] | None) -> list[User]:
     users_qs = User.objects.filter(is_active=True)

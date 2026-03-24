@@ -21,8 +21,11 @@ export const DEFAULT_FILTERS: ConversationFilters = {
 
 export const ROLE_OPTIONS = [
   { value: "estudiante", label: "Estudiantes" },
+  /*
   { value: "docente", label: "Docentes" },
+  */
   { value: "bedel", label: "Bedeles" },
+  /*
   { value: "tutor", label: "Tutores" },
   { value: "coordinador", label: "Coordinadores" },
   { value: "secretaria", label: "Secretaría" },
@@ -30,17 +33,22 @@ export const ROLE_OPTIONS = [
   { value: "jefa_aaee", label: "Jefa de AAEE" },
   { value: "jefes", label: "Jefes" },
   { value: "consulta", label: "Consulta" },
+  */
 ];
 
 export const MASS_ROLE_RULES: Record<string, string[] | null> = {
+  /*
   admin: null,
   secretaria: null,
   jefa_aaee: null,
   jefes: null,
   coordinador: ["estudiante", "docente"],
   tutor: ["estudiante"],
+  */
   bedel: ["estudiante"],
+  /*
   preinscripciones: [],
   consulta: [],
+  */
   estudiante: [],
 };
