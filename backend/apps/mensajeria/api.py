@@ -250,13 +250,19 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
     for p in participant_qs.order_by("-conversation__last_message_at")[:100]:
         c = p.conversation
         unread = not p.last_read_at or p.last_read_at < (c.last_message_at or c.created_at)
+        
+        # Obtener el preview del último mensaje
+        last_msg = c.messages.order_by("-created_at").first()
+        excerpt = (last_msg.body[:50] + "...") if last_msg and len(last_msg.body) > 50 else (last_msg.body if last_msg else None)
+
         res.append(ConversationSummaryOut(
             id=c.id, subject=c.subject, topic=c.topic.name if c.topic else None,
             status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
-            last_message_at=format_datetime(c.last_message_at), unread=unread,
+            last_message_at=c.last_message_at.isoformat() if c.last_message_at else None, 
+            unread=unread,
             sla=_compute_sla_indicator(c, p),
             participants=[], # Opcional: llenar si es necesario
-            last_message_excerpt=None # Opcional
+            last_message_excerpt=excerpt
         ))
     return res
 
@@ -305,14 +311,19 @@ def get_conversation(request, conversation_id: int):
     participant.last_read_at = timezone.now()
     participant.save(update_fields=["last_read_at"])
     
+    last_msg = messages.last()
+    excerpt = (last_msg.body[:50] + "...") if last_msg and len(last_msg.body) > 50 else (last_msg.body if last_msg else None)
+    
     return ConversationDetailOut(
         id=c.id, subject=c.subject, topic=c.topic.name if c.topic else None,
         status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
-        last_message_at=format_datetime(c.last_message_at), unread=False, sla=None,
-        participants=[], # Llenar participantes
+        last_message_at=c.last_message_at.isoformat() if c.last_message_at else None,
+        unread=False, sla=None,
+        participants=[], # Llenar participantes si es necesario
+        last_message_excerpt=excerpt,
         messages=[MessageOut(
             id=m.id, author_id=m.author_id, author_name=m.author.get_full_name() or m.author.username,
-            body=m.body, created_at=format_datetime(m.created_at),
+            body=m.body, created_at=m.created_at.isoformat(),
             attachment_url=m.attachment.url if m.attachment else None,
             attachment_name=m.attachment.name if m.attachment else None
         ) for m in messages]
@@ -334,7 +345,7 @@ def post_message(request, conversation_id: int, body: str = Form(...), attachmen
     
     return MessageOut(
         id=msg.id, author_id=msg.author_id, author_name=msg.author.get_full_name() or msg.author.username,
-        body=msg.body, created_at=format_datetime(msg.created_at),
+        body=msg.body, created_at=msg.created_at.isoformat(),
         attachment_url=msg.attachment.url if msg.attachment else None,
         attachment_name=msg.attachment.name if msg.attachment else None
     )
