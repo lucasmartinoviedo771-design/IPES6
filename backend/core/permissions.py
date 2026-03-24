@@ -22,7 +22,7 @@ _UNRESTRICTED_ROLES = {
 
 STRUCTURE_VIEW_ROLES = {
     "admin", "secretaria", "bedel", "coordinador", "tutor",
-    "jefes", "jefa_aaee", "consulta",
+    "jefes", "jefa_aaee", "consulta", "estudiante",
 }
 STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
 ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
@@ -35,7 +35,7 @@ GLOBAL_OVERVIEW_ROLES = {
 }
 ALL_ROLES: set[str] = {
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
-    "tutor", "coordinador", "consulta",
+    "tutor", "coordinador", "consulta", "estudiante",
 }
 ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
     "admin": list(ALL_ROLES),

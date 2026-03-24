@@ -2,9 +2,12 @@ import React from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import LockIcon from "@mui/icons-material/Lock";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { MesaPlanillaCondicionDTO, MesaPlanillaDTO } from "@/api/estudiantes";
 import { FinalRowState } from "../types";
 import FinalExamPlanillaTable from "./FinalExamPlanillaTable";
@@ -74,9 +77,37 @@ const FinalExamPlanillaSection: React.FC<Props> = ({
             gap={2}
           >
             <Box>
-              <Typography variant="subtitle2" fontWeight={700}>
-                {finalPlanilla.materia_nombre} - Mesa #{finalPlanilla.mesa_id}
-              </Typography>
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  {finalPlanilla.materia_nombre} - Mesa #{finalPlanilla.mesa_id}
+                </Typography>
+                {finalPlanilla.esta_cerrada ? (
+                  <Chip
+                    icon={<LockIcon style={{ fontSize: 14 }} />}
+                    label="ACTA CERRADA"
+                    size="small"
+                    sx={{
+                      backgroundColor: "#f5f5f5",
+                      fontWeight: 700,
+                      height: 24,
+                      fontSize: "0.75rem"
+                    }}
+                  />
+                ) : (
+                  <Chip
+                    icon={<CheckCircleIcon style={{ fontSize: 14 }} />}
+                    label="ACTA ABIERTA"
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    sx={{
+                      fontWeight: 700,
+                      height: 24,
+                      fontSize: "0.75rem"
+                    }}
+                  />
+                )}
+              </Stack>
               <Typography color="text.secondary">
                 {finalPlanilla.fecha ? new Date(finalPlanilla.fecha).toLocaleDateString() : "-"} - {finalPlanilla.tipo === "FIN" ? "Ordinaria" : finalPlanilla.tipo === "EXT" ? "Extraordinaria" : "Especial"} - {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
               </Typography>
@@ -126,17 +157,18 @@ const FinalExamPlanillaSection: React.FC<Props> = ({
                 color="warning"
                 onClick={() => onFinalPlanillaCierre("cerrar")}
                 disabled={finalCierreLoading}
+                startIcon={<LockIcon />}
               >
-                {finalCierreLoading ? "Cerrando..." : "Cerrar planilla"}
+                {finalCierreLoading ? "Cerrando..." : "Cerrar y bloquear acta"}
               </Button>
             )}
-            {finalPlanilla.puede_reabrir && false && (
+            {finalPlanilla.puede_reabrir && (
               <Button
                 variant="contained"
                 onClick={() => onFinalPlanillaCierre("reabrir")}
                 disabled={finalCierreLoading}
               >
-                {finalCierreLoading ? "Actualizando..." : "Reabrir planilla"}
+                {finalCierreLoading ? "Habilitando..." : "Desbloquear acta para edición"}
               </Button>
             )}
           </Box>

@@ -217,15 +217,38 @@ def horarios_profesorado(
     if turno_id is not None:
         horarios_qs = horarios_qs.filter(turno_id=turno_id)
     if anio_plan is not None:
-        horarios_qs = horarios_qs.filter(anio_cursada=anio_plan)
+        horarios_qs = horarios_qs.filter(espacio__anio_cursada=anio_plan)
+
+    # Filtrado por cuatrimestre
     if cuatrimestre:
         valor = cuatrimestre.upper()
         if valor == "ANUAL":
-            horarios_qs = horarios_qs.filter(Q(cuatrimestre__isnull=True) | Q(cuatrimestre=Materia.TipoCursada.ANUAL))
+            # Mostrar solo anuales sin segmentar (sin cuatrimestre específico en HorarioCatedra)
+            horarios_qs = horarios_qs.filter(
+                Q(cuatrimestre__isnull=True) |
+                Q(cuatrimestre="") |
+                Q(cuatrimestre="ANU") |
+                Q(cuatrimestre=Materia.TipoCursada.ANUAL)
+            )
         elif valor == "1C":
-            horarios_qs = horarios_qs.filter(cuatrimestre=Materia.TipoCursada.PRIMER_CUATRIMESTRE)
+            # Incluir: 1C explícito O anuales sin segmentar (cuatrimestre NULL/vacío)
+            horarios_qs = horarios_qs.filter(
+                Q(cuatrimestre=Materia.TipoCursada.PRIMER_CUATRIMESTRE) |
+                Q(cuatrimestre="PCU") |
+                # Anuales sin segmentar (cuatrimestre NULL/vacío y espacio.regimen es anual)
+                (Q(cuatrimestre__isnull=True) & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU"))) |
+                (Q(cuatrimestre="") & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU")))
+            )
         elif valor == "2C":
-            horarios_qs = horarios_qs.filter(cuatrimestre=Materia.TipoCursada.SEGUNDO_CUATRIMESTRE)
+            # Incluir: 2C explícito O anuales sin segmentar (cuatrimestre NULL/vacío)
+            horarios_qs = horarios_qs.filter(
+                Q(cuatrimestre=Materia.TipoCursada.SEGUNDO_CUATRIMESTRE) |
+                Q(cuatrimestre="SCU") |
+                # Anuales sin segmentar (cuatrimestre NULL/vacío y espacio.regimen es anual)
+                (Q(cuatrimestre__isnull=True) & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU"))) |
+                (Q(cuatrimestre="") & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU")))
+            )
+    # Si cuatrimestre es None/vacío: no filtrar, devolver todo
 
     tablas = _construir_tablas_horario(profesorado, plan, list(horarios_qs))
     return tablas

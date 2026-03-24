@@ -1,11 +1,14 @@
 import React from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import LockIcon from "@mui/icons-material/Lock";
+import EditIcon from "@mui/icons-material/Edit";
 import { MesaResumenDTO } from "@/api/cargaNotas";
 import { FinalFiltersState } from "../types";
 
@@ -57,9 +60,30 @@ const FinalExamMesasGrid: React.FC<Props> = ({
                 }}
               >
                 <Stack gap={0.5}>
-                  <Typography variant="subtitle2">
-                    {mesa.materia_nombre} (#{mesa.materia_id})
-                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Typography variant="subtitle2" sx={{ lineHeight: 1.2, fontWeight: 700 }}>
+                      {mesa.materia_nombre} (#{mesa.materia_id})
+                    </Typography>
+                    {mesa.esta_cerrada ? (
+                      <Chip
+                        icon={<LockIcon style={{ fontSize: 14 }} />}
+                        label="CERRADA"
+                        size="small"
+                        color="default"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: "0.65rem", fontWeight: 700, ml: 1, backgroundColor: "#f5f5f5" }}
+                      />
+                    ) : (
+                      <Chip
+                        icon={<EditIcon style={{ fontSize: 14 }} />}
+                        label="EDICIÓN ACTIVA"
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: "0.65rem", fontWeight: 700, ml: 1 }}
+                      />
+                    )}
+                  </Stack>
                   <Typography variant="body2" color="text.secondary">
                     {mesa.profesorado_nombre ?? "Sin profesorado"} | Plan {mesa.plan_resolucion ?? "-"}
                   </Typography>
@@ -71,6 +95,7 @@ const FinalExamMesasGrid: React.FC<Props> = ({
                     <Button
                       size="small"
                       variant="contained"
+                      color={mesa.esta_cerrada ? "primary" : "success"}
                       onClick={() => onOpenFinalPlanilla(mesa.id)}
                       disabled={finalLoadingPlanilla && isSelected}
                     >

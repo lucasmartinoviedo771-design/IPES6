@@ -32,13 +32,16 @@ ORDINALES = {
 
 
 def _normalizar_regimen(valor: str | None) -> str:
-    if not valor or valor == Materia.TipoCursada.ANUAL:
+    if not valor:
         return "ANUAL"
-    if valor == Materia.TipoCursada.PRIMER_CUATRIMESTRE:
+    v = str(valor).lower().strip()
+    if v in ["anu", "anual", "anu."]:
+        return "ANUAL"
+    if v in ["pcu", "1c", "1er cuatrimestre", "1º cuatrimestre", "primero"]:
         return "1C"
-    if valor == Materia.TipoCursada.SEGUNDO_CUATRIMESTRE:
+    if v in ["scu", "2c", "2do cuatrimestre", "2º cuatrimestre", "segundo"]:
         return "2C"
-    return valor
+    return "ANUAL"
 
 
 def _format_time(value) -> str:
@@ -148,7 +151,18 @@ def _construir_tablas_horario(
         cuatrimestres_set: set[str] = set()
 
         for horario in items:
-            regimen_label = _normalizar_regimen(horario.cuatrimestre or horario.espacio.regimen)
+            # Respetar la segmentación: si HorarioCatedra.cuatrimestre tiene valor, usarlo
+            # Si es NULL/vacío, entonces usa espacio.regimen
+            materia_regimen = _normalizar_regimen(horario.espacio.regimen)
+            
+            # Si la MATERIA es anual, no importa si el horario dice cuatrimestre (puede ser segmentado)
+            if materia_regimen == "ANUAL":
+                regimen_label = "ANUAL"
+            else:
+                # Si la materia no es anual, usamos el cuatrimestre del horario o el de la materia
+                regimen_raw = horario.cuatrimestre or horario.espacio.regimen
+                regimen_label = _normalizar_regimen(regimen_raw)
+
             if regimen_label:
                 cuatrimestres_set.add(regimen_label)
 
@@ -220,9 +234,7 @@ def _construir_tablas_horario(
                 dias=dias_list,
                 franjas=franjas,
                 celdas=celdas,
-                observaciones=(
-                    "Las materias cuatrimestrales se encuentran identificadas con el cuatrimestre correspondiente."
-                ),
+                observaciones=None,
             )
         )
 

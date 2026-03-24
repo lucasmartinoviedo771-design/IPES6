@@ -36,11 +36,17 @@ def admin_list_estudiantes(
     q: str | None = None,
     carrera_id: int | None = None,
     estado_legajo: str | None = None,
+    estado_academico: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
     _ensure_admin(request)
-    filters = {"q": q, "carrera_id": carrera_id, "estado_legajo": estado_legajo}
+    filters = {
+        "q": q,
+        "carrera_id": carrera_id,
+        "estado_legajo": estado_legajo,
+        "estado_academico": estado_academico,
+    }
     return EstudianteService.list_estudiantes_admin(filters, limit, offset)
 
 

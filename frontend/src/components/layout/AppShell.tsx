@@ -34,16 +34,19 @@ export default function AppShell({ children }: PropsWithChildren) {
 
   const current = useMemo(() => loc.pathname, [loc.pathname]);
   const [hasPageBack, setHasPageBack] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
     if (typeof document === "undefined") return;
     const detect = () => {
-      const pageBack = document.querySelector("[data-back-button='page']");
+      const pageBack = mainRef.current?.querySelector("[data-back-button='page']");
       setHasPageBack(!!pageBack);
     };
     detect();
     const observer = new MutationObserver(() => detect());
-    observer.observe(document.body, { childList: true, subtree: true });
+    if (mainRef.current) {
+      observer.observe(mainRef.current, { childList: true, subtree: true });
+    }
     return () => observer.disconnect();
   }, [current]);
 
@@ -173,6 +176,7 @@ export default function AppShell({ children }: PropsWithChildren) {
 
       <Box
         component="main"
+        ref={mainRef}
         className="app-main"
         sx={{
           flexGrow: 1,
@@ -187,7 +191,6 @@ export default function AppShell({ children }: PropsWithChildren) {
         <Toolbar sx={{ minHeight: 64 }} />
         <ErrorBoundary FallbackComponent={ErrorBoundaryFallback} resetKeys={[current]}>
           <Box
-            key={current}
             sx={{
               minHeight: "70vh",
               borderRadius: 4,
@@ -197,7 +200,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               p: { xs: 2, md: 4 },
             }}
           >
-            <Stack spacing={{ xs: 2, md: 3 }}>
+            <Stack key={current} spacing={{ xs: 2, md: 3 }}>
               {!hasPageBack && (
                 <BackButton
                   scope="global"

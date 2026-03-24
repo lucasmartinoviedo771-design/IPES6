@@ -171,6 +171,7 @@ class EstudianteCarrera(models.Model):
         BAJA = "BAJ", "Baja / Abandono"
         EGRESADO = "EGR", "Egresado"
         SUSPENDIDO = "SUS", "Suspendido"
+        INACTIVO = "INA", "Inactivo"
 
     estudiante = models.ForeignKey(
         "Estudiante",

@@ -3,24 +3,16 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import { HorarioTablaDTO, HorarioMateriaCeldaDTO } from "@/api/estudiantes";
+import { getProfessoradoColor } from "@/styles/institutionalColors";
 
-// Colores institucionales por profesorado (ajustables)
-const PROFESORADO_COLORS: Record<number, string> = {
-  1: "#FCD5B4", // Geografía (Naranja claro)
-  2: "#FFFF99", // Lengua (Amarillo)
-  3: "#C6EFCE", // Biología (Verde)
-  4: "#D9E1F2", // Inglés (Azul)
-  5: "#E2EFDA", // Primaria
-  6: "#FCE4D6", // Inicial
-  17: "#FCD5B4", // Historia
-  // Se pueden añadir más según sea necesario
-};
+// Los colores se obtienen globalmente desde getProfessoradoColor
 
 const cleanProfesoradoName = (name: string) => {
   return name
     .replace(/Profesorado de Educación Secundaria en/gi, "")
     .replace(/Profesorado de Educación/gi, "")
     .replace(/Profesorado en/gi, "")
+    .replace(/PROFESORADOEN/gi, "")
     .trim();
 };
 
@@ -39,7 +31,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
   salon = "---",
   cuatrimestre,
 }) => {
-  const bgColor = PROFESORADO_COLORS[tabla.profesorado_id] || DEFAULT_COLOR;
+  const bgColor = getProfessoradoColor(tabla.profesorado_nombre);
 
   const dias = useMemo(() => [...tabla.dias].sort((a, b) => a.numero - b.numero), [tabla.dias]);
   const franjas = useMemo(() => [...tabla.franjas].sort((a, b) => a.posicion - b.posicion), [tabla.franjas]);
@@ -53,20 +45,23 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
   }, [tabla.celdas]);
 
   const renderMateria = (materia: HorarioMateriaCeldaDTO, isMulti: boolean) => {
-    // Si queremos filtrar por cuatrimestre
-    if (cuatrimestre && materia.cuatrimestre !== cuatrimestre) {
+    // Si queremos filtrar por cuatrimestre, pero las ANUALES siempre pasan
+    if (cuatrimestre && materia.cuatrimestre !== cuatrimestre && materia.cuatrimestre !== "ANUAL" && materia.regimen !== "ANUAL") {
         return null;
     }
 
+    // Determinar el label de cuatrimestre/anual
+    const cuatrLabel = materia.cuatrimestre === "ANUAL" ? "ANUAL" : materia.cuatrimestre || "---";
+
     return (
-      <Box 
+      <Box
         key={materia.materia_id}
-        sx={{ 
+        sx={{
           position: "relative",
-          width: "100%", 
+          width: "100%",
           flex: 1,
-          display: "flex", 
-          flexDirection: "column", 
+          display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
           textAlign: "center",
@@ -75,7 +70,8 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
           borderBottom: isMulti ? "1px dashed #ccc" : "none",
           "&:last-child": { borderBottom: "none" },
           ...(materia.es_cuatrimestral && {
-             background: `linear-gradient(to top right, transparent calc(50% - 0.5px), #e0e0e0, transparent calc(50% + 0.5px))`
+             background: `repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 10px, #ffffff 10px, #ffffff 20px)`,
+             border: "1.5px solid #666"
           })
         }}
       >
@@ -85,11 +81,20 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         <Typography variant="caption" sx={{ fontSize: "0.55rem", mt: 0.2, fontStyle: "italic", color: "#333" }}>
           {materia.docentes.length ? `Prof. ${materia.docentes[0]}` : "Sin Docente"}
         </Typography>
-        {materia.es_cuatrimestral && !cuatrimestre && (
-            <Typography variant="caption" sx={{ position: "absolute", bottom: 0, right: 2, fontSize: "0.5rem", fontWeight: "bold", opacity: 0.7 }}>
-                {materia.cuatrimestre}
-            </Typography>
-        )}
+        {/* Indicador de cuatrimestre/anual centrado */}
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            fontSize: "0.55rem", 
+            fontWeight: "700", 
+            mt: 0.2, 
+            color: "#444",
+            textTransform: "uppercase",
+            letterSpacing: "0.02em"
+          }}
+        >
+          {cuatrLabel}
+        </Typography>
       </Box>
     );
   };
@@ -135,7 +140,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem" }}>
           {tabla.turno_nombre.toUpperCase()}
         </Typography>
-        <Typography sx={{ fontWeight: "bold", fontSize: "1.4rem", textDecoration: "underline", flex: 1, textAlign: "center", ml: 12 }}>
+        <Typography sx={{ fontWeight: "bold", fontSize: "1.4rem", textDecoration: "underline", flex: 1, textAlign: "center" }}>
           {tabla.anio_plan_label.toUpperCase().replace("ANIO", "AÑO")}
         </Typography>
         <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem", minWidth: "100px", textAlign: "right" }}>
@@ -236,7 +241,12 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                     overflow: "hidden"
                   }}>
                     {materias
-                      .filter((m: HorarioMateriaCeldaDTO) => !cuatrimestre || m.cuatrimestre === cuatrimestre)
+                      .filter((m: HorarioMateriaCeldaDTO) => 
+                        !cuatrimestre || 
+                        m.cuatrimestre === cuatrimestre || 
+                        m.cuatrimestre === "ANUAL" || 
+                        m.regimen === "ANUAL"
+                      )
                       .map((m: HorarioMateriaCeldaDTO) => renderMateria(m, false))
                     }
                   </Box>
@@ -256,25 +266,28 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         })}
       </Box>
 
-      {/* PIE DE PAGINA / OBSERVACIONES */}
-      <Box sx={{ mt: 1, p: 1, border: "2px solid black", display: "flex", alignItems: "flex-start", gap: 3 }}>
-        <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: "bold", display: "block", textDecoration: "underline" }}>
-                OBSERVACIONES:
-            </Typography>
-            <Typography variant="caption" sx={{ fontSize: "0.65rem" }}>
-                {tabla.observaciones || "---"}
-            </Typography>
+      <Box sx={{ mt: 1, p: 1, border: "2px solid black", display: "flex", alignItems: "stretch", gap: 3, bgcolor: "#fff" }}>
+        <Box sx={{ flex: 1, minHeight: 40 }}>
+            {tabla.observaciones && (
+                <>
+                    <Typography variant="caption" sx={{ fontWeight: "bold", display: "block", textDecoration: "underline" }}>
+                        OBSERVACIONES:
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontSize: "0.65rem", whiteSpace: "pre-wrap" }}>
+                        {tabla.observaciones}
+                    </Typography>
+                </>
+            )}
         </Box>
         
         {/* Leyenda de materias cuatrimestrales */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ border: "1px solid black", p: 0.5 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ border: "1px solid black", p: 0.5, bgcolor: "#f9f9f9", minWidth: 200 }}>
             <Box sx={{ 
                 width: 40, height: 25, border: "1px solid black",
-                background: `linear-gradient(to top right, transparent calc(50% - 0.5px), #000, transparent calc(50% + 0.5px))`
+                background: `repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 5px, #ffffff 5px, #ffffff 10px)`,
             }} />
-            <Typography variant="caption" sx={{ fontSize: "0.6rem", width: 140 }}>
-                Celdas con línea diagonal - corresponden a materias cuatrimestrales
+            <Typography variant="caption" sx={{ fontSize: "0.6rem", fontWeight: 600 }}>
+                Las celdas sombreadas con borde reforzado corresponden a MATERIAS CUATRIMESTRALES
             </Typography>
         </Stack>
       </Box>

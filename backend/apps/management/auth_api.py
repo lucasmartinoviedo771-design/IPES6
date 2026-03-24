@@ -100,10 +100,15 @@ def _serialize_user(user):
     allowed = allowed_profesorados(user)
     prof_ids = list(allowed) if allowed is not None else None
 
+    roles = list(user.groups.values_list("name", flat=True))
+    if user.is_staff or user.is_superuser:
+        if "admin" not in roles:
+            roles.append("admin")
+
     return {
         "dni": user.username,
         "name": (user.get_full_name() or user.first_name or user.username),
-        "roles": list(user.groups.values_list("name", flat=True)),
+        "roles": roles,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "must_change_password": bool(must_change),
@@ -211,10 +216,15 @@ def profile(request):
     allowed = allowed_profesorados(u)
     prof_ids = list(allowed) if allowed is not None else None
 
+    roles = list(u.groups.values_list("name", flat=True))
+    if u.is_staff or u.is_superuser:
+        if "admin" not in roles:
+            roles.append("admin")
+
     return {
         "dni": getattr(u, "username", ""),
         "name": u.get_full_name() or u.username,
-        "roles": ["admin"] if u.is_staff else list(u.groups.values_list("name", flat=True)),
+        "roles": roles,
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
         "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)),

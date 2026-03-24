@@ -8,6 +8,7 @@ class EstudianteService:
         q = filters.get("q")
         carrera_id = filters.get("carrera_id")
         estado_legajo = filters.get("estado_legajo")
+        estado_academico = filters.get("estado_academico")
         
         qs = (
             Estudiante.objects.select_related("persona", "user")
@@ -27,12 +28,18 @@ class EstudianteService:
             )
             
         if carrera_id:
-            qs = qs.filter(carreras__id=carrera_id)
+            if estado_academico:
+                qs = qs.filter(carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico)
+            else:
+                qs = qs.filter(carreras__id=carrera_id)
+        elif estado_academico:
+            qs = qs.filter(carreras_detalle__estado_academico=estado_academico)
+
         if estado_legajo:
             qs = qs.filter(estado_legajo=estado_legajo.upper())
 
-        total = qs.count()
-        qs = qs[offset : offset + limit] if limit else qs[offset:]
+        total = qs.distinct().count()
+        qs = qs.distinct()[offset : offset + limit] if limit else qs.distinct()[offset:]
 
         items = []
         for est in qs:

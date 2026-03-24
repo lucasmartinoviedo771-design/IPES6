@@ -5,10 +5,11 @@ import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { getProfessoradoColor } from "@/styles/institutionalColors";
 
 import { HorarioCeldaDTO, HorarioMateriaCeldaDTO, HorarioTablaDTO } from "@/api/estudiantes";
 
-const cellKey = (dia: number, orden: number) => `${dia}-${orden}`;
+const cellKey = (dia: number, pos: number) => `${dia}-${pos}`;
 
 const REGIMEN_LABEL: Record<string, string> = {
   ANUAL: "Anual",
@@ -36,14 +37,14 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
     [tabla.dias],
   );
   const franjas = useMemo(
-    () => [...tabla.franjas].sort((a, b) => a.orden - b.orden),
+    () => [...tabla.franjas].sort((a, b) => a.posicion - b.posicion),
     [tabla.franjas],
   );
 
   const celdas = useMemo(() => {
     const map = new Map<string, HorarioCeldaDTO>();
     tabla.celdas.forEach((celda) => {
-      map.set(cellKey(celda.dia_numero, celda.franja_orden), celda);
+      map.set(cellKey(celda.dia_numero, celda.franja_posicion), celda);
     });
     return map;
   }, [tabla.celdas]);
@@ -55,6 +56,10 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
       ? turnoNombre
       : `Turno ${turnoNombre}`
     : "Sin turno";
+  const profColor = getProfessoradoColor(tabla.profesorado_nombre);
+  const isLightColor = ["#99DE99", "#FFCC33", "#66CCFF", "#C299D6"].includes(profColor);
+  const textColor = isLightColor ? "rgba(0,0,0,0.87)" : "#fff";
+  const subTextColor = isLightColor ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)";
 
   const renderMateria = (materia: HorarioMateriaCeldaDTO, index: number) => {
     const key = `${materia.materia_id}-${index}`;
@@ -102,26 +107,46 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
         overflow: "hidden",
       }}
     >
-      <Box sx={{ p: 2 }}>
-        <Stack spacing={1} direction={{ xs: "column", md: "row" }} justifyContent="space-between">
+      <Box 
+        sx={{ 
+          p: 2, 
+          bgcolor: profColor, 
+          color: textColor,
+          borderLeft: `8px solid ${profColor}`,
+          filter: "brightness(0.95)"
+        }}
+      >
+        <Stack spacing={1} direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems="center">
           <Box>
-            <Typography variant="h6">
+            <Typography variant="h6" fontWeight={700}>
               {anioLabel}
               {` - ${turnoLabel}`}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {tabla.profesorado_nombre} - Plan {tabla.plan_resolucion || tabla.plan_id}
+            <Typography variant="body2" sx={{ color: subTextColor, fontWeight: 500 }}>
+              {tabla.profesorado_nombre} • Plan {tabla.plan_resolucion || tabla.plan_id}
             </Typography>
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
-            {tabla.cuatrimestres.map((c) => (
-              <Chip
-                key={c}
-                size="small"
-                color={c === "ANUAL" ? "default" : "primary"}
-                label={REGIMEN_LABEL[c] ?? c}
-              />
-            ))}
+            {tabla.cuatrimestres
+              .filter((c) => {
+                if (!cuatrimestre) return true;
+                if (c === "ANUAL") return true; 
+                return c === cuatrimestre;
+              })
+              .map((c) => (
+                <Chip
+                  key={c}
+                  size="small"
+                  variant="filled"
+                  sx={{ 
+                    bgcolor: isLightColor ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.2)",
+                    color: textColor,
+                    fontWeight: "bold",
+                    border: "none"
+                  }}
+                  label={REGIMEN_LABEL[c] ?? c}
+                />
+              ))}
           </Stack>
         </Stack>
       </Box>
@@ -182,7 +207,7 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
               if (isRecreo) {
                 return (
                   <Box 
-                    key={franja.orden} 
+                    key={franja.posicion} 
                     sx={{ 
                       gridColumn: `1 / span ${dias.length + 1}`,
                       p: 0.5,
@@ -218,16 +243,18 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
                     {franja.desde} - {franja.hasta}
                   </Box>
                   {dias.map((dia) => {
-                    const entry = celdas.get(cellKey(dia.numero, franja.orden));
+                    const entry = celdas.get(cellKey(dia.numero, franja.posicion));
                     const materias =
                       entry?.materias.filter((materia) => {
                         if (!cuatrimestre) return true;
-                        const valor = materia.cuatrimestre || (materia.regimen !== "ANUAL" ? materia.regimen : null);
-                        return valor === cuatrimestre;
+                        // Las materias ANUALES siempre deben mostrarse
+                        if (materia.cuatrimestre === "ANUAL" || materia.regimen === "ANUAL") return true;
+                        // Las cuatrimestrales deben coincidir con el filtro
+                        return (materia.cuatrimestre || materia.regimen) === cuatrimestre;
                       }) ?? [];
                     return (
                       <Box
-                        key={`${franja.orden}-${dia.numero}`}
+                        key={`${franja.posicion}-${dia.numero}`}
                         sx={{
                           p: materias.length ? 1 : 1.5,
                           minHeight: 96,

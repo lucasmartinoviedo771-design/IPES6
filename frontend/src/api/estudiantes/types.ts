@@ -673,6 +673,7 @@ export type EstudianteAdminListParams = {
   q?: string;
   carrera_id?: number;
   estado_legajo?: string;
+  estado_academico?: string;
   limit?: number;
   offset?: number;
 };

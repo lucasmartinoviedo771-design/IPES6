@@ -94,7 +94,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
                 "nota": float(insc.nota) if insc.nota is not None else None,
                 "folio": insc.folio,
                 "libro": insc.libro,
-                "fecha_resultado": format_date(insc.fecha_resultado),
+                "fecha_resultado": (insc.fecha_resultado or mesa.fecha).isoformat() if (insc.fecha_resultado or mesa.fecha) else None,
                 "cuenta_para_intentos": insc.cuenta_para_intentos,
                 "observaciones": insc.observaciones,
             }

@@ -9,6 +9,17 @@ export const ESTADO_OPTIONS: Array<{ value: EstadoLegajo; label: string; color: 
   { value: "PEN", label: "Pendiente", color: "default" },
 ];
 
+export type EstadoAcademico = "ACT" | "BAJ" | "EGR" | "SUS" | "INA" | "";
+
+export const ESTADO_ACADEMICO_OPTIONS: Array<{ value: EstadoAcademico; label: string; color: "success" | "warning" | "default" }> = [
+  { value: "", label: "Todos", color: "default" },
+  { value: "ACT", label: "Activo", color: "success" },
+  { value: "BAJ", label: "Baja / Abandono", color: "warning" },
+  { value: "EGR", label: "Egresado", color: "success" },
+  { value: "SUS", label: "Suspendido", color: "warning" },
+  { value: "INA", label: "Inactivo", color: "default" },
+];
+
 export type DetailDocumentacionForm = {
   dni_legalizado: boolean;
   fotos_4x4: boolean;
@@ -78,6 +89,12 @@ export const estadoColorMap: Record<string, "default" | "success" | "warning"> =
   COM: "success",
   INC: "warning",
   PEN: "default",
+  // Estado Académico
+  ACT: "success",
+  BAJ: "warning",
+  EGR: "success",
+  SUS: "warning",
+  INA: "default",
 };
 
 export const condicionColorMap: Record<string, "default" | "success" | "warning"> = {

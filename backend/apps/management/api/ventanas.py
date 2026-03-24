@@ -10,7 +10,7 @@ VENTANA_GESTION_ROLES = {"admin", "secretaria", "jefa_aaee"}
 
 @management_router.get("/ventanas", response=list[VentanaOut], auth=JWTAuth())
 def list_ventanas(request, tipo: str | None = None):
-    ensure_roles(request.user, {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"})
+    ensure_roles(request.user, {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta", "estudiante"})
     qs = VentanaHabilitacion.objects.all()
     if tipo: qs = qs.filter(tipo=tipo)
     return qs.order_by("-desde", "-created_at")

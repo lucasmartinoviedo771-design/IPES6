@@ -83,7 +83,18 @@ const HorarioPage: React.FC = () => {
   const [planId, setPlanId] = useState<SelectValue>("");
   const [turnoFilter, setTurnoFilter] = useState<SelectValue>("");
   const [anioFilter, setAnioFilter] = useState<SelectValue>("");
-  const [cuatrFilter, setCuatrFilter] = useState<SelectValue>("1C");
+  const [cuatrFilter, setCuatrFilter] = useState<string>(() => {
+    const today = new Date();
+    const month = today.getMonth() + 1;
+    const day = today.getDate();
+
+    // 1º Cuatrimestre: 01/02 a 01/08
+    if ((month === 2 && day >= 1) || (month >= 3 && month <= 7) || (month === 8 && day <= 1)) {
+      return "1C";
+    }
+    // 2º Cuatrimestre: resto del año
+    return "2C";
+  });
   const [isPrintMode, setIsPrintMode] = useState(false);
 
   const carrerasQuery = useQuery({
@@ -145,11 +156,12 @@ const HorarioPage: React.FC = () => {
   }, [planesDisponibles, planId]);
 
   const horarioQuery = useQuery({
-    queryKey: ["estudiantes", "horarios", profesoradoId, planId, targetDni],
+    queryKey: ["estudiantes", "horarios", profesoradoId, planId, targetDni, cuatrFilter],
     queryFn: () =>
       obtenerHorarioEstudiante({
         profesorado_id: parseNumberOrEmpty(profesoradoId),
         plan_id: parseNumberOrEmpty(planId),
+        cuatrimestre: cuatrFilter,
         dni: targetDni ?? undefined,
       }),
     enabled: Boolean(profesoradoId && planId),
@@ -213,9 +225,6 @@ const HorarioPage: React.FC = () => {
       if (anioFilter && !aniosDisponibles.some((item) => item.id === anioFilter)) {
         setAnioFilter("");
       }
-      if (cuatrFilter && !cuatrDisponibles.includes(cuatrFilter)) {
-        setCuatrFilter("");
-      }
     }
     prevTablasRef.current = tablas;
   }, [tablas, turnoFilter, anioFilter, cuatrFilter, turnosDisponibles, aniosDisponibles, cuatrDisponibles]);
@@ -267,12 +276,10 @@ const HorarioPage: React.FC = () => {
     return tablas.filter((tabla) => {
       const turnoMatch = turnoFilter ? String(tabla.turno_id) === turnoFilter : true;
       const anioMatch = anioFilter ? String(tabla.anio_plan) === anioFilter : true;
-      const cuatrMatch = cuatrFilter
-        ? tabla.cuatrimestres.includes(cuatrFilter)
-        : true;
-      return turnoMatch && anioMatch && cuatrMatch;
+      // Backend ya filtra por cuatrimestre, no necesitamos hacerlo aquí
+      return turnoMatch && anioMatch;
     });
-  }, [tablas, turnoFilter, anioFilter, cuatrFilter]);
+  }, [tablas, turnoFilter, anioFilter]);
 
   const tablasAgrupadas = useMemo(() => {
     const grupos = new Map<number, HorarioTablaDTO[]>();
@@ -290,29 +297,31 @@ const HorarioPage: React.FC = () => {
       enqueueSnackbar("No hay contenido para exportar.", { variant: "warning" });
       return;
     }
-    enqueueSnackbar("Generando PDF...", { variant: "info" });
+    enqueueSnackbar("Generando PDF profesional...", { variant: "info" });
     try {
-      const canvas = await html2canvas(exportRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 190;
-      const pageHeight = 277;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 10;
+      const pageWidth = 210;
+      const margin = 10;
+      const contentWidth = pageWidth - margin * 2;
 
-      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight + 10;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Buscamos todos los contenedores de página (cada uno tiene 2 años)
+      const pageElements = Array.from(exportRef.current.querySelectorAll('.pdf-page-chunk'));
+      
+      if (pageElements.length === 0) {
+        // Fallback si no estamos en modo impresión o algo falló en la query
+        const canvas = await html2canvas(exportRef.current, { scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const imgHeight = (canvas.height * contentWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", margin, margin, contentWidth, imgHeight);
+      } else {
+        for (let i = 0; i < pageElements.length; i++) {
+          if (i > 0) pdf.addPage();
+          const element = pageElements[i] as HTMLElement;
+          const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+          const imgData = canvas.toDataURL("image/png");
+          const imgHeight = (canvas.height * contentWidth) / canvas.width;
+          pdf.addImage(imgData, "PNG", margin, margin, contentWidth, imgHeight);
+        }
       }
 
       const fileNameParts = ["Horario"];
@@ -363,6 +372,7 @@ const HorarioPage: React.FC = () => {
 
   const handleCarreraChange = (event: SelectChangeEvent<string>) => {
     setProfesoradoId(event.target.value);
+    setPlanId("");
     setTurnoFilter("");
     setAnioFilter("");
     setCuatrFilter("");
@@ -460,19 +470,17 @@ const HorarioPage: React.FC = () => {
             >
               Descargar PDF
             </Button>
-            {canGestionar && (
-              <Button
-                variant="contained"
-                size="small"
-                color="secondary"
-                startIcon={isPrintMode ? <VisibilityIcon /> : <DownloadIcon />}
-                onClick={() => setIsPrintMode(!isPrintMode)}
-                disabled={!tablasFiltradas.length}
-                sx={{ bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" }, minWidth: "180px" }}
-              >
-                {isPrintMode ? "Vista Estándar" : "Modo Impresión (4 años)"}
-              </Button>
-            )}
+            <Button
+              variant="contained"
+              size="small"
+              color="secondary"
+              startIcon={isPrintMode ? <VisibilityIcon /> : <DownloadIcon />}
+              onClick={() => setIsPrintMode(!isPrintMode)}
+              disabled={!tablasFiltradas.length}
+              sx={{ bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" }, minWidth: "180px" }}
+            >
+              {isPrintMode ? "Vista Estándar" : "Modo Impresión (4 años)"}
+            </Button>
           </Stack>
         </Grid>
       </Grid>
@@ -522,7 +530,7 @@ const HorarioPage: React.FC = () => {
           </FormControl>
         </Grid>
         <Grid item xs={12} md={4}>
-          <FormControl fullWidth size="small" disabled={!cuatrDisponibles.length}>
+          <FormControl fullWidth size="small">
             <InputLabel id="cuatr-select-label">Cuatrimestre</InputLabel>
             <Select
               labelId="cuatr-select-label"
@@ -558,20 +566,30 @@ const HorarioPage: React.FC = () => {
                 </Box>
             ) : (
                 <Stack spacing={4}>
-                    {tablasAgrupadas.map(([anio, items]) => {
-                      // El shorthand del cuatrimestre seleccionado
-                      const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
-                      return (
-                        <Box key={anio}>
-                             {/* Solo el primer turno disponible por año para el reporte consolidado */}
-                             <InstitutionalScheduleFormat 
-                                tabla={items[0]} 
-                                salon={shorthand} 
-                                cuatrimestre={cuatrFilter || undefined} 
-                            />
-                        </Box>
-                      );
-                    })}
+                    {(() => {
+                        const chunks = [];
+                        for (let i = 0; i < tablasAgrupadas.length; i += 2) {
+                            chunks.push(tablasAgrupadas.slice(i, i + 2));
+                        }
+                        return chunks.map((chunk, idx) => (
+                            <Box key={idx} className="pdf-page-chunk" sx={{ p: 1, bgcolor: "white" }}>
+                                <Stack spacing={4}>
+                                    {chunk.map(([anio, items]) => {
+                                        const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
+                                        return (
+                                            <Box key={anio}>
+                                                <InstitutionalScheduleFormat 
+                                                    tabla={items[0]} 
+                                                    salon={shorthand} 
+                                                    cuatrimestre={cuatrFilter || undefined} 
+                                                />
+                                            </Box>
+                                        );
+                                    })}
+                                </Stack>
+                            </Box>
+                        ));
+                    })()}
                 </Stack>
             )}
         </Box>
@@ -588,18 +606,17 @@ const HorarioPage: React.FC = () => {
           ) : (
             <Stack spacing={2}>
               {tablasAgrupadas.map(([anio, items]) => (
-                <Box key={anio} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 2 }}>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
-                    {items[0].anio_plan_label || AÑO_LABELS[anio] || `Año ${anio}`}
-                  </Typography>
-                  <Stack spacing={2}>
-                    {items
-                      .sort((a, b) => a.turno_nombre.localeCompare(b.turno_nombre))
-                      .map((tabla) => (
-                        <HorarioTablaCard key={tabla.key} tabla={tabla} cuatrimestre={cuatrFilter || undefined} />
-                      ))}
-                  </Stack>
-                </Box>
+                <Stack key={anio} spacing={2}>
+                  {items
+                    .sort((a, b) => a.turno_nombre.localeCompare(b.turno_nombre))
+                    .map((tabla) => (
+                      <HorarioTablaCard 
+                        key={tabla.key} 
+                        tabla={tabla} 
+                        cuatrimestre={cuatrFilter || undefined} 
+                      />
+                    ))}
+                </Stack>
               ))}
             </Stack>
           )}

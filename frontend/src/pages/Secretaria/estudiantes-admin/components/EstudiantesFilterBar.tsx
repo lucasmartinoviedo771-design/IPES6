@@ -10,7 +10,7 @@ import Tooltip from "@mui/material/Tooltip";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { EstadoLegajo, ESTADO_OPTIONS } from "../types";
+import { EstadoLegajo, ESTADO_OPTIONS, EstadoAcademico, ESTADO_ACADEMICO_OPTIONS } from "../types";
 
 type Carrera = { id: number; nombre: string };
 
@@ -19,6 +19,8 @@ type Props = {
   onSearchChange: (value: string) => void;
   estado: EstadoLegajo;
   onEstadoChange: (value: EstadoLegajo) => void;
+  estadoAcademico: EstadoAcademico;
+  onEstadoAcademicoChange: (value: EstadoAcademico) => void;
   carreraId: number | "";
   onCarreraChange: (value: number | "") => void;
   carreras: Carrera[];
@@ -31,6 +33,8 @@ export function EstudiantesFilterBar({
   onSearchChange,
   estado,
   onEstadoChange,
+  estadoAcademico,
+  onEstadoAcademicoChange,
   carreraId,
   onCarreraChange,
   carreras,
@@ -83,6 +87,21 @@ export function EstudiantesFilterBar({
           {carreras.map((carrera) => (
             <MenuItem key={carrera.id} value={carrera.id}>
               {carrera.nombre}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: 180 }}>
+        <InputLabel id="filtro-estado-academico">Estado académico</InputLabel>
+        <Select
+          labelId="filtro-estado-academico"
+          label="Estado académico"
+          value={estadoAcademico}
+          onChange={(event) => onEstadoAcademicoChange(event.target.value as EstadoAcademico)}
+        >
+          {ESTADO_ACADEMICO_OPTIONS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
             </MenuItem>
           ))}
         </Select>

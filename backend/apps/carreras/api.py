@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db.models import ProtectedError
 from ninja import Router
 from ninja.errors import HttpError
 from django.contrib.auth.models import User
@@ -116,12 +117,17 @@ def actualizar_profesorado(request, profesorado_id: int, payload: ProfesoradoIn)
     profesorado.save()
     return profesorado
 
-@profesorados_router.delete("/{profesorado_id}", response={"success": bool}, auth=JWTAuth())
+@profesorados_router.delete("/{profesorado_id}", response={200: dict, 400: dict}, auth=JWTAuth())
 def eliminar_profesorado(request, profesorado_id: int):
     _require_edit(request.user, profesorado_id)
     profesorado = get_object_or_404(Profesorado, id=profesorado_id)
-    profesorado.delete()
-    return {"success": True}
+    try:
+        profesorado.delete()
+        return 200, {"success": True}
+    except ProtectedError:
+        raise HttpError(400, "No se puede eliminar el profesorado porque ya tiene datos asociados (planes, materias, alumnos, etc.)")
+    except Exception as e:
+        raise HttpError(400, f"Error al eliminar: {str(e)}")
 
 @profesorados_router.get("/{profesorado_id}/planes", response=list[PlanDeEstudioOut], auth=JWTAuth())
 def planes_por_profesorado(request, profesorado_id: int):

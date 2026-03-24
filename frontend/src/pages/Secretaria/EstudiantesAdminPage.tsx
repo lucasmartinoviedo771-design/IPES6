@@ -12,7 +12,7 @@ import { fetchCarreras } from "@/api/carreras";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import BackButton from "@/components/ui/BackButton";
 
-import { EstadoLegajo, DetailFormValues, DEFAULT_LIMIT } from "./estudiantes-admin/types";
+import { EstadoLegajo, EstadoAcademico, DetailFormValues, DEFAULT_LIMIT } from "./estudiantes-admin/types";
 import { useDebouncedValue } from "./estudiantes-admin/hooks/useDebouncedValue";
 import {
   useUpdateEstudianteMutation,
@@ -32,6 +32,7 @@ export default function EstudiantesAdminPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [estado, setEstado] = useState<EstadoLegajo>("");
+  const [estadoAcademico, setEstadoAcademico] = useState<EstadoAcademico>("");
   const [carreraId, setCarreraId] = useState<number | "">("");
   const { dni: dniParam } = useParams();
   const [selectedDni, setSelectedDni] = useState<string | null>(null);
@@ -54,11 +55,12 @@ export default function EstudiantesAdminPage() {
     () => ({
       q: debouncedSearch || undefined,
       estado_legajo: estado || undefined,
+      estado_academico: estadoAcademico || undefined,
       carrera_id: typeof carreraId === "number" ? carreraId : undefined,
       limit: DEFAULT_LIMIT,
       offset: 0,
     }),
-    [debouncedSearch, estado, carreraId],
+    [debouncedSearch, estado, estadoAcademico, carreraId],
   );
 
   const queryClient = useQueryClient();
@@ -164,6 +166,8 @@ export default function EstudiantesAdminPage() {
         onSearchChange={setSearch}
         estado={estado}
         onEstadoChange={setEstado}
+        estadoAcademico={estadoAcademico}
+        onEstadoAcademicoChange={setEstadoAcademico}
         carreraId={carreraId}
         onCarreraChange={setCarreraId}
         carreras={carrerasQuery.data ?? []}

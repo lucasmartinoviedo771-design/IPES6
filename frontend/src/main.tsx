@@ -38,7 +38,7 @@ const qc = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary fallback={<div style={{ padding: 16, background: "#fee", color: "#900" }}>Se rompió la UI</div>}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter>
         <QueryClientProvider client={qc}>
           <AuthProvider>
             <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
