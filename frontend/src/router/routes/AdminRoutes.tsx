@@ -11,6 +11,7 @@ const HistorialRegularidadesPage = lazyPage(() => import("@/pages/admin/Historia
 const HistoricoRegularidadPage = lazyPage(() => import("@/pages/admin/HistoricoRegularidadPage"));
 const HistorialEquivalenciasPage = lazyPage(() => import("@/pages/admin/HistorialEquivalenciasPage"));
 const SystemLogsPage = lazyPage(() => import("@/pages/SystemLogsPage"));
+const AuditoriaInconsistenciasPage = lazyPage(() => import("@/pages/Bedeles/AuditoriaInconsistenciasPage"));
 
 const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
 
@@ -34,6 +35,7 @@ export const buildAdminRoutes = () => (
       <Route path="/admin/primera-carga/historial-mesas-pandemia" element={<HistorialMesasPandemiaPage />} />
       <Route path="/admin/primera-carga/historial-regularidades" element={<HistorialRegularidadesPage />} />
       <Route path="/admin/primera-carga/historial-equivalencias" element={<HistorialEquivalenciasPage />} />
+      <Route path="/admin/auditoria-inconsistencias" element={<AuditoriaInconsistenciasPage />} />
     </Route>
 
     <Route

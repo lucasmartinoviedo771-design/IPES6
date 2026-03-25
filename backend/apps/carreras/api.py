@@ -271,6 +271,17 @@ def create_materia_for_plan(request, plan_id: int, payload: MateriaIn):
 
 # --- MATERIAS ---
 
+@materias_router.get("/", response=list[MateriaOut], auth=JWTAuth())
+def listar_materias(request, search: str | None = None, profesorado_id: int | None = None):
+    """Buscador global de materias con filtros."""
+    _require_view(request.user)
+    qs = Materia.objects.select_related('plan_de_estudio').all()
+    if search:
+        qs = qs.filter(nombre__icontains=search)
+    if profesorado_id:
+        qs = qs.filter(plan_de_estudio__profesorado_id=profesorado_id)
+    return qs[:100]
+
 @materias_router.get("/{materia_id}", response=MateriaOut, auth=JWTAuth())
 def get_materia(request, materia_id: int):
     """Consulta los datos técnicos de una materia."""

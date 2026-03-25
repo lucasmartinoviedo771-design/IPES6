@@ -64,3 +64,17 @@ export async function apiListRequisitosDocumentacion(profesoradoId: number): Pro
   return data;
 }
 
+export interface MateriaSimplificada {
+  id: number;
+  nombre: string;
+  anio_cursada: number;
+}
+
+export async function fetchMaterias(search?: string, profesorado_id?: number): Promise<MateriaSimplificada[]> {
+  const params: any = {};
+  if (search) params.search = search;
+  if (profesorado_id) params.profesorado_id = profesorado_id;
+  const { data } = await client.get("/materias/", { params });
+  return data;
+}
+

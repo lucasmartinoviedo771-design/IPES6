@@ -74,12 +74,21 @@ def historial_estudiante(request, dni: str | None = None):
     regularizadas_set: set[int] = set()
     inscriptas_actuales_set: set[int] = set()
 
-    # 1. Análisis de cursadas
-    for reg in Regularidad.objects.filter(estudiante=est):
+    # 1. Análisis de cursadas (Tomamos la situación más reciente de cada materia)
+    situacion_por_materia: dict[int, Regularidad] = {}
+    for reg in Regularidad.objects.filter(estudiante=est).order_by("fecha_cierre"):
+        situacion_por_materia[reg.materia_id] = reg
+
+    hoy = timezone.now().date()
+    for mid, reg in situacion_por_materia.items():
         if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-            aprobadas_set.add(reg.materia_id)
+            aprobadas_set.add(mid)
         elif reg.situacion == Regularidad.Situacion.REGULAR:
-            regularizadas_set.add(reg.materia_id)
+            # Determinamos si la regularid continúa vigente según tiempo e intentos fallidos (Llamado)
+            vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
+            # "o un llamado lo que ocurra primer" -> máximo 1 intento (llamado)
+            if vigencia_limite >= hoy and intentos < 1:
+                regularizadas_set.add(mid)
 
     # 2. Análisis de Actas y Equivalencias
     actas_estudiante_qs = ActaExamenEstudiante.objects.filter(dni=est.dni).select_related("acta")
@@ -149,6 +158,8 @@ def trayectoria_estudiante(request, dni: str | None = None):
     regularizadas_set: set[int] = set()
     inscriptas_actuales_set: set[int] = set()
 
+    hoy = timezone.now().date()
+    
     # --- 1. PRE-CÁLCULO DE ESTADOS ---
     
     # Análisis de cursadas cerradas
@@ -167,22 +178,28 @@ def trayectoria_estudiante(request, dni: str | None = None):
         Regularidad.Situacion.DESAPROBADO_PA,
         Regularidad.Situacion.DESAPROBADO_TP,
     }
+    
+    # 1. PRE-CÁLCULO DE ESTADOS (Tomando siempre la última instancia)
     ultima_situacion_por_materia: dict[int, str] = {}
     for reg in regularidades_list:
         if reg.materia_id not in ultima_situacion_por_materia:
             ultima_situacion_por_materia[reg.materia_id] = reg.situacion
+            
+            # Si lo último es APROBADO o PROMOCIONADO
+            if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                aprobadas_set.add(reg.materia_id)
+                aprobadas_notas[reg.materia_id] = _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
+            
+            # Si lo último es REGULAR, verificamos vigencia (Tiempo + 1 Llamado)
+            elif reg.situacion == Regularidad.Situacion.REGULAR:
+                limite, intentos = _calcular_vigencia_regularidad(est, reg)
+                if limite >= hoy and intentos < 1:
+                    regularizadas_set.add(reg.materia_id)
 
     materias_bloqueadas_final: set[int] = {
         mid for mid, sit in ultima_situacion_por_materia.items()
         if sit in SITUACIONES_BLOQUEANTES
     }
-
-    for reg in regularidades_list:
-        if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-            aprobadas_set.add(reg.materia_id)
-            aprobadas_notas[reg.materia_id] = _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
-        if reg.situacion == Regularidad.Situacion.REGULAR:
-            regularizadas_set.add(reg.materia_id)
 
     # Análisis de Actas / Equivalencias (Prioridad diagnóstica alta)
     actas_estudiante_qs = (
@@ -277,7 +294,6 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
     # --- 3. AUDITORÍA DE VENCIMIENTOS Y ALERTAS ---
     
-    hoy = timezone.now().date()
     materias_procesadas_vigencia = set()
     for reg in regularidades_list:
         vigencia_iso = None
@@ -308,7 +324,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                         "dias_restantes": dias_restantes,
                         "vigente": vigente,
                         "intentos_usados": intentos,
-                        "intentos_max": 3,
+                        "intentos_max": 1, 
                     }
                 )
                 if vigente:

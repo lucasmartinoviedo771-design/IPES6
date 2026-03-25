@@ -228,6 +228,12 @@ export const DASHBOARD_ITEMS = {
     icon: <SchoolIcon />,
     path: "/secretaria/pedidos-equivalencias",
   },
+  AUDITORIA_INCONSISTENCIAS: {
+    title: "Auditoría académica",
+    subtitle: "Detección de inconsistencias en correlatividades y estados.",
+    icon: <GavelIcon />,
+    path: "/admin/auditoria-inconsistencias",
+  },
 } satisfies Record<string, SectionCardProps>;
 
 export type DashboardItemKey = keyof typeof DASHBOARD_ITEMS;

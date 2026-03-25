@@ -41,6 +41,11 @@ class EstudianteAdminDocumentacion(Schema):
     incumbencia: bool | None = None
     articulo_7: bool | None = None
 
+class CarreraStatus(Schema):
+    nombre: str
+    estado_academico: str
+    estado_academico_display: str
+
 class EstudianteAdminListItem(Schema):
     dni: str
     apellido: str
@@ -50,6 +55,7 @@ class EstudianteAdminListItem(Schema):
     estado_legajo: str
     estado_legajo_display: str
     carreras: list[str] = Field(default_factory=list)
+    carreras_detalle: list[CarreraStatus] = Field(default_factory=list)
     legajo: str | None = None
     activo: bool = True
 

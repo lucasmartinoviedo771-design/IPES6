@@ -4,7 +4,7 @@ Gestiona el catálogo de mesas de examen final y el proceso de inscripción para
 
 Reglas Generales de Examen:
 1. Condición de Alumno: El alumno debe tener legajo 'COMPLETO' o permiso condicional (Título en trámite).
-2. Modalidad Regular: Requiere cursada aprobada y vigente (2 años + 1 llamado). Límite de 3 intentos fallidos.
+2. Modalidad Regular: Requiere cursada aprobada y vigente (2 años + 60 días o 1 llamado). Límite de 1 intento fallido.
 3. Modalidad Libre: Permite rendir sin regularidad previa, siempre que no esté cursando la materia o tenga regularidad vigente.
 4. Correlatividades: Verifica el cumplimiento de materias aprobadas requeridas para rendir el final.
 """
@@ -189,19 +189,19 @@ def listar_mesas_estudiante(
                     try: return d.replace(year=d.year + years)
                     except ValueError: return d.replace(month=2, day=28, year=d.year + years)
 
-                two_years = _add_years(reg.fecha_cierre, 2)
-                next_call = MesaExamen.objects.filter(materia=m.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years).order_by("fecha").values_list("fecha", flat=True).first()
-                allowed_until = next_call or two_years
+                from datetime import timedelta
+                two_years_60d = _add_years(reg.fecha_cierre, 2) + timedelta(days=60)
+                allowed_until = two_years_60d
                 if m.fecha > allowed_until:
                     continue
                 
-                # 5. Límite de llamados (3 fallidos)
+                # 5. Límite de llamados (1 fallido)
                 intentos = InscripcionMesa.objects.filter(
                     estudiante=estudiante_para_rendir, estado=InscripcionMesa.Estado.INSCRIPTO,
                     mesa__materia=m.materia, mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
                     mesa__fecha__gte=reg.fecha_cierre, mesa__fecha__lte=allowed_until,
                 ).count()
-                if intentos >= 3:
+                if intentos >= 1:
                     continue
                     
         out.append(row)
@@ -254,12 +254,11 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                 try: return d.replace(year=d.year + years)
                 except ValueError: return d.replace(month=2, day=28, year=d.year + years)
 
-            two_years = _add_years(reg.fecha_cierre, 2)
-            next_call = MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years).order_by("fecha").values_list("fecha", flat=True).first()
-            allowed_until = next_call or two_years
+            from datetime import timedelta
+            allowed_until = _add_years(reg.fecha_cierre, 2) + timedelta(days=60)
             
             if mesa.fecha > allowed_until:
-                return 400, {"message": "La vigencia de su regularidad ha expirado (2 años + 1 llamado)."}
+                return 400, {"message": f"La vigencia de su regularidad ha expirado (2 años + 60 días). Venció el {allowed_until}."}
 
             # D. Conteo de Intentos
             intentos = InscripcionMesa.objects.filter(
@@ -267,8 +266,8 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                 mesa__materia=mesa.materia, mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
                 mesa__fecha__gte=reg.fecha_cierre, mesa__fecha__lte=allowed_until,
             ).count()
-            if intentos >= 3:
-                return 400, {"message": "Ha agotado los 3 llamados permitidos para esta regularidad."}
+            if intentos >= 1:
+                return 400, {"message": "Ha agotado el llamado permitido (1) para esta regularidad."}
 
             # E. Correlatividades para Rendir
             req_ids = list(_correlatividades_qs(mesa.materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))

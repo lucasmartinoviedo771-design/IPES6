@@ -87,23 +87,35 @@ export function EstudiantesTable({ estudiantes, total, isListLoading, isError, e
                   </TableCell>
                   <TableCell>{item.telefono || "—"}</TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                      {item.carreras.map((carrera) => (
-                        <Chip key={carrera} label={carrera} size="small" />
-                      ))}
+                    <Stack direction="column" spacing={0.5}>
+                      {(item.carreras_detalle && item.carreras_detalle.length > 0) ? (
+                        item.carreras_detalle.map((c) => (
+                          <Box key={c.nombre} display="flex" alignItems="center" gap={1}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                              {c.nombre}
+                            </Typography>
+                            <Chip 
+                              label={c.estado_academico_display} 
+                              size="small" 
+                              variant="outlined"
+                              sx={{ height: 16, fontSize: '0.65rem' }}
+                              color={c.estado_academico === 'ACT' ? 'success' : 'default'}
+                            />
+                          </Box>
+                        ))
+                      ) : (
+                        item.carreras.map((carrera) => (
+                          <Chip key={carrera} label={carrera} size="small" />
+                        ))
+                      )}
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip
-                        size="small"
-                        label={item.estado_legajo_display}
-                        color={estadoColorMap[item.estado_legajo] ?? "default"}
-                      />
-                      {item.activo === false && (
-                        <Chip size="small" label="Inactivo" color="error" variant="outlined" />
-                      )}
-                    </Stack>
+                    <Chip
+                      size="small"
+                      label={item.estado_legajo_display}
+                      color={estadoColorMap[item.estado_legajo] ?? "default"}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

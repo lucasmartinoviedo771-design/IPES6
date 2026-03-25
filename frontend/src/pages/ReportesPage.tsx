@@ -104,6 +104,7 @@ function ResumenAsistenciaChart() {
     );
 }
 
+
 function ReporteCorrelativasCaidas() {
     const { data, isLoading, isError, error } = useQuery<CorrelativaCaidaItem[]>({
         queryKey: ['correlativas-caidas'],

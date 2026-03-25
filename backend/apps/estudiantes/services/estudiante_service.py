@@ -44,6 +44,15 @@ class EstudianteService:
         items = []
         for est in qs:
             user = est.user if est.user_id else None
+            # Obtener detalles de carrera para incluir el estado académico de cada una
+            carreras_det = []
+            for cd in est.carreras_detalle.all():
+                carreras_det.append({
+                    "nombre": cd.profesorado.nombre,
+                    "estado_academico": cd.estado_academico,
+                    "estado_academico_display": cd.get_estado_academico_display()
+                })
+
             items.append(
                 EstudianteAdminListItem(
                     dni=est.dni,
@@ -54,6 +63,7 @@ class EstudianteService:
                     estado_legajo=est.estado_legajo,
                     estado_legajo_display=est.get_estado_legajo_display(),
                     carreras=[c.nombre for c in est.carreras.all()],
+                    carreras_detalle=carreras_det,
                     legajo=est.legajo or None,
                     activo=user.is_active if user else False,
                 )

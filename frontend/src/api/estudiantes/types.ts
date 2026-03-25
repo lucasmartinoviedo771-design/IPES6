@@ -576,6 +576,12 @@ export interface EstudianteAdminDocumentacionDTO {
   articulo_7?: boolean;
 }
 
+export interface CarreraStatus {
+  nombre: string;
+  estado_academico: string;
+  estado_academico_display: string;
+}
+
 export interface EstudianteAdminListItemDTO {
   dni: string;
   apellido: string;
@@ -585,6 +591,7 @@ export interface EstudianteAdminListItemDTO {
   estado_legajo: string;
   estado_legajo_display: string;
   carreras: string[];
+  carreras_detalle?: CarreraStatus[];
   activo?: boolean;
   legajo?: string | null;
 }

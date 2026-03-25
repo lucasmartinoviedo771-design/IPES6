@@ -34,26 +34,41 @@ def _add_years(base: date, years: int) -> date:
 
 
 def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regularidad) -> tuple[date, int]:
-    limite_base = _add_years(regularidad.fecha_cierre, 2)
-    siguiente_llamado = (
+    from datetime import timedelta
+    from core.models import MesaExamen, ActaExamenEstudiante
+
+    # 1. Base: 2 años desde el cierre de cursada
+    fecha_base = _add_years(regularidad.fecha_cierre, 2)
+    
+    # 2. Límite máximo: 60 días después de la base
+    limite_60d = fecha_base + timedelta(days=60)
+    
+    # 3. Primer llamado posterior a la fecha base (2 años)
+    primer_llamado_post_base = (
         MesaExamen.objects.filter(
             materia=regularidad.materia,
             tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
-            fecha__gte=limite_base,
+            fecha__gt=fecha_base
         )
         .order_by("fecha")
         .values_list("fecha", flat=True)
         .first()
     )
-    limite = siguiente_llamado or limite_base
-    intentos = InscripcionMesa.objects.filter(
-        estudiante=estudiante,
-        estado=InscripcionMesa.Estado.INSCRIPTO,
-        mesa__materia=regularidad.materia,
-        mesa__tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
-        mesa__fecha__gte=regularidad.fecha_cierre,
-        mesa__fecha__lte=limite,
+    
+    # El límite es lo que ocurra primero entre los 60 días o el siguiente llamado tras los 2 años
+    if primer_llamado_post_base and primer_llamado_post_base < limite_60d:
+        limite = primer_llamado_post_base
+    else:
+        limite = limite_60d
+        
+    # Intentos: inscripciones a examen realizadas DESDE el cierre de cursada hasta el límite calculado
+    intentos = ActaExamenEstudiante.objects.filter(
+        dni=estudiante.dni,
+        acta__materia=regularidad.materia,
+        acta__fecha__gt=regularidad.fecha_cierre,
+        acta__fecha__lte=limite,
     ).count()
+    
     return limite, intentos
 
 
