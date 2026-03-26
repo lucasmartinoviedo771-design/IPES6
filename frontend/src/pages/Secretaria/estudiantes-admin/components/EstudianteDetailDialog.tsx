@@ -13,6 +13,7 @@ import Alert from "@mui/material/Alert";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/DeleteForever";
 import DescriptionIcon from "@mui/icons-material/Description";
+import LockResetIcon from "@mui/icons-material/LockReset";
 import { Control, UseFormHandleSubmit, UseFormWatch } from "react-hook-form";
 import { EstudianteAdminDetailDTO } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm, condicionColorMap } from "../types";
@@ -41,7 +42,9 @@ type Props = {
   handleEstudianteRegularChange: (_: unknown, checked: boolean) => void;
   updateIsPending: boolean;
   deleteIsPending: boolean;
+  resetPassIsPending?: boolean;
   onDeleteClick: () => void;
+  onResetPassword?: () => void;
 };
 
 export function EstudianteDetailDialog({
@@ -63,7 +66,9 @@ export function EstudianteDetailDialog({
   handleEstudianteRegularChange,
   updateIsPending,
   deleteIsPending,
+  resetPassIsPending,
   onDeleteClick,
+  onResetPassword,
 }: Props) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -143,6 +148,16 @@ export function EstudianteDetailDialog({
                   onClick={() => window.open(`/estudiantes/certificado-regular?dni=${selectedDni}`, "_blank")}
                 >
                   Constancia Regular
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  startIcon={resetPassIsPending ? <CircularProgress size={16} color="inherit" /> : <LockResetIcon />}
+                  onClick={onResetPassword}
+                  disabled={resetPassIsPending || updateIsPending}
+                >
+                  Resetear Contraseña
                 </Button>
               </Stack>
             </Box>

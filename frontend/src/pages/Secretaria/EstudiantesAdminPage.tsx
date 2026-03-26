@@ -24,6 +24,7 @@ import {
   useDocumentacionSideEffects,
   usePopulateFormFromDetail,
 } from "./estudiantes-admin/hooks/useEstudianteDetailForm";
+import { useResetPasswordMutation } from "./estudiantes-admin/hooks/useEstudianteAdminMutations";
 import { EstudiantesFilterBar } from "./estudiantes-admin/components/EstudiantesFilterBar";
 import { EstudiantesTable } from "./estudiantes-admin/components/EstudiantesTable";
 import { EstudianteDetailDialog } from "./estudiantes-admin/components/EstudianteDetailDialog";
@@ -96,6 +97,7 @@ export default function EstudiantesAdminPage() {
   const deleteMutation = useDeleteEstudianteMutation(handleCloseDetail, () =>
     setDeleteConfirmOpen(false),
   );
+  const resetPassMutation = useResetPasswordMutation();
 
   const form = useEstudianteDetailForm();
   const { reset, control, handleSubmit, watch, setValue, getValues } = form;
@@ -139,6 +141,13 @@ export default function EstudiantesAdminPage() {
     }
     setConfirmDialogOpen(false);
     setPendingDetailValues(null);
+  };
+
+  const handleResetPassword = () => {
+    if (!selectedDni) return;
+    if (window.confirm(`¿Está seguro de resetear la contraseña del estudiante ${selectedDni}? La nueva clave será pass${selectedDni}`)) {
+      resetPassMutation.mutate(selectedDni);
+    }
   };
 
   const isListLoading = listQuery.isLoading || listQuery.isFetching;
@@ -203,7 +212,9 @@ export default function EstudiantesAdminPage() {
         handleEstudianteRegularChange={handleEstudianteRegularChange}
         updateIsPending={updateMutation.isPending}
         deleteIsPending={deleteMutation.isPending}
+        resetPassIsPending={resetPassMutation.isPending}
         onDeleteClick={() => setDeleteConfirmOpen(true)}
+        onResetPassword={handleResetPassword}
       />
 
       <FinalConfirmationDialog

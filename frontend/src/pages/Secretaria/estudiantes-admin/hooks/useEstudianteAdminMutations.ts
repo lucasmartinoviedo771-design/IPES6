@@ -3,6 +3,7 @@ import { enqueueSnackbar } from "notistack";
 import {
   updateEstudianteAdmin,
   eliminarEstudianteAdmin,
+  resetPasswordEstudiante,
   EstudianteAdminDocumentacionDTO,
 } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm } from "../types";
@@ -135,6 +136,23 @@ export function useDeleteEstudianteMutation(
       const msg = error?.response?.data?.message || error.message || "No se pudo eliminar";
       enqueueSnackbar(msg, { variant: "error" });
       onError();
+    },
+  });
+}
+export function useResetPasswordMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dni: string) => resetPasswordEstudiante(dni),
+    onSuccess: (res: any) => {
+      enqueueSnackbar(res.message || "Contraseña reseteada correctamente", {
+        variant: "success",
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-estudiante"] });
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || "No se pudo resetear la contraseña";
+      enqueueSnackbar(msg, { variant: "error" });
     },
   });
 }

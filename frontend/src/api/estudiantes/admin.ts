@@ -64,3 +64,7 @@ export function getExportDocumentacionPdfUrl(params: { q?: string; carrera_id?: 
   const query = new URLSearchParams(params as any).toString();
   return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/pdf?${query}`;
 }
+export async function resetPasswordEstudiante(dni: string): Promise<ApiResponseDTO> {
+  const { data } = await client.post<ApiResponseDTO>(`/estudiantes/admin/estudiantes/${dni}/reset-password`);
+  return data;
+}

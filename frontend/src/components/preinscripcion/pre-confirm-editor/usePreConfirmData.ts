@@ -147,13 +147,14 @@ export function usePreConfirmData(
     mutationFn: async (checklist: ChecklistDTO) => {
       return apiConfirmarPreinscripcion(codigo, checklist);
     },
-    onSuccess: () => {
+    onSuccess: (resp: any) => {
       enqueueSnackbar("Preinscripción confirmada", { variant: "success" });
       qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
       qc.invalidateQueries({ queryKey: ["preinscripcion", codigo, "checklist"] });
       qc.invalidateQueries({ queryKey: ["preins-busq-sec"] });
       qc.invalidateQueries({ queryKey: ["preinscripciones"] });
-      onActionSuccess?.();
+      // No llamamos a onActionSuccess automáticamente si queremos mostrar la clave primero
+      // onActionSuccess?.();
     },
     onError: () => enqueueSnackbar("No se pudo confirmar", { variant: "error" })
   });

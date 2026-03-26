@@ -283,7 +283,7 @@ def _generar_auditoria_academica(
                         'fecha': str(fecha_aprob),
                         'prerrequisito': corr.materia_correlativa.nombre,
                         'tipo_corr': 'Aprobada para Rendir',
-                        'motivo': 'Prerrequisito no aprobado o aprobado posteriormente'
+                        'motivo': 'Prerrequisito no aprobado'
                     })
 
         # 3. Auditar Regularidades

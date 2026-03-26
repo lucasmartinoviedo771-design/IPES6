@@ -50,13 +50,14 @@ def admin_list_estudiantes(
     Utiliza el servicio EstudianteService para la lógica compleja de filtrado.
     """
     _ensure_admin(request)
+    allowed_ids = allowed_profesorados(request.user)
     filters = {
         "q": q,
         "carrera_id": carrera_id,
         "estado_legajo": estado_legajo,
         "estado_academico": estado_academico,
     }
-    return EstudianteService.list_estudiantes_admin(filters, limit, offset)
+    return EstudianteService.list_estudiantes_admin(filters, limit, offset, allowed_ids)
 
 
 @router.get(
@@ -454,3 +455,30 @@ def admin_delete_estudiante(request, dni: str):
         user.delete()
 
     return 200, ApiResponse(ok=True, message=f"Legajo de {nombre_completo} eliminado correctamente.")
+@router.post(
+    "/admin/estudiantes/{dni}/reset-password",
+    response=ApiResponse,
+)
+def admin_reset_estudiante_password(request, dni: str):
+    """
+    Resetea la contraseña del estudiante al formato 'pass' + DNI.
+    Útil cuando el alumno olvida su primer acceso o hay problemas de login masivos.
+    """
+    _ensure_admin(request)
+    est = get_object_or_404(Estudiante, persona__dni=dni)
+    
+    # Verificar si el usuario tiene permisos para esta carrera
+    allowed_ids = allowed_profesorados(request.user)
+    if allowed_ids is not None:
+        from core.models import EstudianteCarrera
+        est_carreras_ids = set(EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True))
+        if not allowed_ids.intersection(est_carreras_ids):
+            from apps.common.errors import raise_app_error
+            from apps.common.constants import AppErrorCode
+            raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar este legajo.")
+
+    success = EstudianteService.reset_password(est)
+    if not success:
+        return 400, ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
+
+    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. Nueva clave: pass{dni}")

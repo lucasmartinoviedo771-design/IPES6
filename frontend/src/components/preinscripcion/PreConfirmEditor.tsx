@@ -11,6 +11,16 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { enqueueSnackbar } from "notistack";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
+import Divider from "@mui/material/Divider";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues as formDefaults } from "./defaultValues";
@@ -165,8 +175,33 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
   };
 
   const [confirmInscripcionOpen, setConfirmInscripcionOpen] = useState(false);
-  const executeConfirmInscripcion = () => mConfirm.mutate(buildChecklistPayload(), { onSettled: () => setConfirmInscripcionOpen(false) });
+  const [successInfo, setSuccessInfo] = useState<{ password?: string; username?: string } | null>(null);
+
+  const executeConfirmInscripcion = () => {
+    mConfirm.mutate(buildChecklistPayload(), {
+      onSuccess: (resp: any) => {
+        setConfirmInscripcionOpen(false);
+        // Si la respuesta trae el password redactado o real lo mostramos
+        if (resp?.data?.password_inicial || resp?.data?.password) {
+          setSuccessInfo({
+            password: resp.data.password_inicial || resp.data.password,
+            username: resp.data.username || data?.estudiante?.dni
+          });
+        } else {
+          onActionSuccess?.();
+        }
+      },
+      onSettled: () => setConfirmInscripcionOpen(false)
+    });
+  };
   const cancelConfirmInscripcion = () => { if (!mConfirm.isPending) setConfirmInscripcionOpen(false); };
+
+  const handleCopyPassword = () => {
+    if (successInfo?.password) {
+      navigator.clipboard.writeText(successInfo.password);
+      enqueueSnackbar("Contraseña copiada al portapapeles", { variant: "info" });
+    }
+  };
 
   const [criticalAction, setCriticalAction] = useState<CriticalAction | null>(null);
   const requestMotivo = (label: string): string | null => { const v = window.prompt(label)?.trim(); return v || null; };
@@ -272,6 +307,53 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
 
       <FinalConfirmationDialog open={confirmInscripcionOpen} onConfirm={executeConfirmInscripcion} onCancel={cancelConfirmInscripcion} loading={mConfirm.isPending} contextText="Confirmación de Inscripción" />
       <FinalConfirmationDialog open={Boolean(criticalAction)} onConfirm={executeCriticalAction} onCancel={cancelCriticalAction} loading={criticalActionLoading} contextText={criticalContextText} />
+
+      {/* Dialog de éxito con contraseña */}
+      <Dialog open={!!successInfo} onClose={() => onActionSuccess?.()} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>¡Preinscripción Confirmada!</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ py: 1 }}>
+            <Alert severity="success" variant="filled">
+              El estudiante ha sido registrado correctamente en el sistema.
+            </Alert>
+            
+            <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 2, border: "1px dashed", borderColor: "divider" }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                CREDENCIALES DE ACCESO
+              </Typography>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.7 }}>Usuario (DNI):</Typography>
+                  <Typography variant="subtitle1" fontWeight={700}>{successInfo?.username}</Typography>
+                </Box>
+              </Stack>
+              <Divider sx={{ my: 1 }} />
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.7 }}>Contraseña inicial:</Typography>
+                  <Typography variant="h6" color="primary.main" fontWeight={800} sx={{ letterSpacing: 1 }}>
+                    {successInfo?.password}
+                  </Typography>
+                </Box>
+                <Tooltip title="Copiar contraseña">
+                  <IconButton onClick={handleCopyPassword} color="primary">
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Box>
+
+            <Typography variant="body2" color="text.secondary" align="center">
+              Por favor, entregue estas credenciales al estudiante. Se le solicitará cambiar la contraseña al ingresar por primera vez.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => onActionSuccess?.()} fullWidth variant="contained">
+            Entendido y cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
