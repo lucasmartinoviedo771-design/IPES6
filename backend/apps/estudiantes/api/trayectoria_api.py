@@ -167,7 +167,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         Regularidad.objects.filter(estudiante=est)
         .select_related("materia", "materia__plan_de_estudio", "materia__plan_de_estudio__profesorado")
         .prefetch_related("materia__correlativas_requeridas__materia_correlativa")
-        .order_by("-fecha_cierre")
+        .order_by("fecha_cierre")
     )
     regularidades_list = list(regularidades_qs)
 
@@ -379,6 +379,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
         
         actas_map[mid].append({
             "fecha": format_date(a.acta.fecha),
+            "fecha_iso": a.acta.fecha.isoformat(),
             "condicion": cond_val,
             "condicion_display": cond_label,
             "nota": a.calificacion_definitiva,
@@ -425,6 +426,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     fecha_str_f = format_date(f.mesa.fecha)
                     merged_finales[fecha_str_f] = {
                         "fecha": fecha_str_f,
+                        "fecha_iso": f.mesa.fecha.isoformat(),
                         "condicion": f.condicion or "INS",
                         "nota": _format_nota(f.nota),
                         "folio": f.folio,
@@ -433,7 +435,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 for a_data in actas_map.get(mat.id, []):
                     merged_finales[a_data["fecha"]] = a_data
                 
-                carton_finales = sorted(merged_finales.values(), key=lambda x: x["fecha"], reverse=True)
+                carton_finales = sorted(merged_finales.values(), key=lambda x: x["fecha_iso"])
                 final_data = carton_finales[0] if carton_finales else None
 
                 carton_materias.append({
