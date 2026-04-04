@@ -54,6 +54,8 @@ const AsignarRolPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedProfesorados, setSelectedProfesorados] = useState<number[]>([]);
 
+
+
   const roles = [
     { value: 'admin', label: 'Administrador' },
     { value: 'secretaria', label: 'Secretaría' },
@@ -70,7 +72,7 @@ const AsignarRolPage: React.FC = () => {
     setLoading(true);
     try {
       const [usersRes, profRes] = await Promise.all([
-        axios.get('management/users-list?' + new Date().getTime()),
+        axios.get('staff?' + new Date().getTime()),
         axios.get('profesorados/')
       ]);
       setUsers(usersRes.data);
@@ -107,7 +109,7 @@ const AsignarRolPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      await axios.post('management/asignar-rol', {
+      await axios.post('staff/roles', {
         user_id: selectedUser.id,
         role: role,
         profesorado_ids: role === 'bedel' ? selectedProfesorados : [],

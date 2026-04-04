@@ -3,10 +3,10 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Group
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
-from core.models import StaffAsignacion, Profesorado, Docente
+from core.models import StaffAsignacion, Profesorado, Docente, Estudiante
 from core.permissions import ensure_roles
 from ..router import management_router
-from core.schemas import AsignarRolIn, UserSchema
+from core.schemas import AsignarRolIn, UserSchema, ForceResetPasswordIn
 
 ALL_ROLES = {
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes", 
@@ -65,3 +65,22 @@ def list_user_assignments(request, user_id: int):
             "profesorado_nombre": a.profesorado.nombre
         } for a in asignaciones
     ]
+
+
+@management_router.post("/staff/force-password-reset", response={200: dict}, auth=JWTAuth())
+def force_reset_password(request, payload: ForceResetPasswordIn):
+    """Permite el reseteo administrativo forzado para dar acceso inmediato a un usuario."""
+    ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
+    user = get_object_or_404(User, username=payload.username)
+    new_pass = payload.new_password if payload.new_password and payload.new_password.strip() else "pass12346789"
+    user.set_password(new_pass)
+    user.is_active = True
+    user.save()
+
+    # Si es un perfil de estudiante, desactivamos el flag de cambio de contraseña
+    estudiante = Estudiante.objects.filter(user=user).first()
+    if estudiante:
+        estudiante.must_change_password = False
+        estudiante.save(update_fields=["must_change_password"])
+
+    return {"message": f"Contraseña de {user.username} reseteada exitosamente."}

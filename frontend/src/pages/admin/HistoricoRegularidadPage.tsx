@@ -68,6 +68,8 @@ const HistoricoRegularidadPage: React.FC = () => {
             observaciones: "",
             folio: "",
             force_upgrade: false,
+            docente_id: null,
+            docente_nombre: "",
         },
     });
 
@@ -111,11 +113,17 @@ const HistoricoRegularidadPage: React.FC = () => {
         mutationFn: registrarRegularidadIndividual,
         onSuccess: () => {
             enqueueSnackbar("Regularidad registrada correctamente.", { variant: "success" });
+            const currentDni = watch("dni");
+            const currentProf = watch("profesorado_id");
+            const currentPlan = watch("plan_id");
+            const currentDate = watch("fecha");
+            
             reset({
                 ...control._defaultValues,
-                profesorado_id: selectedProfesoradoId, // Keep professorate for next entry
-                plan_id: watch("plan_id"), // Keep plan
-                fecha: watch("fecha"), // Keep date
+                dni: currentDni, // Keep student
+                profesorado_id: currentProf, // Keep professorate
+                plan_id: currentPlan, // Keep plan
+                fecha: currentDate, // Keep date
             });
             setOverwriteConfirm(null);
         },
@@ -352,6 +360,29 @@ const HistoricoRegularidadPage: React.FC = () => {
                                     </TextField>
                                 )}
                             />
+                            {selectedMateriaId > 0 && (
+                                <Box mt={0.5} px={1}>
+                                    {(() => {
+                                        const mat = materias.find(m => m.id === selectedMateriaId);
+                                        if (!mat) return null;
+                                        const FORMAT_MAP: Record<string, string> = {
+                                            'ASI': 'Asignatura', 'MOD': 'Módulo', 'TAL': 'Taller',
+                                            'PRA': 'Práctica', 'SEM': 'Seminario', 'LAB': 'Laboratorio'
+                                        };
+                                        const DICT_LABELS: Record<string, string> = {
+                                            'ANUAL': 'Anual', '1C': '1° Cuatrimestre', '2C': '2° Cuatrimestre'
+                                        };
+                                        const formatKey = mat.formato as string || '';
+                                        const dictKey = (mat as any).dictado as string || '';
+                                        const label = `${FORMAT_MAP[formatKey] || formatKey} | ${DICT_LABELS[dictKey] || dictKey}`;
+                                        return (
+                                            <Typography variant="caption" color="text.secondary">
+                                                <strong>Configuración:</strong> {label}
+                                            </Typography>
+                                        );
+                                    })()}
+                                </Box>
+                            )}
                         </Grid>
 
                         {/* Row 3: Dictado, Situacion */}
@@ -402,6 +433,79 @@ const HistoricoRegularidadPage: React.FC = () => {
                                     </TextField>
                                 )}
                             />
+                        </Grid>
+
+                        {/* Docente a cargo */}
+                        <Grid item xs={12}>
+                            <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2, border: '1px dashed rgba(0,0,0,0.1)' }}>
+                                <Controller
+                                    name="docente_nombre"
+                                    control={control}
+                                    render={({ field: controllerField, fieldState }) => (
+                                        <Autocomplete
+                                            freeSolo
+                                            options={metadata?.docentes || []}
+                                            getOptionLabel={(option) => {
+                                                if (typeof option === 'string') return option;
+                                                return `${option.nombre} (DNI: ${option.dni})`;
+                                            }}
+                                            filterOptions={(options, state) => {
+                                                const input = state.inputValue.toLowerCase();
+                                                return options.filter(o =>
+                                                    o.dni?.includes(input) ||
+                                                    o.nombre?.toLowerCase().includes(input)
+                                                ).slice(0, 50);
+                                            }}
+                                            value={
+                                                metadata?.docentes.find((d) => d.id === watch("docente_id")) ||
+                                                watch("docente_nombre") ||
+                                                null
+                                            }
+                                            onInputChange={(_, val, reason) => {
+                                                if (reason === 'input') {
+                                                    setValue("docente_nombre", val);
+                                                    setValue("docente_id", null);
+                                                }
+                                            }}
+                                            onChange={(_, val) => {
+                                                if (typeof val === 'string') {
+                                                    setValue("docente_nombre", val);
+                                                    setValue("docente_id", null);
+                                                } else if (val) {
+                                                    setValue("docente_nombre", val.nombre);
+                                                    setValue("docente_id", val.id);
+                                                } else {
+                                                    setValue("docente_nombre", "");
+                                                    setValue("docente_id", null);
+                                                }
+                                            }}
+                                            renderOption={(props, option) => {
+                                                const { key, ...restProps } = props as any;
+                                                return (
+                                                    <li key={key} {...restProps}>
+                                                        <Box>
+                                                            <Typography variant="body2">{option.nombre}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                DNI: {option.dni}
+                                                            </Typography>
+                                                        </Box>
+                                                    </li>
+                                                );
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Docente a cargo"
+                                                    fullWidth
+                                                    placeholder="DNI o Nombre, o escriba el nombre manualmente..."
+                                                    error={!!fieldState.error}
+                                                    helperText={fieldState.error?.message || "Si no elige ninguno quedará como SISTEMA."}
+                                                />
+                                            )}
+                                        />
+                                    )}
+                                />
+                            </Box>
                         </Grid>
 
                         {/* Row 4: Nota, Asistencia, Folio */}

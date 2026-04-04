@@ -42,20 +42,32 @@ import TabVigencias from './trayectoria/TabVigencias';
 const TrayectoriaPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user: null }) as any;
   const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel']);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dniParam = searchParams.get('dni');
   const [tab, setTab] = useState(0);
   const [dniInput, setDniInput] = useState(dniParam || '');
   const [dniQuery, setDniQuery] = useState(dniParam || '');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
 
-  const queryKey = useMemo(() => ['trayectoria', canGestionar ? (dniQuery || '').trim() : 'self'], [canGestionar, dniQuery]);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  const queryKey = useMemo(() => [
+    'trayectoria', 
+    canGestionar ? (dniQuery || '').trim() : 'self',
+    refreshCount
+  ], [canGestionar, dniQuery, refreshCount]);
+
   const trayectoriaQ = useQuery<TrayectoriaDTO>({
     queryKey,
     queryFn: () => obtenerTrayectoriaEstudiante(canGestionar ? ((dniQuery || '').trim() ? { dni: (dniQuery || '').trim() } : undefined) : undefined),
     enabled: canGestionar ? !!dniQuery : true,
     retry: false,
+    staleTime: 0,
   });
+
+  const handleRefresh = async () => {
+    setRefreshCount(prev => prev + 1);
+  };
 
   const trayectoria = trayectoriaQ.data;
   const eventos = trayectoria?.historial ?? [];
@@ -105,7 +117,13 @@ const TrayectoriaPage: React.FC = () => {
     return chips;
   }, [planesCarton, trayectoria?.estudiante?.carreras]);
 
-  const handleBuscar = () => setDniQuery(dniInput.trim());
+  const handleBuscar = () => {
+    const trimmed = dniInput.trim();
+    setDniQuery(trimmed);
+    if (canGestionar) {
+        setSearchParams(trimmed ? { dni: trimmed } : {});
+    }
+  };
 
   const estudiante = trayectoria?.estudiante;
 
@@ -119,12 +137,13 @@ const TrayectoriaPage: React.FC = () => {
           <Stack direction="row" spacing={1} alignItems="center">
             <Button
               size="small"
-              variant="outlined"
+              variant="contained"
+              color="primary"
               startIcon={<RefreshIcon fontSize="small" />}
-              onClick={() => trayectoriaQ.refetch()}
+              onClick={handleRefresh}
               disabled={trayectoriaQ.isFetching}
             >
-              Actualizar
+              {trayectoriaQ.isFetching ? 'Actualizando...' : 'Actualizar'}
             </Button>
           </Stack>
         }
@@ -135,7 +154,11 @@ const TrayectoriaPage: React.FC = () => {
           dniInput={dniInput}
           setDniInput={setDniInput}
           onBuscar={handleBuscar}
-          onSelectEstudiante={(dni) => { setDniInput(dni); setDniQuery(dni); }}
+          onSelectEstudiante={(dni) => { 
+            setDniInput(dni); 
+            setDniQuery(dni);
+            setSearchParams({ dni });
+          }}
         />
       )}
 

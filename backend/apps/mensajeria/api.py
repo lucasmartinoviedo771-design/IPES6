@@ -235,7 +235,12 @@ def list_conversations(request, filters: Query[ConversationListQuery]):
             id=c.id, subject=c.subject, topic=c.topic.name if c.topic else None,
             status=c.status, is_massive=c.is_massive, allow_student_reply=c.allow_student_reply,
             last_message_at=c.last_message_at.isoformat() if c.last_message_at else None, 
-            unread=unread, sla=_compute_sla_indicator(c, p), participants=[],
+            unread=unread, sla=_compute_sla_indicator(c, p),
+            participants=[ConversationParticipantOut(
+                id=pp.id, user_id=pp.user_id, name=pp.user.get_full_name() or pp.user.username,
+                roles=list(get_user_roles(pp.user)), can_reply=pp.can_reply,
+                last_read_at=format_datetime(pp.last_read_at)
+            ) for pp in c.participants.all().select_related("user")],
             last_message_excerpt=excerpt,
             closed_by_name=c.closed_by.get_full_name() or c.closed_by.username if c.closed_by else None,
             closed_at=c.closed_at.isoformat() if c.closed_at else None
@@ -363,6 +368,18 @@ def close_conversation(request, conversation_id: int):
     c.closed_at = timezone.now()
     c.save(update_fields=["status", "closed_by", "closed_at"])
     ConversationAudit.objects.create(conversation=c, actor=request.user, action=ConversationAudit.Action.CLOSED)
+    return {"ok": True}
+
+@router.post("/conversaciones/{conversation_id}/reabrir", auth=JWTAuth())
+def reopen_conversation(request, conversation_id: int):
+    """Reabre una conversación cerrada para permitir nuevos mensajes."""
+    part = get_object_or_404(ConversationParticipant, conversation_id=conversation_id, user=request.user)
+    c = part.conversation
+    c.status = Conversation.Status.OPEN
+    c.closed_by = None
+    c.closed_at = None
+    c.save(update_fields=["status", "closed_by", "closed_at"])
+    ConversationAudit.objects.create(conversation=c, actor=request.user, action=ConversationAudit.Action.REOPENED)
     return {"ok": True}
 
 @router.post("/conversaciones/{conversation_id}/solicitar-cierre", auth=JWTAuth())

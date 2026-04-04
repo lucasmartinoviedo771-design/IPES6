@@ -171,7 +171,15 @@ def _limpiar_datos_fila(raw_datos: dict | None, columnas: list[dict]) -> dict:
     return cleaned
 
 def obtener_docentes_metadata():
-    docente_qs = Docente.objects.select_related("persona").order_by("persona__apellido", "persona__nombre")
+    docente_qs = (
+        Docente.objects.select_related("persona")
+        .exclude(
+            Q(persona__dni__startswith="DOC-HIS-") |
+            Q(persona__apellido__icontains="CARGA HISTÓRICA") |
+            Q(persona__apellido__icontains="SISTEMA")
+        )
+        .order_by("persona__apellido", "persona__nombre")
+    )
     return [
         {"id": d.id, "nombre": f"{d.apellido}, {d.nombre}".strip(", "), "dni": d.dni}
         for d in docente_qs

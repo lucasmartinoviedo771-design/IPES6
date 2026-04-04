@@ -15,10 +15,21 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningIcon from "@mui/icons-material/Warning";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SyncIcon from "@mui/icons-material/Sync";
+import { hasAnyRole } from "@/utils/roles";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SystemLogsPage() {
+    const { user } = useAuth();
     const queryClient = useQueryClient();
     const [filter, setFilter] = useState<string | null>(null);
+
+    if (!hasAnyRole(user, ["admin", "secretaria"])) {
+        return (
+            <Box p={3}>
+                <Alert severity="error">No tiene permisos para acceder a esta sección institucional.</Alert>
+            </Box>
+        );
+    }
 
     const { data: logs, isLoading } = useQuery({
         queryKey: ["systemLogs"],

@@ -34,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { listarDisposicionesEquivalencia, EquivalenciaDisposicionDTO } from '@/api/estudiantes';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
+import { formatDateToDDMMYYYY, formatDateTimeToDDMMYYYY } from '@/utils/dates';
 
 dayjs.extend(utc);
 
@@ -129,7 +130,7 @@ const HistorialEquivalenciasPage: React.FC = () => {
                             {disposiciones?.map((dispo) => (
                                 <TableRow key={dispo.id} hover>
                                     <TableCell>{dispo.id}</TableCell>
-                                    <TableCell>{dayjs.utc(dispo.fecha_disposicion).format('DD/MM/YYYY')}</TableCell>
+                                    <TableCell>{formatDateToDDMMYYYY(dispo.fecha_disposicion)}</TableCell>
                                     <TableCell>
                                         <Typography variant="body2" fontWeight={600}>{dispo.numero_disposicion}</Typography>
                                     </TableCell>
@@ -202,11 +203,11 @@ const DetalleEquivalenciaDialog: React.FC<DetalleProps> = ({ open, dispo, onClos
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <Typography variant="subtitle2" color="text.secondary">Fecha de Disposición</Typography>
-                            <Typography variant="body1">{dayjs.utc(dispo.fecha_disposicion).format('DD/MM/YYYY')}</Typography>
+                            <Typography variant="body1">{formatDateToDDMMYYYY(dispo.fecha_disposicion)}</Typography>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                             <Typography variant="subtitle2" color="text.secondary">Creado el</Typography>
-                            <Typography variant="body1">{dayjs(dispo.creado_en).format('DD/MM/YYYY HH:mm')}</Typography>
+                            <Typography variant="body1">{formatDateTimeToDDMMYYYY(dispo.creado_en)}</Typography>
                         </Grid>
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" color="text.secondary">Profesorado</Typography>

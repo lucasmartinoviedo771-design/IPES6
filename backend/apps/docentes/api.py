@@ -21,7 +21,11 @@ def _ensure_structure_edit(user):
 @router.get("/", response=list[DocenteOut], auth=JWTAuth())
 def list_docentes(request):
     _ensure_structure_view(request.user)
-    docentes = Docente.objects.all().order_by("persona__apellido", "persona__nombre")
+    docentes = Docente.objects.select_related("persona").exclude(
+        Q(persona__dni__startswith="DOC-HIS-") |
+        Q(persona__apellido__icontains="CARGA HISTÓRICA") |
+        Q(persona__apellido__icontains="SISTEMA")
+    ).order_by("persona__apellido", "persona__nombre")
     return [DocenteService.serialize_docente(d) for d in docentes]
 
 @router.post("/", response=DocenteOut, auth=JWTAuth())

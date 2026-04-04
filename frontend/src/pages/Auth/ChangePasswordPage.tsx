@@ -71,6 +71,7 @@ const ChangePasswordPage: React.FC = () => {
       navigate(destination, { replace: true });
     } catch (err: any) {
       const message =
+        err?.response?.data?.message ||
         err?.response?.data?.detail ||
         err?.message ||
         "No fue posible actualizar la contraseña.";

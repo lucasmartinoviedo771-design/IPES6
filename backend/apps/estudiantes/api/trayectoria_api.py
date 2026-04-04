@@ -412,15 +412,19 @@ def trayectoria_estudiante(request, dni: str | None = None):
             carton_materias = []
             for mat in materias_plan:
                 regularidades_item_list = regularidades_map.get(mat.id, [])
+                # Agregamos fecha_iso para sorting interno
                 regularidades_data = [{
                     "fecha": format_date(reg.fecha_cierre),
+                    "fecha_iso": reg.fecha_cierre.isoformat(),
                     "condicion": reg.situacion,
                     "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
                 } for reg in regularidades_item_list]
                 
-                reg_data_legacy = regularidades_data[0] if regularidades_data else None
+                # Seleccionamos la regularidad más reciente (o la mejor si hubiera lógica de éxito)
+                # Dado que ya vienen ordenadas por fecha_cierre ASC en regularidades_list, la última es la más reciente.
+                reg_data_legacy = regularidades_data[-1] if regularidades_data else None
 
-                # Unificación de resultados de finales por fecha (Acta prevalece sobre inscripción)
+                # Unificación de resultados de finales por fecha 
                 merged_finales = {}
                 for f in finales_map.get(mat.id, []):
                     fecha_str_f = format_date(f.mesa.fecha)
@@ -435,8 +439,12 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 for a_data in actas_map.get(mat.id, []):
                     merged_finales[a_data["fecha"]] = a_data
                 
+                # Ordenar finales por fecha ASC
                 carton_finales = sorted(merged_finales.values(), key=lambda x: x["fecha_iso"])
-                final_data = carton_finales[0] if carton_finales else None
+                
+                # Para el 'resumen' del cartón, mostrar el RESULTADO MÁS RECIENTE del final
+                # (o el más exitoso, pero lo más común es el último intento)
+                final_data = carton_finales[-1] if carton_finales else None
 
                 carton_materias.append({
                     "materia_id": mat.id,
@@ -449,9 +457,23 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     "regularidad": reg_data_legacy,
                     "regularidades": regularidades_data,
                     "final": final_data,
-                    "finales": carton_finales
+                    "finales": carton_finales,
+                    # Atributo auxiliar para identificar EDIs (Espacios de Definición Institucional)
+                    "is_edi": mat.nombre.strip().upper().startswith("EDI"),
+                    # Atributo auxiliar para ordenar materias por fecha de última actividad (o 0 si no hay)
+                    "_last_date": max(
+                        [reg.fecha_cierre.isoformat() for reg in regularidades_item_list] + 
+                        [f["fecha_iso"] for f in carton_finales] + 
+                        ["0000-00-00"]
+                    )
                 })
             
+            # ORDENAR EL CARTÓN: 
+            # 1. Los EDIs siempre al final (is_edi=0 arriba, is_edi=1 abajo)
+            # 2. Por año de cursada (primero 1ero, luego 2do...)
+            # 3. Dentro de cada año, por fecha de actividad (cronológico)
+            carton_materias.sort(key=lambda x: (x["is_edi"], x["anio"], x["_last_date"], x["materia_nombre"]))
+
             carton_planes.append({
                 "profesorado_id": carrera.id,
                 "profesorado_nombre": carrera.nombre,

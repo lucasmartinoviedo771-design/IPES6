@@ -167,6 +167,14 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
   });
 
   registros.sort((a, b) => {
+    const isEdiA = a.espacioCurricular.trim().toUpperCase().startsWith('EDI');
+    const isEdiB = b.espacioCurricular.trim().toUpperCase().startsWith('EDI');
+    
+    // Prioridad 0: EDIs siempre al final
+    if (isEdiA !== isEdiB) {
+      return isEdiA ? 1 : -1;
+    }
+
     const yearA = parseInt(a.anio, 10);
     const yearB = parseInt(b.anio, 10);
     if (!Number.isNaN(yearA) && !Number.isNaN(yearB) && yearA !== yearB) {

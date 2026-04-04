@@ -25,6 +25,7 @@ import {
   listarConversaciones,
   obtenerConversacion,
   obtenerResumenMensajes,
+  reabrirConversacion,
   solicitarCierreConversacion,
 } from "@/api/mensajes";
 import { useAuth } from "@/context/AuthContext";
@@ -143,6 +144,18 @@ const MensajesInboxPage: React.FC = () => {
     },
   });
 
+  const reabrirMutation = useMutation({
+    mutationFn: () => {
+      if (!selectedId) throw new Error("Seleccione una conversación");
+      return reabrirConversacion(selectedId);
+    },
+    onSuccess: async () => {
+      await refetchDetail();
+      await refetchList();
+      await queryClient.invalidateQueries({ queryKey: ["mensajes", "resumen"] });
+    },
+  });
+
   return (
     <Box sx={{ p: 2 }}>
       <PageHero
@@ -201,6 +214,7 @@ const MensajesInboxPage: React.FC = () => {
             requestCloseMutation={requestCloseMutation}
             onReplyBodyChange={setReplyBody}
             onReplyAttachmentChange={setReplyAttachment}
+            reopenMutation={reabrirMutation}
           />
         </Grid>
       </Grid>

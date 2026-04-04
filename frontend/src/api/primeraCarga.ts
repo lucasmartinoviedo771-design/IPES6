@@ -296,6 +296,8 @@ export interface RegularidadIndividualPayload {
   observaciones?: string | null;
   force_upgrade?: boolean;
   folio?: string | null;
+  docente_id?: number | null;
+  docente_nombre?: string | null;
 }
 
 export const registrarRegularidadIndividual = async (

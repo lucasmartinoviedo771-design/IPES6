@@ -256,6 +256,9 @@ def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
             estado=estado,
             dry_run=payload.dry_run,
         )
+        if result.get("warnings") and not result.get("planilla"):
+             return 400, ApiResponse(ok=False, message=result["warnings"][0], data=result)
+
         message = "Planilla generada (dry-run)." if payload.dry_run else "Planilla generada correctamente."
         return ApiResponse(ok=True, message=message, data=result)
     except ValueError as exc:
@@ -279,6 +282,8 @@ class RegularidadIndividualIn(Schema):
     excepcion: bool = False
     observaciones: str | None = None
     force_upgrade: bool = False
+    docente_id: int | None = None
+    docente_nombre: str | None = None
     folio: str | None = None
 
 
@@ -291,6 +296,11 @@ def registrar_regularidad_individual(request, payload: RegularidadIndividualIn):
     try:
         from apps.primera_carga.services import registrar_regularidad_individual_historica
         result = registrar_regularidad_individual_historica(request.user, payload.dict())
+        
+        # Si hay warnings y no se registró nada para este individuo, devolver error con el detalle
+        if result.get("warnings") and result.get("registrados", 0) == 0:
+            return 400, ApiResponse(ok=False, message=result["warnings"][0], data=result)
+
         return ApiResponse(ok=True, message="Regularidad registrada exitosamente.", data=result)
     except Exception as exc:
         return 400, ApiResponse(ok=False, message=str(exc))

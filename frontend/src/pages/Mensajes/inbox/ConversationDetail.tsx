@@ -34,6 +34,7 @@ interface ConversationDetailProps {
   requestCloseMutation: UseMutationResult<any, any, void, any>;
   onReplyBodyChange: (value: string) => void;
   onReplyAttachmentChange: (file: File | null) => void;
+  reopenMutation: UseMutationResult<any, any, void, any>;
 }
 
 export const ConversationDetail: React.FC<ConversationDetailProps> = ({
@@ -48,6 +49,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({
   requestCloseMutation,
   onReplyBodyChange,
   onReplyAttachmentChange,
+  reopenMutation,
 }) => {
   const isOwnMessage = (message: MessageDTO) => message.author_id === userId;
 
@@ -91,7 +93,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({
             Participantes:
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" mb={2}>
-            {selectedConversation.participants.map((participant) => (
+            {conversationDetail.participants.map((participant) => (
               <Chip
                 key={participant.id}
                 label={`${participant.name} (${participant.roles.join(", ") || "sin rol"})`}
@@ -114,10 +116,21 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({
           <Divider sx={{ my: 2 }} />
 
           {conversationDetail.status === "closed" ? (
-            <Alert severity="info">
-              La conversación fue archivada por <strong>{conversationDetail.closed_by_name || "un administrador"}</strong>
-              {conversationDetail.closed_at ? ` el ${dayjs(conversationDetail.closed_at).format("DD/MM/YYYY HH:mm")}` : "."}
-            </Alert>
+            <Stack spacing={2}>
+              <Alert severity="info">
+                La conversación fue archivada por <strong>{conversationDetail.closed_by_name || "un administrador"}</strong>
+                {conversationDetail.closed_at ? ` el ${dayjs(conversationDetail.closed_at).format("DD/MM/YYYY HH:mm")}` : "."}
+              </Alert>
+              <Button
+                variant="outlined"
+                color="primary"
+                fullWidth
+                onClick={() => reopenMutation.mutate()}
+                disabled={reopenMutation.isPending}
+              >
+                Reabrir conversación
+              </Button>
+            </Stack>
           ) : conversationDetail.participants.find((p) => p.user_id === userId)?.can_reply ? (
             <Stack spacing={1.5}>
               <TextField

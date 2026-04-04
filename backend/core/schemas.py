@@ -110,3 +110,9 @@ class AsignarRolIn(Schema):
     role: str
     profesorado_ids: List[int] = []
     action: str = "assign"
+
+
+class ForceResetPasswordIn(Schema):
+    """Payload para reseteo administrativo forzado de contraseña."""
+    username: str
+    new_password: str | None = None

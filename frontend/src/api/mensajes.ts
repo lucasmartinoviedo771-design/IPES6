@@ -142,6 +142,10 @@ export const solicitarCierreConversacion = async (conversationId: number) => {
   await client.post(`/mensajes/conversaciones/${conversationId}/solicitar-cierre`);
 };
 
+export const reabrirConversacion = async (conversationId: number) => {
+  await client.post(`/mensajes/conversaciones/${conversationId}/reabrir`);
+};
+
 export const cerrarConversacion = async (conversationId: number) => {
   await client.post(`/mensajes/conversaciones/${conversationId}/cerrar`);
 };

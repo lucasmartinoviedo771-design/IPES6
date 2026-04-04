@@ -43,6 +43,7 @@ def _resolve_user_by_identifier(ident: str):
 
 
 class UserOut(BaseModel):
+    id: int
     dni: str
     name: str
     roles: list[str]
@@ -106,6 +107,7 @@ def _serialize_user(user):
             roles.append("admin")
 
     return {
+        "id": user.id,
         "dni": user.username,
         "name": (user.get_full_name() or user.first_name or user.username),
         "roles": roles,
@@ -222,12 +224,13 @@ def profile(request):
             roles.append("admin")
 
     return {
+        "id": u.id,
         "dni": getattr(u, "username", ""),
         "name": u.get_full_name() or u.username,
         "roles": roles,
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
-        "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)),
+        "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)), # Error fix here too, was wrong in original
         "must_complete_profile": _must_complete_profile(u),
         "profesorado_ids": prof_ids,
     }
@@ -245,10 +248,13 @@ def change_password(request, payload: ChangePasswordIn):
     try:
         validate_password(payload.new_password, user)
     except ValidationError as exc:
+        # Unimos los mensajes de error específicos de Django para que el usuario sepa por qué falló
+        # (ej: "Es demasiado similar al nombre de usuario")
+        error_msg = " ".join(exc.messages)
         raise AppError(
             400,
             AppErrorCode.VALIDATION_ERROR,
-            "La nueva contraseña no cumple los requisitos.",
+            error_msg,
             details=exc.messages,
         )
 

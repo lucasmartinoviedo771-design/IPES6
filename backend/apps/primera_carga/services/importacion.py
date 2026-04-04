@@ -30,6 +30,7 @@ from .utils import (
     _normalize_label,
     _get_profesorado_from_cache,
     _atomic_rollback,
+    _normalize_estado_legajo,
 )
 from .planillas import crear_planilla_regularidad
 
@@ -99,30 +100,32 @@ def _import_estudiante_record(
         persona=persona,
         defaults={
             "user": user,
-            "estado_legajo": record.get("estado_legajo", "PENDIENTE").strip().upper() or "PENDIENTE",
+            "estado_legajo": _normalize_estado_legajo(record.get("estado_legajo")),
             "observaciones": (record.get("observaciones") or "").strip(),
             "legajo": (record.get("legajo") or "").strip(),
+            "must_change_password": must_change,
         }
     )
     if not student_created:
         estudiante.user = user
-        if record.get("estado_legajo"):
-            estudiante.estado_legajo = record.get("estado_legajo").strip().upper()
+        if record.get("estado_legajo") is not None:
+            estudiante.estado_legajo = _normalize_estado_legajo(record.get("estado_legajo"))
         estudiante.save()
 
-    estudiante.asignar_profesorado(profesorado)
-
     anio_ingreso_str = (record.get("anio_ingreso") or "").strip()
+    cohorte_str = (record.get("cohorte") or "").strip()
     try:
         anio_ingreso_int = int(anio_ingreso_str) if anio_ingreso_str else date.today().year
     except ValueError:
         anio_ingreso_int = date.today().year
 
+    estudiante.asignar_profesorado(profesorado, anio_ingreso=anio_ingreso_int, cohorte=cohorte_str)
+
     pre, pre_created = Preinscripcion.objects.get_or_create(
-        estudiante=estudiante,
-        profesorado=profesorado,
+        alumno=estudiante,
+        carrera=profesorado,
+        anio=anio_ingreso_int,
         defaults={
-            "anio_ingreso": anio_ingreso_int,
             "estado": "finalizada",
             "activa": True,
             "codigo": f"PRE-{anio_ingreso_int}-{estudiante.id:04d}",
@@ -233,17 +236,38 @@ def registrar_regularidad_individual_historica(user: User, data: dict) -> dict:
     estudiante = Estudiante.objects.filter(persona__dni=dni).first()
     if not estudiante: raise ValueError(f"Estudiante {dni} no encontrado.")
     materia = Materia.objects.get(pk=data["materia_id"])
-    # Mapeo de formato de materia (ASI, MOD, TAL) a slug de RegularidadFormato (asignatura, modulo, taller)
+    # Mapeo de formato de materia (ASI, MOD, TAL, PRA, etc.) a slug de RegularidadFormato
     formato_map = {
         "ASI": "asignatura",
         "MOD": "modulo",
         "TAL": "taller",
+        "PRA": "taller", # Prácticas usan el formato taller habitualmente
+        "LAB": "taller",
+        "SEM": "taller",
     }
-    slug_formato = formato_map.get(materia.formato, materia.formato.lower())
-    plantilla = RegularidadPlantilla.objects.filter(formato__slug=slug_formato).first()
-    if not plantilla: raise ValueError("No existe plantilla para este formato.")
+    slug_formato = formato_map.get(materia.formato, (materia.formato or "").lower())
+    dictado_val = data.get("dictado", "ANUAL")
+    plantilla = RegularidadPlantilla.objects.filter(formato__slug=slug_formato, dictado=dictado_val).first()
+    if not plantilla:
+        # Fallback a la primera plantilla de ese formato si no hay coincidencia exacta
+        plantilla = RegularidadPlantilla.objects.filter(formato__slug=slug_formato).first()
+        if plantilla:
+            dictado_val = plantilla.dictado  # Forzamos el dictado de la plantilla para evitar error de mismatch
     
-    docentes = [{"nombre": f"CARGA HISTÓRICA ({user.username})", "rol": "profesor", "orden": 1}]
+    if not plantilla:
+        raise ValueError(f"No existe ninguna plantilla configurada para el formato '{materia.formato}' ({slug_formato}).")
+    
+    docente_id = data.get("docente_id")
+    docente_nombre = data.get("docente_nombre")
+    if docente_id or docente_nombre:
+        docentes = [{
+            "docente_id": docente_id,
+            "nombre": docente_nombre or "",
+            "rol": "profesor",
+            "orden": 1
+        }]
+    else:
+        docentes = [{"nombre": "SISTEMA (Carga Histórica)", "rol": "profesor", "orden": 1}]
     filas = [{
         "orden": 1, "dni": dni, "apellido_nombre": f"{estudiante.user.last_name}, {estudiante.user.first_name}",
         "nota_final": data.get("nota_final"), "asistencia": data.get("asistencia"),
@@ -252,8 +276,8 @@ def registrar_regularidad_individual_historica(user: User, data: dict) -> dict:
     }]
     return crear_planilla_regularidad(
         user=user, profesorado_id=data["profesorado_id"], materia_id=materia.id,
-        plantilla_id=plantilla.id, dictado=data.get("dictado", "ANUAL"),
+        plantilla_id=plantilla.id, dictado=dictado_val,
         fecha=_parse_date(data["fecha"]) if isinstance(data["fecha"], str) else data["fecha"],
         folio=data.get("folio", ""), plan_resolucion=materia.plan_de_estudio.resolucion,
-        docentes=docentes, filas=filas, force_upgrade=True
+        docentes=docentes, filas=filas, force_upgrade=data.get("force_upgrade", False)
     )

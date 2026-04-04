@@ -325,7 +325,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </ListItemButton>
           )}
 
-          {hasAnyRole(user, ["admin"]) && (
+          {hasAnyRole(user, ["admin", "secretaria"]) && (
             <ListItemButton
               selected={current.startsWith("/system/logs")}
               onClick={() => navigate("/system/logs")}

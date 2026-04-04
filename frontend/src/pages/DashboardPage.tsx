@@ -34,6 +34,8 @@ import { getCorrelativasCaidas } from "@/api/reportes";
 import AdminCorrelativasWidget from "@/components/dashboard/AdminCorrelativasWidget";
 import StudentAlerts from "@/components/dashboard/StudentAlerts";
 import { PageHero } from "@/components/ui/GradientTitles";
+import { hasAnyRole } from "@/utils/roles";
+import { ForcedResetWidget } from "@/components/dashboard/ForcedResetWidget";
 
 type QuickAction = {
     title: string;
@@ -133,12 +135,7 @@ export default function DashboardPage() {
     type EstadoNormalizado = Lowercase<PreinscripcionDTO['estado']>;
     const normalizeEstado = (estado: PreinscripcionDTO['estado']) => estado.toLowerCase() as EstadoNormalizado;
 
-    const can = useCallback((roles?: string[]) => {
-        if (!roles || roles.length === 0) return true;
-        if (user?.is_superuser) return true;
-        const userRoles = (user?.roles || []).map((r) => r.toLowerCase().trim());
-        return roles.some((role) => userRoles.includes(role.toLowerCase().trim()));
-    }, [user]);
+    const can = useCallback((roles?: string[]) => hasAnyRole(user, roles || []), [user]);
 
     // Query correlativas caídas (key compartida con widget hijo para deduplicación)
     const { data: correlativasCaidas } = useQuery({
@@ -313,6 +310,27 @@ export default function DashboardPage() {
                     </Grid>
                 ))}
             </Grid>
+
+            {can(["admin", "secretaria"]) && (
+                <Grid container spacing={3} mb={3}>
+                    <Grid item xs={12} md={6} lg={4}>
+                        <ForcedResetWidget />
+                    </Grid>
+                    <Grid item xs={12} md={6} lg={8}>
+                        <CardBox sx={{ bgcolor: 'rgba(125,127,110,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderStyle: 'dashed' }}>
+                            <Box textAlign="center" maxWidth={400}>
+                                <Typography variant="subtitle2" fontWeight={700} color={INSTITUTIONAL_TERRACOTTA_DARK} mb={1}>
+                                    Herramientas de Mantenimiento
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    <strong>Reseteo Forzado:</strong> Use esto para dar acceso inmediato a usuarios bloqueados.
+                                    Al resetear, el estudiante podrá ingresar directamente sin pasar por la pantalla de cambio de clave.
+                                </Typography>
+                            </Box>
+                        </CardBox>
+                    </Grid>
+                </Grid>
+            )}
 
             <Grid container spacing={3}>
                 <Grid item xs={12} lg={7}>

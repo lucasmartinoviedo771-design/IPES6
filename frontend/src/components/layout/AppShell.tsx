@@ -78,24 +78,35 @@ export default function AppShell({ children }: PropsWithChildren) {
   const showRoleSwitcher = roleOptions.length > 1;
 
   const previousRoleRef = useRef<string | null>(roleOverride);
-  useEffect(() => {
-    if (!user) return;
-    if (previousRoleRef.current === roleOverride) return;
-    previousRoleRef.current = roleOverride;
-    if (roleOverride) {
-      const destination = roleHomeMap[roleOverride] ?? "/dashboard";
-      navigate(destination, { replace: true });
-    } else {
-      navigate(getDefaultHomeRoute(user), { replace: true });
-    }
-  }, [roleOverride, user, navigate]);
+  const isInitialMount = useRef<boolean>(true);
 
   useEffect(() => {
     if (!user) return;
-    if (roleOverride) return;
-    if (availableRoleOptions.length > 1) {
+
+    // Solo redirigimos si el rol ha CAMBIADO explícitamente durante la sesión activa.
+    // Si anterior era null, es la carga inicial (F5 o primer login) y ya estamos 
+    // en la URL correcta (o LoginPage ya nos redirigió al lugar correcto).
+    if (previousRoleRef.current !== null && previousRoleRef.current !== roleOverride) {
+      if (roleOverride) {
+        const destination = roleHomeMap[roleOverride] ?? "/dashboard";
+        navigate(destination, { replace: true });
+      } else {
+        navigate(getDefaultHomeRoute(user), { replace: true });
+      }
+    }
+    
+    previousRoleRef.current = roleOverride;
+  }, [roleOverride, user, navigate]);
+
+  useEffect(() => {
+    if (!user || roleOverride || isInitialMount.current === false) return;
+    
+    // Auto-selección inicial de rol si no hay uno activo
+    if (availableRoleOptions.length > 0) {
+      // Usamos useLayoutEffect o una señal para no navegar en este paso inicial
       setRoleOverride(availableRoleOptions[0].value);
     }
+    isInitialMount.current = false;
   }, [user, roleOverride, availableRoleOptions, setRoleOverride]);
 
   const { data: messageSummary } = useQuery({

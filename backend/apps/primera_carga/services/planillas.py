@@ -275,10 +275,9 @@ def crear_planilla_regularidad(
                 warnings.append(f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitió el registro de regularidad.")
                 continue
 
-            if situacion in {Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO}:
-                if not force_upgrade and estudiante_tiene_materia_aprobada(estudiante, materia):
-                    warnings.append(f"[Fila {orden}] El estudiante {estudiante.dni} ya tiene aprobada la materia {materia.nombre}.")
-                    continue
+            if not force_upgrade and estudiante_tiene_materia_aprobada(estudiante, materia):
+                warnings.append(f"[Fila {orden}] El estudiante {estudiante.dni} ya tiene aprobada la materia {materia.nombre}.")
+                continue
 
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
             inscripcion = InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia).order_by("-anio").first()
@@ -307,7 +306,11 @@ def crear_planilla_regularidad(
             pdf_bytes = _render_planilla_regularidad_pdf(planilla)
             planilla.pdf.save(f"{planilla.codigo}.pdf", ContentFile(pdf_bytes), save=True)
 
-    return obtener_planilla_regularidad_detalle(planilla.id)
+    return {
+        "planilla": obtener_planilla_regularidad_detalle(planilla.id),
+        "warnings": warnings,
+        "registrados": regularidades_registradas
+    }
 
 def obtener_planilla_regularidad_detalle(planilla_id: int) -> dict:
     try:
@@ -515,4 +518,8 @@ def actualizar_planilla_regularidad(
             pdf_bytes = _render_planilla_regularidad_pdf(planilla)
             planilla.pdf.save(f"{planilla.codigo}.pdf", ContentFile(pdf_bytes), save=True)
 
-    return obtener_planilla_regularidad_detalle(planilla.id)
+    return {
+        "planilla": obtener_planilla_regularidad_detalle(planilla.id),
+        "warnings": [], # Re-evaluación de warnings no implementada en edición aún
+        "registrados": 0
+    }
