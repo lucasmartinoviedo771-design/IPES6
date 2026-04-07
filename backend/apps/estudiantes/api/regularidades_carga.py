@@ -123,6 +123,8 @@ class MateriaOption(Schema):
     anio: int
     cuatrimestre: str | None = None
     formato: str | None = None
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
 
 class ComisionOption(Schema):
     id: int
@@ -239,7 +241,11 @@ def listar_comisiones(request, profesorado_id: int | None = None, materia_id: in
         materias_qs = materias_qs.filter(comision__docente=docente_profile).distinct()
     
     materias_out: list[MateriaOption] = [
-        MateriaOption(id=m.id, nombre=m.nombre, plan_id=plan.id, anio=m.anio_cursada, cuatrimestre=m.regimen, formato=getattr(m, "formato", None))
+        MateriaOption(
+            id=m.id, nombre=m.nombre, plan_id=plan.id, anio=m.anio_cursada, 
+            cuatrimestre=m.regimen, formato=getattr(m, "formato", None),
+            fecha_inicio=m.fecha_inicio, fecha_fin=m.fecha_fin
+        )
         for m in materias_qs.order_by("anio_cursada", "nombre")
     ]
 

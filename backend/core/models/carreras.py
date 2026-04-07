@@ -71,6 +71,12 @@ class Materia(models.Model):
         verbose_name="Es EDI",
         help_text="Indica si esta materia es un Espacio de Definición Institucional",
     )
+    fecha_inicio = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de inicio",
+        help_text="Fecha en que este EDI comenzó a estar vigente.",
+    )
     fecha_fin = models.DateField(
         null=True,
         blank=True,
@@ -80,7 +86,7 @@ class Materia(models.Model):
 
 
     class Meta:
-        unique_together = ("plan_de_estudio", "anio_cursada", "nombre")
+        unique_together = ("plan_de_estudio", "anio_cursada", "nombre", "regimen", "fecha_inicio")
         ordering = ["anio_cursada", "nombre"]
 
     def __str__(self):

@@ -7,10 +7,15 @@ from decimal import Decimal, InvalidOperation
 from core.models import ActaExamenEstudiante
 
 
-def _format_nota(value: Decimal | float | int | None) -> str | None:
+def _format_nota(value: Decimal | float | int | str | None) -> str | None:
     if value is None:
         return None
-    return f"{value:.1f}".rstrip("0").rstrip(".")
+    if isinstance(value, str):
+        return value
+    try:
+        return f"{float(value):.1f}".rstrip("0").rstrip(".")
+    except (ValueError, TypeError):
+        return str(value)
 
 
 def _format_acta_calificacion(value: str | None) -> str | None:

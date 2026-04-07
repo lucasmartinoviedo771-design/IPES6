@@ -4,6 +4,7 @@ Define las estructuras de datos para la gestión administrativa de profesorados,
 asignaturas, planes de estudio, comisiones y reglas de correlatividad.
 """
 
+from datetime import date
 from ninja import Schema
 
 
@@ -68,7 +69,8 @@ class MateriaIn(Schema):
     tipo_formacion: str
     horas_semana: int = 0
     is_edi: bool = False
-    fecha_fin: str | None = None
+    fecha_inicio: date | None = None
+    fecha_fin: date | None = None
 
 
 class MateriaOut(Schema):
@@ -82,7 +84,8 @@ class MateriaOut(Schema):
     tipo_formacion: str
     horas_semana: int
     is_edi: bool
-    fecha_fin: str | None
+    fecha_inicio: date | None
+    fecha_fin: date | None
 
 class CerrarEDIIn(Schema):
     """Payload para cerrar un EDI y crear uno nuevo en su lugar."""
