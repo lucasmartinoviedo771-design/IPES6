@@ -231,63 +231,61 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
             )}
           />
         </Grid>
-        <Grid item xs={12}>
-          {!isReadOnly && (
-            <Controller
-              control={control}
-              name="dry_run"
-              render={({ field }) => (
-                <FormControlLabel
-                  control={<Checkbox {...field} checked={field.value} />}
-                  label="Dry-run (simular sin guardar ni generar PDF)"
-                />
-              )}
-            />
-          )}
-        </Grid>
       </Grid>
 
       {selectedMateria && selectedPlantilla && (
-        <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-          {materiaAnioLabel ? (
-            <Chip size="small" label={`Año: ${materiaAnioLabel}`} variant="outlined" />
-          ) : null}
-          <Chip
-            size="small"
-            label={`Formato: ${selectedPlantilla.formato.nombre}`}
-            variant="outlined"
-          />
-          <Chip
-            size="small"
-            label={`Dictado: ${dictadoLabel || selectedPlantilla.dictado}`}
-            variant="outlined"
-          />
-          <Chip
-            size="small"
-            label={`Regimen: ${REGIMEN_LABELS[selectedMateria.regimen] ?? selectedMateria.regimen}`}
-            variant="outlined"
-          />
-        </Box>
-      )}
+        <Alert
+          severity="info"
+          variant="outlined"
+          icon={false}
+          sx={{
+            mt: 3,
+            bgcolor: 'action.hover',
+            borderStyle: 'dashed',
+            '& .MuiAlert-message': { width: '100%' }
+          }}
+        >
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+            {materiaAnioLabel && (
+              <Chip size="small" label={`Año: ${materiaAnioLabel}`} color="primary" />
+            )}
+            <Chip
+              size="small"
+              label={`Formato: ${selectedPlantilla.formato.nombre}`}
+              variant="outlined"
+            />
+            <Chip
+              size="small"
+              label={`Dictado: ${dictadoLabel || selectedPlantilla.dictado}`}
+              variant="outlined"
+            />
+            <Chip
+              size="small"
+              label={`Regimen: ${REGIMEN_LABELS[selectedMateria.regimen] ?? selectedMateria.regimen}`}
+              variant="outlined"
+            />
+          </Box>
 
-      {selectedPlantilla?.descripcion ? (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          {selectedPlantilla.descripcion}
-        </Typography>
-      ) : null}
+          {selectedPlantilla.descripcion && (
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+              {selectedPlantilla.descripcion}
+            </Typography>
+          )}
 
-      {situacionesDisponibles.length > 0 && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-          Situaciones habilitadas: {situacionesDisponibles.map((s) => s.label || s.codigo).join(', ')}
-        </Typography>
-      )}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {situacionesDisponibles.length > 0 && (
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                <strong>Situaciones habilitadas:</strong> {situacionesDisponibles.map((s) => s.label || s.codigo).join(', ')}
+              </Typography>
+            )}
 
-      {previewCodigo && (
-        <Box sx={{ mt: 1.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            Vista previa del código (se asigna automáticamente al guardar): {previewCodigo}
-          </Typography>
-        </Box>
+            {previewCodigo && (
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', fontStyle: 'italic' }}>
+                <strong>Código de sistema:</strong> {previewCodigo}
+              </Typography>
+            )}
+          </Box>
+        </Alert>
       )}
     </>
   );

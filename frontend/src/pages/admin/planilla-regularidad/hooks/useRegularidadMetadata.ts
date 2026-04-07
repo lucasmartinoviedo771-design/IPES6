@@ -6,7 +6,7 @@ import {
   RegularidadMetadataPlantilla,
   RegularidadMetadataProfesorado,
 } from '@/api/primeraCarga';
-import { regimenToDictado, FORMATO_SLUG_MAP, DICTADO_LABELS } from '../constants';
+import { regimenToDictado, FORMATO_SLUG_MAP, DICTADO_LABELS, FORMATO_LABELS } from '../constants';
 
 interface UseRegularidadMetadataOptions {
   open: boolean;
@@ -67,17 +67,39 @@ export function useRegularidadMetadata({
     }
     const slug = FORMATO_SLUG_MAP[selectedMateria.formato] ?? selectedMateria.formato.toLowerCase();
     const expectedDictado = regimenToDictado[selectedMateria.regimen] ?? 'ANUAL';
-    const candidatas = (metadataQuery.data?.plantillas ?? []).filter(
+    
+    // 1. Filtrar candidatas
+    let candidatas = (metadataQuery.data?.plantillas ?? []).filter(
       (plantilla) =>
         plantilla.formato.slug.toLowerCase() === slug &&
         plantilla.dictado.toUpperCase() === expectedDictado.toUpperCase(),
     );
-    if (candidatas.length) {
-      return candidatas;
+    if (!candidatas.length) {
+      candidatas = (metadataQuery.data?.plantillas ?? []).filter(
+        (plantilla) => plantilla.formato.slug.toLowerCase() === slug,
+      );
     }
-    return (metadataQuery.data?.plantillas ?? []).filter(
-      (plantilla) => plantilla.formato.slug.toLowerCase() === slug,
-    );
+
+    // 2. Adaptar nombres visuales si la materia es un formato "hijo" del slug (ej: SEM -> Taller)
+    // Esto evita que diga "Taller" cuando es un "Seminario".
+    return candidatas.map(p => {
+      const actualFormatoMateria = selectedMateria.formato; // ej: SEM
+      const labelCorrecto = FORMATO_LABELS[actualFormatoMateria] || p.formato.nombre;
+      
+      // Si el nombre de la plantilla empieza con el nombre del formato base (Taller), 
+      // lo reemplazamos con el label correcto (Seminario).
+      if (p.formato.slug === 'taller' && actualFormatoMateria !== 'TAL') {
+        return {
+          ...p,
+          nombre: p.nombre.replace('Taller', labelCorrecto),
+          formato: {
+            ...p.formato,
+            nombre: labelCorrecto
+          }
+        };
+      }
+      return p;
+    });
   }, [selectedMateria, metadataQuery.data?.plantillas]);
 
   const selectedPlantilla = useMemo(

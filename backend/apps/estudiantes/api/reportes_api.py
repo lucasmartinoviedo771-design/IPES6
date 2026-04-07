@@ -40,6 +40,8 @@ class AuditoriaInconsistenciaItem(Schema):
     motivo: str
 
 def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, materia_id: int | None = None) -> List[dict]:
+    from core.models import InscripcionMesa, EquivalenciaDisposicionDetalle
+    
     qs = InscripcionMateriaEstudiante.objects.select_related(
         "estudiante__user", "materia__plan_de_estudio"
     ).filter(
@@ -49,14 +51,62 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     
     if estudiante:
         qs = qs.filter(estudiante=estudiante)
-        
     if materia_id:
         qs = qs.filter(materia_id=materia_id)
 
-    reporte = []
-    materia_names = {}
+    # Convertir a lista para evitar múltiples ejecuciones del QS base
+    inscripciones = list(qs)
+    if not inscripciones:
+        return []
 
-    for insc in qs:
+    est_ids = [insc.estudiante_id for insc in inscripciones]
+    dnis = [insc.estudiante.dni for insc in inscripciones]
+
+    # --- BULK FETCHING ---
+    # 1. Aprobaciones por Actas
+    aprobadas_actas_qs = ActaExamenEstudiante.objects.filter(
+        dni__in=dnis, calificacion_definitiva__in=['6','7','8','9','10','APR','EQUI']
+    ).values('dni', 'acta__materia_id')
+    
+    aprobadas_by_dni = {}
+    for item in aprobadas_actas_qs:
+        aprobadas_by_dni.setdefault(item['dni'], set()).add(item['acta__materia_id'])
+
+    # 2. Aprobaciones por Mesa (Pandemia)
+    aprobadas_mesas_qs = InscripcionMesa.objects.filter(
+        estudiante_id__in=est_ids, condicion=InscripcionMesa.Condicion.APROBADO
+    ).values('estudiante_id', 'mesa__materia_id')
+    
+    aprobadas_by_est_id = {}
+    for item in aprobadas_mesas_qs:
+        aprobadas_by_est_id.setdefault(item['estudiante_id'], set()).add(item['mesa__materia_id'])
+
+    # 3. Aprobaciones por Equivalencias
+    aprobadas_equis_qs = EquivalenciaDisposicionDetalle.objects.filter(
+        disposicion__estudiante_id__in=est_ids
+    ).values('disposicion__estudiante_id', 'materia_id')
+    
+    equis_by_est_id = {}
+    for item in aprobadas_equis_qs:
+        equis_by_est_id.setdefault(item['disposicion__estudiante_id'], set()).add(item['materia_id'])
+
+    # 4. Regularidades (latest for each student/materia)
+    regs_qs = Regularidad.objects.filter(
+        estudiante_id__in=est_ids
+    ).only('estudiante_id', 'materia_id', 'situacion', 'fecha_cierre').order_by('estudiante_id', 'materia_id', '-fecha_cierre')
+    
+    # Cache manual de las últimas regularidades por [est_id][materia_id]
+    latest_regs_map = {}
+    for r in regs_qs:
+        latest_regs_map.setdefault(r.estudiante_id, {})
+        if r.materia_id not in latest_regs_map[r.estudiante_id]:
+            latest_regs_map[r.estudiante_id][r.materia_id] = r
+
+    # --- PROCESAMIENTO ---
+    reporte = []
+    materia_names_cache = {}
+
+    for insc in inscripciones:
         est = insc.estudiante
         materia = insc.materia
         
@@ -65,43 +115,22 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
             Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR,
             est
         )
-        
         required_materia_ids = list(correlativas_qs.values_list("materia_correlativa_id", flat=True))
         
         if not required_materia_ids:
             continue
             
-        regs = Regularidad.objects.filter(
-            estudiante=est,
-            materia_id__in=required_materia_ids
-        ).order_by("materia_id", "-fecha_cierre")
-        
-        latest_regs = {}
-        for r in regs:
-            if r.materia_id not in latest_regs:
-                latest_regs[r.materia_id] = r
-                
-        # Check approval in Actas or InscripcionMesa (Pandemia)
-        aprobadas_ids = set(ActaExamenEstudiante.objects.filter(
-            dni=est.dni, calificacion_definitiva__in=['6','7','8','9','10','APR','EQUI']
-        ).values_list('acta__materia_id', flat=True))
-        
-        # Add Pandemia (InscripcionMesa)
-        from core.models import InscripcionMesa, EquivalenciaDisposicionDetalle
-        aprobadas_ids.update(InscripcionMesa.objects.filter(
-            estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO
-        ).values_list('mesa__materia_id', flat=True))
-        
-        # Add Equivalencias
-        aprobadas_ids.update(EquivalenciaDisposicionDetalle.objects.filter(
-            disposicion__estudiante=est
-        ).values_list('materia_id', flat=True))
+        # Consolidar todas las aprobadas del estudiante
+        mis_aprobadas = set()
+        mis_aprobadas.update(aprobadas_by_dni.get(est.dni, set()))
+        mis_aprobadas.update(aprobadas_by_est_id.get(est.id, set()))
+        mis_aprobadas.update(equis_by_est_id.get(est.id, set()))
 
         for req_id in required_materia_ids:
-            if req_id in aprobadas_ids:
+            if req_id in mis_aprobadas:
                 continue
                 
-            reg = latest_regs.get(req_id)
+            reg = latest_regs_map.get(est.id, {}).get(req_id)
             is_ok = False
             motivo = ""
             
@@ -114,19 +143,7 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
                     except ValueError:
                         limit_base = reg.fecha_cierre.replace(month=2, day=28, year=reg.fecha_cierre.year + 2)
                     
-                    siguiente_llamado = (
-                        MesaExamen.objects.filter(
-                            materia_id=req_id,
-                            tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
-                            fecha__gte=limit_base,
-                        )
-                        .order_by("fecha")
-                        .values_list("fecha", flat=True)
-                        .first()
-                    )
-                    limit = siguiente_llamado or limit_base
-                    
-                    if date.today() <= limit:
+                    if date.today() <= limit_base:
                         is_ok = True
                     else:
                         motivo = "Regularidad vencida"
@@ -136,19 +153,16 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
                 motivo = "Sin regularidad registrada"
             
             if not is_ok:
-                if req_id not in materia_names:
-                    m_obj = Materia.objects.filter(id=req_id).first()
-                    materia_names[req_id] = m_obj.nombre if m_obj else f"Materia {req_id}"
-                
-                materia_corr_nombre = materia_names[req_id]
-                user_full_name = f"{est.user.last_name}, {est.user.first_name}"
+                if req_id not in materia_names_cache:
+                    m_obj = Materia.objects.filter(id=req_id).only('nombre').first()
+                    materia_names_cache[req_id] = m_obj.nombre if m_obj else f"Materia {req_id}"
                 
                 reporte.append({
                     "estudiante_id": est.id,
                     "dni": est.dni,
-                    "apellido_nombre": user_full_name,
+                    "apellido_nombre": f"{est.user.last_name}, {est.user.first_name}" if est.user_id else est.dni,
                     "materia_actual": materia.nombre,
-                    "materia_correlativa": materia_corr_nombre,
+                    "materia_correlativa": materia_names_cache[req_id],
                     "motivo": motivo
                 })
     return reporte

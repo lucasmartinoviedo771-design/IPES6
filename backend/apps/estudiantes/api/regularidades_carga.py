@@ -166,9 +166,18 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
         msg = f"{item['materia_correlativa']}: {item['motivo']}"
         caidas_map[est_id].append(msg)
 
+    # Optimizamos la obtención de regularidades (evitar N+1)
+    insc_ids = [insc.id for insc in inscripciones]
+    regs_qs = Regularidad.objects.filter(inscripcion_id__in=insc_ids).order_by("inscripcion_id", "-fecha_cierre", "-id")
+    
+    reg_map = {}
+    for r in regs_qs:
+        if r.inscripcion_id not in reg_map:
+            reg_map[r.inscripcion_id] = r
+
     estudiantes: list[RegularidadEstudianteOut] = []
     for idx, insc in enumerate(inscripciones, start=1):
-        regularidad = Regularidad.objects.filter(inscripcion=insc).order_by("-fecha_cierre", "-id").first()
+        regularidad = reg_map.get(insc.id)
         alias = alias_desde_situacion(regularidad.situacion) if regularidad else None
         
         estudiantes.append(

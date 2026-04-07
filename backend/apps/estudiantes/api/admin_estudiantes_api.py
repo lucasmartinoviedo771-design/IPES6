@@ -76,15 +76,11 @@ def admin_list_estudiantes_documentacion(
     Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
     """
     _ensure_admin(request)
-    data = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
-    
-    total = len(data)
-    items = data[offset : offset + limit] if limit else data[offset:]
-    
+    total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, limit=limit, offset=offset)
     return EstudianteDocumentacionListResponse(total=total, items=items)
 
 
-def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
+def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, limit=None, offset=0):
     """
     Lógica interna para consolidar datos de documentación de múltiples fuentes.
     Integra información de Estudiante, PreinscripcionChecklist y datos_extra.
@@ -117,10 +113,17 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
         qs = qs.filter(carreras__id__in=allowed_ids)
 
     qs = qs.distinct()
-    estudiantes_list = list(qs)
+    total = qs.count()
+    
+    if limit is not None:
+        qs_paged = qs[offset : offset + limit]
+    else:
+        qs_paged = qs[offset:]
+        
+    estudiantes_list = list(qs_paged)
     estudiante_ids = [e.id for e in estudiantes_list]
 
-    # Mapeo de checklists de preinscripción para sincronizar estados iniciales
+    # Mapeo de checklists de preinscripción
     checklists = PreinscripcionChecklist.objects.filter(
         preinscripcion__alumno_id__in=estudiante_ids
     ).select_related("preinscripcion__alumno").order_by("-updated_at")
@@ -135,12 +138,12 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
     
     for est in estudiantes_list:
         user = est.user if est.user_id else None
-        datos_extra = est.datos_extra or {}
-        doc_data = _extract_documentacion(datos_extra)
+        # En el nuevo modelo, los campos están en Estudiante directamente
+        # Pero conservamos retrocompatibilidad con datos_extra si se prefiere extraer vía helper
+        doc_data = _extract_documentacion(est)
         
         cl = checklist_map.get(est.id)
         if cl:
-            # Sincronización oportunista con el checklist de preinscripción
             cl_fields = {
                 "dni_legalizado": cl.dni_legalizado,
                 "fotos_4x4": cl.fotos_4x4,
@@ -156,7 +159,6 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
                     doc_data[k] = v
         
         condicion = _determine_condicion(doc_data)
-        # Una de las tres condiciones de título secundario debe cumplirse
         titulo_sec_ok = any([
             doc_data.get("titulo_secundario_legalizado"),
             doc_data.get("certificado_titulo_en_tramite"),
@@ -169,8 +171,8 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
                 apellido=user.last_name if user else "",
                 nombre=user.first_name if user else "",
                 condicion_administrativa=condicion,
-                curso_introductorio_aprobado=bool(datos_extra.get("curso_introductorio_aprobado", est.curso_introductorio_aprobado)),
-                libreta_entregada=bool(datos_extra.get("libreta_entregada")),
+                curso_introductorio_aprobado=est.curso_introductorio_aprobado,
+                libreta_entregada=est.libreta_entregada,
                 dni_legalizado=bool(doc_data.get("dni_legalizado")),
                 fotos_4x4=bool(doc_data.get("fotos_4x4")),
                 certificado_salud=bool(doc_data.get("certificado_salud")),
@@ -179,7 +181,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None):
                 articulo_7=bool(doc_data.get("articulo_7")),
             )
         )
-    return items
+    return total, items
 
 
 @router.get("/admin/estudiantes-documentacion/export/excel")

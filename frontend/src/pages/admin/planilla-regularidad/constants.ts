@@ -71,7 +71,16 @@ export const FORMATO_SLUG_MAP: Record<string, string> = {
   TAL: 'taller',
   PRA: 'taller',
   LAB: 'taller',
-  SEM: 'asignatura', // Seminario según reglamento tiene piso 65% (B)
+  SEM: 'taller', // Seminario ahora usa el formato Taller para compartir formulario
+};
+
+export const FORMATO_LABELS: Record<string, string> = {
+  ASI: 'Asignatura',
+  MOD: 'Módulo',
+  TAL: 'Taller',
+  PRA: 'Práctica',
+  LAB: 'Laboratorio',
+  SEM: 'Seminario',
 };
 
 export const SITUACION_PLACEHOLDER = 'Seleccionar';

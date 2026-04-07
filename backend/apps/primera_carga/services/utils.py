@@ -173,6 +173,7 @@ def _limpiar_datos_fila(raw_datos: dict | None, columnas: list[dict]) -> dict:
 def obtener_docentes_metadata():
     docente_qs = (
         Docente.objects.select_related("persona")
+        .only("id", "persona__nombre", "persona__apellido", "persona__dni")
         .exclude(
             Q(persona__dni__startswith="DOC-HIS-") |
             Q(persona__apellido__icontains="CARGA HISTÓRICA") |
@@ -185,13 +186,18 @@ def obtener_docentes_metadata():
         for d in docente_qs
     ]
 
-def obtener_estudiantes_metadata():
+def obtener_estudiantes_metadata(allowed_carrera_ids: list[int] | None = None):
     estudiantes_qs = (
         Estudiante.objects.all()
-        .select_related("persona", "user")
+        .select_related("persona")
         .prefetch_related("carreras")
+        .only("id", "persona__nombre", "persona__apellido", "persona__dni")
         .order_by("persona__apellido", "persona__nombre")
     )
+    
+    if allowed_carrera_ids is not None:
+        estudiantes_qs = estudiantes_qs.filter(carreras__id__in=allowed_carrera_ids).distinct()
+
     return [
         {
             "id": e.id,
@@ -200,7 +206,7 @@ def obtener_estudiantes_metadata():
             "dni": e.dni,
             "profesorados": [c.id for c in e.carreras.all()]
         }
-        for e in estudiantes_qs
+        for e in estudiantes_qs[:1000] # Limite razonable para un combobox frontend
     ]
 
 def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) -> dict:
@@ -225,11 +231,12 @@ def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) ->
             return {"profesorados": [], "plantillas": [], "docentes": [], "estudiantes": []}
         profes_qs = profes_qs.filter(id__in=allowed)
 
-    materias_prefetch = Materia.objects.all().only(
+    # Optimizamos prefetches para que solo traigan lo necesario del set filtrado
+    materias_prefetch = Materia.objects.only(
         "id", "plan_de_estudio_id", "nombre", "anio_cursada", "formato", "regimen"
     ).order_by("anio_cursada", "nombre")
     
-    planes_prefetch = PlanDeEstudio.objects.all().only(
+    planes_prefetch = PlanDeEstudio.objects.filter(profesorado__in=profes_qs).only(
         "id", "profesorado_id", "resolucion", "anio_inicio", "anio_fin", "vigente"
     ).prefetch_related(
         Prefetch("materias", queryset=materias_prefetch)
@@ -270,7 +277,8 @@ def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) ->
 
     result = {
         "profesorados": profes_data, "plantillas": plantillas,
-        "docentes": obtener_docentes_metadata(), "estudiantes": obtener_estudiantes_metadata(),
+        "docentes": obtener_docentes_metadata(), 
+        "estudiantes": obtener_estudiantes_metadata(allowed_carrera_ids=list(allowed) if allowed is not None else None),
     }
     cache.set(cache_key, result, timeout=3600)
     return result

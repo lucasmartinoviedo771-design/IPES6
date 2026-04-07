@@ -99,9 +99,6 @@ def _apply_estudiante_updates(
             if Estudiante.objects.filter(persona__dni=new_dni).exclude(id=est.id).exists():
                 return False, (400, ApiResponse(ok=False, message=f"El DNI {new_dni} ya está registrado."))
 
-            est.dni = new_dni
-            fields_to_update.add("dni")
-
             if user:
                 if User.objects.filter(username=new_dni).exclude(id=user.id).exists():
                      return False, (400, ApiResponse(ok=False, message=f"El usuario {new_dni} ya existe."))
@@ -128,11 +125,12 @@ def _apply_estudiante_updates(
 
     if payload.telefono is not None:
         est.telefono = payload.telefono or ""
-        fields_to_update.add("telefono")
+        # est.telefono is a property, so it won't be in fields_to_update for Estudiante
+        # but we handle it in Persona block below
 
     if payload.domicilio is not None:
         est.domicilio = payload.domicilio
-        fields_to_update.add("domicilio")
+        # Same here
 
     if allow_estado_legajo and payload.estado_legajo is not None:
         est.estado_legajo = payload.estado_legajo.upper()
@@ -153,8 +151,7 @@ def _apply_estudiante_updates(
                     message="Formato de fecha invalido. Usa DD/MM/AAAA o AAAA-MM-DD.",
                 ),
             )
-        est.fecha_nacimiento = new_date
-        fields_to_update.add("fecha_nacimiento")
+        est.fecha_nacimiento_temp = new_date # Temporary storage for persona sync
 
     if payload.documentacion is not None:
         doc_updates = payload.documentacion.model_dump(exclude_unset=True)
@@ -167,11 +164,21 @@ def _apply_estudiante_updates(
     PERSONA_KEYS = (
         "genero", "cuil", "lugar_nacimiento", "nacionalidad",
         "localidad_nac", "provincia_nac", "pais_nac",
-        "estado_civil"
+        "estado_civil", "nombre", "apellido", "email", "telefono", "domicilio"
     )
 
     if est.persona:
         persona_updates = []
+        
+        # Sincronización de Identidad
+        if payload.dni is not None:
+            est.persona.dni = payload.dni.strip()
+            persona_updates.append("dni")
+        
+        if payload.fecha_nacimiento is not None:
+            est.persona.fecha_nacimiento = getattr(est, "fecha_nacimiento_temp", None)
+            persona_updates.append("fecha_nacimiento")
+
         for key in PERSONA_KEYS:
             value = getattr(payload, key, None)
             if value is not None:
