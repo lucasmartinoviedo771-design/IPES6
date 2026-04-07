@@ -13,8 +13,20 @@ import { MesaCard } from './mesas/MesaCard';
 import { PlanillaModal } from './mesas/PlanillaModal';
 import { Mesa } from './mesas/types';
 
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+
 export default function MesasPage() {
   const state = useMesasState();
+  const [activeTab, setActiveTab] = React.useState(0);
+
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  const mesasFuturas = React.useMemo(() => state.mesas.filter(m => m.fecha >= hoy), [state.mesas, hoy]);
+  const mesasPasadas = React.useMemo(() => state.mesas.filter(m => m.fecha < hoy), [state.mesas, hoy]);
 
   const guardar = async () => {
     if (!state.form.materia_id) {
@@ -52,6 +64,7 @@ export default function MesasPage() {
       state.handleToggleModalidad('REG', true);
       state.resetTribunalDocentes();
       await state.loadMesas();
+      setActiveTab(1); // Mover a la pestaña de activas tras crear
     } catch (error) {
       console.error('No se pudieron crear las mesas', error);
       alert('No se pudieron crear las mesas.');
@@ -195,81 +208,106 @@ export default function MesasPage() {
         subtitle="ABM de mesas ordinarias, extraordinarias y especiales"
       />
 
-      <Typography variant="h6" mb={1} mt={2}>
-        Nueva mesa
-      </Typography>
-      <NuevaMesaForm
-        ventanas={state.ventanas}
-        ventanaNueva={state.ventanaNueva}
-        setVentanaNueva={state.setVentanaNueva}
-        profesorados={state.profesorados}
-        profesoradoNueva={state.profesoradoNueva}
-        setProfesoradoNueva={state.setProfesoradoNueva}
-        planesNueva={state.planesNueva}
-        planNueva={state.planNueva}
-        setPlanNueva={state.setPlanNueva}
-        anioNueva={state.anioNueva}
-        setAnioNueva={state.setAnioNueva}
-        cuatrimestreNueva={state.cuatrimestreNueva}
-        setCuatrimestreNueva={state.setCuatrimestreNueva}
-        cuatrimestreOptionsNueva={state.cuatrimestreOptionsNueva}
-        availableAniosNueva={state.availableAniosNueva}
-        materiasFiltradas={state.materiasFiltradas}
-        form={state.form}
-        setForm={state.setForm}
-        mesaEspecial={state.mesaEspecial}
-        mesaTipoLabel={state.mesaTipoLabel}
-        handleMesaEspecialChange={state.handleMesaEspecialChange}
-        modalidadesSeleccionadas={state.modalidadesSeleccionadas}
-        handleToggleModalidad={state.handleToggleModalidad}
-        docentesLista={state.docentesLista}
-        docentesLoading={state.docentesLoading}
-        tribunalDocentes={state.tribunalDocentes}
-        handleTribunalChange={state.handleTribunalChange}
-        onGuardar={guardar}
-      />
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 3, mb: 2 }}>
+        <Tabs value={activeTab} onChange={handleTabChange} textColor="primary" indicatorColor="primary">
+          <Tab label="Nueva mesa" sx={{ fontWeight: 700 }} />
+          <Tab label="Activas / Futuras" sx={{ fontWeight: 700 }} />
+          <Tab label="Historial / Pasadas" sx={{ fontWeight: 700 }} />
+        </Tabs>
+      </Box>
 
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 4 }}>Filtros</Typography>
-      <FiltrosMesas
-        ventanas={state.ventanas}
-        ventanaId={state.ventanaId}
-        setVentanaId={state.setVentanaId}
-        tipo={state.tipo}
-        setTipo={state.setTipo}
-        modalidadFiltro={state.modalidadFiltro}
-        setModalidadFiltro={state.setModalidadFiltro}
-        codigoFiltro={state.codigoFiltro}
-        setCodigoFiltro={state.setCodigoFiltro}
-        profesorados={state.profesorados}
-        profesoradoFiltro={state.profesoradoFiltro}
-        setProfesoradoFiltro={state.setProfesoradoFiltro}
-        setPlanFiltro={state.setPlanFiltro}
-        setMateriaFiltro={state.setMateriaFiltro}
-        planesFiltro={state.planesFiltro}
-        planFiltro={state.planFiltro}
-        anioFiltro={state.anioFiltro}
-        setAnioFiltro={state.setAnioFiltro}
-        cuatrimestreFiltro={state.cuatrimestreFiltro}
-        setCuatrimestreFiltro={state.setCuatrimestreFiltro}
-        cuatrimestreOptionsFiltro={state.cuatrimestreOptionsFiltro}
-        availableAniosFiltro={state.availableAniosFiltro}
-        materiasFiltroFiltradas={state.materiasFiltroFiltradas}
-        materiaFiltro={state.materiaFiltro}
-      />
+      {/* TAB 0: FORMULARIO DE CARGA */}
+      {activeTab === 0 && (
+        <Box sx={{ mt: 2, p: 3, bgcolor: '#fdfdfd', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          <Typography variant="h6" mb={2} fontWeight={700} color="primary">
+            Crear nueva mesa
+          </Typography>
+          <NuevaMesaForm
+            ventanas={state.ventanas}
+            ventanaNueva={state.ventanaNueva}
+            setVentanaNueva={state.setVentanaNueva}
+            profesorados={state.profesorados}
+            profesoradoNueva={state.profesoradoNueva}
+            setProfesoradoNueva={state.setProfesoradoNueva}
+            planesNueva={state.planesNueva}
+            planNueva={state.planNueva}
+            setPlanNueva={state.setPlanNueva}
+            anioNueva={state.anioNueva}
+            setAnioNueva={state.setAnioNueva}
+            cuatrimestreNueva={state.cuatrimestreNueva}
+            setCuatrimestreNueva={state.setCuatrimestreNueva}
+            cuatrimestreOptionsNueva={state.cuatrimestreOptionsNueva}
+            availableAniosNueva={state.availableAniosNueva}
+            materiasFiltradas={state.materiasFiltradas}
+            form={state.form}
+            setForm={state.setForm}
+            mesaEspecial={state.mesaEspecial}
+            mesaTipoLabel={state.mesaTipoLabel}
+            handleMesaEspecialChange={state.handleMesaEspecialChange}
+            modalidadesSeleccionadas={state.modalidadesSeleccionadas}
+            handleToggleModalidad={state.handleToggleModalidad}
+            docentesLista={state.docentesLista}
+            docentesLoading={state.docentesLoading}
+            tribunalDocentes={state.tribunalDocentes}
+            handleTribunalChange={state.handleTribunalChange}
+            onGuardar={guardar}
+          />
+        </Box>
+      )}
 
-      <Grid container spacing={1.5} sx={{ mt: 2 }}>
-        {state.mesas.map(m => (
-          <Grid item xs={12} md={6} lg={4} key={m.id}>
-            <MesaCard
-              mesa={m}
-              planillaSaving={state.planillaSaving}
-              planillaMesaId={state.planillaMesa?.id}
-              onVerPlanilla={handleVerPlanilla}
-              onEliminar={eliminar}
+      {/* TABS 1 Y 2: LISTADOS CON FILTROS */}
+      {(activeTab === 1 || activeTab === 2) && (
+        <Box sx={{ mt: 2 }}>
+          <Box sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 2, mb: 3 }}>
+            <Typography variant="subtitle1" fontWeight={700} mb={2}>Filtrar mesas</Typography>
+            <FiltrosMesas
+              ventanas={state.ventanas}
+              ventanaId={state.ventanaId}
+              setVentanaId={state.setVentanaId}
+              tipo={state.tipo}
+              setTipo={state.setTipo}
+              modalidadFiltro={state.modalidadFiltro}
+              setModalidadFiltro={state.setModalidadFiltro}
+              codigoFiltro={state.codigoFiltro}
+              setCodigoFiltro={state.setCodigoFiltro}
+              profesorados={state.profesorados}
+              profesoradoFiltro={state.profesoradoFiltro}
+              setProfesoradoFiltro={state.setProfesoradoFiltro}
+              setPlanFiltro={state.setPlanFiltro}
+              setMateriaFiltro={state.setMateriaFiltro}
+              planesFiltro={state.planesFiltro}
+              planFiltro={state.planFiltro}
+              anioFiltro={state.anioFiltro}
+              setAnioFiltro={state.setAnioFiltro}
+              cuatrimestreFiltro={state.cuatrimestreFiltro}
+              setCuatrimestreFiltro={state.setCuatrimestreFiltro}
+              cuatrimestreOptionsFiltro={state.cuatrimestreOptionsFiltro}
+              availableAniosFiltro={state.availableAniosFiltro}
+              materiasFiltroFiltradas={state.materiasFiltroFiltradas}
+              materiaFiltro={state.materiaFiltro}
             />
+          </Box>
+
+          <Grid container spacing={2}>
+            {(activeTab === 1 ? mesasFuturas : mesasPasadas).map(m => (
+              <Grid item xs={12} md={6} lg={4} key={m.id}>
+                <MesaCard
+                  mesa={m}
+                  planillaSaving={state.planillaSaving}
+                  planillaMesaId={state.planillaMesa?.id}
+                  onVerPlanilla={handleVerPlanilla}
+                  onEliminar={eliminar}
+                />
+              </Grid>
+            ))}
+            {(activeTab === 1 ? mesasFuturas : mesasPasadas).length === 0 && (
+              <Box sx={{ width: '100%', textAlign: 'center', py: 8 }}>
+                <Typography color="text.secondary">No se encontraron mesas para este criterio.</Typography>
+              </Box>
+            )}
           </Grid>
-        ))}
-      </Grid>
+        </Box>
+      )}
 
       <PlanillaModal
         open={state.planillaModalOpen}

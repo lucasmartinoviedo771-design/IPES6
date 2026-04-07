@@ -67,6 +67,8 @@ class MateriaIn(Schema):
     regimen: str
     tipo_formacion: str
     horas_semana: int = 0
+    is_edi: bool = False
+    fecha_fin: str | None = None
 
 
 class MateriaOut(Schema):
@@ -79,6 +81,15 @@ class MateriaOut(Schema):
     regimen: str
     tipo_formacion: str
     horas_semana: int
+    is_edi: bool
+    fecha_fin: str | None
+
+class CerrarEDIIn(Schema):
+    """Payload para cerrar un EDI y crear uno nuevo en su lugar."""
+    fecha_fin: str  # YYYY-MM-DD
+    nuevo_nombre: str
+    nuevo_anio_cursada: int
+    nuevo_regimen: str  # ANU, PCU, SCU
 
 
 # --- DOCUMENTACIÓN DE INGRESO ---

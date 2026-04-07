@@ -415,7 +415,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 # Agregamos fecha_iso para sorting interno
                 regularidades_data = [{
                     "fecha": format_date(reg.fecha_cierre),
-                    "fecha_iso": reg.fecha_cierre.isoformat(),
+                    "fecha_iso": reg.fecha_cierre.isoformat() if reg.fecha_cierre else None,
                     "condicion": reg.situacion,
                     "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
                 } for reg in regularidades_item_list]

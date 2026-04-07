@@ -20,6 +20,18 @@ class InscripcionMesaIn(Schema):
 class InscripcionMesaOut(Schema):
     message: str
 
+class BajaMesaIn(Schema):
+    """Payload para solicitar baja de una mesa"""
+    mesa_id: int
+    dni: str | None = None
+
+class BajaMesaOut(Schema):
+    """Respuesta de confirmación de baja"""
+    message: str
+    mesa_id: int
+    limite_baja: str  # Datetime formateado (DD/MM/YYYY HH:MM)
+
+
 class ConstanciaExamenItem(Schema):
     inscripcion_id: int
     estudiante: str

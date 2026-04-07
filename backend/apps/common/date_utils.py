@@ -4,7 +4,24 @@ Centraliza las reglas de representación de fechas (DD/MM/YYYY) para
 asegurar una experiencia de usuario consistente en reportes y formularios.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
+
+
+def calcular_limite_baja_mesa(fecha_examen: date) -> datetime:
+    """
+    Calcula el límite máximo para darse de baja de una mesa de examen.
+    Retrocede 48 horas hábiles (lunes-viernes) a partir de las 00:00 del día del examen.
+    """
+    horas_habiles_restantes = 48
+    dt = datetime.combine(fecha_examen, time(0, 0))  # Inicio del día del examen
+
+    while horas_habiles_restantes > 0:
+        dt -= timedelta(hours=1)  # Retrocede 1 hora
+        if dt.weekday() < 5:  # 0=lunes, ..., 4=viernes, 5-6=fin de semana
+            horas_habiles_restantes -= 1  # Solo cuenta si es día hábil
+
+    return dt
+
 
 
 def format_date(d: date | datetime | str | None) -> str | None:

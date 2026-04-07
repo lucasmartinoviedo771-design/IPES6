@@ -115,6 +115,14 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if not ventana:
         return 400, ApiResponse(ok=False, message="Periodo de inscripción cerrado o no iniciado.")
 
+    # 1.5. VALIDACIÓN DE VIGENCIA (EDIs Cerrados)
+    if mat.fecha_fin and mat.fecha_fin < hoy:
+        return 400, ApiResponse(
+            ok=False,
+            message=f"La materia '{mat.nombre}' finalizó su vigencia el {mat.fecha_fin} y no admite inscripciones en el ciclo {anio_actual}."
+        )
+
+
     # Validación de régimen (Cuatrimestres)
     if ventana.periodo:
         allowed_regimens = []

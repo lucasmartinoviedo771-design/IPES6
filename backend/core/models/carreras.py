@@ -66,6 +66,18 @@ class Materia(models.Model):
         default=TipoFormacion.FORMACION_GENERAL,
         help_text="Clasificación pedagógica de la materia.",
     )
+    is_edi = models.BooleanField(
+        default=False,
+        verbose_name="Es EDI",
+        help_text="Indica si esta materia es un Espacio de Definición Institucional",
+    )
+    fecha_fin = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de cierre",
+        help_text="Fecha en que este EDI dejó de estar vigente. Null = activo.",
+    )
+
 
     class Meta:
         unique_together = ("plan_de_estudio", "anio_cursada", "nombre")

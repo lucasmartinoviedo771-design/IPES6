@@ -10,7 +10,7 @@ Reglas Generales de Examen:
 """
 
 from __future__ import annotations
-from datetime import date
+from datetime import date, datetime
 from django.contrib.auth.models import AnonymousUser
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
@@ -26,8 +26,15 @@ from core.models import (
     Regularidad,
     InscripcionMateriaEstudiante,
 )
-from apps.common.date_utils import format_date, format_datetime
-from ..schemas import InscripcionMesaIn, InscripcionMesaOut, MesaExamenIn, MesaExamenOut
+from apps.common.date_utils import format_date, format_datetime, calcular_limite_baja_mesa
+from ..schemas import (
+    InscripcionMesaIn,
+    InscripcionMesaOut,
+    MesaExamenIn,
+    MesaExamenOut,
+    BajaMesaIn,
+    BajaMesaOut,
+)
 from .helpers import (
     _correlatividades_qs,
     _ensure_estudiante_access,
@@ -339,6 +346,58 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     ins.estado = InscripcionMesa.Estado.INSCRIPTO
     ins.save()
     return {"message": "Inscripción registrada exitosamente."}
+
+
+@estudiantes_router.post(
+    "/baja_mesa",
+    response={200: BajaMesaOut, 400: dict, 404: dict},
+    auth=JWTAuth(),
+)
+def baja_mesa(request, payload: BajaMesaIn):
+    """
+    Permite a un estudiante cancelar su inscripción a una mesa.
+    Solo es posible hasta 48 horas hábiles antes de la mesa.
+    """
+    # 1. Verificar permisos del estudiante
+    _ensure_estudiante_access(request, payload.dni)
+    est = _resolve_estudiante(request, payload.dni)
+    if not est:
+        return 400, {"message": "No se encontró el estudiante"}
+
+    # 2. Obtener la mesa
+    mesa = MesaExamen.objects.filter(id=payload.mesa_id).first()
+    if not mesa:
+        return 404, {"message": "Mesa no encontrada"}
+
+    # 3. Buscar la inscripción activa
+    ins = InscripcionMesa.objects.filter(
+        mesa=mesa,
+        estudiante=est,
+        estado=InscripcionMesa.Estado.INSCRIPTO
+    ).first()
+
+    if not ins:
+        return 400, {"message": "No tiene inscripción activa en esta mesa"}
+
+    # 4. Calcular límite y validar
+    limite_baja = calcular_limite_baja_mesa(mesa.fecha)
+    ahora = datetime.now()
+
+    if ahora > limite_baja:
+        return 400, {
+            "message": f"El plazo para darse de baja venció el {format_datetime(limite_baja)}. No puede cancelar su inscripción."
+        }
+
+    # 5. Cancelar la inscripción
+    ins.estado = InscripcionMesa.Estado.CANCELADO
+    ins.cuenta_para_intentos = False  # No penaliza el intento
+    ins.save()
+
+    return {
+        "message": "Inscripción cancelada exitosamente.",
+        "mesa_id": mesa.id,
+        "limite_baja": format_datetime(limite_baja)
+    }
 
 
 @estudiantes_router.post("/mesa-examen", response=MesaExamenOut, auth=JWTAuth())

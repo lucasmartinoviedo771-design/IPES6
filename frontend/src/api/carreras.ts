@@ -33,7 +33,7 @@ export async function obtenerCarrera(profesoradoId: number): Promise<CarreraDeta
 }
 
 export async function obtenerPlanCarrera(planId: number): Promise<PlanDetalle> {
-  const { data } = await client.get<PlanDetalle>(`/profesorados/planes/${planId}`);
+  const { data } = await client.get<PlanDetalle>(`/planes/${planId}`);
   return data;
 }
 

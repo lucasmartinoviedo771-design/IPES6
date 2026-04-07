@@ -9,6 +9,7 @@ from typing import Optional
 from django.shortcuts import get_object_or_404
 from django.db.models import ProtectedError
 from django.contrib.auth.models import User
+from datetime import date
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
@@ -39,7 +40,8 @@ from .schemas import (
     PlanDeEstudioOut, 
     MateriaIn, 
     MateriaOut, 
-    RequisitoDocumentacionOut
+    RequisitoDocumentacionOut,
+    CerrarEDIIn,
 )
 
 
@@ -212,6 +214,12 @@ def get_plan(request, plan_id: int):
     return plan
 
 
+@profesorados_router.get("/planes/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth(), include_in_schema=False)
+def obtener_plan_compatibilidad(request, plan_id: int):
+    """Ruta de compatibilidad para el frontend que usa /profesorados/planes/{id}"""
+    return get_plan(request, plan_id)
+
+
 @planes_router.put("/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
 def update_plan(request, plan_id: int, payload: PlanDeEstudioIn):
     """Modifica la configuración de un plan de estudio."""
@@ -272,7 +280,13 @@ def create_materia_for_plan(request, plan_id: int, payload: MateriaIn):
 # --- MATERIAS ---
 
 @materias_router.get("/", response=list[MateriaOut], auth=JWTAuth())
-def listar_materias(request, search: str | None = None, profesorado_id: int | None = None):
+def listar_materias(
+    request, 
+    search: str | None = None, 
+    profesorado_id: int | None = None,
+    solo_activos: bool = False,
+    incluir_edis_cerrados: bool = False
+):
     """Buscador global de materias con filtros."""
     _require_view(request.user)
     
@@ -296,8 +310,14 @@ def listar_materias(request, search: str | None = None, profesorado_id: int | No
 
     if search:
         qs = qs.filter(nombre__icontains=search)
+    
+    if solo_activos:
+        qs = qs.exclude(fecha_fin__lt=date.today())
+
+    if not incluir_edis_cerrados:
+        qs = qs.exclude(is_edi=True, fecha_fin__isnull=False)
         
-    return qs[:100]
+    return qs[:500]
 
 @materias_router.get("/{materia_id}", response=MateriaOut, auth=JWTAuth())
 def get_materia(request, materia_id: int):
@@ -325,6 +345,54 @@ def delete_materia(request, materia_id: int):
     _require_edit(request.user, materia.plan_de_estudio.profesorado_id)
     materia.delete()
     return 204, None
+
+
+@materias_router.post("/{materia_id}/cerrar-edi", response=MateriaOut, auth=JWTAuth())
+def cerrar_edi(request, materia_id: int, payload: CerrarEDIIn):
+    """
+    Cierra un EDI vigente y crea uno nuevo.
+
+    Lógica:
+    1. Valida que sea un EDI (is_edi=True)
+    2. Valida que no esté ya cerrado (fecha_fin=None)
+    3. Cierra el EDI viejo: materia_vieja.fecha_fin = fecha_fin
+    4. Crea EDI nuevo: copia todos los campos menos nombre/año/régimen
+    5. Retorna el EDI nuevo creado
+    """
+    materia_vieja = get_object_or_404(Materia, id=materia_id)
+    _require_edit(request.user, materia_vieja.plan_de_estudio.profesorado_id)
+
+    # Validaciones
+    if not materia_vieja.is_edi:
+        raise HttpError(400, "Solo se pueden cerrar EDIs (is_edi=True)")
+    if materia_vieja.fecha_fin is not None:
+        raise HttpError(400, f"Este EDI ya fue cerrado el {materia_vieja.fecha_fin}")
+
+    # Parsear fecha
+    try:
+        fecha_fin = date.fromisoformat(payload.fecha_fin)
+    except ValueError:
+        raise HttpError(400, "Formato de fecha inválido. Use YYYY-MM-DD")
+
+    # Cerrar EDI viejo
+    materia_vieja.fecha_fin = fecha_fin
+    materia_vieja.save()
+
+    # Crear EDI nuevo
+    materia_nueva = Materia.objects.create(
+        plan_de_estudio=materia_vieja.plan_de_estudio,
+        nombre=payload.nuevo_nombre,
+        anio_cursada=payload.nuevo_anio_cursada,
+        horas_semana=materia_vieja.horas_semana,
+        formato=materia_vieja.formato,
+        regimen=payload.nuevo_regimen,
+        tipo_formacion=materia_vieja.tipo_formacion,
+        is_edi=True,
+        fecha_fin=None,  # El nuevo está activo
+    )
+
+    logger.info(f"EDI #{materia_vieja.id} cerrado. EDI #{materia_nueva.id} creado")
+    return materia_nueva
 
 
 @materias_router.get("/{materia_id}/inscriptos", response=list[MateriaInscriptoOut], auth=JWTAuth())

@@ -189,10 +189,15 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
       return a.espacioCurricular.localeCompare(b.espacioCurricular);
     }
 
-    const dateA = a.fecha_iso ? new Date(a.fecha_iso).getTime() : (a.fecha ? new Date(a.fecha).getTime() : 0);
-    const dateB = b.fecha_iso ? new Date(b.fecha_iso).getTime() : (b.fecha ? new Date(b.fecha).getTime() : 0);
-    if (dateA !== dateB) return dateA - dateB;
+    const timeA = a.fecha_iso ? new Date(a.fecha_iso).getTime() : 0;
+    const timeB = b.fecha_iso ? new Date(b.fecha_iso).getTime() : 0;
+    
+    // Si tenemos fechas válidas, ordenamos por fecha primero
+    if (timeA && timeB && timeA !== timeB) return timeA - timeB;
+    if (timeA && !timeB) return -1;
+    if (!timeA && timeB) return 1;
 
+    // Si fallamos en fechas ISO, intentamos con el tipo como último recurso pero ya agrupado por materia
     if (a.tipo !== b.tipo) {
       if (a.tipo === 'regularidad') return -1;
       if (b.tipo === 'regularidad') return 1;
