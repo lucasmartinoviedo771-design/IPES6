@@ -26,6 +26,8 @@ export type MateriaOptionDTO = {
   anio: number | null;
   cuatrimestre: string | null;
   formato: string | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
 };
 
 export type ProfesoradoDTO = {

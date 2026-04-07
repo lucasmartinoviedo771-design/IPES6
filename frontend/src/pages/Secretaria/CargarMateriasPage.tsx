@@ -22,6 +22,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Checkbox from "@mui/material/Checkbox";
 import { client as api } from "@/api/client";
 import { useParams } from "react-router-dom";
 import { toast } from "@/utils/toast";
@@ -49,6 +50,9 @@ interface Materia {
   formato: string;
   regimen: string;
   tipo_formacion: string;
+  is_edi: boolean;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
 }
 
 interface MateriaFormInput {
@@ -59,6 +63,9 @@ interface MateriaFormInput {
   formato: string;
   regimen: string;
   tipo_formacion: string;
+  is_edi: boolean;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
 }
 
 // Define choices for Formato and TipoCursada to match backend
@@ -170,6 +177,7 @@ export default function CargarMateriasPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<MateriaFormInput>({
     defaultValues: {
@@ -180,6 +188,9 @@ export default function CargarMateriasPage() {
       formato: "ASI",
       regimen: "ANU",
       tipo_formacion: "FGN",
+      is_edi: false,
+      fecha_inicio: null,
+      fecha_fin: null,
     },
   });
 
@@ -208,6 +219,16 @@ export default function CargarMateriasPage() {
     },
     enabled: !!currentPlanId,
   });
+
+  // Watch for changes in the 'nombre' field to auto-detect EDI
+  const watchNombre = watch("nombre");
+  useEffect(() => {
+    if (watchNombre?.toUpperCase().startsWith("EDI:")) {
+      setValue("is_edi", true);
+    }
+  }, [watchNombre, setValue]);
+
+  const watchIsEdi = watch("is_edi");
 
 
 
@@ -289,6 +310,9 @@ export default function CargarMateriasPage() {
     setValue("formato", materia.formato);
     setValue("regimen", materia.regimen);
     setValue("tipo_formacion", materia.tipo_formacion);
+    setValue("is_edi", materia.is_edi || false);
+    setValue("fecha_inicio", materia.fecha_inicio || null);
+    setValue("fecha_fin", materia.fecha_fin || null);
   };
 
   const handleDeleteClick = (materiaId: number) => {
@@ -512,6 +536,65 @@ export default function CargarMateriasPage() {
               </Typography>
             )}
           </FormControl>
+
+          <Box sx={{ mb: 1 }}>
+            <Controller
+              name="is_edi"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={!!field.value} />}
+                  label="Es un Espacio de Definición Institucional (EDI)"
+                />
+              )}
+            />
+          </Box>
+
+          {watchIsEdi && (
+            <Stack direction="row" spacing={2} sx={{ 
+              p: 2, 
+              border: '1px dashed #ccc', 
+              borderRadius: 1, 
+              backgroundColor: '#f9f9f9',
+              mb: 1
+            }}>
+              <Controller
+                name="fecha_inicio"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    size="small"
+                    label="Fecha de Inicio (Vigencia desde)"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(e.target.value || null)}
+                    sx={{ flex: 1 }}
+                    helperText="Desde cuándo se dicta este EDI"
+                  />
+                )}
+              />
+
+              <Controller
+                name="fecha_fin"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    size="small"
+                    label="Fecha de Cierre (Vigencia hasta)"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(e.target.value || null)}
+                    sx={{ flex: 1 }}
+                    helperText="Dejar vacío si sigue activo"
+                  />
+                )}
+              />
+            </Stack>
+          )}
 
           <Button type="submit" variant="contained">
             {editingMateria ? "Actualizar Materia" : "Guardar Materia"}

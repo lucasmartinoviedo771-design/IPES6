@@ -135,6 +135,30 @@ export function useRegularidadFilters(
 
   const materiaOptions = useMemo(() => {
     let base = materias;
+
+    // Filtro temporal basado en el Año Lectivo (filters.anio)
+    if (filters.anio) {
+      const year = filters.anio;
+      base = base.filter((m) => {
+        // Una materia es válida para un año lectivo si su inicio fue en ese año o antes
+        // y su fin fue en ese año o después (o no tiene fin).
+        
+        let startValid = true;
+        if (m.fecha_inicio) {
+          const startYear = new Date(m.fecha_inicio).getFullYear();
+          startValid = startYear <= year;
+        }
+
+        let endValid = true;
+        if (m.fecha_fin) {
+          const endYear = new Date(m.fecha_fin).getFullYear();
+          endValid = endYear >= year;
+        }
+
+        return startValid && endValid;
+      });
+    }
+
     if (filters.cuatrimestre) {
       base = base.filter((m) => {
         const clave = m.cuatrimestre ? m.cuatrimestre : "ANU";
