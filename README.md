@@ -1,36 +1,47 @@
-# Sistema de Gestión Académica - IPES Paulo Freire
+# 🎓 Sistema de Gestión Académica - IPES Paulo Freire
 
-Sistema integral para preinscripción, cursadas, notas y trámites administrativos del IPES Paulo Freire. Consta de un backend Django expuesto vía API Ninja y un frontend React/Vite con UI MUI.
+![Django](https://img.shields.io/badge/Backend-Django%205-092e20?style=for-the-badge&logo=django)
+![React](https://img.shields.io/badge/Frontend-React%2018-61dafb?style=for-the-badge&logo=react)
+![Vite](https://img.shields.io/badge/Build-Vite%208-646cff?style=for-the-badge&logo=vite)
+![Docker](https://img.shields.io/badge/Deploy-Docker-2496ed?style=for-the-badge&logo=docker)
 
-## Arquitectura
-- **Backend:** Django 5 + Django Ninja + MySQL. Gestión de dependencias con `uv`.
-- **Frontend:** React 18 + Vite 8 + TypeScript + MUI. Sincronización con TanStack Query.
-- **Infraestructura:** Despliegue en contenedores Docker (Nginx como proxy inverso).
+Sistema integral de última generación para la gestión de preinscripciones, cursadas, trayectorias académicas y trámites administrativos del **IPES Paulo Freire**.
 
-## Documentación Consolidada
-Para facilitar la lectura y evitar la dispersión de archivos, la documentación se ha unificado en:
+---
 
-- 📂 [**PROYECTO.md**](docs/PROYECTO.md): Fundamentación, alcances y cronograma del sistema.
-- 🛠️ [**DOCUMENTACION_TECNICA.md**](docs/DOCUMENTACION_TECNICA.md): Guía de instalación (Docker), arquitectura, matriz de roles y tareas pendientes.
-- 📜 [**REGLAS_NEGOCIO.md**](docs/REGLAS_NEGOCIO.md): Lógica de preinscripción, correlatividades y validaciones del sistema.
-- 📘 [**MANUAL_USUARIO.md**](docs/MANUAL_USUARIO.md): Guías de uso para Alumnos, Bedeles, Secretaría y Administradores.
-- 🛡️ [**security_audit_ipes6.md**](docs/security_audit_ipes6.md): Informe de auditoría de seguridad y mitigaciones (Marzo 2026).
+## 🚀 Tecnologías Core
 
-## Seguridad y Hardening (Actualización Marzo 2026)
-Tras una auditoría exhaustiva de ciberseguridad, se han implementado las siguientes mejoras:
-- **Protección de Diagnóstico:** El profiler `Silk` ahora requiere autenticación obligatoria y permisos de superusuario.
-- **Autenticación Zero Trust:** Implementación de `JWTAuth` declarativo global en toda la API de Django Ninja.
-- **Gestión de Secretos:** Eliminación de fallbacks de claves por defecto; el sistema ahora exige variables de entorno seguras para arrancar.
-- **Políticas de Navegador:** Endurecimiento de la CSP (eliminación de `unsafe-eval`) y configuración de cookies `SameSite=Lax`.
-- **Estandarización Documental (Marzo 2026):** Refactorización integral de todo el código fuente aplicando estándares PEP 257 (Backend) y TSDoc/JSDoc (Frontend). Se eliminaron comentarios redundantes y se documentó la lógica de negocio compleja (SLA, Trayectorias, Validaciones).
+El proyecto utiliza un stack moderno y eficiente, optimizado para el rendimiento y la seguridad:
 
-## Puesta en marcha rápida
+*   **Backend:** [Django 5](https://www.djangoproject.com/) + [Django Ninja](https://django-ninja.dev/) + MySQL.
+    *   Gestión de paquetes ultra-rápida con `uv`.
+    *   Arquitectura basada en API REST asíncrona.
+*   **Frontend:** [React 18](https://reactjs.org/) + [Vite 8](https://vitejs.dev/) + TypeScript.
+    *   Interfaz de usuario basada en [Material UI (MUI)](https://mui.com/).
+    *   Gestión de estado y caché con TanStack Query.
+*   **Infraestructura:** Despliegue automatizado mediante Docker y Nginx como Proxy Inverso.
+
+## 🛡️ Seguridad y Estándares (Hardening)
+
+El sistema ha sido sometido a un proceso de endurecimiento (hardening) completado en Marzo 2026:
+
+-   **Zero Trust Architecture:** Implementación de autenticación declarativa `JWT` en todos los endpoints.
+-   **Seguridad de Capas:** Políticas de CSP estrictas, eliminación de `unsafe-eval` y cookies con atributos `SameSite=Lax`.
+-   **Calidad de Código:** Adhesión a estándares PEP 257 (Backend) y documentación TSDoc/JSDoc integral en el Frontend.
+-   **Gestión de Secretos:** Configuración robusta basada exclusivamente en variables de entorno seguras.
+
+## 🛠️ Configuración del Entorno de Desarrollo
+
+### Requisitos Previos
+- Docker Desktop (opcional para local)
+- `uv` (para Python)
+- Node.js 20+
 
 ### Backend (Django)
 ```bash
 cd backend
-cp Original.env .env  # Ajusta credenciales
-uv pip sync requirements.txt
+cp .env.example .env  # Configurar variables locales
+uv sync
 uv run python manage.py migrate
 uv run python manage.py runserver
 ```
@@ -42,14 +53,11 @@ npm ci
 npm run dev
 ```
 
-## Despliegue en Producción (Ubuntu Server)
-Para desplegar en un servidor Ubuntu con Docker:
-```bash
-chmod +x ./scripts/deploy.sh
-./scripts/deploy.sh setup
-./scripts/deploy.sh update
-```
-*Guía detallada en [DOCUMENTACION_TECNICA.md](docs/DOCUMENTACION_TECNICA.md).*
-
 ---
+
+## 👨‍💻 Contribución y Desarrollo
+
+Este repositorio sigue el flujo de trabajo de Git simplificado. Por favor, asegúrese de que sus cambios pasen los tests y sigan los estándares de documentación establecidos antes de solicitar un merge.
+
 **Autor:** Oviedo Lucas Martín
+**Institución:** IPES Paulo Freire

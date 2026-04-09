@@ -30,6 +30,7 @@ venv/
 # Env files
 .env
 .env.*
+!.env.example
 
 # Django
 db.sqlite3
