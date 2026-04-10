@@ -49,8 +49,8 @@ uv run python manage.py runserver
 ### Frontend (React/Vite)
 ```bash
 cd frontend
-npm ci
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ---
