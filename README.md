@@ -21,6 +21,9 @@ El proyecto utiliza un stack moderno y eficiente, optimizado para el rendimiento
     *   Gestión de estado y caché con TanStack Query.
 *   **Infraestructura:** Despliegue automatizado mediante Docker y Nginx como Proxy Inverso.
 
+## 📄 Documentación Técnica
+- 📂 [**Diccionario de Datos**](docs/DICCIONARIO_DATOS.md): Estructura detallada de tablas, campos y relaciones.
+
 ## 🛡️ Seguridad y Estándares (Hardening)
 
 El sistema ha sido sometido a un proceso de endurecimiento (hardening) completado en Marzo 2026:
