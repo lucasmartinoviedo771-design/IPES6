@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -86,11 +87,69 @@ class Materia(models.Model):
 
 
     class Meta:
-        unique_together = ("plan_de_estudio", "anio_cursada", "nombre", "regimen", "fecha_inicio")
+        verbose_name = "Materia"
+        verbose_name_plural = "Materias"
+        constraints = [
+            # Restricción para materias normales (donde no se usa fecha_inicio)
+            models.UniqueConstraint(
+                fields=["plan_de_estudio", "anio_cursada", "nombre", "regimen"],
+                condition=models.Q(is_edi=False),
+                name="unique_materia_normal"
+            ),
+            # Restricción para EDIs (donde la fecha_inicio es parte de la identidad)
+            models.UniqueConstraint(
+                fields=["plan_de_estudio", "anio_cursada", "nombre", "regimen", "fecha_inicio"],
+                condition=models.Q(is_edi=True),
+                name="unique_materia_edi"
+            ),
+            # Validación de rango de fechas
+            models.CheckConstraint(
+                check=models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=models.F("fecha_inicio")),
+                name="materia_fecha_range_valid"
+            )
+        ]
         ordering = ["anio_cursada", "nombre"]
 
     def __str__(self):
         return f"{self.nombre} ({self.anio_cursada}° Año) - Plan: {self.plan_de_estudio.resolucion}"
+
+    def clean(self):
+        super().clean()
+        if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
+            raise ValidationError("La fecha de fin no puede ser anterior a la fecha de inicio.")
+
+        if self.is_edi:
+            # Validar que no haya solapamiento de fechas para el mismo nombre de EDI en el mismo plan
+            overlap = Materia.objects.filter(
+                plan_de_estudio=self.plan_de_estudio,
+                nombre=self.nombre,
+                is_edi=True
+            ).exclude(pk=self.pk)
+
+            # Lógica de solapamiento mejorada para manejar NULLs (solapamiento infinito)
+            for other in overlap:
+                start_a = self.fecha_inicio
+                end_a = self.fecha_fin
+                start_b = other.fecha_inicio
+                end_b = other.fecha_fin
+
+                # Si ambos no tienen fecha de inicio, colisionan siempre
+                if not start_a and not start_b:
+                    raise ValidationError(f"Ya existe un EDI '{self.nombre}' sin fecha de inicio definida.")
+
+                # Lógica de intersección de rangos (manejando None como infinito)
+                # (StartA <= EndB or EndB is None) and (EndA >= StartB or EndA is None)
+                is_overlap = True
+                if end_b and start_a and start_a > end_b:
+                    is_overlap = False
+                if end_a and start_b and end_a < start_b:
+                    is_overlap = False
+                
+                if is_overlap:
+                    msg = f"El EDI '{self.nombre}' se solapa con otro registro."
+                    if start_b or end_b:
+                        msg += f" (Existente: {start_b or '...'} a {end_b or '...'})"
+                    raise ValidationError(msg)
 
     @property
     def permite_mesa_libre(self) -> bool:
@@ -178,6 +237,34 @@ class CorrelatividadVersion(models.Model):
     class Meta:
         ordering = ["plan_de_estudio_id", "cohorte_desde"]
         unique_together = ("plan_de_estudio", "nombre")
+
+    def clean(self):
+        super().clean()
+        if self.cohorte_desde and self.cohorte_hasta and self.cohorte_hasta < self.cohorte_desde:
+            raise ValidationError("La cohorte final no puede ser anterior a la cohorte inicial.")
+        
+        # Validar solapamiento de cohortes para el mismo plan y profesorado
+        overlap = CorrelatividadVersion.objects.filter(
+            plan_de_estudio=self.plan_de_estudio,
+            profesorado=self.profesorado,
+            activo=True
+        ).exclude(pk=self.pk)
+
+        for other in overlap:
+            start_a = self.cohorte_desde
+            end_a = self.cohorte_hasta
+            start_b = other.cohorte_desde
+            end_b = other.cohorte_hasta
+
+            # Lógica de intersección de rangos
+            is_overlap = True
+            if end_b and start_a > end_b:
+                is_overlap = False
+            if end_a and start_b > end_a:
+                is_overlap = False
+            
+            if is_overlap:
+                raise ValidationError(f"Esta versión se solapa con '{other.nombre}' (Cohortes {start_b} a {end_b or '...'}).")
 
     def __str__(self) -> str:
         rango = f"{self.cohorte_desde}+" if self.cohorte_hasta is None else f"{self.cohorte_desde}-{self.cohorte_hasta}"

@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from .carreras import Profesorado
@@ -49,6 +51,11 @@ class CursoIntroductorioCohorte(models.Model):
         verbose_name = "Cohorte de Curso Introductorio"
         verbose_name_plural = "Cohortes de Curso Introductorio"
 
+    def clean(self):
+        super().clean()
+        if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
+            raise ValidationError("La fecha de fin no puede ser anterior a la fecha de inicio.")
+
     def __str__(self):
         base = self.nombre or f"Cohorte {self.anio_academico}"
         if self.turno:
@@ -85,7 +92,9 @@ class CursoIntroductorioRegistro(models.Model):
     turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_registros")
     inscripto_en = models.DateTimeField(auto_now_add=True)
     asistencias_totales = models.PositiveIntegerField(null=True, blank=True)
-    nota_final = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    nota_final = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
     resultado = models.CharField(max_length=3, choices=Resultado.choices, default=Resultado.PENDIENTE)
     observaciones = models.TextField(blank=True)
     resultado_at = models.DateTimeField(null=True, blank=True)
@@ -103,11 +112,20 @@ class CursoIntroductorioRegistro(models.Model):
         verbose_name = "Registro Curso Introductorio"
         verbose_name_plural = "Registros Curso Introductorio"
         constraints = [
+            # Prevenir duplicados para estudiantes en la misma cohorte
             models.UniqueConstraint(
                 fields=["cohorte", "estudiante"],
+                condition=models.Q(cohorte__isnull=False),
                 name="unique_registro_cohorte_estudiante",
+            ),
+            # Prevenir múltiples registros huérfanos (cohorte null) para el mismo estudiante
+            models.UniqueConstraint(
+                fields=["estudiante"],
+                condition=models.Q(cohorte__isnull=True),
+                name="unique_registro_student_orphan",
             )
         ]
+
 
     def __str__(self):
         return f"{self.estudiante.dni} - {self.get_resultado_display()}"

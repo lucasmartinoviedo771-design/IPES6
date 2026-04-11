@@ -29,7 +29,7 @@ class JWTService:
             "iat": datetime.now(timezone.utc),
             "type": "access"
         }
-        return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
     @staticmethod
     def create_refresh_token(user_id: int) -> str:
@@ -43,7 +43,7 @@ class JWTService:
             "iat": datetime.now(timezone.utc),
             "type": "refresh"
         }
-        return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
     @staticmethod
     def decode_token(token: str) -> dict | None:
@@ -52,7 +52,7 @@ class JWTService:
         Retorna el payload si es válido, de lo contrario None.
         """
         try:
-            return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            return jwt.decode(token, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithms=["HS256"])
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return None
 

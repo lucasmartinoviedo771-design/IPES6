@@ -73,21 +73,23 @@ def ensure_roles(required_roles: list[str]):
             raw_names = {name.lower().strip() for name in request.user.groups.values_list("name", flat=True)}
             user_roles = set(raw_names)
 
-            # Clasificación inteligente basada en prefijos de grupos
+            # Clasificación robusta de roles
+            exact_roles = {
+                "admin": "admin",
+                "bedel": "bedel",
+                "secretaria": "secretaria",
+                "coordinador": "coordinador",
+                "estudiante": "estudiante",
+                "docente": "docente",
+                "estudiantes": "estudiante",
+            }
             for name in raw_names:
-                if name.startswith("bedel"):
-                    user_roles.add("bedel")
-                if name.startswith("secretaria"):
-                    user_roles.add("secretaria")
-                if name.startswith("coordinador"):
-                    user_roles.add("coordinador")
-                if name == "estudiantes" or "estudiante" in name:
-                    user_roles.add("estudiante")
-                if name == "docentes" or "docente" in name:
-                    user_roles.add("docente")
+                if name in exact_roles:
+                    user_roles.add(exact_roles[name])
 
-            # Los superusuarios o staff tienen el rol implicito de admin
-            if request.user.is_superuser or request.user.is_staff:
+            # Los superusuarios tienen el rol implicito de admin.
+            # Se elimina is_staff para evitar escalada accidental de usuarios técnicos.
+            if request.user.is_superuser:
                 user_roles.add("admin")
 
             required = {role.lower() for role in required_roles}

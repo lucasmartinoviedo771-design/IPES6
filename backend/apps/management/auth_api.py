@@ -292,9 +292,9 @@ def refresh_token(request, payload: RefreshIn | None = None):
 
     user_id = payload_decoded.get("user_id")
     User = get_user_model()
-    user = User.objects.filter(id=user_id).first()
+    user = User.objects.filter(id=user_id, is_active=True).first()
     if not user:
-        raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Usuario no encontrado.")
+        raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Usuario no encontrado o inactivo.")
 
     new_access = JWTService.create_access_token(user.id)
     new_refresh = JWTService.create_refresh_token(user.id)

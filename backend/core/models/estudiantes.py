@@ -195,8 +195,28 @@ class EstudianteCarrera(models.Model):
         default=EstadoAcademico.ACTIVO,
         help_text="Estado académico del estudiante en esta carrera.",
     )
+    estado_academico_changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha y hora de la última transición de estado académico.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_estado = self.estado_academico
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            if self._original_estado != self.estado_academico:
+                self.estado_academico_changed_at = timezone.now()
+        elif not self.estado_academico_changed_at:
+            # Caso de creación inicial
+            self.estado_academico_changed_at = timezone.now()
+        
+        super().save(*args, **kwargs)
+        self._original_estado = self.estado_academico
 
     class Meta:
         unique_together = ("estudiante", "profesorado")

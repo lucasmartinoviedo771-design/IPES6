@@ -1,6 +1,7 @@
 import datetime
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -177,6 +178,11 @@ class Justificacion(models.Model):
         verbose_name_plural = "Justificaciones"
         ordering = ["-creado_en"]
 
+    def clean(self):
+        super().clean()
+        if self.vigencia_desde and self.vigencia_hasta and self.vigencia_hasta < self.vigencia_desde:
+            raise ValidationError("La fecha de fin de vigencia no puede ser anterior a la fecha de inicio.")
+
     def __str__(self) -> str:
         return f"{self.get_tipo_display()} - {self.motivo} ({self.estado})"
 
@@ -245,7 +251,21 @@ class JustificacionDetalle(models.Model):
                 fields=["justificacion", "clase", "docente"],
                 name="unique_justificacion_clase_docente",
             ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(estudiante__isnull=False, docente__isnull=True) |
+                    models.Q(estudiante__isnull=True, docente__isnull=False)
+                ),
+                name="justificacion_estudiante_xor_docente"
+            )
         ]
+
+    def clean(self):
+        if self.estudiante and self.docente:
+            raise ValidationError("Una justificación no puede ser para un estudiante y un docente al mismo tiempo.")
+        if not self.estudiante and not self.docente:
+            raise ValidationError("Debe especificar un estudiante o un docente.")
+
 
     def __str__(self) -> str:
         target = self.estudiante or self.docente
@@ -525,6 +545,11 @@ class CalendarioAsistenciaEvento(models.Model):
             models.Index(fields=["comision"]),
         ]
         ordering = ["-fecha_desde", "-fecha_hasta"]
+
+    def clean(self):
+        super().clean()
+        if self.fecha_desde and self.fecha_hasta and self.fecha_hasta < self.fecha_desde:
+            raise ValidationError("La fecha final del evento no puede ser anterior a la fecha inicial.")
 
     def __str__(self) -> str:
         destino = "general"

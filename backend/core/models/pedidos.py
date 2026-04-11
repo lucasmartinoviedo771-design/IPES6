@@ -163,6 +163,15 @@ class PedidoEquivalencia(models.Model):
     class Meta:
         ordering = ["-updated_at", "-id"]
 
+    def save(self, *args, **kwargs):
+        # Sincronización automática de snapshots desde las FKs
+        # Se actualizan siempre para que coincidan con la FK si esta existe.
+        if self.profesorado_destino:
+            self.profesorado_destino_nombre = self.profesorado_destino.nombre
+        if self.plan_destino:
+            self.plan_destino_resolucion = self.plan_destino.resolucion
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Pedido {self.get_tipo_display()} - {self.estudiante.dni} ({self.get_estado_display()})"
 

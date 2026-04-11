@@ -30,9 +30,15 @@ class Regularidad(models.Model):
     estudiante = models.ForeignKey("Estudiante", on_delete=models.CASCADE, related_name="regularidades")
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="regularidades")
     fecha_cierre = models.DateField()
-    nota_trabajos_practicos = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-    nota_final_cursada = models.IntegerField(null=True, blank=True)
-    asistencia_porcentaje = models.IntegerField(null=True, blank=True)
+    nota_trabajos_practicos = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
+    nota_final_cursada = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
+    asistencia_porcentaje = models.IntegerField(
+        null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     excepcion = models.BooleanField(default=False)
     situacion = models.CharField(max_length=3, choices=Situacion.choices)
     observaciones = models.TextField(blank=True, null=True)
@@ -151,6 +157,11 @@ class PlanillaRegularidad(models.Model):
             models.Index(fields=["materia", "fecha"]),
         ]
 
+    def clean(self):
+        super().clean()
+        if self.plantilla and self.formato and self.formato != self.plantilla.formato:
+            raise ValidationError(f"El formato de la planilla ({self.formato}) debe coincidir con el formato de la plantilla '{self.plantilla.nombre}' ({self.plantilla.formato}).")
+
     def __str__(self) -> str:
         return f"{self.codigo} - {self.materia.nombre}"
 
@@ -201,7 +212,7 @@ class PlanillaRegularidadFila(models.Model):
     )
     dni = models.CharField(max_length=20)
     apellido_nombre = models.CharField(max_length=255)
-    nota_final = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    nota_final = models.PositiveSmallIntegerField(null=True, blank=True)
     asistencia_porcentaje = models.IntegerField(
         null=True,
         blank=True,
@@ -298,9 +309,13 @@ class RegularidadPlanillaLock(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["materia", "anio_virtual"], name="uniq_regularidad_lock_materia_anio"),
             models.CheckConstraint(
-                condition=models.Q(comision__isnull=False)
-                | (models.Q(materia__isnull=False) & models.Q(anio_virtual__isnull=False)),
-                name="regularidad_lock_scope_defined",
+                check=(
+                    # Caso 1: Solo comisión
+                    models.Q(comision__isnull=False, materia__isnull=True, anio_virtual__isnull=True) |
+                    # Caso 2: Solo materia + año
+                    models.Q(comision__isnull=True, materia__isnull=False, anio_virtual__isnull=False)
+                ),
+                name="regularidad_lock_scope_xor",
             ),
         ]
 

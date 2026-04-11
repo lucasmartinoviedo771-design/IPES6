@@ -40,6 +40,7 @@ class AuditRequestMiddleware:
         """
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            # En configuraciones con múltiples saltos, la primera IP es la original del cliente
-            return x_forwarded_for.split(",")[0].strip()
+            # Confiamos solo en la última IP del header (la que agrega el proxy confiable)
+            ips = [ip.strip() for ip in x_forwarded_for.split(",")]
+            return ips[-1]
         return request.META.get("REMOTE_ADDR")

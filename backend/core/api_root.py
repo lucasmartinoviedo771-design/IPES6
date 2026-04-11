@@ -4,8 +4,11 @@ Este módulo configura la instancia global de 'api', monta los routers de todas 
 y define la política de seguridad por defecto del sistema.
 """
 
+import logging
 from ninja import NinjaAPI
 from ninja.errors import ConfigError
+
+logger = logging.getLogger(__name__)
 
 # Importación selectiva de routers de aplicaciones
 from apps.estudiantes.api import estudiantes_router as estudiantes_api_router
@@ -54,8 +57,8 @@ if 'api' not in locals():
         try:
             api.add_router(prefix, router)
         except ConfigError as e:
-            # En producción esto debería loguearse como error crítico
-            print(f"Error mounting router at {prefix}: {e}")
+            # Reportar como error crítico para alertar en monitoreo de logs estructurados
+            logger.error(f"CRITICO: Fallo al montar router en {prefix}: {e}", exc_info=True)
 
     # --- MONTAJE DE SEGMENTOS ---
 

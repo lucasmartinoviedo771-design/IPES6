@@ -58,6 +58,9 @@ if not SECRET_KEY:
     # En desarrollo, forzamos que se defina algo, no dejamos un valor por defecto "famoso"
     raise RuntimeError("SECRET_KEY no definida en el entorno (.env)")
 
+# Clave independiente para JWT (separación de privilegios)
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
+
 # Rate limiting para login (fall back sensato en desarrollo)
 LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "5"))
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))

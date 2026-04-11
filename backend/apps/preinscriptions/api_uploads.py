@@ -12,6 +12,8 @@ from ninja import File, Router
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
 from core.auth_ninja import JWTAuth
+from core.permissions import allowed_profesorados
+from core.models.preinscripciones import Preinscripcion
 from .models_uploads import PreinscripcionArchivo
 from .upload_utils import is_allowed
 from apps.common.date_utils import format_datetime
@@ -22,10 +24,29 @@ logger = logging.getLogger(__name__)
 router = Router(tags=["preinscripciones:archivos"])
 
 
-def require_auth(request):
-    """Verificación rápida de autenticación para endpoints protegidos."""
-    if not request.user.is_authenticated:
-        raise HttpError(401, "No se ha proporcionado una sesión válida.")
+def check_preins_access(request, pid: int):
+    """Valida si el usuario tiene permiso para acceder a una preinscripción específica."""
+    try:
+        preins = Preinscripcion.objects.select_related("alumno", "carrera").get(id=pid)
+    except Preinscripcion.DoesNotExist:
+        raise HttpError(404, "La preinscripción no existe.")
+
+    # 1. Superusuarios: Acceso total
+    if request.user.is_superuser:
+        return preins
+
+    # 2. Estudiantes: Solo a las suyas
+    if request.user.groups.filter(name__in=["estudiante", "estudiantes"]).exists():
+        if preins.alumno.user_id == request.user.id:
+            return preins
+        raise HttpError(403, "No tiene permiso para acceder a esta preinscripción.")
+
+    # 3. Staff (Bedeles/Coordinadores): Según sus profesorados asignados
+    allowed = allowed_profesorados(request.user)
+    if allowed is None or preins.carrera_id in allowed:
+        return preins
+    
+    raise HttpError(403, "No tiene permiso sobre la carrera de esta preinscripción.")
 
 
 @router.get("{pid}/documentos", auth=JWTAuth())
@@ -34,7 +55,7 @@ def listar_documentos(request, pid: int, q: str | None = None):
     Lista todos los documentos asociados a una solicitud de preinscripción.
     Soporta filtrado por tipo de documento o nombre original del archivo.
     """
-    require_auth(request)
+    check_preins_access(request, pid)
     qs = PreinscripcionArchivo.objects.filter(preinscripcion_id=pid).order_by("-creado_en")
     
     if q:
@@ -61,7 +82,7 @@ def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str
     Carga un nuevo archivo para el expediente del aspirante.
     Realiza validaciones de extensión y tamaño antes de persistir en el almacenamiento.
     """
-    require_auth(request)
+    check_preins_access(request, pid)
 
     logger.info(
         f"Iniciando subida para preinscripción {pid}: {file.name} ({file.size} bytes), tipo: {tipo}"
@@ -100,7 +121,7 @@ def borrar_documento(request, pid: int, doc_id: int):
     Elimina un documento y su correspondiente archivo físico en el servidor.
     Esta acción es irreversible.
     """
-    require_auth(request)
+    check_preins_access(request, pid)
     try:
         obj = PreinscripcionArchivo.objects.get(id=doc_id, preinscripcion_id=pid)
     except PreinscripcionArchivo.DoesNotExist:
@@ -119,7 +140,7 @@ def descargar_documento(request, pid: int, doc_id: int):
     Inicia la descarga de un documento específico.
     Retorna un FileResponse con las cabeceras de adjunto (Content-Disposition: attachment).
     """
-    require_auth(request)
+    check_preins_access(request, pid)
     try:
         obj = PreinscripcionArchivo.objects.get(id=doc_id, preinscripcion_id=pid)
     except PreinscripcionArchivo.DoesNotExist:

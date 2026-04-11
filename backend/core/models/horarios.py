@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from .base import Docente
@@ -51,19 +52,24 @@ class HorarioCatedra(models.Model):
 
     espacio = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="horarios_catedra")
     turno = models.ForeignKey(Turno, on_delete=models.CASCADE, related_name="horarios_catedra")
-    anio_cursada = models.IntegerField()  # Año de cursada (e.g., 2025)
+    anio_academico = models.IntegerField(help_text="Año académico (ej. 2025)")
     cuatrimestre = models.CharField(
         max_length=3, choices=REGIMEN_CHOICES, blank=True, null=True
     )  # C1, C2, or NULL for ANUAL
 
+    def clean(self):
+        super().clean()
+        if self.cuatrimestre and self.espacio.regimen == "ANU":
+            raise ValidationError(f"La materia '{self.espacio.nombre}' es ANUAL y no puede tener un horario asignado a un cuatrimestre específico ({self.get_cuatrimestre_display()}).")
+
     def __str__(self):
-        return f"Horario de {self.espacio.nombre} - {self.anio_cursada} ({self.turno.nombre})"
+        return f"Horario de {self.espacio.nombre} - {self.anio_academico} ({self.turno.nombre})"
 
     class Meta:
         verbose_name = "Horario de Cátedra"
         verbose_name_plural = "Horarios de Cátedra"
         # A course can only have one schedule per turn/year/quarter
-        unique_together = ("espacio", "turno", "anio_cursada", "cuatrimestre")
+        unique_together = ("espacio", "turno", "anio_academico", "cuatrimestre")
 
 
 class HorarioCatedraDetalle(models.Model):
@@ -121,7 +127,9 @@ class Comision(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("materia", "anio_lectivo", "codigo", "docente", "rol", "orden")
+        verbose_name = "Comisión"
+        verbose_name_plural = "Comisiones"
+        unique_together = ("materia", "anio_lectivo", "codigo")
         ordering = ["anio_lectivo", "materia__nombre", "codigo", "orden"]
 
     def __str__(self):
