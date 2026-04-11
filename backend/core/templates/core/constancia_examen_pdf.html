@@ -1,0 +1,126 @@
+{% extends "core/pdf_base.html" %}
+
+{% block page_size %}size: A4; margin: 5mm 15mm 18mm 15mm;{% endblock %}
+{% block page_numbers %}{% endblock %}
+
+{% block extra_style %}
+<style>
+  body {
+    font-family: "Helvetica", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.4;
+    color: #000;
+    margin: 0;
+    padding: 0;
+  }
+
+  .certificate-container {
+    height: 132mm;
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding-top: 3mm;
+  }
+
+  .certificate-container:first-child {
+    border-bottom: 1px dashed #bbb;
+    margin-bottom: 2mm;
+  }
+
+  .title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11pt;
+    text-decoration: underline;
+    text-transform: uppercase;
+    margin: 8pt 0 10pt 0;
+  }
+
+  .cert-content {
+    text-align: justify;
+    line-height: 1.5;
+    font-size: 10pt;
+  }
+
+  .cert-content p {
+    margin-bottom: 8pt;
+    text-indent: 20pt;
+  }
+
+  .bold { font-weight: bold; }
+
+  .footer-signatures {
+    width: 100%;
+    margin-top: 14pt;
+  }
+
+  .signature-cell {
+    width: 50%;
+    text-align: center;
+    vertical-align: top;
+  }
+
+  .signature-line {
+    border-top: 1px dashed #000;
+    width: 80%;
+    margin: 0 auto;
+    padding-top: 3pt;
+    font-size: 7.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+</style>
+{% endblock %}
+
+{# Suprimimos el header/footer del base — cada copia los incluye #}
+{% block header %}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+  {% for i in "12" %}
+  <div class="certificate-container">
+
+    {% include "core/pdf_header.html" %}
+
+    <div class="title">Constancia de Examen</div>
+
+    <div class="cert-content">
+      <p>
+        El <span class="bold">Instituto Provincial de Educación Superior "Paulo Freire"</span>,
+        sito en la calle José Manuel ESTRADA N° 1575 de la Ciudad de Río Grande,
+        Provincia de Tierra del Fuego – CUE N° 9400169-00 –
+        DEJA CONSTANCIA que el/la estudiante
+        <span class="bold">{{ estudiante }}</span>,
+        D.N.I. N° <span class="bold">{{ dni }}</span>,
+        ha rendido examen de
+        <span class="bold">{{ materia }}{% if materia_anio %} de {{ materia_anio }}° Año{% endif %}</span>
+        {% if profesorado %}de la carrera de <span class="bold">{{ profesorado }}</span>{% endif %}
+        {% if plan_resolucion %}({{ plan_resolucion }}){% endif %},
+        el día <span class="bold">{{ mesa_fecha }}</span>{% if mesa_codigo %},
+        Acta N° <span class="bold">{{ mesa_codigo }}</span>{% endif %}.
+      </p>
+      <p>
+        Se extiende la presente, sin enmiendas ni raspaduras, a pedido del/la interesado/a
+        y a solo efecto de ser presentada ante
+        <span class="bold">{{ destinatario }}</span>,
+        en la ciudad de Río Grande, a los {{ hoy_dia }} días del mes de {{ hoy_mes }} del año {{ hoy_anio }}.
+      </p>
+    </div>
+
+    <table class="footer-signatures">
+      <tr>
+        <td class="signature-cell">
+          <div style="height: 28pt;"></div>
+          <div class="signature-line">Firma Bedel</div>
+        </td>
+        <td class="signature-cell">
+          <div style="height: 28pt;"></div>
+          <div class="signature-line">Firma Autoridad</div>
+        </td>
+      </tr>
+    </table>
+
+  </div>
+  {% endfor %}
+{% endblock %}

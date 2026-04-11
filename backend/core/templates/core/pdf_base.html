@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            {% block page_size %}size: legal; margin: 15mm 15mm 20mm 15mm;{% endblock %}
+            @bottom-center {
+                content: "\201CLas Islas Malvinas, Georgias, S\E1ndwich del Sur y los Hielos Continentales, son y ser\E1n Argentinas\201D";
+                font-size: 7.5pt;
+                font-style: italic;
+                color: #555;
+            }
+            {% block page_numbers %}
+            @bottom-right {
+                content: "P\E1gina " counter(page) " de " counter(pages);
+                font-size: 8pt;
+                color: #666;
+            }
+            {% endblock %}
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10pt;
+            color: #1e1e1e;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Branding Colors */
+        .text-primary { color: #c24b17; }
+        .bg-primary { background-color: #c24b17; color: white; }
+        .border-primary { border-color: #c24b17; }
+
+        /* Helpers */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; }
+        .text-secondary { color: #666; font-size: 9pt; }
+        .text-meta { color: #888; font-size: 8pt; }
+
+        /* Layout — el encabezado se maneja vía pdf_header.html con estilos inline */
+
+        /* Sections / Cards */
+        .section {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e6e6e6;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        .section-accent {
+            width: 4px;
+            height: 18px;
+            background-color: #c24b17;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #1e1e1e;
+        }
+
+        /* Grid System */
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .col {
+            flex: 1;
+        }
+
+        /* Fields */
+        .field {
+            margin-bottom: 5px;
+        }
+
+        .field-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 8.5pt;
+            margin-right: 5px;
+        }
+
+        .field-value {
+            border-bottom: 1px border #eee;
+            min-width: 50px;
+            display: inline-block;
+        }
+
+        /* Documentation Checklist */
+        .checklist {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .check-item {
+            width: 48%;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .check-box {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #ccc;
+            margin-right: 8px;
+            display: inline-block;
+            text-align: center;
+            line-height: 10px;
+            font-size: 10pt;
+        }
+
+        /* Signatures */
+        .signatures {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .sign-box {
+            text-align: center;
+            width: 40%;
+        }
+
+        .sign-line {
+            border-top: 1px solid #000;
+            margin-bottom: 5px;
+        }
+
+        /* Receipt (Troquelado) */
+        .receipt-divider {
+            border-top: 1px dashed #ccc;
+            margin: 40px 0 20px 0;
+            position: relative;
+        }
+
+        .receipt-divider::after {
+            content: "✂";
+            position: absolute;
+            left: 0;
+            top: -12px;
+            background: white;
+            padding-right: 5px;
+        }
+
+    </style>
+    {% block extra_style %}{% endblock %}
+</head>
+<body>
+    {# Encabezado universal — los templates pueden sobrescribir con {% block header %}{% endblock %} #}
+    {% block header %}
+        {% include "core/pdf_header.html" %}
+    {% endblock %}
+
+    {% block content %}{% endblock %}
+
+    {# Pie de página Malvinas se renderiza vía @page @bottom-center en el CSS #}
+    {% block footer %}{% endblock %}
+</body>
+</html>

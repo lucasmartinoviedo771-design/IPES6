@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+import os
+from datetime import datetime
+
+from django.conf import settings
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.utils import timezone
+from weasyprint import HTML
+
 from apps.common.date_utils import format_date, format_datetime
 
 from apps.common.api_schemas import ApiResponse
@@ -347,6 +355,93 @@ def listar_constancias_examen(request, dni: str | None = None):
         )
 
     return items
+
+
+MESES_ES = [
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+@estudiantes_router.get(
+    "/constancias-examen/{inscripcion_id}/pdf",
+    auth=JWTAuth(),
+)
+def descargar_constancia_examen_pdf(request, inscripcion_id: int, destinatario: str = "A quien corresponda", dni: str | None = None):
+    """Genera el PDF de la constancia de examen usando WeasyPrint."""
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return HttpResponse(status=404)
+
+    insc = (
+        InscripcionMesa.objects
+        .select_related(
+            "mesa__materia__plan_de_estudio__profesorado",
+            "mesa__docente_presidente",
+            "mesa__docente_vocal1",
+            "mesa__docente_vocal2",
+            "estudiante",
+        )
+        .filter(id=inscripcion_id, estudiante=est)
+        .first()
+    )
+    if not insc:
+        return HttpResponse(status=404)
+
+    # No se puede generar constancia si el estudiante estuvo ausente o no tiene nota
+    AUSENTES = (InscripcionMesa.Condicion.AUSENTE, InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO)
+    if not insc.condicion or insc.condicion in AUSENTES or insc.nota is None:
+        return HttpResponse(
+            b'{"detail": "No se puede generar constancia: el estudiante estuvo ausente o no tiene nota registrada."}',
+            status=422,
+            content_type="application/json",
+        )
+
+    mesa = insc.mesa
+    materia = mesa.materia if mesa else None
+    plan = materia.plan_de_estudio if materia else None
+    profesorado = plan.profesorado if plan else None
+
+    hoy = datetime.now()
+
+    logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
+    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
+    if not os.path.exists(logo_left_path):
+        logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
+        logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
+
+    context = {
+        "estudiante": est.user.get_full_name() or est.dni,
+        "dni": est.dni,
+        "materia": materia.nombre if materia else "Materia",
+        "materia_anio": materia.anio_cursada if materia else None,
+        "profesorado": profesorado.nombre if profesorado else None,
+        "plan_resolucion": plan.resolucion if plan else None,
+        "mesa_codigo": mesa.codigo if mesa else None,
+        "mesa_fecha": format_date(mesa.fecha) if mesa else "",
+        "mesa_hora_desde": str(mesa.hora_desde)[:5] if mesa and mesa.hora_desde else None,
+        "mesa_hora_hasta": _calc_hora_hasta(insc, mesa) if mesa else None,
+        "mesa_modalidad": mesa.get_modalidad_display() if mesa else "",
+        "condicion_display": insc.get_condicion_display() or "",
+        "nota": str(insc.nota) if insc.nota is not None else None,
+        "tribunal_presidente": f"{mesa.docente_presidente.apellido}, {mesa.docente_presidente.nombre}" if mesa and mesa.docente_presidente else None,
+        "tribunal_vocal1": f"{mesa.docente_vocal1.apellido}, {mesa.docente_vocal1.nombre}" if mesa and mesa.docente_vocal1 else None,
+        "tribunal_vocal2": f"{mesa.docente_vocal2.apellido}, {mesa.docente_vocal2.nombre}" if mesa and mesa.docente_vocal2 else None,
+        "destinatario": destinatario or "A quien corresponda",
+        "hoy_dia": hoy.day,
+        "hoy_mes": MESES_ES[hoy.month - 1],
+        "hoy_anio": hoy.year,
+        "logo_left_path": logo_left_path,
+        "logo_right_path": logo_right_path,
+    }
+
+    html = render_to_string("core/constancia_examen_pdf.html", context)
+    pdf_content = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+
+    nombre_archivo = f"constancia_examen_{est.dni}.pdf"
+    response = HttpResponse(pdf_content, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+    return response
 
 
 def _calc_hora_hasta(insc, mesa) -> str | None:

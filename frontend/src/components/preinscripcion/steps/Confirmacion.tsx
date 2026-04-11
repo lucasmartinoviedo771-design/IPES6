@@ -7,10 +7,9 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import { generarPlanillaPDF, DocsFlags } from "@/utils/pdf"; // <-- importa el helper
 import { PreinscripcionForm } from "../schema";
-import React, { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import React, { useState } from "react";
+import { apiPreviewPdf } from "@/api/preinscripciones";
 
 function Row({ label, value }: { label: string; value?: any }) {
   return (
@@ -35,22 +34,27 @@ async function imageUrlToDataUrl(url: string): Promise<string> {
 export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraNombre: string; onDownloaded?: () => void }) {
   const { watch } = useFormContext<PreinscripcionForm>();
   const v = watch();
-  const [docs, setDocs] = useState<DocsFlags>({});
-  const [logos, setLogos] = useState<{left?: string, right?: string}>({});
-  const [qrDataUrl, setQrDataUrl] = useState<string | undefined>();
 
-  useEffect(() => {
-    imageUrlToDataUrl("/ipes-logo.jpg").then(logoIpesDataUrl => {
-      setLogos({ left: logoIpesDataUrl });
-    });
+  const [isDownloading, setIsDownloading] = useState(false);
 
-    if (v.dni) {
-      QRCode.toDataURL(v.dni).then(setQrDataUrl);
+  const handleDownloadPreview = async () => {
+    setIsDownloading(true);
+    try {
+      const blob = await apiPreviewPdf(v);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Preinscripcion_IPES_2026.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      onDownloaded && onDownloaded();
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      alert("Hubo un error al generar el PDF. Por favor, reintente en unos instantes.");
+    } finally {
+      setIsDownloading(false);
     }
-  }, [v.dni]);
-
-  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDocs({ ...docs, [e.target.name]: e.target.checked });
   };
 
   return (
@@ -126,14 +130,11 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
 
       <Box sx={{ display: "flex", gap: 2, mt: 2, alignItems: 'center' }}>
         <Button
-          variant="outlined"
-          onClick={() => {
-            const photoUrl = (v as any).foto_dataUrl || (v as any).foto_4x4_dataurl;
-            generarPlanillaPDF(v, carreraNombre, { docs, logos, qrDataUrl, studentPhotoDataUrl: photoUrl });
-            onDownloaded && onDownloaded();
-          }}
+          variant="contained"
+          disabled={isDownloading}
+          onClick={handleDownloadPreview}
         >
-          Descargar PDF
+          {isDownloading ? "Generando..." : "Descargar PDF para Revisión"}
         </Button>
         <Typography variant="body2" color="text.secondary">
           Para finalizar, primero debe descargar el formulario de preinscripción.

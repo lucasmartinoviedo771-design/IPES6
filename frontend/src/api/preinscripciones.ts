@@ -12,26 +12,53 @@ const d = (s?: string) => (s ? dayjs(s).format("YYYY-MM-DD") : null);
 
 export function mapFormToPayload(v: PreinscripcionForm) {
   return {
-    // personales
-    apellido: v.apellido, nombres: v.nombres, dni: v.dni, cuil: v.cuil,
-    fecha_nacimiento: d(v.fecha_nacimiento),
-    nacionalidad: v.nacionalidad, estado_civil: v.estado_civil,
-    localidad_nac: v.localidad_nac, provincia_nac: v.provincia_nac, pais_nac: v.pais_nac,
-    domicilio: v.domicilio,
-    // contacto
-    email: v.email, tel_movil: v.tel_movil, tel_fijo: v.tel_fijo,
-    emergencia_telefono: v.emergencia_telefono,
-    emergencia_parentesco: v.emergencia_parentesco,
-    // laborales
-    trabaja: !!v.trabaja, empleador: v.empleador, horario: v.horario_trabajo,
-    // estudios
-    sec_titulo: v.sec_titulo, sec_establecimiento: v.sec_establecimiento,
-    sec_fecha_egreso: d(v.sec_fecha_egreso),
-    sec_localidad: v.sec_localidad, sec_provincia: v.sec_provincia, sec_pais: v.sec_pais,
-    sup1_titulo: v.sup1_titulo, sup1_establecimiento: v.sup1_establecimiento,
-    sup1_fecha_egreso: d(v.sup1_fecha_egreso),
-    // carrera (opcional en pre)
-    carrera_id: v.carrera_id ?? null,
+    carrera_id: v.carrera_id ?? 0,
+    foto_4x4_dataurl: v.foto_dataUrl ?? null,
+    estudiante: {
+      dni: v.dni,
+      nombres: v.nombres,
+      apellido: v.apellido,
+      cuil: v.cuil ?? null,
+      fecha_nacimiento: d(v.fecha_nacimiento) ?? "",
+      email: v.email ?? null,
+      telefono: v.tel_movil ?? null,
+      domicilio: v.domicilio ?? null,
+    },
+    // Datos personales adicionales
+    nacionalidad: v.nacionalidad ?? null,
+    estado_civil: v.estado_civil ?? null,
+    genero: v.genero ?? null,
+    localidad_nac: v.localidad_nac ?? null,
+    provincia_nac: v.provincia_nac ?? null,
+    pais_nac: v.pais_nac ?? null,
+    // Contacto
+    tel_fijo: v.tel_fijo ?? null,
+    emergencia_telefono: v.emergencia_telefono ?? null,
+    emergencia_parentesco: v.emergencia_parentesco ?? null,
+    // Laboral
+    trabaja: !!v.trabaja,
+    empleador: v.empleador ?? null,
+    horario_trabajo: v.horario_trabajo ?? null,
+    domicilio_trabajo: v.domicilio_trabajo ?? null,
+    // Estudios secundarios
+    sec_titulo: v.sec_titulo ?? null,
+    sec_establecimiento: v.sec_establecimiento ?? null,
+    sec_fecha_egreso: d(v.sec_fecha_egreso) ?? null,
+    sec_localidad: v.sec_localidad ?? null,
+    sec_provincia: v.sec_provincia ?? null,
+    sec_pais: v.sec_pais ?? null,
+    // Estudios superiores
+    sup1_titulo: v.sup1_titulo ?? null,
+    sup1_establecimiento: v.sup1_establecimiento ?? null,
+    sup1_fecha_egreso: d(v.sup1_fecha_egreso) ?? null,
+    sup1_localidad: v.sup1_localidad ?? null,
+    sup1_provincia: v.sup1_provincia ?? null,
+    sup1_pais: v.sup1_pais ?? null,
+    // Accesibilidad
+    cud_informado: v.cud_informado ?? false,
+    condicion_salud_informada: v.condicion_salud_informada ?? false,
+    condicion_salud_detalle: v.condicion_salud_detalle ?? null,
+    consentimiento_datos: v.consentimiento_datos ?? false,
   };
 }
 
@@ -79,14 +106,28 @@ export const listarPreinscripciones = (params: {
 export const activarPreinscripcion = (id: number) =>
   client.post(`/preinscripciones/${id}/activar`).then(r => r.data);
 
-// Descarga del comprobante PDF: la ruta NO cuelga de /api, es servidor Django raíz
+// Descarga del comprobante PDF oficial
 export const descargarPdf = (id: number) => {
-  // Normalizar base quitando sufijo /api si está presente
-  const raw = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
-  const base = raw.replace(/\/api\/?$/, "");
-  const url = `${base}/preinscripciones/${id}/pdf`;
-  window.open(url, "_blank");
+  const token = localStorage.getItem("token");
+  client.get(`/preinscripciones/${id}/pdf`, { 
+    responseType: 'blob',
+    headers: { Authorization: `Bearer ${token}` }
+  }).then(response => {
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Preinscripcion_${id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  });
 };
+
+// Generación de vista previa del PDF (sin guardar)
+export const apiPreviewPdf = (v: PreinscripcionForm) =>
+  client.post("/preinscripciones/preview-pdf/", mapFormToPayload(v), {
+    responseType: "blob",
+  }).then(r => r.data);
 
 // New types and functions for PreConfirmEditor
 

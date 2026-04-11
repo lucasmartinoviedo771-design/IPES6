@@ -60,7 +60,7 @@ const PlanillaPreinscripcion = forwardRef<HTMLDivElement, { values: Values }>(
         <div className="encabezado">
           {qrDataUrlTop && <img className="qr qr-top" src={qrDataUrlTop} alt="QR" />}
           <div className="instituto">Instituto Provincial de Educación Superior “Paulo Freire”</div>
-          <div className="titulo">PLANILLA DE PREINSCRIPCIÓN 2025</div>
+          <div className="titulo">PLANILLA DE PREINSCRIPCIÓN 2026</div>
           <div className="carrera">{carrera || "Carrera"}</div>
         </div>
 

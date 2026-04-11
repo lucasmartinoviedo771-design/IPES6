@@ -56,6 +56,22 @@ export async function obtenerConstanciasExamen(params?: { dni?: string }): Promi
 }
 
 /**
+ * Genera y descarga la Constancia de Examen en formato PDF usando WeasyPrint (backend).
+ */
+export async function descargarConstanciaExamenPDF(params: {
+  inscripcion_id: number;
+  destinatario?: string;
+  dni?: string;
+}): Promise<Blob> {
+  const { inscripcion_id, ...queryParams } = params;
+  const response = await client.get(
+    `/estudiantes/constancias-examen/${inscripcion_id}/pdf`,
+    { params: queryParams, responseType: "blob" },
+  );
+  return response.data as Blob;
+}
+
+/**
  * Genera y descarga el Certificado de Alumno Regular en formato PDF (Blob).
  */
 export async function descargarCertificadoRegular(params: {

@@ -249,14 +249,24 @@ def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, ca
     from weasyprint import HTML
     import datetime
 
+    import os
+    from django.conf import settings
+    logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
+    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
+    if not os.path.exists(logo_left_path):
+        logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
+        logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
+
     context = {
         "items": items,
         "fecha": format_datetime(datetime.datetime.now()),
         "q": q,
+        "logo_left_path": logo_left_path,
+        "logo_right_path": logo_right_path,
     }
     
     html_string = render_to_string("estudiantes/export_documentacion_pdf.html", context)
-    pdf = HTML(string=html_string).write_pdf()
+    pdf = HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf()
 
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="estudiantes_documentacion.pdf"'

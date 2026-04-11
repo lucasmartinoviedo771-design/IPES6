@@ -34,6 +34,7 @@ from .services.rate_limiting import check_rate_limit, client_ip, verify_recaptch
 from .services.ventanas import ventana_preinscripcion_activa
 from .services.serializers import serialize_pre
 from .services.preinscripcion_service import PreinscripcionService
+from .views_pdf import preinscripcion_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,6 @@ def activar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] =
     pre.save(update_fields=["activa", "estado"])
     return pre
 
-
 @router.post("", response=ApiResponse)
 def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optional[int] = None):
     """
@@ -198,6 +198,104 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
         "codigo": preinscripcion.codigo,
         "estado": preinscripcion.estado,
     })
+
+@router.post("/preview-pdf/", auth=AllowPublic())
+def preview_pdf(request, payload: PreinscripcionIn):
+    """
+    Genera una vista previa del PDF con datos no guardados.
+    Permite al aspirante revisar el diseño antes de confirmar datos sensibles.
+    """
+    from .views_pdf import render_to_string
+    from weasyprint import HTML
+    from django.http import HttpResponse
+    from core.models import Profesorado
+    import os
+    from django.conf import settings
+
+    carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
+    carrera_nombre = carrera.nombre if carrera else "Carrera no especificada"
+
+    # Preparar el mismo contexto que la vista oficial
+    # El payload tiene estudiante anidado — aplanamos para la plantilla
+    raw = payload.dict()
+    est = raw.get("estudiante") or {}
+    v = {
+        "apellido": (est.get("apellido") or "").upper(),
+        "nombres": est.get("nombres") or "",
+        "dni": est.get("dni") or "",
+        "cuil": est.get("cuil") or "",
+        "fecha_nacimiento": str(est.get("fecha_nacimiento") or ""),
+        "email": est.get("email") or "",
+        "tel_movil": est.get("telefono") or "",
+        "domicilio": est.get("domicilio") or "",
+        # datos extra planos
+        "nacionalidad": raw.get("nacionalidad"),
+        "estado_civil": raw.get("estado_civil"),
+        "localidad_nac": raw.get("localidad_nac"),
+        "provincia_nac": raw.get("provincia_nac"),
+        "pais_nac": raw.get("pais_nac"),
+        "emergencia_telefono": raw.get("emergencia_telefono"),
+        "emergencia_parentesco": raw.get("emergencia_parentesco"),
+        "trabaja": raw.get("trabaja"),
+        "empleador": raw.get("empleador"),
+        "horario_trabajo": raw.get("horario_trabajo"),
+        # Estudios secundarios
+        "sec_titulo": raw.get("sec_titulo"),
+        "sec_establecimiento": raw.get("sec_establecimiento"),
+        "sec_fecha_egreso": str(raw.get("sec_fecha_egreso") or ""),
+        "sec_localidad": raw.get("sec_localidad"),
+        "sec_provincia": raw.get("sec_provincia"),
+        "sec_pais": raw.get("sec_pais"),
+        # Estudios superiores
+        "sup1_titulo": raw.get("sup1_titulo"),
+        "sup1_establecimiento": raw.get("sup1_establecimiento"),
+        "sup1_fecha_egreso": str(raw.get("sup1_fecha_egreso") or ""),
+        "sup1_localidad": raw.get("sup1_localidad"),
+        "sup1_provincia": raw.get("sup1_provincia"),
+        "sup1_pais": raw.get("sup1_pais"),
+        # Laboral
+        "domicilio_trabajo": raw.get("domicilio_trabajo"),
+        # Accesibilidad
+        "cud_informado": raw.get("cud_informado"),
+        "condicion_salud_informada": raw.get("condicion_salud_informada"),
+        "condicion_salud_detalle": raw.get("condicion_salud_detalle"),
+        "consentimiento_datos": raw.get("consentimiento_datos", True),
+    }
+    
+    checklist_items = [
+        {"label": "Fotocopia legalizada DNI", "checked": False},
+        {"label": "Copia legalizada Analítico", "checked": False},
+        {"label": "2 fotos carnet 4x4", "checked": False},
+        {"label": "Título Secundario", "checked": False},
+        {"label": "Certificado Alumno Regular", "checked": False},
+        {"label": "Certificado Título en Trámite", "checked": False},
+        {"label": "Certificado Buena Salud", "checked": False},
+        {"label": "3 Folios Oficio", "checked": False},
+    ]
+
+    # Rutas para recursos estáticos (Encabezado Universal)
+    logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
+    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
+    
+    if not os.path.exists(logo_left_path):
+        logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
+        logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
+
+    context = {
+        "v": v,
+        "carrera_nombre": carrera_nombre,
+        "checklist_items": checklist_items,
+        "logo_left_path": logo_left_path,
+        "logo_right_path": logo_right_path,
+        "photo_url": raw.get("foto_4x4_dataurl") or raw.get("foto_dataUrl"),
+    }
+
+    html = render_to_string("core/preinscripcion_premium.html", context)
+    pdf_content = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+
+    response = HttpResponse(pdf_content, content_type="application/pdf")
+    response["Content-Disposition"] = 'inline; filename="Vista_Previa_Preinscripcion.pdf"'
+    return response
 
 
 @router.post("/by-code/{codigo}/confirmar", response=ApiResponse, auth=JWTAuth())

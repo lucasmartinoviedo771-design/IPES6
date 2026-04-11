@@ -9,6 +9,7 @@ __pycache__/
 .env.*
 !.env.example
 .venv/
+.venv_host/
 venv/
 !.env.docker.example
 
@@ -21,6 +22,9 @@ db.sqlite3
 .DS_Store
 .idea/
 .vscode/
+
+# SSH keys (never inside the project)
+.ssh/
 
 # Coverage
 .coverage

@@ -1,0 +1,200 @@
+{% extends "core/pdf_base.html" %}
+
+{% block page_size %}size: A4; margin: 8mm 12mm 18mm 12mm;{% endblock %}
+{% block page_numbers %}{% endblock %}
+
+{% block extra_style %}
+<style>
+  body { font-size: 8.5pt; line-height: 1.3; }
+  /* Encabezado más compacto */
+  #pdf-header-wrapper { margin-bottom: 6px !important; padding-bottom: 6px !important; }
+  .section { margin-bottom: 8px; }
+  .section-header { padding-bottom: 3px; margin-bottom: 5px; }
+  .section-title { font-size: 8.5pt; }
+  .row { margin-bottom: 3px; }
+  .field-label { font-size: 7.5pt; }
+  .check-item { margin-bottom: 4px; }
+  .signatures { margin-top: 20px; }
+  .receipt-divider { margin: 20px 0 12px 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="text-center" style="margin-top: 3px; margin-bottom: 8px;">
+    <h3 class="uppercase bold" style="font-size: 11pt; margin: 0; color: #000;">Planilla de Preinscripción 2026</h3>
+</div>
+
+{# DATOS PERSONALES #}
+<div class="section">
+    <div class="section-header">
+        <div class="section-accent"></div>
+        <div class="section-title uppercase">Datos Personales</div>
+    </div>
+
+    <div style="display: flex;">
+        <div style="flex-grow: 1;">
+            <div class="row">
+                <div class="col"><span class="field-label">Apellido y Nombres:</span> {{ v.apellido|default:"-" }}, {{ v.nombres|default:"-" }}</div>
+            </div>
+            <div class="row">
+                <div class="col"><span class="field-label">D.N.I.:</span> {{ v.dni|default:"-" }}</div>
+                <div class="col"><span class="field-label">C.U.I.L.:</span> {{ v.cuil|default:"-" }}</div>
+            </div>
+            <div class="row">
+                <div class="col"><span class="field-label">Fecha de Nac.:</span> {{ v.fecha_nacimiento|default:"-" }}</div>
+                <div class="col"><span class="field-label">Estado Civil:</span> {{ v.estado_civil|default:"-" }}</div>
+            </div>
+            <div class="row">
+                <div class="col"><span class="field-label">Lugar de Nac.:</span> {{ v.localidad_nac|default:"-" }}, {{ v.provincia_nac|default:"-" }}</div>
+                <div class="col"><span class="field-label">Nacionalidad:</span> {{ v.nacionalidad|default:"-" }}</div>
+            </div>
+        </div>
+
+        <div style="width: 100px; height: 120px; border: 1px solid #ddd; margin-left: 20px; text-align: center; vertical-align: middle;">
+            {% if photo_url %}
+                <img src="{{ photo_url }}" style="max-width: 100%; max-height: 100%;">
+            {% else %}
+                <div style="padding-top: 50px; color: #aaa; font-size: 8pt;">Foto 4x4</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col"><span class="field-label">CUD Informado:</span> {{ v.cud_informado|yesno:"Sí,No" }}</div>
+        {% if v.condicion_salud_informada %}
+            <div class="col"><span class="field-label">Salud/Asistencia:</span> {{ v.condicion_salud_detalle }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{# CONTACTO #}
+<div class="section">
+    <div class="section-header">
+        <div class="section-accent"></div>
+        <div class="section-title uppercase">Contacto y Datos Laborales</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">Domicilio Actual:</span> {{ v.domicilio|default:"-" }}</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">E-mail:</span> {{ v.email|default:"-" }}</div>
+        <div class="col"><span class="field-label">Celular:</span> {{ v.tel_movil|default:"-" }}</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">Emergencia (Tel):</span> {{ v.emergencia_telefono|default:"-" }}</div>
+        <div class="col"><span class="field-label">Parentesco:</span> {{ v.emergencia_parentesco|default:"-" }}</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">Trabaja?:</span> {{ v.trabaja|yesno:"Sí,No" }}</div>
+        <div class="col"><span class="field-label">Horario:</span> {{ v.horario_trabajo|default:"-" }}</div>
+    </div>
+    {% if v.empleador %}
+    <div class="row">
+        <div class="col"><span class="field-label">Empleador:</span> {{ v.empleador }}</div>
+        <div class="col"><span class="field-label">Dom. laboral:</span> {{ v.domicilio_trabajo|default:"-" }}</div>
+    </div>
+    {% endif %}
+</div>
+
+{# ESTUDIOS PREVIOS #}
+<div class="section">
+    <div class="section-header">
+        <div class="section-accent"></div>
+        <div class="section-title uppercase">Estudios Previos</div>
+    </div>
+
+    <div class="bold text-secondary uppercase" style="margin-top: 10px; margin-bottom: 5px;">Nivel Secundario</div>
+    <div class="row">
+        <div class="col"><span class="field-label">Título:</span> {{ v.sec_titulo|default:"-" }}</div>
+        <div class="col"><span class="field-label">Establecimiento:</span> {{ v.sec_establecimiento|default:"-" }}</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">Fecha de egreso:</span> {{ v.sec_fecha_egreso|default:"-" }}</div>
+        <div class="col"><span class="field-label">Localidad:</span> {{ v.sec_localidad|default:"-" }}{% if v.sec_provincia %}, {{ v.sec_provincia }}{% endif %}{% if v.sec_pais %} ({{ v.sec_pais }}){% endif %}</div>
+    </div>
+
+    {% if v.sup1_titulo %}
+    <div class="bold text-secondary uppercase" style="margin-top: 10px; margin-bottom: 5px;">Nivel Superior</div>
+    <div class="row">
+        <div class="col"><span class="field-label">Título:</span> {{ v.sup1_titulo }}</div>
+        <div class="col"><span class="field-label">Establecimiento:</span> {{ v.sup1_establecimiento|default:"-" }}</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">Fecha de egreso:</span> {{ v.sup1_fecha_egreso|default:"-" }}</div>
+        <div class="col"><span class="field-label">Localidad:</span> {{ v.sup1_localidad|default:"-" }}{% if v.sup1_provincia %}, {{ v.sup1_provincia }}{% endif %}{% if v.sup1_pais %} ({{ v.sup1_pais }}){% endif %}</div>
+    </div>
+    {% endif %}
+</div>
+
+{# DOCUMENTACION #}
+<div class="section">
+    <div class="section-header">
+        <div class="section-accent"></div>
+        <div class="section-title uppercase">Documentación y Observaciones (Uso Interno)</div>
+    </div>
+    <div class="checklist">
+        {% for doc in checklist_items %}
+            <div class="check-item">
+                <div class="check-box">{{ doc.checked|yesno:"✓," }}</div>
+                <span>{{ doc.label }}</span>
+            </div>
+        {% endfor %}
+    </div>
+    <div style="margin-top: 10px;">
+        <span class="field-label">OBSERVACIONES / MATERIAS ADEUDADAS:</span>
+        <div style="border: 1px solid #ddd; height: 70px; margin-top: 5px; background: #fafafa;"></div>
+    </div>
+</div>
+
+{% if v.consentimiento_datos %}
+<div class="text-meta italic" style="margin-bottom: 12px;">
+    El/la aspirante otorga su consentimiento expreso e informado para que los datos sensibles declarados
+    se utilicen únicamente para garantizar soporte académico y accesibilidad conforme a la normativa vigente.
+</div>
+{% endif %}
+
+<div class="signatures" style="margin-top: 40px;">
+    <div class="sign-box">
+        <div class="sign-line"></div>
+        <div class="text-meta">Firma y aclaración del inscripto</div>
+    </div>
+    <div class="sign-box">
+        <div class="sign-line"></div>
+        <div class="text-meta">Firma y sello del personal de bedelía</div>
+    </div>
+</div>
+
+{# COMPROBANTE TROQUELADO #}
+<div class="receipt-divider"></div>
+
+<div class="section">
+    <div class="section-title text-primary uppercase" style="margin-bottom: 10px;">Comprobante de Inscripción - Copia para el Estudiante</div>
+    <div class="row">
+        <div class="col"><span class="field-label">Estudiante:</span> {{ v.apellido|default:"" }}, {{ v.nombres|default:"" }}</div>
+    </div>
+    <div class="row">
+        <div class="col"><span class="field-label">Carrera:</span> {{ carrera_nombre }}</div>
+        <div class="col"><span class="field-label">Ciclo:</span> 2026</div>
+    </div>
+
+    <div class="bold text-secondary uppercase" style="margin-top: 10px; font-size: 8pt;">Documentación Entregada:</div>
+    <div class="checklist" style="margin-top: 5px; font-size: 7.5pt;">
+        {% for doc in checklist_items %}
+            <div class="check-item" style="width: 25%; margin-bottom: 2px;">
+                <div class="check-box" style="width: 10px; height: 10px; line-height: 8px;">{{ doc.checked|yesno:"✓," }}</div>
+                <span>{{ doc.label }}</span>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+    <div style="width: 200px; text-align: center;">
+        <div style="height: 30px;"></div>
+        <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
+        <div class="text-meta">Sello de Recepción</div>
+    </div>
+</div>
+
+{% endblock %}

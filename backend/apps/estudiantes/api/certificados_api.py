@@ -38,6 +38,13 @@ def descargar_certificado_estudiante_regular(
     anio_estudio = max(max_anio_reg or 1, max_anio_ins or 1)
 
     from django.conf import settings
+    import os
+    logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
+    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
+    if not os.path.exists(logo_left_path):
+        logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
+        logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
+
     context = {
         "estudiante": est,
         "usuario": est.user,
@@ -47,6 +54,8 @@ def descargar_certificado_estudiante_regular(
         "anio_estudio": anio_estudio,
         "fecha": datetime.now(),
         "base_dir": str(settings.BASE_DIR),
+        "logo_left_path": logo_left_path,
+        "logo_right_path": logo_right_path,
     }
 
     # Renderizar el HTML

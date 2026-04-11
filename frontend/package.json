@@ -22,7 +22,7 @@
     "@types/recharts": "^1.8.29",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
-    "axios": "^1.7.9",
+    "axios": "^1.15.0",
     "dayjs": "^1.11.18",
     "dompurify": "^3.3.0",
     "eslint": "^9.39.1",
@@ -31,7 +31,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "html-to-image": "^1.11.13",
-    "jspdf": "^3.0.3",
+    "jspdf": "^4.2.1",
     "notistack": "^3.0.2",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
@@ -44,6 +44,14 @@
     "recharts": "^3.3.0",
     "zod": "^4.1.9"
   },
+  "pnpm": {
+    "overrides": {
+      "brace-expansion@1": ">=1.1.13",
+      "brace-expansion@5": ">=5.0.5",
+      "picomatch": ">=4.0.4",
+      "yaml": ">=1.10.3"
+    }
+  },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -52,7 +60,7 @@
     "@vitejs/plugin-react": "^6.0.0",
     "jsdom": "^27.2.0",
     "typescript": "^5.9.2",
-    "vite": "^8.0.1",
+    "vite": "^8.0.5",
     "vitest": "^4.1.0"
   }
 }

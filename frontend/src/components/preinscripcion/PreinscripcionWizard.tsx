@@ -295,11 +295,11 @@ export default function PreinscripcionWizard() {
       <Box sx={pageBgSx}>
         <Stack spacing={3} maxWidth={1200} mx="auto">
           <PageHero
-            title="Preinscripción 2025"
+            title="Preinscripción 2026"
             subtitle="Completá los 6 pasos, descargá la planilla y presentala con tu documentación."
             actions={
               <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Chip label={`Inscripción abierta: ${ventanaLabel}`} size="small" color="success" />
+                <Chip label={`Inscripción abierta: ${ventanaLabel}`} color="success" sx={{ fontSize: "1rem", fontWeight: 700, px: 2, py: 2.5, height: "auto", "& .MuiChip-label": { px: 1 } }} />
               </Stack>
             }
           />

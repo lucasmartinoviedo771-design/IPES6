@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"│\\\\s*$\")",
+      "Bash(python3 -c \" import json,sys data=json.load\\(sys.stdin\\) advisories=data.get\\('advisories',{}\\) for k,v in advisories.items\\(\\): print\\(f\\\\\"{v['severity'].upper\\(\\):8} {v['module_name']:30} {v['findings'][0]['version']:12} → fix: {v['patched_versions']}\\\\\"\\) \")",
+      "Bash(/home/admin486321/.nvm/versions/node/v24.13.1/lib/node_modules/corepack/shims/pnpm why:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(/home/admin486321/.nvm/versions/node/v24.13.1/lib/node_modules/corepack/shims/pnpm exec:*)",
+      "Bash(ls /home/admin486321/IPES6/backend/test_*.py)"
+    ]
+  }
+}

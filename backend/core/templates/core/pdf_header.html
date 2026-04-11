@@ -1,0 +1,32 @@
+{# Encabezado universal IPES — incluir en todos los PDFs generados con WeasyPrint #}
+<div id="pdf-header-wrapper" style="width:100%; margin-bottom:15px; padding-bottom:10px; border-bottom:3px solid #c24b17;">
+  <table style="width:100%; border-collapse:collapse; border:none;">
+    <tr>
+      <td style="width:140px; text-align:center; vertical-align:middle; padding:0; border:none;">
+        {% if logo_left_path %}
+          <img src="file://{{ logo_left_path }}"
+               style="height:90px; width:auto; display:block; margin:0 auto;"
+               alt="Escudo Ministerio TDF">
+        {% endif %}
+      </td>
+      <td style="text-align:center; vertical-align:middle; padding:0 15px; border:none;">
+        <div style="font-family:'Helvetica','Arial',sans-serif;
+                    font-size:15pt; font-weight:bold;
+                    letter-spacing:1px; color:#000; margin-bottom:4px;">
+          IPES PAULO FREIRE
+        </div>
+        <div style="font-family:'Helvetica','Arial',sans-serif;
+                    font-size:9pt; color:#333; letter-spacing:0.5px;">
+          INSTITUTO PROVINCIAL DE EDUCACIÓN SUPERIOR
+        </div>
+      </td>
+      <td style="width:140px; text-align:center; vertical-align:middle; padding:0; border:none;">
+        {% if logo_right_path %}
+          <img src="file://{{ logo_right_path }}"
+               style="height:90px; width:auto; display:block; margin:0 auto;"
+               alt="Logo IPES">
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+</div>

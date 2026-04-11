@@ -84,6 +84,12 @@ class PreinscripcionIn(Schema):
     horario_trabajo: str | None = None
     domicilio_trabajo: str | None = None
 
+    # Accesibilidad / datos sensibles
+    cud_informado: bool | None = None
+    condicion_salud_informada: bool | None = None
+    condicion_salud_detalle: str | None = None
+    consentimiento_datos: bool | None = None
+
 
 class EstudianteUpdateIn(Schema):
     """Campos permitidos para la actualización parcial del perfil del estudiante."""

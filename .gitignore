@@ -48,8 +48,6 @@ tmp/
 *.tmp
 backend/fix_data_safe.py
 
-# Tests (Moved to Dev environment)
-**/tests/
 **/.pytest_cache/
 **/pytest.ini
 
@@ -78,7 +76,6 @@ scripts/data_imports/carrera_map.example.json
 
 # Test battery (local only)
 Test/
-scripts/run_security_tests.sh
 
 # Backups
 backups/

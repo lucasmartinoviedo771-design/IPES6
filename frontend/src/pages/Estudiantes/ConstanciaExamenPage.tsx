@@ -15,10 +15,9 @@ import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 
-import { obtenerConstanciasExamen, ConstanciaExamenDTO } from "@/api/estudiantes";
+import { obtenerConstanciasExamen, ConstanciaExamenDTO, descargarConstanciaExamenPDF } from "@/api/estudiantes";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
-import { generarConstanciaExamenPDF } from "@/utils/constanciaExamenPdf";
 import { useAuth } from "@/context/AuthContext";
 import { hasRole } from "@/utils/roles";
 
@@ -72,12 +71,33 @@ const ConstanciaExamenPage: React.FC = () => {
     setSelectedId(event.target.value);
   };
 
-  const handleDownload = () => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
     if (!selectedConstancia) {
       enqueueSnackbar("Seleccioná un examen para descargar la constancia.", { variant: "warning" });
       return;
     }
-    generarConstanciaExamenPDF(selectedConstancia, { destinatario: destinatarioTexto });
+    setIsDownloading(true);
+    try {
+      const blob = await descargarConstanciaExamenPDF({
+        inscripcion_id: selectedConstancia.inscripcion_id,
+        destinatario: destinatarioTexto,
+        dni: dniObjetivo || undefined,
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `constancia_examen_${selectedConstancia.dni}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      enqueueSnackbar("Error al generar el PDF. Reintentá en un momento.", { variant: "error" });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   useEffect(() => {
@@ -218,10 +238,10 @@ const ConstanciaExamenPage: React.FC = () => {
                   <Button
                     variant="contained"
                     onClick={handleDownload}
-                    disabled={!selectedConstancia}
+                    disabled={!selectedConstancia || isDownloading}
                     sx={{ px: 4 }}
                   >
-                    Descargar constancia (PDF)
+                    {isDownloading ? "Generando..." : "Descargar constancia (PDF)"}
                   </Button>
                 </Stack>
               </>

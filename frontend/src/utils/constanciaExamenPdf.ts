@@ -218,7 +218,7 @@ export function generarConstanciaExamenPDF(
   pdf.setFont("times", "italic");
   pdf.setFontSize(9);
   pdf.text(
-    "“Las Islas Malvinas, Georgias y Sandwich del Sur, son y serán Argentinas”",
+    "“Las Islas Malvinas, Georgias, Sándwich del Sur y los Hielos Continentales, son y serán Argentinas”",
     W / 2,
     y + 10,
     { align: "center" },
