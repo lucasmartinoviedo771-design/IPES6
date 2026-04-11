@@ -9,6 +9,7 @@ from ninja import Router
 from pydantic import BaseModel
 from core.authentication.jwt_service import JWTService
 import requests
+import secrets
 from urllib.parse import urlencode
 
 from apps.common.constants import AppErrorCode
@@ -102,7 +103,8 @@ def _serialize_user(user):
     prof_ids = list(allowed) if allowed is not None else None
 
     roles = list(user.groups.values_list("name", flat=True))
-    if user.is_staff or user.is_superuser:
+    # Consistencia con core/auth_ninja.py: solo superusuarios tienen admin implicito.
+    if user.is_superuser:
         if "admin" not in roles:
             roles.append("admin")
 
@@ -161,8 +163,14 @@ def _clear_jwt_cookies(response: JsonResponse):
 
 
 def _client_identifier(request, login: str) -> str:
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "") or "unknown"
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        # Usamos la última IP para evitar spoofing (coincide con Audit Middleware)
+        ips = [ip.strip() for ip in x_forwarded_for.split(",")]
+        ip = ips[-1]
+    else:
+        ip = request.META.get("REMOTE_ADDR") or "unknown"
+    
     login_id = (login or "").strip().lower() or "anonymous"
     return f"auth:login:{ip}:{login_id}"
 
@@ -219,7 +227,7 @@ def profile(request):
     prof_ids = list(allowed) if allowed is not None else None
 
     roles = list(u.groups.values_list("name", flat=True))
-    if u.is_staff or u.is_superuser:
+    if u.is_superuser:
         if "admin" not in roles:
             roles.append("admin")
 
@@ -266,7 +274,7 @@ def change_password(request, payload: ChangePasswordIn):
         estudiante.must_change_password = False
         estudiante.save(update_fields=["must_change_password"])
 
-    return {"detail": "ContraseÃ±a actualizada correctamente."}
+    return {"detail": "Contraseña actualizada correctamente."}
 
 
 @router.post("/logout/")
@@ -318,6 +326,9 @@ def google_login(request):
     if not client_id or not redirect_uri:
         raise AppError(503, AppErrorCode.AUTHENTICATION_FAILED, "Google OAuth no está configurado.")
 
+    state = secrets.token_urlsafe(32)
+    request.session["oauth_state"] = state
+
     params = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
@@ -325,6 +336,7 @@ def google_login(request):
         "scope": "openid email profile",
         "access_type": "offline",
         "include_granted_scopes": "true",
+        "state": state,
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
     return HttpResponseRedirect(url)
@@ -332,9 +344,15 @@ def google_login(request):
 
 @router.get("/google/callback", response={302: None, 401: ErrorResponse, 403: ErrorResponse})
 @router.get("/google/callback/", response={302: None, 401: ErrorResponse, 403: ErrorResponse})
-def google_callback(request, code: str | None = None, error: str | None = None):
+def google_callback(request, code: str | None = None, error: str | None = None, state: str | None = None):
     if error:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, f"Google OAuth error: {error}")
+    
+    # Validación de CSRF vía State
+    saved_state = request.session.pop("oauth_state", None)
+    if not state or state != saved_state:
+        raise AppError(403, AppErrorCode.AUTHENTICATION_FAILED, "OAuth state mismatch. Posible ataque CSRF detectado.")
+
     if not code:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Codigo de autorizacion faltante.")
 
@@ -377,7 +395,6 @@ def google_callback(request, code: str | None = None, error: str | None = None):
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "No se pudo obtener el perfil de Google.")
 
     email = (userinfo.get("email") or "").strip().lower()
-    print(f"DEBUG: Google returned email: '{email}'", flush=True)  # <-- DEBUG LINE
     if not email:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Google no devolvio un email.")
 
