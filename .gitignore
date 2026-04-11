@@ -78,6 +78,7 @@ scripts/data_imports/carrera_map.example.json
 
 # Test battery (local only)
 Test/
+scripts/run_security_tests.sh
 
 # Backups
 backups/

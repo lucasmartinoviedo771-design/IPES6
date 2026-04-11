@@ -62,17 +62,8 @@ class PreinscripcionService:
             estudiante = Estudiante.objects.create(
                 user=user,
                 persona=persona,
-                dni=dni,
-                fecha_nacimiento=persona.fecha_nacimiento,
-                telefono=persona.telefono,
-                domicilio=persona.domicilio,
             )
         else:
-            estudiante.fecha_nacimiento = persona.fecha_nacimiento
-            estudiante.telefono = persona.telefono
-            estudiante.domicilio = persona.domicilio
-            if estudiante.dni != dni:
-                estudiante.dni = dni
             estudiante.save()
 
             user = estudiante.user
