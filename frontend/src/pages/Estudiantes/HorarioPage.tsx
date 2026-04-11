@@ -16,7 +16,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { isAxiosError } from "axios";
 
@@ -309,17 +309,15 @@ const HorarioPage: React.FC = () => {
       
       if (pageElements.length === 0) {
         // Fallback si no estamos en modo impresión o algo falló en la query
-        const canvas = await html2canvas(exportRef.current, { scale: 2 });
-        const imgData = canvas.toDataURL("image/png");
-        const imgHeight = (canvas.height * contentWidth) / canvas.width;
+        const imgData = await toPng(exportRef.current, { pixelRatio: 2 });
+        const imgHeight = (exportRef.current.offsetHeight * contentWidth) / exportRef.current.offsetWidth;
         pdf.addImage(imgData, "PNG", margin, margin, contentWidth, imgHeight);
       } else {
         for (let i = 0; i < pageElements.length; i++) {
           if (i > 0) pdf.addPage();
           const element = pageElements[i] as HTMLElement;
-          const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-          const imgData = canvas.toDataURL("image/png");
-          const imgHeight = (canvas.height * contentWidth) / canvas.width;
+          const imgData = await toPng(element, { pixelRatio: 2 });
+          const imgHeight = (element.offsetHeight * contentWidth) / element.offsetWidth;
           pdf.addImage(imgData, "PNG", margin, margin, contentWidth, imgHeight);
         }
       }

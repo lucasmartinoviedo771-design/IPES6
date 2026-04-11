@@ -483,4 +483,4 @@ def admin_reset_estudiante_password(request, dni: str):
     if not success:
         return 400, ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
 
-    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. Nueva clave: pass{dni}")
+    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. El alumno deberá cambiarla al primer ingreso.")

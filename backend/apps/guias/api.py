@@ -53,7 +53,7 @@ def guia_usuario(request: HttpRequest):
             manual_content = f.read()
     except FileNotFoundError:
         return 404, {"message": f"No se encontró un manual para el rol '{user_role}'."}
-    except Exception as e:
-        return 404, {"message": f"Error al leer el manual: {str(e)}"}
+    except Exception:
+        return 404, {"message": f"No se pudo cargar el manual para el rol '{user_role}'."}
 
     return 200, {"rol": user_role, "manual": manual_content}

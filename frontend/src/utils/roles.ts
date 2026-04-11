@@ -65,7 +65,7 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
   });
 
   // Privilegios administrativos absolutos
-  if (user.is_staff || user.is_superuser) {
+  if (user.is_superuser) {
     set.add("admin");
   }
 

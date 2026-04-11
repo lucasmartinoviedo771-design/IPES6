@@ -334,10 +334,9 @@ def listar_historial_regularidades(request, anio: int | None = None, profesorado
 
 @primera_carga_router.get(
     "/regularidades/planillas/{planilla_id}/pdf",
-    auth=None,
     response={200: Any, 403: ApiResponse, 404: ApiResponse},
 )
-# @ensure_roles(["admin", "secretaria", "bedel"])
+@ensure_roles(["admin", "secretaria", "bedel"])
 def descargar_planilla_pdf(request, planilla_id: int):
     planilla = PlanillaRegularidad.objects.filter(id=planilla_id).first()
     if not planilla:

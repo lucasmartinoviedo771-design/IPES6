@@ -3,13 +3,14 @@ from apps.common.api_schemas import ApiResponse
 from core.models import Materia, Regularidad
 
 from ..schemas import RegularidadVigenciaOut
-from .helpers import _calcular_vigencia_regularidad, _resolve_estudiante
+from .helpers import _calcular_vigencia_regularidad, _resolve_estudiante, _ensure_estudiante_access
 from .router import estudiantes_router
 
 
 @estudiantes_router.get("/vigencia-regularidad", response=dict)
 def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
     """Calcula hasta cuándo está vigente la regularidad del estudiante en una materia."""
+    _ensure_estudiante_access(request, dni)
     est = _resolve_estudiante(request, dni)
     if not est:
         return {"vigente": False, "motivo": "estudiante_no_encontrado"}

@@ -70,6 +70,20 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
     if not clase:
         raise HttpError(404, "No se encontró la clase requerida.")
 
+    # Verificación de membresía/acceso
+    roles = get_user_roles(request.user)
+    es_admin_staff = bool(roles & {"admin", "secretaria", "bedel"})
+    
+    if not es_admin_staff:
+        # ¿Es el docente de la clase?
+        es_docente_clase = clase.docente and (clase.docente.persona.dni == request.user.username)
+        # ¿Es un alumno de la comisión?
+        # Consultamos el snapshot para verificar si el alumno está inscripto en esta comisión
+        es_alumno_clase = CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id, dni=request.user.username).exists()
+        
+        if not es_docente_clase and not es_alumno_clase:
+            raise HttpError(403, "No tenés permiso para ver el listado de esta clase.")
+
     last_snapshot = CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id).order_by("-sincronizado_en").first()
     should_sync = False
     if not last_snapshot:

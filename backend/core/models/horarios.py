@@ -52,7 +52,7 @@ class HorarioCatedra(models.Model):
 
     espacio = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="horarios_catedra")
     turno = models.ForeignKey(Turno, on_delete=models.CASCADE, related_name="horarios_catedra")
-    anio_academico = models.IntegerField(help_text="Año académico (ej. 2025)")
+    anio_academico = models.IntegerField(default=2025, help_text="Año académico (ej. 2025)")
     cuatrimestre = models.CharField(
         max_length=3, choices=REGIMEN_CHOICES, blank=True, null=True
     )  # C1, C2, or NULL for ANUAL

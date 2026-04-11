@@ -16,7 +16,7 @@ import Download from "@mui/icons-material/Download";
 import Print from "@mui/icons-material/Print";
 import { useSnackbar } from 'notistack';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 import { CartonData } from '@/types/carton';
 import { formatDateToDDMMYY } from '@/utils/dates';
@@ -55,16 +55,10 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
     enqueueSnackbar('Generando PDF...', { variant: 'info' });
 
     try {
-      const canvas = await html2canvas(cartonRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = await toPng(cartonRef.current, { pixelRatio: 2 });
       const imgWidth = 210;
       const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const imgHeight = (cartonRef.current.offsetHeight * imgWidth) / cartonRef.current.offsetWidth;
       let heightLeft = imgHeight;
 
       const pdf = new jsPDF('p', 'mm', 'a4');

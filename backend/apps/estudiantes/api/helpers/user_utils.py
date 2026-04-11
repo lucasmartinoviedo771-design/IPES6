@@ -41,7 +41,7 @@ def _format_user_display(user) -> str | None:
 def _user_has_roles(user, roles: Iterable[str]) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         return True
     role_set = {role.lower() for role in roles}
     raw_groups = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}

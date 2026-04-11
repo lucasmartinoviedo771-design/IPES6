@@ -18,7 +18,7 @@ const PedidoAnaliticoPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { user } = (useAuth?.() ?? { user:null }) as any;
-  const canGestionar = !!user && (user.is_staff || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel','tutor'].includes((r||'').toLowerCase())));
+  const canGestionar = !!user && (user.is_superuser || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel','tutor'].includes((r||'').toLowerCase())));
 
   const [carreras, setCarreras] = useState<TrayectoriaCarreraDetalleDTO[]>([]);
   const [carrerasLoading, setCarrerasLoading] = useState(false);

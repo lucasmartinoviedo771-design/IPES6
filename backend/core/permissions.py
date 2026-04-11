@@ -81,7 +81,7 @@ def get_user_roles(user: User) -> set[str]:
         if name == "docentes" or "docente" in name:
             roles.add("docente")
 
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         roles.add("admin")
     return roles
 
@@ -92,7 +92,7 @@ def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
     Si el usuario no tiene al menos uno de los roles permitidos, lanza un AppError(403).
     """
     user = _ensure_authenticated(user)
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         return
     
     allowed = {role.lower() for role in allowed_roles}

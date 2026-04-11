@@ -118,7 +118,7 @@ const DocenteAsistenciaPage = () => {
 
   const authorized = useMemo(() => {
     if (!user) return false;
-    if (user.is_staff || user.is_superuser) return true;
+    if (user.is_superuser) return true;
     const roles = (user.roles || []).map((role) => role.toLowerCase());
     return roles.includes("admin") || roles.includes("secretaria") || roles.includes("kiosk");
   }, [user]);

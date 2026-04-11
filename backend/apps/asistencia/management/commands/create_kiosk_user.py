@@ -16,8 +16,8 @@ class Command(BaseCommand):
         password = options["password"]
         email = options["email"].strip()
 
-        if not username or len(password) < 4:
-            raise CommandError("Debe indicar un username y una contraseña mínima de 4 caracteres.")
+        if not username or len(password) < 12:
+            raise CommandError("Debe indicar un username y una contraseña mínima de 12 caracteres.")
 
         User = get_user_model()
         user, created = User.objects.get_or_create(username=username, defaults={"email": email})

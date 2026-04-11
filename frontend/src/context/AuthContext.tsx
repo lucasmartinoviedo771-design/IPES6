@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const login = async (loginId: string, password: string) => {
     const id = String(loginId).trim();
-    const payload = { login: id, username: id, dni: id, email: id, password: String(password).trim() };
+    const payload = { login: id, username: id, dni: id, email: id, password: String(password) };
 
     try {
       const { data } = await client.post("auth/login/", payload);

@@ -4,7 +4,6 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import PrintablePreinscripcion from "./PrintablePreinscripcion";
 import { obtenerPreinscripcion } from "@/api/preinscripciones";

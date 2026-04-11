@@ -173,7 +173,11 @@ backup() {
     
     BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
     
-    docker compose exec db mysqldump -u root -p"${DB_ROOT_PASSWORD:-root}" ipes6 > "$BACKUP_FILE"
+    if [ -z "${DB_ROOT_PASSWORD:-}" ]; then
+        print_error "DB_ROOT_PASSWORD no está definida. Abortando backup para evitar usar contraseña insegura."
+        exit 1
+    fi
+    docker compose exec db mysqldump -u root -p"${DB_ROOT_PASSWORD}" ipes6 > "$BACKUP_FILE"
     
     print_info "Backup creado: $BACKUP_FILE"
 }

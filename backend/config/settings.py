@@ -65,6 +65,9 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
 LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "5"))
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
 
+# Seguridad para Kioscos de Asistencia (dispositivos físicos)
+KIOSK_API_KEY = os.getenv("KIOSK_API_KEY", "dev-kiosk-key-secure-123")
+
 # Hosts permitidos (¡ajusta con tu dominio real!)
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", [])  # ej: http://localhost:5173, https://tu-dominio
@@ -157,7 +160,7 @@ else:
         "default": {
             "ENGINE": "django.db.backends.mysql",
             "NAME": os.getenv("DB_NAME", "ipes6"),
-            "USER": os.getenv("DB_USER", "root"),
+            "USER": os.getenv("DB_USER", "ipes6_user"),  # PROD: usar usuario con privilegios mínimos, nunca root
             "PASSWORD": os.getenv("DB_PASSWORD", ""),
             "HOST": os.getenv("DB_HOST", "127.0.0.1"),
             "PORT": os.getenv("DB_PORT", "3306"),
@@ -170,6 +173,9 @@ else:
 LANGUAGE_CODE = "es-ar"
 TIME_ZONE = "America/Argentina/Buenos_Aires"
 USE_I18N = True
+# USE_TZ = False: datetimes naive en zona America/Argentina/Buenos_Aires.
+# Argentina no usa DST, por lo que el riesgo de inconsistencias es bajo.
+# Cambiar a True requeriría migrar todos los DateTimeField existentes.
 USE_TZ = False
 
 # === Archivos estáticos / media ========================================

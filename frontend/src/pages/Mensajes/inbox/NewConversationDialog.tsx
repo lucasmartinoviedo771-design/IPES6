@@ -87,7 +87,7 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ op
         }
       });
     }
-    if (user?.is_superuser || user?.is_staff) {
+    if (user?.is_superuser) {
       roles.add("admin");
     }
     return roles;
