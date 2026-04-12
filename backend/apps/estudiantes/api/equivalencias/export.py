@@ -45,38 +45,57 @@ from core.models import (
 def equivalencias_para_materia(request, materia_id: int):
     """Devuelve materias equivalentes (otros profesorados) para la materia indicada."""
     try:
-        m = Materia.objects.get(id=materia_id)
+        m = Materia.objects.select_related("plan_de_estudio__profesorado").get(id=materia_id)
     except Materia.DoesNotExist:
         return []
-    grupos = EquivalenciaCurricular.objects.filter(materias=m)
-    if not grupos.exists():
-        candidates = Materia.objects.filter(nombre__iexact=m.nombre).exclude(id=m.id)
-        items: list[EquivalenciaItem] = []
-        for mm in candidates:
-            detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mm).select_related(
-                "bloque", "horario_catedra"
-            )
-            hs = [
-                Horario(
-                    dia=d.bloque.get_dia_display(),
-                    desde=str(d.bloque.hora_desde)[:5],
-                    hasta=str(d.bloque.hora_hasta)[:5],
-                )
-                for d in detalles
-            ]
-            items.append(
-                EquivalenciaItem(
-                    materia_id=mm.id,
-                    materia_nombre=mm.nombre,
-                    profesorado=mm.plan_de_estudio.profesorado.nombre,
-                    horarios=hs,
-                )
-            )
-        return items
 
-    eq = grupos.first()
+    # REGLA: Solo materias de Formación General
+    if m.tipo_formacion != Materia.TipoFormacion.FORMACION_GENERAL:
+        return []
+
+    # Buscamos en grupos de equivalencia formales
+    grupos = EquivalenciaCurricular.objects.filter(materias=m)
+    
+    materias_equivalentes = []
+    if grupos.exists():
+        for g in grupos:
+            # Filtramos candidatos por Reglas: FGN, misma carga horaria y mismo formato
+            candidates = g.materias.select_related("plan_de_estudio__profesorado").filter(
+                tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
+                horas_semana=m.horas_semana,
+                formato=m.formato
+            ).exclude(id=m.id)
+            for mm in candidates:
+                materias_equivalentes.append(mm)
+    else:
+        # Fallback: buscar materias con el mismo nombre, FGN, misma carga horaria y mismo formato
+        candidates = Materia.objects.select_related("plan_de_estudio__profesorado").filter(
+            nombre__iexact=m.nombre,
+            tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
+            horas_semana=m.horas_semana,
+            formato=m.formato
+        ).exclude(id=m.id)
+        materias_equivalentes = list(candidates)
+
+    def map_cuat(regimen: str) -> str:
+        return (
+            "ANUAL"
+            if regimen == Materia.TipoCursada.ANUAL
+            else ("1C" if regimen == Materia.TipoCursada.PRIMER_CUATRIMESTRE else "2C")
+        )
+
     items: list[EquivalenciaItem] = []
-    for mm in eq.materias.exclude(id=m.id):
+    for mm in materias_equivalentes:
+        # Evitamos Nones para el profesorado
+        profesorado_nombre = "Profesorado no especificado"
+        plan_id = None
+        profesorado_id = None
+        if mm.plan_de_estudio:
+            plan_id = mm.plan_de_estudio.id
+            if mm.plan_de_estudio.profesorado:
+                profesorado_nombre = mm.plan_de_estudio.profesorado.nombre
+                profesorado_id = mm.plan_de_estudio.profesorado.id
+            
         detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mm).select_related(
             "bloque", "horario_catedra"
         )
@@ -92,7 +111,10 @@ def equivalencias_para_materia(request, materia_id: int):
             EquivalenciaItem(
                 materia_id=mm.id,
                 materia_nombre=mm.nombre,
-                profesorado=mm.plan_de_estudio.profesorado.nombre,
+                plan_id=plan_id,
+                profesorado_id=profesorado_id,
+                profesorado=profesorado_nombre,
+                cuatrimestre=map_cuat(mm.regimen),
                 horarios=hs,
             )
         )

@@ -24,6 +24,8 @@ from apps.estudiantes.schemas.inscripciones import (
     MateriaInscriptaItem,
     InscripcionMateriaOut,
     CambioComisionOut,
+    AutorizarCambioComisionIn,
+    SolicitudCambioComisionItem,
 )
 
 from apps.estudiantes.schemas.mesas import (
@@ -160,6 +162,8 @@ __all__ = [
     "MateriaInscriptaItem",
     "InscripcionMateriaOut",
     "CambioComisionOut",
+    "AutorizarCambioComisionIn",
+    "SolicitudCambioComisionItem",
     # mesas
     "MesaExamenIn",
     "MesaExamenOut",

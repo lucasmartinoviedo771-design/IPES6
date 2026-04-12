@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from django.db.models import Max
 from core.models import (
     Bloque,
     HorarioCatedra,
+    HorarioCatedraDetalle,
     Materia,
     PlanDeEstudio,
     Profesorado,
 )
 
 from apps.estudiantes.schemas import (
+    Horario,
     HorarioCelda,
     HorarioDia,
     HorarioFranja,
@@ -48,6 +51,35 @@ def _format_time(value) -> str:
     return value.strftime("%H:%M") if value else ""
 
 
+def obtener_horarios_materia(m: Materia) -> list[Horario]:
+    """Extrae los horarios base del plan para una materia (último año académico)."""
+    hcs = (
+        HorarioCatedra.objects.filter(espacio=m)
+        .annotate(max_anio=Max("anio_academico"))
+        .order_by("-anio_academico")
+    )
+    if not hcs:
+        return []
+
+    # Tomamos el último HorarioCatedra (el más reciente)
+    detalles = (
+        HorarioCatedraDetalle.objects.filter(horario_catedra__in=hcs[:1])
+        .select_related("bloque", "horario_catedra")
+    )
+    
+    hs: list[Horario] = []
+    for d in detalles:
+        b = d.bloque
+        hs.append(
+            Horario(
+                dia=b.get_dia_display(),
+                desde=b.hora_desde.strftime("%H:%M"),
+                hasta=b.hora_hasta.strftime("%H:%M"),
+            )
+        )
+    return sorted(hs, key=lambda x: (x.dia, x.desde))
+
+
 def _anio_plan_label(numero: int) -> str:
     if not numero:
         return "Plan general"
@@ -75,7 +107,7 @@ def _construir_tablas_horario(
         materia = horario.espacio
         anio_plan = getattr(materia, "anio_cursada", None)
         if anio_plan is None:
-            anio_plan = getattr(horario, "anio_cursada", None)
+            anio_plan = getattr(horario, "anio_academico", None)
         if not anio_plan or anio_plan < 0 or anio_plan > 20:
             anio_plan = 0
         turno_key = horario.turno_id or 0
@@ -168,7 +200,7 @@ def _construir_tablas_horario(
 
             comisiones = list(horario.comisiones.select_related("docente"))
             if not comisiones:
-                comisiones = list(horario.espacio.comisiones.filter(anio_lectivo=horario.anio_cursada).select_related("docente"))
+                comisiones = list(horario.espacio.comisiones.filter(anio_lectivo=horario.anio_academico).select_related("docente"))
 
             docentes = sorted({(f"{c.docente.apellido}, {c.docente.nombre}" if c.docente and c.docente.apellido else (c.docente.nombre if c.docente else "")) for c in comisiones if c.docente_id})
             docentes = [doc for doc in docentes if doc]

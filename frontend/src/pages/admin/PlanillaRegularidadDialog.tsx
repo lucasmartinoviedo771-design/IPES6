@@ -33,12 +33,12 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
   const [crossLoadEnabled, setCrossLoadEnabled] = React.useState(false);
 
-  // --- Watchers intermedios para pasar a metadata hook ---
-  // Se inicializan con valores vacíos; el hook de form los proveerá vía watch
+  // Puente de estado para romper la dependencia circular entre form y metadata
   const [watchedIds, setWatchedIds] = React.useState({
     profesoradoId: '' as number | '',
     materiaId: '' as number | '',
     plantillaId: '' as number | '',
+    fecha: null as string | null,
   });
 
   const metadata = useRegularidadMetadata({
@@ -47,6 +47,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     profesoradoId: watchedIds.profesoradoId,
     materiaId: watchedIds.materiaId,
     plantillaId: watchedIds.plantillaId,
+    selectedFecha: watchedIds.fecha,
   });
 
   const form = usePlanillaForm({
@@ -65,23 +66,28 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     metadataQueryRefetch: metadata.metadataQuery.refetch,
   });
 
+  const fechaSeleccionada = form.watch('fecha');
+  const watchProfesoradoId = form.watch('profesoradoId');
+  const watchMateriaId = form.watch('materiaId');
+  const watchPlantillaId = form.watch('plantillaId');
+  const docentesForm = form.watch('docentes');
+
   const historial = usePlanillaHistorial({
     open,
     replaceFilas: form.replaceFilas,
   });
 
-  // Sincronizamos los ids vigilados con el formulario
-  const profesoradoId = form.watch('profesoradoId');
-  const materiaId = form.watch('materiaId');
-  const plantillaId = form.watch('plantillaId');
-  const docentesForm = form.watch('docentes');
-
+  // Actualizamos el puente de estado cuando el formulario cambia
   React.useEffect(() => {
-    setWatchedIds({ profesoradoId, materiaId, plantillaId });
-  }, [profesoradoId, materiaId, plantillaId]);
+    setWatchedIds({
+      profesoradoId: watchProfesoradoId,
+      materiaId: watchMateriaId,
+      plantillaId: watchPlantillaId,
+      fecha: fechaSeleccionada,
+    });
+  }, [watchProfesoradoId, watchMateriaId, watchPlantillaId, fechaSeleccionada]);
 
   // previewCodigo necesita la fecha también
-  const fechaSeleccionada = form.watch('fecha');
   const previewCodigo = React.useMemo(() => {
     if (!metadata.selectedProfesorado || !fechaSeleccionada) return null;
     const day = fechaSeleccionada.replace(/-/g, '');
@@ -168,7 +174,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
             <HistorialPanel
               isReadOnly={isReadOnly}
               selectedMateria={metadata.selectedMateria}
-              profesoradoId={profesoradoId}
+              profesoradoId={watchProfesoradoId}
               historyQuery={historial.historyQuery}
               historyMenuAnchor={historial.historyMenuAnchor}
               isHistoryOpen={historial.isHistoryOpen}

@@ -8,6 +8,7 @@ const InscripcionMateriaPage = lazyPage(() => import("@/pages/Estudiantes/Inscri
 const CambioComisionPage = lazyPage(() => import("@/pages/Estudiantes/CambioComisionPage"));
 const PedidoAnaliticoPage = lazyPage(() => import("@/pages/Estudiantes/PedidoAnaliticoPage"));
 const PedidoEquivalenciasPage = lazyPage(() => import("@/pages/Estudiantes/PedidoEquivalenciasPage"));
+const TramitesEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/TramitesEstudiantePage"));
 const MesaExamenPage = lazyPage(() => import("@/pages/Estudiantes/MesaExamenPage"));
 const TrayectoriaPage = lazyPage(() => import("@/pages/Estudiantes/TrayectoriaPage"));
 const CertificadoRegularPage = lazyPage(() => import("@/pages/Estudiantes/CertificadoRegularPage"));
@@ -33,6 +34,7 @@ export const buildEstudianteRoutes = () => (
       <Route path="/estudiantes/horarios" element={<HorarioPage />} />
       <Route path="/estudiantes/mis-asistencias" element={<MisAsistenciasPage />} />
       <Route path="/estudiantes/pedido-equivalencias" element={<PedidoEquivalenciasPage />} />
+      <Route path="/estudiantes/tramites" element={<TramitesEstudiantePage />} />
       <Route path="/estudiantes/certificado-regular" element={<CertificadoRegularPage />} />
       <Route path="/estudiantes/constancia-examen" element={<ConstanciaExamenPage />} />
     </Route>

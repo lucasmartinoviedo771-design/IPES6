@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.db.models import Max, Q
+from django.utils import timezone
 
 from apps.common.api_schemas import ApiResponse
 from core.models import Correlatividad, Estudiante, HorarioCatedra, HorarioCatedraDetalle, Materia, PlanDeEstudio, Profesorado
@@ -117,7 +118,14 @@ def materias_plan(
     if not plan:
         return []
 
+    hoy = timezone.now().date()
     for m in plan.materias.all().order_by("anio_cursada", "nombre"):
+        # Filtrar por vigencia temporal
+        if m.fecha_fin and m.fecha_fin < hoy:
+            continue
+        if m.fecha_inicio and m.fecha_inicio > hoy:
+            continue
+        
         materias.append(
             MateriaPlan(
                 id=m.id,
@@ -130,6 +138,9 @@ def materias_plan(
                 profesorado=plan_profesorado.nombre,
                 profesorado_id=plan_profesorado.id,
                 plan_id=plan.id,
+                tipo_formacion=m.tipo_formacion,
+                formato=m.formato,
+                horas_semana=m.horas_semana,
             )
         )
     return materias

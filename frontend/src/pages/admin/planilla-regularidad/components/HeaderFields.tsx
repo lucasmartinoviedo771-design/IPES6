@@ -81,7 +81,25 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
             </Alert>
           )}
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Controller
+            control={control}
+            name="fecha"
+            rules={{ required: true }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                type="date"
+                label="Fecha de la planilla"
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+                size="small"
+                required
+              />
+            )}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
           <Controller
             control={control}
             name="profesoradoId"
@@ -110,7 +128,7 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
             )}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <Controller
             control={control}
             name="materiaId"
@@ -144,7 +162,7 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
             )}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <Controller
             control={control}
             name="plantillaId"
@@ -170,24 +188,6 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
                   </MenuItem>
                 ))}
               </TextField>
-            )}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Controller
-            control={control}
-            name="fecha"
-            rules={{ required: true }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                type="date"
-                label="Fecha de la planilla"
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-                size="small"
-                required
-              />
             )}
           />
         </Grid>

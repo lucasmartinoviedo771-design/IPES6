@@ -27,13 +27,34 @@ class BajaInscripcionIn(Schema):
     dni: str | None = None
 
 class CambioComisionIn(Schema):
-    inscripcion_id: int
+    inscripcion_id: int | None = None # Opcional si es por laboral (nueva inscripcion)
+    materia_id: int | None = None      # Requerido si inscripcion_id es None
     comision_id: int
+    dni: str | None = None
+    motivo_cambio: Literal["OVERLAP", "WORK"] = "OVERLAP"
+    horario_laboral: list[dict] | None = Field(default_factory=list)
+
+class AutorizarCambioComisionIn(Schema):
+    aprobado: bool
+    disposicion_numero: str | None = None
+    observaciones: str | None = None
+
+class SolicitudCambioComisionItem(Schema):
+    id: int
+    estudiante_dni: str
+    estudiante_nombre: str
+    materia_nombre: str
+    anio: int
+    profesorado_nombre: str | None = None
+    comision_actual: str | None = None
+    comision_solicitada: str
+    motivo: str
+    created_at: str
 
 class InscripcionEstado(Schema):
     pass # Placeholder si se necesita tipado estricto, o usar Literal abajo
 
-InscripcionEstadoType = Literal["CONF", "PEND", "RECH", "ANUL", "BAJA"]
+InscripcionEstadoType = Literal["CONF", "PEND", "RECH", "ANUL", "BAJA", "COND"]
 
 # ==========================================
 # 7. COMISIONES Y LOOKUP
@@ -96,8 +117,10 @@ class MateriaInscriptaItem(Schema):
     profesorado_nombre: str | None = None
     anio_plan: int
     anio_academico: int
+    status: InscripcionEstadoType | None = None # alias for estado if needed
     estado: InscripcionEstadoType
     estado_display: str
+    horarios: list[Horario] = Field(default_factory=list)
     comision_actual: ComisionResumen | None = None
     comision_solicitada: ComisionResumen | None = None
     fecha_creacion: str

@@ -30,8 +30,6 @@ export default function BedelesIndex() {
           ? [
             DASHBOARD_ITEMS.CARRERAS_VIEW,
             DASHBOARD_ITEMS.PROFESORADO_ABM,
-            DASHBOARD_ITEMS.PLANES_ESTUDIO_ABM,
-            DASHBOARD_ITEMS.MATERIAS_ABM,
             DASHBOARD_ITEMS.CORRELATIVIDADES_ABM,
           ]
           : [],

@@ -92,7 +92,7 @@ def list_horarios_catedra(request, espacio_id: int | None = None, turno_id: int 
     if espacio_id: qs = qs.filter(espacio_id=espacio_id)
     if turno_id: qs = qs.filter(turno_id=turno_id)
     if cuatrimestre: qs = qs.filter(cuatrimestre=cuatrimestre)
-    if anio_cursada: qs = qs.filter(anio_cursada=anio_cursada)
+    if anio_cursada: qs = qs.filter(anio_academico=anio_cursada)
     
     return qs.annotate(
         espacio_nombre=F("espacio__nombre"),
@@ -106,7 +106,7 @@ def create_horario_catedra(request, payload: HorarioCatedraIn):
     hc, _ = HorarioCatedra.objects.get_or_create(
         espacio=materia,
         turno_id=payload.turno_id,
-        anio_cursada=payload.anio_cursada,
+        anio_academico=payload.anio_academico,
         cuatrimestre=payload.cuatrimestre
     )
     return hc
@@ -159,7 +159,7 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     # Esto permite que 1er año y 2do año del mismo profesorado tengan clases al mismo tiempo.
     conflictos_alumnos = HorarioCatedraDetalle.objects.filter(
         bloque=bloque,
-        horario_catedra__anio_cursada=hc.anio_cursada,
+        horario_catedra__anio_academico=hc.anio_academico,
         horario_catedra__turno=hc.turno,
         horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
         horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
@@ -169,7 +169,7 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     if conflictos_alumnos.exists():
         conf = conflictos_alumnos.select_related('horario_catedra__espacio').first()
         return 409, ApiResponse(
-            ok=False, 
+            ok=False,
             message=f"Espacio ocupado por {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.anio_cursada}º año)"
         )
 
@@ -177,14 +177,14 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     # Buscamos qué docentes están asignados a esta materia en este año lectivo
     docentes_ids = Comision.objects.filter(
         materia=hc.espacio,
-        anio_lectivo=hc.anio_cursada
+        anio_lectivo=hc.anio_academico
     ).values_list('docente_id', flat=True).distinct()
     docentes_ids = [d for d in docentes_ids if d]
 
     if docentes_ids:
         conflictos_docente = HorarioCatedraDetalle.objects.filter(
             bloque=bloque,
-            horario_catedra__anio_cursada=hc.anio_cursada,
+            horario_catedra__anio_academico=hc.anio_academico,
             horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
             horario_catedra__comisiones__docente_id__in=docentes_ids
         ).exclude(horario_catedra=hc)
@@ -210,7 +210,7 @@ def delete_horario_detalle(request, detalle_id: int):
 @router.get("/horarios/ocupacion", response=list[BloqueOut], auth=JWTAuth())
 def get_occupied_blocks(request, anio_cursada: int, turno_id: int, cuatrimestre: str | None = None):
     _ensure_structure_view(request.user)
-    schedules = HorarioCatedra.objects.filter(anio_cursada=anio_cursada, turno_id=turno_id)
+    schedules = HorarioCatedra.objects.filter(anio_academico=anio_cursada, turno_id=turno_id)
     if cuatrimestre:
         schedules = schedules.filter(Q(cuatrimestre=Materia.TipoCursada.ANUAL) | Q(cuatrimestre=cuatrimestre))
     

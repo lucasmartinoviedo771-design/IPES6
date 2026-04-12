@@ -245,11 +245,15 @@ export default function CarrerasPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const payload = {
-      profesoradoId: typeof profesoradoId === "number" ? profesoradoId : null,
-      planId: typeof planId === "number" ? planId : null,
-    };
-    window.sessionStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(payload));
+    // IMPORTANTE: Solo guardar si tenemos una selección real para evitar que el estado inicial 
+    // vacío pise lo que ya estaba guardado en el sessionStorage al volver atrás.
+    if (profesoradoId !== "") {
+      const payload = {
+        profesoradoId: typeof profesoradoId === "number" ? profesoradoId : null,
+        planId: typeof planId === "number" ? planId : null,
+      };
+      window.sessionStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(payload));
+    }
   }, [profesoradoId, planId]);
 
   useEffect(() => {

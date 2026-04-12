@@ -8,8 +8,29 @@ export interface InscripcionMateriaPayload {
 }
 
 export interface CambioComisionPayload {
-  inscripcion_id: number;
+  inscripcion_id?: number;
+  materia_id?: number;
   comision_id: number;
+  dni?: string;
+  motivo_cambio: 'OVERLAP' | 'WORK';
+  horario_laboral?: Array<{
+    dia: number;
+    desde: string;
+    hasta: string;
+  }>;
+}
+
+export interface SolicitudCambioComisionDTO {
+  id: number;
+  estudiante_dni: string;
+  estudiante_nombre: string;
+  materia_nombre: string;
+  anio: number;
+  profesorado_nombre: string | null;
+  comision_actual: string | null;
+  comision_solicitada: string;
+  motivo: string;
+  created_at: string;
 }
 
 export interface CancelarInscripcionPayload {
@@ -178,6 +199,9 @@ export type MateriaPlanDTO = {
   profesorado?: string;
   profesorado_id?: number;
   plan_id?: number;
+  tipo_formacion?: string;
+  formato?: string;
+  horas_semana?: number;
 };
 
 export type HistorialEstudianteDTO = {
@@ -429,8 +453,9 @@ export type MateriaInscriptaItemDTO = {
   profesorado_nombre?: string | null;
   anio_plan: number;
   anio_academico: number;
-  estado: 'CONF' | 'PEND' | 'RECH' | 'ANUL' | 'BAJA';
+  estado: 'CONF' | 'PEND' | 'RECH' | 'ANUL' | 'BAJA' | 'COND';
   estado_display: string;
+  horarios: HorarioDTO[];
   comision_actual?: ComisionResumenDTO | null;
   comision_solicitada?: ComisionResumenDTO | null;
   fecha_creacion: string;

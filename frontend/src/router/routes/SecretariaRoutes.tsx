@@ -28,6 +28,7 @@ const AnaliticosPage = lazyPage(() => import("@/pages/Secretaria/AnaliticosPage"
 const EstudiantesAdminPage = lazyPage(() => import("@/pages/Secretaria/EstudiantesAdminPage"));
 const MesasPage = lazyPage(() => import("@/pages/Secretaria/MesasPage"));
 const PedidosEquivalenciasPage = lazyPage(() => import("@/pages/Secretaria/PedidosEquivalenciasPage"));
+const CambioComisionAdminPage = lazyPage(() => import("@/pages/Secretaria/CambioComisionAdminPage"));
 const CursoIntroductorioPage = lazyPage(() => import("@/pages/Secretaria/CursoIntroductorioPage"));
 const CorrelatividadesPage = lazyPage(() => import("@/pages/Secretaria/CorrelatividadesPage"));
 const CargaNotasPage = lazyPage(() => import("@/pages/Secretaria/CargaNotasPage"));
@@ -119,6 +120,7 @@ export const buildSecretariaRoutes = () => (
     </Route>
     <Route element={<ProtectedRoute roles={secretariaTutorRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/pedidos-equivalencias" element={<PedidosEquivalenciasPage />} />
+      <Route path="/secretaria/cambio-comision" element={<CambioComisionAdminPage />} />
     </Route>
     <Route element={<ProtectedRoute roles={cursoIntroRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/curso-introductorio" element={<CursoIntroductorioPage />} />

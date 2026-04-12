@@ -233,7 +233,7 @@ def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) ->
 
     # Optimizamos prefetches para que solo traigan lo necesario del set filtrado
     materias_prefetch = Materia.objects.only(
-        "id", "plan_de_estudio_id", "nombre", "anio_cursada", "formato", "regimen"
+        "id", "plan_de_estudio_id", "nombre", "anio_cursada", "formato", "regimen", "fecha_inicio", "fecha_fin"
     ).order_by("anio_cursada", "nombre")
     
     planes_prefetch = PlanDeEstudio.objects.filter(profesorado__in=profes_qs).only(
@@ -254,6 +254,7 @@ def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) ->
                     "id": m.id, "nombre": m.nombre, "anio_cursada": m.anio_cursada,
                     "formato": m.formato, "dictado": REGIMEN_MAP.get(m.regimen, "ANUAL"),
                     "regimen": m.regimen, "plan_id": plan.id, "plan_resolucion": plan.resolucion,
+                    "fecha_inicio": m.fecha_inicio, "fecha_fin": m.fecha_fin,
                 }
                 for m in plan.materias.all()
             ]

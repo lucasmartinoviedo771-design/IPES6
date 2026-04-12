@@ -16,6 +16,7 @@ import {
   MesaListadoItemDTO,
   MesaPlanillaDTO,
   TrayectoriaCarreraDetalleDTO,
+  SolicitudCambioComisionDTO,
 } from "./types";
 
 export const solicitarInscripcionMateria = (payload: InscripcionMateriaPayload) =>
@@ -37,6 +38,22 @@ export const bajaInscripcionMateria = (payload: { inscripcion_id: number; motivo
 
 export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia' | 'beca' | 'control' | 'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
   client.post<GenericResponse>("/estudiantes/pedido_analitico", payload).then(res => res.data);
+
+export async function listarCambiosComisionPendientes(params?: { dni?: string; profesorado_id?: number }): Promise<SolicitudCambioComisionDTO[]> {
+  const { data } = await client.get<SolicitudCambioComisionDTO[]>("/estudiantes/cambio-comision/pendientes", { params });
+  return data;
+}
+
+export async function autorizarCambioComision(inscripcionId: number, payload: { aprobado: boolean; disposicion_numero?: string; observaciones?: string }): Promise<ApiResponseDTO> {
+  const { data } = await client.patch<ApiResponseDTO>(`/estudiantes/inscripcion-materia/${inscripcionId}/autorizar-cambio-comision`, payload);
+  return data;
+}
+
+export const marcarAnaliticoConfeccionado = (pedidoId: number) =>
+  client.patch<GenericResponse>(`/estudiantes/analiticos_ext/${pedidoId}/marcar-confeccionado`).then(res => res.data);
+
+export const marcarAnaliticoEntregado = (pedidoId: number) =>
+  client.patch<GenericResponse>(`/estudiantes/analiticos_ext/${pedidoId}/marcar-entregado`).then(res => res.data);
 
 export const solicitarMesaExamen = (payload: MesaExamenPayload) =>
   client.post<GenericResponse>("/estudiantes/mesa-examen", payload).then(res => res.data);

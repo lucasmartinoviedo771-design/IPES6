@@ -36,8 +36,15 @@ export const useInscripcionMateria = () => {
   const [dniInput, setDniInput] = useState<string>("");
   const [dniFiltro, setDniFiltro] = useState<string>("");
   const [anioFiltro, setAnioFiltro] = useState<number | "all">("all");
-  const [selectedCarreraId, setSelectedCarreraId] = useState<string>("");
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  
+  // Persistencia de seleccion de carrera/plan
+  const [selectedCarreraId, setSelectedCarreraId] = useState<string>(() => {
+    return localStorage.getItem("ipes_inscr_carrera_id") || "";
+  });
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(() => {
+    return localStorage.getItem("ipes_inscr_plan_id") || "";
+  });
+
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -56,33 +63,41 @@ export const useInscripcionMateria = () => {
   const handleCarreraChange = (event: SelectChangeEvent<string>) => {
     const value = event.target.value;
     setSelectedCarreraId(value);
+    localStorage.setItem("ipes_inscr_carrera_id", value);
     setErr(null);
     setInfo(null);
     if (!value) {
       setSelectedPlanId("");
+      localStorage.removeItem("ipes_inscr_plan_id");
       return;
     }
     const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === value);
     if (!carrera) {
       setSelectedPlanId("");
+      localStorage.removeItem("ipes_inscr_plan_id");
       return;
     }
     const preferido = carrera.planes.find((p) => p.vigente) ?? carrera.planes[0];
-    setSelectedPlanId(preferido ? String(preferido.id) : "");
+    const planIdStr = preferido ? String(preferido.id) : "";
+    setSelectedPlanId(planIdStr);
+    if (planIdStr) localStorage.setItem("ipes_inscr_plan_id", planIdStr);
+    else localStorage.removeItem("ipes_inscr_plan_id");
   };
 
   const handlePlanChange = (event: SelectChangeEvent<string>) => {
     setErr(null);
     setInfo(null);
     setSelectedPlanId(event.target.value);
+    localStorage.setItem("ipes_inscr_plan_id", event.target.value);
   };
 
   useEffect(() => {
     setInfo(null);
     setErr(null);
     setSeleccionadas([]);
-    setSelectedCarreraId("");
-    setSelectedPlanId("");
+    // Ya no limpiamos carrera/plan aqui para favorecer persistencia
+    // setSelectedCarreraId("");
+    // setSelectedPlanId("");
   }, [dniFiltro]);
 
   const carrerasQ = useQuery<TrayectoriaCarreraDetalleDTO[]>({
@@ -105,9 +120,10 @@ export const useInscripcionMateria = () => {
 
   useEffect(() => {
     const disponibles = carrerasDisponibles;
-    if (!disponibles.length) {
-      setSelectedCarreraId("");
-      setSelectedPlanId("");
+    const isLoading = carrerasQ.isLoading;
+
+    if (isLoading || !disponibles.length) {
+      // No hacemos nada mientras carga o si no hay datos aun
       return;
     }
     if (selectedCarreraId) {

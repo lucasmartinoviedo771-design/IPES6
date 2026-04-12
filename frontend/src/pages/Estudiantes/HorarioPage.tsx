@@ -83,18 +83,11 @@ const HorarioPage: React.FC = () => {
   const [planId, setPlanId] = useState<SelectValue>("");
   const [turnoFilter, setTurnoFilter] = useState<SelectValue>("");
   const [anioFilter, setAnioFilter] = useState<SelectValue>("");
-  const [cuatrFilter, setCuatrFilter] = useState<string>(() => {
-    const today = new Date();
-    const month = today.getMonth() + 1;
-    const day = today.getDate();
-
-    // 1º Cuatrimestre: 01/02 a 01/08
-    if ((month === 2 && day >= 1) || (month >= 3 && month <= 7) || (month === 8 && day <= 1)) {
-      return "1C";
-    }
-    // 2º Cuatrimestre: resto del año
-    return "2C";
-  });
+  const getCuatrDefault = () => {
+    const month = new Date().getMonth() + 1;
+    return month <= 7 ? "1C" : "2C";
+  };
+  const [cuatrFilter, setCuatrFilter] = useState<string>(getCuatrDefault);
   const [isPrintMode, setIsPrintMode] = useState(false);
 
   const carrerasQuery = useQuery({
@@ -161,7 +154,7 @@ const HorarioPage: React.FC = () => {
       obtenerHorarioEstudiante({
         profesorado_id: parseNumberOrEmpty(profesoradoId),
         plan_id: parseNumberOrEmpty(planId),
-        cuatrimestre: cuatrFilter,
+        cuatrimestre: cuatrFilter || undefined,
         dni: targetDni ?? undefined,
       }),
     enabled: Boolean(profesoradoId && planId),
@@ -373,14 +366,14 @@ const HorarioPage: React.FC = () => {
     setPlanId("");
     setTurnoFilter("");
     setAnioFilter("");
-    setCuatrFilter("");
+    setCuatrFilter(getCuatrDefault());
   };
 
   const handlePlanChange = (event: SelectChangeEvent<string>) => {
     setPlanId(event.target.value);
     setTurnoFilter("");
     setAnioFilter("");
-    setCuatrFilter("");
+    setCuatrFilter(getCuatrDefault());
   };
 
   const loading =

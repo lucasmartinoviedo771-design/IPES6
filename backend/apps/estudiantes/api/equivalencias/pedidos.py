@@ -384,6 +384,15 @@ def registrar_documentos_titulos(
     pedido.titulos_registrado_en = ahora
     pedido.titulos_registrado_por = request.user
     pedido.save()
+
+    # Notificación automática si ya tiene los datos mínimos
+    if pedido.titulos_disposicion_numero or pedido.titulos_nota_numero:
+        from apps.estudiantes.services.notificaciones_service import NotificacionesService
+        try:
+            NotificacionesService.notificar_equivalencia_finalizada(pedido)
+        except Exception as e:
+            print(f"Error enviando notificación de equivalencia: {e}")
+
     return _serialize_pedido_equivalencia(pedido, request.user)
 
 

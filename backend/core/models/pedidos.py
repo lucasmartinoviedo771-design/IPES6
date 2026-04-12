@@ -12,13 +12,29 @@ class PedidoAnalitico(models.Model):
         CONTROL = "control", "Control"
         OTRO = "otro", "Otro"
 
+    class Estado(models.TextChoices):
+        PENDIENTE = "PEND", "Pendiente"
+        CONFECCIONADO = "CONF", "Confeccionado"
+        ENTREGADO = "ENTR", "Entregado"
+
     estudiante = models.ForeignKey("Estudiante", on_delete=models.CASCADE, related_name="pedidos_analitico")
     ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.PROTECT, related_name="pedidos_analitico")
     motivo = models.CharField(max_length=20, choices=Motivo.choices)
     motivo_otro = models.CharField(max_length=255, blank=True, null=True)
     profesorado = models.ForeignKey(Profesorado, on_delete=models.SET_NULL, null=True, blank=True)
     cohorte = models.IntegerField(null=True, blank=True, help_text="Año de ingreso (cohorte)")
+    estado = models.CharField(max_length=4, choices=Estado.choices, default=Estado.PENDIENTE)
+    
+    preparado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    preparado_en = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Analítico {self.estudiante.dni} {self.created_at.date()} ({self.get_motivo_display()})"

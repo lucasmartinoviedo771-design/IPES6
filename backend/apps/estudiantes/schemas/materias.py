@@ -24,6 +24,9 @@ class MateriaPlan(Schema):
     profesorado: str | None = None
     profesorado_id: int | None = None
     plan_id: int | None = None
+    tipo_formacion: str | None = None
+    formato: str | None = None
+    horas_semana: int | None = None
 
 class HistorialEstudiante(Schema):
     aprobadas: list[int] = Field(default_factory=list)

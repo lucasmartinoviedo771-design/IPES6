@@ -88,6 +88,8 @@ export interface RegularidadMetadataMateria {
   dictado: string | null;
   regimen: string;
   plan_resolucion: string;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
 }
 
 export interface RegularidadMetadataPlan {

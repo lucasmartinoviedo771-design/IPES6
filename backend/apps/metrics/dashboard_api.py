@@ -182,12 +182,12 @@ def global_overview(request):
 
     # 4. HORARIOS
     horarios_data = HorarioCatedra.objects.values(
-        "espacio__plan_de_estudio__profesorado__id", "espacio__plan_de_estudio__profesorado__nombre", "anio_cursada"
-    ).annotate(total=Count("id")).order_by("espacio__plan_de_estudio__profesorado__nombre", "anio_cursada")
+        "espacio__plan_de_estudio__profesorado__id", "espacio__plan_de_estudio__profesorado__nombre", "anio_academico"
+    ).annotate(total=Count("id")).order_by("espacio__plan_de_estudio__profesorado__nombre", "anio_academico")
     horarios = [DashboardHorario(
         profesorado_id=row["espacio__plan_de_estudio__profesorado__id"],
         profesorado=row["espacio__plan_de_estudio__profesorado__nombre"],
-        anio_cursada=row["anio_cursada"], cantidad=row["total"]
+        anio_cursada=row["anio_academico"], cantidad=row["total"]
     ) for row in horarios_data]
 
     # 5. CAMBIOS DE COMISION

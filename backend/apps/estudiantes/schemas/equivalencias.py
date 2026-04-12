@@ -32,6 +32,7 @@ class PedidoAnaliticoOut(Schema):
     message: str
 
 class PedidoAnaliticoItem(Schema):
+    id: int
     dni: str
     apellido_nombre: str
     profesorado: str | None
@@ -40,6 +41,7 @@ class PedidoAnaliticoItem(Schema):
     fecha_solicitud: str
     motivo: str
     motivo_otro: str | None = None
+    estado: str = "PEND"
 
 class PedidoEquivalenciaMateriaIn(Schema):
     nombre: str = Field(..., min_length=1)

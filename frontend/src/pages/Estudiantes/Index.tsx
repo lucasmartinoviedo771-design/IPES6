@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Grid from "@mui/material/Grid";
@@ -22,11 +22,13 @@ import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import {
   ICON_GRADIENT,
   INSTITUTIONAL_GREEN,
+  INSTITUTIONAL_GREEN_DARK,
   INSTITUTIONAL_TERRACOTTA,
 } from "@/styles/institutionalColors";
 import { useAuth } from "@/context/AuthContext";
 import { fetchCursoIntroEstado } from "@/api/cursoIntro";
 import { getMisAlertas, CorrelativaCaidaItem } from "@/api/reportes";
+import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 
@@ -52,31 +54,35 @@ type Section = {
   items: SectionCard[];
 };
 
-const upcomingEvents: EventCard[] = [
-  {
-    title: "Inscripción a Materias 2025",
-    date: "15 - 28 de Febrero",
-    icon: <Assignment />,
-    path: "/estudiantes/inscripcion-materia",
-  },
-  {
-    title: "Mesa de Examen - Marzo",
-    date: "10 - 15 de Marzo",
-    icon: <CalendarMonth />,
-    path: "/estudiantes/mesa-examen",
-  },
-  {
-    title: "Inicio de Clases",
-    date: "3 de Marzo 2025",
-    icon: <Event />,
-  },
-  {
-    title: "Cambio de Comisión",
-    date: "Hasta el 10 de Marzo",
-    icon: <CompareArrows />,
-    path: "/estudiantes/cambio-comision",
-  },
-];
+const WINDOW_TYPE_CONFIG: Record<string, { title: string; icon: React.ReactNode; subtitle: string; path?: string }> = {
+  MATERIAS: { title: "Inscripción a Materias", subtitle: "Registro de cursadas y materias", icon: <Assignment />, path: "/estudiantes/inscripcion-materia" },
+  MESAS_FINALES: { title: "Exámenes Finales", subtitle: "Inscripción a mesas de examen", icon: <CalendarMonth />, path: "/estudiantes/mesa-examen" },
+  MESAS_EXTRA: { title: "Exámenes Extraordinarios", subtitle: "Mesas especiales y remanentes", icon: <CalendarMonth />, path: "/estudiantes/mesa-examen" },
+  COMISION: { title: "Cambio de Comisión", subtitle: "Solicitud de cambio de grupo", icon: <CompareArrows />, path: "/estudiantes/cambio-comision" },
+  ANALITICOS: { title: "Títulos y Diplomas", subtitle: "Gestión y seguimiento de trámites", icon: <School />, path: "/estudiantes/tramites" },
+  EQUIVALENCIAS: { title: "Equivalencias", subtitle: "Convalidación de materias externas", icon: <CompareArrows />, path: "/estudiantes/tramites" },
+  CURSO_INTRODUCTORIO: { title: "Curso Introductorio", subtitle: "Ingreso y nivelación", icon: <VerifiedUser />, path: "/estudiantes/curso-introductorio" },
+  PREINSCRIPCION: { title: "Preinscripción", subtitle: "Registro de aspirantes", icon: <Assignment /> },
+  CARRERAS: { title: "Inscripción a Carreras", subtitle: "Cambio o alta de plan de estudio", icon: <School /> },
+  INSCRIPCION: { title: "Inscripción General", subtitle: "Gestión administrativa", icon: <Assignment /> },
+  CALENDARIO_CUATRIMESTRE: { title: "Calendario Académico", subtitle: "Fechas clave del cuatrimestre", icon: <EventNote /> },
+};
+
+const formatDateShort = (dateStr: string) => {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${d.getDate()} de ${d.toLocaleString('es-AR', { month: 'long' })}`;
+};
+
+const getWindowStatus = (ventana: VentanaDto) => {
+  const now = new Date();
+  const from = new Date(ventana.desde + 'T00:00:00');
+  const to = new Date(ventana.hasta + 'T23:59:59');
+
+  if (!ventana.activo) return 'closed';
+  if (now >= from && now <= to) return 'active';
+  if (now < from) return 'future';
+  return 'closed';
+};
 
 const baseSections: Section[] = [
   {
@@ -120,16 +126,10 @@ const baseSections: Section[] = [
         path: "/estudiantes/cambio-comision",
       },
       {
-        title: "Pedido de Analítico",
-        subtitle: "Solicita tu certificado analítico.",
+        title: "Mis Trámites",
+        subtitle: "Solicitá tu analítico, tramitá equivalencias y consultá tus resultados.",
         icon: <School />,
-        path: "/estudiantes/pedido-analitico",
-      },
-      {
-        title: "Pedido de equivalencias",
-        subtitle: "Genera la nota (Anexo A/B) para tramitar equivalencias.",
-        icon: <Assignment />,
-        path: "/estudiantes/pedido-equivalencias",
+        path: "/estudiantes/tramites",
       },
       {
         title: "Mesa de Examen",
@@ -220,6 +220,40 @@ export default function EstudiantesIndex() {
     retry: false,
   });
 
+  const { data: ventanas } = useQuery({
+    queryKey: ["ventanas"],
+    queryFn: () => fetchVentanas(),
+    staleTime: 60_000,
+  });
+
+  const dynamicEvents = useMemo(() => {
+    if (!ventanas) return [];
+    const mapped = ventanas.map((v) => {
+      const config = WINDOW_TYPE_CONFIG[v.tipo] || {
+        title: v.tipo,
+        subtitle: "Gestión institucional",
+        icon: <EventNote />
+      };
+      const status = getWindowStatus(v);
+      return {
+        ...v,
+        title: config.title,
+        subtitle: config.subtitle,
+        icon: config.icon,
+        path: config.path,
+        status,
+      };
+    });
+    // Sort: active first, then future, then closed
+    return mapped.sort((a, b) => {
+      const order: Record<string, number> = { active: 1, future: 2, closed: 3 };
+      if (order[a.status] !== order[b.status]) {
+        return order[a.status] - order[b.status];
+      }
+      return new Date(b.desde).getTime() - new Date(a.desde).getTime();
+    });
+  }, [ventanas]);
+
   const sections = useMemo<Section[]>(() => {
     // ... existing memo logic ...
     if (!isStudent) {
@@ -284,47 +318,118 @@ export default function EstudiantesIndex() {
         <Typography variant="body2" color="text.secondary">
           Mantenete al día con las fechas importantes del ciclo académico.
         </Typography>
-        <Stack spacing={1}>
-          {upcomingEvents.map((event) => (
-            <Box
-              key={event.title}
-              onClick={() => event.path && navigate(event.path)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                px: 2,
-                py: 1.5,
-                borderRadius: 2,
-                border: "1px solid rgba(125,127,110,0.25)",
-                cursor: event.path ? "pointer" : "default",
-                backgroundColor: "#fff",
-                transition: "transform 0.2s ease",
-                "&:hover": event.path ? { transform: "translateY(-1px)" } : {},
-              }}
-            >
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ ...iconWrapperStyles, width: 40, height: 40 }}>{event.icon}</Box>
-                <Box>
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    {event.title}
-                  </Typography>
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <AccessTime fontSize="small" sx={{ color: INSTITUTIONAL_TERRACOTTA }} />
-                    <Typography variant="body2" color="text.secondary">
-                      {event.date}
-                    </Typography>
-                  </Stack>
-                </Box>
-              </Stack>
-              {event.path && (
-                <Typography variant="caption" color={INSTITUTIONAL_TERRACOTTA}>
-                  Ver detalle →
-                </Typography>
-              )}
-            </Box>
-          ))}
-        </Stack>
+        <Grid container spacing={2} sx={{ mt: 1 }}>
+          {!ventanas ? (
+            <Grid item xs={12}>
+              <Typography variant="body2" color="text.secondary">Cargando eventos...</Typography>
+            </Grid>
+          ) : dynamicEvents.length === 0 ? (
+            <Grid item xs={12}>
+              <Typography variant="body2" color="text.secondary">No hay eventos próximos.</Typography>
+            </Grid>
+          ) : (
+            dynamicEvents.map((event) => {
+              const isActive = event.status === 'active';
+              const isFuture = event.status === 'future';
+              const VIBRANT_GREEN = "#2D8C3C";
+
+              return (
+                <Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
+                  <Box
+                    onClick={() => event.path && navigate(event.path)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: `1px solid rgba(183,105,78,0.25)`,
+                      cursor: event.path ? "pointer" : "default",
+                      backgroundColor: "#fff",
+                      transition: "all 0.2s ease",
+                      "&:hover": event.path ? {
+                        transform: "translateY(-2px)",
+                        boxShadow: 2,
+                        borderColor: INSTITUTIONAL_TERRACOTTA
+                      } : {},
+                    }}
+                  >
+                    <Box sx={{
+                      mr: 2,
+                      color: INSTITUTIONAL_TERRACOTTA,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: 0.8
+                    }}>
+                      {/* Simulating the skeletal icon style from mockup */}
+                      {React.cloneElement(event.icon as React.ReactElement, { sx: { fontSize: 48 } })}
+                    </Box>
+
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1.1, mb: 0.2, fontSize: '1rem' }}>
+                        {event.title}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        {event.subtitle}
+                      </Typography>
+
+                      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                        {isActive && (
+                          <Box component="span" sx={{
+                            bgcolor: VIBRANT_GREEN,
+                            color: 'white',
+                            fontSize: '0.6rem',
+                            fontWeight: 800,
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: '3px',
+                            textTransform: 'uppercase',
+                          }}>
+                            Abierto
+                          </Box>
+                        )}
+                        {isFuture && (
+                          <Box component="span" sx={{
+                            bgcolor: INSTITUTIONAL_TERRACOTTA,
+                            color: 'white',
+                            fontSize: '0.6rem',
+                            fontWeight: 800,
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: '3px',
+                            textTransform: 'uppercase',
+                          }}>
+                            Próximamente
+                          </Box>
+                        )}
+
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <CalendarMonth sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7 }} />
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
+                            <Box component="span" color="text.secondary">Desde:</Box> {formatDateShort(event.desde)}
+                          </Typography>
+                        </Stack>
+
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Assignment sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7 }} />
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
+                            <Box component="span" color="text.secondary">Hasta:</Box> {formatDateShort(event.hasta)}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </Box>
+
+                    {event.path && (
+                      <Box sx={{ ml: 1, color: 'text.secondary', opacity: 0.5 }}>
+                        <CompareArrows sx={{ fontSize: 16, transform: 'rotate(-90deg)' }} />
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+              );
+            })
+          )}
+        </Grid>
       </Stack>
 
       {sections.map(section => (

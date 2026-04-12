@@ -14,6 +14,7 @@ interface UseRegularidadMetadataOptions {
   profesoradoId: number | '';
   materiaId: number | '';
   plantillaId: number | '';
+  selectedFecha?: string | null;
 }
 
 export function useRegularidadMetadata({
@@ -22,6 +23,7 @@ export function useRegularidadMetadata({
   profesoradoId,
   materiaId,
   plantillaId,
+  selectedFecha,
 }: UseRegularidadMetadataOptions) {
   const metadataQuery = useQuery({
     queryKey: ['primera-carga', 'regularidades', 'metadata', crossLoadEnabled],
@@ -42,8 +44,26 @@ export function useRegularidadMetadata({
     if (!selectedProfesorado) {
       return [];
     }
-    return selectedProfesorado.planes.flatMap((plan) => plan.materias);
-  }, [selectedProfesorado]);
+    const raw = selectedProfesorado.planes.flatMap((plan) => plan.materias);
+    
+    // Si hay una fecha seleccionada, filtramos por vigencia
+    if (selectedFecha) {
+      const target = new Date(selectedFecha);
+      return raw.filter(m => {
+        if (m.fecha_inicio) {
+          const inicio = new Date(m.fecha_inicio);
+          if (inicio > target) return false;
+        }
+        if (m.fecha_fin) {
+          const fin = new Date(m.fecha_fin);
+          if (fin < target) return false;
+        }
+        return true;
+      });
+    }
+    
+    return raw;
+  }, [selectedProfesorado, selectedFecha]);
 
   const selectedMateria = useMemo(
     () => materias.find((m) => m.id === Number(materiaId)),

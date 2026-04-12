@@ -2,6 +2,7 @@ import React from "react";
 import Box from "@mui/material/Box";
 
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import { TramitesNavTabs } from "@/components/ui/TramitesNavTabs";
 import { useCarreras as useCatalogoCarreras } from "@/hooks/useCarreras";
 import EquivalenciaDisposicionDialog from "@/components/equivalencias/EquivalenciaDisposicionDialog";
 
@@ -80,9 +81,10 @@ const PedidosEquivalenciasPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <PageHero
-        title="Pedidos de equivalencias"
-        subtitle="Consulta, descarga y exporta las notas solicitadas por los estudiantes."
+        title="Trámites Académicos"
+        subtitle="Gestioná analíticos, equivalencias y cambios de comisión."
       />
+      <TramitesNavTabs />
 
       <FiltrosCard
         filters={filters}

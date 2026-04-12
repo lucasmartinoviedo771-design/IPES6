@@ -143,6 +143,11 @@ class StaffAsignacion(models.Model):
         TUTOR = "tutor", "Tutor"
         CURSO_INTRO = "curso_intro", "Curso Introductorio"
 
+    class Turno(models.TextChoices):
+        MANANA = "manana", "Mañana"
+        TARDE = "tarde", "Tarde"
+        VESPERTINO = "vespertino", "Vespertino"
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -152,17 +157,29 @@ class StaffAsignacion(models.Model):
         Profesorado,
         on_delete=models.CASCADE,
         related_name="staff_asignaciones",
+        null=True,
+        blank=True,
+        help_text="Profesorado asignado. Para tutores: vacío = todos los profesorados del turno.",
     )
     rol = models.CharField(max_length=20, choices=Rol.choices)
+    # Requerido para tutores y bedeles. Vacío solo para coordinadores/otros.
+    turno = models.CharField(
+        max_length=12,
+        choices=Turno.choices,
+        null=True,
+        blank=True,
+        help_text="Turno que cubre. Requerido para tutores.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "profesorado", "rol")
         verbose_name = "Asignación de staff"
         verbose_name_plural = "Asignaciones de staff"
 
     def __str__(self):
-        return f"{self.user.username} - {self.profesorado.nombre} ({self.get_rol_display()})"
+        turno_str = f" - {self.get_turno_display()}" if self.turno else ""
+        prof_str = f" | {self.profesorado.nombre}" if self.profesorado_id else " | Todos los profesorados"
+        return f"{self.user.username} ({self.get_rol_display()}{turno_str}{prof_str})"
 
 
 class VentanaHabilitacion(models.Model):

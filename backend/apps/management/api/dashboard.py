@@ -90,10 +90,10 @@ def global_overview(request):
         DashboardHorario(
             profesorado_id=r["espacio__plan_de_estudio__profesorado__id"],
             profesorado=r["espacio__plan_de_estudio__profesorado__nombre"],
-            anio_cursada=r["anio_cursada"],
+            anio_cursada=r["anio_academico"],
             cantidad=r["total"]
         )
-        for r in HorarioCatedra.objects.values("espacio__plan_de_estudio__profesorado__id", "espacio__plan_de_estudio__profesorado__nombre", "anio_cursada").annotate(total=Count("id")).order_by("espacio__plan_de_estudio__profesorado__nombre", "anio_cursada")
+        for r in HorarioCatedra.objects.values("espacio__plan_de_estudio__profesorado__id", "espacio__plan_de_estudio__profesorado__nombre", "anio_academico").annotate(total=Count("id")).order_by("espacio__plan_de_estudio__profesorado__nombre", "anio_academico")
     ]
 
     # 5. Cambios Comision

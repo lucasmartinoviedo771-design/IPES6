@@ -110,6 +110,8 @@ class AsignarRolIn(Schema):
     role: str
     profesorado_ids: List[int] = []
     action: str = "assign"
+    # Para tutores y bedeles: turno (manana/tarde/vespertino). Requerido para tutores.
+    turno: str | None = None
 
 
 class ForceResetPasswordIn(Schema):

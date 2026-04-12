@@ -28,6 +28,7 @@ class InscripcionMateriaEstudiante(models.Model):
         RECHAZADA = "RECH", "Rechazada"
         ANULADA = "ANUL", "Anulada"
         BAJA = "BAJA", "Baja Voluntaria"
+        CONDICIONAL = "COND", "Condicional"
 
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name="inscripciones_materia")
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name="inscripciones_estudiantes")
@@ -47,6 +48,43 @@ class InscripcionMateriaEstudiante(models.Model):
     )
     anio = models.IntegerField()
     estado = models.CharField(max_length=4, choices=Estado.choices, default=Estado.CONFIRMADA)
+    
+    # Datos específicos para Cambio de Comisión
+    class MotivoCambio(models.TextChoices):
+        SUPERPOSICION = "OVERLAP", "Superposición de materias"
+        LABORAL = "WORK", "Motivos laborales"
+
+    class CambioComisionEstado(models.TextChoices):
+        PENDIENTE = "PEND", "Pendiente"
+        APROBADO = "APRO", "Aprobado"
+        RECHAZADO = "RECH", "Rechazado"
+
+    motivo_cambio = models.CharField(
+        max_length=10, 
+        choices=MotivoCambio.choices, 
+        null=True, 
+        blank=True,
+        help_text="Motivo por el cual se solicita el cambio de comisión."
+    )
+    cambio_comision_estado = models.CharField(
+        max_length=4,
+        choices=CambioComisionEstado.choices,
+        default=None,
+        null=True,
+        blank=True,
+    )
+    horario_laboral_metadata = models.JSONField(
+        null=True, 
+        blank=True,
+        help_text="En caso de motivo laboral, guarda el horario declarado por el alumno."
+    )
+    disposicion_numero = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        help_text="Número de disposición que autoriza el cambio (cargado por tutor)."
+    )
+
     baja_fecha = models.DateField(
         null=True, blank=True,
         help_text="Fecha en que se registró la baja voluntaria.",
@@ -79,6 +117,7 @@ class InscripcionMateriaMovimiento(models.Model):
         INSCRIPCION = "INS", "Inscripción"
         CANCELACION = "CAN", "Cancelación"
         BAJA = "BAJ", "Baja Voluntaria"
+        SOLICITUD_CAMBIO = "CAM", "Solicitud de Cambio"
         OTRO = "OTR", "Otro cambio"
 
     inscripcion = models.ForeignKey(

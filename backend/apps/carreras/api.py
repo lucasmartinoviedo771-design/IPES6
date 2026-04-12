@@ -250,11 +250,20 @@ def list_materias_for_plan(
     formato: str | None = None,
     regimen: str | None = None,
     tipo_formacion: str | None = None,
+    incluir_historial: bool = False,
 ):
     """Lista la malla curricular (materias) de un plan con filtros avanzados."""
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
     _require_view(request.user, plan.profesorado_id)
     materias = plan.materias.all()
+
+    # Filtrado por vigencia temporal (por defecto solo activos)
+    if not incluir_historial:
+        hoy = date.today()
+        # Excluir los que ya vencieron
+        materias = materias.exclude(fecha_fin__lt=hoy)
+        # Excluir los que aún no empezaron
+        materias = materias.exclude(fecha_inicio__gt=hoy)
 
     # Aplicación de filtros según metadata de la materia
     if anio_cursada is not None: materias = materias.filter(anio_cursada=anio_cursada)

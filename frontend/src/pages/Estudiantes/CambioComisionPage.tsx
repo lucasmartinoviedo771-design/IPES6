@@ -9,11 +9,14 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Divider from "@mui/material/Divider";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import BackButton from '@/components/ui/BackButton';
 import FinalConfirmationDialog from '@/components/ui/FinalConfirmationDialog';
 import {
-  solicitarInscripcionMateria,
+  solicitarCambioComision,
   obtenerMateriasPlanEstudiante,
   obtenerMateriasInscriptas,
   obtenerEquivalencias,
@@ -28,7 +31,7 @@ import {
   VentanaInscripcion,
 } from '@/api/estudiantes';
 import { useAuth } from '@/context/AuthContext';
-import { hasAnyRole, isOnlyEstudiante } from '@/utils/roles';
+import { hasAnyRole } from '@/utils/roles';
 
 type Horario = HorarioDTO;
 type Cuatrimestre = MateriaPlanDTO['cuatrimestre'];
@@ -42,6 +45,9 @@ type Materia = {
   correlativasRegular: number[];
   correlativasAprob: number[];
   profesorado?: string;
+  tipo_formacion?: string;
+  formato?: string;
+  horas_semana?: number;
 };
 
 type InscripcionConHorario = {
@@ -55,7 +61,8 @@ type MateriaBloqueada = {
   materia: Materia;
   horarios: Horario[];
   cuatrimestre: Cuatrimestre;
-  conflictos: InscripcionConHorario[];
+  conflictos: Array<{ nombre: string; horarios: Horario[] }>;
+  inscripcion_id?: number;
 };
 
 type AlternativaItem = {
@@ -64,7 +71,19 @@ type AlternativaItem = {
   profesorado: string;
 };
 
-const toMin = (t: string) => parseInt(t.slice(0, 2), 10) * 60 + parseInt(t.slice(3), 10);
+type HorarioLaboral = {
+  dia: number; // 0=Lun, 4=Vie
+  desde: string; // "08:00"
+  hasta: string; // "14:00"
+};
+
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+const toMin = (t: string) => {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+};
 
 const hayChoque = (a: Horario[], b: Horario[]) =>
   a.some((ha) =>
@@ -72,6 +91,15 @@ const hayChoque = (a: Horario[], b: Horario[]) =>
       (hb) =>
         ha.dia === hb.dia &&
         Math.max(toMin(ha.desde), toMin(hb.desde)) < Math.min(toMin(ha.hasta), toMin(hb.hasta)),
+    ),
+  );
+
+const hayChoqueConLaboral = (materiasH: Horario[], labH: HorarioLaboral[]) =>
+  materiasH.some((mh) =>
+    labH.some(
+      (lh) =>
+        DIAS.indexOf(mh.dia) === lh.dia &&
+        Math.max(toMin(mh.desde), toMin(lh.desde)) < Math.min(toMin(mh.hasta), toMin(lh.hasta)),
     ),
   );
 
@@ -90,7 +118,7 @@ const formatHorarios = (horarios: Horario[]) =>
 
 const mensajeError = (error: unknown) => {
   const err = error as any;
-  return err?.response?.data?.message || err?.message || 'No se pudo registrar la inscripción.';
+  return err?.response?.data?.message || err?.message || 'No se pudo registrar la solicitud.';
 };
 
 const mapMateria = (dto: MateriaPlanDTO): Materia => ({
@@ -102,7 +130,20 @@ const mapMateria = (dto: MateriaPlanDTO): Materia => ({
   correlativasRegular: dto.correlativas_regular ?? [],
   correlativasAprob: dto.correlativas_aprob ?? [],
   profesorado: dto.profesorado ?? undefined,
+  tipo_formacion: dto.tipo_formacion,
+  formato: dto.formato,
+  horas_semana: dto.horas_semana,
 });
+
+// Función para filtrar alternativas que cumplen con la compatibilidad académica
+const esCompatible = (a: Materia, b: MateriaPlanDTO | ComisionResumenDTO) => {
+  // Nota: Si es ComisionResumenDTO, no tenemos horas_semana/formato directamente aquí, 
+  // pero el backend /equivalencias ya filtró esto. 
+  // Si comparamos Materias entre sí (ej: en lógica de superposición):
+  if ('formato' in b && b.formato !== a.formato) return false;
+  if ('horas_semana' in b && b.horas_semana !== a.horas_semana) return false;
+  return true;
+};
 
 const ventanaPermiteMateria = (ventana: VentanaInscripcion | null, materia: Materia) => {
   const periodoClave = ventana?.periodo;
@@ -128,8 +169,12 @@ const CambioComisionPage: React.FC = () => {
 
   const [dniFiltro, setDniFiltro] = React.useState<string>('');
   const [debouncedDni, setDebouncedDni] = React.useState(dniFiltro);
+  const [tab, setTab] = React.useState(0);
   const [info, setInfo] = React.useState<string | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
+
+  // Estado para horario laboral
+  const [horarioLab, setHorarioLab] = React.useState<HorarioLaboral[]>([]);
 
   React.useEffect(() => {
     const handler = setTimeout(() => setDebouncedDni(dniFiltro), 500);
@@ -141,7 +186,7 @@ const CambioComisionPage: React.FC = () => {
   React.useEffect(() => {
     setInfo(null);
     setErr(null);
-  }, [normalizedDni]);
+  }, [normalizedDni, tab]);
 
   const queryClient = useQueryClient();
 
@@ -172,18 +217,21 @@ const CambioComisionPage: React.FC = () => {
   });
 
   const mSolicitar = useMutation({
-    mutationFn: ({ materiaId, comisionId }: { materiaId: number; comisionId: number }) => {
-      const payload: { materia_id: number; comision_id: number; dni?: string } = {
-        materia_id: materiaId,
-        comision_id: comisionId,
-      };
+    mutationFn: (payload: { 
+      inscripcion_id?: number; 
+      materia_id?: number; 
+      comision_id: number; 
+      motivo_cambio: 'OVERLAP' | 'WORK';
+      horario_laboral?: HorarioLaboral[];
+    }) => {
+      const fullPayload: any = { ...payload };
       if (canGestionar && normalizedDni) {
-        payload.dni = normalizedDni;
+        fullPayload.dni = normalizedDni;
       }
-      return solicitarInscripcionMateria(payload);
+      return solicitarCambioComision(fullPayload);
     },
     onSuccess: (res) => {
-      setInfo(res?.message || 'Solicitud registrada.');
+      setInfo(res?.message || 'Solicitud registrada en carácter CONDICIONAL.');
       setErr(null);
       setSolicitudPendiente(null);
       queryClient.invalidateQueries({ queryKey: ['cc-inscriptas', normalizedDni] });
@@ -209,7 +257,7 @@ const CambioComisionPage: React.FC = () => {
   }, [materias]);
 
   const inscripcionesActivas = React.useMemo(
-    () => inscripciones.filter((ins) => ins.estado === 'CONF' || ins.estado === 'PEND'),
+    () => inscripciones.filter((ins) => ins.estado === 'CONF' || ins.estado === 'PEND' || ins.estado === 'COND'),
     [inscripciones],
   );
 
@@ -259,21 +307,20 @@ const CambioComisionPage: React.FC = () => {
     [inscripcionesActivas, resolveInscripcion],
   );
 
-  const materiasConChoque = React.useMemo(() => {
-    if (!shouldFetch) {
-      return [] as MateriaBloqueada[];
-    }
+  const materiasConBloqueo = React.useMemo(() => {
+    if (!shouldFetch) return [] as MateriaBloqueada[];
+    
     const aprobadas = new Set(historial.aprobadas ?? []);
     const regularizadas = new Set(historial.regularizadas ?? []);
-    const inscriptas = new Set(inscripcionesActivas.map((ins) => ins.materia_id));
-    const ventanaActual = ventana ?? null;
-
+    const inscriptasIds = new Set(inscripcionesActivas.map((ins) => ins.materia_id));
     const resultado: MateriaBloqueada[] = [];
 
     materias.forEach((materia) => {
-      if (inscriptas.has(materia.id)) return;
+      // REGLA: Solo Formación General para cambios de comisión entre profesorados
+      if (materia.tipo_formacion !== 'FGN') return; 
+
       if (!materia.horarios.length) return;
-      if (!ventanaPermiteMateria(ventanaActual, materia)) return;
+      if (!ventanaPermiteMateria(ventana, materia)) return;
 
       const faltanReg = materia.correlativasRegular.filter(
         (mid) => !regularizadas.has(mid) && !aprobadas.has(mid),
@@ -281,23 +328,62 @@ const CambioComisionPage: React.FC = () => {
       const faltanApr = materia.correlativasAprob.filter((mid) => !aprobadas.has(mid));
       if (faltanReg.length || faltanApr.length) return;
 
-      const conflictos = inscripcionesConHorario.filter((insData) => {
-        if (!cuatrimestreCompatible(materia.cuatrimestre, insData.cuatrimestre)) return false;
-        return hayChoque(materia.horarios, insData.horarios);
-      });
+      if (tab === 0) {
+        // MODO SUPERPOSICIÓN:
+        // 1. Si YA está inscripta: buscamos si choca con OTRAS (cambiar ESTA para resolver choque)
+        // 2. Si NO está inscripta: buscamos si choca con las actuales (caso Historia Social)
 
-      if (conflictos.length === 0) return;
+        const tieneChoque = inscripcionesConHorario.some(ins => {
+          if (ins.inscripcion.materia_id === materia.id) return false;
+          return hayChoque(materia.horarios, ins.horarios);
+        });
 
-      resultado.push({
-        materia,
-        horarios: materia.horarios,
-        cuatrimestre: materia.cuatrimestre,
-        conflictos,
-      });
+        if (!tieneChoque) return;
+
+        const conflictos = inscripcionesConHorario
+          .filter(otro => otro.inscripcion.materia_id !== materia.id)
+          .filter(otro => hayChoque(materia.horarios, otro.horarios))
+          .map(c => ({
+            nombre: c.inscripcion.materia_nombre,
+            horarios: c.horarios
+          }));
+
+        const yaInscripta = inscriptasIds.has(materia.id);
+        const insId = yaInscripta 
+          ? inscripcionesConHorario.find(i => i.inscripcion.materia_id === materia.id)?.inscripcion.inscripcion_id
+          : undefined;
+
+        resultado.push({
+          materia,
+          horarios: materia.horarios,
+          cuatrimestre: materia.cuatrimestre,
+          conflictos,
+          inscripcion_id: insId,
+        });
+      } else {
+        // MODO LABORAL: Materias NO inscriptas (o inscriptas) que chocan contra el trabajo
+        if (horarioLab.length === 0) return;
+
+        const yaInscripta = inscriptasIds.has(materia.id);
+        const horMateria = yaInscripta 
+          ? (inscripcionesConHorario.find(i => i.inscripcion.materia_id === materia.id)?.horarios ?? materia.horarios)
+          : materia.horarios;
+
+        if (hayChoqueConLaboral(horMateria, horarioLab)) {
+          const insId = inscripcionesConHorario.find(i => i.inscripcion.materia_id === materia.id)?.inscripcion.inscripcion_id;
+          resultado.push({
+            materia,
+            inscripcion_id: insId,
+            horarios: horMateria,
+            cuatrimestre: materia.cuatrimestre,
+            conflictos: [{ nombre: "Horario Laboral", horarios: [] }], 
+          });
+        }
+      }
     });
 
     return resultado;
-  }, [historial, inscripcionesActivas, inscripcionesConHorario, materias, shouldFetch, ventana]);
+  }, [historial, inscripcionesActivas, inscripcionesConHorario, materias, shouldFetch, ventana, tab, horarioLab]);
 
   const ventanaActiva =
     !!ventana &&
@@ -306,6 +392,7 @@ const CambioComisionPage: React.FC = () => {
     (!ventana.hasta || new Date(ventana.hasta) >= new Date());
 
   const [solicitudPendiente, setSolicitudPendiente] = React.useState<{
+    inscripcionId?: number;
     materiaId: number;
     materiaNombre: string;
     comisionId: number;
@@ -318,10 +405,11 @@ const CambioComisionPage: React.FC = () => {
     [],
   );
 
-  const abrirConfirmacionSolicitud = React.useCallback((materia: Materia, alternativa: AlternativaItem) => {
+  const abrirConfirmacionSolicitud = React.useCallback((entrada: MateriaBloqueada, alternativa: AlternativaItem) => {
     setSolicitudPendiente({
-      materiaId: materia.id,
-      materiaNombre: materia.nombre,
+      inscripcionId: entrada.inscripcion_id,
+      materiaId: entrada.materia.id,
+      materiaNombre: entrada.materia.nombre,
       comisionId: alternativa.comision.id,
       comisionLabel: alternativa.comision.codigo || String(alternativa.comision.id),
       profesorado: alternativa.profesorado,
@@ -331,33 +419,21 @@ const CambioComisionPage: React.FC = () => {
   const solicitudLoading = mSolicitar.isPending;
 
   const confirmarSolicitud = React.useCallback(() => {
-    if (!solicitudPendiente) {
-      return;
-    }
+    if (!solicitudPendiente) return;
     mSolicitar.mutate({
-      materiaId: solicitudPendiente.materiaId,
-      comisionId: solicitudPendiente.comisionId,
+      inscripcion_id: solicitudPendiente.inscripcionId,
+      materia_id: solicitudPendiente.materiaId,
+      comision_id: solicitudPendiente.comisionId,
+      motivo_cambio: tab === 0 ? 'OVERLAP' : 'WORK',
+      horario_laboral: tab === 1 ? horarioLab : undefined,
     });
-  }, [mSolicitar, solicitudPendiente]);
+  }, [mSolicitar, solicitudPendiente, tab, horarioLab]);
 
-  const cancelarSolicitud = React.useCallback(() => {
-    if (solicitudLoading) return;
-    setSolicitudPendiente(null);
-  }, [solicitudLoading]);
+  const queryError = shouldFetch && (materiasQ.isError || historialQ.isError || inscriptasQ.isError || ventanaQ.isError);
+  const loading = shouldFetch && (materiasQ.isLoading || historialQ.isLoading || inscriptasQ.isLoading || ventanaQ.isLoading);
 
-  const queryError =
-    shouldFetch &&
-    (materiasQ.isError || historialQ.isError || inscriptasQ.isError || ventanaQ.isError);
-
-  const loading =
-    shouldFetch &&
-    (materiasQ.isLoading || historialQ.isLoading || inscriptasQ.isLoading || ventanaQ.isLoading);
   if (loading) {
-    return (
-      <Box p={3}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Box p={3}><CircularProgress /></Box>;
   }
 
   return (
@@ -368,16 +444,11 @@ const CambioComisionPage: React.FC = () => {
           Cambio de Comisión
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Si una materia queda bloqueada por superposición horaria, podés solicitar cursarla en otro profesorado.
+          Solicitá cursar en otro profesorado por superposición horaria o motivos laborales.
         </Typography>
 
         {canGestionar && (
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            gap={1}
-            alignItems={{ xs: 'stretch', sm: 'center' }}
-            sx={{ mt: 2, mb: 1 }}
-          >
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1} sx={{ mt: 2, mb: 1 }}>
             <TextField
               label="DNI del estudiante"
               size="small"
@@ -388,86 +459,77 @@ const CambioComisionPage: React.FC = () => {
           </Stack>
         )}
 
+        {shouldFetch && (
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+            <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+              <Tab label="Por Superposición" />
+              <Tab label="Por Motivos Laborales" />
+            </Tabs>
+          </Box>
+        )}
+
         {!shouldFetch && canGestionar && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            Ingresa el DNI del estudiante para analizar superposiciones.
-          </Alert>
+          <Alert severity="info" sx={{ mt: 2 }}>Ingresa el DNI del estudiante para procesar la solicitud.</Alert>
         )}
 
-        {queryError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            No se pudieron cargar los datos necesarios. Intenta nuevamente.
-          </Alert>
+        {tab === 1 && shouldFetch && (
+          <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
+            <Typography variant="subtitle2" gutterBottom>Definí tu horario laboral:</Typography>
+            <HorarioLaboralForm value={horarioLab} onChange={setHorarioLab} />
+          </Paper>
         )}
 
-        {info && (
-          <Alert severity="success" sx={{ mt: 2 }} onClose={() => setInfo(null)}>
-            {info}
-          </Alert>
-        )}
-        {err && (
-          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErr(null)}>
-            {err}
-          </Alert>
-        )}
+        {queryError && <Alert severity="error" sx={{ mt: 2 }}>Error al cargar los datos.</Alert>}
+        {info && <Alert severity="success" sx={{ mt: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
+        {err && <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
 
         {shouldFetch && !ventanaActiva && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            No hay una ventana de inscripción activa. Las solicitudes quedarán pendientes hasta que se habilite.
-          </Alert>
+          <Alert severity="warning" sx={{ mt: 2 }}>Sin ventana de inscripción activa. Solicitudes Condicionales.</Alert>
         )}
 
-        {shouldFetch && materiasConChoque.length === 0 ? (
+        {shouldFetch && materiasConBloqueo.length === 0 ? (
           <Alert severity="info" sx={{ mt: 2 }}>
-            No se detectaron materias habilitadas con superposición horaria.
+            No se detectaron materias con bloqueo para este motivo.
+            {tab === 1 && horarioLab.length === 0 && " (Carga tu horario laboral para analizar)"}
           </Alert>
         ) : shouldFetch ? (
           <Stack gap={2} sx={{ mt: 2 }}>
-            {materiasConChoque.map((entrada) => {
+            <Alert severity="warning">
+              Las solicitudes se registran bajo carácter <b>CONDICIONAL</b> y deben ser aprobadas por un tutor o bedel.
+            </Alert>
+            {materiasConBloqueo.map((entrada) => {
               const { materia, horarios, conflictos } = entrada;
-              const clave = String(materia.id);
               const isExpanded = !!expandedMap[materia.id];
 
               return (
-                <Paper key={clave} sx={{ p: 2 }}>
+                <Paper key={materia.id} sx={{ p: 2 }}>
                   <Stack gap={1.2}>
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {materia.nombre}
-                    </Typography>
+                    <Typography variant="subtitle1" fontWeight={700}>{materia.nombre}</Typography>
                     <Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Horarios: {formatHorarios(horarios)}
-                      </Typography>
-                      {materia.profesorado && (
-                        <Typography variant="body2" color="text.secondary">
-                          Profesorado: {materia.profesorado}
-                        </Typography>
+                      <Typography variant="body2" color="text.secondary">Horarios: {formatHorarios(horarios)}</Typography>
+                      {materia.profesorado && <Typography variant="body2" color="text.secondary">Profesorado: {materia.profesorado}</Typography>}
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" fontWeight={500}>{tab === 0 ? "Se superpone con:" : "Motivo:"}</Typography>
+                      {tab === 0 ? (
+                        <Stack component="ul" sx={{ pl: 2, m: 0 }} gap={0.5}>
+                          {conflictos.map((otro, i) => (
+                            <li key={i}><Typography variant="body2">{otro.nombre} - {formatHorarios(otro.horarios)}</Typography></li>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2" color="error">Conflicto con Horario Laboral declarado.</Typography>
                       )}
                     </Box>
-                    <Box>
-                      <Typography variant="body2" fontWeight={500}>
-                        Se superpone con:
-                      </Typography>
-                      <Stack component="ul" sx={{ pl: 2, m: 0 }} gap={0.5}>
-                        {conflictos.map((otro) => (
-                          <li key={otro.inscripcion.inscripcion_id}>
-                            <Typography variant="body2">
-                              {otro.inscripcion.materia_nombre} - {otro.comision.codigo} ({otro.comision.turno}) -{' '}
-                              {formatHorarios(otro.horarios)}
-                            </Typography>
-                          </li>
-                        ))}
-                      </Stack>
-                    </Box>
                     <Button size="small" onClick={() => toggleExpanded(materia.id)}>
-                      {isExpanded ? 'Ocultar alternativas' : 'Ver alternativas en otros profesorados'}
+                      {isExpanded ? 'Ocultar alternativas' : 'Ver alternativas compatibles'}
                     </Button>
                     <Collapse in={isExpanded}>
                       <Alternativas
                         base={entrada}
                         otros={inscripcionesConHorario}
                         disabled={mSolicitar.isPending || !ventanaActiva}
-                        onSolicitar={(alternativa) => abrirConfirmacionSolicitud(materia, alternativa)}
+                        onSolicitar={(alt) => abrirConfirmacionSolicitud(entrada, alt)}
                       />
                     </Collapse>
                   </Stack>
@@ -480,11 +542,10 @@ const CambioComisionPage: React.FC = () => {
       <FinalConfirmationDialog
         open={!!solicitudPendiente}
         onConfirm={confirmarSolicitud}
-        onCancel={cancelarSolicitud}
+        onCancel={() => setSolicitudPendiente(null)}
         contextText={
           solicitudPendiente
-            ? `solicitud de cambio de comisión para ${solicitudPendiente.materiaNombre} (Comisión ${solicitudPendiente.comisionLabel}${solicitudPendiente.profesorado ? ` · ${solicitudPendiente.profesorado}` : ''
-            })`
+            ? `SOLICITUD CONDICIONAL de cambio de comisión para ${solicitudPendiente.materiaNombre} (${solicitudPendiente.comisionLabel}${solicitudPendiente.profesorado ? ` · ${solicitudPendiente.profesorado}` : ''})`
             : 'cambio de comisión'
         }
         loading={solicitudLoading}
@@ -492,6 +553,36 @@ const CambioComisionPage: React.FC = () => {
     </>
   );
 };
+
+function HorarioLaboralForm({ value, onChange }: { value: HorarioLaboral[], onChange: (v: HorarioLaboral[]) => void }) {
+  const addDay = () => onChange([...value, { dia: 0, desde: "08:00", hasta: "14:00" }]);
+  const removeDay = (index: number) => onChange(value.filter((_, i) => i !== index));
+  const updateDay = (index: number, patch: Partial<HorarioLaboral>) => 
+    onChange(value.map((v, i) => i === index ? { ...v, ...patch } : v));
+
+  return (
+    <Stack gap={1.5}>
+      {value.map((item, idx) => (
+        <Stack key={idx} direction={{ xs: 'column', sm: 'row' }} gap={1} alignItems="center">
+          <TextField
+             select
+             SelectProps={{ native: true }}
+             size="small"
+             value={item.dia}
+             onChange={e => updateDay(idx, { dia: Number(e.target.value) })}
+             sx={{ width: 140 }}
+          >
+            {DIAS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+          </TextField>
+          <TextField label="Desde" type="time" size="small" value={item.desde} onChange={e => updateDay(idx, { desde: e.target.value })} />
+          <TextField label="Hasta" type="time" size="small" value={item.hasta} onChange={e => updateDay(idx, { hasta: e.target.value })} />
+          <Button color="error" size="small" onClick={() => removeDay(idx)}>Quitar</Button>
+        </Stack>
+      ))}
+      <Button variant="outlined" size="small" onClick={addDay} sx={{ alignSelf: 'start' }}>+ Agregar Día Laboral</Button>
+    </Stack>
+  );
+}
 
 function Alternativas({
   base,
@@ -508,10 +599,7 @@ function Alternativas({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const otrosKey = React.useMemo(
-    () => otros.map((o) => o.inscripcion.inscripcion_id).sort().join(','),
-    [otros],
-  );
+  const otrosKey = React.useMemo(() => otros.map((o) => o.inscripcion.inscripcion_id).sort().join(','), [otros]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -529,23 +617,17 @@ function Alternativas({
       .finally(() => {
         if (mounted) setLoading(false);
       });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [base.materia.id, base.cuatrimestre, otrosKey]);
 
   return (
     <Box sx={{ mt: 1, pl: 1 }}>
-      <Typography variant="subtitle2">Alternativas disponibles</Typography>
+      <Typography variant="subtitle2">Alternativas en otros profesorados:</Typography>
       {loading && <CircularProgress size={18} sx={{ ml: 1, mt: 1 }} />}
-      {!loading && error && (
-        <Alert severity="error" sx={{ mt: 1 }}>
-          {error}
-        </Alert>
-      )}
+      {!loading && error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
       {!loading && !error && (!items || items.length === 0) && (
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Sin alternativas que eviten superposición en este cuatrimestre.
+          Sin alternativas compatibles detectadas para este cuatrimestre.
         </Typography>
       )}
       <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
@@ -553,20 +635,11 @@ function Alternativas({
           <Grid item xs={12} md={6} key={alt.comision.id}>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Stack gap={0.5}>
-                <Typography variant="subtitle2">{alt.profesorado}</Typography>
-                <Typography variant="body2">
-                  Comisión {alt.comision.codigo} ({alt.comision.turno})
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatHorarios(alt.horarios)}
-                </Typography>
-                <Button
-                  size="small"
-                  variant="contained"
-                  disabled={disabled}
-                  onClick={() => onSolicitar(alt)}
-                >
-                  Solicitar inscripción
+                <Typography variant="subtitle2" color="primary">{alt.profesorado}</Typography>
+                <Typography variant="body2">Comisión {alt.comision.codigo} ({alt.comision.turno})</Typography>
+                <Typography variant="caption" color="text.secondary">{formatHorarios(alt.horarios)}</Typography>
+                <Button size="small" variant="contained" disabled={disabled} onClick={() => onSolicitar(alt)}>
+                  Solicitar Cambio
                 </Button>
               </Stack>
             </Paper>
@@ -592,11 +665,15 @@ function filtrarAlternativas(
     eq.comisiones.forEach((com) => {
       const horarios = com.horarios && com.horarios.length ? com.horarios : eq.horarios;
       if (!horarios.length) return;
+      
+      // No debe chocar con otras materias
       const chocaConOtros = otros.some((otro) => {
+        if (otro.inscripcion.materia_id === base.materia.id) return false;
         if (!cuatrimestreCompatible(eq.cuatrimestre, otro.cuatrimestre)) return false;
         return hayChoque(horarios, otro.horarios);
       });
       if (chocaConOtros) return;
+
       if (!resultado.has(com.id)) {
         resultado.set(com.id, {
           comision: com,

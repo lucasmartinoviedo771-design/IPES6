@@ -32,14 +32,14 @@ class BloqueOut(Schema):
 class HorarioCatedraIn(Schema):
     espacio_id: int
     turno_id: int
-    anio_cursada: int
+    anio_academico: int
     cuatrimestre: str | None = None
 
 class HorarioCatedraOut(Schema):
     id: int
     espacio_id: int
     turno_id: int
-    anio_cursada: int
+    anio_academico: int
     cuatrimestre: str | None
     espacio_nombre: str
     turno_nombre: str
