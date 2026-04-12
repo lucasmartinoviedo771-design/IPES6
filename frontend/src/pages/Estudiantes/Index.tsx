@@ -228,28 +228,61 @@ export default function EstudiantesIndex() {
 
   const dynamicEvents = useMemo(() => {
     if (!ventanas) return [];
-    const mapped = ventanas.map((v) => {
+
+    // Agrupar por tipo y elegir el representante de cada tipo
+    const byTipo = new Map<string, typeof ventanas[number] & { status: string }>();
+
+    for (const v of ventanas) {
+      const status = getWindowStatus(v);
+      const enriched = { ...v, status };
+      const existing = byTipo.get(v.tipo);
+      if (!existing) {
+        byTipo.set(v.tipo, enriched);
+        continue;
+      }
+      // Prioridad: active > future > closed (más reciente gana dentro del mismo nivel)
+      const order: Record<string, number> = { active: 1, future: 2, closed: 3 };
+      const existingOrder = order[existing.status];
+      const newOrder = order[status];
+      if (newOrder < existingOrder) {
+        // El nuevo tiene mejor estado → reemplaza
+        byTipo.set(v.tipo, enriched);
+      } else if (newOrder === existingOrder && status === 'future') {
+        // Entre dos futuros: quedamos con el más próximo
+        if (new Date(v.desde) < new Date(existing.desde)) {
+          byTipo.set(v.tipo, enriched);
+        }
+      } else if (newOrder === existingOrder && status === 'closed') {
+        // Entre dos cerrados: quedamos con el más reciente
+        if (new Date(v.hasta) > new Date(existing.hasta)) {
+          byTipo.set(v.tipo, enriched);
+        }
+      }
+      // Si el existente ya tiene mejor estado, no cambia
+    }
+
+    // Si hay un activo Y un futuro del mismo tipo, solo queremos mostrar el activo
+    // (ya está resuelto por la lógica de prioridad arriba)
+
+    const result = Array.from(byTipo.values()).map((v) => {
       const config = WINDOW_TYPE_CONFIG[v.tipo] || {
         title: v.tipo,
         subtitle: "Gestión institucional",
         icon: <EventNote />
       };
-      const status = getWindowStatus(v);
       return {
         ...v,
         title: config.title,
         subtitle: config.subtitle,
         icon: config.icon,
         path: config.path,
-        status,
       };
     });
-    // Sort: active first, then future, then closed
-    return mapped.sort((a, b) => {
-      const order: Record<string, number> = { active: 1, future: 2, closed: 3 };
-      if (order[a.status] !== order[b.status]) {
-        return order[a.status] - order[b.status];
-      }
+
+    // Ordenar: activos primero, luego futuros, luego cerrados
+    const order: Record<string, number> = { active: 1, future: 2, closed: 3 };
+    return result.sort((a, b) => {
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
       return new Date(b.desde).getTime() - new Date(a.desde).getTime();
     });
   }, [ventanas]);
@@ -331,41 +364,69 @@ export default function EstudiantesIndex() {
             dynamicEvents.map((event) => {
               const isActive = event.status === 'active';
               const isFuture = event.status === 'future';
+              const isClosed = event.status === 'closed';
               const VIBRANT_GREEN = "#2D8C3C";
+              const CLOSED_COLOR = "#9e9e9e";
 
               return (
                 <Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
                   <Box
                     onClick={() => event.path && navigate(event.path)}
                     sx={{
+                      position: "relative",
                       display: "flex",
                       alignItems: "center",
                       p: 1.5,
                       borderRadius: 2,
-                      border: `1px solid rgba(183,105,78,0.25)`,
+                      border: isActive
+                        ? `1.5px solid ${VIBRANT_GREEN}`
+                        : isFuture
+                        ? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
+                        : `1px solid rgba(158,158,158,0.35)`,
                       cursor: event.path ? "pointer" : "default",
                       backgroundColor: "#fff",
                       transition: "all 0.2s ease",
                       "&:hover": event.path ? {
                         transform: "translateY(-2px)",
                         boxShadow: 2,
-                        borderColor: INSTITUTIONAL_TERRACOTTA
                       } : {},
                     }}
                   >
+                    {/* Badge superior derecho */}
+                    <Box component="span" sx={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      bgcolor: isActive ? VIBRANT_GREEN : isFuture ? INSTITUTIONAL_TERRACOTTA : CLOSED_COLOR,
+                      color: 'white',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      px: 1,
+                      py: 0.4,
+                      borderRadius: '5px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}>
+                      {isActive ? "Abierto" : isFuture ? "Próximamente" : "Vencido"}
+                    </Box>
+
                     <Box sx={{
                       mr: 2,
-                      color: INSTITUTIONAL_TERRACOTTA,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 2,
+                      backgroundImage: ICON_GRADIENT,
+                      color: "common.white",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      opacity: 0.8
+                      flexShrink: 0,
+                      boxShadow: "0 6px 16px rgba(183,105,78,0.3)",
                     }}>
-                      {/* Simulating the skeletal icon style from mockup */}
-                      {React.cloneElement(event.icon as React.ReactElement, { sx: { fontSize: 48 } })}
+                      {React.cloneElement(event.icon as React.ReactElement, { sx: { fontSize: 26 } })}
                     </Box>
 
-                    <Box sx={{ flexGrow: 1 }}>
+                    <Box sx={{ flexGrow: 1, pr: 8 }}>
                       <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1.1, mb: 0.2, fontSize: '1rem' }}>
                         {event.title}
                       </Typography>
@@ -374,34 +435,7 @@ export default function EstudiantesIndex() {
                       </Typography>
 
                       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                        {isActive && (
-                          <Box component="span" sx={{
-                            bgcolor: VIBRANT_GREEN,
-                            color: 'white',
-                            fontSize: '0.6rem',
-                            fontWeight: 800,
-                            px: 0.8,
-                            py: 0.2,
-                            borderRadius: '3px',
-                            textTransform: 'uppercase',
-                          }}>
-                            Abierto
-                          </Box>
-                        )}
-                        {isFuture && (
-                          <Box component="span" sx={{
-                            bgcolor: INSTITUTIONAL_TERRACOTTA,
-                            color: 'white',
-                            fontSize: '0.6rem',
-                            fontWeight: 800,
-                            px: 0.8,
-                            py: 0.2,
-                            borderRadius: '3px',
-                            textTransform: 'uppercase',
-                          }}>
-                            Próximamente
-                          </Box>
-                        )}
+                        {/* fechas abajo, sin badge */}
 
                         <Stack direction="row" spacing={0.5} alignItems="center">
                           <CalendarMonth sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7 }} />
