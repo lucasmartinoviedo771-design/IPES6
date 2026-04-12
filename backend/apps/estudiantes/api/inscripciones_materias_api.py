@@ -19,12 +19,12 @@ from core.models import (
     Correlatividad,
     HorarioCatedraDetalle,
     InscripcionMateriaEstudiante,
-    InscripcionMateriaMovimiento,
     InscripcionMesa,
     Materia,
     Regularidad,
     VentanaHabilitacion,
 )
+from core.models.inscripciones import InscripcionMateriaMovimiento
 
 from ..schemas import (
     BajaInscripcionIn,

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   solicitarInscripcionMateria,
   cancelarInscripcionMateria,
+  bajaInscripcionMateria,
   obtenerMateriasPlanEstudiante,
   obtenerMateriasInscriptas,
   obtenerHistorialEstudiante,
@@ -228,6 +229,29 @@ export const useInscripcionMateria = () => {
     },
   });
   const cancelarVars = mCancelar.variables;
+
+  const mBaja = useMutation<ApiResponseDTO, any, { inscripcionId: number; motivo: string }>({
+    mutationFn: ({ inscripcionId, motivo }) =>
+      bajaInscripcionMateria({
+        inscripcion_id: inscripcionId,
+        motivo,
+        dni: normalizedDni ? normalizedDni : undefined,
+      }),
+    onSuccess: (res) => {
+      setInfo(res?.message || "Baja registrada correctamente.");
+      setErr(null);
+      qc.invalidateQueries();
+    },
+    onError: (error: any) => {
+      setErr(error?.response?.data?.message || "No se pudo registrar la baja.");
+      setInfo(null);
+    },
+  });
+
+  const handleBaja = (inscripcionId: number, motivo: string) => {
+    if (mBaja.isPending) return;
+    mBaja.mutate({ inscripcionId, motivo });
+  };
 
   const materias = materiasQ.data ?? [];
   const historialRaw = historialQ.data ?? EMPTY_HISTORIAL;
@@ -553,6 +577,7 @@ export const useInscripcionMateria = () => {
     pendingMateriaId,
     mCancelar,
     cancelarVars,
+    mBaja,
     // handlers
     handleAnioChange,
     handleCarreraChange,
@@ -561,5 +586,6 @@ export const useInscripcionMateria = () => {
     confirmInscripcion,
     cancelInscripcionConfirm,
     handleCancelar,
+    handleBaja,
   };
 };

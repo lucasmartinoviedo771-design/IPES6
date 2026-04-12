@@ -30,6 +30,11 @@ export const cancelarInscripcionMateria = (payload: CancelarInscripcionPayload) 
   return client.post<ApiResponseDTO>(`/estudiantes/inscripcion-materia/${inscripcion_id}/cancelar`, body).then(res => res.data);
 };
 
+export const bajaInscripcionMateria = (payload: { inscripcion_id: number; motivo: string; dni?: string }) => {
+  const { inscripcion_id, motivo, dni } = payload;
+  return client.post<ApiResponseDTO>(`/estudiantes/inscripcion-materia/${inscripcion_id}/baja`, { motivo, dni }).then(res => res.data);
+};
+
 export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia' | 'beca' | 'control' | 'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
   client.post<GenericResponse>("/estudiantes/pedido_analitico", payload).then(res => res.data);
 

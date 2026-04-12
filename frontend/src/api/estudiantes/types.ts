@@ -429,7 +429,7 @@ export type MateriaInscriptaItemDTO = {
   profesorado_nombre?: string | null;
   anio_plan: number;
   anio_academico: number;
-  estado: 'CONF' | 'PEND' | 'RECH' | 'ANUL';
+  estado: 'CONF' | 'PEND' | 'RECH' | 'ANUL' | 'BAJA';
   estado_display: string;
   comision_actual?: ComisionResumenDTO | null;
   comision_solicitada?: ComisionResumenDTO | null;
@@ -652,6 +652,8 @@ export interface EstudianteAdminDetailDTO {
   condicion_calculada?: string | null;
   curso_introductorio_aprobado?: boolean | null;
   libreta_entregada?: boolean | null;
+  autorizado_rendir?: boolean;
+  autorizado_rendir_observacion?: string | null;
   genero?: string | null;
 }
 

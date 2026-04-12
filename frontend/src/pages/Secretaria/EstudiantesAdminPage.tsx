@@ -24,7 +24,7 @@ import {
   useDocumentacionSideEffects,
   usePopulateFormFromDetail,
 } from "./estudiantes-admin/hooks/useEstudianteDetailForm";
-import { useResetPasswordMutation } from "./estudiantes-admin/hooks/useEstudianteAdminMutations";
+import { useResetPasswordMutation, useAutorizarRendirMutation } from "./estudiantes-admin/hooks/useEstudianteAdminMutations";
 import { EstudiantesFilterBar } from "./estudiantes-admin/components/EstudiantesFilterBar";
 import { EstudiantesTable } from "./estudiantes-admin/components/EstudiantesTable";
 import { EstudianteDetailDialog } from "./estudiantes-admin/components/EstudianteDetailDialog";
@@ -98,6 +98,7 @@ export default function EstudiantesAdminPage() {
     setDeleteConfirmOpen(false),
   );
   const resetPassMutation = useResetPasswordMutation();
+  const autorizarRendirMutation = useAutorizarRendirMutation(selectedDni);
 
   const form = useEstudianteDetailForm();
   const { reset, control, handleSubmit, watch, setValue, getValues } = form;
@@ -215,6 +216,10 @@ export default function EstudiantesAdminPage() {
         resetPassIsPending={resetPassMutation.isPending}
         onDeleteClick={() => setDeleteConfirmOpen(true)}
         onResetPassword={handleResetPassword}
+        onAutorizarRendir={(autorizado, observacion) =>
+          autorizarRendirMutation.mutate({ autorizado, observacion })
+        }
+        autorizarRendirIsPending={autorizarRendirMutation.isPending}
       />
 
       <FinalConfirmationDialog

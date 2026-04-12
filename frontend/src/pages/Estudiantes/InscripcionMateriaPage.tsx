@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import BackButton from "@/components/ui/BackButton";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 
@@ -50,6 +52,7 @@ const InscripcionMateriaPage: React.FC = () => {
     pendingMateriaId,
     mCancelar,
     cancelarVars,
+    mBaja,
     // handlers
     handleAnioChange,
     handleCarreraChange,
@@ -58,11 +61,18 @@ const InscripcionMateriaPage: React.FC = () => {
     confirmInscripcion,
     cancelInscripcionConfirm,
     handleCancelar,
+    handleBaja,
   } = useInscripcionMateria();
+
+  const [tabValue, setTabValue] = useState(0);
 
   if (loadingEstudiante || isVentanaLoading) {
     return <Skeleton variant="rectangular" height={160} />;
   }
+
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
   return (
     <>
@@ -107,26 +117,85 @@ const InscripcionMateriaPage: React.FC = () => {
           {err && <Alert severity="error">{err}</Alert>}
           {info && <Alert severity="success">{info}</Alert>}
 
-          <MateriasHabilitadasPanel
-            habilitadasPorAnio={habilitadasPorAnio}
-            puedeInscribirse={puedeInscribirse}
-            mInscribirIsPending={mInscribir.isPending}
-            pendingMateriaId={pendingMateriaId}
-            onInscribir={handleInscribir}
-          />
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+            <Tabs 
+              value={tabValue} 
+              onChange={handleTabChange} 
+              aria-label="Categorías de inscripción"
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTab-root': { fontWeight: 600, fontSize: '0.95rem', textTransform: 'none' },
+                '& .Mui-selected': { color: '#8b4513' },
+                '& .MuiTabs-indicator': { backgroundColor: '#8b4513' }
+              }}
+            >
+              <Tab label="Inscripción Abierta" />
+              <Tab label="Pendientes por Correlativa" />
+              <Tab label="Oferta Futura / Otros Periodos" />
+              <Tab label="Historia Académica" />
+            </Tabs>
+          </Box>
 
-          <MateriasBloqueadasAccordion
-            bloqueadasPorTipo={bloqueadasPorTipo}
-            aprobadasFiltradas={aprobadasFiltradas}
-          />
+          {tabValue === 0 && (
+            <Stack spacing={3}>
+               {/* Integrando las ya inscriptas dentro de la pestaña activa como solicitaste */}
+               <MateriasInscriptasPanel
+                inscriptasDetalle={inscriptasDetalle}
+                ventanaActiva={ventanaActiva}
+                mCancelarIsPending={mCancelar.isPending}
+                cancelarVars={cancelarVars}
+                onCancelar={handleCancelar}
+                onBaja={handleBaja}
+                mBajaIsPending={mBaja.isPending}
+              />
+              
+              <MateriasHabilitadasPanel
+                habilitadasPorAnio={habilitadasPorAnio}
+                puedeInscribirse={puedeInscribirse}
+                mInscribirIsPending={mInscribir.isPending}
+                pendingMateriaId={pendingMateriaId}
+                onInscribir={handleInscribir}
+              />
+            </Stack>
+          )}
 
-          <MateriasInscriptasPanel
-            inscriptasDetalle={inscriptasDetalle}
-            ventanaActiva={ventanaActiva}
-            mCancelarIsPending={mCancelar.isPending}
-            cancelarVars={cancelarVars}
-            onCancelar={handleCancelar}
-          />
+          {tabValue === 1 && (
+            <MateriasBloqueadasAccordion
+              bloqueadasPorTipo={{ 
+                correlativas: bloqueadasPorTipo.correlativas,
+                choque: bloqueadasPorTipo.choque,
+                inscripta: [], // No mostramos inscriptas aquí porque están en la Tab 0
+                periodo: [],   // No mostramos periodo aquí porque están en la Tab 2
+                otro: bloqueadasPorTipo.otro
+              }}
+              aprobadasFiltradas={[]}
+            />
+          )}
+
+          {tabValue === 2 && (
+            <MateriasBloqueadasAccordion
+              bloqueadasPorTipo={{ 
+                correlativas: [], 
+                choque: [], 
+                inscripta: [],
+                periodo: bloqueadasPorTipo.periodo,
+                otro: []
+              }}
+              aprobadasFiltradas={[]}
+              customTitle="Materias fuera de período de inscripción"
+            />
+          )}
+
+          {tabValue === 3 && (
+            <MateriasBloqueadasAccordion
+              bloqueadasPorTipo={{
+                 correlativas: [], choque: [], inscripta: [], periodo: [], otro: []
+              }}
+              aprobadasFiltradas={aprobadasFiltradas}
+              customTitle="Trayectoria de materias aprobadas"
+            />
+          )}
         </Stack>
       </Box>
 

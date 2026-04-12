@@ -68,3 +68,14 @@ export async function resetPasswordEstudiante(dni: string): Promise<ApiResponseD
   const { data } = await client.post<ApiResponseDTO>(`/estudiantes/admin/estudiantes/${dni}/reset-password`);
   return data;
 }
+
+export async function autorizarRendirEstudiante(
+  dni: string,
+  payload: { autorizado: boolean; observacion?: string | null }
+): Promise<ApiResponseDTO> {
+  const { data } = await client.patch<ApiResponseDTO>(
+    `/estudiantes/admin/estudiantes/${dni}/autorizar-rendir`,
+    payload
+  );
+  return data;
+}

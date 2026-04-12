@@ -4,6 +4,7 @@ import {
   updateEstudianteAdmin,
   eliminarEstudianteAdmin,
   resetPasswordEstudiante,
+  autorizarRendirEstudiante,
   EstudianteAdminDocumentacionDTO,
 } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm } from "../types";
@@ -152,6 +153,25 @@ export function useResetPasswordMutation() {
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo resetear la contraseña";
+      enqueueSnackbar(msg, { variant: "error" });
+    },
+  });
+}
+
+export function useAutorizarRendirMutation(selectedDni: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ autorizado, observacion }: { autorizado: boolean; observacion: string }) =>
+      autorizarRendirEstudiante(selectedDni!, { autorizado, observacion: observacion || null }),
+    onSuccess: (res: any) => {
+      enqueueSnackbar(res.message || "Autorización actualizada", { variant: "success" });
+      if (selectedDni) {
+        queryClient.invalidateQueries({ queryKey: ["admin-estudiante", selectedDni] });
+      }
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || "No se pudo actualizar la autorización";
       enqueueSnackbar(msg, { variant: "error" });
     },
   });

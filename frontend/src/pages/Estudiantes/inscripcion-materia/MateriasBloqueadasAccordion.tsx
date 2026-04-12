@@ -13,16 +13,18 @@ import { MateriaEvaluada, TipoBloqueo, BLOQUEO_LABEL } from "./types";
 interface MateriasBloqueadasAccordionProps {
   bloqueadasPorTipo: Record<TipoBloqueo, MateriaEvaluada[]>;
   aprobadasFiltradas: MateriaEvaluada[];
+  customTitle?: string;
 }
 
 const MateriasBloqueadasAccordion: React.FC<MateriasBloqueadasAccordionProps> = ({
   bloqueadasPorTipo,
   aprobadasFiltradas,
+  customTitle,
 }) => {
   return (
     <Accordion defaultExpanded sx={{ bgcolor: "#fffaf1", borderRadius: 3, border: "1px solid #e2d4b5" }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography fontWeight={700}>Materias pendientes / no disponibles</Typography>
+        <Typography fontWeight={700}>{customTitle || "Materias pendientes / no disponibles"}</Typography>
       </AccordionSummary>
       <AccordionDetails>
         {(["correlativas", "periodo", "choque", "inscripta", "otro"] as const).map((tipo) => {

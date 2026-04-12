@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -10,10 +11,15 @@ import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import TextField from "@mui/material/TextField";
 import Alert from "@mui/material/Alert";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Paper from "@mui/material/Paper";
+import Divider from "@mui/material/Divider";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/DeleteForever";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import GavelIcon from "@mui/icons-material/Gavel";
 import { Control, UseFormHandleSubmit, UseFormWatch } from "react-hook-form";
 import { EstudianteAdminDetailDTO } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm, condicionColorMap } from "../types";
@@ -45,6 +51,8 @@ type Props = {
   resetPassIsPending?: boolean;
   onDeleteClick: () => void;
   onResetPassword?: () => void;
+  onAutorizarRendir?: (autorizado: boolean, observacion: string) => void;
+  autorizarRendirIsPending?: boolean;
 };
 
 export function EstudianteDetailDialog({
@@ -69,7 +77,20 @@ export function EstudianteDetailDialog({
   resetPassIsPending,
   onDeleteClick,
   onResetPassword,
+  onAutorizarRendir,
+  autorizarRendirIsPending,
 }: Props) {
+  const estudiante = detailQuery.data;
+  const [autorizadoSwitch, setAutorizadoSwitch] = useState(false);
+  const [autorizadoObs, setAutorizadoObs] = useState("");
+
+  useEffect(() => {
+    if (estudiante) {
+      setAutorizadoSwitch(estudiante.autorizado_rendir ?? false);
+      setAutorizadoObs(estudiante.autorizado_rendir_observacion ?? "");
+    }
+  }, [estudiante]);
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -192,6 +213,61 @@ export function EstudianteDetailDialog({
               handleAdeudaChange={handleAdeudaChange}
               handleEstudianteRegularChange={handleEstudianteRegularChange}
             />
+
+            {onAutorizarRendir && (
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, borderColor: autorizadoSwitch ? "warning.main" : "divider", bgcolor: autorizadoSwitch ? "warning.50" : "background.paper" }}
+              >
+                <Stack spacing={1.5}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <GavelIcon fontSize="small" color={autorizadoSwitch ? "warning" : "disabled"} />
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Autorización excepcional para rendir finales
+                    </Typography>
+                    {autorizadoSwitch && (
+                      <Chip label="AUTORIZADO" color="warning" size="small" />
+                    )}
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Permite al estudiante rendir exámenes finales aunque tenga el legajo incompleto. Solo Secretaría y Bedelía pueden modificar esto.
+                  </Typography>
+                  <Divider />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={autorizadoSwitch}
+                        onChange={(e) => setAutorizadoSwitch(e.target.checked)}
+                        color="warning"
+                      />
+                    }
+                    label={autorizadoSwitch ? "Autorizado para rendir" : "No autorizado"}
+                  />
+                  <TextField
+                    label="Motivo / Observación"
+                    value={autorizadoObs}
+                    onChange={(e) => setAutorizadoObs(e.target.value)}
+                    size="small"
+                    multiline
+                    rows={2}
+                    fullWidth
+                    placeholder="Ej: Autorizado por resolución del 12/04/2026 — pendiente entrega de analítico"
+                  />
+                  <Box>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      size="small"
+                      disabled={autorizarRendirIsPending}
+                      startIcon={autorizarRendirIsPending ? <CircularProgress size={14} color="inherit" /> : <GavelIcon />}
+                      onClick={() => onAutorizarRendir(autorizadoSwitch, autorizadoObs)}
+                    >
+                      Guardar autorización
+                    </Button>
+                  </Box>
+                </Stack>
+              </Paper>
+            )}
           </Stack>
         ) : (
           <Alert severity="error">No se pudo cargar la ficha del estudiante.</Alert>
