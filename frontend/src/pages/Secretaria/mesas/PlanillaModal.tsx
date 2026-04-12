@@ -176,7 +176,7 @@ export function PlanillaModal({
         <Button onClick={onCerrar} disabled={planillaSaving}>Cerrar</Button>
         <Button
           onClick={onGuardar}
-          disabled={planillaSaving || planillaLoading}
+          disabled={planillaSaving || planillaLoading || planillaEstudiantes.length === 0}
           startIcon={planillaSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
         >
           Guardar

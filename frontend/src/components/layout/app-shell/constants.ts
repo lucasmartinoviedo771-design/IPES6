@@ -82,7 +82,7 @@ export const roleHomeMap: Record<string, string> = {
   estudiante: "/estudiantes",
   equivalencias: "/equivalencias",
   titulos: "/titulos",
-  curso_intro: "/secretaria/curso-introductorio",
+  curso_intro: "/curso-introductorio",
 };
 
 export const navButtonSx = {

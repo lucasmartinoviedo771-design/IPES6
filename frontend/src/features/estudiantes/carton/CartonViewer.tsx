@@ -19,7 +19,7 @@ import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 
 import { CartonData } from '@/types/carton';
-import { formatDateToDDMMYY } from '@/utils/dates';
+import { formatDateToDDMMYY } from '@/utils/date';
 
 interface CartonViewerProps {
   data: CartonData;

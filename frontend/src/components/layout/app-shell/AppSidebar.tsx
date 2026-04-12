@@ -198,8 +198,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
           {canCursoIntro && (
             <ListItemButton
-              selected={current.startsWith("/secretaria/curso-introductorio")}
-              onClick={() => navigate("/secretaria/curso-introductorio")}
+              selected={current.startsWith("/curso-introductorio")}
+              onClick={() => navigate("/curso-introductorio")}
               sx={navButtonSx}
             >
               <ListItemIcon><AssignmentIcon fontSize="small" /></ListItemIcon>

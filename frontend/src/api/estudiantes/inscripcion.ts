@@ -99,6 +99,11 @@ export async function inscribirMesa(payload: { mesa_id: number; dni?: string }):
   return data;
 }
 
+export async function bajaMesa(payload: { mesa_id: number; dni?: string }): Promise<{ message: string }> {
+  const { data } = await client.post<{ message: string }>(`/estudiantes/baja_mesa`, payload);
+  return data;
+}
+
 export async function obtenerMesaPlanilla(mesaId: number): Promise<MesaPlanillaDTO> {
   const { data } = await client.get<MesaPlanillaDTO>(`/estudiantes/mesas/${mesaId}/planilla`);
   return data;

@@ -117,12 +117,18 @@ export default function HabilitarFechasPage() {
   const summaryItems = useMemo(() => {
     return TYPE_CONFIG.map((config) => {
       const list = ventanas[config.key] ?? [];
-      const active = list.find((item) => item.activo);
+      const now = today();
+      const currentlyActive = list.find((item) => 
+        item.activo && 
+        dayjs(item.desde).isSameOrBefore(now, "day") && 
+        dayjs(item.hasta).isSameOrAfter(now, "day")
+      );
+      const active = currentlyActive ?? list.find((item) => item.activo);
       const upcoming = list
-        .filter((item) => dayjs(item.desde).isAfter(today(), "day"))
+        .filter((item) => dayjs(item.desde).isAfter(now, "day"))
         .sort((a, b) => dayjs(a.desde).diff(dayjs(b.desde)))[0];
       const reference = active ?? upcoming ?? list[0];
-      const state = classifyVentana(active ?? upcoming ?? list[0]);
+      const state = classifyVentana(reference);
       return {
         ...config,
         active,

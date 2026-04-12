@@ -12,7 +12,8 @@ import InputLabel from "@mui/material/InputLabel";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import { listarMesas, inscribirMesa, obtenerHistorialEstudiante, obtenerCarrerasActivas, TrayectoriaCarreraDetalleDTO, MesaListadoItemDTO } from '@/api/estudiantes';
+import { formatDate } from '@/utils/date';
+import { listarMesas, inscribirMesa, bajaMesa, obtenerHistorialEstudiante, obtenerCarrerasActivas, obtenerTrayectoriaEstudiante, TrayectoriaCarreraDetalleDTO, MesaListadoItemDTO, TrayectoriaMesaDTO } from '@/api/estudiantes';
 import { hasAnyRole } from '@/utils/roles';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
@@ -49,7 +50,10 @@ const MesaExamenPage: React.FC = () => {
   const [selectedCarreraId, setSelectedCarreraId] = useState<string>('');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [pendingInscripcion, setPendingInscripcion] = useState<{ mesa: MesaListadoItemDTO } | null>(null);
+  const [pendingBaja, setPendingBaja] = useState<{ mesaId: number; materiaNombre: string } | null>(null);
   const [inscribiendoId, setInscribiendoId] = useState<number | null>(null);
+  const [misInscripciones, setMisInscripciones] = useState<TrayectoriaMesaDTO[]>([]);
+  const [loadingTrayectoria, setLoadingTrayectoria] = useState(false);
 
   const handleCarreraChange = (event: any) => {
     const value = String(event.target.value ?? '');
@@ -208,6 +212,18 @@ const MesaExamenPage: React.FC = () => {
   ]);
 
 
+  const fetchTrayectoria = async () => {
+    setLoadingTrayectoria(true);
+    try {
+      const t = await obtenerTrayectoriaEstudiante(canGestionar && dni ? { dni } : undefined);
+      setMisInscripciones((t.mesas || []).filter(m => m.estado === 'INSCRIPTO'));
+    } catch (error) {
+      console.warn("No se pudo obtener la trayectoria del estudiante", error);
+    } finally {
+      setLoadingTrayectoria(false);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -217,6 +233,7 @@ const MesaExamenPage: React.FC = () => {
           regularizadas: h.regularizadas || [],
           inscriptas_actuales: h.inscriptas_actuales || [],
         });
+        await fetchTrayectoria();
       } catch (error) {
         console.warn("No se pudo obtener el historial del estudiante", error);
       }
@@ -285,7 +302,7 @@ const MesaExamenPage: React.FC = () => {
           <Select label="Periodo" value={ventanaId} onChange={(e) => setVentanaId(e.target.value)}>
             {ventanas.map((v) => (
               <MenuItem key={v.id} value={String(v.id)}>
-                {new Date(v.desde).toLocaleDateString()} - {new Date(v.hasta).toLocaleDateString()} ({v.tipo === 'MESAS_FINALES' ? 'Ordinarias' : 'Extraordinarias'})
+                {formatDate(v.desde)} - {formatDate(v.hasta)} ({v.tipo === 'MESAS_FINALES' ? 'Ordinarias' : 'Extraordinarias'})
               </MenuItem>
             ))}
           </Select>
@@ -336,12 +353,44 @@ const MesaExamenPage: React.FC = () => {
         </Alert>
       )}
 
+      {misInscripciones.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" color="primary" gutterBottom sx={{ fontWeight: 600 }}>Mis inscripciones activas</Typography>
+          <Grid container spacing={1.5}>
+            {misInscripciones.map((mi) => (
+              <Grid item xs={12} md={6} lg={4} key={mi.id}>
+                <Paper variant="outlined" sx={{ p: 1.5, borderLeft: '6px solid #B7694E' }}>
+                  <Stack gap={0.5}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{mi.materia_nombre}</Typography>
+                    <Typography variant="body2">{mi.tipo_display} | {formatDate(mi.fecha)}</Typography>
+                    <Button 
+                      size="small" 
+                      color="error" 
+                      variant="outlined" 
+                      onClick={() => setPendingBaja({ mesaId: mi.mesa_id, materiaNombre: mi.materia_nombre })}
+                      disabled={inscribiendoId !== null}
+                    >
+                      Anular inscripción
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Catálogo de mesas disponibles</Typography>
       <Grid container spacing={1.5}>
         <>
           {mesas.filter((mesa) => {
             const reqAPR: number[] = mesa.correlativas_aprob || [];
             const tieneAPR = reqAPR.every((id) => historial.aprobadas.includes(id));
             if (!tieneAPR) return false;
+            
+            // Si ya está inscripto en ESTA mesa específica, no mostrarla en el catálogo de "pendientes"
+            if (misInscripciones.some(mi => mi.mesa_id === mesa.id)) return false;
+
             const materiaId = mesa.materia?.id ?? mesa.materia_id;
             if (mesa.modalidad === 'REG') {
               return historial.regularizadas.includes(materiaId);
@@ -354,7 +403,7 @@ const MesaExamenPage: React.FC = () => {
               <Paper variant="outlined" sx={{ p: 1.5 }}>
                 <Stack gap={0.5}>
                   <Typography variant="subtitle2">{mesa.materia?.nombre ?? mesa.materia_nombre} - {getMesaTipoLabel(mesa.tipo)} ({mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'})</Typography>
-                  <Typography variant="body2" color="text.secondary">{new Date(mesa.fecha).toLocaleDateString()} {mesa.hora_desde ? (mesa.hora_desde + (mesa.hora_hasta ? ' - ' + mesa.hora_hasta : '')) : ''} - {mesa.aula || ''}</Typography>
+                  <Typography variant="body2" color="text.secondary">{formatDate(mesa.fecha)} {mesa.hora_desde ? (mesa.hora_desde + (mesa.hora_hasta ? ' - ' + mesa.hora_hasta : '')) : ''} - {mesa.aula || ''}</Typography>
                   {mesa.codigo && (
                     <Typography variant="caption" color="text.secondary">
                       Código: {mesa.codigo}
@@ -380,6 +429,35 @@ const MesaExamenPage: React.FC = () => {
             : "inscripción seleccionada"
         }
         loading={inscribiendoId !== null}
+      />
+
+      <FinalConfirmationDialog
+        open={Boolean(pendingBaja)}
+        onConfirm={async () => {
+          if (!pendingBaja) return;
+          setInscribiendoId(pendingBaja.mesaId);
+          try {
+            const res = await bajaMesa({ mesa_id: pendingBaja.mesaId, dni: canGestionar ? (dni || undefined) : undefined });
+            setInfo(res.message);
+            setErr(null);
+            setPendingBaja(null);
+            await fetchTrayectoria();
+          } catch (e: any) {
+             const message = e?.response?.data?.message || 'No se pudo anular la inscripción. Verificá que falten más de 48hs hábiles.';
+             setErr(message);
+          } finally {
+            setInscribiendoId(null);
+          }
+        }}
+        onCancel={() => setPendingBaja(null)}
+        contextText={
+          pendingBaja
+            ? `anulación definitiva de tu inscripción a la mesa de ${pendingBaja.materiaNombre}`
+            : "baja seleccionada"
+        }
+        loading={inscribiendoId !== null}
+        confirmColor="error"
+        confirmLabel="Anular Inscripción"
       />
     </Box>
   );

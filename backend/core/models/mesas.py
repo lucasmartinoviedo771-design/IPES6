@@ -62,6 +62,36 @@ class MesaExamen(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @staticmethod
+    def auto_cleanup_deserted_mesas():
+        """
+        Barrido automático de mesas sin alumnos inscriptos una vez vencido el plazo de baja (48hs hábiles).
+        Centralizado en el modelo para ser invocado desde cualquier punto de la API.
+        """
+        from django.db.models import Count, Q
+        from datetime import datetime, timedelta
+        from apps.common.date_utils import calcular_limite_baja_mesa
+        
+        ahora = datetime.now()
+        # Procesamos mesas desde hace 15 días hasta el futuro para cubrir cierres recientes y próximos.
+        rango_fecha = ahora.date() - timedelta(days=15)
+        
+        # 1. Buscar mesas candidatas (sin inscritos activos)
+        mesas_candidatas = MesaExamen.objects.filter(
+            fecha__gte=rango_fecha
+        ).annotate(
+            count_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
+        ).filter(count_inscriptos=0)
+
+        # 2. Borrar si el plazo de baja ya expiró
+        deleted_count = 0
+        for mesa in mesas_candidatas:
+            if ahora > calcular_limite_baja_mesa(mesa.fecha):
+                mesa.delete()
+                deleted_count += 1
+        
+        return deleted_count
+
     def __str__(self):
         return f"Mesa {self.get_tipo_display()} {self.materia.nombre} {self.fecha}"
 

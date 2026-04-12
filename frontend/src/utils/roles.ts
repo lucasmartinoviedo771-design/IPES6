@@ -139,16 +139,39 @@ export const getDefaultHomeRoute = (user: User | null | undefined): string => {
   const bag = collectRoles(user);
   if (bag.size === 0) return "/login";
 
-  // Estudiantes: Panel de autogestión
-  if (isOnlyEstudiante(user)) {
-    return "/estudiantes";
-  }
+  // 1. Administradores (Dashboard central)
+  if (bag.has("admin")) return "/dashboard";
 
-  // Personal Administrativo: Gestión centralizada
-  if (bag.has("secretaria") || bag.has("bedel") || bag.has("jefa_aaee")) {
-    return "/secretaria";
-  }
+  // 2. Secretaría (Centro de operaciones)
+  if (bag.has("secretaria")) return "/secretaria";
 
-  // Staff Académico/Admin: Dashboard general
+  // 3. Bedelía (Gestión operativa)
+  if (bag.has("bedel")) return "/bedeles";
+
+  // 4. Docentes (Mis materias y actas)
+  if (bag.has("docente")) return "/docentes";
+
+  // 5. Coordinación
+  if (bag.has("coordinador")) return "/coordinacion";
+
+  // 6. Tutorías
+  if (bag.has("tutor")) return "/tutorias";
+
+  // 7. Jefatura / Jefa A.A.E.E.
+  if (bag.has("jefes") || bag.has("jefa_aaee")) return "/jefatura";
+
+  // 8. Títulos y Certificaciones
+  if (bag.has("titulos")) return "/titulos";
+
+  // 9. Equivalencias (Módulo específico)
+  if (bag.has("equivalencias")) return "/equivalencias";
+
+  // 10. Curso Introductorio
+  if (bag.has("curso_intro")) return "/curso-introductorio";
+
+  // 11. Estudiantes (Autogestión)
+  if (bag.has("estudiante")) return "/estudiantes";
+
+  // Fallback para roles no contemplados o staff básico
   return "/dashboard";
 };

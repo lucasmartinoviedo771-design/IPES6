@@ -12,6 +12,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import BackButton from "@/components/ui/BackButton";
 import { TrayectoriaCarreraDetalleDTO, VentanaInscripcion } from "@/api/estudiantes";
+import { formatDate } from "@/utils/date";
 
 interface PageHeaderProps {
   profesoradoNombre: string;
@@ -70,7 +71,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         </Typography>
         {ventana?.desde && ventana?.hasta && (
           <Typography variant="body2" color="text.secondary">
-            Ventana: {new Date(ventana.desde).toLocaleDateString()} - {new Date(ventana.hasta).toLocaleDateString()}
+            Ventana: {formatDate(ventana.desde)} - {formatDate(ventana.hasta)}
           </Typography>
         )}
         {!puedeInscribirse && !isVentanaLoading && (

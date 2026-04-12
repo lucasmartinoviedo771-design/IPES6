@@ -6,13 +6,14 @@ import Button from "@mui/material/Button";
 import { Mesa } from './types';
 import { CUATRIMESTRE_LABEL, TRIBUNAL_ROL_LABEL } from './constants';
 import { getTipoLabel, getModalidadLabel } from './utils';
+import { formatDate } from '@/utils/date';
 
 interface MesaCardProps {
   mesa: Mesa;
   planillaSaving: boolean;
   planillaMesaId: number | undefined;
   onVerPlanilla: (mesa: Mesa) => void;
-  onEliminar: (id: number) => void;
+  onEliminar?: (id: number) => void;
 }
 
 export function MesaCard({ mesa: m, planillaSaving, planillaMesaId, onVerPlanilla, onEliminar }: MesaCardProps) {
@@ -21,7 +22,7 @@ export function MesaCard({ mesa: m, planillaSaving, planillaMesaId, onVerPlanill
   const regimenLabel = m.regimen ? (CUATRIMESTRE_LABEL[m.regimen] || m.regimen) : '-';
   const tipoLabel = getTipoLabel(m.tipo);
   const modalidadLabel = getModalidadLabel(m.modalidad);
-  const fechaLabel = m.fecha ? new Date(m.fecha).toLocaleDateString() : '-';
+  const fechaLabel = formatDate(m.fecha);
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5 }}>
@@ -35,6 +36,9 @@ export function MesaCard({ mesa: m, planillaSaving, planillaMesaId, onVerPlanill
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Año {m.anio_cursada ?? '-'} | {regimenLabel} | {`${horaDesde}${horaHasta ? ` - ${horaHasta}` : ''}${m.aula ? ` | ${m.aula}` : ''}`} | Cupo: {m.cupo}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 700, color: (m.inscriptos_count ?? 0) === 0 ? 'error.main' : 'success.main' }}>
+          Inscriptos: {m.inscriptos_count ?? 0}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Tribunal: {m.docentes && m.docentes.length
@@ -50,7 +54,9 @@ export function MesaCard({ mesa: m, planillaSaving, planillaMesaId, onVerPlanill
           >
             Planilla
           </Button>
-          <Button size="small" color="error" onClick={() => onEliminar(m.id)}>Eliminar</Button>
+          {onEliminar && (
+            <Button size="small" color="error" onClick={() => onEliminar(m.id)}>Eliminar</Button>
+          )}
         </Stack>
       </Stack>
     </Paper>

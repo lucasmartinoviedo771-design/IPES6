@@ -1,3 +1,5 @@
+import { formatDate } from "@/utils/date";
+
 export const ESTADOS = [
   { value: "draft", label: "Borrador" },
   { value: "final", label: "Finalizado" },
@@ -39,9 +41,5 @@ export const RESULTADO_COLOR: Record<ResultadoFinal, "default" | "success" | "er
 };
 
 export const formatFecha = (iso: string) => {
-  try {
-    return new Date(iso).toLocaleDateString("es-AR");
-  } catch {
-    return iso;
-  }
+  return formatDate(iso);
 };

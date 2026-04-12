@@ -15,6 +15,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { CursoIntroCohorteDTO } from "@/api/cursoIntro";
+import { formatDate } from "@/utils/date";
 
 type Props = {
   cohortes: CursoIntroCohorteDTO[];
@@ -83,8 +84,7 @@ const CohortesTable: React.FC<Props> = ({
                     <TableCell>{cohorte.turno_nombre || "-"}</TableCell>
                     <TableCell>
                       {cohorte.fecha_inicio
-                        ? `${new Date(cohorte.fecha_inicio).toLocaleDateString()} - ${cohorte.fecha_fin ? new Date(cohorte.fecha_fin).toLocaleDateString() : "-"
-                        }`
+                        ? `${formatDate(cohorte.fecha_inicio)} - ${formatDate(cohorte.fecha_fin)}`
                         : "-"}
                     </TableCell>
                     <TableCell>{cohorte.cupo ?? "-"}</TableCell>

@@ -34,7 +34,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { listarDisposicionesEquivalencia, EquivalenciaDisposicionDTO } from '@/api/estudiantes';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
-import { formatDateToDDMMYYYY, formatDateTimeToDDMMYYYY } from '@/utils/dates';
+import { formatDateToDDMMYYYY, formatDateTimeToDDMMYYYY } from '@/utils/date';
 
 dayjs.extend(utc);
 

@@ -1,10 +1,12 @@
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, Count
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
 from core.models import MesaExamen, Materia, Docente, Profesorado
 from core.permissions import ensure_profesorado_access, ensure_roles, allowed_profesorados
+from apps.common.date_utils import calcular_limite_baja_mesa
+from datetime import datetime
 from ..router import management_router
 from ..schemas import MesaIn, MesaOut, MesaDocenteOut
 
@@ -38,8 +40,39 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         cupo=mesa.cupo or 0,
         codigo=mesa.codigo,
         docentes=docentes,
-        esta_cerrada=mesa.planilla_cerrada_en is not None
+        esta_cerrada=mesa.planilla_cerrada_en is not None,
+        inscriptos_count=getattr(mesa, "num_inscriptos", 0)
     )
+
+def _auto_cleanup_deserted_mesas():
+    """
+    Barrido automático de mesas sin alumnos inscriptos una vez vencido el plazo de baja (48hs hábiles).
+    Esto evita que persistan mesas 'fantasmas' que no serán utilizadas.
+    """
+    ahora = datetime.now()
+    # Solo procesamos mesas próximas (desde hace 7 días hasta el futuro)
+    # para no sobrecargar el barrido con historial muy antiguo.
+    from datetime import timedelta
+    rango_fecha = ahora.date() - timedelta(days=7)
+    
+    # 1. Buscar mesas candidatas (sin inscritos o solo con cancelados)
+    mesas_candidatas = MesaExamen.objects.filter(
+        fecha__gte=rango_fecha
+    ).annotate(
+        count_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
+    ).filter(count_inscriptos=0)
+
+    # 2. Verificar el plazo de 48hs hábiles para cada una
+    deleted_count = 0
+    for mesa in mesas_candidatas:
+        limite = calcular_limite_baja_mesa(mesa.fecha)
+        if ahora > limite:
+            mesa.delete()
+            deleted_count += 1
+    
+    if deleted_count > 0:
+        import logging
+        logging.getLogger(__name__).info(f"Cleanup: Se eliminaron {deleted_count} mesas desiertas automáticamente.")
 
 @management_router.get("/mesas", response=list[MesaOut], auth=JWTAuth())
 def list_mesas(
@@ -53,11 +86,16 @@ def list_mesas(
 ):
     ensure_roles(request.user, {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"})
     
+    # Barrido automático antes de listar
+    _auto_cleanup_deserted_mesas()
+
     qs = MesaExamen.objects.select_related(
         "materia__plan_de_estudio__profesorado",
         "docente_presidente__persona",
         "docente_vocal1__persona",
         "docente_vocal2__persona",
+    ).annotate(
+        num_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
     )
     
     allowed = allowed_profesorados(request.user)

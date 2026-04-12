@@ -298,20 +298,20 @@ export function NuevaMesaForm({
               Logística y Modalidad
             </Typography>
             <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} md={6}>
-                <TextField label="Fecha" size="small" fullWidth type="date" value={form.fecha || ''} onChange={(e) => setForm(f => ({ ...f, fecha: e.target.value }))} InputLabelProps={{ shrink: true }} />
+              <Grid item xs={12} md={3}>
+                <TextField label="Fecha 1º Llamado" size="small" fullWidth type="date" value={form.fecha || ''} onChange={(e) => setForm(f => ({ ...f, fecha: e.target.value }))} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField label="Fecha 2º Llamado (Opcional)" size="small" fullWidth type="date" value={form.fecha2 || ''} onChange={(e) => setForm(f => ({ ...f, fecha2: e.target.value }))} InputLabelProps={{ shrink: true }} />
               </Grid>
               <Grid item xs={6} md={3}>
                 <TextField label="Desde" size="small" fullWidth type="time" value={form.hora_desde || ''} onChange={(e) => setForm(f => ({ ...f, hora_desde: e.target.value }))} InputLabelProps={{ shrink: true }} />
               </Grid>
-              <Grid item xs={6} md={3}>
-                <TextField label="Hasta" size="small" fullWidth type="time" value={form.hora_hasta || ''} onChange={(e) => setForm(f => ({ ...f, hora_hasta: e.target.value }))} InputLabelProps={{ shrink: true }} />
-              </Grid>
               <Grid item xs={12} md={6}>
-                <TextField label="Aula / Espacio" placeholder="Ej: Aula 4, Zoom, etc." size="small" fullWidth value={form.aula || ''} onChange={(e) => setForm(f => ({ ...f, aula: e.target.value }))} />
+                <TextField label="Aula / Espacio (Opcional)" placeholder="Ej: Aula 4, Zoom, etc." size="small" fullWidth value={form.aula || ''} onChange={(e) => setForm(f => ({ ...f, aula: e.target.value }))} />
               </Grid>
               <Grid item xs={6} md={3}>
-                <TextField label="Cupo" size="small" fullWidth type="number" value={form.cupo ?? 0} onChange={(e) => setForm(f => ({ ...f, cupo: Number(e.target.value) }))} />
+                <TextField label="Cupo (Opcional)" size="small" fullWidth type="number" value={form.cupo ?? 0} onChange={(e) => setForm(f => ({ ...f, cupo: Number(e.target.value) }))} />
               </Grid>
               <Grid item xs={6} md={3}>
                 <Box sx={{ border: '1px solid #ccc', borderRadius: 1, p: '4px 8px', height: '40px' }}>

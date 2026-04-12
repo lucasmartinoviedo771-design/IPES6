@@ -13,7 +13,7 @@ export const BASE_CUATRIMESTRE_OPTIONS = [
   { value: 'SCU', label: '2do cuatrimestre' },
 ];
 
-export const DEFAULT_ANIO_OPTIONS = Array.from({ length: 6 }, (_value, index) => index + 1);
+export const DEFAULT_ANIO_OPTIONS = Array.from({ length: 4 }, (_value, index) => index + 1);
 
 export const MESA_TIPO_LABEL: Record<MesaTipo, string> = {
   FIN: 'Ordinaria',

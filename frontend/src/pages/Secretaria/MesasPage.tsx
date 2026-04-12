@@ -12,13 +12,23 @@ import { FiltrosMesas } from './mesas/FiltrosMesas';
 import { MesaCard } from './mesas/MesaCard';
 import { PlanillaModal } from './mesas/PlanillaModal';
 import { Mesa } from './mesas/types';
+import { useAuth } from '@/context/AuthContext';
 
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 
 export default function MesasPage() {
+  const { roleOverride, user } = useAuth();
   const state = useMesasState();
-  const [activeTab, setActiveTab] = React.useState(0);
+  
+  // Determinar si el usuario tiene permisos de edición (Secretaría o Admin)
+  const canEdit = React.useMemo(() => {
+    const roles = new Set(roleOverride ? [roleOverride] : user?.roles?.map((r: string) => r.toLowerCase()) || []);
+    return roles.has('admin') || roles.has('secretaria');
+  }, [roleOverride, user]);
+
+  // Si no puede editar, la pestaña inicial debe ser la 1 (Activas)
+  const [activeTab, setActiveTab] = React.useState(canEdit ? 0 : 1);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
@@ -56,12 +66,25 @@ export default function MesasPage() {
       ventana_id: state.mesaEspecial ? null : Number(state.ventanaNueva),
     };
     try {
-      for (const modalidad of modalidadesAcrear) {
-        const payload = { ...payloadBase, tipo, modalidad };
-        await api.post(`/mesas`, payload);
+      const fechas = [state.form.fecha];
+      if (state.form.fecha2) {
+        fechas.push(state.form.fecha2);
       }
-      state.setForm({ tipo: 'FIN', fecha: new Date().toISOString().slice(0, 10), cupo: 0 });
+
+      for (const f of fechas) {
+        for (const modalidad of modalidadesAcrear) {
+          const payload = { ...payloadBase, fecha: f, tipo, modalidad };
+          await api.post(`/mesas`, payload);
+        }
+      }
+      state.setForm({ 
+        tipo: 'FIN', 
+        fecha: new Date().toISOString().slice(0, 10), 
+        fecha2: '',
+        cupo: 0 
+      });
       state.handleToggleModalidad('REG', true);
+      state.handleToggleModalidad('LIB', true);
       state.resetTribunalDocentes();
       await state.loadMesas();
       setActiveTab(1); // Mover a la pestaña de activas tras crear
@@ -71,9 +94,15 @@ export default function MesasPage() {
     }
   };
 
-  const eliminar = async (id: number) => {
-    await api.delete(`/mesas/${id}`);
-    await state.loadMesas();
+  const handleEliminar = async (id: number) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta mesa permanentemente?')) return;
+    try {
+      await api.delete(`/mesas/${id}`);
+      await state.loadMesas();
+    } catch (error) {
+       console.error("Error al eliminar mesa", error);
+       alert("No se pudo eliminar la mesa.");
+    }
   };
 
   const fetchPlanilla = async (mesaId: number) => {
@@ -172,7 +201,7 @@ export default function MesasPage() {
   };
 
   const handlePlanillaGuardar = async () => {
-    if (!state.planillaMesa) return;
+    if (!state.planillaMesa || state.planillaEstudiantes.length === 0) return;
     state.setPlanillaSaving(true);
     state.setPlanillaError(null);
     state.setPlanillaSuccess(null);
@@ -210,14 +239,14 @@ export default function MesasPage() {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 3, mb: 2 }}>
         <Tabs value={activeTab} onChange={handleTabChange} textColor="primary" indicatorColor="primary">
-          <Tab label="Nueva mesa" sx={{ fontWeight: 700 }} />
+          {canEdit && <Tab label="Nueva mesa" sx={{ fontWeight: 700 }} />}
           <Tab label="Activas / Futuras" sx={{ fontWeight: 700 }} />
           <Tab label="Historial / Pasadas" sx={{ fontWeight: 700 }} />
         </Tabs>
       </Box>
 
       {/* TAB 0: FORMULARIO DE CARGA */}
-      {activeTab === 0 && (
+      {canEdit && activeTab === 0 && (
         <Box sx={{ mt: 2, p: 3, bgcolor: '#fdfdfd', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <Typography variant="h6" mb={2} fontWeight={700} color="primary">
             Crear nueva mesa
@@ -296,7 +325,7 @@ export default function MesasPage() {
                   planillaSaving={state.planillaSaving}
                   planillaMesaId={state.planillaMesa?.id}
                   onVerPlanilla={handleVerPlanilla}
-                  onEliminar={eliminar}
+                  onEliminar={canEdit ? handleEliminar : undefined}
                 />
               </Grid>
             ))}

@@ -41,6 +41,7 @@ class MesaOut(Schema):
     codigo: str | None = None
     docentes: list[MesaDocenteOut] = Field(default_factory=list)
     esta_cerrada: bool = False
+    inscriptos_count: int = 0
 
 
 class VentanaIn(Schema):

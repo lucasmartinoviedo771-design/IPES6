@@ -11,12 +11,14 @@ export type Mesa = {
   tipo: string;
   modalidad: string;
   fecha: string;
+  fecha2?: string;
   hora_desde?: string;
   hora_hasta?: string;
   aula?: string;
   cupo: number;
   codigo?: string | null;
   docentes?: MesaTribunalDocente[];
+  inscriptos_count?: number;
 };
 
 export type MesaTribunalDocente = {

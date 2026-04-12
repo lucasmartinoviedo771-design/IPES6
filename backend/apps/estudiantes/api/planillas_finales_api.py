@@ -62,6 +62,8 @@ def _mesa_planilla_condiciones() -> list[dict]:
     auth=JWTAuth(),
 )
 def obtener_mesa_planilla(request, mesa_id: int):
+    # Barrido automático antes de consultar
+    MesaExamen.auto_cleanup_deserted_mesas()
     mesa = (
         MesaExamen.objects.select_related(
             "materia__plan_de_estudio__profesorado",

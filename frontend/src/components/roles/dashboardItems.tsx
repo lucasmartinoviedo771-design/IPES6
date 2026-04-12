@@ -88,19 +88,19 @@ export const DASHBOARD_ITEMS = {
     title: "Curso introductorio",
     subtitle: "Gestioná cohortes, registros y asistencia en un solo lugar.",
     icon: <EventAvailableIcon />,
-    path: "/secretaria/curso-introductorio",
+    path: "/curso-introductorio",
   },
   CURSO_INTRO_LISTADO: {
     title: "Listado de inscriptos CI",
     subtitle: "Reporte filtrable por turno o profesorado.",
     icon: <FactCheckIcon />,
-    path: "/secretaria/curso-introductorio?view=inscriptos",
+    path: "/curso-introductorio?view=inscriptos",
   },
   CURSO_INTRO_PENDIENTES: {
     title: "Estudiantes sin CI aprobado",
     subtitle: "Detectá pendientes para convocarlos y completar el circuito.",
     icon: <HourglassBottomIcon />,
-    path: "/secretaria/curso-introductorio?view=pendientes",
+    path: "/curso-introductorio?view=pendientes",
   },
   ANALYTICOS: {
     title: "Analíticos y certificados",

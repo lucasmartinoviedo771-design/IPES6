@@ -123,7 +123,7 @@ export const buildSecretariaRoutes = () => (
       <Route path="/secretaria/cambio-comision" element={<CambioComisionAdminPage />} />
     </Route>
     <Route element={<ProtectedRoute roles={cursoIntroRoles}><Outlet /></ProtectedRoute>}>
-      <Route path="/secretaria/curso-introductorio" element={<CursoIntroductorioPage />} />
+      <Route path="/curso-introductorio" element={<CursoIntroductorioPage />} />
     </Route>
   </>
 );

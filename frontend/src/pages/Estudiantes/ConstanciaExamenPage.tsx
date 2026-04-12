@@ -20,6 +20,7 @@ import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 import { hasRole } from "@/utils/roles";
+import { formatDate } from "@/utils/date";
 
 const ConstanciaExamenPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -189,7 +190,7 @@ const ConstanciaExamenPage: React.FC = () => {
                       {filteredConstancias.map((item) => (
                         <MenuItem key={item.inscripcion_id} value={String(item.inscripcion_id)}>
                           {item.materia} · {item.mesa_tipo} (
-                          {new Date(item.mesa_fecha).toLocaleDateString()})
+                          {formatDate(item.mesa_fecha)})
                         </MenuItem>
                       ))}
                     </Select>
@@ -219,7 +220,7 @@ const ConstanciaExamenPage: React.FC = () => {
                       </Typography>
                       <Typography variant="body2">
                         <strong>Fecha y Tipo:</strong>{" "}
-                        {new Date(selectedConstancia.mesa_fecha).toLocaleDateString()} ·{" "}
+                        {formatDate(selectedConstancia.mesa_fecha)} ·{" "}
                         {selectedConstancia.mesa_tipo} ({selectedConstancia.mesa_modalidad})
                       </Typography>
                       <Typography variant="body2">

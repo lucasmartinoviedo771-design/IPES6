@@ -25,7 +25,12 @@ export function useMesasState() {
   const [materiaFiltro, setMateriaFiltro] = useState<string>('');
   const [codigoFiltro, setCodigoFiltro] = useState<string>('');
   const [mesas, setMesas] = useState<Mesa[]>([]);
-  const [form, setForm] = useState<Partial<Mesa> & { ventana_id?: number }>({ tipo: 'FIN', fecha: new Date().toISOString().slice(0, 10), cupo: 0 });
+  const [form, setForm] = useState<Partial<Mesa> & { ventana_id?: number; fecha2?: string }>({ 
+    tipo: 'FIN', 
+    fecha: new Date().toISOString().slice(0, 10), 
+    fecha2: '',
+    cupo: 0 
+  });
   const [ventanaNueva, setVentanaNueva] = useState<string>('');
   const [profesoradoNueva, setProfesoradoNueva] = useState<string>('');
   const [planNueva, setPlanNueva] = useState<string>('');
@@ -41,7 +46,7 @@ export function useMesasState() {
     vocal1: null,
     vocal2: null,
   });
-  const [modalidadesSeleccionadas, setModalidadesSeleccionadas] = useState<MesaModalidad[]>(['REG']);
+  const [modalidadesSeleccionadas, setModalidadesSeleccionadas] = useState<MesaModalidad[]>(['REG', 'LIB']);
   const [planillaModalOpen, setPlanillaModalOpen] = useState(false);
   const [planillaMesa, setPlanillaMesa] = useState<Mesa | null>(null);
   const [planillaCondiciones, setPlanillaCondiciones] = useState<MesaPlanillaCondicionDTO[]>([]);
@@ -329,7 +334,8 @@ export function useMesasState() {
       }
     });
     const lista = Array.from(valores).sort((a, b) => a - b);
-    return lista.length ? lista : DEFAULT_ANIO_OPTIONS;
+    if (lista.length) return lista;
+    return DEFAULT_ANIO_OPTIONS;
   }, [materias]);
 
   const availableAniosFiltro = useMemo(() => {

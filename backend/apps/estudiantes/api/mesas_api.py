@@ -109,6 +109,9 @@ def listar_mesas_estudiante(
     from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
     es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
 
+    # Barrido automático antes de listar para Alumnos
+    MesaExamen.auto_cleanup_deserted_mesas()
+
     if not es_staff:
         qs = qs.filter(fecha__gte=date.today())
         if not ventana_id:
