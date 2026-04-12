@@ -19,6 +19,7 @@ class Regularidad(models.Model):
         DESAPROBADO_TP = "DTP", "Desaprobado por Trabajos Prácticos"
         LIBRE_I = "LBI", "Libre por Inasistencias"
         LIBRE_AT = "LAT", "Libre Antes de Tiempo"
+        BAJA = "BAJ", "Baja Voluntaria"
 
     inscripcion = models.ForeignKey(
         "InscripcionMateriaEstudiante",

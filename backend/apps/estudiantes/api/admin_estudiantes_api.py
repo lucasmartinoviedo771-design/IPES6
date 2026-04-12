@@ -14,6 +14,7 @@ from core.permissions import allowed_profesorados, ensure_roles, ensure_profesor
 from apps.common.date_utils import format_datetime
 
 from ..schemas import (
+    AutorizarRendirIn,
     EstudianteAdminDetail,
     EstudianteAdminListItem,
     EstudianteAdminListResponse,
@@ -492,5 +493,25 @@ def admin_reset_estudiante_password(request, dni: str):
     success = EstudianteService.reset_password(est)
     if not success:
         return 400, ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
+
+
+@router.patch(
+    "/admin/estudiantes/{dni}/autorizar-rendir",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
+def admin_autorizar_rendir(request, dni: str, payload: AutorizarRendirIn):
+    """
+    Activa o desactiva la autorización excepcional para rendir exámenes finales
+    con legajo incompleto. Solo Secretaría y Bedelía pueden usar este endpoint.
+    """
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    est = get_object_or_404(Estudiante, persona__dni=dni)
+
+    est.autorizado_rendir = payload.autorizado
+    est.autorizado_rendir_observacion = payload.observacion or None
+    est.save(update_fields=["autorizado_rendir", "autorizado_rendir_observacion"])
+
+    estado = "habilitado" if payload.autorizado else "deshabilitado"
+    return 200, ApiResponse(ok=True, message=f"Autorización para rendir {estado} correctamente.")
 
     return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. El alumno deberá cambiarla al primer ingreso.")

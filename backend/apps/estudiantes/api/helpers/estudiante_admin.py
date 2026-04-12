@@ -362,6 +362,8 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         condicion_calculada=condicion,
         curso_introductorio_aprobado=curso_introductorio_aprobado,
         libreta_entregada=estudiante.libreta_entregada,
+        autorizado_rendir=estudiante.autorizado_rendir,
+        autorizado_rendir_observacion=estudiante.autorizado_rendir_observacion,
         regularidades=regularidades_resumen,
         lugar_nacimiento=persona.lugar_nacimiento if persona else None,
         genero=persona.genero if persona else None,

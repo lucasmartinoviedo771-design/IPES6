@@ -21,6 +21,9 @@ class RegularidadEstudianteOut(Schema):
     situacion: str | None = None
     observaciones: str | None = None
     correlativas_caidas: list[str] = Field(default_factory=list)
+    is_baja: bool = False
+    baja_fecha: date | None = None
+    baja_motivo: str | None = None
 
 class RegularidadPlanillaOut(Schema):
     materia_id: int

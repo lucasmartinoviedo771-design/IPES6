@@ -13,6 +13,7 @@ from apps.estudiantes.schemas.inscripciones import (
     InscripcionCarreraOut,
     InscripcionMateriaIn,
     CancelarInscripcionIn,
+    BajaInscripcionIn,
     CambioComisionIn,
     InscripcionEstado,
     InscripcionEstadoType,
@@ -113,6 +114,7 @@ from apps.estudiantes.schemas.estudiantes_admin import (
     EstudianteDocumentacionBulkUpdateIn,
     EstudianteAdminDetail,
     EstudianteAdminUpdateIn,
+    AutorizarRendirIn,
 )
 
 from apps.estudiantes.schemas.trayectoria import (

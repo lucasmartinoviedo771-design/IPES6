@@ -177,11 +177,17 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
         if r.inscripcion_id not in reg_map:
             reg_map[r.inscripcion_id] = r
 
+    from core.models import InscripcionMateriaEstudiante as IME
     estudiantes: list[RegularidadEstudianteOut] = []
     for idx, insc in enumerate(inscripciones, start=1):
         regularidad = reg_map.get(insc.id)
-        alias = alias_desde_situacion(regularidad.situacion) if regularidad else None
-        
+        is_baja = insc.estado == IME.Estado.BAJA
+
+        if is_baja:
+            alias = "BAJA"
+        else:
+            alias = alias_desde_situacion(regularidad.situacion) if regularidad else None
+
         estudiantes.append(
             RegularidadEstudianteOut(
                 inscripcion_id=insc.id,
@@ -196,6 +202,9 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
                 situacion=alias,
                 observaciones=regularidad.observaciones if regularidad else None,
                 correlativas_caidas=caidas_map.get(insc.estudiante_id, []),
+                is_baja=is_baja,
+                baja_fecha=insc.baja_fecha if is_baja else None,
+                baja_motivo=insc.baja_motivo if is_baja else None,
             )
         )
     return estudiantes
@@ -393,6 +402,14 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
             if not insc: return 400, ApiResponse(ok=False, message="Inscripción inválida.")
             if insc.estudiante.dni == user_dni:
                  return 403, ApiResponse(ok=False, message="No puede calificar su propio legajo.")
+
+            # C.1 Bloqueo por Baja Voluntaria
+            if insc.estado == InscripcionMateriaEstudiante.Estado.BAJA:
+                if est_payload.situacion not in ("BAJA",):
+                    return 400, ApiResponse(
+                        ok=False,
+                        message=f"El/la estudiante {insc.estudiante.dni} tiene baja voluntaria registrada el {insc.baja_fecha}. No se pueden cargar notas."
+                    )
 
             # D. Bloqueo Institucional EDI
             if (materia.nombre or "").startswith("EDI: "):

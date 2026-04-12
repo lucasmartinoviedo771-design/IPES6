@@ -119,6 +119,8 @@ class EstudianteAdminDetail(Schema):
     condicion_calculada: str | None = None
     curso_introductorio_aprobado: bool | None = None
     libreta_entregada: bool | None = None
+    autorizado_rendir: bool = False
+    autorizado_rendir_observacion: str | None = None
     regularidades: list[RegularidadResumen] = Field(default_factory=list)
 
 EstudianteAdminDetail.model_rebuild()
@@ -176,3 +178,9 @@ class EstudianteAdminUpdateIn(Schema):
     empleador: str | None = None
     horario_trabajo: str | None = None
     domicilio_trabajo: str | None = None
+
+
+
+class AutorizarRendirIn(Schema):
+    autorizado: bool
+    observacion: str | None = None

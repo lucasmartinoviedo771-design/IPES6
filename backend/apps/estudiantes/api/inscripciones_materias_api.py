@@ -19,6 +19,7 @@ from core.models import (
     Correlatividad,
     HorarioCatedraDetalle,
     InscripcionMateriaEstudiante,
+    InscripcionMateriaMovimiento,
     InscripcionMesa,
     Materia,
     Regularidad,
@@ -26,6 +27,7 @@ from core.models import (
 )
 
 from ..schemas import (
+    BajaInscripcionIn,
     CambioComisionIn,
     CambioComisionOut,
     CancelarInscripcionIn,
@@ -189,11 +191,22 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         return 400, ApiResponse(ok=False, message="No cumple correlatividades exigidas.", data={"faltantes": faltan})
 
     # --- 3. DETECCIÓN DE SUPERPOSICIÓN HORARIA ---
-    detalles_cand = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "bloque").filter(horario_catedra__espacio=mat)
-    cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in detalles_cand]
-    
-    if cand:
-        actuales = InscripcionMateriaEstudiante.objects.filter(estudiante=est, anio=anio_actual)
+    # 5. Validar superposición horaria (solo contra inscripciones activas)
+    cand_qs = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mat)
+    if cand_qs.exists():
+        cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in cand_qs]
+        
+        # Solo chocamos contra inscripciones que no estén anuladas, rechazadas o de baja
+        actuales = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est, 
+            anio=anio_actual
+        ).exclude(
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.ANULADA,
+                InscripcionMateriaEstudiante.Estado.RECHAZADA,
+                InscripcionMateriaEstudiante.Estado.BAJA
+            ]
+        )
         if actuales.exists():
             det_act = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "bloque").filter(
                 horario_catedra__espacio_id__in=list(actuales.values_list("materia_id", flat=True))
@@ -203,10 +216,32 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                     # Si coinciden en Turno y Día, verificamos solapamiento de horas
                     if (t == d.horario_catedra.turno_id and dia == d.bloque.dia and 
                         not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)):
-                        return 400, ApiResponse(ok=False, message="Existe una superposición horaria con otra materia del ciclo actual.")
+                        colision_nombre = d.horario_catedra.espacio.nombre
+                        return 400, ApiResponse(
+                            ok=False, 
+                            message=f"Existe una superposición horaria con la materia '{colision_nombre}' del ciclo actual."
+                        )
 
-    # Registro de la inscripción (Estado PENDIENTE por defecto)
-    InscripcionMateriaEstudiante.objects.get_or_create(estudiante=est, materia=mat, anio=anio_actual)
+    # Registro de la inscripción (Estado CONFIRMADA por defecto, o actualizamos si ya existía como ANULADA)
+    inscripcion, created = InscripcionMateriaEstudiante.objects.update_or_create(
+        estudiante=est, 
+        materia=mat, 
+        anio=anio_actual,
+        defaults={
+            "estado": InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+            "baja_fecha": None,
+            "baja_motivo": None
+        }
+    )
+
+    # Registro de auditoría
+    InscripcionMateriaMovimiento.objects.create(
+        inscripcion=inscripcion,
+        tipo=InscripcionMateriaMovimiento.Tipo.INSCRIPCION,
+        operador=request.user.username if request.user.is_authenticated else "Anon",
+        motivo_detalle="Inscripción registrada por el sistema."
+    )
+    
     return {"message": "Inscripción registrada correctamente."}
 
 
@@ -264,16 +299,25 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
     return items
 
 
-@estudiantes_router.post(
-    "/cancelar-inscripcion",
-    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
-)
-def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: CancelarInscripcionIn):
+def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
     """
-    Cancela una inscripción vigente. Solo para estados PENDIENTE o CONFIRMADA.
-    Requiere que el usuario tenga rol de gestión (Bedel/Admin).
+    Lógica compartida de cancelación de inscripción.
+    - El alumno puede cancelar su propia inscripción (sin restricción de rol).
+    - Bedel/Secretaría/Admin pueden cancelar la de cualquier estudiante.
     """
-    est = _resolve_estudiante(request, payload.dni)
+    # 0. Determinar si la ventana de inscripción está activa
+    hoy = timezone.now().date()
+    ventana_abierta = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.MATERIAS,
+        activo=True,
+        desde__lte=hoy,
+        hasta__gte=hoy,
+    ).exists()
+
+    from core.permissions import get_user_roles
+    es_gestion = bool(get_user_roles(request.user) & {"admin", "secretaria", "bedel"})
+
+    est = _resolve_estudiante(request, dni)
     if not est:
         return 400, ApiResponse(ok=False, message="Estudiante no encontrado.")
 
@@ -291,18 +335,149 @@ def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: Cancelar
     ):
         return 400, ApiResponse(ok=False, message="Solo se pueden cancelar inscripciones activas (Confirmadas o Pendientes).")
 
-    # Auditoría de permisos (Solo personal docente/admin puede anular cursadas formalmente)
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    # Si no es gestión, verificar que la ventana esté abierta para que el alumno pueda cancelar
+    if not es_gestion:
+        if not ventana_abierta:
+            return 400, ApiResponse(
+                ok=False, 
+                message="El período de inscripción ha finalizado. Si ya iniciaste la cursada y deseas salir, debes solicitar la 'Baja Voluntaria' del espacio curricular."
+            )
 
     inscripcion.estado = InscripcionMateriaEstudiante.Estado.ANULADA
     inscripcion.comision = None
     inscripcion.comision_solicitada = None
     inscripcion.save(update_fields=["estado", "comision", "comision_solicitada", "updated_at"])
 
-    return ApiResponse(ok=True, message="Inscripción anulada correctamente.")
+    # Registro de auditoría
+    InscripcionMateriaMovimiento.objects.create(
+        inscripcion=inscripcion,
+        tipo=InscripcionMateriaMovimiento.Tipo.CANCELACION,
+        operador=request.user.username if request.user.is_authenticated else "Anon",
+        motivo_detalle="Cancelación manual de inscripción."
+    )
+
+    return 200, ApiResponse(ok=True, message="Inscripción anulada correctamente.")
+
+
+@estudiantes_router.post(
+    "/cancelar-inscripcion",
+    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+)
+def cancelar_inscripcion_materia(request, inscripcion_id: int, payload: CancelarInscripcionIn):
+    """Ruta legacy. Cancela una inscripción vigente (PENDIENTE o CONFIRMADA)."""
+    return _ejecutar_cancelacion(request, inscripcion_id, payload.dni)
+
+
+@estudiantes_router.post(
+    "/inscripcion-materia/{inscripcion_id}/cancelar",
+    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+)
+def cancelar_inscripcion_materia_rest(request, inscripcion_id: int, payload: CancelarInscripcionIn):
+    """Ruta REST. Cancela una inscripción vigente (PENDIENTE o CONFIRMADA)."""
+    return _ejecutar_cancelacion(request, inscripcion_id, payload.dni)
 
 
 @estudiantes_router.post("/cambio-comision", response=CambioComisionOut)
 def cambio_comision(request, payload: CambioComisionIn):
     """Registra una solicitud de cambio de comisión por parte del alumno."""
     return {"message": "Solicitud de cambio de comisión recibida."}
+
+
+@estudiantes_router.post(
+    "/inscripcion-materia/{inscripcion_id}/baja",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
+def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripcionIn):
+    """
+    Registra la baja voluntaria de un estudiante de un espacio curricular.
+
+    RBAC:
+    - Estudiante: puede darse de baja de sus propias inscripciones.
+    - Bedel: puede dar de baja a estudiantes de los profesorados que tiene asignados.
+    - Secretaría / Admin: puede dar de baja a cualquier estudiante.
+
+    La baja es definitiva para el ciclo lectivo actual. El estudiante no podrá
+    volver a inscribirse hasta la próxima ventana de inscripción.
+    """
+    from core.permissions import get_user_roles, allowed_profesorados
+    from django.utils.timezone import now
+
+    roles = get_user_roles(request.user)
+    es_gestion = bool(roles & {"admin", "secretaria"})
+    es_bedel = "bedel" in roles
+
+    # Resolver el estudiante según el payload
+    dni_solicitado = payload.dni
+    est = _resolve_estudiante(request, dni_solicitado)
+    if not est:
+        return 400, ApiResponse(ok=False, message="Estudiante no identificado.")
+
+    # 0. Determinar si la ventana de inscripción está activa
+    hoy = timezone.now().date()
+    ventana_abierta = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.MATERIAS,
+        activo=True,
+        desde__lte=hoy,
+        hasta__gte=hoy,
+    ).exists()
+
+    # El alumno NO puede darse de baja si la ventana todavía está abierta (regla institucional)
+    # Se aplica a todos para mantener la consistencia del dato: en ventana se CANCELA, fuera de ventana se da de BAJA.
+    if ventana_abierta:
+        return 400, ApiResponse(
+            ok=False, 
+            message="Mientras el periodo de inscripción esté abierto, el sistema solo permite 'Cancelar Inscripción' para mantener la integridad de los datos de cursada. La 'Baja Voluntaria' se habilita al cerrar la inscripción."
+        )
+
+    # Si no es gestión ni bedel, solo puede actuar sobre sí mismo y debe validar acceso
+    if not es_gestion and not es_bedel:
+        _ensure_estudiante_access(request, dni_solicitado)
+
+    inscripcion = (
+        InscripcionMateriaEstudiante.objects.filter(id=inscripcion_id, estudiante=est)
+        .select_related("materia__plan_de_estudio__profesorado")
+        .first()
+    )
+    if not inscripcion:
+        return 404, ApiResponse(ok=False, message="Inscripción no encontrada.")
+
+    # Bedel: verificar que el profesorado de la materia esté dentro de su asignación
+    if es_bedel and not es_gestion:
+        profesorados_permitidos = allowed_profesorados(request.user)
+        if profesorados_permitidos is not None:
+            profesorado_materia = inscripcion.materia.plan_de_estudio.profesorado_id if (
+                inscripcion.materia.plan_de_estudio_id
+            ) else None
+            if profesorado_materia not in profesorados_permitidos:
+                return 403, ApiResponse(ok=False, message="No tiene permiso para dar de baja estudiantes de este profesorado.")
+
+    # Solo se puede dar de baja si la inscripción está activa
+    if inscripcion.estado not in (
+        InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+        InscripcionMateriaEstudiante.Estado.PENDIENTE,
+    ):
+        return 400, ApiResponse(
+            ok=False,
+            message=f"No se puede dar de baja: la inscripción está en estado '{inscripcion.get_estado_display()}'."
+        )
+
+    if not payload.motivo or not payload.motivo.strip():
+        return 400, ApiResponse(ok=False, message="El motivo de la baja es obligatorio.")
+
+    inscripcion.estado = InscripcionMateriaEstudiante.Estado.BAJA
+    inscripcion.baja_fecha = now().date()
+    inscripcion.baja_motivo = payload.motivo.strip()
+    inscripcion.save(update_fields=["estado", "baja_fecha", "baja_motivo", "updated_at"])
+
+    # Registro de auditoría
+    InscripcionMateriaMovimiento.objects.create(
+        inscripcion=inscripcion,
+        tipo=InscripcionMateriaMovimiento.Tipo.BAJA,
+        operador=request.user.username if request.user.is_authenticated else "Anon",
+        motivo_detalle=f"Baja voluntaria. Motivo: {payload.motivo.strip()}"
+    )
+
+    return 200, ApiResponse(
+        ok=True,
+        message=f"Baja de '{inscripcion.materia.nombre}' registrada correctamente para el ciclo {inscripcion.anio}."
+    )

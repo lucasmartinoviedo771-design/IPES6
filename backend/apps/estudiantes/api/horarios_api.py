@@ -90,7 +90,7 @@ def materias_plan(
         )
 
     def horarios_para(m: Materia) -> list[Horario]:
-        hcs = HorarioCatedra.objects.filter(espacio=m).annotate(max_anio=Max("anio_cursada")).order_by("-anio_cursada")
+        hcs = HorarioCatedra.objects.filter(espacio=m).annotate(max_anio=Max("anio_academico")).order_by("-anio_academico")
         if not hcs:
             return []
         detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__in=hcs[:1]).select_related(
@@ -114,6 +114,9 @@ def materias_plan(
         )
 
     materias = []
+    if not plan:
+        return []
+
     for m in plan.materias.all().order_by("anio_cursada", "nombre"):
         materias.append(
             MateriaPlan(

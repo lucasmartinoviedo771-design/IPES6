@@ -40,6 +40,18 @@ class Estudiante(models.Model):
         default=False,
         help_text="Indica si tiene aprobado el Curso Introductorio.",
     )
+    autorizado_rendir = models.BooleanField(
+        default=False,
+        help_text=(
+            "Autorización excepcional para rendir exámenes finales con legajo incompleto. "
+            "Solo puede ser activado por Secretaría o Bedelía."
+        ),
+    )
+    autorizado_rendir_observacion = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Motivo o aclaración de la autorización excepcional.",
+    )
     # Datos Académicos
     anio_ingreso = models.IntegerField(null=True, blank=True)
     cohorte = models.CharField(max_length=50, null=True, blank=True)

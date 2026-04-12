@@ -25,7 +25,7 @@ from .preinscripciones import (
     ProfesoradoRequisitoDocumentacion,
     RequisitoDocumentacionTemplate,
 )
-from .inscripciones import EquivalenciaCurricular, InscripcionMateriaEstudiante
+from .inscripciones import EquivalenciaCurricular, InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
 from .curso_intro import CursoIntroductorioCohorte, CursoIntroductorioRegistro
 from .pedidos import (
     EquivalenciaDisposicion,
@@ -89,6 +89,7 @@ __all__ = [
     "ProfesoradoRequisitoDocumentacion",
     # inscripciones
     "InscripcionMateriaEstudiante",
+    "InscripcionMateriaMovimiento",
     "EquivalenciaCurricular",
     # curso_intro
     "CursoIntroductorioCohorte",

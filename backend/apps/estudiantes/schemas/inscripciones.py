@@ -22,6 +22,10 @@ class InscripcionMateriaIn(Schema):
 class CancelarInscripcionIn(Schema):
     dni: str | None = None
 
+class BajaInscripcionIn(Schema):
+    motivo: str
+    dni: str | None = None
+
 class CambioComisionIn(Schema):
     inscripcion_id: int
     comision_id: int
@@ -29,7 +33,7 @@ class CambioComisionIn(Schema):
 class InscripcionEstado(Schema):
     pass # Placeholder si se necesita tipado estricto, o usar Literal abajo
 
-InscripcionEstadoType = Literal["CONF", "PEND", "RECH", "ANUL"]
+InscripcionEstadoType = Literal["CONF", "PEND", "RECH", "ANUL", "BAJA"]
 
 # ==========================================
 # 7. COMISIONES Y LOOKUP

@@ -26,7 +26,9 @@ def _metadata_str(data: dict[str, object]) -> dict[str, str]:
     return {key: str(value) for key, value in data.items() if value not in (None, "", [], {})}
 
 
-def _add_years(base: date, years: int) -> date:
+def _add_years(base: date | None, years: int) -> date | None:
+    if not base:
+        return None
     try:
         return base.replace(year=base.year + years)
     except ValueError:
@@ -38,6 +40,13 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
     from core.models import MesaExamen, ActaExamenEstudiante
 
     # 1. Base: 2 años desde el cierre de cursada
+    if not regularidad.fecha_cierre:
+        # Si no hay fecha de cierre, asumimos que no hay vigencia calculable (o es infinita?)
+        # Retornamos la fecha actual + 2 años como fallback seguro para evitar crash
+        from django.utils import timezone
+        limite = timezone.now().date() + timedelta(days=365 * 2)
+        return limite, 0
+
     fecha_base = _add_years(regularidad.fecha_cierre, 2)
     
     # 2. Límite máximo: 60 días después de la base

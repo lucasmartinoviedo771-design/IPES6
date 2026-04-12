@@ -38,6 +38,7 @@ _SITUACIONES = {
 }
 
 ALIAS_TO_SITUACION = {item["alias"]: item["codigo"] for items in _SITUACIONES.values() for item in items}
+ALIAS_TO_SITUACION["BAJA"] = Regularidad.Situacion.BAJA
 SITUACION_TO_ALIAS = {v: k for k, v in ALIAS_TO_SITUACION.items()}
 
 def normalized_user_roles(user) -> set[str]:

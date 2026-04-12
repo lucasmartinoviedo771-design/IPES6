@@ -36,6 +36,7 @@ from ..schemas import (
     BajaMesaOut,
 )
 from .helpers import (
+    _add_years,
     _correlatividades_qs,
     _ensure_estudiante_access,
     _listar_carreras_detalle,
@@ -192,14 +193,14 @@ def listar_mesas_estudiante(
                     continue
 
                 # 4. Vigencia de regularidad (2 años + 1 llamado)
-                def _add_years(d: date, years: int) -> date:
-                    try: return d.replace(year=d.year + years)
-                    except ValueError: return d.replace(month=2, day=28, year=d.year + years)
+                if not reg or not reg.fecha_cierre:
+                    continue
 
                 from datetime import timedelta
-                two_years_60d = _add_years(reg.fecha_cierre, 2) + timedelta(days=60)
+                fecha_base = _add_years(reg.fecha_cierre, 2)
+                two_years_60d = fecha_base + timedelta(days=60) if fecha_base else None
                 allowed_until = two_years_60d
-                if m.fecha > allowed_until:
+                if not allowed_until or m.fecha > allowed_until:
                     continue
                 
                 # 5. Límite de llamados (1 fallido)
@@ -257,14 +258,14 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                     return 400, {"message": "Materia ya aprobada/promocionada en cursada."}
                 return 400, {"message": "No posee regularidad vigente en la materia."}
 
-            def _add_years(d: date, years: int) -> date:
-                try: return d.replace(year=d.year + years)
-                except ValueError: return d.replace(month=2, day=28, year=d.year + years)
+            if not reg.fecha_cierre:
+                return 400, {"message": "Regularidad sin fecha de cierre válida."}
 
             from datetime import timedelta
-            allowed_until = _add_years(reg.fecha_cierre, 2) + timedelta(days=60)
+            fecha_base = _add_years(reg.fecha_cierre, 2)
+            allowed_until = (fecha_base + timedelta(days=60)) if fecha_base else None
             
-            if mesa.fecha > allowed_until:
+            if not allowed_until or mesa.fecha > allowed_until:
                 return 400, {"message": f"La vigencia de su regularidad ha expirado (2 años + 60 días). Venció el {allowed_until}."}
 
             # D. Conteo de Intentos
@@ -314,15 +315,14 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
         # C. Exclusión por Regularidad Vigente
         reg = Regularidad.objects.filter(estudiante=est, materia=mesa.materia).order_by("-fecha_cierre").first()
         if reg and reg.situacion == Regularidad.Situacion.REGULAR:
-            def _add_years(d: date, years: int) -> date:
-                try: return d.replace(year=d.year + years)
-                except ValueError: return d.replace(month=2, day=28, year=d.year + years)
+            if not reg.fecha_cierre:
+                 return 400, {"message": "Regularidad sin fecha de cierre válida."}
 
             two_years = _add_years(reg.fecha_cierre, 2)
-            next_call = MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years).order_by("fecha").values_list("fecha", flat=True).first()
+            next_call = MesaExamen.objects.filter(materia=mesa.materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years).order_by("fecha").values_list("fecha", flat=True).first() if two_years else None
             allowed_until = next_call or two_years
             
-            if mesa.fecha <= allowed_until:
+            if allowed_until and mesa.fecha <= allowed_until:
                  return 400, {"message": "Posee regularidad vigente. Debe inscribirse en una mesa modalidad REGULAR."}
 
         # D. Correlatividades para Rendir (Igual que regular)
