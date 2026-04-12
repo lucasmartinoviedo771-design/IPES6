@@ -61,6 +61,7 @@ export const formatDateTime = (date: string | Date | null | undefined, format: s
   if (!d.isValid()) return "Fecha inválida";
   return d.format(format);
 };
+
 /**
  * Alias para compatibilidad con código antiguo.
  */
