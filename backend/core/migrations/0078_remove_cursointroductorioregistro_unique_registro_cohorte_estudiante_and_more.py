@@ -13,54 +13,54 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveConstraint(
-            model_name='cursointroductorioregistro',
-            name='unique_registro_cohorte_estudiante',
-        ),
-        migrations.RemoveConstraint(
-            model_name='regularidadplanillalock',
-            name='regularidad_lock_scope_defined',
-        ),
-        migrations.AlterUniqueTogether(
-            name='materia',
-            unique_together=set(),
-        ),
-        migrations.AlterUniqueTogether(
-            name='horariocatedra',
-            unique_together={('espacio', 'turno', 'anio_academico', 'cuatrimestre')},
-        ),
-        migrations.AlterUniqueTogether(
-            name='comision',
-            unique_together={('materia', 'anio_lectivo', 'codigo')},
-        ),
-        migrations.AddConstraint(
-            model_name='actaexamen',
-            constraint=models.CheckConstraint(condition=models.Q(('total_alumnos', django.db.models.expressions.CombinedExpression(django.db.models.expressions.CombinedExpression(models.F('total_aprobados'), '+', models.F('total_desaprobados')), '+', models.F('total_ausentes')))), name='acta_examen_totals_parity'),
-        ),
-        migrations.AddConstraint(
-            model_name='cursointroductorioregistro',
-            constraint=models.UniqueConstraint(condition=models.Q(('cohorte__isnull', False)), fields=('cohorte', 'estudiante'), name='unique_registro_cohorte_estudiante'),
-        ),
-        migrations.AddConstraint(
-            model_name='cursointroductorioregistro',
-            constraint=models.UniqueConstraint(condition=models.Q(('cohorte__isnull', True)), fields=('estudiante',), name='unique_registro_student_orphan'),
-        ),
-        migrations.AddConstraint(
-            model_name='materia',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_edi', False)), fields=('plan_de_estudio', 'anio_cursada', 'nombre', 'regimen'), name='unique_materia_normal'),
-        ),
-        migrations.AddConstraint(
-            model_name='materia',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_edi', True)), fields=('plan_de_estudio', 'anio_cursada', 'nombre', 'regimen', 'fecha_inicio'), name='unique_materia_edi'),
-        ),
-        migrations.AddConstraint(
-            model_name='materia',
-            constraint=models.CheckConstraint(condition=models.Q(('fecha_fin__isnull', True), ('fecha_fin__gte', models.F('fecha_inicio')), _connector='OR'), name='materia_fecha_range_valid'),
-        ),
-        migrations.AddConstraint(
-            model_name='regularidadplanillalock',
-            constraint=models.CheckConstraint(condition=models.Q(models.Q(('anio_virtual__isnull', True), ('comision__isnull', False), ('materia__isnull', True)), models.Q(('anio_virtual__isnull', False), ('comision__isnull', True), ('materia__isnull', False)), _connector='OR'), name='regularidad_lock_scope_xor'),
-        ),
+        # migrations.RemoveConstraint(
+        #     model_name='cursointroductorioregistro',
+        #     name='unique_registro_cohorte_estudiante',
+        # ),
+        # migrations.RemoveConstraint(
+        #     model_name='regularidadplanillalock',
+        #     name='regularidad_lock_scope_defined',
+        # ),
+        # migrations.AlterUniqueTogether(
+        #     name='materia',
+        #     unique_together=set(),
+        # ),
+        # migrations.AlterUniqueTogether(
+        #     name='horariocatedra',
+        #     unique_together={('espacio', 'turno', 'anio_academico', 'cuatrimestre')},
+        # ),
+        # migrations.AlterUniqueTogether(
+        #     name='comision',
+        #     unique_together={('materia', 'anio_lectivo', 'codigo')},
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='actaexamen',
+        #     constraint=models.CheckConstraint(condition=models.Q(('total_alumnos', django.db.models.expressions.CombinedExpression(django.db.models.expressions.CombinedExpression(models.F('total_aprobados'), '+', models.F('total_desaprobados')), '+', models.F('total_ausentes')))), name='acta_examen_totals_parity'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='cursointroductorioregistro',
+        #     constraint=models.UniqueConstraint(condition=models.Q(('cohorte__isnull', False)), fields=('cohorte', 'estudiante'), name='unique_registro_cohorte_estudiante'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='cursointroductorioregistro',
+        #     constraint=models.UniqueConstraint(condition=models.Q(('cohorte__isnull', True)), fields=('estudiante',), name='unique_registro_student_orphan'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='materia',
+        #     constraint=models.UniqueConstraint(condition=models.Q(('is_edi', False)), fields=('plan_de_estudio', 'anio_cursada', 'nombre', 'regimen'), name='unique_materia_normal'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='materia',
+        #     constraint=models.UniqueConstraint(condition=models.Q(('is_edi', True)), fields=('plan_de_estudio', 'anio_cursada', 'nombre', 'regimen', 'fecha_inicio'), name='unique_materia_edi'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='materia',
+        #     constraint=models.CheckConstraint(condition=models.Q(('fecha_fin__isnull', True), ('fecha_fin__gte', models.F('fecha_inicio')), _connector='OR'), name='materia_fecha_range_valid'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='regularidadplanillalock',
+        #     constraint=models.CheckConstraint(condition=models.Q(models.Q(('anio_virtual__isnull', True), ('comision__isnull', False), ('materia__isnull', True)), models.Q(('anio_virtual__isnull', False), ('comision__isnull', True), ('materia__isnull', False)), _connector='OR'), name='regularidad_lock_scope_xor'),
+        # ),
         migrations.RemoveField(
             model_name='horariocatedra',
             name='anio_cursada',

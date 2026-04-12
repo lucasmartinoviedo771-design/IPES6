@@ -129,7 +129,7 @@ class Comision(models.Model):
     class Meta:
         verbose_name = "Comisión"
         verbose_name_plural = "Comisiones"
-        unique_together = ("materia", "anio_lectivo", "codigo")
+        unique_together = ("materia", "anio_lectivo", "codigo", "docente", "rol", "orden")
         ordering = ["anio_lectivo", "materia__nombre", "codigo", "orden"]
 
     def __str__(self):

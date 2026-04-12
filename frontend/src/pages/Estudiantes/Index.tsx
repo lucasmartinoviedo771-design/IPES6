@@ -59,7 +59,12 @@ const WINDOW_TYPE_CONFIG: Record<string, { title: string; icon: React.ReactNode;
   MESAS_FINALES: { title: "Exámenes Finales", subtitle: "Inscripción a mesas de examen", icon: <CalendarMonth />, path: "/estudiantes/mesa-examen" },
   MESAS_EXTRA: { title: "Exámenes Extraordinarios", subtitle: "Mesas especiales y remanentes", icon: <CalendarMonth />, path: "/estudiantes/mesa-examen" },
   COMISION: { title: "Cambio de Comisión", subtitle: "Solicitud de cambio de grupo", icon: <CompareArrows />, path: "/estudiantes/cambio-comision" },
-  ANALITICOS: { title: "Títulos y Diplomas", subtitle: "Gestión y seguimiento de trámites", icon: <School />, path: "/estudiantes/tramites" },
+  ANALITICOS: {
+    title: "Pedido de Analítico",
+    subtitle: "Gestión y seguimiento de trámites",
+    icon: <School />,
+    path: "/estudiantes/tramites",
+  },
   EQUIVALENCIAS: { title: "Equivalencias", subtitle: "Convalidación de materias externas", icon: <CompareArrows />, path: "/estudiantes/tramites" },
   CURSO_INTRODUCTORIO: { title: "Curso Introductorio", subtitle: "Ingreso y nivelación", icon: <VerifiedUser />, path: "/estudiantes/curso-introductorio" },
   PREINSCRIPCION: { title: "Preinscripción", subtitle: "Registro de aspirantes", icon: <Assignment /> },
@@ -227,48 +232,56 @@ export default function EstudiantesIndex() {
   });
 
   const dynamicEvents = useMemo(() => {
-    if (!ventanas) return [];
+    // 1. Iniciamos el mapa con todos los tipos configurados como "sin fecha"
+    const byTipo = new Map<string, any>();
+    Object.keys(WINDOW_TYPE_CONFIG).forEach((tipo) => {
+      byTipo.set(tipo, {
+        tipo,
+        status: "unscheduled",
+        desde: null,
+        hasta: null,
+        id: `empty-${tipo}`,
+      });
+    });
 
-    // Agrupar por tipo y elegir el representante de cada tipo
-    const byTipo = new Map<string, typeof ventanas[number] & { status: string }>();
+    // 2. Si hay datos de ventanas, actualizamos con la mejor ventana disponible para cada tipo
+    if (ventanas && ventanas.length > 0) {
+      for (const v of ventanas) {
+        const status = getWindowStatus(v);
+        const enriched = { ...v, status };
+        const existing = byTipo.get(v.tipo);
 
-    for (const v of ventanas) {
-      const status = getWindowStatus(v);
-      const enriched = { ...v, status };
-      const existing = byTipo.get(v.tipo);
-      if (!existing) {
-        byTipo.set(v.tipo, enriched);
-        continue;
-      }
-      // Prioridad: active > future > closed (más reciente gana dentro del mismo nivel)
-      const order: Record<string, number> = { active: 1, future: 2, closed: 3 };
-      const existingOrder = order[existing.status];
-      const newOrder = order[status];
-      if (newOrder < existingOrder) {
-        // El nuevo tiene mejor estado → reemplaza
-        byTipo.set(v.tipo, enriched);
-      } else if (newOrder === existingOrder && status === 'future') {
-        // Entre dos futuros: quedamos con el más próximo
-        if (new Date(v.desde) < new Date(existing.desde)) {
+        // Si el tipo no estaba en nuestro config (raro), lo agregamos ahora
+        if (!existing || existing.status === "unscheduled") {
           byTipo.set(v.tipo, enriched);
+          continue;
         }
-      } else if (newOrder === existingOrder && status === 'closed') {
-        // Entre dos cerrados: quedamos con el más reciente
-        if (new Date(v.hasta) > new Date(existing.hasta)) {
+
+        // Prioridad de visualización: active > future > closed
+        const orderWeight: Record<string, number> = { active: 1, future: 2, closed: 3 };
+        const existingWeight = orderWeight[existing.status] || 99;
+        const newWeight = orderWeight[status] || 99;
+
+        if (newWeight < existingWeight) {
           byTipo.set(v.tipo, enriched);
+        } else if (newWeight === existingWeight && status === "future") {
+          if (new Date(v.desde) < new Date(existing.desde)) {
+            byTipo.set(v.tipo, enriched);
+          }
+        } else if (newWeight === existingWeight && status === "closed") {
+          if (new Date(v.hasta) > new Date(existing.hasta)) {
+            byTipo.set(v.tipo, enriched);
+          }
         }
       }
-      // Si el existente ya tiene mejor estado, no cambia
     }
 
-    // Si hay un activo Y un futuro del mismo tipo, solo queremos mostrar el activo
-    // (ya está resuelto por la lógica de prioridad arriba)
-
+    // 3. Mapeamos a la estructura final uniendo con WINDOW_TYPE_CONFIG
     const result = Array.from(byTipo.values()).map((v) => {
       const config = WINDOW_TYPE_CONFIG[v.tipo] || {
         title: v.tipo,
         subtitle: "Gestión institucional",
-        icon: <EventNote />
+        icon: <EventNote />,
       };
       return {
         ...v,
@@ -279,11 +292,16 @@ export default function EstudiantesIndex() {
       };
     });
 
-    // Ordenar: activos primero, luego futuros, luego cerrados
-    const order: Record<string, number> = { active: 1, future: 2, closed: 3 };
+    // 4. Ordenar: activos primero, luego futuros, luego sin fecha (unscheduled), al final cerrados
+    const displayOrder: Record<string, number> = { active: 1, future: 2, unscheduled: 3, closed: 4 };
     return result.sort((a, b) => {
-      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-      return new Date(b.desde).getTime() - new Date(a.desde).getTime();
+      if (displayOrder[a.status] !== displayOrder[b.status]) {
+        return displayOrder[a.status] - displayOrder[b.status];
+      }
+      if (a.desde && b.desde) {
+        return new Date(b.desde).getTime() - new Date(a.desde).getTime();
+      }
+      return 0;
     });
   }, [ventanas]);
 
@@ -362,11 +380,14 @@ export default function EstudiantesIndex() {
             </Grid>
           ) : (
             dynamicEvents.map((event) => {
-              const isActive = event.status === 'active';
-              const isFuture = event.status === 'future';
-              const isClosed = event.status === 'closed';
+              const isActive = event.status === "active";
+              const isFuture = event.status === "future";
+              const isClosed = event.status === "closed";
+              const isUnscheduled = event.status === "unscheduled";
+
               const VIBRANT_GREEN = "#2D8C3C";
               const CLOSED_COLOR = "#9e9e9e";
+              const UNSCHEDULED_COLOR = "#7d7f6e";
 
               return (
                 <Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
@@ -384,72 +405,101 @@ export default function EstudiantesIndex() {
                         ? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
                         : `1px solid rgba(158,158,158,0.35)`,
                       cursor: event.path ? "pointer" : "default",
-                      backgroundColor: "#fff",
+                      backgroundColor: isUnscheduled ? "rgba(125,127,110,0.05)" : "#fff",
                       transition: "all 0.2s ease",
-                      "&:hover": event.path ? {
-                        transform: "translateY(-2px)",
-                        boxShadow: 2,
-                      } : {},
+                      "&:hover": event.path
+                        ? {
+                            transform: "translateY(-2px)",
+                            boxShadow: 2,
+                          }
+                        : {},
                     }}
                   >
                     {/* Badge superior derecho */}
-                    <Box component="span" sx={{
-                      position: "absolute",
-                      top: 10,
-                      right: 10,
-                      bgcolor: isActive ? VIBRANT_GREEN : isFuture ? INSTITUTIONAL_TERRACOTTA : CLOSED_COLOR,
-                      color: 'white',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      px: 1,
-                      py: 0.4,
-                      borderRadius: '5px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}>
-                      {isActive ? "Abierto" : isFuture ? "Próximamente" : "Vencido"}
+                    <Box
+                      component="span"
+                      sx={{
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
+                        bgcolor: isActive
+                          ? VIBRANT_GREEN
+                          : isFuture
+                          ? INSTITUTIONAL_TERRACOTTA
+                          : isUnscheduled
+                          ? UNSCHEDULED_COLOR
+                          : CLOSED_COLOR,
+                        color: "white",
+                        fontSize: "0.7rem",
+                        fontWeight: 800,
+                        px: 1,
+                        py: 0.4,
+                        borderRadius: "5px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      {isActive ? "Abierto" : isFuture ? "Próximamente" : isUnscheduled ? "Sin fecha" : "Vencido"}
                     </Box>
 
-                    <Box sx={{
-                      mr: 2,
-                      width: 48,
-                      height: 48,
-                      borderRadius: 2,
-                      backgroundImage: ICON_GRADIENT,
-                      color: "common.white",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      boxShadow: "0 6px 16px rgba(183,105,78,0.3)",
-                    }}>
+                    <Box
+                      sx={{
+                        mr: 2,
+                        width: 48,
+                        height: 48,
+                        borderRadius: 2,
+                        backgroundImage: ICON_GRADIENT,
+                        color: "common.white",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        boxShadow: "0 6px 16px rgba(183,105,78,0.3)",
+                      }}
+                    >
                       {React.cloneElement(event.icon as React.ReactElement, { sx: { fontSize: 26 } })}
                     </Box>
 
                     <Box sx={{ flexGrow: 1, pr: 8 }}>
-                      <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1.1, mb: 0.2, fontSize: '1rem' }}>
+                      <Typography
+                        variant="subtitle2"
+                        fontWeight={800}
+                        sx={{ lineHeight: 1.1, mb: 0.2, fontSize: "1rem" }}
+                      >
                         {event.title}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
                         {event.subtitle}
                       </Typography>
 
                       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                        {/* fechas abajo, sin badge */}
-
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          <CalendarMonth sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7 }} />
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
-                            <Box component="span" color="text.secondary">Desde:</Box> {formatDateShort(event.desde)}
+                        {isUnscheduled ? (
+                          <Typography variant="caption" color="text.secondary" fontStyle="italic">
+                            Fecha no definida.
                           </Typography>
-                        </Stack>
+                        ) : (
+                          <>
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <CalendarMonth sx={{ fontSize: 14, color: "text.secondary", opacity: 0.7 }} />
+                              <Typography variant="caption" sx={{ fontSize: "0.65rem" }}>
+                                <Box component="span" color="text.secondary">
+                                  Desde:
+                                </Box>{" "}
+                                {formatDateShort(event.desde)}
+                              </Typography>
+                            </Stack>
 
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                          <Assignment sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7 }} />
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
-                            <Box component="span" color="text.secondary">Hasta:</Box> {formatDateShort(event.hasta)}
-                          </Typography>
-                        </Stack>
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                              <Assignment sx={{ fontSize: 14, color: "text.secondary", opacity: 0.7 }} />
+                              <Typography variant="caption" sx={{ fontSize: "0.65rem" }}>
+                                <Box component="span" color="text.secondary">
+                                  Hasta:
+                                </Box>{" "}
+                                {formatDateShort(event.hasta)}
+                              </Typography>
+                            </Stack>
+                          </>
+                        )}
                       </Stack>
                     </Box>
 
