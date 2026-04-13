@@ -198,6 +198,10 @@ def obtener_estudiantes_metadata(allowed_carrera_ids: list[int] | None = None):
     if allowed_carrera_ids is not None:
         estudiantes_qs = estudiantes_qs.filter(carreras__id__in=allowed_carrera_ids).distinct()
 
+    # Obtenemos el total real para asegurar que no se pierda ningún estudiante
+    # independientemente de cuánto crezca la base de datos.
+    total = estudiantes_qs.count()
+    
     return [
         {
             "id": e.id,
@@ -206,7 +210,7 @@ def obtener_estudiantes_metadata(allowed_carrera_ids: list[int] | None = None):
             "dni": e.dni,
             "profesorados": [c.id for c in e.carreras.all()]
         }
-        for e in estudiantes_qs[:1000] # Limite razonable para un combobox frontend
+        for e in estudiantes_qs[:total]
     ]
 
 def obtener_regularidad_metadata(user: DjangoUser, include_all: bool = False) -> dict:

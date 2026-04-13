@@ -102,7 +102,7 @@ def _import_estudiante_record(
             "user": user,
             "estado_legajo": _normalize_estado_legajo(record.get("estado_legajo")),
             "observaciones": (record.get("observaciones") or "").strip(),
-            "legajo": (record.get("legajo") or "").strip(),
+            "legajo": (record.get("legajo") or "").strip() or None,
             "must_change_password": must_change,
         }
     )

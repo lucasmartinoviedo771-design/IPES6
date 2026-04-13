@@ -158,8 +158,8 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
     checked: boolean,
   ) => {
     const mapped: 'titulo_secundario_legalizado' | 'certificado_titulo_en_tramite' | 'analitico_legalizado' =
-      key === 'titulo_secundario' ? 'titulo_secundario_legalizado'
-        : key === 'titulo_en_tramite' ? 'certificado_titulo_en_tramite'
+      (key === 'titulo_secundario' || key === 'titulo_secundario_legalizado') ? 'titulo_secundario_legalizado'
+        : (key === 'titulo_en_tramite' || key === 'certificado_titulo_en_tramite') ? 'certificado_titulo_en_tramite'
           : 'analitico_legalizado';
     setValue("titulo_secundario_legalizado", false);
     setValue("certificado_titulo_en_tramite", false);

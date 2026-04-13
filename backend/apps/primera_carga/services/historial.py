@@ -33,7 +33,9 @@ def get_historial_regularidades(user, anio=None, profesorado_id=None, ordering="
             return [], "No tiene permisos sobre este profesorado."
         qs = qs.filter(profesorado_id=profesorado_id)
 
-    qs = qs[:1000]
+    # Evitamos el límite fijo de 1000 para que el historial sea infinito
+    total = qs.count()
+    qs = qs[:total]
 
     regimen_map = {"ANU": "ANUAL", "PCU": "1C", "SCU": "2C"}
     data = []
