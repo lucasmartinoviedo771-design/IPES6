@@ -113,14 +113,23 @@ class PreinscripcionChecklist(models.Model):
         return Estudiante.EstadoLegajo.COMPLETO if completos else Estudiante.EstadoLegajo.INCOMPLETO
 
     def save(self, *args, **kwargs):
-        # Actualiza estado derivado y refleja en Estudiante asociado
+        # Actualiza estado derivado y refleja en la inscripción (EstudianteCarrera)
         self.estado_legajo = self.calcular_estado()
         super().save(*args, **kwargs)
         try:
-            est = self.preinscripcion.alumno
-            if est and est.estado_legajo != self.estado_legajo:
-                est.estado_legajo = self.estado_legajo
-                est.save(update_fields=["estado_legajo"])
+            from .estudiantes import EstudianteCarrera
+            
+            pre = self.preinscripcion
+            # Buscamos la inscripción correspondiente a esta preinscripción
+            # (Misno alumno + misma carrera)
+            inscripcion = EstudianteCarrera.objects.filter(
+                estudiante=pre.alumno,
+                profesorado=pre.carrera
+            ).first()
+            
+            if inscripcion and inscripcion.estado_legajo != self.estado_legajo:
+                inscripcion.estado_legajo = self.estado_legajo
+                inscripcion.save(update_fields=["estado_legajo"])
         except Exception:
             pass
 

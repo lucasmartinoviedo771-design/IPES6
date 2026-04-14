@@ -70,13 +70,23 @@ class EstudianteService:
             carreras_nombres = []
             
             for cd in est.carreras_detalle.all():
-                if allowed_carrera_ids is None or cd.profesorado_id in allowed_carrera_ids:
-                    carreras_det.append({
-                        "nombre": cd.profesorado.nombre,
-                        "estado_academico": cd.estado_academico,
-                        "estado_academico_display": cd.get_estado_academico_display()
-                    })
-                    carreras_nombres.append(cd.profesorado.nombre)
+                # 1. Filtro por permisos (si es bedel tiene restricted ids)
+                if allowed_carrera_ids is not None and cd.profesorado_id not in allowed_carrera_ids:
+                    continue
+                
+                # 2. Filtro por carrera seleccionada en el UI (si aplica)
+                if carrera_id and cd.profesorado_id != int(carrera_id):
+                    continue
+                
+                carreras_det.append({
+                    "profesorado_id": cd.profesorado_id,
+                    "nombre": cd.profesorado.nombre,
+                    "estado_academico": cd.estado_academico,
+                    "estado_academico_display": cd.get_estado_academico_display(),
+                    "estado_legajo": cd.estado_legajo,
+                    "estado_legajo_display": cd.get_estado_legajo_display()
+                })
+                carreras_nombres.append(cd.profesorado.nombre)
 
             items.append(
                 EstudianteAdminListItem(

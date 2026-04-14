@@ -38,6 +38,8 @@ export default function EstudiantesAdminPage() {
   const { dni: dniParam } = useParams();
   const [selectedDni, setSelectedDni] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_LIMIT);
 
   useEffect(() => {
     if (dniParam) {
@@ -58,10 +60,10 @@ export default function EstudiantesAdminPage() {
       estado_legajo: estado || undefined,
       estado_academico: estadoAcademico || undefined,
       carrera_id: typeof carreraId === "number" ? carreraId : undefined,
-      limit: DEFAULT_LIMIT,
-      offset: 0,
+      limit: rowsPerPage,
+      offset: page * rowsPerPage,
     }),
-    [debouncedSearch, estado, estadoAcademico, carreraId],
+    [debouncedSearch, estado, estadoAcademico, carreraId, page, rowsPerPage],
   );
 
   const queryClient = useQueryClient();
@@ -182,7 +184,10 @@ export default function EstudiantesAdminPage() {
         onCarreraChange={setCarreraId}
         carreras={carrerasQuery.data ?? []}
         isListLoading={isListLoading}
-        onRefresh={() => queryClient.invalidateQueries({ queryKey: ["admin-estudiantes"] })}
+        onRefresh={() => {
+          setPage(0);
+          queryClient.invalidateQueries({ queryKey: ["admin-estudiantes"] });
+        }}
       />
 
       <EstudiantesTable
@@ -192,6 +197,13 @@ export default function EstudiantesAdminPage() {
         isError={listQuery.isError}
         error={listQuery.error}
         onRowClick={handleOpenDetail}
+        page={page}
+        onPageChange={setPage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(val: number) => {
+          setRowsPerPage(val);
+          setPage(0);
+        }}
       />
 
       <EstudianteDetailDialog
@@ -216,8 +228,8 @@ export default function EstudiantesAdminPage() {
         resetPassIsPending={resetPassMutation.isPending}
         onDeleteClick={() => setDeleteConfirmOpen(true)}
         onResetPassword={handleResetPassword}
-        onAutorizarRendir={(autorizado, observacion) =>
-          autorizarRendirMutation.mutate({ autorizado, observacion })
+        onAutorizarRendir={(autorizado, observacion, materias_autorizadas) =>
+          autorizarRendirMutation.mutate({ autorizado, observacion, materias_autorizadas: materias_autorizadas || [] })
         }
         autorizarRendirIsPending={autorizarRendirMutation.isPending}
       />

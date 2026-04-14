@@ -605,6 +605,8 @@ export interface CarreraStatus {
   nombre: string;
   estado_academico: string;
   estado_academico_display: string;
+  estado_legajo: string;
+  estado_legajo_display: string;
 }
 
 export interface EstudianteAdminListItemDTO {
@@ -671,6 +673,7 @@ export interface EstudianteAdminDetailDTO {
   must_change_password: boolean;
   activo?: boolean;
   carreras: string[];
+  carreras_detalle?: CarreraStatus[];
   legajo?: string | null;
   datos_extra: Record<string, unknown>;
   documentacion?: EstudianteAdminDocumentacionDTO | null;
@@ -701,6 +704,11 @@ export interface EstudianteAdminUpdatePayload {
   cuil?: string | null;
   curso_introductorio_aprobado?: boolean | null;
   libreta_entregada?: boolean | null;
+  carreras_update?: Array<{
+    profesorado_id: number;
+    estado_academico?: string | null;
+    estado_legajo?: string | null;
+  }>;
 }
 
 export type EstudianteAdminListParams = {

@@ -275,6 +275,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
               mUpdate={mUpdate}
               mConfirm={mConfirm}
               docsQData={docsQ.data as any}
+              checklistData={checklistQ.data}
               onUploadFoto={(file) => mUploadFoto.mutate(file)}
               onReset={() => reset()}
               onObservar={handleRequestObservada}

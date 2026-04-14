@@ -23,6 +23,7 @@ from apps.estudiantes.schemas import (
     EstudianteAdminUpdateIn,
     RegularidadResumen,
 )
+from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 
 from apps.estudiantes.api.helpers.user_utils import ADMIN_ALLOWED_ROLES
 
@@ -220,6 +221,21 @@ def _apply_estudiante_updates(
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))
 
+    if payload.carreras_update is not None:
+        from core.models import EstudianteCarrera
+        for cu in payload.carreras_update:
+            ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=cu.profesorado_id).first()
+            if ec:
+                ec_updates = []
+                if cu.estado_academico is not None:
+                    ec.estado_academico = cu.estado_academico
+                    ec_updates.append("estado_academico")
+                if cu.estado_legajo is not None:
+                    ec.estado_legajo = cu.estado_legajo
+                    ec_updates.append("estado_legajo")
+                if ec_updates:
+                    ec.save(update_fields=ec_updates)
+
     return True, None
 
 
@@ -260,10 +276,23 @@ def _determine_condicion(documentacion: dict | None) -> str:
     return "Pendiente"
 
 
-def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
+def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminDetail:
     user = estudiante.user if estudiante.user_id else None
     persona = estudiante.persona
-    carreras_nombres = [c.nombre for c in estudiante.carreras.all()]
+    carreras_det = []
+    carreras_nombres = []
+    for cd in estudiante.carreras_detalle.select_related("profesorado").all():
+        if allowed_carrera_ids is not None and cd.profesorado_id not in allowed_carrera_ids:
+            continue
+        carreras_det.append({
+            "profesorado_id": cd.profesorado_id,
+            "nombre": cd.profesorado.nombre,
+            "estado_academico": cd.estado_academico,
+            "estado_academico_display": cd.get_estado_academico_display(),
+            "estado_legajo": cd.estado_legajo,
+            "estado_legajo_display": cd.get_estado_legajo_display()
+        })
+        carreras_nombres.append(cd.profesorado.nombre)
     documentacion_data = _extract_documentacion(estudiante)
 
     # --- Check documentation from PreinscripcionChecklist if available ---
@@ -310,6 +339,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
             asistencia=reg.asistencia_porcentaje,
             excepcion=reg.excepcion,
             observaciones=reg.observaciones or None,
+            aprobada=estudiante_tiene_materia_aprobada(estudiante, reg.materia),
         )
         for reg in Regularidad.objects.filter(estudiante=estudiante).select_related("materia").order_by("-fecha_cierre")
     ]
@@ -356,6 +386,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         must_change_password=estudiante.must_change_password,
         activo=user.is_active if user else False,
         carreras=carreras_nombres,
+        carreras_detalle=carreras_det,
         legajo=estudiante.legajo or None,
         datos_extra=extra_data,
         documentacion=documentacion,
@@ -364,6 +395,7 @@ def _build_admin_detail(estudiante: Estudiante) -> EstudianteAdminDetail:
         libreta_entregada=estudiante.libreta_entregada,
         autorizado_rendir=estudiante.autorizado_rendir,
         autorizado_rendir_observacion=estudiante.autorizado_rendir_observacion,
+        materias_autorizadas=list(estudiante.materias_autorizadas.values_list("id", flat=True)),
         regularidades=regularidades_resumen,
         lugar_nacimiento=persona.lugar_nacimiento if persona else None,
         genero=persona.genero if persona else None,

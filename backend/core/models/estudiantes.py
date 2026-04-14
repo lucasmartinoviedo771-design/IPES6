@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
-from .carreras import Documento, Profesorado
+from .carreras import Documento, Profesorado, Materia
 
 
 class Estudiante(models.Model):
@@ -57,6 +57,12 @@ class Estudiante(models.Model):
     cohorte = models.CharField(max_length=50, null=True, blank=True)
     observaciones = models.TextField(blank=True, null=True)
     libreta_entregada = models.BooleanField(default=False)
+    materias_autorizadas = models.ManyToManyField(
+        Materia,
+        blank=True,
+        related_name="estudiantes_autorizados",
+        help_text="Materias específicas autorizadas excepcionalmente para rendir."
+    )
 
     # Datos de Educación Secundaria
     sec_titulo = models.CharField(max_length=255, blank=True, null=True)
@@ -206,6 +212,12 @@ class EstudianteCarrera(models.Model):
         choices=EstadoAcademico.choices,
         default=EstadoAcademico.ACTIVO,
         help_text="Estado académico del estudiante en esta carrera.",
+    )
+    estado_legajo = models.CharField(
+        max_length=3,
+        choices=Estudiante.EstadoLegajo.choices,
+        default=Estudiante.EstadoLegajo.PENDIENTE,
+        help_text="Estado del legajo físico del estudiante para esta carrera específica.",
     )
     estado_academico_changed_at = models.DateTimeField(
         null=True,

@@ -77,6 +77,7 @@ export function usePlanillaForm({
       ],
       filas: buildDefaultRows(),
       dry_run: false,
+      force_upgrade: false,
     },
   });
 
@@ -225,7 +226,8 @@ export function usePlanillaForm({
             Object.entries(f.datos || {}).map(([k, v]) => [k, v?.toString() ?? ''])
           )
         })),
-        dry_run: false
+        dry_run: false,
+        force_upgrade: d.force_upgrade ?? false
       });
     }
   }, [detailQuery.data, reset]);
@@ -774,6 +776,7 @@ export function usePlanillaForm({
       docentes: docentesPayload,
       filas: filasPayload,
       dry_run: values.dry_run,
+      force_upgrade: values.force_upgrade,
     };
 
     mutation.mutate(payload);

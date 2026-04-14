@@ -20,6 +20,13 @@ import DeleteIcon from "@mui/icons-material/DeleteForever";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import GavelIcon from "@mui/icons-material/Gavel";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Badge from "@mui/material/Badge";
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import SchoolIcon from "@mui/icons-material/School";
+import FolderSharedIcon from "@mui/icons-material/FolderShared";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { Control, UseFormHandleSubmit, UseFormWatch } from "react-hook-form";
 import { EstudianteAdminDetailDTO } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm, condicionColorMap } from "../types";
@@ -51,8 +58,9 @@ type Props = {
   resetPassIsPending?: boolean;
   onDeleteClick: () => void;
   onResetPassword?: () => void;
-  onAutorizarRendir?: (autorizado: boolean, observacion: string) => void;
+  onAutorizarRendir?: (autorizado: boolean, observacion: string, materias_autorizadas?: number[]) => void;
   autorizarRendirIsPending?: boolean;
+  isAdmin?: boolean;
 };
 
 export function EstudianteDetailDialog({
@@ -79,8 +87,10 @@ export function EstudianteDetailDialog({
   onResetPassword,
   onAutorizarRendir,
   autorizarRendirIsPending,
+  isAdmin = true
 }: Props) {
   const estudiante = detailQuery.data;
+  const [activeTab, setActiveTab] = useState(0);
   const [autorizadoSwitch, setAutorizadoSwitch] = useState(false);
   const [autorizadoObs, setAutorizadoObs] = useState("");
 
@@ -90,6 +100,10 @@ export function EstudianteDetailDialog({
       setAutorizadoObs(estudiante.autorizado_rendir_observacion ?? "");
     }
   }, [estudiante]);
+
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -105,100 +119,71 @@ export function EstudianteDetailDialog({
           </Box>
         ) : detailQuery.data ? (
           <Stack spacing={3}>
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary">
-                Carreras
-              </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5}>
-                {detailQuery.data.carreras.map((carrera) => (
-                  <Chip key={carrera} label={carrera} size="small" />
-                ))}
-              </Stack>
-            </Box>
-
-            {condicionCalculada && (
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Condicion calculada
-                </Typography>
-                <Chip
-                  size="small"
-                  label={condicionCalculada}
-                  color={condicionColorMap[condicionCalculada] ?? "default"}
-                />
-              </Stack>
+            {isAdmin && (
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                <Tabs 
+                  value={activeTab} 
+                  onChange={handleTabChange} 
+                  variant="scrollable" 
+                  scrollButtons="auto"
+                  textColor="primary"
+                  indicatorColor="primary"
+                >
+                  <Tab icon={<AssignmentIndIcon />} iconPosition="start" label="Datos Personales" />
+                  <Tab icon={<SchoolIcon />} iconPosition="start" label="Situación Académica" />
+                  <Tab icon={<FolderSharedIcon />} iconPosition="start" label="Legajo" />
+                  <Tab 
+                    icon={
+                      <Badge color="warning" variant="dot" invisible={!autorizadoSwitch}>
+                        <VerifiedUserIcon />
+                      </Badge>
+                    } 
+                    iconPosition="start" 
+                    label="Autorización" 
+                  />
+                </Tabs>
+              </Box>
             )}
 
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                Accesos rápidos (Vista estudiante)
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => window.open(`/estudiantes/trayectoria?dni=${selectedDni}`, "_blank")}
-                >
-                  Trayectoria
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => window.open(`/estudiantes/horarios?dni=${selectedDni}`, "_blank")}
-                >
-                  Horarios
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => window.open(`/estudiantes/inscripcion-materia?dni=${selectedDni}`, "_blank")}
-                >
-                  Inscripción
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => window.open(`/estudiantes/cambio-comision?dni=${selectedDni}`, "_blank")}
-                >
-                  Cambio comisión
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<DescriptionIcon />}
-                  onClick={() => window.open(`/estudiantes/certificado-regular?dni=${selectedDni}`, "_blank")}
-                >
-                  Constancia Regular
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="warning"
-                  startIcon={resetPassIsPending ? <CircularProgress size={16} color="inherit" /> : <LockResetIcon />}
-                  onClick={onResetPassword}
-                  disabled={resetPassIsPending || updateIsPending}
-                >
-                  Resetear Contraseña
-                </Button>
+            {isAdmin && (
+              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Carreras
+                  </Typography>
+                  <Stack direction="row" spacing={1} mt={0.5} flexWrap="wrap">
+                    {(detailQuery.data.carreras_detalle && detailQuery.data.carreras_detalle.length > 0) ? (
+                      detailQuery.data.carreras_detalle.map((c) => (
+                        <Chip 
+                          key={c.nombre}
+                          label={`${c.nombre} (${c.estado_academico_display})`}
+                          size="small" 
+                          variant="outlined"
+                          sx={{ fontSize: '0.7rem' }}
+                          color={c.estado_academico === 'ACT' ? 'success' : 'default'}
+                        />
+                      ))
+                    ) : (
+                      detailQuery.data.carreras.map((carrera) => (
+                        <Chip key={carrera} label={carrera} size="small" />
+                      ))
+                    )}
+                  </Stack>
+                </Box>
+                {condicionCalculada && (
+                  <Box textAlign="right">
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Condición
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={condicionCalculada}
+                      color={condicionColorMap[condicionCalculada] ?? "default"}
+                    />
+                  </Box>
+                )}
               </Stack>
-            </Box>
-
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-              <TextField
-                label="Email"
-                value={detailQuery.data.email || ""}
-                size="small"
-                fullWidth
-                InputProps={{ readOnly: true }}
-              />
-              <TextField
-                label="Legajo"
-                value={detailQuery.data.legajo || ""}
-                size="small"
-                fullWidth
-                InputProps={{ readOnly: true }}
-              />
-            </Stack>
+            )}
 
             <EstudianteDetailForm
               control={control}
@@ -212,62 +197,17 @@ export function EstudianteDetailDialog({
               handleMainDocChange={handleMainDocChange}
               handleAdeudaChange={handleAdeudaChange}
               handleEstudianteRegularChange={handleEstudianteRegularChange}
+              activeTab={isAdmin ? activeTab : 0}
+              autorizadoSwitch={autorizadoSwitch}
+              setAutorizadoSwitch={setAutorizadoSwitch}
+              autorizadoObs={autorizadoObs}
+              setAutorizadoObs={setAutorizadoObs}
+              onAutorizarRendir={onAutorizarRendir}
+              autorizarRendirIsPending={autorizarRendirIsPending}
+              detailData={detailQuery.data}
+              isAdmin={isAdmin}
             />
 
-            {onAutorizarRendir && (
-              <Paper
-                variant="outlined"
-                sx={{ p: 2, borderColor: autorizadoSwitch ? "warning.main" : "divider", bgcolor: autorizadoSwitch ? "warning.50" : "background.paper" }}
-              >
-                <Stack spacing={1.5}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <GavelIcon fontSize="small" color={autorizadoSwitch ? "warning" : "disabled"} />
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      Autorización excepcional para rendir finales
-                    </Typography>
-                    {autorizadoSwitch && (
-                      <Chip label="AUTORIZADO" color="warning" size="small" />
-                    )}
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    Permite al estudiante rendir exámenes finales aunque tenga el legajo incompleto. Solo Secretaría y Bedelía pueden modificar esto.
-                  </Typography>
-                  <Divider />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={autorizadoSwitch}
-                        onChange={(e) => setAutorizadoSwitch(e.target.checked)}
-                        color="warning"
-                      />
-                    }
-                    label={autorizadoSwitch ? "Autorizado para rendir" : "No autorizado"}
-                  />
-                  <TextField
-                    label="Motivo / Observación"
-                    value={autorizadoObs}
-                    onChange={(e) => setAutorizadoObs(e.target.value)}
-                    size="small"
-                    multiline
-                    rows={2}
-                    fullWidth
-                    placeholder="Ej: Autorizado por resolución del 12/04/2026 — pendiente entrega de analítico"
-                  />
-                  <Box>
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      size="small"
-                      disabled={autorizarRendirIsPending}
-                      startIcon={autorizarRendirIsPending ? <CircularProgress size={14} color="inherit" /> : <GavelIcon />}
-                      onClick={() => onAutorizarRendir(autorizadoSwitch, autorizadoObs)}
-                    >
-                      Guardar autorización
-                    </Button>
-                  </Box>
-                </Stack>
-              </Paper>
-            )}
           </Stack>
         ) : (
           <Alert severity="error">No se pudo cargar la ficha del estudiante.</Alert>

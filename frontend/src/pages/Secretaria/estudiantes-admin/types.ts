@@ -38,6 +38,13 @@ export type DetailDocumentacionForm = {
   articulo_7: boolean;
 };
 
+export type CarreraUpdateForm = {
+  profesorado_id: number;
+  nombre: string;
+  estado_academico: EstadoAcademico;
+  estado_legajo: EstadoLegajo;
+};
+
 export type DetailFormValues = {
   dni: string;
   apellido: string;
@@ -83,6 +90,7 @@ export type DetailFormValues = {
   empleador: string;
   horario_trabajo: string;
   domicilio_trabajo: string;
+  carreras_situacion?: CarreraUpdateForm[];
 };
 
 export const estadoColorMap: Record<string, "default" | "success" | "warning"> = {

@@ -193,6 +193,7 @@ export interface PlanillaRegularidadCreatePayload {
   filas: PlanillaRegularidadFilaPayload[];
   estado?: string;
   dry_run?: boolean;
+  force_upgrade?: boolean;
 }
 
 export interface PlanillaRegularidadCreateResult {
@@ -260,6 +261,7 @@ export interface PlanillaRegularidadDetalle extends PlanillaRegularidadCreateRes
   folio?: string | null;
   plan_resolucion?: string | null;
   observaciones?: string | null;
+  force_upgrade?: boolean;
   datos_adicionales?: Record<string, string>;
   docentes: PlanillaRegularidadDocentePayload[];
   filas: PlanillaRegularidadFilaPayload[];

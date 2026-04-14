@@ -382,10 +382,11 @@ def admin_bulk_update_estudiante_documentacion(
 def admin_get_estudiante(request, dni: str):
     """Obtiene el detalle completo del legajo de un estudiante."""
     _ensure_admin(request)
+    allowed_ids = allowed_profesorados(request.user)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
-    return _build_admin_detail(est)
+    return _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
 
 
 @router.put(
@@ -412,7 +413,8 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
         status_code, api_resp = error
         return status_code, api_resp
 
-    return _build_admin_detail(est)
+    allowed_ids = allowed_profesorados(request.user)
+    return _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
 
 
 @router.delete(
@@ -509,6 +511,13 @@ def admin_autorizar_rendir(request, dni: str, payload: AutorizarRendirIn):
 
     est.autorizado_rendir = payload.autorizado
     est.autorizado_rendir_observacion = payload.observacion or None
+    
+    # Procesamiento de materias autorizadas (Many-to-Many)
+    if payload.autorizado:
+        est.materias_autorizadas.set(payload.materias_autorizadas)
+    else:
+        est.materias_autorizadas.clear()
+
     est.save(update_fields=["autorizado_rendir", "autorizado_rendir_observacion"])
 
     estado = "habilitado" if payload.autorizado else "deshabilitado"

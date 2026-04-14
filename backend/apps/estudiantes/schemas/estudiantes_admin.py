@@ -20,6 +20,7 @@ class RegularidadResumen(Schema):
     asistencia: int | None = None
     excepcion: bool = False
     observaciones: str | None = None
+    aprobada: bool = False
     vigencia_hasta: str | None = None
     vigente: bool | None = None
     dias_restantes: int | None = None
@@ -42,9 +43,12 @@ class EstudianteAdminDocumentacion(Schema):
     articulo_7: bool | None = None
 
 class CarreraStatus(Schema):
+    profesorado_id: int
     nombre: str
     estado_academico: str
     estado_academico_display: str
+    estado_legajo: str
+    estado_legajo_display: str
 
 class EstudianteAdminListItem(Schema):
     dni: str
@@ -113,6 +117,7 @@ class EstudianteAdminDetail(Schema):
     must_change_password: bool
     activo: bool = True
     carreras: list[str] = Field(default_factory=list)
+    carreras_detalle: list[CarreraStatus] = Field(default_factory=list)
     legajo: str | None = None
     datos_extra: dict[str, Any] = Field(default_factory=dict)
     documentacion: EstudianteAdminDocumentacion | None = None
@@ -121,10 +126,16 @@ class EstudianteAdminDetail(Schema):
     libreta_entregada: bool | None = None
     autorizado_rendir: bool = False
     autorizado_rendir_observacion: str | None = None
+    materias_autorizadas: list[int] = Field(default_factory=list)
     regularidades: list[RegularidadResumen] = Field(default_factory=list)
 
 EstudianteAdminDetail.model_rebuild()
 
+
+class CarreraUpdateIn(Schema):
+    profesorado_id: int
+    estado_academico: str | None = None
+    estado_legajo: str | None = None
 
 class EstudianteAdminUpdateIn(Schema):
     dni: str | None = None
@@ -178,9 +189,12 @@ class EstudianteAdminUpdateIn(Schema):
     empleador: str | None = None
     horario_trabajo: str | None = None
     domicilio_trabajo: str | None = None
+    # Updates for specific careers
+    carreras_update: list[CarreraUpdateIn] | None = None
 
 
 
 class AutorizarRendirIn(Schema):
     autorizado: bool
     observacion: str | None = None
+    materias_autorizadas: list[int] = Field(default_factory=list)

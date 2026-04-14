@@ -21,6 +21,7 @@ from core.models import (
 )
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 from apps.estudiantes.api.notas_utils import alias_desde_situacion
+from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
 from apps.primera_carga.audit_utils import verify_regularidad_consistency
 from core.permissions import ensure_profesorado_access
 
@@ -275,10 +276,23 @@ def crear_planilla_regularidad(
                 warnings.append(f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitió el registro de regularidad.")
                 continue
 
-            if not force_upgrade and estudiante_tiene_materia_aprobada(estudiante, materia):
-                warnings.append(f"[Fila {orden}] El estudiante {estudiante.dni} ya tiene aprobada la materia {materia.nombre}.")
-                continue
+            has_aprobada = estudiante_tiene_materia_aprobada(estudiante, materia)
 
+            # BLOQUEO: No dejar cargar promoción/aprobación si ya tiene final aprobado
+            if not force_upgrade and has_aprobada and situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                raise ValueError(f"[Fila {orden}] {estudiante.dni}: Ya tiene la materia aprobada definitivamente. No se puede cargar promoción/aprobación.")
+
+            # ADVERTENCIA: Regularidad sobre regularidad vigente
+            if situacion == Regularidad.Situacion.REGULAR:
+                last_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia).exclude(fecha_cierre=fecha).order_by("-fecha_cierre").first()
+                if last_reg and last_reg.situacion == Regularidad.Situacion.REGULAR:
+                    limite, intentos = _calcular_vigencia_regularidad(estudiante, last_reg)
+                    if limite >= fecha and intentos < 3:
+                        warnings.append(f"[Fila {orden}] {estudiante.dni}: Posee regularidad vigente hasta {limite} (Intentos: {intentos}).")
+
+            if not force_upgrade and has_aprobada:
+                warnings.append(f"[Fila {orden}] {estudiante.dni}: Ya tiene aprobada la materia {materia.nombre} (Carga retroactiva).")
+            
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
             inscripcion = InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia).order_by("-anio").first()
             
@@ -348,6 +362,7 @@ def actualizar_planilla_regularidad(
     observaciones: str | None = None, datos_adicionales: dict | None = None,
     docentes: list[dict] | None = None, filas: list[dict] | None = None,
     estado: str | None = None, dry_run: bool = False,
+    force_upgrade: bool = False,
 ) -> dict:
     try:
         planilla = PlanillaRegularidad.objects.get(pk=planilla_id)
@@ -489,6 +504,19 @@ def actualizar_planilla_regularidad(
                     
                     # Extraer nota de prácticos si está en los datos extra
                     nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra_limpios)
+
+                    # Lógica de validación igualada a creación
+                    has_aprobada = estudiante_tiene_materia_aprobada(estudiante, materia_actual)
+                    if not force_upgrade and has_aprobada and situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                        raise ValueError(f"[Fila {orden}] {estudiante.dni}: Ya tiene la materia aprobada definitivamente. No se puede cargar promoción/aprobación.")
+
+                    if situacion == Regularidad.Situacion.REGULAR:
+                        last_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia_actual).exclude(fecha_cierre=planilla.fecha).order_by("-fecha_cierre").first()
+                        if last_reg and last_reg.situacion == Regularidad.Situacion.REGULAR:
+                            v_limite, v_intentos = _calcular_vigencia_regularidad(estudiante, last_reg)
+                            if v_limite >= planilla.fecha and v_intentos < 3:
+                                # Nota: En actualización los warnings no se devuelven directo sino por historial
+                                pass
 
                     Regularidad.objects.update_or_create(
                         estudiante=estudiante, materia=materia_actual, fecha_cierre=planilla.fecha,

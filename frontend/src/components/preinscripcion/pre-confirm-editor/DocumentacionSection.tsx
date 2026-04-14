@@ -14,7 +14,7 @@ import { compressImage } from "@/utils/compressImage";
 import { enqueueSnackbar } from "notistack";
 import { PreinscripcionForm } from "../schema";
 import { FotoPreviewBox } from "./components";
-import { PreDocItem } from "@/api/preinscripciones";
+import { PreDocItem, ChecklistDTO } from "@/api/preinscripciones";
 
 interface DocumentacionSectionProps {
   control: Control<PreinscripcionForm>;
@@ -29,6 +29,7 @@ interface DocumentacionSectionProps {
   mUpdate: { isPending: boolean };
   mConfirm: { isPending: boolean };
   docsQData: PreDocItem[] | undefined;
+  checklistData: ChecklistDTO | null | undefined;
   onUploadFoto: (file: File) => void;
   onReset: () => void;
   onObservar: () => void;
@@ -43,9 +44,20 @@ interface DocumentacionSectionProps {
 export default function DocumentacionSection({
   control, watch, setValue, docValues,
   isCertificacionDocente, anyMainSelected, allDocs, ddjjOk, canConfirm,
-  mUpdate, mConfirm, docsQData, onUploadFoto, onReset,
-  onObservar, onRechazar, pickSecundario, estado,
+  mUpdate, mConfirm, docsQData, checklistData, onReset,
+  onObservar, onRechazar, pickSecundario, estado, onUploadFoto,
 }: DocumentacionSectionProps) {
+  
+  const currentStatus = checklistData?.estado_legajo;
+  const statusConfig: Record<string, { label: string, color: "success" | "warning" | "default" }> = {
+    COM: { label: "Completo", color: "success" },
+    INC: { label: "Incompleto", color: "warning" },
+    PEN: { label: "Pendiente", color: "default" },
+  };
+  
+  const currentLabel = currentStatus ? (statusConfig[currentStatus]?.label || currentStatus) : "Pendiente";
+  const currentColor = currentStatus ? (statusConfig[currentStatus]?.color || "default") : "default";
+
   return (
     <Paper variant="outlined" sx={{ p: 2, border: '1px solid #eee' }}>
       <Typography variant="subtitle1" fontWeight={700} gutterBottom>Documentación</Typography>
@@ -109,9 +121,15 @@ export default function DocumentacionSection({
       })()}
 
       <Divider sx={{ my: 2 }} />
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="body2" fontWeight={600}>Estado proyectado:</Typography>
-        <Chip size="small" color={allDocs ? "success" : "warning"} label={allDocs ? "Regular" : "Condicional"} />
+      <Stack spacing={1}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="body2" fontWeight={600}>Estado actual (BD):</Typography>
+          <Chip size="small" variant="outlined" color={currentColor} label={currentLabel} />
+        </Stack>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="body2" fontWeight={600}>Estado proyectado:</Typography>
+          <Chip size="small" color={allDocs ? "success" : "warning"} label={allDocs ? "Completo / Regular" : "Incompleto / Condicional"} />
+        </Stack>
       </Stack>
 
       {!allDocs && (

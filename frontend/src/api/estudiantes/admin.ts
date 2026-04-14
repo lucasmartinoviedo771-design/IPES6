@@ -71,7 +71,7 @@ export async function resetPasswordEstudiante(dni: string): Promise<ApiResponseD
 
 export async function autorizarRendirEstudiante(
   dni: string,
-  payload: { autorizado: boolean; observacion?: string | null }
+  payload: { autorizado: boolean; observacion?: string | null; materias_autorizadas?: number[] }
 ): Promise<ApiResponseDTO> {
   const { data } = await client.patch<ApiResponseDTO>(
     `/estudiantes/admin/estudiantes/${dni}/autorizar-rendir`,

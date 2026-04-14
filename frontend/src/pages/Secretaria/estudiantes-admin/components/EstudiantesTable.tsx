@@ -12,6 +12,7 @@ import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
+import TablePagination from "@mui/material/TablePagination";
 import { EstudianteAdminListItemDTO } from "@/api/estudiantes";
 import { estadoColorMap } from "../types";
 
@@ -22,9 +23,16 @@ type Props = {
   isError: boolean;
   error: unknown;
   onRowClick: (dni: string) => void;
+  page: number;
+  onPageChange: (page: number) => void;
+  rowsPerPage: number;
+  onRowsPerPageChange: (rowsPerPage: number) => void;
 };
 
-export function EstudiantesTable({ estudiantes, total, isListLoading, isError, error, onRowClick }: Props) {
+export function EstudiantesTable({ 
+  estudiantes, total, isListLoading, isError, error, onRowClick,
+  page, onPageChange, rowsPerPage, onRowsPerPageChange 
+}: Props) {
   return (
     <Paper elevation={0}>
       <Box display="flex" alignItems="center" justifyContent="space-between" px={2} py={1.5}>
@@ -57,7 +65,6 @@ export function EstudiantesTable({ estudiantes, total, isListLoading, isError, e
                 <TableCell>Email</TableCell>
                 <TableCell>Teléfono</TableCell>
                 <TableCell>Carreras</TableCell>
-                <TableCell>Estado legajo</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -91,16 +98,24 @@ export function EstudiantesTable({ estudiantes, total, isListLoading, isError, e
                       {(item.carreras_detalle && item.carreras_detalle.length > 0) ? (
                         item.carreras_detalle.map((c) => (
                           <Box key={c.nombre} display="flex" alignItems="center" gap={1}>
-                            <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+                            <Typography variant="body2" sx={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                               {c.nombre}
                             </Typography>
-                            <Chip 
-                              label={c.estado_academico_display} 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ height: 16, fontSize: '0.65rem' }}
-                              color={c.estado_academico === 'ACT' ? 'success' : 'default'}
-                            />
+                            <Box display="flex" gap={0.5}>
+                              <Chip 
+                                label={c.estado_academico_display} 
+                                size="small" 
+                                variant="outlined"
+                                sx={{ height: 16, fontSize: '0.65rem' }}
+                                color={c.estado_academico === 'ACT' ? 'success' : 'default'}
+                              />
+                              <Chip
+                                size="small"
+                                label={c.estado_legajo_display}
+                                sx={{ height: 16, fontSize: '0.65rem' }}
+                                color={estadoColorMap[c.estado_legajo] ?? "default"}
+                              />
+                            </Box>
                           </Box>
                         ))
                       ) : (
@@ -110,19 +125,22 @@ export function EstudiantesTable({ estudiantes, total, isListLoading, isError, e
                       )}
                     </Stack>
                   </TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={item.estado_legajo_display}
-                      color={estadoColorMap[item.estado_legajo] ?? "default"}
-                    />
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
       )}
+      <TablePagination
+        component="div"
+        count={total}
+        page={page}
+        onPageChange={(_, newPage) => onPageChange(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(e) => onRowsPerPageChange(parseInt(e.target.value, 10))}
+        rowsPerPageOptions={[50, 100, 200, 500]}
+        labelRowsPerPage="Filas por página"
+      />
     </Paper>
   );
 }

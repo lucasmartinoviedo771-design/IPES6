@@ -215,6 +215,7 @@ class PlanillaRegularidadCreateIn(Schema):
     filas: list[RegularidadFilaIn]
     estado: str | None = None
     dry_run: bool = False
+    force_upgrade: bool = False
 
 
 @primera_carga_router.get(
@@ -255,6 +256,7 @@ def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
             filas=[fila.dict() for fila in payload.filas],
             estado=estado,
             dry_run=payload.dry_run,
+            force_upgrade=payload.force_upgrade,
         )
         if result.get("warnings") and not result.get("planilla"):
              return 400, ApiResponse(ok=False, message=result["warnings"][0], data=result)
@@ -376,8 +378,9 @@ def actualizar_planilla_endpoint(request, planilla_id: int, payload: PlanillaReg
         data = actualizar_planilla_regularidad(
             planilla_id=planilla_id,
             user=request.user,
-            **payload.dict(exclude={"dry_run"}),
-            dry_run=payload.dry_run
+            **payload.dict(exclude={"dry_run", "force_upgrade"}),
+            dry_run=payload.dry_run,
+            force_upgrade=payload.force_upgrade,
         )
         return ApiResponse(ok=True, message="Planilla actualizada correctamente.", data=data)
     except ValueError as exc:

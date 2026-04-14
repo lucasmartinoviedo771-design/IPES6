@@ -30,6 +30,7 @@ export type PlanillaFormValues = {
   docentes: PlanillaDocenteFormValues[];
   filas: PlanillaFilaFormValues[];
   dry_run: boolean;
+  force_upgrade: boolean;
 };
 
 export interface PlanillaRegularidadDialogProps {

@@ -218,6 +218,12 @@ export function usePopulateFormFromDetail(
         empleador: toStringOrEmpty(extra.empleador),
         horario_trabajo: toStringOrEmpty(extra.horario_trabajo),
         domicilio_trabajo: toStringOrEmpty(extra.domicilio_trabajo),
+        carreras_situacion: detail.carreras_detalle?.map((c) => ({
+          profesorado_id: (c as any).profesorado_id || 0,
+          nombre: c.nombre,
+          estado_academico: c.estado_academico as any,
+          estado_legajo: c.estado_legajo as any,
+        })),
       };
       reset(formValues);
     }

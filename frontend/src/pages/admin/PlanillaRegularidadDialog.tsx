@@ -12,6 +12,8 @@ import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
+import { Controller } from "react-hook-form";
 
 import { PlanillaRegularidadDialogProps } from './planilla-regularidad/types';
 import { useRegularidadMetadata } from './planilla-regularidad/hooks/useRegularidadMetadata';
@@ -211,16 +213,30 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
         )}
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={form.persistStudents}
-              onChange={(e) => form.setPersistStudents(e.target.checked)}
-              disabled={mode !== 'create'}
+        <Stack direction="row" spacing={2}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={form.persistStudents}
+                onChange={(e) => form.setPersistStudents(e.target.checked)}
+                disabled={mode !== 'create'}
+              />
+            }
+            label="Mantener lista de alumnos"
+          />
+          {mode !== 'view' && (
+            <Controller
+              name="force_upgrade"
+              control={form.control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                  label="Forzar carga (Ignorar advertencias)"
+                />
+              )}
             />
-          }
-          label="Mantener lista de estudiantes al guardar"
-        />
+          )}
+        </Stack>
         <Box>
           <Button onClick={onClose} sx={{ mr: 1 }}>{mode === 'view' ? 'Cerrar' : 'Cancelar'}</Button>
           {mode !== 'view' && (

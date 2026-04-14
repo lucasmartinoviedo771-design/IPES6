@@ -112,11 +112,16 @@ class PreinscripcionService:
             pre.alumno.save(update_fields=["datos_extra"])
 
         # Career assignment
-        pre.alumno.asignar_profesorado(
+        inscripcion = pre.alumno.asignar_profesorado(
             pre.carrera,
             anio_ingreso=pre.anio,
             cohorte=str(pre.anio) if pre.anio else None,
         )
+        
+        # Sync legajo status from checklist to new enrollment
+        if hasattr(pre, "checklist") and pre.checklist:
+            inscripcion.estado_legajo = pre.checklist.estado_legajo
+            inscripcion.save(update_fields=["estado_legajo"])
         
         pre.estado = "Confirmada"
         pre.save(update_fields=["estado"])

@@ -102,6 +102,11 @@ export function useUpdateEstudianteMutation(
         empleador: data.empleador?.trim() || undefined,
         horario_trabajo: data.horario_trabajo?.trim() || undefined,
         domicilio_trabajo: data.domicilio_trabajo?.trim() || undefined,
+        carreras_update: data.carreras_situacion?.map((c) => ({
+          profesorado_id: c.profesorado_id,
+          estado_academico: c.estado_academico || undefined,
+          estado_legajo: c.estado_legajo || undefined,
+        })),
       };
 
       return updateEstudianteAdmin(dni, payloadData);
@@ -162,8 +167,8 @@ export function useAutorizarRendirMutation(selectedDni: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ autorizado, observacion }: { autorizado: boolean; observacion: string }) =>
-      autorizarRendirEstudiante(selectedDni!, { autorizado, observacion: observacion || null }),
+    mutationFn: ({ autorizado, observacion, materias_autorizadas }: { autorizado: boolean; observacion: string; materias_autorizadas: number[] }) =>
+      autorizarRendirEstudiante(selectedDni!, { autorizado, observacion: observacion || null, materias_autorizadas }),
     onSuccess: (res: any) => {
       enqueueSnackbar(res.message || "Autorización actualizada", { variant: "success" });
       if (selectedDni) {
