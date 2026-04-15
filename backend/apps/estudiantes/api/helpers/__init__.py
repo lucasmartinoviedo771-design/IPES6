@@ -21,6 +21,7 @@ from apps.estudiantes.api.helpers.estudiante_admin import (
     _apply_estudiante_updates,
     _determine_condicion,
     _build_admin_detail,
+    _sync_estado_legajo_carreras,
 )
 
 from apps.estudiantes.api.helpers.actas_utils import (
@@ -67,6 +68,7 @@ __all__ = [
     "_apply_estudiante_updates",
     "_determine_condicion",
     "_build_admin_detail",
+    "_sync_estado_legajo_carreras",
     # actas_utils
     "_format_nota",
     "_format_acta_calificacion",

@@ -221,6 +221,9 @@ def _apply_estudiante_updates(
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))
 
+    # Sincronizar estado_legajo en EstudianteCarrera según condicion_calculada
+    _sync_estado_legajo_carreras(est)
+
     if payload.carreras_update is not None:
         from core.models import EstudianteCarrera
         for cu in payload.carreras_update:
@@ -230,13 +233,27 @@ def _apply_estudiante_updates(
                 if cu.estado_academico is not None:
                     ec.estado_academico = cu.estado_academico
                     ec_updates.append("estado_academico")
-                if cu.estado_legajo is not None:
-                    ec.estado_legajo = cu.estado_legajo
-                    ec_updates.append("estado_legajo")
                 if ec_updates:
                     ec.save(update_fields=ec_updates)
 
     return True, None
+
+
+def _sync_estado_legajo_carreras(est: Estudiante) -> None:
+    """Sincroniza EstudianteCarrera.estado_legajo según la documentación actual del estudiante."""
+    from core.models import EstudianteCarrera
+
+    doc_data = _extract_documentacion(est)
+    condicion = _determine_condicion(doc_data)
+
+    CONDICION_TO_ESTADO = {
+        "Regular": Estudiante.EstadoLegajo.COMPLETO,
+        "Condicional": Estudiante.EstadoLegajo.INCOMPLETO,
+        "Pendiente": Estudiante.EstadoLegajo.PENDIENTE,
+    }
+    nuevo_estado = CONDICION_TO_ESTADO.get(condicion, Estudiante.EstadoLegajo.PENDIENTE)
+
+    EstudianteCarrera.objects.filter(estudiante=est).update(estado_legajo=nuevo_estado)
 
 
 def _determine_condicion(documentacion: dict | None) -> str:
