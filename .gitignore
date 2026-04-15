@@ -83,3 +83,4 @@ backups/
 # Agent workflows with server-specific paths (not for version control)
 .agent/workflows/protocolo_despliegue.md
 .agent/skills/backend_standards/SKILL.md
+docs/
