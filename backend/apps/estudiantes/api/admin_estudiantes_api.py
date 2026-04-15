@@ -30,6 +30,7 @@ from .helpers import (
     _ensure_admin,
     _apply_estudiante_updates,
     _build_admin_detail,
+    _recalcular_estado_legajo,
 )
 
 
@@ -306,6 +307,7 @@ def _perform_documentacion_update(est, payload):
 
     if upd_fields:
         est.save(update_fields=upd_fields)
+        _recalcular_estado_legajo(est)
 
         # Sincronizamos con el checklist si existe
         if checklist:

@@ -221,6 +221,10 @@ def _apply_estudiante_updates(
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))
 
+    # Si se modificó documentación, recalcular y persistir estado_legajo
+    if fields_to_update & DOCUMENTACION_FIELDS:
+        _recalcular_estado_legajo(est)
+
     if payload.carreras_update is not None:
         from core.models import EstudianteCarrera
         for cu in payload.carreras_update:
@@ -234,6 +238,47 @@ def _apply_estudiante_updates(
                     ec.save(update_fields=ec_updates)
 
     return True, None
+
+
+def _recalcular_estado_legajo(est: Estudiante) -> None:
+    """Recalcula y persiste Estudiante.estado_legajo desde los checkboxes de documentación.
+
+    Se llama automáticamente cada vez que cambian campos de documentación.
+    Es la única forma en que este campo se actualiza — nunca manualmente.
+    """
+    doc_data = _extract_documentacion(est)
+
+    # Merge con PreinscripcionChecklist (misma lógica que el listado y la ficha)
+    checklist = PreinscripcionChecklist.objects.filter(
+        preinscripcion__alumno=est
+    ).order_by("-updated_at").first()
+    if checklist:
+        checklist_map = {
+            "dni_legalizado": checklist.dni_legalizado,
+            "fotos_4x4": checklist.fotos_4x4,
+            "certificado_salud": checklist.certificado_salud,
+            "folios_oficio": checklist.folios_oficio,
+            "titulo_secundario_legalizado": checklist.titulo_secundario_legalizado,
+            "certificado_titulo_en_tramite": checklist.certificado_titulo_en_tramite,
+            "analitico_legalizado": checklist.analitico_legalizado,
+            "articulo_7": getattr(checklist, "articulo_7", False),
+        }
+        for k, v in checklist_map.items():
+            if doc_data.get(k) in (None, False, 0, ""):
+                doc_data[k] = v
+
+    condicion = _determine_condicion(doc_data)
+
+    CONDICION_TO_ESTADO = {
+        "Regular": Estudiante.EstadoLegajo.COMPLETO,
+        "Condicional": Estudiante.EstadoLegajo.INCOMPLETO,
+        "Pendiente": Estudiante.EstadoLegajo.PENDIENTE,
+    }
+    nuevo_estado = CONDICION_TO_ESTADO.get(condicion, Estudiante.EstadoLegajo.PENDIENTE)
+
+    if est.estado_legajo != nuevo_estado:
+        est.estado_legajo = nuevo_estado
+        est.save(update_fields=["estado_legajo"])
 
 
 def _determine_condicion(documentacion: dict | None) -> str:
