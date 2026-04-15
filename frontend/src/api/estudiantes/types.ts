@@ -605,8 +605,7 @@ export interface CarreraStatus {
   nombre: string;
   estado_academico: string;
   estado_academico_display: string;
-  estado_legajo: string;
-  estado_legajo_display: string;
+  condicion: string;
 }
 
 export interface EstudianteAdminListItemDTO {
@@ -707,7 +706,6 @@ export interface EstudianteAdminUpdatePayload {
   carreras_update?: Array<{
     profesorado_id: number;
     estado_academico?: string | null;
-    estado_legajo?: string | null;
   }>;
 }
 

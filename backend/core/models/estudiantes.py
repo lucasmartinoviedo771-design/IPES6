@@ -213,12 +213,6 @@ class EstudianteCarrera(models.Model):
         default=EstadoAcademico.ACTIVO,
         help_text="Estado académico del estudiante en esta carrera.",
     )
-    estado_legajo = models.CharField(
-        max_length=3,
-        choices=Estudiante.EstadoLegajo.choices,
-        default=Estudiante.EstadoLegajo.PENDIENTE,
-        help_text="Estado del legajo físico del estudiante para esta carrera específica.",
-    )
     estado_academico_changed_at = models.DateTimeField(
         null=True,
         blank=True,

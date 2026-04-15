@@ -1,13 +1,37 @@
 from django.db.models import Q
-from core.models import Estudiante, EstudianteCarrera
+from core.models import Estudiante, EstudianteCarrera, PreinscripcionChecklist
 from apps.estudiantes.schemas import EstudianteAdminListItem, EstudianteAdminListResponse
+from apps.estudiantes.api.helpers.estudiante_admin import _extract_documentacion, _determine_condicion
+
+CHECKLIST_DOC_FIELDS = [
+    "dni_legalizado",
+    "fotos_4x4",
+    "certificado_salud",
+    "folios_oficio",
+    "titulo_secundario_legalizado",
+    "certificado_titulo_en_tramite",
+    "analitico_legalizado",
+    "articulo_7",
+]
+
+
+def _calcular_condicion_estudiante(est: Estudiante, checklist_map: dict) -> str:
+    """Calcula la condición documental del estudiante fusionando datos del modelo y del checklist."""
+    doc_data = _extract_documentacion(est)
+    checklist = checklist_map.get(est.pk)
+    if checklist:
+        for k in CHECKLIST_DOC_FIELDS:
+            if doc_data.get(k) in (None, False, 0, ""):
+                doc_data[k] = getattr(checklist, k, None)
+    return _determine_condicion(doc_data)
+
 
 class EstudianteService:
     @staticmethod
     def list_estudiantes_admin(filters: dict, limit: int = 50, offset: int = 0, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminListResponse:
         q = filters.get("q")
         carrera_id = filters.get("carrera_id")
-        estado_legajo = filters.get("estado_legajo")
+        condicion_filter = filters.get("estado_legajo")  # UI sigue enviando "estado_legajo" como key
         estado_academico = filters.get("estado_academico")
         
         qs = (
@@ -56,35 +80,61 @@ class EstudianteService:
                 | Q(legajo__icontains=q_clean)
             )
 
-        if estado_legajo:
-            qs = qs.filter(estado_legajo=estado_legajo.upper())
+        # Cargar checklists de preinscripción en bulk para evitar N+1
+        qs_list = list(qs.distinct())
+        est_ids = [e.pk for e in qs_list]
+        checklists = (
+            PreinscripcionChecklist.objects
+            .filter(preinscripcion__alumno_id__in=est_ids)
+            .order_by("-updated_at")
+            .select_related("preinscripcion")
+        )
+        checklist_map: dict[int, PreinscripcionChecklist] = {}
+        for cl in checklists:
+            alumno_id = cl.preinscripcion.alumno_id
+            if alumno_id not in checklist_map:
+                checklist_map[alumno_id] = cl
 
-        total = qs.distinct().count()
-        qs = qs.distinct()[offset : offset + limit] if limit else qs.distinct()[offset:]
+        # Filtrar por condición en Python (calculado dinámicamente)
+        CONDICION_TO_ESTADO = {
+            "Regular": "COM",
+            "Condicional": "INC",
+            "Pendiente": "PEN",
+        }
+        if condicion_filter:
+            condicion_filter_upper = condicion_filter.upper()
+            # Aceptar tanto "COM/INC/PEN" (valores legacy del select) como "Regular/Condicional/Pendiente"
+            qs_list = [
+                e for e in qs_list
+                if CONDICION_TO_ESTADO.get(_calcular_condicion_estudiante(e, checklist_map), "PEN") == condicion_filter_upper
+            ]
+
+        total = len(qs_list)
+        paginated = qs_list[offset: offset + limit] if limit else qs_list[offset:]
 
         items = []
-        for est in qs:
+        for est in paginated:
             user = est.user if est.user_id else None
+            condicion = _calcular_condicion_estudiante(est, checklist_map)
             # Obtener detalles de carrera para incluir el estado académico de cada una (filtrado por permisos)
             carreras_det = []
             carreras_nombres = []
-            
+
             for cd in est.carreras_detalle.all():
                 # 1. Filtro por permisos (si es bedel tiene restricted ids)
                 if allowed_carrera_ids is not None and cd.profesorado_id not in allowed_carrera_ids:
                     continue
-                
+
                 # 2. Filtro por carrera seleccionada en el UI (si aplica)
                 if carrera_id and cd.profesorado_id != int(carrera_id):
                     continue
-                
+
                 carreras_det.append({
                     "profesorado_id": cd.profesorado_id,
                     "nombre": cd.profesorado.nombre,
                     "estado_academico": cd.estado_academico,
                     "estado_academico_display": cd.get_estado_academico_display(),
-                    "estado_legajo": cd.estado_legajo,
-                    "estado_legajo_display": cd.get_estado_legajo_display()
+                    "condicion": condicion,
                 })
                 carreras_nombres.append(cd.profesorado.nombre)
 

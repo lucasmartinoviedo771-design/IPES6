@@ -14,7 +14,7 @@ import Divider from "@mui/material/Divider";
 import Alert from "@mui/material/Alert";
 import TablePagination from "@mui/material/TablePagination";
 import { EstudianteAdminListItemDTO } from "@/api/estudiantes";
-import { estadoColorMap } from "../types";
+import { condicionColorMap } from "../types";
 
 type Props = {
   estudiantes: EstudianteAdminListItemDTO[];
@@ -111,9 +111,9 @@ export function EstudiantesTable({
                               />
                               <Chip
                                 size="small"
-                                label={c.estado_legajo_display}
+                                label={c.condicion}
                                 sx={{ height: 16, fontSize: '0.65rem' }}
-                                color={estadoColorMap[c.estado_legajo] ?? "default"}
+                                color={condicionColorMap[c.condicion] ?? "default"}
                               />
                             </Box>
                           </Box>

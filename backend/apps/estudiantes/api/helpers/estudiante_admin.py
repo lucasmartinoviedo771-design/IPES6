@@ -221,9 +221,6 @@ def _apply_estudiante_updates(
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))
 
-    # Sincronizar estado_legajo en EstudianteCarrera según condicion_calculada
-    _sync_estado_legajo_carreras(est)
-
     if payload.carreras_update is not None:
         from core.models import EstudianteCarrera
         for cu in payload.carreras_update:
@@ -237,47 +234,6 @@ def _apply_estudiante_updates(
                     ec.save(update_fields=ec_updates)
 
     return True, None
-
-
-def _sync_estado_legajo_carreras(est: Estudiante) -> None:
-    """Sincroniza EstudianteCarrera.estado_legajo según la documentación actual del estudiante.
-
-    Usa la misma lógica de merge (Estudiante + PreinscripcionChecklist) que _build_admin_detail
-    para garantizar que el estado almacenado coincida con la condicion_calculada visible en la ficha.
-    """
-    from core.models import EstudianteCarrera
-
-    doc_data = _extract_documentacion(est)
-
-    # Merge con PreinscripcionChecklist igual que en _build_admin_detail
-    checklist = PreinscripcionChecklist.objects.filter(
-        preinscripcion__alumno=est
-    ).order_by("-updated_at").first()
-    if checklist:
-        checklist_map = {
-            "dni_legalizado": checklist.dni_legalizado,
-            "fotos_4x4": checklist.fotos_4x4,
-            "certificado_salud": checklist.certificado_salud,
-            "folios_oficio": checklist.folios_oficio,
-            "titulo_secundario_legalizado": checklist.titulo_secundario_legalizado,
-            "certificado_titulo_en_tramite": checklist.certificado_titulo_en_tramite,
-            "analitico_legalizado": checklist.analitico_legalizado,
-            "articulo_7": getattr(checklist, "articulo_7", False),
-        }
-        for k, v in checklist_map.items():
-            if doc_data.get(k) in (None, False, 0, ""):
-                doc_data[k] = v
-
-    condicion = _determine_condicion(doc_data)
-
-    CONDICION_TO_ESTADO = {
-        "Regular": Estudiante.EstadoLegajo.COMPLETO,
-        "Condicional": Estudiante.EstadoLegajo.INCOMPLETO,
-        "Pendiente": Estudiante.EstadoLegajo.PENDIENTE,
-    }
-    nuevo_estado = CONDICION_TO_ESTADO.get(condicion, Estudiante.EstadoLegajo.PENDIENTE)
-
-    EstudianteCarrera.objects.filter(estudiante=est).update(estado_legajo=nuevo_estado)
 
 
 def _determine_condicion(documentacion: dict | None) -> str:
@@ -320,20 +276,6 @@ def _determine_condicion(documentacion: dict | None) -> str:
 def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminDetail:
     user = estudiante.user if estudiante.user_id else None
     persona = estudiante.persona
-    carreras_det = []
-    carreras_nombres = []
-    for cd in estudiante.carreras_detalle.select_related("profesorado").all():
-        if allowed_carrera_ids is not None and cd.profesorado_id not in allowed_carrera_ids:
-            continue
-        carreras_det.append({
-            "profesorado_id": cd.profesorado_id,
-            "nombre": cd.profesorado.nombre,
-            "estado_academico": cd.estado_academico,
-            "estado_academico_display": cd.get_estado_academico_display(),
-            "estado_legajo": cd.estado_legajo,
-            "estado_legajo_display": cd.get_estado_legajo_display()
-        })
-        carreras_nombres.append(cd.profesorado.nombre)
     documentacion_data = _extract_documentacion(estudiante)
 
     # --- Check documentation from PreinscripcionChecklist if available ---
@@ -366,6 +308,20 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
 
     documentacion = EstudianteAdminDocumentacion(**documentacion_data) if documentacion_data else None
     condicion = _determine_condicion(documentacion_data)
+
+    carreras_det = []
+    carreras_nombres = []
+    for cd in estudiante.carreras_detalle.select_related("profesorado").all():
+        if allowed_carrera_ids is not None and cd.profesorado_id not in allowed_carrera_ids:
+            continue
+        carreras_det.append({
+            "profesorado_id": cd.profesorado_id,
+            "nombre": cd.profesorado.nombre,
+            "estado_academico": cd.estado_academico,
+            "estado_academico_display": cd.get_estado_academico_display(),
+            "condicion": condicion,
+        })
+        carreras_nombres.append(cd.profesorado.nombre)
 
     regularidades_resumen = [
         RegularidadResumen(

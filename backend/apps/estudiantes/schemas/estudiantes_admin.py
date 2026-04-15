@@ -47,8 +47,7 @@ class CarreraStatus(Schema):
     nombre: str
     estado_academico: str
     estado_academico_display: str
-    estado_legajo: str
-    estado_legajo_display: str
+    condicion: str
 
 class EstudianteAdminListItem(Schema):
     dni: str
@@ -135,7 +134,6 @@ EstudianteAdminDetail.model_rebuild()
 class CarreraUpdateIn(Schema):
     profesorado_id: int
     estado_academico: str | None = None
-    estado_legajo: str | None = None
 
 class EstudianteAdminUpdateIn(Schema):
     dni: str | None = None

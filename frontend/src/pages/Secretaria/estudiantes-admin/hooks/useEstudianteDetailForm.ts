@@ -222,7 +222,7 @@ export function usePopulateFormFromDetail(
           profesorado_id: (c as any).profesorado_id || 0,
           nombre: c.nombre,
           estado_academico: c.estado_academico as any,
-          estado_legajo: c.estado_legajo as any,
+          condicion: (c as any).condicion ?? "",
         })),
       };
       reset(formValues);

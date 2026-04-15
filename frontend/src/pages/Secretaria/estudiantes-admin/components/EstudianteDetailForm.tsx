@@ -16,7 +16,7 @@ import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { Controller, Control, UseFormHandleSubmit, UseFormWatch } from "react-hook-form";
-import { DetailFormValues, DetailDocumentacionForm, ESTADO_OPTIONS, ESTADO_ACADEMICO_OPTIONS, generoOptions } from "../types";
+import { DetailFormValues, DetailDocumentacionForm, ESTADO_ACADEMICO_OPTIONS, generoOptions } from "../types";
 import { DocumentacionSection } from "./DocumentacionSection";
 
 type Props = {
@@ -278,19 +278,6 @@ export function EstudianteDetailForm({
                     render={({ field }) => (
                       <TextField {...field} select label="Estado Académico" size="small" fullWidth>
                         {ESTADO_ACADEMICO_OPTIONS.filter(o => o.value).map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    )}
-                  />
-                  <Controller
-                    name={`carreras_situacion.${index}.estado_legajo`}
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} select label="Estado Legajo (en esta carrera)" size="small" fullWidth disabled>
-                        {ESTADO_OPTIONS.filter(o => o.value).map((option) => (
                           <MenuItem key={option.value} value={option.value}>
                             {option.label}
                           </MenuItem>
