@@ -122,10 +122,13 @@ export function useRegularidadMetadata({
     });
   }, [selectedMateria, metadataQuery.data?.plantillas]);
 
-  const selectedPlantilla = useMemo(
-    () => plantillasDisponibles.find((p) => p.id === Number(plantillaId)),
-    [plantillasDisponibles, plantillaId],
-  );
+  const selectedPlantilla = useMemo(() => {
+    // Primero buscar en la lista filtrada (caso normal)
+    const fromFiltered = plantillasDisponibles.find((p) => p.id === Number(plantillaId));
+    if (fromFiltered) return fromFiltered;
+    // Fallback: buscar por ID directo en todas las plantillas (edit mode con planillas viejas)
+    return (metadataQuery.data?.plantillas ?? []).find((p) => p.id === Number(plantillaId));
+  }, [plantillasDisponibles, plantillaId, metadataQuery.data?.plantillas]);
 
   const dictadoLabel = useMemo(() => {
     if (!selectedPlantilla) {

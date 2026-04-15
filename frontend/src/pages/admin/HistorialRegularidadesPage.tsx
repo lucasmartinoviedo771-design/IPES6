@@ -121,7 +121,7 @@ const HistorialRegularidadesPage: React.FC = () => {
         const values = planillas.filter(p => {
             const pYear = p.anio_academico.toString();
             if (key !== 'year' && filterYear && pYear !== filterYear) return false;
-            if (key !== 'materia_nombre' && filterMateria && p.materia_nombre !== filterMateria) return false;
+            if (key !== 'materia_nombre' && filterMateria && p.materia_nombre?.trim() !== filterMateria) return false;
             if (key !== 'dictado' && filterDictado && (!p.dictado || p.dictado !== filterDictado)) return false;
             if (key !== 'anio_cursada' && filterAnioCursada && p.anio_cursada !== filterAnioCursada) return false;
             if (key !== 'profesorado_nombre' && filterProfesorado && p.profesorado_nombre !== filterProfesorado) return false;
@@ -134,11 +134,11 @@ const HistorialRegularidadesPage: React.FC = () => {
             return val ? String(val) : '';
         });
 
-        return Array.from(new Set(values)).filter(Boolean).sort();
+        return Array.from(new Set(values.map(v => v.trim()))).filter(Boolean).sort();
     };
 
     const years = React.useMemo(() => getOptions('year'), [planillas, filterMateria, filterDictado, filterAnioCursada]);
-    const materiasOptions = React.useMemo(() => getOptions('materia_nombre'), [planillas, filterYear, filterDictado, filterAnioCursada]);
+    const materiasOptions = React.useMemo(() => getOptions('materia_nombre'), [planillas, filterYear, filterDictado, filterAnioCursada, filterProfesorado]);
     const dictadosOptions = React.useMemo(() => getOptions('dictado'), [planillas, filterYear, filterMateria, filterAnioCursada, filterProfesorado]);
     const aniosCursadaOptions = React.useMemo(() => getOptions('anio_cursada'), [planillas, filterYear, filterMateria, filterDictado, filterProfesorado]);
     const profesoradosOptions = React.useMemo(() => getOptions('profesorado_nombre'), [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada]);
@@ -222,13 +222,13 @@ const HistorialRegularidadesPage: React.FC = () => {
                                 />
                             </Box>
 
-                            {/* Profesorado Filter (Admin/Secretaria only) */}
-                            {isAdminOrSecretaria && (
+                            {/* Profesorado Filter: visible para admin/secretaria o cuando hay múltiples profesorados */}
+                            {(isAdminOrSecretaria || profesoradosOptions.length > 1) && (
                                 <Box sx={{ flexGrow: 1, minWidth: 200 }}>
                                     <Autocomplete
                                         options={profesoradosOptions}
                                         value={filterProfesorado}
-                                        onChange={(_, newValue) => setFilterProfesorado(newValue)}
+                                        onChange={(_, newValue) => { setFilterProfesorado(newValue); setFilterMateria(null); }}
                                         renderInput={(params) => <TextField {...params} label="Profesorado" size="small" />}
                                         fullWidth
                                     />

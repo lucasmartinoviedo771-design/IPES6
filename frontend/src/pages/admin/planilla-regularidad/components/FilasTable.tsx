@@ -430,10 +430,9 @@ export const FilasTable: React.FC<FilasTableProps> = ({
                   render={({ field: controllerField }) => {
                     const { value, onChange, ...rest } = controllerField;
                     // Determinar si se permite excepción según formato
+                    // MOD se trata igual que talleres: asistencia estricta 80%, excepción baja a 65%
                     const formato = selectedMateria?.formato?.toUpperCase();
-                    const isGroupHigh = ['LAB', 'TAL', 'PRA'].includes(formato || '');
-                    // Deshabilitar si es View o si el formato no admite excepción
-                    // Para MOD deshabilitamos porque la asistencia base ya es 65% y no admite excepción.
+                    const isGroupHigh = ['LAB', 'TAL', 'PRA', 'MOD'].includes(formato || '');
                     const isDisabled = isReadOnly || (selectedMateria && !isGroupHigh);
 
                     return (

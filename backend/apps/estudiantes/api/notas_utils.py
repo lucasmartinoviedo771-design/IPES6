@@ -8,8 +8,8 @@ from datetime import date
 from django.db.models import Q
 from core.models import Docente, Regularidad, RegularidadPlanillaLock, Comision, Materia
 
-# Formatos que se comportan bajo la lógica de Taller (Asistencia estricta)
-FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB"}
+# Formatos que se comportan bajo la lógica de Taller (Asistencia estricta: 80%, 65% con excepción)
+FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB", "MOD"}
 _VIRTUAL_COMISION_FACTOR = 10000
 
 # Diccionario maestro de situaciones permitidas por formato de cursada
@@ -26,7 +26,7 @@ _SITUACIONES = {
         {"alias": "REGULAR", "codigo": Regularidad.Situacion.REGULAR, "descripcion": "Cumple con el régimen de asistencia, aprueba TP y parcial/recuperatorio (nota ≥ 6/10)."},
         {"alias": "DESAPROBADO_TP", "codigo": Regularidad.Situacion.DESAPROBADO_TP, "descripcion": "Desaprueba TP y sus recuperatorios."},
         {"alias": "DESAPROBADO_PA", "codigo": Regularidad.Situacion.DESAPROBADO_PA, "descripcion": "Desaprueba la instancia de parcial y/o recuperatorios."},
-        {"alias": "LIBRE-I", "codigo": Regularidad.Situacion.LIBRE_I, "descripcion": "Libre por inasistencias (menos del 65% de la cursada)."},
+        {"alias": "LIBRE-I", "codigo": Regularidad.Situacion.LIBRE_I, "descripcion": "Libre por inasistencias (menos del 80%, o menos del 65% con excepción)."},
         {"alias": "LIBRE-AT", "codigo": Regularidad.Situacion.LIBRE_AT, "descripcion": "Libre por abandono temprano (antes de la mitad de la cursada)."},
     ],
     "TAL": [

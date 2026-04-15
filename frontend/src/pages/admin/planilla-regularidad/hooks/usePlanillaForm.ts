@@ -305,15 +305,11 @@ export function usePlanillaForm({
 
     // LÓGICA STRICTA PARA MODULO/ASIGNATURA/TALLER
 
-    // Thresholds
-    // Modulo/Anual -> 65%
-    // Others (Asignatura, Taller 1C/2C) -> 60%?
-    // Usually Taller requires high attendance (80%), but user mentioned 5% failing, so let's enforce the low limit first.
-    // Thresholds (Reglamento Académico Art. 24)
-    // Taller/Práctica/Laboratorio: 80% (65% con excepción justificada)
-    // Asignatura/Módulo: 65% (actual configurado)
+    // Thresholds (Reglamento Académico)
+    // Taller/Práctica/Laboratorio/Módulo: 80% (65% con excepción justificada)
+    // Asignatura: 65%
     let thresholdRegular = 65;
-    if (isTallerGroup) {
+    if (isTallerGroup || isModuloGroup) {
       thresholdRegular = row.excepcion ? 65 : 80;
     }
 
