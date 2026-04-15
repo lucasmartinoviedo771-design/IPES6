@@ -240,10 +240,34 @@ def _apply_estudiante_updates(
 
 
 def _sync_estado_legajo_carreras(est: Estudiante) -> None:
-    """Sincroniza EstudianteCarrera.estado_legajo según la documentación actual del estudiante."""
+    """Sincroniza EstudianteCarrera.estado_legajo según la documentación actual del estudiante.
+
+    Usa la misma lógica de merge (Estudiante + PreinscripcionChecklist) que _build_admin_detail
+    para garantizar que el estado almacenado coincida con la condicion_calculada visible en la ficha.
+    """
     from core.models import EstudianteCarrera
 
     doc_data = _extract_documentacion(est)
+
+    # Merge con PreinscripcionChecklist igual que en _build_admin_detail
+    checklist = PreinscripcionChecklist.objects.filter(
+        preinscripcion__alumno=est
+    ).order_by("-updated_at").first()
+    if checklist:
+        checklist_map = {
+            "dni_legalizado": checklist.dni_legalizado,
+            "fotos_4x4": checklist.fotos_4x4,
+            "certificado_salud": checklist.certificado_salud,
+            "folios_oficio": checklist.folios_oficio,
+            "titulo_secundario_legalizado": checklist.titulo_secundario_legalizado,
+            "certificado_titulo_en_tramite": checklist.certificado_titulo_en_tramite,
+            "analitico_legalizado": checklist.analitico_legalizado,
+            "articulo_7": getattr(checklist, "articulo_7", False),
+        }
+        for k, v in checklist_map.items():
+            if doc_data.get(k) in (None, False, 0, ""):
+                doc_data[k] = v
+
     condicion = _determine_condicion(doc_data)
 
     CONDICION_TO_ESTADO = {
