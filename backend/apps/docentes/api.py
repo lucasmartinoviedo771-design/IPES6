@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Group
 from django.db.models import Q
 from django.db import IntegrityError
+from core.models import Persona
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -52,7 +53,22 @@ def update_docente(request, docente_id: int, payload: DocenteIn):
     try:
         persona.save()
     except IntegrityError:
-        raise HttpError(409, f"El DNI '{payload.dni}' ya está registrado en otro docente.")
+        existing = Persona.objects.filter(dni=payload.dni).first()
+        if existing:
+            parts = []
+            try:
+                existing.docente_perfil
+                parts.append("docente")
+            except Exception:
+                pass
+            try:
+                existing.estudiante_perfil
+                parts.append("estudiante")
+            except Exception:
+                pass
+            quien = " y ".join(parts) if parts else "otra persona"
+            raise HttpError(409, f"El DNI '{payload.dni}' ya está registrado como {quien}: {existing.apellido}, {existing.nombre}.")
+        raise HttpError(409, f"El DNI '{payload.dni}' ya está en uso.")
     return DocenteService.serialize_docente(docente)
 
 @router.delete("/{docente_id}", response={204: None}, auth=JWTAuth())

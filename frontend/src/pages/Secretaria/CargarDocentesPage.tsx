@@ -95,7 +95,7 @@ export default function CargarDocentesPage() {
 
   const createDocenteMutation = useMutation<Docente, Error, DocenteFormInput>({
     mutationFn: async (newDocente) => {
-      const response = await api.post("/docentes", newDocente);
+      const response = await api.post("/docentes", newDocente, { suppressErrorToast: true } as any);
       return response.data;
     },
     onSuccess: (docenteCreado) => {
@@ -107,14 +107,14 @@ export default function CargarDocentesPage() {
       }
     },
     onError: (error: any) => {
-      console.error("Docente POST error:", error.response?.data);
-      toast.error("Error al crear el docente");
+      const msg = error.message || "No se pudo crear el docente.";
+      toast.error(msg);
     },
   });
 
   const updateDocenteMutation = useMutation<Docente, Error, Docente>({
     mutationFn: async (updatedDocente) => {
-      const response = await api.put(`/docentes/${updatedDocente.id}`, updatedDocente);
+      const response = await api.put(`/docentes/${updatedDocente.id}`, updatedDocente, { suppressErrorToast: true } as any);
       return response.data;
     },
     onSuccess: (docenteActualizado) => {
@@ -126,8 +126,7 @@ export default function CargarDocentesPage() {
       }
     },
     onError: (error: any) => {
-      console.error("Docente PUT error:", error.response?.data);
-      const msg = error.response?.data?.detail || "Error al actualizar el docente";
+      const msg = error.message || "No se pudo actualizar el docente.";
       toast.error(msg);
     },
   });

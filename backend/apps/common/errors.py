@@ -153,7 +153,7 @@ def register_error_handlers(api: NinjaAPI) -> None:
         logger.exception("FATAL: Unhandled exception caught by Ninja interceptor", exc_info=exc)
         payload = build_error_payload(
             error_code=AppErrorCode.INTERNAL_ERROR.value,
-            message="Se produjo un error crítico inesperado.",
+            message="No se pudo completar la operación. Si el problema persiste, contactá al administrador.",
             details=None,
             request=request,
         )
