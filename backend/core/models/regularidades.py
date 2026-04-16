@@ -42,6 +42,10 @@ class Regularidad(models.Model):
     )
     excepcion = models.BooleanField(default=False)
     situacion = models.CharField(max_length=3, choices=Situacion.choices)
+    en_resguardo = models.BooleanField(
+        default=False,
+        help_text="La nota está en resguardo hasta que el estudiante complete su legajo.",
+    )
     observaciones = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -324,3 +328,140 @@ class RegularidadPlanillaLock(models.Model):
         if self.comision:
             return f"Cierre regularidad comision {self.comision_id}"
         return f"Cierre regularidad materia {self.materia_id} ({self.anio_virtual})"
+
+
+class PlanillaCursada(models.Model):
+    """Planilla de regularidad cargada por el docente durante el cuatrimestre.
+
+    Separada de PlanillaRegularidad (primera carga / histórica).
+    El docente guarda borradores progresivamente y cierra al vencimiento
+    de la ventana. Solo Secretaría puede reabrir una planilla cerrada.
+    """
+
+    class Estado(models.TextChoices):
+        BORRADOR = "BORRADOR", "Borrador"
+        CERRADA = "CERRADA", "Cerrada"
+        REABIERTA = "REABIERTA", "Reabierta"
+
+    class Cuatrimestre(models.TextChoices):
+        PRIMERO = "1C", "1° Cuatrimestre"
+        SEGUNDO = "2C", "2° Cuatrimestre"
+        ANUAL = "ANUAL", "Anual"
+
+    numero = models.CharField(
+        max_length=32,
+        unique=True,
+        help_text="Número auto-generado (ej: PRP-2025-001).",
+    )
+    docente = models.ForeignKey(
+        Docente,
+        on_delete=models.PROTECT,
+        related_name="planillas_cursada",
+    )
+    materia = models.ForeignKey(
+        Materia,
+        on_delete=models.PROTECT,
+        related_name="planillas_cursada",
+    )
+    profesorado = models.ForeignKey(
+        Profesorado,
+        on_delete=models.PROTECT,
+        related_name="planillas_cursada",
+        help_text="Profesorado donde se dicta la materia.",
+    )
+    profesorado_destino = models.ForeignKey(
+        Profesorado,
+        on_delete=models.PROTECT,
+        related_name="planillas_cursada_destino",
+        help_text=(
+            "Profesorado al que pertenecen los estudiantes de esta planilla. "
+            "Igual a 'profesorado' salvo en planillas inter-profesorado."
+        ),
+    )
+    anio_lectivo = models.PositiveSmallIntegerField()
+    cuatrimestre = models.CharField(max_length=8, choices=Cuatrimestre.choices)
+    plantilla = models.ForeignKey(
+        RegularidadPlantilla,
+        on_delete=models.PROTECT,
+        related_name="planillas_cursada",
+        null=True,
+        blank=True,
+    )
+    estado = models.CharField(
+        max_length=16,
+        choices=Estado.choices,
+        default=Estado.BORRADOR,
+    )
+    fecha_entrega = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de cierre definitivo. Null mientras está en borrador.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-anio_lectivo", "cuatrimestre", "materia"]
+        indexes = [
+            models.Index(fields=["docente", "anio_lectivo", "cuatrimestre"]),
+            models.Index(fields=["profesorado_destino", "anio_lectivo"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.numero} — {self.materia.nombre} ({self.get_cuatrimestre_display()} {self.anio_lectivo})"
+
+
+class PlanillaCursadaFila(models.Model):
+    """Fila de estudiante dentro de una PlanillaCursada."""
+
+    planilla = models.ForeignKey(
+        PlanillaCursada,
+        on_delete=models.CASCADE,
+        related_name="filas",
+    )
+    estudiante = models.ForeignKey(
+        Estudiante,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_cursada",
+    )
+    inscripcion = models.ForeignKey(
+        InscripcionMateriaEstudiante,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_cursada_filas",
+        help_text="Inscripción original. Permite resolver materia_origen al cerrar.",
+    )
+    orden = models.PositiveIntegerField(help_text="Posición alfabética en la planilla.")
+    asistencia_porcentaje = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    excepcion = models.BooleanField(default=False)
+    columnas_datos = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Notas de TP, parciales y demás columnas según la plantilla.",
+    )
+    situacion = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text="Calculada al cerrar la planilla.",
+    )
+    en_resguardo = models.BooleanField(
+        default=False,
+        help_text="True si la nota quedó en resguardo por legajo incompleto.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["orden"]
+        unique_together = ("planilla", "orden")
+
+    def __str__(self) -> str:
+        est = self.estudiante.persona.apellido_nombre if self.estudiante else "—"
+        return f"{self.planilla.numero} #{self.orden} {est}"

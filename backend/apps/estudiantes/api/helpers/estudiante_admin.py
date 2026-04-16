@@ -280,6 +280,10 @@ def _recalcular_estado_legajo(est: Estudiante) -> None:
         est.estado_legajo = nuevo_estado
         est.save(update_fields=["estado_legajo"])
 
+    # Liberar resguardos si el legajo pasó a COMPLETO
+    if nuevo_estado == Estudiante.EstadoLegajo.COMPLETO:
+        Regularidad.objects.filter(estudiante=est, en_resguardo=True).update(en_resguardo=False)
+
 
 def _determine_condicion(documentacion: dict | None) -> str:
     if not documentacion:

@@ -85,6 +85,19 @@ class InscripcionMateriaEstudiante(models.Model):
         help_text="Número de disposición que autoriza el cambio (cargado por tutor)."
     )
 
+    materia_origen = models.ForeignKey(
+        "Materia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inscripciones_inter_profesorado",
+        help_text=(
+            "Materia equivalente en el profesorado de origen del estudiante. "
+            "Solo se llena en cambios de comisión inter-profesorado. "
+            "Al cerrar la planilla de regularidad, la nota se genera sobre esta materia."
+        ),
+    )
+
     baja_fecha = models.DateField(
         null=True, blank=True,
         help_text="Fecha en que se registró la baja voluntaria.",

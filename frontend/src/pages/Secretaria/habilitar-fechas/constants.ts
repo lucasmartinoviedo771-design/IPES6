@@ -12,7 +12,7 @@ export const LABEL_PERIODO: Record<string, string> = {
 export const TYPE_CONFIG: Array<{
   key: Ventana["tipo"];
   label: string;
-  category: "mesas" | "tramites";
+  category: "mesas" | "tramites" | "docentes";
   description: string;
 }> = [
   {
@@ -70,6 +70,13 @@ export const TYPE_CONFIG: Array<{
     description:
       "Define las fechas de inicio y fin de los cuatrimestres. El segundo debe iniciar inmediatamente después del primero.",
   },
+  {
+    key: "PLANILLA_REGULARIDAD",
+    label: "Entrega de planillas de regularidad",
+    category: "docentes",
+    description:
+      "Define el plazo en que los docentes deben entregar sus planillas de regularidad. Una ventana por cuatrimestre (1C y 2C + Anuales).",
+  },
 ];
 
 export const CATEGORY_CONFIG = [
@@ -82,6 +89,11 @@ export const CATEGORY_CONFIG = [
     id: "mesas",
     label: "Mesas de examen",
     helper: "Configura las fechas de generación y cierre de las mesas finales.",
+  },
+  {
+    id: "docentes",
+    label: "Docentes",
+    helper: "Configura los plazos internos para la entrega de planillas de regularidad.",
   },
 ];
 

@@ -247,7 +247,7 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
                 pre = Preinscripcion.objects.filter(estudiante=est, carrera=prof).order_by("-anio", "-id").first()
                 cl = getattr(pre, "checklist", None) if pre else None
                 if not (cl and cl.certificado_titulo_en_tramite):
-                    return 400, {"message": "Legajo incompleto o condicional: no puede rendir examen final."}
+                    return 400, {"message": "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida. Dirigite al Bedel de tu carrera."}
 
             # B. Materia ya superada
             from core.models import ActaExamenEstudiante

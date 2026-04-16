@@ -6,6 +6,12 @@ const sections: RoleDashboardSection[] = [
     title: "Actas y calificaciones",
     items: [
       {
+        title: "Mis planillas de regularidad",
+        subtitle: "Cargá y cerrá las planillas de tus materias del cuatrimestre actual.",
+        icon: DASHBOARD_ITEMS.REGULARIDAD_CARGA.icon,
+        path: "/docentes/mis-planillas",
+      },
+      {
         ...DASHBOARD_ITEMS.REGULARIDAD_CARGA,
         subtitle: "Completa o revisa las planillas de cursada habilitadas.",
       },

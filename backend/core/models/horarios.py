@@ -198,6 +198,10 @@ class VentanaHabilitacion(models.Model):
             "CALENDARIO_CUATRIMESTRE",
             "Calendario academico - Cuatrimestres",
         )
+        PLANILLA_REGULARIDAD = (
+            "PLANILLA_REGULARIDAD",
+            "Entrega de planillas de regularidad",
+        )
 
     tipo = models.CharField(max_length=32, choices=Tipo.choices)
     desde = models.DateField()

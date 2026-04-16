@@ -36,6 +36,8 @@ from .pedidos import (
 )
 from .mesas import InscripcionMesa, MesaActaOral, MesaExamen
 from .regularidades import (
+    PlanillaCursada,
+    PlanillaCursadaFila,
     PlanillaRegularidad,
     PlanillaRegularidadDocente,
     PlanillaRegularidadFila,

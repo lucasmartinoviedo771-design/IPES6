@@ -76,6 +76,7 @@ scripts/data_imports/carrera_map.example.json
 
 # Test battery (local only)
 Test/
+backend/apps/estudiantes/tests/
 
 # Backups
 backups/

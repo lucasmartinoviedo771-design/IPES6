@@ -31,6 +31,7 @@ from apps.common.errors import register_error_handlers
 from apps.metrics.api import router as metrics_router
 from apps.metrics.dashboard_api import router as dashboard_router
 from apps.primera_carga.api import primera_carga_router
+from apps.estudiantes.api.planillas_cursada_api import router as planillas_cursada_router
 from apps.common.system_log_api import router as system_log_router
 from apps.management.auth_api import router as auth_router
 from apps.management import management_router
@@ -78,6 +79,7 @@ if 'api' not in locals():
     # Estudiantes y Docentes (Gestión Académica)
     safe_add_router("/estudiantes", estudiantes_api_router)
     safe_add_router("/estudiantes/carga-notas", carga_notas_router)
+    safe_add_router("/estudiantes/planillas-cursada", planillas_cursada_router)
     from apps.estudiantes.gestion_comisiones_api import router as gestion_comisiones_router
     safe_add_router("/estudiantes/comisiones", gestion_comisiones_router)
     safe_add_router("/docentes", docentes_router)

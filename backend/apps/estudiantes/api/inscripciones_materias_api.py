@@ -680,8 +680,17 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
     if payload.aprobado:
         if not ins.comision_solicitada:
             return 400, ApiResponse(ok=False, message="No hay una comisión de destino solicitada.")
-            
+
+        materia_destino = ins.comision_solicitada.materia
+        # Si la comisión de destino corresponde a una materia distinta (inter-profesorado),
+        # guardamos la materia de origen para que la planilla genere la Regularidad correctamente.
+        if materia_destino.id != ins.materia_id:
+            ins.materia_origen = ins.materia
+        else:
+            ins.materia_origen = None
+
         ins.comision = ins.comision_solicitada
+        ins.materia = materia_destino
         ins.comision_solicitada = None
         ins.estado = InscripcionMateriaEstudiante.Estado.CONFIRMADA
         ins.cambio_comision_estado = InscripcionMateriaEstudiante.CambioComisionEstado.APROBADO
