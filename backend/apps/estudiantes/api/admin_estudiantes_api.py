@@ -107,16 +107,27 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
                 | Q(persona__apellido__icontains=q_clean)
             )
     
-    if estado_academico:
-        qs = qs.filter(carreras_detalle__estado_academico=estado_academico)
-
     if carrera_id:
         if allowed_ids is not None and int(carrera_id) not in allowed_ids:
             qs = qs.none()
         else:
-            qs = qs.filter(carreras__id=carrera_id)
+            if estado_academico:
+                qs = qs.filter(
+                    carreras_detalle__profesorado_id=carrera_id,
+                    carreras_detalle__estado_academico=estado_academico,
+                )
+            else:
+                qs = qs.filter(carreras__id=carrera_id)
     elif allowed_ids is not None:
-        qs = qs.filter(carreras__id__in=allowed_ids)
+        if estado_academico:
+            qs = qs.filter(
+                carreras_detalle__profesorado_id__in=allowed_ids,
+                carreras_detalle__estado_academico=estado_academico,
+            )
+        else:
+            qs = qs.filter(carreras__id__in=allowed_ids)
+    elif estado_academico:
+        qs = qs.filter(carreras_detalle__estado_academico=estado_academico)
 
     qs = qs.distinct()
     total = qs.count()
