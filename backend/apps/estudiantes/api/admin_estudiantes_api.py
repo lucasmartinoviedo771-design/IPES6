@@ -70,6 +70,7 @@ def admin_list_estudiantes_documentacion(
     request,
     q: str | None = None,
     carrera_id: int | None = None,
+    estado_academico: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -78,11 +79,11 @@ def admin_list_estudiantes_documentacion(
     Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
     """
     _ensure_admin(request)
-    total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, limit=limit, offset=offset)
+    total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico, limit=limit, offset=offset)
     return EstudianteDocumentacionListResponse(total=total, items=items)
 
 
-def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, limit=None, offset=0):
+def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_academico=None, limit=None, offset=0):
     """
     Lógica interna para consolidar datos de documentación de múltiples fuentes.
     Integra información de Estudiante, PreinscripcionChecklist y datos_extra.
@@ -106,6 +107,9 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, limit=N
                 | Q(persona__apellido__icontains=q_clean)
             )
     
+    if estado_academico:
+        qs = qs.filter(carreras_detalle__estado_academico=estado_academico)
+
     if carrera_id:
         if allowed_ids is not None and int(carrera_id) not in allowed_ids:
             qs = qs.none()
