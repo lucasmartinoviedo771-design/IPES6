@@ -103,12 +103,13 @@ export const formatColumnLabel = (label?: string) => {
 
 export const getSituacionColor = (situacion?: string) => {
   const s = (situacion || '').toUpperCase();
-  // Códigos de DB o Aliases
-  if (s === 'PRO' || s.includes('PROM')) return '#c6e0b4'; // Verde claro
-  if (s === 'REGULAR' || s === 'REG') return '#ffff00';     // Amarillo
-  if (s === 'APR' || s.includes('APRO')) return '#70ad47';    // Verde medio (distinto del promocionado claro)
-  if (s.includes('DESAPROBADO') || s === 'DPA' || s === 'DTP') return '#ff0000'; // Rojo
-  if (s === 'LIBRE-I' || s === 'LBI') return '#5b9bd5';      // Azul/Cyan
-  if (s === 'LIBRE-AT' || s === 'LAT') return '#5b9bd5';     // Azul/Cyan (Igual que Libre I)
+  if (s === 'PRO' || s.includes('PROM')) return '#c6e0b4';           // Verde claro (Promocionado)
+  if (s === 'REGULAR' || s === 'REG') return '#ffff00';              // Amarillo
+  if (s.includes('DESAPROBADO_TP') || s === 'DTP') return '#f4a636'; // Naranja (Desaprobado TP)
+  if (s.includes('DESAPROBADO_PA') || s === 'DPA') return '#f4a636'; // Naranja (Desaprobado PA)
+  if (s.includes('DESAPROBADO')) return '#ff0000';                   // Rojo (Desaprobado general)
+  if (s === 'APR' || s.includes('APRO')) return '#70ad47';           // Verde medio (Aprobado)
+  if (s === 'LIBRE-I' || s === 'LBI') return '#5b9bd5';              // Azul/Cyan
+  if (s === 'LIBRE-AT' || s === 'LAT') return '#5b9bd5';             // Azul/Cyan
   return 'transparent';
 };

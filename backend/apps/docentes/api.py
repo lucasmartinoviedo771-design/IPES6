@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User, Group
 from django.db.models import Q
+from django.db import IntegrityError
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -44,9 +45,14 @@ def get_docente(request, docente_id: int):
 def update_docente(request, docente_id: int, payload: DocenteIn):
     _ensure_structure_edit(request.user)
     docente = get_object_or_404(Docente, id=docente_id)
+    persona = docente.persona
     for attr, value in payload.dict().items():
-        setattr(docente, attr, value)
-    docente.save()
+        if hasattr(persona, attr):
+            setattr(persona, attr, value)
+    try:
+        persona.save()
+    except IntegrityError:
+        raise HttpError(409, f"El DNI '{payload.dni}' ya está registrado en otro docente.")
     return DocenteService.serialize_docente(docente)
 
 @router.delete("/{docente_id}", response={204: None}, auth=JWTAuth())
