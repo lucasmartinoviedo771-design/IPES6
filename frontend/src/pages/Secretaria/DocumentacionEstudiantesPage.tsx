@@ -121,6 +121,7 @@ export default function DocumentacionEstudiantesPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [carreraId, setCarreraId] = useState<number | "">("");
+  const [estadoAcademico, setEstadoAcademico] = useState<string>("ACT");
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
     key: "apellido",
     direction: "asc",
@@ -154,9 +155,10 @@ export default function DocumentacionEstudiantesPage() {
     () => ({
       q: debouncedSearch || undefined,
       carrera_id: typeof carreraId === "number" ? carreraId : undefined,
-      limit: 2000, // Traemos todos para poder ordenar globalmente y paginar local
+      estado_academico: estadoAcademico || undefined,
+      limit: 2000,
     }),
-    [debouncedSearch, carreraId]
+    [debouncedSearch, carreraId, estadoAcademico]
   );
 
   const { data, isLoading, isFetching, isError, error } = useQuery({
@@ -346,6 +348,20 @@ export default function DocumentacionEstudiantesPage() {
             }}
           />
           
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel>Estado</InputLabel>
+            <Select
+              value={estadoAcademico}
+              label="Estado"
+              onChange={(e) => setEstadoAcademico(e.target.value)}
+            >
+              <MenuItem value="ACT">Activos</MenuItem>
+              <MenuItem value="INA">Inactivos</MenuItem>
+              <MenuItem value="EGR">Egresados</MenuItem>
+              <MenuItem value="">Todos</MenuItem>
+            </Select>
+          </FormControl>
+
           <FormControl size="small" sx={{ minWidth: 250 }}>
             <InputLabel>Filtrar por Profesorado</InputLabel>
             <Select

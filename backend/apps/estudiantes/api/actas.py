@@ -416,6 +416,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
 
         # Re-construcción del tribunal docente
         acta.docentes.all().delete()
+        pres_obj = voc1_obj = voc2_obj = None
         for idx, docente_data in enumerate(payload.docentes):
             rol = docente_data.rol if docente_data.rol in dict(ActaExamenDocente.Rol.choices) else ActaExamenDocente.Rol.PRESIDENTE
             docente_obj = Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None
@@ -427,6 +428,19 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
                 rol=rol,
                 orden=idx,
             )
+            if rol == ActaExamenDocente.Rol.PRESIDENTE:
+                pres_obj = docente_obj
+            elif rol == ActaExamenDocente.Rol.VOCAL1:
+                voc1_obj = docente_obj
+            elif rol == ActaExamenDocente.Rol.VOCAL2:
+                voc2_obj = docente_obj
+
+        # Sincronizar mesa con el tribunal actualizado
+        if mesa:
+            mesa.docente_presidente = pres_obj
+            mesa.docente_vocal1 = voc1_obj
+            mesa.docente_vocal2 = voc2_obj
+            mesa.save(update_fields=['docente_presidente', 'docente_vocal1', 'docente_vocal2'])
 
         # Re-construcción de nómina (Idempotencia)
         acta.estudiantes.all().delete()

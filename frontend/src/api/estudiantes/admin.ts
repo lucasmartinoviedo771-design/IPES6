@@ -15,7 +15,7 @@ export async function fetchEstudiantesAdmin(params: EstudianteAdminListParams = 
   return data;
 }
 
-export async function fetchEstudiantesDocumentacion(params: { q?: string; carrera_id?: number; limit?: number; offset?: number } = {}): Promise<EstudianteDocumentacionListResponseDTO> {
+export async function fetchEstudiantesDocumentacion(params: { q?: string; carrera_id?: number; estado_academico?: string; limit?: number; offset?: number } = {}): Promise<EstudianteDocumentacionListResponseDTO> {
   const { data } = await client.get<EstudianteDocumentacionListResponseDTO>("/estudiantes/admin/estudiantes-documentacion", { params });
   return data;
 }
