@@ -414,6 +414,20 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         acta.updated_by = usuario if getattr(usuario, "is_authenticated", False) else None
         acta.save()
 
+        # Re-construcción del tribunal docente
+        acta.docentes.all().delete()
+        for idx, docente_data in enumerate(payload.docentes):
+            rol = docente_data.rol if docente_data.rol in dict(ActaExamenDocente.Rol.choices) else ActaExamenDocente.Rol.PRESIDENTE
+            docente_obj = Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None
+            ActaExamenDocente.objects.create(
+                acta=acta,
+                docente=docente_obj,
+                nombre=docente_data.nombre.strip(),
+                dni=(docente_data.dni or "").strip(),
+                rol=rol,
+                orden=idx,
+            )
+
         # Re-construcción de nómina (Idempotencia)
         acta.estudiantes.all().delete()
         if mesa:

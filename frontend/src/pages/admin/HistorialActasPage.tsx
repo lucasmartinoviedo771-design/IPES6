@@ -41,7 +41,7 @@ import { enqueueSnackbar } from 'notistack';
 import { useAuth } from '@/context/AuthContext';
 import { hasRole } from '@/utils/roles';
 
-import { listarActas, obtenerActa, actualizarCabeceraActa, ActaFilter } from '@/api/cargaNotas';
+import { listarActas, obtenerActa, actualizarCabeceraActa } from '@/api/cargaNotas';
 import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 
@@ -342,13 +342,32 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
             enqueueSnackbar('Planilla reabierta correctamente.', { variant: 'success' });
             queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
             queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
-            // No cerramos el dialog, permitiendo ver el cambio de estado
         },
         onError: (err: any) => {
             const msg = err.response?.data.message || 'Error al reabrir la planilla.';
             enqueueSnackbar(msg, { variant: 'error' });
         }
     });
+
+    const closeMutation = useMutation({
+        mutationFn: (mesaId: number) => gestionarMesaPlanillaCierre(mesaId, 'cerrar'),
+        onSuccess: () => {
+            enqueueSnackbar('Planilla cerrada correctamente.', { variant: 'success' });
+            queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
+            queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
+        },
+        onError: (err: any) => {
+            const msg = err.response?.data.message || 'Error al cerrar la planilla.';
+            enqueueSnackbar(msg, { variant: 'error' });
+        }
+    });
+
+    const handleClose = () => {
+        if (!acta?.mesa_id) return;
+        if (window.confirm('¿Cerrar esta planilla? Una vez cerrada no podrá editarse hasta que la reabrás.')) {
+            closeMutation.mutate(acta.mesa_id);
+        }
+    };
 
     const updateHeaderMutation = useMutation({
         mutationFn: (payload: { fecha: string; libro: string; folio: string }) =>
@@ -526,9 +545,19 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                         {reopenMutation.isPending ? "Reabriendo..." : "Reabrir Planilla"}
                     </Button>
                 )}
+                {!acta?.esta_cerrada && acta?.mesa_id && isAdminOrSecretaria && (
+                    <Button
+                        onClick={handleClose}
+                        color="error"
+                        variant="outlined"
+                        disabled={closeMutation.isPending || isEditingHeader}
+                    >
+                        {closeMutation.isPending ? "Cerrando..." : "Cerrar Planilla"}
+                    </Button>
+                )}
                 {!acta?.esta_cerrada && canEditActa && (
-                    <Button 
-                        startIcon={<EditIcon />} 
+                    <Button
+                        startIcon={<EditIcon />}
                         onClick={() => navigate(`/admin/primera-carga/actas-examen?editId=${actaId}`)}
                         color="primary"
                     >
@@ -538,7 +567,7 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                 <Button startIcon={<PrintIcon />} onClick={() => window.open(`/admin/actas/${actaId}/print`, '_blank')}>
                     Imprimir
                 </Button>
-                <Button onClick={onClose} disabled={reopenMutation.isPending}>Cerrar</Button>
+                <Button onClick={onClose} disabled={reopenMutation.isPending || closeMutation.isPending}>Cerrar</Button>
             </DialogActions>
         </Dialog>
     );
