@@ -33,7 +33,26 @@ def list_docentes(request):
 @router.post("/", response=DocenteOut, auth=JWTAuth())
 def create_docente(request, payload: DocenteIn):
     _ensure_structure_edit(request.user)
-    docente = Docente.objects.create(**payload.dict())
+    try:
+        persona = Persona.objects.create(**payload.dict())
+    except IntegrityError:
+        existing = Persona.objects.filter(dni=payload.dni).first()
+        if existing:
+            parts = []
+            try:
+                existing.docente_perfil
+                parts.append("docente")
+            except Exception:
+                pass
+            try:
+                existing.estudiante_perfil
+                parts.append("estudiante")
+            except Exception:
+                pass
+            quien = " y ".join(parts) if parts else "otra persona"
+            raise HttpError(409, f"El DNI '{payload.dni}' ya está registrado como {quien}: {existing.apellido}, {existing.nombre}.")
+        raise HttpError(409, f"El DNI '{payload.dni}' ya está en uso.")
+    docente = Docente.objects.create(persona=persona)
     return DocenteService.serialize_docente(docente)
 
 @router.get("/{docente_id}", response=DocenteOut, auth=JWTAuth())

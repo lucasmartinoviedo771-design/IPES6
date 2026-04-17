@@ -118,10 +118,10 @@ class PreinscripcionService:
             cohorte=str(pre.anio) if pre.anio else None,
         )
         
-        # Sync legajo status from checklist to new enrollment
-        if hasattr(pre, "checklist") and pre.checklist:
-            inscripcion.estado_legajo = pre.checklist.estado_legajo
-            inscripcion.save(update_fields=["estado_legajo"])
+        # Sync legajo status from checklist to student
+        if hasattr(pre, "checklist") and pre.checklist and hasattr(pre.checklist, "estado_legajo"):
+            pre.alumno.estado_legajo = pre.checklist.estado_legajo
+            pre.alumno.save(update_fields=["estado_legajo"])
         
         pre.estado = "Confirmada"
         pre.save(update_fields=["estado"])

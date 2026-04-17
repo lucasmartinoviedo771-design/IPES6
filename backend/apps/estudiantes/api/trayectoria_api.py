@@ -586,14 +586,17 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
     return TrayectoriaOut(
         estudiante=EstudianteResumen(
-            dni=est.dni, legajo=est.legajo, 
+            dni=est.dni, legajo=est.legajo,
             apellido_nombre=est.user.get_full_name() if est.user_id else "",
             carreras=carreras, carreras_detalle=carreras_detalle_data,
             materias_aprobadas=len(aprobadas_set),
             materias_regularizadas=len(regularizadas_set - aprobadas_set),
             materias_en_curso=len(inscriptas_actuales_set - regularizadas_set - aprobadas_set),
-             legajo_estado=est.get_estado_legajo_display(),
-            # ... otros campos mapeados directamente ...
+            legajo_estado=est.get_estado_legajo_display(),
+            email=est.email,
+            telefono=est.telefono,
+            fecha_nacimiento=str(est.fecha_nacimiento) if est.fecha_nacimiento else None,
+            lugar_nacimiento=est.persona.lugar_nacimiento if est.persona_id else None,
         ),
         historial=[], # Reservado para eventos cronológicos futuros
         mesas=[TrayectoriaMesa(**m) for m in mesas_raw],

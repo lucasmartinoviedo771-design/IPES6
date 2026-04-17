@@ -95,7 +95,8 @@ export default function CargarDocentesPage() {
 
   const createDocenteMutation = useMutation<Docente, Error, DocenteFormInput>({
     mutationFn: async (newDocente) => {
-      const response = await api.post("/docentes/", newDocente, { suppressErrorToast: true } as any);
+      const payload = { ...newDocente, email: newDocente.email || null, telefono: newDocente.telefono || null, cuil: newDocente.cuil || null, fecha_nacimiento: newDocente.fecha_nacimiento || null };
+      const response = await api.post("/docentes/", payload, { suppressErrorToast: true } as any);
       return response.data;
     },
     onSuccess: (docenteCreado) => {
@@ -259,7 +260,7 @@ export default function CargarDocentesPage() {
             label="Fecha de Nacimiento (Opcional)"
             format="DD/MM/YYYY"
             value={field.value ? dayjs(field.value) : null}
-            onChange={(date) => field.onChange(date ? date.format("YYYY-MM-DD") : "")}
+            onChange={(date) => field.onChange(date ? date.format("YYYY-MM-DD") : null)}
             slotProps={{ textField: { size: "small", fullWidth: true, error: !!errors.fecha_nacimiento, helperText: errors.fecha_nacimiento?.message } }}
           />
         )}

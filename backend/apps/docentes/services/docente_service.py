@@ -79,6 +79,7 @@ class DocenteService:
             email=docente.email,
             telefono=docente.telefono,
             cuil=docente.cuil,
+            fecha_nacimiento=docente.fecha_nacimiento,
             usuario=user.username if user else None,
             temp_password=temp_password,
         )

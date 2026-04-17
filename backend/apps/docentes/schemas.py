@@ -1,3 +1,4 @@
+from datetime import date
 from ninja import Schema
 
 class DocenteIn(Schema):
@@ -7,6 +8,7 @@ class DocenteIn(Schema):
     email: str | None = None
     telefono: str | None = None
     cuil: str | None = None
+    fecha_nacimiento: date | None = None
 
 class DocenteOut(Schema):
     id: int
@@ -16,6 +18,7 @@ class DocenteOut(Schema):
     email: str | None = None
     telefono: str | None = None
     cuil: str | None = None
+    fecha_nacimiento: date | None = None
     usuario: str | None = None
     temp_password: str | None = None
 

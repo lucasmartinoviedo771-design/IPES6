@@ -504,11 +504,11 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
             u.email = est.email
         u.save()
         
-        a = pre.alumno
-        if est.telefono is not None: a.telefono = est.telefono
-        if est.domicilio is not None: a.domicilio = est.domicilio
-        if est.fecha_nacimiento: a.fecha_nacimiento = est.fecha_nacimiento
-        a.save()
+        p = pre.alumno.persona
+        if est.telefono is not None: p.telefono = est.telefono
+        if est.domicilio is not None: p.domicilio = est.domicilio
+        if est.fecha_nacimiento: p.fecha_nacimiento = est.fecha_nacimiento
+        p.save()
         
         if est.cuil:
             pre.cuil = est.cuil
