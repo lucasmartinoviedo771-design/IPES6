@@ -95,7 +95,7 @@ export default function CargarDocentesPage() {
 
   const createDocenteMutation = useMutation<Docente, Error, DocenteFormInput>({
     mutationFn: async (newDocente) => {
-      const response = await api.post("/docentes", newDocente, { suppressErrorToast: true } as any);
+      const response = await api.post("/docentes/", newDocente, { suppressErrorToast: true } as any);
       return response.data;
     },
     onSuccess: (docenteCreado) => {
