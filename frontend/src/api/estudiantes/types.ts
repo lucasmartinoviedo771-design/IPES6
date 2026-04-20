@@ -620,6 +620,7 @@ export interface EstudianteAdminListItemDTO {
   carreras_detalle?: CarreraStatus[];
   activo?: boolean;
   legajo?: string | null;
+  anio_ingreso?: number | null;
 }
 
 export interface EstudianteAdminListResponseDTO {
@@ -714,6 +715,7 @@ export type EstudianteAdminListParams = {
   carrera_id?: number;
   estado_legajo?: string;
   estado_academico?: string;
+  anio_ingreso?: number;
   limit?: number;
   offset?: number;
 };

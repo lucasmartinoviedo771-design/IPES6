@@ -35,6 +35,7 @@ export default function EstudiantesAdminPage() {
   const [estado, setEstado] = useState<EstadoLegajo>("");
   const [estadoAcademico, setEstadoAcademico] = useState<EstadoAcademico>("");
   const [carreraId, setCarreraId] = useState<number | "">("");
+  const [anioIngreso, setAnioIngreso] = useState<number | "">("");
   const { dni: dniParam } = useParams();
   const [selectedDni, setSelectedDni] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -60,10 +61,11 @@ export default function EstudiantesAdminPage() {
       estado_legajo: estado || undefined,
       estado_academico: estadoAcademico || undefined,
       carrera_id: typeof carreraId === "number" ? carreraId : undefined,
+      anio_ingreso: typeof anioIngreso === "number" ? anioIngreso : undefined,
       limit: rowsPerPage,
       offset: page * rowsPerPage,
     }),
-    [debouncedSearch, estado, estadoAcademico, carreraId, page, rowsPerPage],
+    [debouncedSearch, estado, estadoAcademico, carreraId, anioIngreso, page, rowsPerPage],
   );
 
   const queryClient = useQueryClient();
@@ -182,6 +184,9 @@ export default function EstudiantesAdminPage() {
         onEstadoAcademicoChange={setEstadoAcademico}
         carreraId={carreraId}
         onCarreraChange={setCarreraId}
+        anioIngreso={anioIngreso}
+        onAnioIngresoChange={setAnioIngreso}
+        anioIngresoOptions={anioIngresoOptions}
         carreras={carrerasQuery.data ?? []}
         isListLoading={isListLoading}
         onRefresh={() => {

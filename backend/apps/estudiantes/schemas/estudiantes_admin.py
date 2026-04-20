@@ -60,6 +60,7 @@ class EstudianteAdminListItem(Schema):
     carreras: list[str] = Field(default_factory=list)
     carreras_detalle: list[CarreraStatus] = Field(default_factory=list)
     legajo: str | None = None
+    anio_ingreso: int | None = None
     activo: bool = True
 
 class EstudianteAdminListResponse(Schema):

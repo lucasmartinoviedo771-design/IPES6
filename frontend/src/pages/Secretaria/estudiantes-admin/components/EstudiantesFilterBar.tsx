@@ -23,6 +23,9 @@ type Props = {
   onEstadoAcademicoChange: (value: EstadoAcademico) => void;
   carreraId: number | "";
   onCarreraChange: (value: number | "") => void;
+  anioIngreso: number | "";
+  onAnioIngresoChange: (value: number | "") => void;
+  anioIngresoOptions: string[];
   carreras: Carrera[];
   isListLoading: boolean;
   onRefresh: () => void;
@@ -37,6 +40,9 @@ export function EstudiantesFilterBar({
   onEstadoAcademicoChange,
   carreraId,
   onCarreraChange,
+  anioIngreso,
+  onAnioIngresoChange,
+  anioIngresoOptions,
   carreras,
   isListLoading,
   onRefresh,
@@ -102,6 +108,22 @@ export function EstudiantesFilterBar({
           {ESTADO_ACADEMICO_OPTIONS.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: 140 }}>
+        <InputLabel id="filtro-anio-ingreso">Año ingreso</InputLabel>
+        <Select
+          labelId="filtro-anio-ingreso"
+          label="Año ingreso"
+          value={anioIngreso}
+          onChange={(event) => onAnioIngresoChange(event.target.value as number | "")}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          {anioIngresoOptions.map((year) => (
+            <MenuItem key={year} value={parseInt(year)}>
+              {year}
             </MenuItem>
           ))}
         </Select>

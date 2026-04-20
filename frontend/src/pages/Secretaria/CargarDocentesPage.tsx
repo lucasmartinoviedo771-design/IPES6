@@ -72,7 +72,7 @@ export default function CargarDocentesPage() {
     reset: resetCreate,
     formState: { errors: createErrors },
   } = useForm<DocenteFormInput>({
-    defaultValues: { nombre: "", apellido: "", dni: "", email: "", telefono: "", cuil: "", fecha_nacimiento: "" },
+    defaultValues: { nombre: "", apellido: "", dni: "", email: "", telefono: "", cuil: "", fecha_nacimiento: null },
   });
 
   // Formulario de edición (modal)
@@ -82,7 +82,7 @@ export default function CargarDocentesPage() {
     reset: resetEdit,
     formState: { errors: editErrors },
   } = useForm<DocenteFormInput>({
-    defaultValues: { nombre: "", apellido: "", dni: "", email: "", telefono: "", cuil: "", fecha_nacimiento: "" },
+    defaultValues: { nombre: "", apellido: "", dni: "", email: "", telefono: "", cuil: "", fecha_nacimiento: null },
   });
 
   const { data: docentes, isLoading: isLoadingDocentes } = useQuery<Docente[]>({
@@ -155,7 +155,7 @@ export default function CargarDocentesPage() {
       email: docente.email || "",
       telefono: docente.telefono || "",
       cuil: docente.cuil || "",
-      fecha_nacimiento: docente.fecha_nacimiento || "",
+      fecha_nacimiento: docente.fecha_nacimiento || null,
     });
   };
 

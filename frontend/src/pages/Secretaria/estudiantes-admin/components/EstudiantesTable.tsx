@@ -64,6 +64,7 @@ export function EstudiantesTable({
                 <TableCell>Apellido y nombre</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Teléfono</TableCell>
+                <TableCell>Año Ingreso</TableCell>
                 <TableCell>Carreras</TableCell>
               </TableRow>
             </TableHead>
@@ -93,6 +94,7 @@ export function EstudiantesTable({
                     )}
                   </TableCell>
                   <TableCell>{item.telefono || "—"}</TableCell>
+                  <TableCell align="center">{item.anio_ingreso || "—"}</TableCell>
                   <TableCell>
                     <Stack direction="column" spacing={0.5}>
                       {(item.carreras_detalle && item.carreras_detalle.length > 0) ? (

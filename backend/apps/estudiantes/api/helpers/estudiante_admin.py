@@ -293,7 +293,7 @@ def _determine_condicion(documentacion: dict | None) -> str:
             bool(documentacion.get("dni_legalizado")),
             bool(documentacion.get("fotos_4x4")),
             bool(documentacion.get("certificado_salud")),
-            (documentacion.get("folios_oficio") or 0) >= 3,
+            (documentacion.get("folios_oficio") or 0) >= 1,
         )
     )
     # Requisito de titulación (Solo título completo o Analítico Legalizado cuentan para COM)

@@ -33,6 +33,7 @@ class EstudianteService:
         carrera_id = filters.get("carrera_id")
         condicion_filter = filters.get("estado_legajo")  # UI sigue enviando "estado_legajo" como key
         estado_academico = filters.get("estado_academico")
+        anio_ingreso = filters.get("anio_ingreso")
         
         qs = (
             Estudiante.objects.select_related("persona", "user")
@@ -79,6 +80,14 @@ class EstudianteService:
                 | Q(user__last_name__icontains=q_clean)
                 | Q(legajo__icontains=q_clean)
             )
+        
+        if anio_ingreso:
+            if carrera_id:
+                # Si filtran por carrera + año, chequeamos el año específico de ingreso en esa carrera
+                qs = qs.filter(carreras_detalle__profesorado_id=carrera_id, carreras_detalle__anio_ingreso=anio_ingreso)
+            else:
+                # Si es genérico, chequeamos el año de ingreso base del alumno
+                qs = qs.filter(anio_ingreso=anio_ingreso)
 
         # Cargar checklists de preinscripción en bulk para evitar N+1
         qs_list = list(qs.distinct())
@@ -150,6 +159,7 @@ class EstudianteService:
                     carreras=carreras_nombres,
                     carreras_detalle=carreras_det,
                     legajo=est.legajo or None,
+                    anio_ingreso=est.anio_ingreso,
                     activo=user.is_active if user else False,
                 )
             )
