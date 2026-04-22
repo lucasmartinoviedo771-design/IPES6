@@ -44,6 +44,7 @@ import { hasRole } from '@/utils/roles';
 import { listarActas, obtenerActa, actualizarCabeceraActa } from '@/api/cargaNotas';
 import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
+import ActaExamenReadOnly from '@/components/secretaria/ActaExamenReadOnly';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -246,7 +247,7 @@ const HistorialActasPage: React.FC = () => {
                         <TableBody>
                             {actas?.map((acta) => (
                                 <TableRow key={acta.id} hover>
-                                    <TableCell>{acta.id}</TableCell>
+                                    <TableCell sx={{ fontWeight: 500 }}>{acta.id}</TableCell>
                                     <TableCell>
                                         {acta.fecha && dayjs.utc(acta.fecha).isValid() 
                                             ? dayjs.utc(acta.fecha).format('DD/MM/YYYY') 
@@ -407,7 +408,7 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth scroll="paper">
             <DialogTitle sx={{ bgcolor: INSTITUTIONAL_GREEN, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Detalle de Acta #{actaId}</span>
                 {!isEditingHeader && !isLoading && acta && (
@@ -424,15 +425,10 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                         <CircularProgress />
                     </Box>
                 ) : acta ? (
-                    <Stack spacing={2} sx={{ mt: 1 }}>
-                        <Box>
-                            <Typography variant="subtitle2" color="text.secondary">Código</Typography>
-                            <Typography variant="body1">{acta.codigo}</Typography>
-                        </Box>
-
-                        {isEditingHeader ? (
-                            <Stack spacing={2} sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px dashed grey' }}>
-                                <Typography variant="subtitle2" color="primary">Editando Encabezado</Typography>
+                    <>
+                        {isEditingHeader && (
+                            <Stack spacing={2} sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1, border: '1px dashed grey' }}>
+                                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>Editando Encabezado del Acta</Typography>
                                 <TextField
                                     label="Fecha"
                                     type="date"
@@ -474,63 +470,13 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                                         onClick={handleSaveHeader}
                                         disabled={updateHeaderMutation.isPending}
                                     >
-                                        Guardar
+                                        Guardar cambios
                                     </Button>
                                 </Stack>
                             </Stack>
-                        ) : (
-                            <Stack direction="row" spacing={2}>
-                                <Box flex={1}>
-                                    <Typography variant="subtitle2" color="text.secondary">Fecha</Typography>
-                                    <Typography variant="body1">{dayjs.utc(acta.fecha).format('DD/MM/YYYY')}</Typography>
-                                </Box>
-                                <Box flex={1}>
-                                    <Typography variant="subtitle2" color="text.secondary">Libro / Folio</Typography>
-                                    <Typography variant="body1">{acta.libro || '-'} / {acta.folio || '-'}</Typography>
-                                </Box>
-                            </Stack>
                         )}
-
-                        <Box>
-                            <Typography variant="subtitle2" color="text.secondary">Materiá</Typography>
-                            <Typography variant="body1" fontWeight={500}>{acta.materia}</Typography>
-                        </Box>
-                        <Box>
-                            <Typography variant="subtitle2" color="text.secondary">Profesorado</Typography>
-                            <Typography variant="body2">{acta.profesorado}</Typography>
-                        </Box>
-
-                        <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
-                            <Typography variant="subtitle2" gutterBottom>Resumen de Resultados</Typography>
-                            <Stack direction="row" justifyContent="space-around">
-                                <Box textAlign="center">
-                                    <Typography variant="h6" color="success.main">{acta.total_aprobados}</Typography>
-                                    <Typography variant="caption">Aprobados</Typography>
-                                </Box>
-                                <Box textAlign="center">
-                                    <Typography variant="h6" color="error.main">{acta.total_desaprobados}</Typography>
-                                    <Typography variant="caption">Desaprobados</Typography>
-                                </Box>
-                                <Box textAlign="center">
-                                    <Typography variant="h6" color="text.secondary">{acta.total_ausentes}</Typography>
-                                    <Typography variant="caption">Ausentes</Typography>
-                                </Box>
-                            </Stack>
-                        </Paper>
-
-                        {acta.observaciones && (
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary">Observaciones</Typography>
-                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{acta.observaciones}</Typography>
-                            </Box>
-                        )}
-
-                        <Box mt={2}>
-                            <Typography variant="caption" color="text.disabled">
-                                Creado por: {acta.created_by || 'Sistema'} el {new Date(acta.created_at || '').toLocaleString()}
-                            </Typography>
-                        </Box>
-                    </Stack>
+                        <ActaExamenReadOnly acta={acta} />
+                    </>
                 ) : (
                     <Alert severity="error">No se pudo cargar el detalle.</Alert>
                 )}

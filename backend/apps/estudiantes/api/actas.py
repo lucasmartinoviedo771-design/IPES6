@@ -269,6 +269,20 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     if plan.profesorado_id != profesorado.id:
         return 400, ApiResponse(ok=False, message="Inconsistencia de Plan/Profesorado.")
 
+    # Validar duplicados por Libro/Folio/Materia/Fecha (Evitar carga doble de la misma planilla física)
+    if payload.libro and payload.folio:
+        duplicate = ActaExamen.objects.filter(
+            materia_id=payload.materia_id,
+            fecha=acta_fecha,
+            libro=payload.libro,
+            folio=payload.folio
+        ).first()
+        if duplicate:
+            return 400, ApiResponse(
+                ok=False, 
+                message=f"Ya existe un acta registrada ({duplicate.codigo}) para esta materia en la fecha {acta_fecha} con Libro {payload.libro} y Folio {payload.folio}."
+            )
+
     # Ciclo de validación y auto-creación de alumnos
     user_dni = getattr(request.user, "username", "")
     for estudiante_data in payload.estudiantes:
