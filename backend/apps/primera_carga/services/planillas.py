@@ -296,18 +296,32 @@ def crear_planilla_regularidad(
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
             inscripcion = InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia).order_by("-anio").first()
             
-            Regularidad.objects.update_or_create(
-                estudiante=estudiante, materia=materia, fecha_cierre=fecha,
-                defaults={
-                    "inscripcion": inscripcion,
-                    "nota_trabajos_practicos": nota_tp_decimal,
-                    "nota_final_cursada": nota_final_entera,
-                    "asistencia_porcentaje": asistencia,
-                    "excepcion": excepcion_bool,
-                    "situacion": situacion,
-                    "observaciones": (fila_data.get("observaciones") or "").strip(),
-                }
-            )
+            # Buscar regularidad existente del mismo año académico (carga histórica sin inscripción)
+            # para evitar duplicados cuando se reenvía la planilla con fecha corregida
+            reg_existente = Regularidad.objects.filter(
+                estudiante=estudiante, materia=materia,
+                inscripcion__isnull=True, fecha_cierre__year=fecha.year
+            ).order_by("-created_at").first()
+
+            reg_defaults = {
+                "inscripcion": inscripcion,
+                "nota_trabajos_practicos": nota_tp_decimal,
+                "nota_final_cursada": nota_final_entera,
+                "asistencia_porcentaje": asistencia,
+                "excepcion": excepcion_bool,
+                "situacion": situacion,
+                "observaciones": (fila_data.get("observaciones") or "").strip(),
+            }
+            if reg_existente:
+                reg_existente.fecha_cierre = fecha
+                for k, v in reg_defaults.items():
+                    setattr(reg_existente, k, v)
+                reg_existente.save()
+            else:
+                Regularidad.objects.update_or_create(
+                    estudiante=estudiante, materia=materia, fecha_cierre=fecha,
+                    defaults=reg_defaults,
+                )
             verify_regularidad_consistency(fila_obj)
             regularidades_registradas += 1
 
@@ -376,6 +390,11 @@ def actualizar_planilla_regularidad(
         if not es_autoridad and not user.is_superuser:
             raise ValueError("No tiene permisos para editar planillas de este profesorado.")
 
+    # Capturar estado ANTERIOR antes de modificar (para limpiar regularidades viejas)
+    old_fecha = planilla.fecha
+    old_materia_id = planilla.materia_id
+    old_estudiante_ids = list(planilla.filas.filter(estudiante__isnull=False).values_list('estudiante_id', flat=True))
+
     if profesorado_id: planilla.profesorado_id = profesorado_id
     if materia_id: planilla.materia_id = materia_id
     if plantilla_id:
@@ -391,13 +410,8 @@ def actualizar_planilla_regularidad(
     if observaciones is not None: planilla.observaciones = observaciones
     if estado: planilla.estado = estado
     if datos_adicionales is not None: planilla.datos_adicionales = datos_adicionales
-    
+
     planilla.updated_by = user
-    
-    # Capturar estado anterior para limpieza de regularidades
-    old_fecha = planilla.fecha
-    old_materia_id = planilla.materia_id
-    old_estudiante_ids = list(planilla.filas.filter(estudiante__isnull=False).values_list('estudiante_id', flat=True))
 
     atomic_ctx = transaction.atomic if not dry_run else _atomic_rollback
     with atomic_ctx():
