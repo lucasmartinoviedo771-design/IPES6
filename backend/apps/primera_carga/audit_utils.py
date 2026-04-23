@@ -109,20 +109,27 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
     insc = InscripcionMesa.objects.filter(mesa=mesa, estudiante__persona__dni=dni).first()
     
     if not insc:
-        SystemLog.objects.create(
+        already_logged = SystemLog.objects.filter(
             tipo="ACTA_MISMATCH",
-            mensaje=f"MISSING EXAM RECORD: Student {dni} / Subject '{materia.nombre}' has Acta entry but NO history record.",
-            metadata={
-                "dni": dni,
-                "materia_id": materia.id,
-                "acta_est_id": acta_est.id,
-                "acta_id": acta_est.acta.id,
-                "codigo": acta_est.acta.codigo,
-                "fecha": str(fecha),
-                "libro": libro,
-                "folio": folio
-            }
-        )
+            metadata__dni=dni,
+            metadata__acta_id=acta_est.acta.id,
+            resuelto=False,
+        ).exists()
+        if not already_logged:
+            SystemLog.objects.create(
+                tipo="ACTA_MISMATCH",
+                mensaje=f"MISSING EXAM RECORD: Student {dni} / Subject '{materia.nombre}' has Acta entry but NO history record.",
+                metadata={
+                    "dni": dni,
+                    "materia_id": materia.id,
+                    "acta_est_id": acta_est.id,
+                    "acta_id": acta_est.acta.id,
+                    "codigo": acta_est.acta.codigo,
+                    "fecha": str(fecha),
+                    "libro": libro,
+                    "folio": folio
+                }
+            )
         return
 
     mismatches = []
@@ -163,22 +170,29 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
         mismatches.append(f"Nota: Acta={nota_acta} vs Historial={nota_hist}")
 
     if mismatches:
-        SystemLog.objects.create(
+        already_logged = SystemLog.objects.filter(
             tipo="ACTA_MISMATCH",
-            mensaje=f"DISCREPANCY EXAM: Student {dni} / Subject '{materia.nombre}'. {'; '.join(mismatches)}",
-            metadata={
-                "dni": dni,
-                "materia_id": materia.id,
-                "acta_materia_nombre": materia.nombre,
-                "acta_id": acta_est.acta.id,
-                "codigo": acta_est.acta.codigo,
-                "fecha": str(fecha),
-                "acta_est_id": acta_est.id,
-                "libro": libro,
-                "folio": folio,
-                "discrepancies": mismatches
-            }
-        )
+            metadata__dni=dni,
+            metadata__acta_id=acta_est.acta.id,
+            resuelto=False,
+        ).exists()
+        if not already_logged:
+            SystemLog.objects.create(
+                tipo="ACTA_MISMATCH",
+                mensaje=f"DISCREPANCY EXAM: Student {dni} / Subject '{materia.nombre}'. {'; '.join(mismatches)}",
+                metadata={
+                    "dni": dni,
+                    "materia_id": materia.id,
+                    "acta_materia_nombre": materia.nombre,
+                    "acta_id": acta_est.acta.id,
+                    "codigo": acta_est.acta.codigo,
+                    "fecha": str(fecha),
+                    "acta_est_id": acta_est.id,
+                    "libro": libro,
+                    "folio": folio,
+                    "discrepancies": mismatches
+                }
+            )
 
 def verify_equivalencia_consistency(eq_detalle: EquivalenciaDisposicionDetalle) -> None:
     """
