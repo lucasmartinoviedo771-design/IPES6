@@ -119,6 +119,30 @@ def crear_planilla_regularidad(
     if not filas:
         raise ValueError("Debe proporcionar al menos una fila de estudiantes.")
 
+    # Detectar alumnos que ya tienen regularidad en otra planilla para la misma materia+fecha
+    dni_nuevos = {f.get("dni") for f in filas if f.get("dni")}
+    if dni_nuevos:
+        estudiantes_existentes = Estudiante.objects.filter(persona__dni__in=dni_nuevos)
+        ids_existentes = list(estudiantes_existentes.values_list("id", flat=True))
+        planillas_existentes = PlanillaRegularidad.objects.filter(
+            profesorado_id=profesorado_id,
+            materia_id=materia_id,
+            fecha=fecha,
+        ).exclude(filas__isnull=True)
+        if planillas_existentes.exists():
+            solapados = PlanillaRegularidadFila.objects.filter(
+                planilla__in=planillas_existentes,
+                estudiante_id__in=ids_existentes,
+            ).select_related("planilla")
+            if solapados.exists():
+                planilla_conflicto = solapados.first().planilla
+                nombres = ", ".join(s.apellido_nombre for s in solapados[:3])
+                raise ValueError(
+                    f"Los siguientes alumnos ya tienen regularidad en la planilla {planilla_conflicto.codigo} "
+                    f"para esta materia en la fecha {fecha.strftime('%d/%m/%Y')}: {nombres}..."
+                    f" Si son alumnos comisionados, verifique que no estén duplicados."
+                )
+
     atomic_ctx = transaction.atomic if not dry_run else _atomic_rollback
     warnings: list[str] = []
     regularidades_registradas = 0
