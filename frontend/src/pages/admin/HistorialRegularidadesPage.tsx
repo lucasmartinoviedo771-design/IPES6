@@ -42,6 +42,7 @@ const HistorialRegularidadesPage: React.FC = () => {
     const [filterDictado, setFilterDictado] = React.useState<string | null>(null);
     const [filterAnioCursada, setFilterAnioCursada] = React.useState<string | null>(null);
     const [filterProfesorado, setFilterProfesorado] = React.useState<string | null>(null);
+    const [filterID, setFilterID] = React.useState<string>('');
 
     const { user } = useAuth();
     const isAdminOrSecretaria = React.useMemo(() => 
@@ -71,6 +72,7 @@ const HistorialRegularidadesPage: React.FC = () => {
         if (!planillas) return [];
         const filtered = planillas.filter(p => {
             const year = p.anio_academico.toString();
+            if (filterID && p.id.toString() !== filterID.trim()) return false;
             if (filterYear && year !== filterYear) return false;
             if (filterMateria && p.materia_nombre !== filterMateria) return false;
             if (filterDictado) {
@@ -110,7 +112,7 @@ const HistorialRegularidadesPage: React.FC = () => {
             }
             return 0;
         });
-    }, [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada, filterProfesorado, orderBy, orderDirection]);
+    }, [planillas, filterID, filterYear, filterMateria, filterDictado, filterAnioCursada, filterProfesorado, orderBy, orderDirection]);
 
     const paginatedPlanillas = React.useMemo(() => {
         return filteredPlanillas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -180,6 +182,17 @@ const HistorialRegularidadesPage: React.FC = () => {
                             Filtros de Búsqueda
                         </Typography>
                         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            {/* ID Filter */}
+                            <Box sx={{ minWidth: 90 }}>
+                                <TextField
+                                    label="ID"
+                                    size="small"
+                                    value={filterID}
+                                    onChange={(e) => { setFilterID(e.target.value); setPage(0); }}
+                                    inputProps={{ inputMode: 'numeric' }}
+                                    sx={{ width: 90 }}
+                                />
+                            </Box>
                             {/* Año Lectivo Filter */}
                             <Box sx={{ minWidth: 120 }}>
                                 <Autocomplete
@@ -235,9 +248,10 @@ const HistorialRegularidadesPage: React.FC = () => {
                                 </Box>
                             )}
 
-                            {(filterYear || filterMateria || filterDictado || filterAnioCursada || filterProfesorado) && (
+                            {(filterID || filterYear || filterMateria || filterDictado || filterAnioCursada || filterProfesorado) && (
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <IconButton onClick={() => {
+                                        setFilterID('');
                                         setFilterYear(null);
                                         setFilterMateria(null);
                                         setFilterDictado(null);
