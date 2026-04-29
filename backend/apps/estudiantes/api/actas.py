@@ -405,11 +405,40 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     if not acta:
         return 404, ApiResponse(ok=False, message="Acta no encontrada.")
 
-    # Salvaguarda: Solo editar actas si la mesa está abierta para cambios
-    mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=acta.tipo).first()
-    if mesa and mesa.planilla_cerrada_en is not None:
-        # Nota: Normalmente crear_acta genera la mesa cerrada, pero aquí permitimos reapertura desde este flujo
-        pass 
+    nueva_materia = Materia.objects.filter(id=payload.materia_id).first()
+    if not nueva_materia:
+        return 400, ApiResponse(ok=False, message="Materia no encontrada.")
+
+    nuevo_profesorado = Profesorado.objects.filter(id=payload.profesorado_id).first()
+    if not nuevo_profesorado:
+        return 400, ApiResponse(ok=False, message="Profesorado no encontrado.")
+
+    # Mesa vinculada a la materia/fecha ORIGINAL (antes de editar)
+    fecha_original = acta.fecha
+    mesa_modalidad = MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
+    mesa_vieja = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=fecha_original, modalidad=mesa_modalidad).first()
+
+    # Si cambió materia o fecha, buscar/crear la mesa correspondiente a los nuevos valores
+    nueva_fecha = payload.fecha
+    materia_cambio = acta.materia_id != payload.materia_id
+    fecha_cambio = str(fecha_original) != str(nueva_fecha)
+
+    if materia_cambio or fecha_cambio:
+        mesa, _ = MesaExamen.objects.get_or_create(
+            materia_id=payload.materia_id,
+            fecha=nueva_fecha,
+            modalidad=mesa_modalidad,
+            defaults={
+                "tipo": MesaExamen.Tipo.FINAL,
+                "codigo": f"MA-{acta.id}-{nueva_fecha}-R",
+                "planilla_cerrada_en": timezone.now(),
+            },
+        )
+        # Limpiar InscripcionMesa de la mesa vieja vinculadas a este acta
+        if mesa_vieja:
+            InscripcionMesa.objects.filter(mesa=mesa_vieja, folio=acta.folio).delete()
+    else:
+        mesa = mesa_vieja
 
     categoria_counts = {"aprobado": 0, "desaprobado": 0, "ausente": 0}
     for est_item in payload.estudiantes:
@@ -418,6 +447,9 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
 
     usuario = getattr(request, "user", None)
     with transaction.atomic():
+        acta.materia = nueva_materia
+        acta.profesorado = nuevo_profesorado
+        acta.fecha = payload.fecha
         acta.folio = payload.folio
         acta.libro = payload.libro or ""
         acta.observaciones = payload.observaciones or ""

@@ -77,16 +77,45 @@ const MateriasBloqueadasAccordion: React.FC<MateriasBloqueadasAccordionProps> = 
           );
         })}
 
-        {aprobadasFiltradas.length > 0 && (
-          <Box sx={{ mt: 2 }}>
-            <Divider textAlign="left" sx={{ mb: 1.5 }}>Materias ya aprobadas</Divider>
-            <Stack direction="row" flexWrap="wrap" gap={1}>
-              {aprobadasFiltradas.map((materia) => (
-                <Chip key={materia.id} label={materia.nombre} color="success" size="small" />
-              ))}
-            </Stack>
-          </Box>
-        )}
+        {aprobadasFiltradas.length > 0 && (() => {
+          const porAnio = aprobadasFiltradas.reduce<Record<number, typeof aprobadasFiltradas>>(
+            (acc, m) => { (acc[m.anio] ??= []).push(m); return acc; },
+            {}
+          );
+          const aniosOrdenados = Object.keys(porAnio).map(Number).sort((a, b) => a - b);
+          return (
+            <Box sx={{ mt: 2 }}>
+              <Divider textAlign="left" sx={{ mb: 2 }}>Trayectoria aprobada</Divider>
+              <Stack spacing={2.5}>
+                {aniosOrdenados.map((anio) => (
+                  <Box key={anio}>
+                    <Typography
+                      variant="caption"
+                      fontWeight={700}
+                      sx={{
+                        display: "inline-block",
+                        mb: 1,
+                        px: 1.5,
+                        py: 0.4,
+                        borderRadius: 2,
+                        bgcolor: "success.main",
+                        color: "white",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {anio}° AÑO
+                    </Typography>
+                    <Stack direction="row" flexWrap="wrap" gap={1}>
+                      {porAnio[anio].map((materia) => (
+                        <Chip key={materia.id} label={materia.nombre} color="success" size="small" />
+                      ))}
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          );
+        })()}
       </AccordionDetails>
     </Accordion>
   );

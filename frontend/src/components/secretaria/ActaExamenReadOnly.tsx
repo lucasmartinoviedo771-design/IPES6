@@ -58,7 +58,7 @@ const ActaExamenReadOnly: React.FC<ActaExamenReadOnlyProps> = ({ acta }) => {
                 <Grid item xs={12} md={3}>
                     <Typography variant="subtitle2" color="text.secondary">Fecha</Typography>
                     <Typography variant="body1" fontWeight={500}>
-                        {acta.fecha ? dayjs.utc(acta.fecha).format('DD/MM/YYYY') : '-'}
+                        {acta.fecha || '-'}
                     </Typography>
                 </Grid>
                 <Grid item xs={12} md={3}>
