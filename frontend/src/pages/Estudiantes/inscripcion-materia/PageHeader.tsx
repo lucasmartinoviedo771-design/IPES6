@@ -52,24 +52,23 @@ const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({ dniInput, dniFi
   const [inputValue, setInputValue] = useState("");
   const [options, setOptions] = useState<EstudianteAdminListItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
+  const [estudianteActual, setEstudianteActual] = useState<{ apellido: string; nombre: string } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFetchedDni = useRef<string>("");
 
-  // Cuando el dniFiltro cambia (búsqueda manual por DNI), mostrar el nombre del estudiante
+  // Cuando cambia el dniFiltro activo, traer el nombre del estudiante para mostrarlo
   useEffect(() => {
-    if (!dniFiltro || dniFiltro === lastFetchedDni.current) return;
+    if (!dniFiltro) { setEstudianteActual(null); return; }
+    if (dniFiltro === lastFetchedDni.current) return;
     lastFetchedDni.current = dniFiltro;
     fetchEstudianteAdminDetail(dniFiltro)
-      .then((est) => setInputValue(`${est.apellido}, ${est.nombre}`))
-      .catch(() => setInputValue(""));
+      .then((est) => setEstudianteActual({ apellido: est.apellido, nombre: est.nombre }))
+      .catch(() => setEstudianteActual(null));
   }, [dniFiltro]);
 
   useEffect(() => {
     const trimmed = inputValue.trim();
-    if (trimmed.length < 3) {
-      setOptions([]);
-      return;
-    }
+    if (trimmed.length < 3) { setOptions([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
@@ -86,70 +85,77 @@ const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({ dniInput, dniFi
   }, [inputValue]);
 
   return (
-    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-      <Autocomplete
-        size="small"
-        options={options}
-        loading={loading}
-        filterOptions={(x) => x}
-        getOptionLabel={(opt) => `${opt.apellido}, ${opt.nombre}`}
-        isOptionEqualToValue={(opt, val) => opt.dni === val.dni}
-        inputValue={inputValue}
-        onInputChange={(_, val) => setInputValue(val)}
-        onChange={(_, selected) => {
-          if (selected) {
-            setDniInput(selected.dni);
-            setDniFiltro(selected.dni);
-            setInputValue(`${selected.apellido}, ${selected.nombre}`);
-          }
-        }}
-        noOptionsText={inputValue.trim().length < 3 ? "Escribí al menos 3 caracteres" : "Sin resultados"}
-        renderOption={(props, opt) => (
-          <li {...props} key={opt.dni}>
-            <Box>
-              <Typography variant="body2" fontWeight={600}>{opt.apellido}, {opt.nombre}</Typography>
-              <Typography variant="caption" color="text.secondary">DNI: {opt.dni}</Typography>
-            </Box>
-          </li>
-        )}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Buscar por nombre"
-            sx={{ minWidth: 240, bgcolor: "#fff" }}
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {loading && <CircularProgress size={16} />}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
-            }}
-          />
-        )}
-      />
-      <TextField
-        label="DNI del estudiante"
-        size="small"
-        value={dniInput}
-        onChange={(e) => {
-          const value = e.target.value.replace(/\D+/g, "");
-          if (value.length <= 8) setDniInput(value);
-        }}
-        sx={{ maxWidth: 180, bgcolor: "#fff" }}
-        inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
-      />
-      <Button
-        variant="contained"
-        onClick={() => setDniFiltro(dniInput.trim())}
-        disabled={dniInput.length < 7}
-      >
-        Buscar
-      </Button>
-      <Typography variant="caption" color="text.secondary">
-        Bedel/Secretaría/Admin: buscá por nombre o DNI para gestionar inscripciones.
-      </Typography>
+    <Stack spacing={0.5}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+        <Autocomplete
+          size="small"
+          options={options}
+          loading={loading}
+          filterOptions={(x) => x}
+          getOptionLabel={(opt) => `${opt.apellido}, ${opt.nombre}`}
+          isOptionEqualToValue={(opt, val) => opt.dni === val.dni}
+          inputValue={inputValue}
+          onInputChange={(_, val, reason) => {
+            if (reason !== "reset") setInputValue(val);
+          }}
+          onChange={(_, selected) => {
+            if (selected) {
+              setDniInput(selected.dni);
+              setDniFiltro(selected.dni);
+              setEstudianteActual({ apellido: selected.apellido, nombre: selected.nombre });
+              lastFetchedDni.current = selected.dni;
+            }
+          }}
+          noOptionsText={inputValue.trim().length < 3 ? "Escribí al menos 3 caracteres" : "Sin resultados"}
+          renderOption={(props, opt) => (
+            <li {...props} key={opt.dni}>
+              <Box>
+                <Typography variant="body2" fontWeight={600}>{opt.apellido}, {opt.nombre}</Typography>
+                <Typography variant="caption" color="text.secondary">DNI: {opt.dni}</Typography>
+              </Box>
+            </li>
+          )}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Buscar por nombre"
+              sx={{ minWidth: 240, bgcolor: "#fff" }}
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>{loading && <CircularProgress size={16} />}{params.InputProps.endAdornment}</>
+                ),
+              }}
+            />
+          )}
+        />
+        <TextField
+          label="DNI del estudiante"
+          size="small"
+          value={dniInput}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D+/g, "");
+            if (value.length <= 8) setDniInput(value);
+          }}
+          sx={{ maxWidth: 180, bgcolor: "#fff" }}
+          inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
+        />
+        <Button
+          variant="contained"
+          onClick={() => setDniFiltro(dniInput.trim())}
+          disabled={dniInput.length < 7}
+        >
+          Buscar
+        </Button>
+        <Typography variant="caption" color="text.secondary">
+          Bedel/Secretaría/Admin: buscá por nombre o DNI.
+        </Typography>
+      </Stack>
+      {estudianteActual && (
+        <Typography variant="body2" sx={{ color: "primary.main", fontWeight: 600, pl: 0.5 }}>
+          Estudiante: {estudianteActual.apellido}, {estudianteActual.nombre}
+        </Typography>
+      )}
     </Stack>
   );
 };
