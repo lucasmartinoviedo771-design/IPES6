@@ -14,7 +14,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import BackButton from "@/components/ui/BackButton";
 import { TrayectoriaCarreraDetalleDTO, VentanaInscripcion } from "@/api/estudiantes";
-import { fetchEstudiantesAdmin } from "@/api/estudiantes/admin";
+import { fetchEstudiantesAdmin, fetchEstudianteAdminDetail } from "@/api/estudiantes/admin";
 import { EstudianteAdminListItemDTO } from "@/api/estudiantes/types";
 import { formatDate } from "@/utils/date";
 
@@ -26,6 +26,7 @@ interface PageHeaderProps {
   isVentanaLoading: boolean;
   puedeGestionar: boolean;
   dniInput: string;
+  dniFiltro: string;
   setDniInput: React.Dispatch<React.SetStateAction<string>>;
   setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
   anioFiltro: number | "all";
@@ -42,15 +43,26 @@ interface PageHeaderProps {
 
 interface EstudianteBuscadorProps {
   dniInput: string;
+  dniFiltro: string;
   setDniInput: React.Dispatch<React.SetStateAction<string>>;
   setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({ dniInput, setDniInput, setDniFiltro }) => {
+const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({ dniInput, dniFiltro, setDniInput, setDniFiltro }) => {
   const [inputValue, setInputValue] = useState("");
   const [options, setOptions] = useState<EstudianteAdminListItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFetchedDni = useRef<string>("");
+
+  // Cuando el dniFiltro cambia (búsqueda manual por DNI), mostrar el nombre del estudiante
+  useEffect(() => {
+    if (!dniFiltro || dniFiltro === lastFetchedDni.current) return;
+    lastFetchedDni.current = dniFiltro;
+    fetchEstudianteAdminDetail(dniFiltro)
+      .then((est) => setInputValue(`${est.apellido}, ${est.nombre}`))
+      .catch(() => setInputValue(""));
+  }, [dniFiltro]);
 
   useEffect(() => {
     const trimmed = inputValue.trim();
@@ -150,6 +162,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   isVentanaLoading,
   puedeGestionar,
   dniInput,
+  dniFiltro,
   setDniInput,
   setDniFiltro,
   anioFiltro,
@@ -191,6 +204,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         {puedeGestionar && (
           <EstudianteBuscador
             dniInput={dniInput}
+            dniFiltro={dniFiltro}
             setDniInput={setDniInput}
             setDniFiltro={setDniFiltro}
           />

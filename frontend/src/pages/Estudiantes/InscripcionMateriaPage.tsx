@@ -88,6 +88,7 @@ const InscripcionMateriaPage: React.FC = () => {
             isVentanaLoading={isVentanaLoading}
             puedeGestionar={puedeGestionar}
             dniInput={dniInput}
+            dniFiltro={dniFiltro}
             setDniInput={setDniInput}
             setDniFiltro={setDniFiltro}
             anioFiltro={anioFiltro}
