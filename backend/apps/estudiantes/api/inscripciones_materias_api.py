@@ -20,6 +20,7 @@ from core.models import (
     ActaExamenEstudiante,
     Comision,
     Correlatividad,
+    EquivalenciaDisposicionDetalle,
     HorarioCatedraDetalle,
     InscripcionMateriaEstudiante,
     InscripcionMesa,
@@ -97,13 +98,14 @@ def _comision_to_resumen(comision):
 def inscripcion_materia(request, payload: InscripcionMateriaIn):
     """
     Solicita la inscripción a una materia para el ciclo lectivo actual.
-    
+
     Flujo de Validación:
     1. Identidad: Verifica que el usuario tenga permiso sobre el DNI (Alumno propio o Bedel).
     2. Ventana: Comprueba si existe una 'VentanaHabilitacion' de tipo MATERIAS activa.
     3. Régimen: Si la ventana es para 2C, bloquea materias Anuales o de 1C.
-    4. Correlatividades: Consulta el motor de correlatividades consolidado (Actas + Regularidades).
-    5. Colisión Horaria: Analiza los bloques horarios de la materia contra las ya inscriptas en el año.
+    4. Materia ya aprobada: Bloquea si el alumno ya aprobó la materia (Regularidad, Acta, Mesa o Equivalencia).
+    5. Correlatividades: Consulta el motor de correlatividades consolidado (Actas + Regularidades).
+    6. Colisión Horaria: Analiza los bloques horarios de la materia contra las ya inscriptas en el año.
     """
     _ensure_estudiante_access(request, getattr(payload, "dni", None))
     est = _resolve_estudiante(request, getattr(payload, "dni", None))
@@ -149,7 +151,33 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         if mat.regimen not in allowed_regimens:
              return 400, ApiResponse(ok=False, message=f"La materia {mat.nombre} no corresponde a este turno de inscripción.")
 
-    # --- 2. VALIDACIÓN DE CORRELATIVIDADES ---
+    # --- 2. VALIDACIÓN: MATERIA YA APROBADA ---
+    ya_aprobada = (
+        Regularidad.objects.filter(
+            estudiante=est,
+            materia=mat,
+            situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO],
+        ).exists()
+        or ActaExamenEstudiante.objects.filter(
+            dni=est.dni,
+            acta__materia=mat,
+        ).filter(
+            calificacion_definitiva__in=[str(n) for n in range(6, 11)]
+        ).exists()
+        or InscripcionMesa.objects.filter(
+            estudiante=est,
+            mesa__materia=mat,
+            condicion=InscripcionMesa.Condicion.APROBADO,
+        ).exists()
+        or EquivalenciaDisposicionDetalle.objects.filter(
+            disposicion__estudiante=est,
+            materia=mat,
+        ).exists()
+    )
+    if ya_aprobada:
+        return 400, ApiResponse(ok=False, message=f"La materia '{mat.nombre}' ya se encuentra aprobada en su historial académico.")
+
+    # --- 3. VALIDACIÓN DE CORRELATIVIDADES ---
     req_reg = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
     req_apr = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
 
@@ -201,7 +229,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if faltan:
         return 400, ApiResponse(ok=False, message="No cumple correlatividades exigidas.", data={"faltantes": faltan})
 
-    # --- 3. DETECCIÓN DE SUPERPOSICIÓN HORARIA ---
+    # --- 4. DETECCIÓN DE SUPERPOSICIÓN HORARIA ---
     # 5. Validar superposición horaria (solo contra inscripciones activas)
     cand_qs = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mat)
     if cand_qs.exists():

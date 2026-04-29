@@ -24,6 +24,7 @@ import {
   generarPlanillasCursada,
   guardarBorradorPlanilla,
   cerrarPlanillaCursada,
+  sincronizarPlanilla,
   FilaCursadaOut,
   PlanillaCursadaOut,
 } from "@/api/planillasCursada";
@@ -105,6 +106,25 @@ export default function PlanillaCursadaFormPage() {
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? "Error al guardar el borrador.";
+      enqueueSnackbar(msg, { variant: "error" });
+    },
+  });
+
+  const sincronizarMutation = useMutation({
+    mutationFn: ({ planillaId }: { planillaId: number }) =>
+      sincronizarPlanilla(planillaId, Number(comisionId)),
+    onSuccess: (planillaActualizada: PlanillaCursadaOut) => {
+      setPlanillas((prev) =>
+        prev.map((p) => (p.id === planillaActualizada.id ? planillaActualizada : p))
+      );
+      setFilasEditables((prev) => ({
+        ...prev,
+        [planillaActualizada.id]: planillaActualizada.filas.map(filaToEditable),
+      }));
+      enqueueSnackbar("Estudiantes agregados correctamente.", { variant: "success" });
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message ?? "Error al sincronizar la planilla.";
       enqueueSnackbar(msg, { variant: "error" });
     },
   });
@@ -323,26 +343,37 @@ export default function PlanillaCursadaFormPage() {
                       La asistencia se pre-carga desde el módulo de asistencia si hay
                       clases registradas. Podés modificarla hasta el cierre.
                     </Typography>
-                    <Stack direction="row" spacing={2} justifyContent="flex-end">
+                    <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
                       <Button
                         variant="outlined"
-                        disabled={guardarMutation.isPending || cerrarMutation.isPending}
-                        onClick={() =>
-                          guardarMutation.mutate({ planillaId: planilla.id, filas })
-                        }
+                        color="secondary"
+                        size="small"
+                        disabled={sincronizarMutation.isPending}
+                        onClick={() => sincronizarMutation.mutate({ planillaId: planilla.id })}
                       >
-                        Guardar borrador
+                        Agregar inscriptos faltantes
                       </Button>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        disabled={guardarMutation.isPending || cerrarMutation.isPending}
-                        onClick={() =>
-                          cerrarMutation.mutate({ planillaId: planilla.id, filas })
-                        }
-                      >
-                        Guardar y cerrar planilla
-                      </Button>
+                      <Stack direction="row" spacing={2}>
+                        <Button
+                          variant="outlined"
+                          disabled={guardarMutation.isPending || cerrarMutation.isPending}
+                          onClick={() =>
+                            guardarMutation.mutate({ planillaId: planilla.id, filas })
+                          }
+                        >
+                          Guardar borrador
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          disabled={guardarMutation.isPending || cerrarMutation.isPending}
+                          onClick={() =>
+                            cerrarMutation.mutate({ planillaId: planilla.id, filas })
+                          }
+                        >
+                          Guardar y cerrar planilla
+                        </Button>
+                      </Stack>
                     </Stack>
                   </>
                 )}

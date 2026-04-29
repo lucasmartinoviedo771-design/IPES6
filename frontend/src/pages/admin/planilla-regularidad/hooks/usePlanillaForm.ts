@@ -636,6 +636,14 @@ export function usePlanillaForm({
       return;
     }
 
+    if (values.fecha) {
+      const year = new Date(values.fecha).getFullYear();
+      if (isNaN(year) || year < 1990 || year > 2100) {
+        enqueueSnackbar(`La fecha ingresada no es válida: "${values.fecha}". Verificá el año.`, { variant: 'warning' });
+        return;
+      }
+    }
+
     const filasConDatos = values.filas
       .map((fila, index) => ({ ...fila, index }))
       .filter((fila) => {

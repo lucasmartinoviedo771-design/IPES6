@@ -167,7 +167,8 @@ const baseSections: Section[] = [
 const squareCardStyles = {
   width: "100%",
   minHeight: 130,
-  border: `1px solid rgba(125,127,110,0.3)`,
+  border: "1px solid rgba(125,127,110,0.5)",
+  boxShadow: "0px 2px 8px rgba(0,0,0,0.04)",
   display: "flex",
   flexDirection: "column",
   transition: "all 0.2s ease",

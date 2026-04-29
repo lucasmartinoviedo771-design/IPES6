@@ -94,3 +94,14 @@ export async function reabrirPlanillaCursada(
   );
   return data;
 }
+
+export async function sincronizarPlanilla(
+  id: number,
+  comision_id: number
+): Promise<PlanillaCursadaOut> {
+  const { data } = await client.post<PlanillaCursadaOut>(
+    `/estudiantes/planillas-cursada/${id}/sincronizar`,
+    { comision_id }
+  );
+  return data;
+}

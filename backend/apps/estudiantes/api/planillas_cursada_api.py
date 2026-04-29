@@ -12,7 +12,7 @@ Flujo principal:
 
 from datetime import date
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
@@ -87,6 +87,10 @@ class GuardarFilasIn(Schema):
         situacion: str = ""
 
     filas: list[FilaIn]
+
+
+class SincronizarPlanillaIn(Schema):
+    comision_id: int
 
 
 # ==============================================================================
@@ -522,6 +526,102 @@ def cerrar_planilla_cursada(request, planilla_id: int):
         + (f", {en_resguardo_count} en resguardo." if en_resguardo_count else ".")
     )
     return ApiResponse(ok=True, message=msg)
+
+
+@router.post(
+    "/{planilla_id}/sincronizar",
+    response={200: PlanillaCursadaOut, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
+def sincronizar_planilla(request, planilla_id: int, payload: SincronizarPlanillaIn):
+    """
+    Agrega a la planilla los estudiantes inscriptos activos en la comisión
+    que aún no figuran como filas. No modifica filas existentes.
+    Solo accesible para secretaría y bedel.
+    """
+    roles = normalized_user_roles(request.user)
+    if not bool(roles & {"admin", "secretaria", "bedel"}):
+        return 403, ApiResponse(ok=False, message="Solo Secretaría o Bedel pueden sincronizar planillas.")
+
+    planilla = (
+        PlanillaCursada.objects.select_related("materia", "profesorado")
+        .filter(id=planilla_id)
+        .first()
+    )
+    if not planilla:
+        return 404, ApiResponse(ok=False, message="Planilla no encontrada.")
+
+    if planilla.estado == PlanillaCursada.Estado.CERRADA:
+        return 400, ApiResponse(
+            ok=False,
+            message="La planilla está cerrada. Reabrila desde Secretaría antes de sincronizar.",
+        )
+
+    comision = (
+        Comision.objects.select_related("materia__plan_de_estudio__profesorado")
+        .filter(id=payload.comision_id)
+        .first()
+    )
+    if not comision:
+        return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
+
+    allowed_ids = allowed_profesorados(request.user)
+    prof_comision = comision.materia.plan_de_estudio.profesorado
+    if allowed_ids is not None and prof_comision.id not in allowed_ids:
+        raise HttpError(403, "No tenés acceso a esta comisión.")
+
+    estudiantes_en_planilla = set(
+        PlanillaCursadaFila.objects.filter(planilla=planilla)
+        .values_list("estudiante_id", flat=True)
+    )
+
+    inscripciones_nuevas = (
+        InscripcionMateriaEstudiante.objects.filter(
+            comision=comision,
+            anio=planilla.anio_lectivo,
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                InscripcionMateriaEstudiante.Estado.CONDICIONAL,
+            ],
+        )
+        .exclude(estudiante_id__in=estudiantes_en_planilla)
+        .select_related(
+            "estudiante__persona",
+            "materia__plan_de_estudio__profesorado",
+            "materia_origen__plan_de_estudio__profesorado",
+        )
+        .order_by("estudiante__persona__apellido", "estudiante__persona__nombre")
+    )
+
+    if not inscripciones_nuevas.exists():
+        return 400, ApiResponse(ok=False, message="No hay estudiantes inscriptos activos para agregar.")
+
+    ultimo_orden = (
+        PlanillaCursadaFila.objects.filter(planilla=planilla)
+        .aggregate(Max("orden"))
+        .get("orden__max") or 0
+    )
+
+    with transaction.atomic():
+        filas = []
+        for i, insc in enumerate(inscripciones_nuevas, start=ultimo_orden + 1):
+            asistencia = _porcentaje_asistencia(insc.estudiante_id, comision.id)
+            filas.append(PlanillaCursadaFila(
+                planilla=planilla,
+                estudiante=insc.estudiante,
+                inscripcion=insc,
+                orden=i,
+                asistencia_porcentaje=asistencia,
+                excepcion=False,
+                columnas_datos={},
+                situacion="",
+                en_resguardo=False,
+            ))
+        PlanillaCursadaFila.objects.bulk_create(filas)
+
+    planilla_actualizada = PlanillaCursada.objects.prefetch_related(
+        "filas__estudiante__persona"
+    ).get(id=planilla_id)
+    return 200, _serializar_planilla(planilla_actualizada)
 
 
 @router.post(
