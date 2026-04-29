@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { SelectChangeEvent } from "@mui/material";
 import Alert from "@mui/material/Alert";
+import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
@@ -12,6 +14,8 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import BackButton from "@/components/ui/BackButton";
 import { TrayectoriaCarreraDetalleDTO, VentanaInscripcion } from "@/api/estudiantes";
+import { fetchEstudiantesAdmin } from "@/api/estudiantes/admin";
+import { EstudianteAdminListItemDTO } from "@/api/estudiantes/types";
 import { formatDate } from "@/utils/date";
 
 interface PageHeaderProps {
@@ -35,6 +39,108 @@ interface PageHeaderProps {
   selectedPlanId: string;
   handlePlanChange: (event: SelectChangeEvent<string>) => void;
 }
+
+interface EstudianteBuscadorProps {
+  dniInput: string;
+  setDniInput: React.Dispatch<React.SetStateAction<string>>;
+  setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
+}
+
+const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({ dniInput, setDniInput, setDniFiltro }) => {
+  const [inputValue, setInputValue] = useState("");
+  const [options, setOptions] = useState<EstudianteAdminListItemDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const trimmed = inputValue.trim();
+    if (trimmed.length < 3) {
+      setOptions([]);
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetchEstudiantesAdmin({ q: trimmed, limit: 10 });
+        setOptions(res.items);
+      } catch {
+        setOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [inputValue]);
+
+  return (
+    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+      <Autocomplete
+        size="small"
+        options={options}
+        loading={loading}
+        filterOptions={(x) => x}
+        getOptionLabel={(opt) => `${opt.apellido}, ${opt.nombre}`}
+        isOptionEqualToValue={(opt, val) => opt.dni === val.dni}
+        inputValue={inputValue}
+        onInputChange={(_, val) => setInputValue(val)}
+        onChange={(_, selected) => {
+          if (selected) {
+            setDniInput(selected.dni);
+            setDniFiltro(selected.dni);
+            setInputValue(`${selected.apellido}, ${selected.nombre}`);
+          }
+        }}
+        noOptionsText={inputValue.trim().length < 3 ? "Escribí al menos 3 caracteres" : "Sin resultados"}
+        renderOption={(props, opt) => (
+          <li {...props} key={opt.dni}>
+            <Box>
+              <Typography variant="body2" fontWeight={600}>{opt.apellido}, {opt.nombre}</Typography>
+              <Typography variant="caption" color="text.secondary">DNI: {opt.dni}</Typography>
+            </Box>
+          </li>
+        )}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Buscar por nombre"
+            sx={{ minWidth: 240, bgcolor: "#fff" }}
+            InputProps={{
+              ...params.InputProps,
+              endAdornment: (
+                <>
+                  {loading && <CircularProgress size={16} />}
+                  {params.InputProps.endAdornment}
+                </>
+              ),
+            }}
+          />
+        )}
+      />
+      <TextField
+        label="DNI del estudiante"
+        size="small"
+        value={dniInput}
+        onChange={(e) => {
+          const value = e.target.value.replace(/\D+/g, "");
+          if (value.length <= 8) setDniInput(value);
+        }}
+        sx={{ maxWidth: 180, bgcolor: "#fff" }}
+        inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
+      />
+      <Button
+        variant="contained"
+        onClick={() => setDniFiltro(dniInput.trim())}
+        disabled={dniInput.length < 7}
+      >
+        Buscar
+      </Button>
+      <Typography variant="caption" color="text.secondary">
+        Bedel/Secretaría/Admin: buscá por nombre o DNI para gestionar inscripciones.
+      </Typography>
+    </Stack>
+  );
+};
 
 const PageHeader: React.FC<PageHeaderProps> = ({
   profesoradoNombre,
@@ -83,31 +189,11 @@ const PageHeader: React.FC<PageHeaderProps> = ({
 
       <Stack spacing={1.5} sx={{ width: { xs: "100%", lg: "auto" } }}>
         {puedeGestionar && (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-            <TextField
-              label="DNI del estudiante"
-              size="small"
-              value={dniInput}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D+/g, "");
-                if (value.length <= 8) {
-                  setDniInput(value);
-                }
-              }}
-              sx={{ maxWidth: 240, bgcolor: "#fff" }}
-              inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
-            />
-            <Button
-              variant="contained"
-              onClick={() => setDniFiltro(dniInput.trim())}
-              disabled={dniInput.length < 7}
-            >
-              Buscar
-            </Button>
-            <Typography variant="caption" color="text.secondary">
-              Bedel/Secretaría/Admin: filtrá por DNI para gestionar inscripciones de un estudiante.
-            </Typography>
-          </Stack>
+          <EstudianteBuscador
+            dniInput={dniInput}
+            setDniInput={setDniInput}
+            setDniFiltro={setDniFiltro}
+          />
         )}
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
