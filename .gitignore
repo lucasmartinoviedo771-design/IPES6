@@ -86,3 +86,5 @@ scripts/backup_db.sh
 .agent/workflows/protocolo_despliegue.md
 .agent/skills/backend_standards/SKILL.md
 docs/
+Reporte_*.md
+actualizar_produccion.py
