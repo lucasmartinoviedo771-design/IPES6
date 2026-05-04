@@ -74,12 +74,12 @@ const HistorialRegularidadesPage: React.FC = () => {
             const year = p.anio_academico.toString();
             if (filterID && p.id.toString() !== filterID.trim()) return false;
             if (filterYear && year !== filterYear) return false;
-            if (filterMateria && p.materia_nombre !== filterMateria) return false;
+            if (filterMateria && p.materia_nombre?.trim() !== filterMateria) return false;
             if (filterDictado) {
-                if (!p.dictado || p.dictado !== filterDictado) return false;
+                if (!p.dictado || p.dictado.trim() !== filterDictado) return false;
             }
-            if (filterAnioCursada && p.anio_cursada !== filterAnioCursada) return false;
-            if (filterProfesorado && p.profesorado_nombre !== filterProfesorado) return false;
+            if (filterAnioCursada && String(p.anio_cursada).trim() !== filterAnioCursada) return false;
+            if (filterProfesorado && p.profesorado_nombre?.trim() !== filterProfesorado) return false;
             return true;
         });
 
