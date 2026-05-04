@@ -80,6 +80,7 @@ backend/apps/estudiantes/tests/
 
 # Backups
 backups/
+scripts/backup_db.sh
 
 # Agent workflows with server-specific paths (not for version control)
 .agent/workflows/protocolo_despliegue.md
