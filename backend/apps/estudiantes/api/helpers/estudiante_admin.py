@@ -124,14 +124,8 @@ def _apply_estudiante_updates(
         if user_updates:
             user.save(update_fields=user_updates)
 
-    if payload.telefono is not None:
-        est.telefono = payload.telefono or ""
-        # est.telefono is a property, so it won't be in fields_to_update for Estudiante
-        # but we handle it in Persona block below
-
-    if payload.domicilio is not None:
-        est.domicilio = payload.domicilio
-        # Same here
+    # Los campos telefono y domicilio se manejan en el bloque de Persona más abajo
+    # ya que en Estudiante son propiedades de solo lectura.
 
     if allow_estado_legajo and payload.estado_legajo is not None:
         est.estado_legajo = payload.estado_legajo.upper()

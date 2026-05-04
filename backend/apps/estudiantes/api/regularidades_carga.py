@@ -32,6 +32,7 @@ from core.models import (
     PreinscripcionChecklist,
 )
 from apps.common.date_utils import format_date, format_datetime
+from apps.common.audit import log_action_from_request, snapshot
 from .notas_utils import (
     normalized_user_roles,
     docente_from_user,
@@ -445,6 +446,22 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                 },
             )
 
+        # Registrar acción masiva en auditoría
+        log_action_from_request(
+            request,
+            accion="UPDATE",
+            tipo_accion="CRUD",
+            detalle_accion=f"Carga de notas masiva - Comision ID: {payload.comision_id}",
+            entidad="Regularidad",
+            entidad_id=payload.comision_id,
+            metadata={
+                "cantidad_estudiantes": len(payload.estudiantes),
+                "materia_id": materia.id,
+                "materia_nombre": materia.nombre,
+                "is_virtual": is_virtual
+            }
+        )
+
     return ApiResponse(ok=True, message="Planilla guardada formalmente.")
 
 
@@ -477,12 +494,29 @@ def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(..
                 anio_virtual=None if comision else (anio_virtual or 0),
                 cerrado_por=request.user if getattr(request.user, "is_authenticated", False) else None,
             )
+            log_action_from_request(
+                request,
+                accion="CLOSE",
+                tipo_accion="SYSTEM",
+                detalle_accion=f"Cierre de planilla - Comision ID: {payload.comision_id}",
+                entidad="RegularidadPlanillaLock",
+                entidad_id=payload.comision_id
+            )
         return ApiResponse(ok=True, message="La planilla ha sido bloqueada correctamente.")
 
     if accion == "reabrir":
         if not can_override:
             return 403, ApiResponse(ok=False, message="Privilegios insuficientes para reabrir planillas.")
-        if lock: lock.delete()
+        if lock: 
+            lock.delete()
+            log_action_from_request(
+                request,
+                accion="OPEN",
+                tipo_accion="SYSTEM",
+                detalle_accion=f"Reapertura de planilla - Comision ID: {payload.comision_id}",
+                entidad="RegularidadPlanillaLock",
+                entidad_id=payload.comision_id
+            )
         return ApiResponse(ok=True, message="La planilla ha sido habilitada para edición.")
 
     return 400, ApiResponse(ok=False, message="Acción de gestión no válida.")

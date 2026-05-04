@@ -87,8 +87,8 @@ def log_action(
             # Silenciamos errores de escritura de log para no interrumpir el flujo del usuario
             logger.exception("No se pudo registrar el log de auditoría preventivamente.")
 
-    # Registro diferido al éxito de la transacción
-    transaction.on_commit(_write)
+    # Escritura inmediata en base de datos
+    _write()
 
 
 def log_action_from_request(request, **kwargs):

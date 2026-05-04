@@ -41,6 +41,7 @@ from .services import (
     sync_course_snapshots,
 )
 from apps.common.date_utils import format_date, format_datetime
+from apps.common.audit import log_action_from_request
 from .api_helpers import (
     _resolve_scope,
     _ensure_authenticated_scope,
@@ -315,6 +316,21 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
             registro.registrado_por = request.user if request.user and request.user.is_authenticated else None
             registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
 
+    # Auditoría de asistencia
+    log_action_from_request(
+        request,
+        accion="UPDATE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Carga de asistencia - Clase ID: {clase_id}",
+        entidad="AsistenciaEstudiante",
+        entidad_id=clase_id,
+        metadata={
+            "presentes_count": len(payload.presentes),
+            "tardes_count": len(payload.tardes),
+            "clase_fecha": str(clase.fecha)
+        }
+    )
+
 @router.get("/mis-asistencias", response=List[EstudianteAsistenciaItemOut])
 def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
     if not request.user.is_authenticated:
@@ -431,6 +447,21 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
         docente=docente,
     )
 
+    # Auditoría de justificación
+    log_action_from_request(
+        request,
+        accion="CREATE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Nueva justificación {justificacion.id} ({payload.tipo})",
+        entidad="Justificacion",
+        entidad_id=justificacion.id,
+        metadata={
+            "motivo": payload.motivo,
+            "desde": str(payload.vigencia_desde),
+            "hasta": str(payload.vigencia_hasta)
+        }
+    )
+
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)
 
 @router.get("/justificaciones", response=list[JustificacionListItemOut], auth=JWTAuth())
@@ -536,6 +567,17 @@ def aprobar_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     actor = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
     justificacion.marcar_aprobada(actor)
     apply_justification(justificacion)
+
+    # Auditoría de aprobación
+    log_action_from_request(
+        request,
+        accion="APPROVE",
+        tipo_accion="SYSTEM",
+        detalle_accion=f"Aprobación de justificación {justificacion_id}",
+        entidad="Justificacion",
+        entidad_id=justificacion_id
+    )
+
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)
 
 @router.post(
@@ -566,4 +608,16 @@ def rechazar_justificacion(
 
     actor = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
     justificacion.marcar_rechazada(actor, observaciones=payload.observaciones)
+
+    # Auditoría de rechazo
+    log_action_from_request(
+        request,
+        accion="REJECT",
+        tipo_accion="SYSTEM",
+        detalle_accion=f"Rechazo de justificación {justificacion_id}",
+        entidad="Justificacion",
+        entidad_id=justificacion_id,
+        metadata={"motivo_rechazo": payload.observaciones}
+    )
+
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)

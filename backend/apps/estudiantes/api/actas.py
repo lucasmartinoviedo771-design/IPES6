@@ -11,6 +11,7 @@ from decimal import Decimal
 import uuid
 from django.db import transaction
 from apps.common.date_utils import format_date, format_datetime
+from apps.common.audit import log_action_from_request, snapshot
 from django.utils import timezone
 from ninja import Router, Body
 
@@ -386,6 +387,22 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 )
                 verify_acta_consistency(acta_est_obj)
 
+        # Registrar acción en auditoría
+        log_action_from_request(
+            request,
+            accion="CREATE",
+            tipo_accion="CRUD",
+            detalle_accion=f"Creación de Acta de Examen: {codigo}",
+            entidad="ActaExamen",
+            entidad_id=acta.id,
+            metadata={
+                "libro": payload.libro,
+                "folio": payload.folio,
+                "materia": materia.nombre,
+                "total_alumnos": len(payload.estudiantes)
+            }
+        )
+
     return ApiResponse(ok=True, message="Acta de examen generada correctamente.", data=ActaCreateOutLocal(id=acta.id, codigo=acta.codigo).dict())
 
 
@@ -446,6 +463,8 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         categoria_counts[categoria] += 1
 
     usuario = getattr(request, "user", None)
+    # Capturar estado previo para auditoría
+    before = snapshot(acta)
     with transaction.atomic():
         acta.materia = nueva_materia
         acta.profesorado = nuevo_profesorado
@@ -516,6 +535,22 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
                     }
                 )
                 verify_acta_consistency(acta_est_obj)
+
+        # Registrar acción en auditoría
+        log_action_from_request(
+            request,
+            accion="UPDATE",
+            tipo_accion="CRUD",
+            detalle_accion=f"Rectificación de Acta de Examen: {acta.codigo}",
+            entidad="ActaExamen",
+            entidad_id=acta_id,
+            before=before,
+            after=acta,
+            metadata={
+                "motivo": "Rectificación administrativa",
+                "nuevos_estudiantes_count": len(payload.estudiantes)
+            }
+        )
 
     return ApiResponse(ok=True, message="Acta rectificada correctamente.")
 

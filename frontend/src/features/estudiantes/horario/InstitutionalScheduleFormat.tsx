@@ -79,7 +79,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
           {materia.materia_nombre}
         </Typography>
         <Typography variant="caption" sx={{ fontSize: "0.55rem", mt: 0.2, fontStyle: "italic", color: "#333" }}>
-          {materia.docentes.length ? `Prof. ${materia.docentes[0]}` : "Sin Docente"}
+          {materia.docentes.length ? materia.docentes.join("; ") : "Sin Docente"}
         </Typography>
         {/* Indicador de cuatrimestre/anual centrado */}
         <Typography 

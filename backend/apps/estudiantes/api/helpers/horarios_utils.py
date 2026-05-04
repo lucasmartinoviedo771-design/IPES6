@@ -200,10 +200,17 @@ def _construir_tablas_horario(
 
             comisiones = list(horario.comisiones.select_related("docente"))
             if not comisiones:
+                # Intentar primero con el año del horario
                 comisiones = list(horario.espacio.comisiones.filter(anio_lectivo=horario.anio_academico).select_related("docente"))
+                
+                # Si no hay resultados, intentar con años recientes (2025, 2026) para asegurar que aparezcan
+                if not comisiones:
+                    comisiones = list(horario.espacio.comisiones.filter(
+                        anio_lectivo__in=[2025, 2026]
+                    ).select_related("docente"))
 
-            docentes = sorted({(f"{c.docente.apellido}, {c.docente.nombre}" if c.docente and c.docente.apellido else (c.docente.nombre if c.docente else "")) for c in comisiones if c.docente_id})
-            docentes = [doc for doc in docentes if doc]
+            docentes = sorted({(f"{c.docente.apellido}, {c.docente.nombre[0]}." if c.docente and c.docente.apellido and c.docente.nombre else (c.docente.apellido if c.docente and c.docente.apellido else (c.docente.nombre if c.docente else ""))) for c in comisiones if c.docente_id})
+            docentes = [doc.upper() for doc in docentes if doc]
             comision_codigos = sorted({c.codigo for c in comisiones if c.codigo})
             observaciones_text = "; ".join(sorted({c.observaciones for c in comisiones if c.observaciones})) or None
 

@@ -32,6 +32,7 @@ from .helpers import (
     _build_admin_detail,
     _recalcular_estado_legajo,
 )
+from apps.common.audit import log_action_from_request, snapshot
 
 
 @router.get(
@@ -361,7 +362,23 @@ def admin_update_estudiante_documentacion(
             from apps.common.constants import AppErrorCode
             raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar este legajo.")
 
+    # Capturar estado previo para auditoría
+    before = snapshot(est)
+
     _perform_documentacion_update(est, payload)
+
+    # Registrar acción en auditoría
+    log_action_from_request(
+        request,
+        accion="UPDATE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Actualización de documentación legajo {dni}",
+        entidad="Estudiante",
+        entidad_id=dni,
+        before=before,
+        after=est,
+    )
+
     return ApiResponse(ok=True, message="Documentación actualizada correctamente.")
 
 
@@ -422,6 +439,9 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
 
+    # Capturar estado previo para auditoría
+    before = snapshot(est)
+
     updated, error = _apply_estudiante_updates(
         est,
         payload,
@@ -431,6 +451,18 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     if not updated and error:
         status_code, api_resp = error
         return status_code, api_resp
+
+    # Registrar acción en auditoría
+    log_action_from_request(
+        request,
+        accion="UPDATE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Actualización de datos base legajo {dni}",
+        entidad="Estudiante",
+        entidad_id=dni,
+        before=before,
+        after=est,
+    )
 
     allowed_ids = allowed_profesorados(request.user)
     return _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
