@@ -178,3 +178,22 @@ class EstudianteService:
         estudiante.must_change_password = True
         estudiante.save(update_fields=["must_change_password"])
         return True
+
+    @staticmethod
+    def get_unique_admission_years(allowed_carrera_ids: set[int] | None = None) -> list[int]:
+        """Obtiene la lista de años de ingreso únicos presentes en la base de datos."""
+        # Años de ingreso base de los estudiantes
+        qs_est = Estudiante.objects.exclude(anio_ingreso__isnull=True)
+        if allowed_carrera_ids is not None:
+            qs_est = qs_est.filter(carreras__id__in=allowed_carrera_ids)
+        years_est = set(qs_est.values_list("anio_ingreso", flat=True))
+        
+        # Años de ingreso específicos por carrera
+        qs_carrera = EstudianteCarrera.objects.exclude(anio_ingreso__isnull=True)
+        if allowed_carrera_ids is not None:
+            qs_carrera = qs_carrera.filter(profesorado_id__in=allowed_carrera_ids)
+        years_carrera = set(qs_carrera.values_list("anio_ingreso", flat=True))
+        
+        all_years = sorted(list(years_est.union(years_carrera)), reverse=True)
+        # Asegurar que son ints y filtrar posibles nulos que se hayan colado
+        return [int(y) for y in all_years if y is not None]

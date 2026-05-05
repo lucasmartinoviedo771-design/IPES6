@@ -53,7 +53,7 @@ export default function EstudiantesAdminPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDetailValues, setPendingDetailValues] = useState<DetailFormValues | null>(null);
 
-  const anioIngresoOptions = useAnioIngresoOptions();
+  const anioIngresoOptions = useAnioIngresoOptions(carreraId);
 
   const filters = useMemo(
     () => ({

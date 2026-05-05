@@ -15,6 +15,13 @@ export async function fetchEstudiantesAdmin(params: EstudianteAdminListParams = 
   return data;
 }
 
+export async function fetchAniosIngreso(carrera_id?: number | ""): Promise<number[]> {
+  const { data } = await client.get<number[]>("/estudiantes/admin/estudiantes/anios-ingreso", {
+    params: { carrera_id: carrera_id || undefined }
+  });
+  return data;
+}
+
 export async function fetchEstudiantesDocumentacion(params: { q?: string; carrera_id?: number; estado_academico?: string; limit?: number; offset?: number } = {}): Promise<EstudianteDocumentacionListResponseDTO> {
   const { data } = await client.get<EstudianteDocumentacionListResponseDTO>("/estudiantes/admin/estudiantes-documentacion", { params });
   return data;

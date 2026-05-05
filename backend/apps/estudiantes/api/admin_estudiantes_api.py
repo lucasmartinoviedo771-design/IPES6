@@ -66,6 +66,28 @@ def admin_list_estudiantes(
 
 
 @router.get(
+    "/admin/estudiantes/anios-ingreso",
+    response=list[int],
+)
+def admin_list_anios_ingreso(request, carrera_id: int | None = None):
+    """
+    Obtiene la lista de años de ingreso únicos presentes en la base de datos
+    para alimentar los filtros de búsqueda.
+    """
+    _ensure_admin(request)
+    allowed_ids = allowed_profesorados(request.user)
+    
+    # Si se pasa una carrera_id, debemos verificar que el usuario tenga acceso
+    effective_allowed_ids = allowed_ids
+    if carrera_id:
+        if allowed_ids is not None and carrera_id not in allowed_ids:
+            return []
+        effective_allowed_ids = {carrera_id}
+        
+    return EstudianteService.get_unique_admission_years(effective_allowed_ids)
+
+
+@router.get(
     "/admin/estudiantes-documentacion",
     response=EstudianteDocumentacionListResponse,
 )

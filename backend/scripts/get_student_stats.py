@@ -8,10 +8,10 @@ from datetime import date
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from core.models.estudiantes import Estudiante, EstudianteCarrera
-from core.models.regularidades import Regularidad
-from core.models.actas import ActaExamenEstudiante, ActaExamen
-from core.models.carreras import Materia, InscripcionMateriaestudiante # Note: check spelling of Inscripcion...
+from core.models import Estudiante, EstudianteCarrera
+from core.models import Regularidad
+from core.models import ActaExamenEstudiante, ActaExamen
+from core.models import InscripcionMateriaEstudiante
 
 def get_stats():
     # 1. Ingresantes 2026

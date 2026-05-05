@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { EstudianteAdminDetailDTO } from "@/api/estudiantes";
+import { useQuery } from "@tanstack/react-query";
+import { EstudianteAdminDetailDTO, fetchAniosIngreso } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm, EstadoLegajo, normalizeDoc } from "../types";
 
 export function useEstudianteDetailForm() {
@@ -54,16 +55,26 @@ export function useEstudianteDetailForm() {
   return form;
 }
 
-export function useAnioIngresoOptions() {
+export function useAnioIngresoOptions(carreraId?: number | "") {
+  const { data } = useQuery({
+    queryKey: ["anios-ingreso", carreraId],
+    queryFn: () => fetchAniosIngreso(carreraId),
+    staleTime: 1000 * 60 * 60, // 1 hora
+  });
+
   return useMemo(() => {
-    const start = 2010;
+    if (Array.isArray(data) && data.length > 0) {
+      return data.map(String);
+    }
+    // Fallback dinámico basado en el año actual por si falla la API
     const current = new Date().getFullYear();
+    const start = 2020; 
     const values: string[] = [];
     for (let year = current; year >= start; year -= 1) {
       values.push(String(year));
     }
     return values;
-  }, []);
+  }, [data]);
 }
 
 export function useDocumentacionSideEffects(
