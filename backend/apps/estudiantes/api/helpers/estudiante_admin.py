@@ -301,15 +301,24 @@ def _determine_condicion(documentacion: dict | None) -> str:
     if requisito_basico and (titulo_ok or es_articulo_7):
         return "Regular"
 
-    # Si tiene lo básico o algo de documentación, es Condicional
-    # (Incluye títulos en trámite que antes daban Regular)
-    indicadores_actividad = (
-        requisito_basico or
-        bool(documentacion.get("titulo_secundario_legalizado")) or
-        bool(documentacion.get("certificado_titulo_en_tramite")) or
-        bool(documentacion.get("analitico_legalizado")) or
-        es_articulo_7
+    # Si tiene ALGO de documentación relevante, ya es Condicional (Incompleto)
+    # en lugar de Pendiente.
+    indicadores_actividad = any(
+        [
+            bool(documentacion.get("dni_legalizado")),
+            bool(documentacion.get("fotos_4x4")),
+            bool(documentacion.get("certificado_salud")),
+            bool(documentacion.get("folios_oficio")),
+            bool(documentacion.get("titulo_secundario_legalizado")),
+            bool(documentacion.get("certificado_titulo_en_tramite")),
+            bool(documentacion.get("analitico_legalizado")),
+            bool(documentacion.get("articulo_7")),
+            bool(documentacion.get("certificado_alumno_regular_sec")),
+            bool(documentacion.get("adeuda_materias")),
+            bool(documentacion.get("es_certificacion_docente")),
+        ]
     )
+
     if indicadores_actividad:
         return "Condicional"
 
