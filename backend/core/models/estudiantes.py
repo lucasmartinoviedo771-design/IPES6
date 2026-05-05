@@ -91,6 +91,15 @@ class Estudiante(models.Model):
     analitico_legalizado = models.BooleanField(default=False)
     articulo_7 = models.BooleanField(default=False)
 
+    # Nuevos campos de documentación para persistencia total
+    adeuda_materias = models.BooleanField(default=False)
+    adeuda_materias_detalle = models.TextField(blank=True, default="")
+    escuela_secundaria = models.CharField(max_length=255, blank=True, default="")
+    certificado_alumno_regular_sec = models.BooleanField(default=False)
+    es_certificacion_docente = models.BooleanField(default=False)
+    titulo_terciario_univ = models.BooleanField(default=False)
+    incumbencia = models.BooleanField(default=False)
+
     datos_extra = models.JSONField(default=dict, blank=True)
     documentacion_presentada = models.ManyToManyField(Documento, blank=True, related_name="estudiantes_que_presentaron")
 
