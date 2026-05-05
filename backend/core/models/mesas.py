@@ -29,7 +29,7 @@ class MesaExamen(models.Model):
     aula = models.CharField(max_length=64, blank=True, null=True)
     cupo = models.IntegerField(default=0)
     ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.SET_NULL, null=True, blank=True)
-    codigo = models.CharField(max_length=40, unique=True, blank=True, null=True)
+    codigo = models.CharField(max_length=128, unique=True, blank=True, null=True)
     docente_presidente = models.ForeignKey(
         Docente,
         on_delete=models.SET_NULL,

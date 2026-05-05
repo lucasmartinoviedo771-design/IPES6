@@ -11,7 +11,7 @@ class ActaExamen(models.Model):
         REGULAR = "REG", "Regular"
         LIBRE = "LIB", "Libre"
 
-    codigo = models.CharField(max_length=64, unique=True)
+    codigo = models.CharField(max_length=128, unique=True)
     numero = models.PositiveIntegerField(default=0)
     anio_academico = models.IntegerField(default=0)
     tipo = models.CharField(max_length=4, choices=Tipo.choices)
