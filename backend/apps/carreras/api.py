@@ -56,6 +56,10 @@ class MateriaInscriptoOut(Schema):
     anio: int
     comision_id: int | None = None
     comision_codigo: str | None = None
+    asistencias_p: int = 0
+    asistencias_a: int = 0
+    asistencias_t: int = 0
+    asistencias_pct: str = "0%"
 
 
 # Definición de roles con permisos de lectura sobre la estructura académica
@@ -444,10 +448,42 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
         inscripciones = inscripciones.filter(estado=estado)
 
     # Formateo del resultado para la UI
+    from django.db.models import Count, Q
+    from apps.asistencia.models import AsistenciaEstudiante
+
+    estudiante_ids = [ins.estudiante_id for ins in inscripciones]
+    comision_ids = [ins.comision_id for ins in inscripciones if ins.comision_id]
+
+    asistencias_stats = {}
+    if estudiante_ids and comision_ids:
+        stats_query = AsistenciaEstudiante.objects.filter(
+            estudiante_id__in=estudiante_ids,
+            clase__comision_id__in=comision_ids
+        ).values("estudiante_id", "clase__comision_id").annotate(
+            presentes=Count('id', filter=Q(estado__in=['presente', 'tarde'])),
+            ausentes=Count('id', filter=Q(estado__in=['ausente', 'ausente_justificada'])),
+            total=Count('id')
+        )
+        for stat in stats_query:
+            asistencias_stats[(stat["estudiante_id"], stat["clase__comision_id"])] = stat
+
     resultado: list[MateriaInscriptoOut] = []
     for ins in inscripciones.order_by("estudiante__persona__apellido", "estudiante__persona__nombre"):
         est = ins.estudiante
-        nombre_completo = est.user.get_full_name() if est.user else est.dni
+        # Formato: Apellido, Nombre
+        if est.persona:
+            nombre_completo = f"{est.persona.apellido}, {est.persona.nombre}"
+        elif est.user:
+            nombre_completo = est.user.get_full_name()
+        else:
+            nombre_completo = est.dni
+
+        stat = asistencias_stats.get((est.id, ins.comision_id), {})
+        p = stat.get("presentes", 0)
+        a = stat.get("ausentes", 0)
+        t = stat.get("total", 0)
+        pct = f"{int((p / t) * 100)}%" if t > 0 else "0%"
+
         resultado.append(MateriaInscriptoOut(
             id=ins.id, 
             estudiante_id=est.id, 
@@ -458,5 +494,9 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
             anio=ins.anio,
             comision_id=ins.comision_id,
             comision_codigo=ins.comision.codigo if ins.comision_id else None,
+            asistencias_p=p,
+            asistencias_a=a,
+            asistencias_t=t,
+            asistencias_pct=pct,
         ))
     return resultado

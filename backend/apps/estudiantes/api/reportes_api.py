@@ -14,6 +14,7 @@ from core.models import (
 from .router import estudiantes_router
 from .helpers import (
     _ensure_admin, 
+    _ensure_staff_view,
     _correlatividades_qs, 
     _resolve_estudiante,
     _acta_condicion,
@@ -173,7 +174,7 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     auth=JWTAuth(),
 )
 def reporte_correlativas_caidas(request, anio: int | None = None):
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     if not anio:
         anio = date.today().year
     return _check_correlativas_caidas(anio)
@@ -352,7 +353,7 @@ def reporte_auditoria_inconsistencias(
     Reporte completo de inconsistencias de correlatividades en la base de datos.
     Detecta aprobaciones sin final o regularidades sin cursadas previas requeridas.
     """
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     return _generar_auditoria_academica(
         profesorado_id=profesorado_id,
         search=search,
@@ -374,7 +375,7 @@ def download_auditoria_inconsistencias(
     """
     Descarga el reporte de inconsistencias en formato CSV.
     """
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     import csv
     from django.http import HttpResponse
     

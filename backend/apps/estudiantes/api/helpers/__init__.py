@@ -3,10 +3,12 @@
 
 from apps.estudiantes.api.helpers.user_utils import (
     ADMIN_ALLOWED_ROLES,
+    STAFF_VIEW_ROLES,
     _docente_full_name,
     _format_user_display,
     _user_has_roles,
     _ensure_admin,
+    _ensure_staff_view,
     _resolve_estudiante,
     _ensure_estudiante_access,
     _resolve_docente_from_user,
@@ -52,10 +54,12 @@ from apps.estudiantes.api.helpers.misc_utils import (
 __all__ = [
     # user_utils
     "ADMIN_ALLOWED_ROLES",
+    "STAFF_VIEW_ROLES",
     "_docente_full_name",
     "_format_user_display",
     "_user_has_roles",
     "_ensure_admin",
+    "_ensure_staff_view",
     "_resolve_estudiante",
     "_ensure_estudiante_access",
     "_resolve_docente_from_user",
