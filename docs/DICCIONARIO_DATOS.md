@@ -2,7 +2,7 @@
 
 **Base de datos:** `ipes6` (MySQL 8.0, puerto local 3307)  
 **Backend:** Django — Python  
-**Última actualización:** 2026-04-10
+**Última actualización:** 2026-05-06
 
 ---
 
@@ -265,6 +265,7 @@ Perfil académico-administrativo del estudiante. Sus datos personales viven en `
 | `certificado_titulo_en_tramite` | tinyint(1) | NN | Flag: certificado de título en trámite |
 | `analitico_legalizado` | tinyint(1) | NN | Flag: analítico legalizado entregado |
 | `articulo_7` | tinyint(1) | NN | Flag: habilitado por Art. 7 (mayor de 25 sin título secundario) |
+| `materias_autorizadas` | m2m | → `core_materia` | Materias específicas autorizadas excepcionalmente para rendir |
 | `datos_extra` | json | NN | Datos adicionales no estructurados |
 
 **Tabla M2M:** `core_estudiante_documentacion_presentada` → vincula con `core_documento`
@@ -295,6 +296,7 @@ Inscripción de un estudiante a una carrera específica, con su estado académic
 | `anio_ingreso` | int unsigned | NULL | Año de ingreso/cohorte en esta carrera |
 | `cohorte` | varchar(32) | NN | Identificador de cohorte |
 | `estado_academico` | varchar(3) | NN | `ACT`=Activo · `BAJ`=Baja/Abandono · `EGR`=Egresado · `SUS`=Suspendido · `INA`=Inactivo |
+| `estado_legajo` | varchar(3) | NN | `COM`=Completo · `INC`=Incompleto/Condicional · `PEN`=Pendiente de Revisión. Estado físico para esta carrera. |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -397,9 +399,10 @@ Asignación de un usuario administrativo (bedel, coordinador, tutor) a una carre
 | `user_id` | int | FK → `auth_user`, NN | Usuario del staff |
 | `profesorado_id` | int | FK → `core_profesorado`, NN | Carrera asignada |
 | `rol` | varchar(20) | NN | `bedel` · `coordinador` · `tutor` · `curso_intro` |
-| `created_at` | datetime(6) | NN | Fecha de asignación |
+| `turno` | varchar(12) | NULL | `manana` · `tarde` · `vespertino`. Nulo = todos los turnos. |
+| `created_at` | datetime(6) | NN | Fecha de creación |
 
-**Restricción única:** `(user, profesorado, rol)`
+**Restricción única:** `(user, profesorado, rol, turno)`
 
 ---
 
@@ -546,7 +549,9 @@ Inscripción anual de un estudiante a una materia/comisión.
 | `comision_id` | bigint | FK → `core_comision`, NULL | Comisión asignada definitivamente |
 | `comision_solicitada_id` | bigint | FK → `core_comision`, NULL | Comisión solicitada por el estudiante (puede diferir de la asignada) |
 | `anio` | int | NN | Año lectivo de la inscripción |
-| `estado` | varchar(4) | NN | `CONF`=Confirmada · `PEND`=Pendiente · `RECH`=Rechazada · `ANUL`=Anulada |
+| `estado` | varchar(4) | NN | `CONF`=Confirmada · `PEND`=Pendiente · `RECH`=Rechazada · `ANUL`=Anulada · `BAJA`=Baja Voluntaria · `COND`=Condicional |
+| `motivo_cambio` | varchar(10) | NULL | `OVERLAP`=Superposición · `WORK`=Motivos laborales |
+| `horario_laboral_metadata` | json | NULL | Datos del horario laboral declarado |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -867,6 +872,51 @@ Bloqueo de carga de regularidades para una comisión o materia/año. Impide modi
 | `cerrado_en` | datetime(6) | NN | Fecha y hora del cierre |
 
 **Restricción única:** `(materia, anio_virtual)`
+
+---
+
+### `core_planillacursada`
+
+Planilla de regularidad cargada por el docente durante el cuatrimestre. Separada de `PlanillaRegularidad` (primera carga/histórica).
+
+| Columna | Tipo | Restricciones | Descripción |
+|---------|------|---------------|-------------|
+| `id` | bigint | PK, NN, AUTO | Identificador interno |
+| `numero` | varchar(32) | UQ, NN | Número auto-generado (ej: `PRP-2025-001`) |
+| `docente_id` | bigint | FK → `core_docente`, NN | Docente a cargo |
+| `materia_id` | bigint | FK → `core_materia`, NN | Materia dictada |
+| `profesorado_id` | int | FK → `core_profesorado`, NN | Carrera donde se dicta |
+| `profesorado_destino_id` | int | FK → `core_profesorado`, NN | Carrera de los estudiantes |
+| `anio_lectivo` | int | NN | Año académico |
+| `cuatrimestre` | varchar(8) | NN | `1C` · `2C` · `ANUAL` |
+| `plantilla_id` | bigint | FK → `core_regularidadplantilla`, NULL | Plantilla de formato utilizada |
+| `estado` | varchar(16) | NN | `BORRADOR` · `CERRADA` · `REABIERTA` |
+| `fecha_entrega` | date | NULL | Fecha de cierre definitivo |
+| `created_at` | datetime(6) | NN | Fecha de creación |
+| `updated_at` | datetime(6) | NN | Fecha de última modificación |
+
+---
+
+### `core_planillacursadafila`
+
+Fila de estudiante dentro de una `PlanillaCursada`.
+
+| Columna | Tipo | Restricciones | Descripción |
+|---------|------|---------------|-------------|
+| `id` | bigint | PK, NN, AUTO | Identificador interno |
+| `planilla_id` | bigint | FK → `core_planillacursada`, NN | Planilla a la que pertenece |
+| `estudiante_id` | bigint | FK → `core_estudiante`, NULL | Estudiante vinculado |
+| `inscripcion_id` | bigint | FK → `core_inscripcionmateriaestudiante`, NULL | Inscripción original |
+| `orden` | int | NN | Posición alfabética en la planilla |
+| `asistencia_porcentaje` | int | NULL | % de asistencia (0-100) |
+| `excepcion` | tinyint(1) | NN | Si `1`, se aplicó excepción |
+| `columnas_datos` | json | NN | Notas de TP, parciales, etc. según plantilla |
+| `situacion` | varchar(32) | NN | Situación calculada al cerrar |
+| `en_resguardo` | tinyint(1) | NN | Si `1`, la nota está en resguardo por legajo |
+| `created_at` | datetime(6) | NN | Fecha de creación |
+| `updated_at` | datetime(6) | NN | Fecha de última modificación |
+
+**Restricción única:** `(planilla, orden)`
 
 ---
 
@@ -1461,7 +1511,7 @@ Tablas generadas por **django-silk**, herramienta de profiling HTTP. Solo presen
 | Inscripciones | `core_inscripcionmateriaestudiante`, `core_equivalenciacurricular`, `core_equivalenciacurricular_materias` |
 | Curso Introductorio | `core_cursointroductoriocohorte`, `core_cursointroductorioregistro` |
 | Mesas de Examen | `core_mesaexamen`, `core_inscripcionmesa`, `core_mesaactaoral` |
-| Regularidades | `core_regularidad`, `core_regularidadformato`, `core_regularidadplantilla`, `core_planillaregularidad`, `core_planillaregularidaddocente`, `core_planillaregularidadfila`, `core_planillaregularidadhistorial`, `core_regularidadplanillalock` |
+| Regularidades | `core_regularidad`, `core_regularidadformato`, `core_regularidadplantilla`, `core_planillaregularidad`, `core_planillaregularidaddocente`, `core_planillaregularidadfila`, `core_planillaregularidadhistorial`, `core_regularidadplanillalock`, `core_planillacursada`, `core_planillacursadafila` |
 | Actas de Examen | `core_actaexamen`, `core_actaexamendocente`, `core_actaexamenestudiante` |
 | Pedidos | `core_pedidoanalitico`, `core_pedidoequivalencia`, `core_pedidoequivalenciamateria`, `core_equivalenciadisposicion`, `core_equivalenciadisposiciondetalle` |
 | Asistencia | `asistencia_claseprogramada`, `asistencia_asistenciaalumno`, `asistencia_asistenciadocente`, `asistencia_justificacion`, `asistencia_justificaciondetalle`, `asistencia_docentemarcacionlog`, `asistencia_cursohorariosnapshot`, `asistencia_cursoalumnosnapshot`, `asistencia_calendarioasistenciaevento` |
@@ -1472,4 +1522,4 @@ Tablas generadas por **django-silk**, herramienta de profiling HTTP. Solo presen
 
 ---
 
-*Generado el 2026-04-10 a partir del esquema real de la base de datos `ipes6` y los modelos Django del proyecto IPES6.*
+*Generado el 2026-05-06 a partir del esquema real de la base de datos `ipes6` y los modelos Django del proyecto IPES6.*
