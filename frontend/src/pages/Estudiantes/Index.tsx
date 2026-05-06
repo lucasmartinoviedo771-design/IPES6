@@ -310,8 +310,9 @@ export default function EstudiantesIndex() {
     // 1. Filtrar las secciones base según el rol
     let filteredSections = baseSections;
 
-    if (!isStudent) {
-      // Si NO es estudiante, ocultamos Inscripciones y Certificados
+    if (!isStudent && !isAdmin) {
+      // Solo para personal que NO es admin/bedel/sec y NO es estudiante (ej: Tutor)
+      // Ocultamos Inscripciones y Certificados
       filteredSections = baseSections.filter(s => s.title === "Trayectoria");
     }
 
