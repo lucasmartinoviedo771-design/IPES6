@@ -28,6 +28,7 @@ from .router import estudiantes_router as router
 from ..services.estudiante_service import EstudianteService
 from .helpers import (
     _ensure_admin,
+    _ensure_staff_view,
     _apply_estudiante_updates,
     _build_admin_detail,
     _recalcular_estado_legajo,
@@ -53,7 +54,7 @@ def admin_list_estudiantes(
     Lista estudiantes con filtros administrativos y de carrera.
     Utiliza el servicio EstudianteService para la lógica compleja de filtrado.
     """
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     allowed_ids = allowed_profesorados(request.user)
     filters = {
         "q": q,
@@ -74,7 +75,7 @@ def admin_list_anios_ingreso(request, carrera_id: int | None = None):
     Obtiene la lista de años de ingreso únicos presentes en la base de datos
     para alimentar los filtros de búsqueda.
     """
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     allowed_ids = allowed_profesorados(request.user)
     
     # Si se pasa una carrera_id, debemos verificar que el usuario tenga acceso
@@ -103,7 +104,7 @@ def admin_list_estudiantes_documentacion(
     Obtiene la nómina de estudiantes con el estado de su documentación física.
     Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
     """
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico, limit=limit, offset=offset)
     return EstudianteDocumentacionListResponse(total=total, items=items)
 
@@ -229,7 +230,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 @router.get("/admin/estudiantes-documentacion/export/excel")
 def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, carrera_id: int | None = None):
     """Genera exportación Excel de la nómina de documentación para auditoría interna."""
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
     
     import openpyxl
@@ -283,7 +284,7 @@ def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, 
 @router.get("/admin/estudiantes-documentacion/export/pdf")
 def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, carrera_id: int | None = None):
     """Genera exportación PDF de la nómina de documentación (formato imprimible)."""
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
     
     from django.template.loader import render_to_string
@@ -412,7 +413,6 @@ def admin_bulk_update_estudiante_documentacion(
     request,
     payload: EstudianteDocumentacionBulkUpdateIn,
 ):
-    """Actualización masiva de estados de legajo (útil tras operativos de recepción)."""
     _ensure_admin(request)
     allowed_ids = allowed_profesorados(request.user)
     
@@ -439,7 +439,7 @@ def admin_bulk_update_estudiante_documentacion(
 )
 def admin_get_estudiante(request, dni: str):
     """Obtiene el detalle completo del legajo de un estudiante."""
-    _ensure_admin(request)
+    _ensure_staff_view(request)
     allowed_ids = allowed_profesorados(request.user)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:

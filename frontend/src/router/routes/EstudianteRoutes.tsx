@@ -17,7 +17,7 @@ const HorarioPage = lazyPage(() => import("@/pages/Estudiantes/HorarioPage"));
 const MisAsistenciasPage = lazyPage(() => import("@/pages/Estudiantes/MisAsistenciasPage"));
 const CursoIntroductorioEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/CursoIntroductorioPage"));
 
-const baseRoles: string[] = ["estudiante", "admin", "secretaria", "bedel"];
+const baseRoles: string[] = ["estudiante", "admin", "secretaria", "bedel", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta"];
 const estudianteSecretariaRoles: string[] = ["estudiante", "admin", "secretaria", "bedel"];
 const trayectoriaRoles: string[] = ["estudiante", "admin", "bedel", "secretaria", "coordinador", "tutor"];
 const cursoIntroRoles: string[] = ["estudiante", "admin", "secretaria", "bedel", "curso_intro", "coordinador"];

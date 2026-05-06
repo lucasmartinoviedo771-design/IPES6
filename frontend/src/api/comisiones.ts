@@ -36,6 +36,10 @@ export type MateriaInscriptoDTO = {
   anio: number;
   comision_id?: number | null;
   comision_codigo?: string | null;
+  asistencias_p: number;
+  asistencias_a: number;
+  asistencias_t: number;
+  asistencias_pct: string;
 };
 
 export type ComisionDTO = {

@@ -14,6 +14,8 @@ from core.models import (
 )
 
 ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
+# Roles que pueden ver información (solo lectura) pero no necesariamente editar
+STAFF_VIEW_ROLES = ADMIN_ALLOWED_ROLES | {"tutor", "coordinador", "jefes", "jefa_aaee", "consulta"}
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:
@@ -55,6 +57,11 @@ def _ensure_admin(request):
     ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
 
 
+def _ensure_staff_view(request):
+    """Permite el acceso a roles administrativos y de consulta/tutoría (Solo Lectura)."""
+    ensure_roles(request.user, STAFF_VIEW_ROLES)
+
+
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     if dni:
         return Estudiante.objects.filter(persona__dni=dni).first()
@@ -68,7 +75,7 @@ def _ensure_estudiante_access(request, dni: str | None) -> None:
         return
     solicitante = getattr(request.user, "estudiante", None)
     if solicitante and solicitante.dni != dni:
-        ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
+        _ensure_staff_view(request)
 
 
 def _resolve_docente_from_user(user) -> Docente | None:

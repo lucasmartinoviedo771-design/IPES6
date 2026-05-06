@@ -170,11 +170,11 @@ def global_overview(request):
         for row in Preinscripcion.objects.values("estado").annotate(total=Count("id")).order_by("estado")
     ]
     recientes_pre = []
-    for pre in Preinscripcion.objects.filter(estado="Confirmada").select_related("estudiante__user", "carrera").order_by("-updated_at")[:6]:
-        user = getattr(pre.estudiante, "user", None)
+    for pre in Preinscripcion.objects.filter(estado="Confirmada").select_related("alumno__user", "carrera").order_by("-updated_at")[:6]:
+        user = getattr(pre.alumno, "user", None)
         recientes_pre.append(DashboardPreinsDetalle(
             id=pre.id, codigo=pre.codigo,
-            estudiante=user.get_full_name() if user else str(pre.estudiante.dni),
+            estudiante=user.get_full_name() if user else str(pre.alumno.dni),
             carrera=pre.carrera.nombre if pre.carrera_id else None,
             fecha=(pre.updated_at or pre.created_at).isoformat() if (pre.updated_at or pre.created_at) else None
         ))

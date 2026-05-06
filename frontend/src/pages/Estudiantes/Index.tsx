@@ -307,10 +307,19 @@ export default function EstudiantesIndex() {
   }, [ventanas]);
 
   const sections = useMemo<Section[]>(() => {
-    // ... existing memo logic ...
+    // 1. Filtrar las secciones base según el rol
+    let filteredSections = baseSections;
+
     if (!isStudent) {
-      return baseSections;
+      // Si NO es estudiante, ocultamos Inscripciones y Certificados
+      filteredSections = baseSections.filter(s => s.title === "Trayectoria");
     }
+
+    if (!isStudent) {
+      return filteredSections;
+    }
+
+    // 2. Lógica para estudiantes (Curso Intro y alertas)
     const subtitle = cursoIntroEstado
       ? cursoIntroEstado.aprobado
         ? "Curso introductorio aprobado."
@@ -320,6 +329,7 @@ export default function EstudiantesIndex() {
             ? "Inscripciones abiertas."
             : "Consultá el estado e inscribite."
       : "Consultá el curso introductorio.";
+
     const cursoIntroCard: SectionCard = {
       title: "Curso Introductorio",
       subtitle,
@@ -328,7 +338,8 @@ export default function EstudiantesIndex() {
       status: cursoIntroEstado?.aprobado ? "success" : undefined,
       disabled: cursoIntroEstado?.aprobado ?? false,
     };
-    return baseSections.map((section) => {
+
+    return filteredSections.map((section) => {
       if (section.title !== "Inscripciones") {
         return section;
       }

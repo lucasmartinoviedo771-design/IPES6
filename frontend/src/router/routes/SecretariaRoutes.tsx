@@ -51,7 +51,7 @@ const horariosRoles: string[] = ["secretaria", "admin", "coordinador", "bedel"];
 const habilitarFechasRoles: string[] = ["secretaria", "admin", "jefa_aaee"];
 const analiticosRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "jefes", "jefa_aaee", "coordinador"];
 const mesasRoles: string[] = ["secretaria", "bedel", "admin", "jefes", "jefa_aaee"];
-const secretariaTutorRoles: string[] = ["secretaria", "bedel", "admin", "tutor"];
+const secretariaTutorRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta"];
 const cursoIntroRoles: string[] = ["secretaria", "bedel", "admin", "curso_intro", "coordinador", "tutor"];
 const docentesConsultaRoles: string[] = ["docente", "admin", "secretaria", "bedel"];
 
@@ -86,15 +86,17 @@ export const buildSecretariaRoutes = () => (
     <Route element={<ProtectedRoute roles={jefaturaRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/jefatura" element={<JefaturaIndex />} />
     </Route>
+    <Route element={<ProtectedRoute roles={secretariaTutorRoles}><Outlet /></ProtectedRoute>}>
+      <Route path="/secretaria/estudiantes" element={<EstudiantesAdminPage />} />
+      <Route path="/secretaria/estudiantes/:dni" element={<EstudiantesAdminPage />} />
+      <Route path="/secretaria/estudiantes-documentacion" element={<DocumentacionEstudiantesPage />} />
+    </Route>
     <Route element={<ProtectedRoute roles={secretariaBaseRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/profesorado" element={<CargarProfesoradoPage />} />
       <Route path="/secretaria/profesorado/:profesoradoId/planes" element={<CargarPlanPage />} />
       <Route path="/secretaria/plan/:planId/materias" element={<CargarMateriasPage />} />
       <Route path="/asistencia/reportes" element={<AsistenciaReportesPage />} />
       <Route path="/secretaria/comisiones" element={<ComisionesPage />} />
-      <Route path="/secretaria/estudiantes" element={<EstudiantesAdminPage />} />
-      <Route path="/secretaria/estudiantes/:dni" element={<EstudiantesAdminPage />} />
-      <Route path="/secretaria/estudiantes-documentacion" element={<DocumentacionEstudiantesPage />} />
       <Route path="/secretaria/confirmar-inscripcion" element={<ConfirmarInscripcionSecretaria />} />
       <Route path="/secretaria/correlatividades" element={<CorrelatividadesPage />} />
       <Route path="/secretaria/correlatividades/analisis" element={<AnalisisMateriaPage />} />

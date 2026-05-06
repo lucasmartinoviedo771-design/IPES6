@@ -23,8 +23,15 @@ GLOBAL_OVERVIEW_ROLES = {
 }
 
 @management_router.get("/overview", response=GlobalOverviewOut, auth=JWTAuth())
-def global_overview(request):
+def global_overview(request, profesorado_id: int = None, anio: int = None):
     ensure_roles(request.user, GLOBAL_OVERVIEW_ROLES)
+
+    # Filtros base
+    pre_filters = {}
+    if profesorado_id:
+        pre_filters["carrera_id"] = profesorado_id
+    if anio:
+        pre_filters["anio"] = anio
 
     # 1. Docentes
     docentes_qs = (
@@ -64,7 +71,11 @@ def global_overview(request):
         ))
 
     # 2. Profesorados
-    prof_qs = Profesorado.objects.annotate(
+    prof_qs = Profesorado.objects.all()
+    if profesorado_id:
+        prof_qs = prof_qs.filter(id=profesorado_id)
+    
+    prof_qs = prof_qs.annotate(
         planes_total=Count("planes", distinct=True),
         materias_total=Count("planes__materias", distinct=True),
         correlativas_total=Count("planes__materias__correlativas_requeridas", distinct=True),
@@ -72,20 +83,30 @@ def global_overview(request):
     profesorados = [DashboardProfesorado(id=p.id, nombre=p.nombre, planes=p.planes_total, materias=p.materias_total, correlativas=p.correlativas_total) for p in prof_qs]
 
     # 3. Preinscripciones
-    pre_total = Preinscripcion.objects.count()
-    estado_counts = [DashboardPreinsEstado(estado=r["estado"] or "Sin estado", total=r["total"]) for r in Preinscripcion.objects.values("estado").annotate(total=Count("id")).order_by("estado")]
+    pre_qs = Preinscripcion.objects.filter(**pre_filters)
+    pre_total = pre_qs.count()
+    estado_counts = [
+        DashboardPreinsEstado(estado=r["estado"] or "Sin estado", total=r["total"]) 
+        for r in pre_qs.values("estado").annotate(total=Count("id")).order_by("estado")
+    ]
     recientes_pre = [
         DashboardPreinsDetalle(
             id=pre.id, codigo=pre.codigo,
-            estudiante=(pre.estudiante.user.get_full_name() if pre.estudiante.user_id else str(pre.estudiante.dni)),
+            estudiante=(pre.alumno.user.get_full_name() if pre.alumno.user_id else str(pre.alumno.dni)),
             carrera=pre.carrera.nombre if pre.carrera_id else None,
             fecha=(pre.updated_at or pre.created_at).isoformat() if (pre.updated_at or pre.created_at) else None
         )
-        for pre in Preinscripcion.objects.filter(estado="Confirmada").select_related("estudiante__user", "carrera").order_by("-updated_at")[:6]
+        for pre in pre_qs.filter(estado="Confirmada").select_related("alumno__user", "carrera").order_by("-updated_at")[:6]
     ]
     preinscripciones = DashboardPreinscripciones(total=pre_total, por_estado=estado_counts, recientes=recientes_pre)
 
     # 4. Horarios
+    horarios_qs = HorarioCatedra.objects.all()
+    if profesorado_id:
+        horarios_qs = horarios_qs.filter(espacio__plan_de_estudio__profesorado_id=profesorado_id)
+    if anio:
+        horarios_qs = horarios_qs.filter(anio_academico=anio)
+
     horarios = [
         DashboardHorario(
             profesorado_id=r["espacio__plan_de_estudio__profesorado__id"],
@@ -93,7 +114,7 @@ def global_overview(request):
             anio_cursada=r["anio_academico"],
             cantidad=r["total"]
         )
-        for r in HorarioCatedra.objects.values("espacio__plan_de_estudio__profesorado__id", "espacio__plan_de_estudio__profesorado__nombre", "anio_academico").annotate(total=Count("id")).order_by("espacio__plan_de_estudio__profesorado__nombre", "anio_academico")
+        for r in horarios_qs.values("espacio__plan_de_estudio__profesorado__id", "espacio__plan_de_estudio__profesorado__nombre", "anio_academico").annotate(total=Count("id")).order_by("espacio__plan_de_estudio__profesorado__nombre", "anio_academico")
     ]
 
     # 5. Cambios Comision

@@ -86,25 +86,32 @@ const InscriptosTable: React.FC<{
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>#</TableCell>
             <TableCell>Estudiante</TableCell>
             <TableCell>DNI</TableCell>
-            <TableCell>Legajo</TableCell>
             <TableCell>Año</TableCell>
             <TableCell>Estado</TableCell>
             <TableCell>Comisión</TableCell>
+            <TableCell>Asistencia (A/P/T %)</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {inscriptos.map((inscripto) => (
+          {inscriptos.map((inscripto, index) => (
             <TableRow key={inscripto.id} hover>
+              <TableCell>{index + 1}</TableCell>
               <TableCell>{inscripto.estudiante}</TableCell>
               <TableCell>{inscripto.dni ?? "-"}</TableCell>
-              <TableCell>{inscripto.legajo ?? "-"}</TableCell>
               <TableCell>{inscripto.anio ?? "-"}</TableCell>
               <TableCell>
                 {inscripto.estado ? <Chip label={inscripto.estado} size="small" /> : "-"}
               </TableCell>
               <TableCell>{inscripto.comision_codigo ?? "-"}</TableCell>
+              <TableCell>
+                {inscripto.asistencias_a}/{inscripto.asistencias_p}/{inscripto.asistencias_t} &nbsp; 
+                <Typography component="span" variant="body2" fontWeight="bold">
+                  {inscripto.asistencias_pct}
+                </Typography>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

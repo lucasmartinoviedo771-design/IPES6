@@ -42,7 +42,7 @@ export const ROLE_NAV_MAP: Record<string, string[]> = {
   ],
   bedel: ["bedeles", "mensajes", "estudiante", "asistencia", "cursoIntro", "primeraCarga", "carreras"],
   docente: ["docentes", "mensajes"],
-  tutor: ["tutorias", "mensajes", "estudiante", "equivalencias", "reportes", "cursoIntro"],
+  tutor: ["tutorias", "mensajes", "reportes", "cursoIntro"],
   coordinador: ["coordinacion", "mensajes", "estudiante", "reportes", "cursoIntro"],
   jefes: ["jefatura", "mensajes", "reportes"],
   jefa_aaee: ["jefatura", "mensajes", "reportes"],

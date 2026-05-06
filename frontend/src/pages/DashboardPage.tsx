@@ -35,7 +35,14 @@ import AdminCorrelativasWidget from "@/components/dashboard/AdminCorrelativasWid
 import StudentAlerts from "@/components/dashboard/StudentAlerts";
 import { PageHero } from "@/components/ui/GradientTitles";
 import { hasAnyRole } from "@/utils/roles";
+import { getGlobalOverview } from "@/api/management";
 import { ForcedResetWidget } from "@/components/dashboard/ForcedResetWidget";
+import { fetchCarreras } from "@/api/carreras";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+
 
 type QuickAction = {
     title: string;
@@ -132,6 +139,21 @@ export default function DashboardPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
 
+    // Filtros de Dashboard
+    const [selectedProfesorado, setSelectedProfesorado] = useState<number | string>("");
+    const [selectedAnio, setSelectedAnio] = useState<number | string>(dayjs().year());
+
+    // Cargar carreras para el filtro
+    const { data: carreras } = useQuery({
+        queryKey: ["profesorados-dashboard"],
+        queryFn: fetchCarreras,
+    });
+
+    const years = useMemo(() => {
+        const current = dayjs().year();
+        return [current + 1, current, current - 1, current - 2];
+    }, []);
+
     type EstadoNormalizado = Lowercase<PreinscripcionDTO['estado']>;
     const normalizeEstado = (estado: PreinscripcionDTO['estado']) => estado.toLowerCase() as EstadoNormalizado;
 
@@ -145,40 +167,64 @@ export default function DashboardPage() {
         staleTime: 1000 * 60 * 5,
     });
 
-    // Query preinscripciones (reemplaza useEffect)
-    const { data: preinscripcionesRaw } = useQuery({
-        queryKey: ["preinscripciones-dashboard"],
-        queryFn: () => listarPreinscripciones({}),
+    // Query global para métricas exactas (evita problemas de paginación)
+    const { data: overview } = useQuery({
+        queryKey: ["global-overview", selectedProfesorado, selectedAnio],
+        queryFn: () => getGlobalOverview(
+            typeof selectedProfesorado === 'number' ? selectedProfesorado : undefined,
+            typeof selectedAnio === 'number' ? selectedAnio : undefined
+        ),
         enabled: can(['admin', 'secretaria', 'bedel', 'preinscripciones']),
         staleTime: 1000 * 60 * 2, // 2 min
     });
 
-    // Calcular métricas y recientes con useMemo
-    const { metrics, recientes } = useMemo(() => {
-        // Normalizar data (puede venir como array o {results: array})
-        const data: PreinscripcionDTO[] = Array.isArray(preinscripcionesRaw)
-            ? preinscripcionesRaw
-            : (preinscripcionesRaw as any)?.results || [];
+    // Query preinscripciones (para lista de recientes)
+    const { data: preinscripcionesRaw } = useQuery({
+        queryKey: ["preinscripciones-dashboard", selectedProfesorado, selectedAnio],
+        queryFn: () => listarPreinscripciones({ 
+            limit: 10,
+            profesorado_id: typeof selectedProfesorado === 'number' ? selectedProfesorado : undefined,
+            anio: typeof selectedAnio === 'number' ? selectedAnio : undefined
+        }),
+        enabled: can(['admin', 'secretaria', 'bedel', 'preinscripciones']),
+        staleTime: 1000 * 60 * 2, // 2 min
+    });
 
-        if (data.length === 0) {
-            return {
-                metrics: { total: 0, confirmadas: 0, pendientes: 0, observadas: 0, rechazadas: 0, ratio: 0 },
-                recientes: []
+    // 1. Métricas exactas desde la base de datos (vía Overview)
+    const metrics = useMemo(() => {
+        if (overview) {
+            const pre = overview.preinscripciones;
+            const findTotal = (estadoStr: string) => 
+                pre.por_estado.find(e => (e.estado || "").toLowerCase() === estadoStr.toLowerCase())?.total || 0;
+            
+            const total = pre.total;
+            const confirmadas = findTotal('confirmada');
+            const enviadas = findTotal('enviada');
+            const observadas = findTotal('observada');
+            const rechazadas = findTotal('rechazada');
+            
+            return { 
+                total, 
+                confirmadas, 
+                pendientes: enviadas + observadas, 
+                observadas, 
+                rechazadas, 
+                ratio: total > 0 ? Math.round((confirmadas / total) * 100) : 0 
             };
         }
 
-        const total = data.length;
-        const confirmadas = data.filter((p) => normalizeEstado(p.estado) === 'confirmada').length;
-        const pendientes = data.filter((p) => normalizeEstado(p.estado) === 'enviada').length;
-        const observadas = data.filter((p) => normalizeEstado(p.estado) === 'observada').length;
-        const rechazadas = data.filter((p) => normalizeEstado(p.estado) === 'rechazada').length;
-        const ratio = total > 0 ? Math.round((confirmadas / total) * 100) : 0;
+        // Fallback inicial
+        return { total: 0, confirmadas: 0, pendientes: 0, observadas: 0, rechazadas: 0, ratio: 0 };
+    }, [overview]);
 
-        return {
-            metrics: { total, confirmadas, pendientes, observadas, rechazadas, ratio },
-            recientes: data.slice(0, 3) // Top 3
-        };
+    // 2. Lista de preinscripciones recientes (usamos la lista paginada para mantener el objeto Estudiante)
+    const recientes = useMemo(() => {
+        const data: PreinscripcionDTO[] = Array.isArray(preinscripcionesRaw)
+            ? preinscripcionesRaw
+            : (preinscripcionesRaw as any)?.results || [];
+        return data.slice(0, 5); // Mostramos las últimas 5
     }, [preinscripcionesRaw]);
+
 
     const rawActions: QuickAction[] = [
         { title: "Nueva preinscripción", description: "Crear una nueva preinscripción", icon: <AddIcon />, onClick: () => navigate("/preinscripcion"), variant: "contained" },
@@ -302,6 +348,50 @@ export default function DashboardPage() {
                     </Stack>
                 }
             />
+
+            {/* Filtros Globales */}
+            <Box sx={{ mb: 4, mt: -2 }}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={5}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel id="profesorado-filter-label">Filtrar por Carrera</InputLabel>
+                            <Select
+                                labelId="profesorado-filter-label"
+                                value={selectedProfesorado}
+                                label="Filtrar por Carrera"
+                                onChange={(e) => setSelectedProfesorado(e.target.value)}
+                                sx={{ bgcolor: "white" }}
+                            >
+                                <MenuItem value="">Todas las carreras</MenuItem>
+                                {carreras?.map((c) => (
+                                    <MenuItem key={c.id} value={c.id}>
+                                        {c.nombre}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel id="anio-filter-label">Año Lectivo</InputLabel>
+                            <Select
+                                labelId="anio-filter-label"
+                                value={selectedAnio}
+                                label="Año Lectivo"
+                                onChange={(e) => setSelectedAnio(e.target.value)}
+                                sx={{ bgcolor: "white" }}
+                            >
+                                <MenuItem value="">Todos los años</MenuItem>
+                                {years.map((y) => (
+                                    <MenuItem key={y} value={y}>
+                                        {y}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                </Grid>
+            </Box>
 
             <Grid container spacing={3}>
                 {statBlocks.map((stat) => (

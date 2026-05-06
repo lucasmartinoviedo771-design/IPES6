@@ -34,7 +34,7 @@ from ..schemas import (
 from .router import estudiantes_router
 from apps.common.date_utils import format_date, format_datetime
 
-CI_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "curso_intro"}
+CI_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "curso_intro", "tutor"}
 CI_FULL_ACCESS_ROLES = {"admin", "secretaria"}
 
 

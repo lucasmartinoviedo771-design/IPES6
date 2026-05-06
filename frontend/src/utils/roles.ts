@@ -49,6 +49,8 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
     if (r.startsWith("bedel")) set.add("bedel");
     if (r.startsWith("secretaria")) set.add("secretaria");
     if (r.startsWith("coordinador")) set.add("coordinador");
+    if (r.startsWith("tutor")) set.add("tutor");
+    if (r === "tutoria" || r === "tutoría") set.add("tutor");
     return set;
   }
 
@@ -62,6 +64,8 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
     if (role.startsWith("bedel")) set.add("bedel");
     if (role.startsWith("secretaria")) set.add("secretaria");
     if (role.startsWith("coordinador")) set.add("coordinador");
+    if (role.startsWith("tutor")) set.add("tutor");
+    if (role === "tutoria" || role === "tutoría") set.add("tutor");
   });
 
   // Privilegios administrativos absolutos
