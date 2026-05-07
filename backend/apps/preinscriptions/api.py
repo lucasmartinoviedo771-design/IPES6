@@ -517,6 +517,8 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
         pre.carrera_id = payload.carrera_id
     if payload.datos_extra:
         pre.datos_extra = payload.datos_extra
+    if payload.foto_4x4_dataurl is not None:
+        pre.foto_4x4_dataurl = payload.foto_4x4_dataurl
 
     if payload.checklist:
         from core.models import PreinscripcionChecklist

@@ -150,6 +150,7 @@ class PreinscripcionUpdateIn(Schema):
     estudiante: EstudianteUpdateIn | None = None
     datos_extra: dict | None = None
     checklist: ChecklistIn | None = None
+    foto_4x4_dataurl: str | None = None
 
 
 class PreinscripcionOut(Schema):

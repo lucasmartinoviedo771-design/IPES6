@@ -541,6 +541,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             acta_est_obj = ActaExamenEstudiante.objects.create(
                 acta=acta, numero_orden=est_item.numero_orden, permiso_examen=est_item.permiso_examen or "",
                 dni=est_item.dni.strip(), apellido_nombre=est_item.apellido_nombre.strip(),
+                examen_escrito=est_item.examen_escrito or "", examen_oral=est_item.examen_oral or "",
                 calificacion_definitiva=est_item.calificacion_definitiva, observaciones=est_item.observaciones or ""
             )
 
