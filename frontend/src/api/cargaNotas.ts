@@ -303,6 +303,7 @@ export interface ActaListItemDTO {
   created_at: string;
   mesa_id?: number | null;
   esta_cerrada?: boolean;
+  tiene_vocales?: boolean;
 }
 
 export interface ActaDetailDTO {
@@ -339,7 +340,16 @@ export type ActaFilter = {
   folio?: string;
   ordering?: string;
   anio_cursada_materia?: string | number;
+  sin_tribunal?: boolean;
 };
+
+export async function actualizarDocentesActa(actaId: number, docentes: ActaDocentePayload[]) {
+  const { data } = await client.patch<{ ok: boolean; message: string }>(
+    `/estudiantes/carga-notas/actas/${actaId}/docentes`,
+    docentes
+  );
+  return data;
+}
 
 export async function listarActas(filters?: ActaFilter) {
   const params: Record<string, string | number> = {};
@@ -350,6 +360,7 @@ export async function listarActas(filters?: ActaFilter) {
     if (filters.folio && filters.folio.trim() !== "") params.folio = filters.folio;
     if (filters.ordering) params.ordering = filters.ordering;
     if (filters.anio_cursada_materia) params.anio_cursada_materia = filters.anio_cursada_materia;
+    if (filters.sin_tribunal) params.sin_tribunal = "true";
   }
 
   const { data } = await client.get<ActaListItemDTO[]>("/estudiantes/carga-notas/actas", {

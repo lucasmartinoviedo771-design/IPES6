@@ -75,7 +75,7 @@ def obtener_acta_metadata(request):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
-def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, anio_cursada_materia: int = None, incluir_equivalencias: bool = False, ordering: str = "-id"):
+def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, anio_cursada_materia: int = None, incluir_equivalencias: bool = False, ordering: str = "-id", sin_tribunal: bool = False):
     """
     Lista actas de examen con filtros por Libro, Folio y Materia.
     Implementa control de acceso territorial (Bedeles solo ven sus carreras).
@@ -105,6 +105,10 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
         qs = qs.filter(folio__icontains=folio)
     if anio_cursada_materia:
         qs = qs.filter(materia__anio_cursada=anio_cursada_materia)
+    if sin_tribunal:
+        from django.db.models import Exists, OuterRef
+        tiene_vocal = ActaExamenDocente.objects.filter(acta=OuterRef("pk"), rol__in=["VOC1", "VOC2"])
+        qs = qs.filter(~Exists(tiene_vocal))
 
     # Limitar longitud de parámetros de búsqueda
     materia = (materia or "")[:100]
@@ -118,7 +122,13 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
     if ordering not in allowed_ordering:
         ordering = "-id"
 
-    actas_list = list(qs.select_related("materia").order_by(ordering)[:limit])
+    from django.db.models import Exists, OuterRef
+    tiene_vocal_sub = ActaExamenDocente.objects.filter(acta=OuterRef("pk"), rol__in=["VOC1", "VOC2"])
+    actas_list = list(
+        qs.select_related("materia")
+        .annotate(tiene_vocales=Exists(tiene_vocal_sub))
+        .order_by(ordering)[:limit]
+    )
 
     # Prefetch de estados de cierre de mesas correspondientes
     materia_ids = {a.materia_id for a in actas_list}
@@ -142,7 +152,8 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
             "total_estudiantes": acta.total_alumnos,
             "created_at": format_datetime(acta.created_at),
             "mesa_id": mesa.id if mesa else None,
-            "esta_cerrada": (mesa.planilla_cerrada_en is not None) if mesa else False
+            "esta_cerrada": (mesa.planilla_cerrada_en is not None) if mesa else False,
+            "tiene_vocales": acta.tiene_vocales,
         })
     return result
 
@@ -341,9 +352,23 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             created_by=usuario if getattr(usuario, "is_authenticated", False) else None,
         )
 
-        # Sincronización de Mesa de Examen (Presiden cia, Vocales)
-        docente_presidente = Docente.objects.filter(id=next((d.docente_id for d in payload.docentes if d.rol == ActaExamenDocente.Rol.PRESIDENTE), None)).first()
-        
+        # Persistir tribunal docente
+        docente_presidente = None
+        for idx, docente_data in enumerate(payload.docentes):
+            rol = docente_data.rol if docente_data.rol in dict(ActaExamenDocente.Rol.choices) else ActaExamenDocente.Rol.PRESIDENTE
+            docente_obj = Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None
+            ActaExamenDocente.objects.create(
+                acta=acta,
+                docente=docente_obj,
+                nombre=docente_data.nombre.strip(),
+                dni=(docente_data.dni or "").strip(),
+                rol=rol,
+                orden=idx,
+            )
+            if rol == ActaExamenDocente.Rol.PRESIDENTE:
+                docente_presidente = docente_obj
+
+        # Sincronización de Mesa de Examen (Presidencia, Vocales)
         mesa = MesaExamen.objects.filter(materia=materia, fecha=acta_fecha, modalidad=MesaExamen.Modalidad.LIBRE if payload.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR).first()
         if not mesa:
             mesa = MesaExamen.objects.create(
@@ -564,3 +589,68 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
 def actualizar_cabecera_acta(request, acta_id: int):
     """Acceso rápido para editar Libro/Folio sin afectar la nómina."""
     return ApiResponse(ok=False, message="Operación deshabilitada. Utilice la actualización completa del acta.")
+
+
+@router.patch(
+    "/actas/{acta_id}/docentes",
+    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLocal] = Body(...)):
+    """
+    Actualiza solo el tribunal docente de un acta, sin tocar notas ni estudiantes.
+    Funciona aunque la planilla esté cerrada — el cierre protege las notas, no el tribunal.
+    """
+    acta = ActaExamen.objects.filter(id=acta_id).first()
+    if not acta:
+        return 404, ApiResponse(ok=False, message="Acta no encontrada.")
+
+    user = request.user
+    roles = normalized_user_roles(user)
+    if not roles.intersection({"admin", "secretaria", "titulos"}):
+        from core.models import StaffAsignacion
+        carreras_ids = StaffAsignacion.objects.filter(user=user).values_list("profesorado_id", flat=True)
+        if acta.profesorado_id not in carreras_ids:
+            return 403, ApiResponse(ok=False, message="No tiene permiso para editar actas de este profesorado.")
+
+    with transaction.atomic():
+        acta.docentes.all().delete()
+        pres_obj = voc1_obj = voc2_obj = None
+        for idx, docente_data in enumerate(payload):
+            rol = docente_data.rol if docente_data.rol in dict(ActaExamenDocente.Rol.choices) else ActaExamenDocente.Rol.PRESIDENTE
+            docente_obj = Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None
+            ActaExamenDocente.objects.create(
+                acta=acta,
+                docente=docente_obj,
+                nombre=docente_data.nombre.strip(),
+                dni=(docente_data.dni or "").strip(),
+                rol=rol,
+                orden=idx,
+            )
+            if rol == ActaExamenDocente.Rol.PRESIDENTE:
+                pres_obj = docente_obj
+            elif rol == ActaExamenDocente.Rol.VOCAL1:
+                voc1_obj = docente_obj
+            elif rol == ActaExamenDocente.Rol.VOCAL2:
+                voc2_obj = docente_obj
+
+        # Sincronizar mesa vinculada
+        modalidad = MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
+        mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=modalidad).first()
+        if mesa:
+            mesa.docente_presidente = pres_obj
+            mesa.docente_vocal1 = voc1_obj
+            mesa.docente_vocal2 = voc2_obj
+            mesa.save(update_fields=["docente_presidente", "docente_vocal1", "docente_vocal2"])
+
+        log_action_from_request(
+            request,
+            accion="UPDATE",
+            tipo_accion="CRUD",
+            detalle_accion=f"Actualización de tribunal del acta: {acta.codigo}",
+            entidad="ActaExamen",
+            entidad_id=acta_id,
+        )
+
+    return ApiResponse(ok=True, message="Tribunal actualizado correctamente.")

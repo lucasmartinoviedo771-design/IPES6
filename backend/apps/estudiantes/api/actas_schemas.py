@@ -48,6 +48,7 @@ class ActaListItem(Schema):
     created_at: str
     mesa_id: int | None = None
     esta_cerrada: bool = False
+    tiene_vocales: bool = True
 
 class ActaDetailLocal(Schema):
     id: int

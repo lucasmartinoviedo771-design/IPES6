@@ -41,8 +41,12 @@ import { enqueueSnackbar } from 'notistack';
 import { useAuth } from '@/context/AuthContext';
 import { hasRole } from '@/utils/roles';
 
-import { listarActas, obtenerActa, actualizarCabeceraActa } from '@/api/cargaNotas';
+import { listarActas, obtenerActa, actualizarCabeceraActa, actualizarDocentesActa, fetchActaMetadata, ActaDocentePayload } from '@/api/cargaNotas';
 import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import GroupsIcon from '@mui/icons-material/Groups';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 import ActaExamenReadOnly from '@/components/secretaria/ActaExamenReadOnly';
 
@@ -62,9 +66,11 @@ const HistorialActasPage: React.FC = () => {
         libro: '',
         folio: '',
         ordering: '-id',
-        anio_cursada_materia: ''
+        anio_cursada_materia: '',
+        sin_tribunal: false,
     });
     const [activeFilters, setActiveFilters] = useState({});
+    const [tribunalActaId, setTribunalActaId] = useState<number | null>(null);
 
     const { data: actas, isLoading, isError } = useQuery({
         queryKey: ['actas-historial', activeFilters],
@@ -76,7 +82,7 @@ const HistorialActasPage: React.FC = () => {
     };
 
     const handleClear = () => {
-        const empty = { anio: '', materia: '', libro: '', folio: '', ordering: '-id', anio_cursada_materia: '' };
+        const empty = { anio: '', materia: '', libro: '', folio: '', ordering: '-id', anio_cursada_materia: '', sin_tribunal: false };
         setFilters(empty);
         setActiveFilters({});
     };
@@ -168,6 +174,16 @@ const HistorialActasPage: React.FC = () => {
                             <MenuItem value="total_alumnos">Menos estudiantes</MenuItem>
                         </Select>
                     </FormControl>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={filters.sin_tribunal}
+                                onChange={(e) => setFilters({ ...filters, sin_tribunal: e.target.checked })}
+                                color="warning"
+                            />
+                        }
+                        label="Sin tribunal"
+                    />
                     <Button
                         variant="contained"
                         onClick={handleSearch}
@@ -256,7 +272,16 @@ const HistorialActasPage: React.FC = () => {
                                     <TableCell>
                                         <Chip label={acta.codigo} size="small" variant="outlined" />
                                     </TableCell>
-                                    <TableCell>{acta.materia}</TableCell>
+                                    <TableCell>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <span>{acta.materia}</span>
+                                            {acta.tiene_vocales === false && (
+                                                <Tooltip title="Sin vocales en el tribunal">
+                                                    <WarningAmberIcon fontSize="small" color="warning" />
+                                                </Tooltip>
+                                            )}
+                                        </Stack>
+                                    </TableCell>
                                     <TableCell>
                                         {acta.libro || '-'}/{acta.folio || '-'}
                                     </TableCell>
@@ -267,6 +292,16 @@ const HistorialActasPage: React.FC = () => {
                                                 <PrintIcon />
                                             </IconButton>
                                         </Tooltip>
+                                        {canEditActa && acta.tiene_vocales === false && (
+                                            <Tooltip title="Completar tribunal (vocales faltantes)">
+                                                <IconButton
+                                                    color="warning"
+                                                    onClick={() => setTribunalActaId(acta.id)}
+                                                >
+                                                    <GroupsIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
                                         {canEditActa && !acta.esta_cerrada && (
                                             <Tooltip title="Editar Acta de Examen">
                                                 <IconButton
@@ -304,6 +339,17 @@ const HistorialActasPage: React.FC = () => {
                     onClose={() => setSelectedActaId(null)}
                 />
             )}
+            {tribunalActaId && (
+                <TribunalDialog
+                    open={!!tribunalActaId}
+                    actaId={tribunalActaId}
+                    onClose={() => setTribunalActaId(null)}
+                    onSaved={() => {
+                        setTribunalActaId(null);
+                        setActiveFilters({ ...activeFilters });
+                    }}
+                />
+            )}
         </Box>
     );
 };
@@ -323,6 +369,9 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
 
     const [isEditingHeader, setIsEditingHeader] = useState(false);
     const [editValues, setEditValues] = useState({ fecha: '', libro: '', folio: '' });
+    const [tribunalOpen, setTribunalOpen] = useState(false);
+
+    const sinVocales = acta ? !acta.docentes.some(d => d.rol === 'VOC1' || d.rol === 'VOC2') : false;
 
     // Inicializar valores al cargar
     React.useEffect(() => {
@@ -475,13 +524,35 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                                 </Stack>
                             </Stack>
                         )}
-                        <ActaExamenReadOnly acta={acta} />
+                                <ActaExamenReadOnly acta={acta} />
                     </>
                 ) : (
                     <Alert severity="error">No se pudo cargar el detalle.</Alert>
                 )}
             </DialogContent>
+            {tribunalOpen && (
+                <TribunalDialog
+                    open={tribunalOpen}
+                    actaId={actaId}
+                    onClose={() => setTribunalOpen(false)}
+                    onSaved={() => {
+                        setTribunalOpen(false);
+                        queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
+                        queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
+                    }}
+                />
+            )}
             <DialogActions>
+                {canEditActa && sinVocales && !isLoading && (
+                    <Button
+                        startIcon={<GroupsIcon />}
+                        color="warning"
+                        variant="outlined"
+                        onClick={() => setTribunalOpen(true)}
+                    >
+                        Completar tribunal
+                    </Button>
+                )}
                 {acta?.esta_cerrada && acta.mesa_id && isAdminOrSecretaria && (
                     <Button
                         onClick={handleReopen}
@@ -514,6 +585,126 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                     Imprimir
                 </Button>
                 <Button onClick={onClose} disabled={reopenMutation.isPending || closeMutation.isPending}>Cerrar</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
+const ROLES_LABEL: Record<string, string> = { PRES: 'Presidente', VOC1: 'Vocal 1', VOC2: 'Vocal 2' };
+
+const TribunalDialog: React.FC<{
+    open: boolean;
+    actaId: number;
+    onClose: () => void;
+    onSaved: () => void;
+}> = ({ open, actaId, onClose, onSaved }) => {
+    const queryClient = useQueryClient();
+
+    const { data: acta, isLoading } = useQuery({
+        queryKey: ['acta-detalle', actaId],
+        queryFn: () => obtenerActa(actaId),
+        enabled: open,
+    });
+
+    const { data: metadata } = useQuery({
+        queryKey: ['acta-examen-metadata'],
+        queryFn: fetchActaMetadata,
+        enabled: open,
+    });
+
+    const [docentes, setDocentes] = React.useState<Record<string, ActaDocentePayload>>({
+        PRES: { rol: 'PRES', nombre: '', dni: null, docente_id: null },
+        VOC1: { rol: 'VOC1', nombre: '', dni: null, docente_id: null },
+        VOC2: { rol: 'VOC2', nombre: '', dni: null, docente_id: null },
+    });
+
+    React.useEffect(() => {
+        if (acta) {
+            const base: Record<string, ActaDocentePayload> = {
+                PRES: { rol: 'PRES', nombre: '', dni: null, docente_id: null },
+                VOC1: { rol: 'VOC1', nombre: '', dni: null, docente_id: null },
+                VOC2: { rol: 'VOC2', nombre: '', dni: null, docente_id: null },
+            };
+            acta.docentes.forEach(d => { base[d.rol] = { ...d }; });
+            setDocentes(base);
+        }
+    }, [acta]);
+
+    const docentesDisponibles = metadata?.docentes ?? [];
+
+    const saveMutation = useMutation({
+        mutationFn: () => actualizarDocentesActa(actaId, Object.values(docentes).filter(d => d.nombre.trim())),
+        onSuccess: () => {
+            enqueueSnackbar('Tribunal actualizado correctamente.', { variant: 'success' });
+            queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
+            queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
+            onSaved();
+        },
+        onError: (err: any) => {
+            enqueueSnackbar(err?.response?.data?.message || 'Error al guardar el tribunal.', { variant: 'error' });
+        },
+    });
+
+    const handleSelectDocente = (rol: string, value: string) => {
+        const found = docentesDisponibles.find(d => {
+            const label = d.dni ? `${d.dni} - ${d.nombre}` : d.nombre;
+            return label === value || d.nombre === value;
+        });
+        if (found) {
+            setDocentes(prev => ({ ...prev, [rol]: { rol, nombre: found.nombre, dni: found.dni ?? null, docente_id: found.id } }));
+        } else {
+            setDocentes(prev => ({ ...prev, [rol]: { rol, nombre: value, dni: null, docente_id: null } }));
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ bgcolor: INSTITUTIONAL_GREEN, color: 'white' }}>
+                Completar Tribunal — Acta #{actaId}
+            </DialogTitle>
+            <DialogContent dividers>
+                {isLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+                ) : (
+                    <Stack spacing={3} sx={{ pt: 1 }}>
+                        <Alert severity="info" icon={false}>
+                            Completá los vocales faltantes. El acta permanece cerrada — solo se actualizan los docentes.
+                        </Alert>
+                        {(['PRES', 'VOC1', 'VOC2'] as const).map(rol => (
+                            <TextField
+                                key={rol}
+                                label={ROLES_LABEL[rol]}
+                                size="small"
+                                fullWidth
+                                value={docentes[rol]?.nombre || ''}
+                                onChange={e => handleSelectDocente(rol, e.target.value)}
+                                inputProps={{ list: `docentes-list-${rol}` }}
+                                placeholder="Escribí el nombre o seleccioná de la lista"
+                                helperText={docentes[rol]?.dni ? `DNI: ${docentes[rol].dni}` : undefined}
+                            />
+                        ))}
+                        <datalist id="docentes-list-PRES">
+                            {docentesDisponibles.map(d => <option key={d.id} value={d.dni ? `${d.dni} - ${d.nombre}` : d.nombre} />)}
+                        </datalist>
+                        <datalist id="docentes-list-VOC1">
+                            {docentesDisponibles.map(d => <option key={d.id} value={d.dni ? `${d.dni} - ${d.nombre}` : d.nombre} />)}
+                        </datalist>
+                        <datalist id="docentes-list-VOC2">
+                            {docentesDisponibles.map(d => <option key={d.id} value={d.dni ? `${d.dni} - ${d.nombre}` : d.nombre} />)}
+                        </datalist>
+                    </Stack>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose} color="inherit">Cancelar</Button>
+                <Button
+                    variant="contained"
+                    startIcon={<SaveIcon />}
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                >
+                    {saveMutation.isPending ? 'Guardando...' : 'Guardar tribunal'}
+                </Button>
             </DialogActions>
         </Dialog>
     );
