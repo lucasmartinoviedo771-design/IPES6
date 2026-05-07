@@ -37,6 +37,7 @@ const MesaExamenPage: React.FC = () => {
   const initialDni = dniParam || (isEstudiante && !canGestionar ? user?.dni || '' : '');
 
   const [dni, setDni] = useState(initialDni);
+  const [dniBusqueda, setDniBusqueda] = useState(initialDni);
   const [tipo, setTipo] = useState<'FIN' | 'EXT' | 'ESP' | ''>('');
   const [modalidad, setModalidad] = useState<'REG' | 'LIB' | ''>('');
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
@@ -85,7 +86,7 @@ const MesaExamenPage: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const fetchCarreras = async () => {
-      if (canGestionar && !dni.trim()) {
+      if (canGestionar && !dniBusqueda.trim()) {
         setCarreras([]);
         setSelectedCarreraId('');
         setSelectedPlanId('');
@@ -93,7 +94,7 @@ const MesaExamenPage: React.FC = () => {
       }
       setCarrerasLoading(true);
       try {
-        const data = await obtenerCarrerasActivas(canGestionar ? (dni ? { dni } : undefined) : undefined);
+        const data = await obtenerCarrerasActivas(canGestionar ? (dniBusqueda ? { dni: dniBusqueda } : undefined) : undefined);
         const list = data || [];
         if (!cancelled) {
           setCarreras(list);
@@ -116,7 +117,7 @@ const MesaExamenPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [canGestionar, dni]);
+  }, [canGestionar, dniBusqueda]);
 
   useEffect(() => {
     if (carrerasLoading) return;
@@ -162,7 +163,7 @@ const MesaExamenPage: React.FC = () => {
     let cancelled = false;
     const fetchMesas = async () => {
       if (carrerasLoading) return;
-      if (canGestionar && !dni.trim()) {
+      if (canGestionar && !dniBusqueda.trim()) {
         setMesas([]);
         setErr(null);
         setInfo(null);
@@ -180,7 +181,7 @@ const MesaExamenPage: React.FC = () => {
           ventana_id: ventanaId ? Number(ventanaId) : undefined,
           profesorado_id: selectedPlanIdNum ? undefined : selectedCarreraIdNum,
           plan_id: selectedPlanIdNum,
-          dni: canGestionar ? (dni || undefined) : undefined,
+          dni: canGestionar ? (dniBusqueda || undefined) : undefined,
         });
         if (!cancelled) {
           setMesas(data || []);
@@ -208,14 +209,18 @@ const MesaExamenPage: React.FC = () => {
     modalidad,
     ventanaId,
     canGestionar,
-    dni,
+    dniBusqueda,
   ]);
 
 
   const fetchTrayectoria = async () => {
+    if (canGestionar && !dniBusqueda.trim()) {
+      setMisInscripciones([]);
+      return;
+    }
     setLoadingTrayectoria(true);
     try {
-      const t = await obtenerTrayectoriaEstudiante(canGestionar && dni ? { dni } : undefined);
+      const t = await obtenerTrayectoriaEstudiante(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
       setMisInscripciones((t.mesas || []).filter(m => m.estado === 'INSCRIPTO'));
     } catch (error) {
       console.warn("No se pudo obtener la trayectoria del estudiante", error);
@@ -226,8 +231,13 @@ const MesaExamenPage: React.FC = () => {
 
   useEffect(() => {
     (async () => {
+      if (canGestionar && !dniBusqueda.trim()) {
+        setHistorial({ aprobadas: [], regularizadas: [], inscriptas_actuales: [] });
+        setMisInscripciones([]);
+        return;
+      }
       try {
-        const h = await obtenerHistorialEstudiante(canGestionar && dni ? { dni } : undefined);
+        const h = await obtenerHistorialEstudiante(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
         setHistorial({
           aprobadas: h.aprobadas || [],
           regularizadas: h.regularizadas || [],
@@ -238,7 +248,7 @@ const MesaExamenPage: React.FC = () => {
         console.warn("No se pudo obtener el historial del estudiante", error);
       }
     })();
-  }, [dni, canGestionar]);
+  }, [dniBusqueda, canGestionar]);
 
   const handleOpenInscripcionConfirm = (mesa: MesaListadoItemDTO) => {
     setPendingInscripcion({ mesa });
@@ -254,7 +264,7 @@ const MesaExamenPage: React.FC = () => {
     const mesaId = pendingInscripcion.mesa.id;
     setInscribiendoId(mesaId);
     try {
-      const res = await inscribirMesa({ mesa_id: mesaId, dni: canGestionar ? (dni || undefined) : undefined });
+      const res = await inscribirMesa({ mesa_id: mesaId, dni: canGestionar ? (dniBusqueda || undefined) : undefined });
       setInfo(res.message);
       setErr(null);
       setPendingInscripcion(null);
@@ -333,11 +343,30 @@ const MesaExamenPage: React.FC = () => {
           </FormControl>
         )}
         {canGestionar && (
-          <TextField size="small" label="DNI estudiante (opcional)" value={dni} onChange={(e) => setDni(e.target.value)} />
+          <Stack direction="row" gap={1}>
+            <TextField 
+              size="small" 
+              label="DNI estudiante (opcional)" 
+              value={dni} 
+              onChange={(e) => setDni(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setDniBusqueda(dni);
+                }
+              }}
+            />
+            <Button 
+              variant="contained" 
+              onClick={() => setDniBusqueda(dni)}
+              disabled={carrerasLoading}
+            >
+              Buscar
+            </Button>
+          </Stack>
         )}
       </Stack>
 
-      {canGestionar && !dni.trim() && (
+      {canGestionar && !dniBusqueda.trim() && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Ingresa un DNI para gestionar las mesas de un estudiante.
         </Alert>
@@ -437,7 +466,7 @@ const MesaExamenPage: React.FC = () => {
           if (!pendingBaja) return;
           setInscribiendoId(pendingBaja.mesaId);
           try {
-            const res = await bajaMesa({ mesa_id: pendingBaja.mesaId, dni: canGestionar ? (dni || undefined) : undefined });
+            const res = await bajaMesa({ mesa_id: pendingBaja.mesaId, dni: canGestionar ? (dniBusqueda || undefined) : undefined });
             setInfo(res.message);
             setErr(null);
             setPendingBaja(null);

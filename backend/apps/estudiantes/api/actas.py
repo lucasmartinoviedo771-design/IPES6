@@ -75,7 +75,7 @@ def obtener_acta_metadata(request):
     auth=JWTAuth(),
 )
 @ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
-def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, anio_cursada_materia: int = None, incluir_equivalencias: bool = False, ordering: str = "-id", sin_tribunal: bool = False):
+def listar_actas(request, anio: int = None, materia: str = None, libro: str = None, folio: str = None, anio_cursada_materia: int = None, incluir_equivalencias: bool = False, ordering: str = "-id", sin_tribunal: bool = False, profesorado_id: int = None):
     """
     Lista actas de examen con filtros por Libro, Folio y Materia.
     Implementa control de acceso territorial (Bedeles solo ven sus carreras).
@@ -105,6 +105,8 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
         qs = qs.filter(folio__icontains=folio)
     if anio_cursada_materia:
         qs = qs.filter(materia__anio_cursada=anio_cursada_materia)
+    if profesorado_id:
+        qs = qs.filter(profesorado_id=profesorado_id)
     if sin_tribunal:
         from django.db.models import Exists, OuterRef
         tiene_vocal = ActaExamenDocente.objects.filter(acta=OuterRef("pk"), rol__in=["VOC1", "VOC2"])
@@ -115,7 +117,7 @@ def listar_actas(request, anio: int = None, materia: str = None, libro: str = No
     libro = (libro or "")[:50]
     folio = (folio or "")[:20]
 
-    has_filters = any([anio, materia, libro, folio, anio_cursada_materia])
+    has_filters = any([anio, materia, libro, folio, anio_cursada_materia, profesorado_id])
     limit = 200 if has_filters else 50
 
     allowed_ordering = ["id", "-id", "fecha", "-fecha", "materia__nombre", "-materia__nombre", "total_alumnos", "-total_alumnos"]

@@ -68,6 +68,7 @@ const HistorialActasPage: React.FC = () => {
         ordering: '-id',
         anio_cursada_materia: '',
         sin_tribunal: false,
+        profesorado_id: '',
     });
     const [activeFilters, setActiveFilters] = useState({});
     const [tribunalActaId, setTribunalActaId] = useState<number | null>(null);
@@ -77,12 +78,17 @@ const HistorialActasPage: React.FC = () => {
         queryFn: () => listarActas(activeFilters),
     });
 
+    const { data: metadata } = useQuery({
+        queryKey: ['acta-metadata-filtros'],
+        queryFn: fetchActaMetadata,
+    });
+
     const handleSearch = () => {
         setActiveFilters(filters);
     };
 
     const handleClear = () => {
-        const empty = { anio: '', materia: '', libro: '', folio: '', ordering: '-id', anio_cursada_materia: '', sin_tribunal: false };
+        const empty = { anio: '', materia: '', libro: '', folio: '', ordering: '-id', anio_cursada_materia: '', sin_tribunal: false, profesorado_id: '' };
         setFilters(empty);
         setActiveFilters({});
     };
@@ -156,6 +162,20 @@ const HistorialActasPage: React.FC = () => {
                             </Select>
                         </FormControl>
                     </Stack>
+
+                    <FormControl size="small" sx={{ width: { xs: '100%', md: 220 } }}>
+                        <InputLabel>Profesorado</InputLabel>
+                        <Select
+                            label="Profesorado"
+                            value={filters.profesorado_id}
+                            onChange={(e) => setFilters({ ...filters, profesorado_id: e.target.value })}
+                        >
+                            <MenuItem value=""><em>Todos</em></MenuItem>
+                            {metadata?.profesorados.map((p) => (
+                                <MenuItem key={p.id} value={p.id}>{p.nombre}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
                     <FormControl size="small" sx={{ width: { xs: '100%', md: 220 } }}>
                         <InputLabel>Ordenar por</InputLabel>

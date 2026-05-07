@@ -112,8 +112,14 @@ def listar_mesas_estudiante(
     # Barrido automático antes de listar para Alumnos
     MesaExamen.auto_cleanup_deserted_mesas()
 
-    if not es_staff:
+    # Restricciones de visibilidad (Fecha y Ventana)
+    # Por defecto, solo mostramos mesas futuras para evitar ruido histórico (mesas de años anteriores).
+    # Para Staff, permitimos ver el pasado solo si se selecciona una ventana específica.
+    if not (es_staff and ventana_id):
         qs = qs.filter(fecha__gte=date.today())
+
+    if not es_staff:
+        # Alumnos: Solo ven mesas dentro de una ventana de habilitación activa.
         if not ventana_id:
             from core.models import VentanaHabilitacion
             ventanas_activas = VentanaHabilitacion.objects.filter(
@@ -123,6 +129,9 @@ def listar_mesas_estudiante(
                 hasta__gte=date.today()
             )
             qs = qs.filter(ventana__in=ventanas_activas)
+        else:
+            # Si el alumno selecciona una ventana específica, verificamos que esté activa.
+            qs = qs.filter(ventana__activo=True)
 
     if tipo:
         qs = qs.filter(tipo=tipo)

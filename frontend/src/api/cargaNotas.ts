@@ -341,6 +341,7 @@ export type ActaFilter = {
   ordering?: string;
   anio_cursada_materia?: string | number;
   sin_tribunal?: boolean;
+  profesorado_id?: string | number;
 };
 
 export async function actualizarDocentesActa(actaId: number, docentes: ActaDocentePayload[]) {
@@ -361,6 +362,7 @@ export async function listarActas(filters?: ActaFilter) {
     if (filters.ordering) params.ordering = filters.ordering;
     if (filters.anio_cursada_materia) params.anio_cursada_materia = filters.anio_cursada_materia;
     if (filters.sin_tribunal) params.sin_tribunal = "true";
+    if (filters.profesorado_id) params.profesorado_id = filters.profesorado_id;
   }
 
   const { data } = await client.get<ActaListItemDTO[]>("/estudiantes/carga-notas/actas", {
