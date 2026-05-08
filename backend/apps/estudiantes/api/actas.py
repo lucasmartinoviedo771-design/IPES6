@@ -552,14 +552,20 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
                 # Sincronización iterativa de resultados
                 calif = est_item.calificacion_definitiva.strip().upper()
                 condicion = InscripcionMesa.Condicion.DESAPROBADO
-                if calif.isdigit() and int(calif) >= 6: condicion = InscripcionMesa.Condicion.APROBADO
+                nota_dec = None
+                if calif.isdigit():
+                    nota_dec = Decimal(calif)
+                    if nota_dec >= 6: condicion = InscripcionMesa.Condicion.APROBADO
                 elif calif == ActaExamenEstudiante.NOTA_AUSENTE_JUSTIFICADO: condicion = InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
+                elif calif == ActaExamenEstudiante.NOTA_AUSENTE_INJUSTIFICADO: condicion = InscripcionMesa.Condicion.AUSENTE
 
                 InscripcionMesa.objects.update_or_create(
                     mesa=mesa, estudiante=est_obj,
                     defaults={
-                        "estado": InscripcionMesa.Estado.INSCRIPTO, "condicion": condicion,
-                        "folio": payload.folio, "libro": payload.libro
+                        "estado": InscripcionMesa.Estado.INSCRIPTO, "fecha_resultado": payload.fecha,
+                        "condicion": condicion, "nota": nota_dec, "folio": payload.folio, "libro": payload.libro,
+                        "observaciones": "Carga por Acta de Examen",
+                        "cuenta_para_intentos": condicion != InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO
                     }
                 )
                 verify_acta_consistency(acta_est_obj)

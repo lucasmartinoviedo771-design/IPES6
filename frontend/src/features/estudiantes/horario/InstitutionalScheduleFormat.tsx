@@ -47,7 +47,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
   const renderMateria = (materia: HorarioMateriaCeldaDTO, isMulti: boolean) => {
     // Si queremos filtrar por cuatrimestre, pero las ANUALES siempre pasan
     if (cuatrimestre && materia.cuatrimestre !== cuatrimestre && materia.cuatrimestre !== "ANUAL" && materia.regimen !== "ANUAL") {
-        return null;
+      return null;
     }
 
     // Determinar el label de cuatrimestre/anual
@@ -61,11 +61,9 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
           width: "100%",
           flex: 1,
           display: "flex",
-          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          textAlign: "center",
-          p: 0.2,
+          p: 0.5,
           minHeight: isMulti ? "40px" : "60px",
           borderBottom: isMulti ? "1px dashed #ccc" : "none",
           "&:last-child": { borderBottom: "none" },
@@ -75,33 +73,36 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
           })
         }}
       >
-        <Typography variant="caption" sx={{ fontWeight: "600", fontSize: "0.7rem", lineHeight: 1.1, color: "black" }}>
-          {materia.materia_nombre}
-        </Typography>
-        <Typography variant="caption" sx={{ fontSize: "0.55rem", mt: 0.2, fontStyle: "italic", color: "#333" }}>
-          {materia.docentes.length ? materia.docentes.join("; ") : "Sin Docente"}
-        </Typography>
-        {/* Indicador de cuatrimestre/anual centrado */}
-        <Typography 
-          variant="caption" 
-          sx={{ 
-            fontSize: "0.55rem", 
-            fontWeight: "700", 
-            mt: 0.2, 
-            color: "#444",
-            textTransform: "uppercase",
-            letterSpacing: "0.02em"
-          }}
-        >
-          {cuatrLabel}
-        </Typography>
+        <Box sx={{ width: "100%", textAlign: "center", display: "block" }}>
+          <Typography component="div" sx={{ fontWeight: "500", fontSize: "0.95rem", lineHeight: "1.3em", color: "black", mb: 0.5, display: "block", width: "100%" }}>
+            {materia.materia_nombre}
+          </Typography>
+          <Typography component="div" sx={{ fontSize: "0.7rem", fontStyle: "italic", color: "#333", mb: 0.5, display: "block", width: "100%" }}>
+            {materia.docentes.length ? materia.docentes.join("; ") : "Sin Docente"}
+          </Typography>
+          {/* Indicador de cuatrimestre/anual centrado */}
+          <Typography 
+            component="div"
+            sx={{ 
+              fontSize: "0.65rem", 
+              fontWeight: "700", 
+              color: "#444",
+              textTransform: "uppercase",
+              letterSpacing: "0.02em",
+              display: "block",
+              width: "100%"
+            }}
+          >
+            {cuatrLabel}
+          </Typography>
+        </Box>
       </Box>
     );
   };
 
   return (
-    <Box sx={{ 
-      width: "100%", 
+    <Box sx={{
+      width: "100%",
       fontFamily: "'Roboto', sans-serif",
       bgcolor: "white",
       color: "black",
@@ -111,10 +112,10 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
       }
     }}>
       {/* HEADER INSTITUCIONAL */}
-      <Box sx={{ 
-        border: "2px solid black", 
-        bgcolor: bgColor, 
-        p: 1, 
+      <Box sx={{
+        border: "2px solid black",
+        bgcolor: bgColor,
+        p: 1,
         textAlign: "center",
         borderBottom: "none"
       }}>
@@ -127,8 +128,8 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
       </Box>
 
       {/* SUB-HEADER (TURNO, AÑO, SALON) */}
-      <Box sx={{ 
-        border: "2px solid black", 
+      <Box sx={{
+        border: "2px solid black",
         borderTop: "1px solid black",
         p: 0.5,
         display: "flex",
@@ -149,21 +150,21 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
       </Box>
 
       {/* TABLA DE HORARIOS */}
-      <Box sx={{ 
-          display: "grid", 
-          gridTemplateColumns: `70px 35px repeat(${dias.length}, 1fr) 35px 70px`, 
-          border: "1px solid black" 
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: `70px 35px repeat(${dias.length}, 1fr) 35px 70px`,
+        border: "1px solid black"
       }}>
         {/* Cabecera de tabla */}
-        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H. R.</Box>
-        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H.C.</Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.8rem", bgcolor: "#E0E0E0" }}>H. R.</Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.8rem", bgcolor: "#E0E0E0" }}>H.C.</Box>
         {dias.map((dia) => (
-           <Box key={dia.numero} sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem" }}>
-             {dia.nombre.toUpperCase()}
-           </Box>
+          <Box key={dia.numero} sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.8rem" }}>
+            {dia.nombre.toUpperCase()}
+          </Box>
         ))}
-        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H.C.</Box>
-        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.7rem", bgcolor: "#E0E0E0" }}>H. R.</Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.8rem", bgcolor: "#E0E0E0" }}>H.C.</Box>
+        <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", fontWeight: "bold", fontSize: "0.8rem", bgcolor: "#E0E0E0" }}>H. R.</Box>
 
         {/* Filas de horarios */}
         {franjas.map((franja, index) => {
@@ -175,9 +176,9 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
           if (isRecreo) {
             return (
               <React.Fragment key={`recreo-${index}`}>
-                 {/* Reloj Izquierdo Recreo */}
+                {/* Reloj Izquierdo Recreo */}
                 <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
-                  {franja.desde}<br/>{franja.hasta}
+                  {franja.desde}<br />{franja.hasta}
                 </Box>
                 {/* Cat Izquierda Recreo */}
                 <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
@@ -185,13 +186,13 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                 </Box>
 
                 {/* BANNER CENTRADO RECREO - Solo ocupa las columnas de los días (3 a 8 inclusive) */}
-                <Box 
-                  sx={{ 
-                    gridColumn: "3 / 9", 
-                    bgcolor: "#F5F5F5", 
+                <Box
+                  sx={{
+                    gridColumn: "3 / 9",
+                    bgcolor: "#F5F5F5",
                     border: "1px solid black",
-                    display: "flex", 
-                    alignItems: "center", 
+                    display: "flex",
+                    alignItems: "center",
                     justifyContent: "center",
                     py: 0.3,
                     gap: 4
@@ -208,7 +209,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                 </Box>
                 {/* Reloj Derecho Recreo */}
                 <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
-                  {franja.desde_sec || franja.desde}<br/>{franja.hasta_sec || franja.hasta}
+                  {franja.desde_sec || franja.desde}<br />{franja.hasta_sec || franja.hasta}
                 </Box>
               </React.Fragment>
             );
@@ -218,7 +219,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
             <React.Fragment key={franja.orden}>
               {/* Hora Reloj (Izquierda) */}
               <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
-                {franja.desde}<br/>{franja.hasta}
+                {franja.desde}<br />{franja.hasta}
               </Box>
               {/* Hora Cátedra (Izquierda) */}
               <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
@@ -230,9 +231,9 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                 const entry = celdas.get(cellKey(dia.numero, franja.posicion));
                 const materias = entry?.materias || [];
                 return (
-                  <Box key={dia.numero} sx={{ 
-                    border: "1px solid black", 
-                    minHeight: "85px",
+                  <Box key={dia.numero} sx={{
+                    border: "1px solid black",
+                    minHeight: "100px",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "stretch",
@@ -241,10 +242,10 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                     overflow: "hidden"
                   }}>
                     {materias
-                      .filter((m: HorarioMateriaCeldaDTO) => 
-                        !cuatrimestre || 
-                        m.cuatrimestre === cuatrimestre || 
-                        m.cuatrimestre === "ANUAL" || 
+                      .filter((m: HorarioMateriaCeldaDTO) =>
+                        !cuatrimestre ||
+                        m.cuatrimestre === cuatrimestre ||
+                        m.cuatrimestre === "ANUAL" ||
                         m.regimen === "ANUAL"
                       )
                       .map((m: HorarioMateriaCeldaDTO) => renderMateria(m, false))
@@ -257,9 +258,9 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
               <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
                 {franja.orden > 0 ? `${franja.orden}º` : ""}
               </Box>
-               {/* Hora Reloj (Derecha) */}
-               <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
-                {franja.desde_sec || franja.desde}<br/>{franja.hasta_sec || franja.hasta}
+              {/* Hora Reloj (Derecha) */}
+              <Box sx={{ border: "1px solid black", p: 0.5, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "bold", bgcolor: "#E0E0E0" }}>
+                {franja.desde_sec || franja.desde}<br />{franja.hasta_sec || franja.hasta}
               </Box>
             </React.Fragment>
           );
@@ -268,27 +269,27 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
 
       <Box sx={{ mt: 1, p: 1, border: "2px solid black", display: "flex", alignItems: "stretch", gap: 3, bgcolor: "#fff" }}>
         <Box sx={{ flex: 1, minHeight: 40 }}>
-            {tabla.observaciones && (
-                <>
-                    <Typography variant="caption" sx={{ fontWeight: "bold", display: "block", textDecoration: "underline" }}>
-                        OBSERVACIONES:
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: "0.65rem", whiteSpace: "pre-wrap" }}>
-                        {tabla.observaciones}
-                    </Typography>
-                </>
-            )}
+          {tabla.observaciones && (
+            <>
+              <Typography variant="caption" sx={{ fontWeight: "bold", display: "block", textDecoration: "underline" }}>
+                OBSERVACIONES:
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: "0.65rem", whiteSpace: "pre-wrap" }}>
+                {tabla.observaciones}
+              </Typography>
+            </>
+          )}
         </Box>
-        
+
         {/* Leyenda de materias cuatrimestrales */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ border: "1px solid black", p: 0.5, bgcolor: "#f9f9f9", minWidth: 200 }}>
-            <Box sx={{ 
-                width: 40, height: 25, border: "1px solid black",
-                background: `repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 5px, #ffffff 5px, #ffffff 10px)`,
-            }} />
-            <Typography variant="caption" sx={{ fontSize: "0.6rem", fontWeight: 600 }}>
-                Las celdas sombreadas con borde reforzado corresponden a MATERIAS CUATRIMESTRALES
-            </Typography>
+          <Box sx={{
+            width: 40, height: 25, border: "1px solid black",
+            background: `repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 5px, #ffffff 5px, #ffffff 10px)`,
+          }} />
+          <Typography variant="caption" sx={{ fontSize: "0.6rem", fontWeight: 600 }}>
+            Las celdas sombreadas con borde reforzado corresponden a MATERIAS CUATRIMESTRALES
+          </Typography>
         </Stack>
       </Box>
     </Box>

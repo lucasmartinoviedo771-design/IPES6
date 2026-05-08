@@ -194,16 +194,7 @@ const HistorialActasPage: React.FC = () => {
                             <MenuItem value="total_alumnos">Menos estudiantes</MenuItem>
                         </Select>
                     </FormControl>
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                checked={filters.sin_tribunal}
-                                onChange={(e) => setFilters({ ...filters, sin_tribunal: e.target.checked })}
-                                color="warning"
-                            />
-                        }
-                        label="Sin tribunal"
-                    />
+
                     <Button
                         variant="contained"
                         onClick={handleSearch}

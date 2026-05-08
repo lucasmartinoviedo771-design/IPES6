@@ -292,10 +292,20 @@ const HorarioPage: React.FC = () => {
     }
     enqueueSnackbar("Generando PDF profesional...", { variant: "info" });
     try {
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
+      const pdf = new jsPDF("l", "mm", "a4");
+      const pageWidth = 297;
       const margin = 10;
       const contentWidth = pageWidth - margin * 2;
+
+      const maxContentHeight = 210 - margin * 2;
+
+      // Temporarily force a wide aspect ratio to match A4 landscape
+      const originalWidth = exportRef.current.style.width;
+      const originalPosition = exportRef.current.style.position;
+      const originalLeft = exportRef.current.style.left;
+      exportRef.current.style.width = "1500px";
+      exportRef.current.style.position = "absolute";
+      exportRef.current.style.left = "-9999px";
 
       // Buscamos todos los contenedores de página (cada uno tiene 2 años)
       const pageElements = Array.from(exportRef.current.querySelectorAll('.pdf-page-chunk'));
@@ -303,17 +313,38 @@ const HorarioPage: React.FC = () => {
       if (pageElements.length === 0) {
         // Fallback si no estamos en modo impresión o algo falló en la query
         const imgData = await toPng(exportRef.current, { pixelRatio: 2 });
-        const imgHeight = (exportRef.current.offsetHeight * contentWidth) / exportRef.current.offsetWidth;
-        pdf.addImage(imgData, "PNG", margin, margin, contentWidth, imgHeight);
+        let imgHeight = (exportRef.current.offsetHeight * contentWidth) / exportRef.current.offsetWidth;
+        let imgWidth = contentWidth;
+        const maxContentHeight = 210 - margin * 2;
+        if (imgHeight > maxContentHeight) {
+            const scale = maxContentHeight / imgHeight;
+            imgHeight = maxContentHeight;
+            imgWidth = imgWidth * scale;
+        }
+        const xOffset = margin + (contentWidth - imgWidth) / 2;
+        pdf.addImage(imgData, "PNG", xOffset, margin, imgWidth, imgHeight);
       } else {
         for (let i = 0; i < pageElements.length; i++) {
           if (i > 0) pdf.addPage();
           const element = pageElements[i] as HTMLElement;
           const imgData = await toPng(element, { pixelRatio: 2 });
-          const imgHeight = (element.offsetHeight * contentWidth) / element.offsetWidth;
-          pdf.addImage(imgData, "PNG", margin, margin, contentWidth, imgHeight);
+          let imgHeight = (element.offsetHeight * contentWidth) / element.offsetWidth;
+          let imgWidth = contentWidth;
+          const maxContentHeight = 210 - margin * 2;
+          if (imgHeight > maxContentHeight) {
+              const scale = maxContentHeight / imgHeight;
+              imgHeight = maxContentHeight;
+              imgWidth = imgWidth * scale;
+          }
+          const xOffset = margin + (contentWidth - imgWidth) / 2;
+          pdf.addImage(imgData, "PNG", xOffset, margin, imgWidth, imgHeight);
         }
       }
+
+      // Restore original styles
+      exportRef.current.style.width = originalWidth;
+      exportRef.current.style.position = originalPosition;
+      exportRef.current.style.left = originalLeft;
 
       const fileNameParts = ["Horario"];
       if (isEstudiante) {
@@ -558,28 +589,18 @@ const HorarioPage: React.FC = () => {
             ) : (
                 <Stack spacing={4}>
                     {(() => {
-                        const chunks = [];
-                        for (let i = 0; i < tablasAgrupadas.length; i += 2) {
-                            chunks.push(tablasAgrupadas.slice(i, i + 2));
-                        }
-                        return chunks.map((chunk, idx) => (
-                            <Box key={idx} className="pdf-page-chunk" sx={{ p: 1, bgcolor: "white" }}>
-                                <Stack spacing={4}>
-                                    {chunk.map(([anio, items]) => {
-                                        const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
-                                        return (
-                                            <Box key={anio}>
-                                                <InstitutionalScheduleFormat 
-                                                    tabla={items[0]} 
-                                                    salon={shorthand} 
-                                                    cuatrimestre={cuatrFilter || undefined} 
-                                                />
-                                            </Box>
-                                        );
-                                    })}
-                                </Stack>
-                            </Box>
-                        ));
+                        return tablasFiltradas.map((tabla, idx) => {
+                            const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
+                            return (
+                                <Box key={idx} className="pdf-page-chunk" sx={{ p: 1, bgcolor: "white", width: "100%" }}>
+                                    <InstitutionalScheduleFormat 
+                                        tabla={tabla} 
+                                        salon={shorthand} 
+                                        cuatrimestre={cuatrFilter || undefined} 
+                                    />
+                                </Box>
+                            );
+                        });
                     })()}
                 </Stack>
             )}
