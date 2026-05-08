@@ -68,14 +68,18 @@ def log_action(
     def _write():
         """Escritura efectiva en base de datos."""
         try:
+            # Asegurar que los campos de texto no excedan los límites del modelo
+            detalle_truncado = (detalle_accion or "")[:100]
+            entidad_truncada = (entidad or "")[:50]
+            
             AuditLog.objects.create(
                 usuario=user,
                 nombre_usuario=nombre_usuario,
                 roles=roles or [],
                 accion=accion,
                 tipo_accion=tipo_accion,
-                detalle_accion=detalle_accion,
-                entidad_afectada=entidad or "",
+                detalle_accion=detalle_truncado,
+                entidad_afectada=entidad_truncada,
                 id_entidad=entidad_id_str,
                 resultado=resultado,
                 ip_origen=ip_origen or "",
@@ -87,8 +91,9 @@ def log_action(
             # Silenciamos errores de escritura de log para no interrumpir el flujo del usuario
             logger.exception("No se pudo registrar el log de auditoría preventivamente.")
 
-    # Escritura inmediata en base de datos
-    _write()
+    # Registro diferido al commit para no interferir con la transacción principal
+    # y evitar que errores de truncamiento o DB en el log invaliden la operación del usuario.
+    transaction.on_commit(_write)
 
 
 def log_action_from_request(request, **kwargs):
