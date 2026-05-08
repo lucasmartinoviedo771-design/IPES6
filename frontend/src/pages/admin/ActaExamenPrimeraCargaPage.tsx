@@ -24,6 +24,7 @@ const ActaExamenPrimeraCargaPage: React.FC = () => {
 
   return (
     <ActaExamenForm
+      key={editId || 'new'}
       editId={editId}
       strict={false}
       title={editId ? "Actualización de acta histórica" : "Carga inicial de actas de examen"}
