@@ -292,6 +292,13 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
           </Typography>
         </Stack>
       </Box>
+
+      {/* Leyenda Malvinas (Institucional) */}
+      <Box sx={{ mt: 1.5, textAlign: "center" }}>
+        <Typography sx={{ fontSize: "0.65rem", fontStyle: "italic", color: "#666" }}>
+          "Las Islas Malvinas, Georgias, Sándwich del Sur y los Hielos Continentales, son y serán Argentinas"
+        </Typography>
+      </Box>
     </Box>
   );
 };

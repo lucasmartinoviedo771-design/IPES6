@@ -74,6 +74,19 @@
       font-weight: bold;
       text-transform: uppercase;
     }
+
+    .malvinas-legend {
+      text-align: center;
+      font-size: 7.5pt;
+      font-style: italic;
+      color: #555;
+      margin-top: 25pt;
+      width: 100%;
+    }
+
+    @page {
+      @bottom-center { content: none; }
+    }
   </style>
 {% endblock %}
 
@@ -125,6 +138,10 @@
         </td>
       </tr>
     </table>
+
+    <div class="malvinas-legend">
+      "Las Islas Malvinas, Georgias, Sándwich del Sur y los Hielos Continentales, son y serán Argentinas"
+    </div>
 
   </div>
   {% endfor %}
