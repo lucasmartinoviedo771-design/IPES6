@@ -44,35 +44,9 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         inscriptos_count=getattr(mesa, "num_inscriptos", 0)
     )
 
-def _auto_cleanup_deserted_mesas():
-    """
-    Barrido automático de mesas sin alumnos inscriptos una vez vencido el plazo de baja (48hs hábiles).
-    Esto evita que persistan mesas 'fantasmas' que no serán utilizadas.
-    """
-    ahora = datetime.now()
-    # Solo procesamos mesas próximas (desde hace 7 días hasta el futuro)
-    # para no sobrecargar el barrido con historial muy antiguo.
-    from datetime import timedelta
-    rango_fecha = ahora.date() - timedelta(days=7)
-    
-    # 1. Buscar mesas candidatas (sin inscritos o solo con cancelados)
-    mesas_candidatas = MesaExamen.objects.filter(
-        fecha__gte=rango_fecha
-    ).annotate(
-        count_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
-    ).filter(count_inscriptos=0)
-
-    # 2. Verificar el plazo de 48hs hábiles para cada una
-    deleted_count = 0
-    for mesa in mesas_candidatas:
-        limite = calcular_limite_baja_mesa(mesa.fecha)
-        if ahora > limite:
-            mesa.delete()
-            deleted_count += 1
-    
-    if deleted_count > 0:
-        import logging
-        logging.getLogger(__name__).info(f"Cleanup: Se eliminaron {deleted_count} mesas desiertas automáticamente.")
+def _auto_cleanup_deserted_mesas(dias_gracia: int = 5):
+    """Delega al método del modelo para mantener la lógica centralizada."""
+    return MesaExamen.auto_cleanup_deserted_mesas(dias_gracia=dias_gracia)
 
 @management_router.get("/mesas", response=list[MesaOut], auth=JWTAuth())
 def list_mesas(
@@ -87,7 +61,7 @@ def list_mesas(
     ensure_roles(request.user, {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"})
     
     # Barrido automático antes de listar
-    _auto_cleanup_deserted_mesas()
+    # _auto_cleanup_deserted_mesas()  # R2: Removido de GET
 
     qs = MesaExamen.objects.select_related(
         "materia__plan_de_estudio__profesorado",
@@ -117,7 +91,10 @@ def create_mesa(request, payload: MesaIn):
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
     materia = get_object_or_404(Materia, id=payload.materia_id)
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
-    
+
+    if payload.modalidad and payload.modalidad.upper() == "LIB" and not materia.permite_mesa_libre:
+        raise HttpError(422, "Esta materia no está habilitada para exámenes en condición libre.")
+
     mesa = MesaExamen.objects.create(
         materia=materia,
         tipo=payload.tipo.upper(),
@@ -139,8 +116,13 @@ def update_mesa(request, mesa_id: int, payload: MesaIn):
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
     mesa = get_object_or_404(MesaExamen, id=mesa_id)
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
-    
+
+    if payload.modalidad and payload.modalidad.upper() == "LIB" and not mesa.materia.permite_mesa_libre:
+        raise HttpError(422, "Esta materia no está habilitada para exámenes en condición libre.")
+
     for attr, value in payload.dict().items():
+        if attr == "materia_id":
+            continue  # materia no se puede cambiar en un update
         if value is not None:
             setattr(mesa, attr, value)
     mesa.save()

@@ -109,7 +109,7 @@ const FinalExamPlanillaSection: React.FC<Props> = ({
                 )}
               </Stack>
               <Typography color="text.secondary">
-                {finalPlanilla.fecha ? new Date(finalPlanilla.fecha).toLocaleDateString() : "-"} - {finalPlanilla.tipo === "FIN" ? "Ordinaria" : finalPlanilla.tipo === "EXT" ? "Extraordinaria" : "Especial"} - {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
+                {finalPlanilla.fecha ? (() => { const [d,m,y] = finalPlanilla.fecha.split("/"); return new Date(`${y}-${m}-${d}`).toLocaleDateString("es-AR"); })() : "-"} - {finalPlanilla.tipo === "FIN" ? "Ordinaria" : finalPlanilla.tipo === "EXT" ? "Extraordinaria" : "Especial"} - {finalPlanilla.modalidad === "LIB" ? "Libre" : "Regular"}
               </Typography>
             </Box>
             <Stack

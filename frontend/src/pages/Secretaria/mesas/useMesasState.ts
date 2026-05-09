@@ -263,7 +263,8 @@ export function useMesasState() {
           nombre: m.nombre,
           anio: m.anio_cursada ?? null,
           cuatrimestre: m.regimen ?? null,
-          permiteLibre: Boolean(m.permite_mesa_libre),
+          permiteLibre: m.permite_mesa_libre,
+          planResolucion: m.plan_resolucion,
         }));
         setMaterias(mapped);
         setAnioNueva('');

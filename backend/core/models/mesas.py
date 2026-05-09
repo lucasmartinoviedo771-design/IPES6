@@ -63,33 +63,39 @@ class MesaExamen(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     @staticmethod
-    def auto_cleanup_deserted_mesas():
+    def auto_cleanup_deserted_mesas(dias_gracia: int = 5):
         """
-        Barrido automático de mesas sin alumnos inscriptos una vez vencido el plazo de baja (48hs hábiles).
-        Centralizado en el modelo para ser invocado desde cualquier punto de la API.
+        Elimina mesas sin inscriptos activos que ya superaron el período de gracia post-ventana.
+
+        Criterio de borrado:
+        - Si la mesa tiene ventana: se borra solo si pasaron `dias_gracia` días del cierre de la ventana.
+        - Si no tiene ventana (mesa especial): se borra si pasaron `dias_gracia` días de la fecha del examen.
+
+        Esto evita borrar mesas que la secretaría pueda necesitar para inscribir alumnos
+        manualmente después del examen pero dentro del período administrativo.
         """
         from django.db.models import Count, Q
-        from datetime import datetime, timedelta
-        from apps.common.date_utils import calcular_limite_baja_mesa
-        
-        ahora = datetime.now()
-        # Procesamos mesas desde hace 15 días hasta el futuro para cubrir cierres recientes y próximos.
-        rango_fecha = ahora.date() - timedelta(days=15)
-        
-        # 1. Buscar mesas candidatas (sin inscritos activos)
-        mesas_candidatas = MesaExamen.objects.filter(
-            fecha__gte=rango_fecha
+        from datetime import date, timedelta
+
+        hoy = date.today()
+
+        mesas_candidatas = MesaExamen.objects.select_related("ventana").filter(
+            fecha__lt=hoy
         ).annotate(
             count_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
         ).filter(count_inscriptos=0)
 
-        # 2. Borrar si el plazo de baja ya expiró
         deleted_count = 0
         for mesa in mesas_candidatas:
-            if ahora > calcular_limite_baja_mesa(mesa.fecha):
+            if mesa.ventana:
+                fecha_limite = mesa.ventana.hasta + timedelta(days=dias_gracia)
+            else:
+                fecha_limite = mesa.fecha + timedelta(days=dias_gracia)
+
+            if hoy > fecha_limite:
                 mesa.delete()
                 deleted_count += 1
-        
+
         return deleted_count
 
     def __str__(self):

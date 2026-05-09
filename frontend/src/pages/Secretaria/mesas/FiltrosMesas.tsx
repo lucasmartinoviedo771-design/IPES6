@@ -62,7 +62,7 @@ export function FiltrosMesas({
   materiaFiltro,
 }: FiltrosMesasProps) {
   return (
-    <Stack gap={2} sx={{ mt: 1 }}>
+    <Stack gap={2} sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ flexWrap: 'wrap' }}>
         <TextField select label="Periodo" size="small" value={ventanaId} onChange={(e) => setVentanaId(e.target.value)} sx={{ minWidth: 220 }}>
           <MenuItem value="">Todos</MenuItem>

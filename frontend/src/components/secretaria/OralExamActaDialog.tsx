@@ -27,6 +27,7 @@ import {
   ORAL_SCORE_OPTIONS,
   OralTopicScore,
 } from "@/utils/actaOralPdf";
+import { descargarActaOralPdf, guardarActaOral } from "@/api/cargaNotas";
 
 export type OralActFormTopic = {
   id: string;
@@ -75,6 +76,8 @@ type OralExamActaDialogProps = {
   loading?: boolean;
   saving?: boolean;
   onSave: (values: OralActFormValues) => Promise<void>;
+  mesaId?: number;
+  inscripcionId?: number;
 };
 
 const ensureMinRows = (rows: OralActFormTopic[], min = 3) => {
@@ -100,6 +103,8 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
   loading = false,
   saving = false,
   onSave,
+  mesaId,
+  inscripcionId,
 }) => {
   const [form, setForm] = useState<OralActFormValues>(() => ({
     actaNumero: "",
@@ -184,24 +189,36 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
     };
     try {
       await onSave(nextValues);
-      generarActaExamenOralPDF({
-        actaNumero: nextValues.actaNumero,
-        folioNumero: nextValues.folioNumero,
-        fecha: nextValues.fecha,
-        carrera: carrera ?? "",
-        unidadCurricular: unidadCurricular ?? "",
-        curso: nextValues.curso,
-        estudiante: `${estudianteNombre} - DNI ${estudianteDni}`,
-        tribunal: tribunal ?? {},
-        temasElegidosEstudiante: nextValues.temasEstudiante
-          .filter((item) => item.tema.trim())
-          .map((item) => ({ tema: item.tema.trim(), score: item.score || undefined })),
-        temasSugeridosDocente: nextValues.temasDocente
-          .filter((item) => item.tema.trim())
-          .map((item) => ({ tema: item.tema.trim(), score: item.score || undefined })),
-        notaFinal: nextValues.notaFinal,
-        observaciones: nextValues.observaciones,
-      });
+      if (mesaId && inscripcionId) {
+        // Persist oral acta to backend so the PDF endpoint can read it
+        await guardarActaOral(mesaId, inscripcionId, {
+          acta_numero: nextValues.actaNumero || null,
+          folio_numero: nextValues.folioNumero || null,
+          fecha: nextValues.fecha || null,
+          curso: nextValues.curso || null,
+          nota_final: nextValues.notaFinal || null,
+          observaciones: nextValues.observaciones || null,
+          temas_estudiante: nextValues.temasEstudiante.filter((i) => i.tema.trim()).map((i) => ({ tema: i.tema.trim(), score: i.score || null })),
+          temas_docente: nextValues.temasDocente.filter((i) => i.tema.trim()).map((i) => ({ tema: i.tema.trim(), score: i.score || null })),
+        });
+        const safeName = estudianteNombre.replace(/\s+/g, "_").replace(/[^\w_-]/g, "");
+        await descargarActaOralPdf(mesaId, inscripcionId, `acta_oral_${safeName}.pdf`);
+      } else {
+        generarActaExamenOralPDF({
+          actaNumero: nextValues.actaNumero,
+          folioNumero: nextValues.folioNumero,
+          fecha: nextValues.fecha,
+          carrera: carrera ?? "",
+          unidadCurricular: unidadCurricular ?? "",
+          curso: nextValues.curso,
+          estudiante: `${estudianteNombre} - DNI ${estudianteDni}`,
+          tribunal: tribunal ?? {},
+          temasElegidosEstudiante: nextValues.temasEstudiante.filter((i) => i.tema.trim()).map((i) => ({ tema: i.tema.trim(), score: i.score || undefined })),
+          temasSugeridosDocente: nextValues.temasDocente.filter((i) => i.tema.trim()).map((i) => ({ tema: i.tema.trim(), score: i.score || undefined })),
+          notaFinal: nextValues.notaFinal,
+          observaciones: nextValues.observaciones,
+        });
+      }
       onClose();
     } catch {
       // el error ya se notific� fuera

@@ -12,12 +12,14 @@ interface TribunalSectionProps {
   docentes: DocenteState[];
   docenteOptions: string[];
   onDocenteInputChange: (index: number, rawValue: string) => void;
+  readOnly?: boolean;
 }
 
 export function TribunalSection({
   docentes,
   docenteOptions,
   onDocenteInputChange,
+  readOnly = false,
 }: TribunalSectionProps) {
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
@@ -50,6 +52,7 @@ export function TribunalSection({
                   onChange={(_, newValue) =>
                     onDocenteInputChange(index, newValue || "")
                   }
+                  disabled={readOnly}
                   renderInput={(params) => (
                     <TextField
                       {...params}

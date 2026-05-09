@@ -4,14 +4,13 @@ import { isAxiosError } from "axios";
 import {
   ActaOralDTO,
   GuardarActaOralPayload,
-  MesaResumenDTO,
   guardarActaOral,
   listarActasOrales,
   obtenerActaOral,
+  descargarActaOralPdf,
 } from "@/api/cargaNotas";
-import { MesaPlanillaDTO } from "@/api/estudiantes";
 import { OralActFormValues, OralActFormTopic } from "@/components/secretaria/OralExamActaDialog";
-import { OralTopicScore, generarActaExamenOralPDF } from "@/utils/actaOralPdf";
+import { OralTopicScore } from "@/utils/actaOralPdf";
 import { FinalRowState } from "../types";
 
 const createTopicRow = (tema = "", score?: string | null): OralActFormTopic => ({
@@ -67,12 +66,7 @@ function mapFormValuesToOralPayload(values: OralActFormValues): GuardarActaOralP
 
 export function useOralExamActa(
   finalSelectedMesaId: number | null,
-  finalRows: FinalRowState[],
   finalReadOnly: boolean,
-  selectedMesaResumen: MesaResumenDTO | null,
-  finalPlanilla: MesaPlanillaDTO | null,
-  selectedMesaCursoLabel: string,
-  tribunalInfo: { presidente: string | null; vocal1: string | null; vocal2: string | null },
 ) {
   const [oralActDrafts, setOralActDrafts] = useState<Record<number, OralActFormValues>>({});
   const [oralDialogRow, setOralDialogRow] = useState<FinalRowState | null>(null);
@@ -172,33 +166,10 @@ export function useOralExamActa(
         enqueueSnackbar("No hay actas orales registradas para esta mesa.", { variant: "info" });
         return;
       }
-      const carrera = selectedMesaResumen?.profesorado_nombre ?? "";
-      const unidadCurricular = finalPlanilla?.materia_nombre ?? selectedMesaResumen?.materia_nombre ?? "";
-      const cursoLabel = selectedMesaCursoLabel;
-      actas.forEach((acta) => {
-        const temasEstudiante = (acta.temas_estudiante ?? []).map((item) => ({
-          tema: item.tema,
-          score: (item.score as OralTopicScore | undefined) || undefined,
-        }));
-        const temasDocente = (acta.temas_docente ?? []).map((item) => ({
-          tema: item.tema,
-          score: (item.score as OralTopicScore | undefined) || undefined,
-        }));
-        generarActaExamenOralPDF({
-          actaNumero: acta.acta_numero ?? undefined,
-          folioNumero: acta.folio_numero ?? undefined,
-          fecha: acta.fecha ?? undefined,
-          carrera,
-          unidadCurricular,
-          curso: acta.curso || cursoLabel,
-          estudiante: `${acta.estudiante} - DNI ${acta.dni}`,
-          tribunal: tribunalInfo,
-          temasElegidosEstudiante: temasEstudiante,
-          temasSugeridosDocente: temasDocente,
-          notaFinal: acta.nota_final ?? undefined,
-          observaciones: acta.observaciones ?? undefined,
-        });
-      });
+      for (const acta of actas) {
+        const safeName = acta.estudiante.replace(/\s+/g, "_").replace(/[^\w_-]/g, "");
+        await descargarActaOralPdf(finalSelectedMesaId, acta.inscripcion_id, `acta_oral_${safeName}.pdf`);
+      }
       enqueueSnackbar("Actas orales descargadas.", { variant: "success" });
     } catch (error) {
       enqueueSnackbar("No se pudieron descargar las actas orales.", { variant: "error" });

@@ -86,6 +86,8 @@ class MateriaOut(Schema):
     is_edi: bool
     fecha_inicio: date | None
     fecha_fin: date | None
+    plan_resolucion: str | None = None
+    permite_mesa_libre: bool = True
 
 class CerrarEDIIn(Schema):
     """Payload para cerrar un EDI y crear uno nuevo en su lugar."""

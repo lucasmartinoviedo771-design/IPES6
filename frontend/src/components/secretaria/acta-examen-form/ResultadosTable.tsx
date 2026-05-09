@@ -49,6 +49,7 @@ interface ResultadosTableProps {
   onDniChange: (internoId: string, dni: string) => void;
   onUpdateEstudiante: (internoId: string, patch: Partial<EstudianteState>) => void;
   onOpenOralActa: (estudiante: EstudianteState) => void;
+  readOnlyEstudiantes?: boolean;
 }
 
 export function ResultadosTable({
@@ -64,6 +65,7 @@ export function ResultadosTable({
   onDniChange,
   onUpdateEstudiante,
   onOpenOralActa,
+  readOnlyEstudiantes = false,
 }: ResultadosTableProps) {
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
@@ -71,9 +73,11 @@ export function ResultadosTable({
         <Typography variant="h6" fontWeight={600}>
           Resultados del examen
         </Typography>
-        <Button startIcon={<AddIcon />} variant="outlined" onClick={onAgregar}>
-          Agregar fila
-        </Button>
+        {!readOnlyEstudiantes && (
+          <Button startIcon={<AddIcon />} variant="outlined" onClick={onAgregar}>
+            Agregar fila
+          </Button>
+        )}
       </Stack>
       <Box sx={{ overflowX: "auto" }}>
         <Table size="small">
@@ -115,6 +119,7 @@ export function ResultadosTable({
                     onChange={(event) =>
                       onUpdateEstudiante(estudiante.internoId, { permiso_examen: event.target.value })
                     }
+                    disabled={readOnlyEstudiantes}
                     sx={{
                       "& .MuiInputBase-input": {
                         py: 0.5,
@@ -131,11 +136,14 @@ export function ResultadosTable({
                     inputProps={{ maxLength: 8 }}
                     value={estudiante.dni}
                     onChange={(event) => onDniChange(estudiante.internoId, event.target.value)}
+                    disabled={readOnlyEstudiantes}
                   />
                 </TableCell>
                 <TableCell>
                   {loadingEstudianteDni === estudiante.internoId ? (
                     <CircularProgress size={20} />
+                  ) : readOnlyEstudiantes ? (
+                    <TextField size="small" fullWidth value={estudiante.apellido_nombre} disabled />
                   ) : estudiantes && estudiantes.length > 0 ? (
                     <Autocomplete
                       freeSolo
@@ -273,7 +281,7 @@ export function ResultadosTable({
                     color="error"
                     size="small"
                     onClick={() => onEliminar(estudiante.internoId)}
-                    disabled={estudiantes.length === 1}
+                    disabled={estudiantes.length === 1 || readOnlyEstudiantes}
                   >
                     <DeleteIcon />
                   </IconButton>

@@ -41,6 +41,7 @@ interface NuevaMesaFormProps {
   mesaEspecial: boolean;
   mesaTipoLabel: string | null;
   handleMesaEspecialChange: (checked: boolean) => void;
+  permiteLibre?: boolean;
   modalidadesSeleccionadas: MesaModalidad[];
   handleToggleModalidad: (modalidad: MesaModalidad, enabled: boolean) => void;
   docentesLista: DocenteDTO[];
@@ -48,6 +49,7 @@ interface NuevaMesaFormProps {
   tribunalDocentes: { presidente: DocenteDTO | null; vocal1: DocenteDTO | null; vocal2: DocenteDTO | null };
   handleTribunalChange: (rol: 'presidente' | 'vocal1' | 'vocal2', value: DocenteDTO | null) => void;
   onGuardar: () => void;
+  saving?: boolean;
 }
 
 export function NuevaMesaForm({
@@ -72,6 +74,7 @@ export function NuevaMesaForm({
   mesaEspecial,
   mesaTipoLabel,
   handleMesaEspecialChange,
+  permiteLibre = true,
   modalidadesSeleccionadas,
   handleToggleModalidad,
   docentesLista,
@@ -79,6 +82,7 @@ export function NuevaMesaForm({
   tribunalDocentes,
   handleTribunalChange,
   onGuardar,
+  saving,
 }: NuevaMesaFormProps) {
   return (
     <Box sx={{ mt: 1 }}>
@@ -170,26 +174,27 @@ export function NuevaMesaForm({
                 </TextField>
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField
-                  select
-                  label="Asignatura (Materia)"
+                <Autocomplete
                   size="small"
                   fullWidth
-                  value={form.materia_id ?? ''}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      materia_id: e.target.value ? Number(e.target.value) : undefined,
-                    }))
-                  }
+                  options={materiasFiltradas}
+                  getOptionLabel={(m) => `[${m.anio}º] ${m.nombre}${m.planResolucion ? ` (${m.planResolucion})` : ''}`}
+                  value={materiasFiltradas.find(m => m.id === form.materia_id) || null}
+                  onChange={(_event, value) => {
+                    setForm(f => ({ ...f, materia_id: value?.id }));
+                  }}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
                   disabled={!planNueva || !materiasFiltradas.length}
-                  error={!form.materia_id}
-                >
-                  <MenuItem value="">Seleccionar asignatura...</MenuItem>
-                  {materiasFiltradas.map(m => (
-                    <MenuItem key={m.id} value={m.id}>{m.nombre}</MenuItem>
-                  ))}
-                </TextField>
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Asignatura (Materia)"
+                      placeholder="Seleccionar o buscar..."
+                      error={!form.materia_id}
+                      helperText={!planNueva ? "Seleccione un plan primero" : (materiasFiltradas.length === 0 ? "No hay materias para los filtros seleccionados" : "")}
+                    />
+                  )}
+                />
               </Grid>
             </Grid>
           </Box>
@@ -299,13 +304,26 @@ export function NuevaMesaForm({
             </Typography>
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} md={3}>
-                <TextField label="Fecha 1º Llamado" size="small" fullWidth type="date" value={form.fecha || ''} onChange={(e) => setForm(f => ({ ...f, fecha: e.target.value }))} InputLabelProps={{ shrink: true }} />
+                <TextField 
+                  label="Fecha 1º Llamado" 
+                  size="small" 
+                  fullWidth 
+                  type="date" 
+                  value={form.fecha || ''} 
+                  onChange={(e) => setForm(f => ({ ...f, fecha: e.target.value }))} 
+                  InputLabelProps={{ shrink: true }} 
+                  error={!!form.fecha && form.fecha < new Date().toISOString().slice(0, 10)}
+                  helperText={form.fecha && form.fecha < new Date().toISOString().slice(0, 10) ? "Fecha pasada: no visible para alumnos" : ""}
+                />
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField label="Fecha 2º Llamado (Opcional)" size="small" fullWidth type="date" value={form.fecha2 || ''} onChange={(e) => setForm(f => ({ ...f, fecha2: e.target.value }))} InputLabelProps={{ shrink: true }} />
               </Grid>
               <Grid item xs={6} md={3}>
                 <TextField label="Desde" size="small" fullWidth type="time" value={form.hora_desde || ''} onChange={(e) => setForm(f => ({ ...f, hora_desde: e.target.value }))} InputLabelProps={{ shrink: true }} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <TextField label="Hasta" size="small" fullWidth type="time" value={form.hora_hasta || ''} onChange={(e) => setForm(f => ({ ...f, hora_hasta: e.target.value }))} InputLabelProps={{ shrink: true }} />
               </Grid>
               <Grid item xs={12} md={6}>
                 <TextField label="Aula / Espacio (Opcional)" placeholder="Ej: Aula 4, Zoom, etc." size="small" fullWidth value={form.aula || ''} onChange={(e) => setForm(f => ({ ...f, aula: e.target.value }))} />
@@ -316,13 +334,18 @@ export function NuevaMesaForm({
               <Grid item xs={6} md={3}>
                 <Box sx={{ border: '1px solid #ccc', borderRadius: 1, p: '4px 8px', height: '40px' }}>
                   <FormGroup row>
-                    {(['REG', 'LIB'] as MesaModalidad[]).map((modalidad) => (
-                      <FormControlLabel
-                        key={modalidad}
-                        control={<Checkbox size="small" checked={modalidadesSeleccionadas.includes(modalidad)} onChange={(e) => handleToggleModalidad(modalidad, e.target.checked)} />}
-                        label={<Typography variant="caption">{MESA_MODALIDAD_LABEL[modalidad]}</Typography>}
-                      />
-                    ))}
+                    {(['REG', 'LIB'] as MesaModalidad[]).map((modalidad) => {
+                      const disabled = modalidad === 'LIB' && !permiteLibre;
+                      return (
+                        <FormControlLabel
+                          key={modalidad}
+                          disabled={disabled}
+                          title={disabled ? 'Esta materia no admite examen libre' : undefined}
+                          control={<Checkbox size="small" checked={modalidadesSeleccionadas.includes(modalidad)} onChange={(e) => handleToggleModalidad(modalidad, e.target.checked)} disabled={disabled} />}
+                          label={<Typography variant="caption" color={disabled ? 'text.disabled' : undefined}>{MESA_MODALIDAD_LABEL[modalidad]}</Typography>}
+                        />
+                      );
+                    })}
                   </FormGroup>
                 </Box>
               </Grid>
@@ -334,8 +357,14 @@ export function NuevaMesaForm({
                <Typography variant="caption" color="text.secondary">
                   Verifica que los datos del tribunal y horario sean correctos antes de guardar.
                </Typography>
-               <Button variant="contained" size="large" onClick={onGuardar} sx={{ px: 4, py: 1.2, fontWeight: 700, borderRadius: 2 }}>
-                 Guardar Mesa
+               <Button 
+                 variant="contained" 
+                 size="large" 
+                 onClick={onGuardar} 
+                 disabled={saving}
+                 sx={{ px: 4, py: 1.2, fontWeight: 700, borderRadius: 2, minWidth: 160 }}
+               >
+                 {saving ? <CircularProgress size={24} color="inherit" /> : 'Guardar Mesa'}
                </Button>
             </Box>
           </Box>

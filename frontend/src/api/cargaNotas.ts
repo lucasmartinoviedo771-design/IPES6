@@ -449,6 +449,7 @@ export async function obtenerActaOral(
 ): Promise<ActaOralDTO> {
   const { data } = await client.get<ActaOralDTO>(
     `/estudiantes/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}`,
+    { suppressErrorToast: true } as Parameters<typeof client.get>[1],
   );
   return data;
 }
@@ -470,4 +471,19 @@ export async function listarActasOrales(mesaId: number): Promise<ActaOralListIte
     `/estudiantes/carga-notas/mesas/${mesaId}/oral-actas`,
   );
   return data;
+}
+
+export async function descargarActaOralPdf(mesaId: number, inscripcionId: number, nombreArchivo?: string): Promise<void> {
+  const { data } = await client.get(
+    `/estudiantes/carga-notas/mesas/${mesaId}/oral-actas/${inscripcionId}/pdf`,
+    { responseType: "blob" },
+  );
+  const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo ?? `acta_oral_${inscripcionId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

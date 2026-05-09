@@ -34,6 +34,7 @@ export type MateriaOption = {
   anio: number | null;
   cuatrimestre: string | null;
   permiteLibre: boolean;
+  planResolucion?: string | null;
 };
 
 export type MesaTipo = 'FIN' | 'EXT' | 'ESP';

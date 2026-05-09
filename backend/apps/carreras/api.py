@@ -276,6 +276,10 @@ def list_materias_for_plan(
     if regimen: materias = materias.filter(regimen=regimen)
     if tipo_formacion: materias = materias.filter(tipo_formacion=tipo_formacion)
 
+    # Asignar la resolución del plan y permiso de libre a cada materia para el esquema
+    for m in materias:
+        m.plan_resolucion = plan.resolucion
+
     return materias
 
 
@@ -330,6 +334,9 @@ def listar_materias(
     if not incluir_edis_cerrados:
         qs = qs.exclude(is_edi=True, fecha_fin__isnull=False)
         
+    for m in qs:
+        m.plan_resolucion = m.plan_de_estudio.resolucion if m.plan_de_estudio else None
+
     return qs[:500]
 
 @materias_router.get("/{materia_id}", response=MateriaOut, auth=JWTAuth())

@@ -16,10 +16,15 @@ import { useAuth } from '@/context/AuthContext';
 
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 export default function MesasPage() {
   const { roleOverride, user } = useAuth();
   const state = useMesasState();
+  const [saving, setSaving] = React.useState(false);
+  const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   
   // Determinar si el usuario tiene permisos de edición (Secretaría o Admin)
   const canEdit = React.useMemo(() => {
@@ -32,6 +37,13 @@ export default function MesasPage() {
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
+    state.setVentanaId('');
+    state.setTipo('');
+    state.setModalidadFiltro('');
+    state.setCodigoFiltro('');
+    state.setProfesoradoFiltro('');
+    state.setAnioFiltro('');
+    state.setCuatrimestreFiltro('');
   };
 
   const hoy = new Date().toISOString().slice(0, 10);
@@ -40,16 +52,16 @@ export default function MesasPage() {
 
   const guardar = async () => {
     if (!state.form.materia_id) {
-      alert('Selecciona la materia de la mesa.');
+      setErrorMsg('Selecciona la materia de la mesa.');
       return;
     }
     if (!state.mesaEspecial && !state.ventanaNueva) {
-      alert('Selecciona un periodo para la mesa.');
+      setErrorMsg('Selecciona un periodo para la mesa.');
       return;
     }
     const tipo = state.mesaTipoSeleccionado;
     if (!tipo) {
-      alert('No se pudo determinar el tipo de mesa.');
+      setErrorMsg('No se pudo determinar el tipo de mesa.');
       return;
     }
     const modalidadesAcrear = state.modalidadesSeleccionadas.length ? state.modalidadesSeleccionadas : ['REG'];
@@ -65,6 +77,7 @@ export default function MesasPage() {
       docente_vocal2_id: state.tribunalDocentes.vocal2?.id ?? null,
       ventana_id: state.mesaEspecial ? null : Number(state.ventanaNueva),
     };
+    setSaving(true);
     try {
       const fechas = [state.form.fecha];
       if (state.form.fecha2) {
@@ -77,6 +90,7 @@ export default function MesasPage() {
           await api.post(`/mesas`, payload);
         }
       }
+      setSuccessMsg('Mesa(s) creada(s) correctamente.');
       state.setForm({ 
         tipo: 'FIN', 
         fecha: new Date().toISOString().slice(0, 10), 
@@ -90,18 +104,26 @@ export default function MesasPage() {
       setActiveTab(1); // Mover a la pestaña de activas tras crear
     } catch (error) {
       console.error('No se pudieron crear las mesas', error);
-      alert('No se pudieron crear las mesas.');
+      setErrorMsg('No se pudieron crear las mesas.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleEliminar = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta mesa permanentemente?')) return;
+    const mesaToDelete = [...mesasFuturas, ...mesasPasadas].find(m => m.id === id);
+    let msg = '¿Estás seguro de que deseas eliminar esta mesa permanentemente?';
+    if (mesaToDelete && (mesaToDelete.inscriptos_count ?? 0) > 0) {
+      msg = `¡CUIDADO! Esta mesa tiene ${mesaToDelete.inscriptos_count} alumno(s) inscripto(s).\n\nEliminarla borrará también sus inscripciones y es una acción irreversible. ¿Realmente deseas proceder?`;
+    }
+    if (!window.confirm(msg)) return;
     try {
       await api.delete(`/mesas/${id}`);
       await state.loadMesas();
+      setSuccessMsg("Mesa eliminada correctamente.");
     } catch (error) {
        console.error("Error al eliminar mesa", error);
-       alert("No se pudo eliminar la mesa.");
+       setErrorMsg("No se pudo eliminar la mesa.");
     }
   };
 
@@ -273,6 +295,7 @@ export default function MesasPage() {
             mesaEspecial={state.mesaEspecial}
             mesaTipoLabel={state.mesaTipoLabel}
             handleMesaEspecialChange={state.handleMesaEspecialChange}
+            permiteLibre={state.materiaSeleccionada?.permiteLibre ?? true}
             modalidadesSeleccionadas={state.modalidadesSeleccionadas}
             handleToggleModalidad={state.handleToggleModalidad}
             docentesLista={state.docentesLista}
@@ -280,9 +303,32 @@ export default function MesasPage() {
             tribunalDocentes={state.tribunalDocentes}
             handleTribunalChange={state.handleTribunalChange}
             onGuardar={guardar}
+            saving={saving}
           />
         </Box>
       )}
+
+      <Snackbar
+        open={!!successMsg}
+        autoHideDuration={6000}
+        onClose={() => setSuccessMsg(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSuccessMsg(null)} severity="success" sx={{ width: '100%' }}>
+          {successMsg}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!errorMsg}
+        autoHideDuration={6000}
+        onClose={() => setErrorMsg(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setErrorMsg(null)} severity="error" sx={{ width: '100%' }}>
+          {errorMsg}
+        </Alert>
+      </Snackbar>
 
       {/* TABS 1 Y 2: LISTADOS CON FILTROS */}
       {(activeTab === 1 || activeTab === 2) && (

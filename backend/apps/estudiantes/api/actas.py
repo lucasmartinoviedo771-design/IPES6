@@ -9,7 +9,7 @@ contra Mesas de Examen activas.
 from datetime import datetime
 from decimal import Decimal
 import uuid
-from django.db import transaction
+from django.db import models, transaction
 from apps.common.date_utils import format_date, format_datetime
 from apps.common.audit import log_action_from_request, snapshot
 from django.utils import timezone
@@ -240,7 +240,7 @@ def obtener_acta(request, acta_id: int):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@ensure_roles(["admin", "secretaria", "bedel", "docente"])
 def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     """
     Crea un acta de examen y sincroniza los resultados con las inscripciones a mesa.
@@ -268,11 +268,33 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
              return 400, ApiResponse(ok=False, message="Formato de fecha inválido. Use YYYY-MM-DD")
 
     # Validaciones de pertenencia académica
+    from core.permissions import get_user_roles
+    user_roles = get_user_roles(request.user)
+    is_docente_only = "docente" in user_roles and not user_roles.intersection({"admin", "secretaria", "bedel"})
+
     try:
         profesorado = Profesorado.objects.get(pk=payload.profesorado_id)
-        ensure_profesorado_access(request.user, profesorado.id)
+        if not is_docente_only:
+            ensure_profesorado_access(request.user, profesorado.id)
     except Profesorado.DoesNotExist:
         return 404, ApiResponse(ok=False, message="Profesorado no encontrado.")
+
+    # Si es solo docente, verificar que pertenece al tribunal de una mesa para esa materia/fecha
+    if is_docente_only:
+        try:
+            docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
+            tribunal_valido = MesaExamen.objects.filter(
+                materia_id=payload.materia_id,
+                fecha=acta_fecha,
+            ).filter(
+                models.Q(docente_presidente=docente_obj) |
+                models.Q(docente_vocal1=docente_obj) |
+                models.Q(docente_vocal2=docente_obj)
+            ).exists()
+            if not tribunal_valido:
+                return 403, ApiResponse(ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta.")
+        except Docente.DoesNotExist:
+            return 403, ApiResponse(ok=False, message="No se encontró un perfil de docente asociado a su usuario.")
 
     try:
         materia = Materia.objects.select_related("plan_de_estudio").get(pk=payload.materia_id)
@@ -328,12 +350,43 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     numero = _next_acta_numero(profesorado.id, anio)
     codigo = _compute_acta_codigo(profesorado, anio, numero)
 
+    # Validación académica al momento de generar el acta
+    # (complementa la verificación al inscribirse — puede haber cambiado desde entonces)
+    from apps.estudiantes.api.mesas_api import _check_academic_eligibility
+    AUSENTES = {ActaExamenEstudiante.NOTA_AUSENTE_JUSTIFICADO, ActaExamenEstudiante.NOTA_AUSENTE_INJUSTIFICADO}
+
+    for est_item in payload.estudiantes:
+        clean_dni = est_item.dni.strip()
+        if not clean_dni:
+            continue
+        # Ausentes no se validan académicamente
+        if est_item.calificacion_definitiva in AUSENTES:
+            continue
+        est_obj = Estudiante.objects.filter(persona__dni=clean_dni).first()
+        if not est_obj:
+            continue  # Legajo histórico nuevo — se validará en otro momento
+        # Buscar la mesa asociada por materia y fecha
+        mesa = MesaExamen.objects.filter(materia=materia, fecha=acta_fecha).first()
+        if mesa:
+            eligible, motivo, _ = _check_academic_eligibility(est_obj, mesa)
+            if not eligible:
+                # Advertencia no bloqueante para inscripciones ya existentes;
+                # bloqueante si el estudiante no está inscripto (caso manual sin mesa)
+                insc = InscripcionMesa.objects.filter(
+                    estudiante=est_obj, mesa=mesa, estado=InscripcionMesa.Estado.INSCRIPTO
+                ).exists()
+                if not insc:
+                    return 400, ApiResponse(
+                        ok=False,
+                        message=f"El estudiante {clean_dni} no cumple los requisitos para rendir: {motivo}"
+                    )
+
     # Clasificación de resultados para auditoría de totales
     categoria_counts = {"aprobado": 0, "desaprobado": 0, "ausente": 0}
     for est_item in payload.estudiantes:
         if est_item.calificacion_definitiva not in ACTA_NOTA_CHOICES:
             return 400, ApiResponse(ok=False, message=f"Nota inválida para {est_item.dni}")
-        
+
         # Salvaguarda: Evitar dobles aprobaciones en trayectoria
         if _clasificar_resultado(est_item.calificacion_definitiva) == "aprobado":
             est_obj = Estudiante.objects.filter(persona__dni=est_item.dni).first()
@@ -439,7 +492,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@ensure_roles(["admin", "secretaria", "bedel", "docente"])
 def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Body(...)):
     """
     Actualiza o rectifica un acta de examen existente.

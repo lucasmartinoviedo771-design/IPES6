@@ -1,0 +1,204 @@
+{% extends "core/pdf_base.html" %}
+
+{% block page_size %}size: A4; margin: 5mm 12mm 8mm 12mm;{% endblock %}
+{% block page_numbers %}{% endblock %}
+
+{% block extra_style %}
+<style>
+  body { font-family: "Helvetica", Arial, sans-serif; font-size: 8pt; color: #000; margin: 0; padding: 0; }
+
+  /* Reduce header logo size */
+  #pdf-header-wrapper { margin-bottom: 4px !important; padding-bottom: 4px !important; }
+  #pdf-header-wrapper img { height: 55px !important; }
+  #pdf-header-wrapper div[style*="font-size:15pt"] { font-size: 12pt !important; }
+  #pdf-header-wrapper div[style*="font-size:9pt"] { font-size: 7.5pt !important; }
+
+  .doc-title {
+    text-align: center;
+    font-size: 10.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 2mm 0 3mm 0;
+    border-bottom: 2px solid #c24b17;
+    padding-bottom: 2mm;
+  }
+
+  /* ── Meta row ── */
+  .meta-row { display: flex; justify-content: space-between; margin-bottom: 2.5mm; gap: 4mm; }
+  .meta-field { flex: 1; border-bottom: 1px solid #000; padding-bottom: 0.5mm; font-size: 8pt; }
+  .meta-field .lbl { font-weight: bold; }
+
+  /* ── Labeled line fields ── */
+  .field-line {
+    display: flex; align-items: baseline;
+    border-bottom: 1px solid #000;
+    margin-bottom: 2mm; padding-bottom: 0.5mm; font-size: 8pt;
+  }
+  .field-line .lbl { font-weight: bold; white-space: nowrap; margin-right: 2mm; }
+  .field-line .val { flex: 1; }
+
+  /* ── Tribunal box ── */
+  .tribunal-box { border: 1px solid #000; padding: 1.5mm 3mm; margin-bottom: 2.5mm; }
+  .tribunal-box .lbl { font-weight: bold; margin-bottom: 1mm; font-size: 8pt; }
+  .tribunal-box .line { margin-bottom: 1mm; font-size: 8pt; }
+
+  /* ── Topic tables ── */
+  .table-title { font-weight: bold; font-size: 8pt; margin: 2mm 0 1mm 0; }
+  table.topics {
+    width: 100%; border-collapse: collapse;
+    font-size: 6.5pt; table-layout: fixed; page-break-inside: avoid;
+  }
+  table.topics th, table.topics td {
+    border: 1px solid #000; padding: 1mm 1.5mm; vertical-align: middle;
+  }
+  table.topics th { font-weight: bold; text-align: center; background: #f5f5f5; }
+  table.topics td.tema-col { text-align: left; }
+  table.topics td.score-col { text-align: center; font-weight: bold; font-size: 9pt; }
+  col.tema { width: 30%; }
+  col.score { width: 14%; }
+
+  /* ── Nota final ── */
+  .nota-row { display: flex; align-items: baseline; margin: 2.5mm 0 2mm 0; font-size: 9pt; }
+  .nota-row .lbl { font-weight: bold; margin-right: 2mm; }
+  .nota-row .val { border-bottom: 1px solid #000; min-width: 40mm; padding-bottom: 0.5mm; }
+
+  /* ── Observaciones ── */
+  .obs-lbl { font-weight: bold; font-size: 8pt; margin-bottom: 1mm; }
+  .obs-box { border: 1px solid #000; min-height: 14mm; padding: 1.5mm 2mm; font-size: 8pt; margin-bottom: 4mm; }
+
+  /* ── Firmas ── */
+  .signatures { display: flex; justify-content: space-between; margin-top: 3mm; }
+  .sign-box { text-align: center; width: 30%; }
+  .sign-space { height: 18mm; }
+  .sign-line { border-top: 1px solid #000; margin-bottom: 1.5mm; }
+  .sign-role { font-weight: bold; font-size: 8pt; }
+  .sign-name { font-size: 7pt; color: #333; }
+</style>
+{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block content %}
+{% include "core/pdf_header.html" %}
+<div class="doc-title">Acta de Examen Oral</div>
+
+<!-- Meta row -->
+<div class="meta-row">
+  <div class="meta-field"><span class="lbl">ACTA N°:</span> {{ acta_numero }}</div>
+  <div class="meta-field"><span class="lbl">FOLIO N°:</span> {{ folio_numero }}</div>
+  <div class="meta-field"><span class="lbl">FECHA:</span> {{ fecha }}</div>
+</div>
+
+<!-- Main fields -->
+<div class="field-line"><span class="lbl">CARRERA:</span><span class="val">{{ carrera }}</span></div>
+<div class="field-line"><span class="lbl">UNIDAD CURRICULAR:</span><span class="val">{{ unidad_curricular }}</span></div>
+<div class="field-line"><span class="lbl">CURSO:</span><span class="val">{{ curso }}</span></div>
+<div class="field-line"><span class="lbl">ALUMNO/A:</span><span class="val">{{ estudiante }}</span></div>
+
+<!-- Tribunal -->
+<div class="tribunal-box">
+  <div class="lbl">TRIBUNAL:</div>
+  {% if tribunal.presidente %}<div class="line">Presidente: {{ tribunal.presidente }}</div>{% endif %}
+  {% if tribunal.vocal1 %}<div class="line">Vocal 1: {{ tribunal.vocal1 }}</div>{% endif %}
+  {% if tribunal.vocal2 %}<div class="line">Vocal 2: {{ tribunal.vocal2 }}</div>{% endif %}
+</div>
+
+<!-- Temas elegidos por el estudiante -->
+<div class="table-title">Elegidos por el estudiante</div>
+<table class="topics">
+  <colgroup>
+    <col class="tema">
+    <col class="score"><col class="score"><col class="score"><col class="score"><col class="score">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>TEMAS</th>
+      <th>Responde mal / no contesta</th>
+      <th>Responde incompleto o regular</th>
+      <th>Responde bien, lo preciso, no amplia</th>
+      <th>Responde muy bien, amplia</th>
+      <th>Responde excelente, realiza aportes personales</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in temas_estudiante %}
+    <tr>
+      <td class="tema-col">{{ forloop.counter }}. {{ item.tema }}</td>
+      <td class="score-col">{% if item.score == "MAL" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "INCOMP" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "BIEN" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "MUY_BIEN" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "EXCELENTE" %}X{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td class="tema-col">—</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Temas sugeridos por el docente -->
+<div class="table-title">Sugeridos por el docente</div>
+<table class="topics">
+  <colgroup>
+    <col class="tema">
+    <col class="score"><col class="score"><col class="score"><col class="score"><col class="score">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>TEMAS</th>
+      <th>Responde mal / no contesta</th>
+      <th>Responde incompleto o regular</th>
+      <th>Responde bien, lo preciso, no amplia</th>
+      <th>Responde muy bien, amplia</th>
+      <th>Responde excelente, realiza aportes personales</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in temas_docente %}
+    <tr>
+      <td class="tema-col">{{ forloop.counter }}. {{ item.tema }}</td>
+      <td class="score-col">{% if item.score == "MAL" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "INCOMP" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "BIEN" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "MUY_BIEN" %}X{% endif %}</td>
+      <td class="score-col">{% if item.score == "EXCELENTE" %}X{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td class="tema-col">—</td><td></td><td></td><td></td><td></td><td></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Nota final -->
+<div class="nota-row">
+  <span class="lbl">NOTA FINAL:</span>
+  <span class="val">{{ nota_final }}</span>
+</div>
+
+<!-- Observaciones -->
+<div class="obs-lbl">OBSERVACIONES:</div>
+<div class="obs-box">{{ observaciones }}</div>
+
+<!-- Firmas -->
+<div class="signatures">
+  <div class="sign-box">
+    <div class="sign-space"></div>
+    <div class="sign-line"></div>
+    <div class="sign-role">Vocal 1</div>
+    <div class="sign-name">{{ tribunal.vocal1 }}</div>
+  </div>
+  <div class="sign-box">
+    <div class="sign-space"></div>
+    <div class="sign-line"></div>
+    <div class="sign-role">Presidente</div>
+    <div class="sign-name">{{ tribunal.presidente }}</div>
+  </div>
+  <div class="sign-box">
+    <div class="sign-space"></div>
+    <div class="sign-line"></div>
+    <div class="sign-role">Vocal 2</div>
+    <div class="sign-name">{{ tribunal.vocal2 }}</div>
+  </div>
+</div>
+{% endblock %}

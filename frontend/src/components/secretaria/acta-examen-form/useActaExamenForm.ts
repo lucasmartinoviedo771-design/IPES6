@@ -17,7 +17,7 @@ import {
 import { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
 import { fetchEstudianteAdminDetail } from "@/api/estudiantes";
 
-import { DocenteState, EstudianteState, ActaExamenFormProps } from './types';
+import { DocenteState, EstudianteState, ActaExamenFormProps, EstudiantePreseleccionado } from './types';
 import {
   createEmptyDocentes,
   createEmptyEstudiante,
@@ -28,7 +28,9 @@ export function useActaExamenForm({
   strict = true,
   successMessage = "Acta generada correctamente.",
   editId,
-}: Pick<ActaExamenFormProps, 'strict' | 'successMessage' | 'editId'>) {
+  mesaPreseleccionada,
+  estudiantesPreseleccionados,
+}: Pick<ActaExamenFormProps, 'strict' | 'successMessage' | 'editId' | 'mesaPreseleccionada' | 'estudiantesPreseleccionados'>) {
   const queryClient = useQueryClient();
   const metadataQuery = useQuery<ActaMetadataDTO>({
     queryKey: ["acta-examen-metadata"],
@@ -208,6 +210,33 @@ export function useActaExamenForm({
     }
   }, [editId, actaParaEditar, metadata, isInitialPopulated]);
 
+  // Auto-popular desde la mesa seleccionada en la planilla (modo integrado).
+  // Depende de metadata porque applyMesaSeleccionada necesita los IDs resueltos.
+  useEffect(() => {
+    if (!mesaPreseleccionada || editId || !metadata) return;
+    applyMesaSeleccionada(mesaPreseleccionada);
+    setMesaSeleccionada(mesaPreseleccionada);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesaPreseleccionada?.id, !!metadata]);
+
+  // Auto-popular estudiantes desde la planilla (modo integrado)
+  useEffect(() => {
+    if (!estudiantesPreseleccionados || editId) return;
+    if (estudiantesPreseleccionados.length === 0) {
+      setEstudiantes([createEmptyEstudiante(1)]);
+      return;
+    }
+    setEstudiantes(
+      estudiantesPreseleccionados.map((e, index) => ({
+        ...createEmptyEstudiante(index + 1),
+        dni: e.dni,
+        apellido_nombre: e.apellido_nombre,
+        inscripcionId: e.inscripcionId,
+      }))
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estudiantesPreseleccionados?.length, mesaPreseleccionada?.id]);
+
   useEffect(() => {
     if (!!editId && !isInitialPopulated) return;
     if (!metadata) return;
@@ -292,12 +321,24 @@ export function useActaExamenForm({
     if (mesa.profesorado_id) setProfesoradoId(String(mesa.profesorado_id));
     if (mesa.plan_id) setPlanId(String(mesa.plan_id));
     if (mesa.materia_id) setMateriaId(String(mesa.materia_id));
-    if (mesa.fecha) setFecha(dayjs(mesa.fecha).format("YYYY-MM-DD"));
+    if (mesa.fecha) {
+      // Acepta tanto "DD/MM/YYYY" (backend management) como "YYYY-MM-DD" (ISO)
+      const parsed = mesa.fecha.includes("/")
+        ? dayjs(mesa.fecha, "DD/MM/YYYY")
+        : dayjs(mesa.fecha);
+      if (parsed.isValid()) setFecha(parsed.format("YYYY-MM-DD"));
+    }
     if (mesa.modalidad === "LIB") setTipo("LIB");
     else if (mesa.modalidad === "REG") setTipo("REG");
     if (mesa.docentes && mesa.docentes.length) {
+      // Normaliza roles: "Presidente"→"PRES", "Vocal 1"→"VOC1", "Vocal 2"→"VOC2"
+      const ROL_MAP: Record<string, string> = {
+        "Presidente": "PRES", "PRES": "PRES",
+        "Vocal 1": "VOC1", "VOC1": "VOC1",
+        "Vocal 2": "VOC2", "VOC2": "VOC2",
+      };
       setDocentes((prev) => prev.map((doc) => {
-        const remoto = mesa.docentes?.find((item) => item.rol === doc.rol);
+        const remoto = mesa.docentes?.find((item) => (ROL_MAP[item.rol] ?? item.rol) === doc.rol);
         if (!remoto) return doc;
         return { ...doc, docente_id: remoto.docente_id ?? null, nombre: remoto.nombre ?? "", dni: remoto.dni ?? "", inputValue: remoto.nombre ?? "" };
       }));

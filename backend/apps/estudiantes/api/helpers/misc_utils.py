@@ -44,7 +44,7 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
         # Si no hay fecha de cierre, asumimos que no hay vigencia calculable (o es infinita?)
         # Retornamos la fecha actual + 2 años como fallback seguro para evitar crash
         from django.utils import timezone
-        limite = timezone.now().date() + timedelta(days=365 * 2)
+        limite = _add_years(timezone.now().date(), 2)
         return limite, 0
 
     fecha_base = _add_years(regularidad.fecha_cierre, 2)

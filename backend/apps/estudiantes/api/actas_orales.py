@@ -1,4 +1,6 @@
 from datetime import date
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from ninja import Router, Schema, Body
 from ninja.errors import HttpError
 
@@ -50,7 +52,7 @@ def obtener_acta_oral(request, mesa_id: int, inscripcion_id: int):
         curso=acta.curso or None,
         nota_final=acta.nota_final or None,
         observaciones=acta.observaciones or None,
-        temas_estudiante=acta.temas_estudiante or [],
+        temas_estudiante=acta.temas_alumno or [],
         temas_docente=acta.temas_docente or [],
     )
 
@@ -90,7 +92,7 @@ def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaO
             "curso": payload.curso or "",
             "nota_final": payload.nota_final or "",
             "observaciones": payload.observaciones or "",
-            "temas_estudiante": temas_estudiante,
+            "temas_alumno": temas_estudiante,
             "temas_docente": temas_docente,
         },
     )
@@ -135,3 +137,70 @@ def listar_actas_orales(request, mesa_id: int):
         )
 
     return payload
+
+
+@router.get(
+    "/mesas/{mesa_id}/oral-actas/{inscripcion_id}/pdf",
+    auth=JWTAuth(),
+)
+def descargar_acta_oral_pdf(request, mesa_id: int, inscripcion_id: int):
+    from django.conf import settings
+    import os
+    from weasyprint import HTML
+
+    try:
+        inscripcion = _get_inscripcion_mesa_or_404(mesa_id, inscripcion_id)
+    except HttpError as exc:
+        return exc.status_code, ApiResponse(ok=False, message=str(exc))
+
+    acta: MesaActaOral | None = getattr(inscripcion, "acta_oral", None)
+    if not acta:
+        return HttpResponse("Acta oral no registrada.", status=404)
+
+    mesa = inscripcion.mesa
+    materia = mesa.materia
+    profesorado = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
+    estudiante = inscripcion.estudiante
+    est_nombre = estudiante.user.get_full_name().strip() or f"DNI {estudiante.dni}"
+
+    pres = mesa.docente_presidente
+    voc1 = mesa.docente_vocal1
+    voc2 = mesa.docente_vocal2
+
+    def docente_nombre(d):
+        if not d:
+            return ""
+        return f"{d.persona.apellido.upper()}, {d.persona.nombre}" if d.persona else ""
+
+    logo_left  = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
+    logo_right = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
+
+    fecha_str = acta.fecha.strftime("%d/%m/%Y") if acta.fecha else ""
+
+    context = {
+        "logo_left_path":  logo_left,
+        "logo_right_path": logo_right,
+        "acta_numero":     acta.acta_numero or "",
+        "folio_numero":    acta.folio_numero or "",
+        "fecha":           fecha_str,
+        "carrera":         profesorado.nombre if profesorado else "",
+        "unidad_curricular": materia.nombre if materia else "",
+        "curso":           mesa.codigo or acta.curso or "",
+        "estudiante":      f"{est_nombre} - DNI {estudiante.dni}",
+        "tribunal": {
+            "presidente": docente_nombre(pres),
+            "vocal1":     docente_nombre(voc1),
+            "vocal2":     docente_nombre(voc2),
+        },
+        "temas_estudiante": acta.temas_alumno or [],
+        "temas_docente":    acta.temas_docente or [],
+        "nota_final":       acta.nota_final or "",
+        "observaciones":    acta.observaciones or "",
+    }
+
+    html_string = render_to_string("core/acta_oral_pdf.html", context)
+    response = HttpResponse(content_type="application/pdf")
+    safe_name = est_nombre.replace(" ", "_").replace(",", "")
+    response["Content-Disposition"] = f'attachment; filename="acta_oral_{safe_name}.pdf"'
+    HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
+    return response

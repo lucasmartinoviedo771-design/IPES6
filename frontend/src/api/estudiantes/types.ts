@@ -543,6 +543,11 @@ export type MesaListadoItemDTO = {
   correlativas_aprob?: number[];
   correlativas_regular?: number[];
   codigo?: string | null;
+  tribunal?: {
+    presidente?: string | null;
+    vocal1?: string | null;
+    vocal2?: string | null;
+  };
 };
 
 export type MesaListadoParams = {

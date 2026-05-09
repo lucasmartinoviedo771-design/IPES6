@@ -47,6 +47,7 @@ interface EncabezadoActaSectionProps {
   setLibro: (v: string) => void;
   observaciones: string;
   setObservaciones: (v: string) => void;
+  readOnly?: boolean;
 }
 
 export function EncabezadoActaSection({
@@ -72,6 +73,7 @@ export function EncabezadoActaSection({
   setLibro,
   observaciones,
   setObservaciones,
+  readOnly = false,
 }: EncabezadoActaSectionProps) {
   return (
     <Paper variant="outlined" sx={{ p: 3 }}>
@@ -86,6 +88,7 @@ export function EncabezadoActaSection({
             fullWidth
             value={tipo}
             onChange={(event) => setTipo(event.target.value as "REG" | "LIB")}
+            disabled={readOnly}
           >
             {ACTA_TIPOS.map((option) => (
               <MenuItem key={option.value} value={option.value}>
@@ -105,6 +108,7 @@ export function EncabezadoActaSection({
               setPlanId("");
               setMateriaId("");
             }}
+            disabled={readOnly}
           >
             <MenuItem value="">Seleccionar</MenuItem>
             {profesorados.map((prof) => (
@@ -124,7 +128,7 @@ export function EncabezadoActaSection({
               setPlanId2(event.target.value);
               setMateriaId("");
             }}
-            disabled={!selectedProfesorado}
+            disabled={readOnly || !selectedProfesorado}
           >
             <MenuItem value="">Seleccionar</MenuItem>
             {planesDisponibles.map((plan) => (
@@ -141,7 +145,7 @@ export function EncabezadoActaSection({
             fullWidth
             value={materiaId}
             onChange={(event) => setMateriaId(event.target.value)}
-            disabled={!selectedPlan}
+            disabled={readOnly || !selectedPlan}
           >
             <MenuItem value="">Seleccionar</MenuItem>
             {materiasDisponibles.map((materia) => (
@@ -159,6 +163,7 @@ export function EncabezadoActaSection({
             value={fecha}
             onChange={(event) => setFecha(event.target.value)}
             InputLabelProps={{ shrink: true }}
+            disabled={readOnly}
           />
         </Grid>
         <Grid item xs={12} md={6} lg={4}>

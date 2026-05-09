@@ -40,6 +40,17 @@ import FinalExamPlanillaSection from "./carga-notas/components/FinalExamPlanilla
 import OralActasSection from "./carga-notas/components/OralActasSection";
 
 const CargaNotasPage: React.FC = () => {
+  const { roleOverride, user } = useAuth();
+  const activeRole = (roleOverride ?? (user?.roles?.[0] ?? "")).toLowerCase();
+  const isDocente = activeRole === "docente";
+
+  // Para docentes, forzar siempre filtro de planillas abiertas
+  React.useEffect(() => {
+    if (isDocente) {
+      setFinalFilters(prev => ({ ...prev, estadoPlanilla: "ABIERTAS" }));
+    }
+  }, [isDocente]);
+
   const [filters, setFilters] = useState<FiltersState>({
     profesoradoId: null,
     planId: null,
@@ -76,7 +87,7 @@ const CargaNotasPage: React.FC = () => {
     materiaId: null,
     anio: null,
     cuatrimestre: null,
-    estadoPlanilla: "TODAS",
+    estadoPlanilla: "ABIERTAS",
     anioMesa: null,
   });
 
@@ -176,12 +187,7 @@ const CargaNotasPage: React.FC = () => {
     handleDownloadAllOralActas,
   } = useOralExamActa(
     finalSelectedMesaId,
-    finalRows,
     finalReadOnly,
-    selectedMesaResumen,
-    finalPlanilla,
-    selectedMesaCursoLabel,
-    tribunalInfo,
   );
 
   // --- Regularidad state and handlers ---
@@ -430,6 +436,7 @@ const CargaNotasPage: React.FC = () => {
                   setFinalError={setFinalError}
                   finalSuccess={finalSuccess}
                   setFinalSuccess={setFinalSuccess}
+                  hideEstadoFilter={isDocente}
                 />
 
                 <FinalExamMesasGrid
@@ -441,33 +448,15 @@ const CargaNotasPage: React.FC = () => {
                   onOpenFinalPlanilla={handleOpenFinalPlanilla}
                 />
 
-                <FinalExamPlanillaSection
-                  finalPlanilla={finalPlanilla}
-                  finalLoadingPlanilla={finalLoadingPlanilla}
-                  finalSelectedMesaId={finalSelectedMesaId}
-                  finalCondiciones={finalCondiciones}
-                  finalRows={finalRows}
-                  filteredFinalRows={filteredFinalRows}
-                  finalReadOnly={finalReadOnly}
-                  finalPermissionDenied={finalPermissionDenied}
-                  finalSaving={finalSaving}
-                  finalCierreLoading={finalCierreLoading}
-                  finalSearch={finalSearch}
-                  setFinalSearch={setFinalSearch}
-                  totalFinalRows={totalFinalRows}
-                  visibleFinalRows={visibleFinalRows}
-                  hasFinalSearch={hasFinalSearch}
-                  downloadingOralBatch={downloadingOralBatch}
-                  onRowChange={handleFinalRowChange}
-                  onOpenOralActa={handleOpenOralActa}
-                  onFinalSaveClick={handleFinalSaveClick}
-                  onFinalPlanillaCierre={handleFinalPlanillaCierre}
-                  onDownloadAllOralActas={handleDownloadAllOralActas}
-                />
               </Stack>
             </Paper>
 
-            <OralActasSection />
+            {finalSelectedMesaId && (
+              <OralActasSection
+                mesaPreseleccionada={selectedMesaResumen}
+                finalRows={finalRows}
+              />
+            )}
           </Stack>
         )}
       </Stack>
@@ -501,6 +490,8 @@ const CargaNotasPage: React.FC = () => {
           loading={oralActaLoading && !oralActDrafts[oralDialogRow.inscripcionId]}
           saving={oralActaSaving}
           onSave={handleSaveOralActa}
+          mesaId={finalSelectedMesaId ?? undefined}
+          inscripcionId={oralDialogRow.inscripcionId}
         />
       )}
       <GestionComisionesDialog

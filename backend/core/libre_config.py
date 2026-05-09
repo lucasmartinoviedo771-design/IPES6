@@ -135,7 +135,7 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
         ["Historia y Politica Educacional", "Historia y Politica de la Educacion"],
         ["Sociologia de la Educacion"],
     ],
-    "educacion secundaria en geography": [
+    "educacion secundaria en geografia": [
         ["Introduccion a la Filosofia"],
         ["Historia Social Argentina y Latinoamericana"],
         ["Pedagogia"],

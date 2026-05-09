@@ -27,6 +27,7 @@ type Props = {
   setFinalError: (value: string | null) => void;
   finalSuccess: string | null;
   setFinalSuccess: (value: string | null) => void;
+  hideEstadoFilter?: boolean;
 };
 
 const FinalExamFiltersPanel: React.FC<Props> = ({
@@ -44,6 +45,7 @@ const FinalExamFiltersPanel: React.FC<Props> = ({
   setFinalError,
   finalSuccess,
   setFinalSuccess,
+  hideEstadoFilter = false,
 }) => {
   return (
     <>
@@ -231,23 +233,25 @@ const FinalExamFiltersPanel: React.FC<Props> = ({
             </MenuItem>
           ))}
         </TextField>
-        <TextField
-          select
-          label="Estado Planilla"
-          size="small"
-          sx={{ minWidth: 160 }}
-          value={finalFilters.estadoPlanilla}
-          onChange={(event) =>
-            setFinalFilters((prev) => ({
-              ...prev,
-              estadoPlanilla: event.target.value as "TODAS" | "ABIERTAS" | "CERRADAS",
-            }))
-          }
-        >
-          <MenuItem value="TODAS">Todas</MenuItem>
-          <MenuItem value="ABIERTAS">Solo Abiertas</MenuItem>
-          <MenuItem value="CERRADAS">Solo Cerradas</MenuItem>
-        </TextField>
+        {!hideEstadoFilter && (
+          <TextField
+            select
+            label="Estado Planilla"
+            size="small"
+            sx={{ minWidth: 160 }}
+            value={finalFilters.estadoPlanilla}
+            onChange={(event) =>
+              setFinalFilters((prev) => ({
+                ...prev,
+                estadoPlanilla: event.target.value as "TODAS" | "ABIERTAS" | "CERRADAS",
+              }))
+            }
+          >
+            <MenuItem value="TODAS">Todas</MenuItem>
+            <MenuItem value="ABIERTAS">Solo Abiertas</MenuItem>
+            <MenuItem value="CERRADAS">Solo Cerradas</MenuItem>
+          </TextField>
+        )}
         <TextField
           select
           label="Año de Mesa"

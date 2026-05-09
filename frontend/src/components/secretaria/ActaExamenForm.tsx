@@ -24,8 +24,10 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
   initialEstudiantes = [],
   headerAction,
   editId,
+  mesaPreseleccionada,
+  estudiantesPreseleccionados,
 }) => {
-  const f = useActaExamenForm({ strict, successMessage, editId });
+  const f = useActaExamenForm({ strict, successMessage, editId, mesaPreseleccionada, estudiantesPreseleccionados });
 
   if (f.metadataQuery.isLoading) {
     return (
@@ -54,14 +56,16 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
           {headerAction && <Box>{headerAction}</Box>}
         </Stack>
 
-        <BuscarMesaSection
-          mesaCodigo={f.mesaCodigo}
-          setMesaCodigo={f.setMesaCodigo}
-          mesaBuscando={f.mesaBuscando}
-          mesaBusquedaError={f.mesaBusquedaError}
-          mesaSeleccionada={f.mesaSeleccionada}
-          onBuscar={f.handleBuscarMesa}
-        />
+        {!mesaPreseleccionada && (
+          <BuscarMesaSection
+            mesaCodigo={f.mesaCodigo}
+            setMesaCodigo={f.setMesaCodigo}
+            mesaBuscando={f.mesaBuscando}
+            mesaBusquedaError={f.mesaBusquedaError}
+            mesaSeleccionada={f.mesaSeleccionada}
+            onBuscar={f.handleBuscarMesa}
+          />
+        )}
 
         <EncabezadoActaSection
           tipo={f.tipo}
@@ -86,12 +90,14 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
           setLibro={f.setLibro}
           observaciones={f.observaciones}
           setObservaciones={f.setObservaciones}
+          readOnly={!!mesaPreseleccionada}
         />
 
         <TribunalSection
           docentes={f.docentes}
           docenteOptions={f.docenteOptions}
           onDocenteInputChange={f.handleDocenteInputChange}
+          readOnly={!!mesaPreseleccionada}
         />
 
         <ResultadosTable
@@ -107,6 +113,7 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
           onDniChange={f.handleEstudianteDniChange}
           onUpdateEstudiante={f.updateEstudiante}
           onOpenOralActa={f.handleOpenOralActa}
+          readOnlyEstudiantes={!!mesaPreseleccionada}
         />
 
         <Stack direction="row" justifyContent="flex-end">
@@ -140,6 +147,8 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
           loading={false}
           saving={false}
           onSave={f.handleSaveOralActa}
+          mesaId={f.mesaSeleccionada?.id}
+          inscripcionId={f.oralDialogEstudiante.inscripcionId}
         />
       )}
 

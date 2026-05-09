@@ -13,6 +13,7 @@ export type MateriaDTO = {
   formato: string;
   tipo_formacion: string;
   permite_mesa_libre: boolean;
+  plan_resolucion?: string;
 };
 
 export type MateriaDetalleDTO = {
@@ -24,6 +25,7 @@ export type MateriaDetalleDTO = {
   formato: string;
   regimen: string;
   tipo_formacion: string;
+  plan_resolucion?: string;
 };
 
 export type MateriaInscriptoDTO = {
