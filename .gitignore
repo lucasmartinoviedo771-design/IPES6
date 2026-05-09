@@ -88,3 +88,4 @@ scripts/backup_db.sh
 docs/
 Reporte_*.md
 actualizar_produccion.py
+backend/scratch/
