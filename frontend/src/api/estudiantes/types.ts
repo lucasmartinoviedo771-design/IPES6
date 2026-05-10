@@ -560,6 +560,7 @@ export type MesaListadoParams = {
   cuatrimestre?: string;
   materia_id?: number;
   dni?: string;
+  solo_rendibles?: boolean;
 };
 
 export type ConstanciaExamenDTO = {

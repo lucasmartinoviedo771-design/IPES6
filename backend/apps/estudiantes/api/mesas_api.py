@@ -67,6 +67,11 @@ def _check_academic_eligibility(est, mesa):
         if cond_val == "APR" or acta_est.permiso_examen == "EQUIV":
             aprobado_historial = True
             break
+    if not aprobado_historial:
+        aprobado_historial = InscripcionMesa.objects.filter(
+            estudiante=est, mesa__materia=mesa.materia,
+            condicion=InscripcionMesa.Condicion.APROBADO,
+        ).exists()
     if aprobado_historial:
         return False, "La materia ya figura aprobada en su historial.", {}
 

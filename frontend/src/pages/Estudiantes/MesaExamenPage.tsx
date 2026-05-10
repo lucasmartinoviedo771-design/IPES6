@@ -169,6 +169,7 @@ const MesaExamenPage: React.FC = () => {
           profesorado_id: selectedPlanIdNum ? undefined : selectedCarreraIdNum,
           plan_id: selectedPlanIdNum,
           dni: canGestionar ? (dniBusqueda || undefined) : undefined,
+          solo_rendibles: !canGestionar || (canGestionar && !!dniBusqueda.trim()),
         });
         if (!cancelled) { setMesas(data || []); setErr(null); }
       } catch (error: any) {
@@ -235,6 +236,8 @@ const MesaExamenPage: React.FC = () => {
     for (const mesa of mesas) {
       if (misInscripciones.some(mi => mi.mesa_id === mesa.id)) continue;
       const materiaId = mesa.materia?.id ?? mesa.materia_id;
+      // Si la materia ya está aprobada, no mostrar la mesa en ninguna tab
+      if (historial.aprobadas.includes(materiaId)) continue;
       const reqAPR: number[] = mesa.correlativas_aprob || [];
       let esDisponible = reqAPR.every(id => historial.aprobadas.includes(id));
       if (esDisponible && mesa.modalidad === 'REG') esDisponible = historial.regularizadas.includes(materiaId);
