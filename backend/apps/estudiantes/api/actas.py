@@ -368,7 +368,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         # Buscar la mesa asociada por materia y fecha
         mesa = MesaExamen.objects.filter(materia=materia, fecha=acta_fecha).first()
         if mesa:
-            eligible, motivo, _ = _check_academic_eligibility(est_obj, mesa)
+            eligible, motivo, _ = _check_academic_eligibility(est_obj, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa)
             if not eligible:
                 # Advertencia no bloqueante para inscripciones ya existentes;
                 # bloqueante si el estudiante no está inscripto (caso manual sin mesa)

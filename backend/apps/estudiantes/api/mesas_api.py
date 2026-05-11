@@ -340,7 +340,7 @@ def listar_mesas_estudiante(
         }
         
         if solo_rendibles and estudiante_para_rendir:
-            is_ok, _, _ = _check_academic_eligibility(estudiante_para_rendir, m)
+            is_ok, _, _ = _check_academic_eligibility(estudiante_para_rendir, materia=m.materia, modalidad=m.modalidad, mesa=m)
             if not is_ok:
                 continue
                     
