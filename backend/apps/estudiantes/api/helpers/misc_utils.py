@@ -35,50 +35,70 @@ def _add_years(base: date | None, years: int) -> date | None:
         return base.replace(month=2, day=28, year=base.year + years)
 
 
-def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regularidad) -> tuple[date, int]:
+def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regularidad) -> tuple[date, int, int]:
+    """
+    Retorna (vigencia_limite, intentos_usados, intentos_max).
+
+    Reglas:
+    - Período normal (2 años desde cierre): el alumno puede rendir hasta 3 veces.
+    - Prórroga (post-2 años, hasta 60 días o el siguiente llamado): 1 intento adicional.
+    """
     from datetime import timedelta
     from core.models import MesaExamen, ActaExamenEstudiante
 
-    # 1. Base: 2 años desde el cierre de cursada
     if not regularidad.fecha_cierre:
-        # Si no hay fecha de cierre, asumimos que no hay vigencia calculable (o es infinita?)
-        # Retornamos la fecha actual + 2 años como fallback seguro para evitar crash
         from django.utils import timezone
         limite = _add_years(timezone.now().date(), 2)
-        return limite, 0
+        return limite, 0, 3
 
     fecha_base = _add_years(regularidad.fecha_cierre, 2)
-    
-    # 2. Límite máximo: 60 días después de la base
+    from django.utils import timezone
+    hoy = timezone.now().date()
+
+    # --- Período normal (dentro de los 2 años) ---
+    if hoy <= fecha_base:
+        intentos_periodo = ActaExamenEstudiante.objects.filter(
+            dni=estudiante.dni,
+            acta__materia=regularidad.materia,
+            acta__fecha__gt=regularidad.fecha_cierre,
+            acta__fecha__lte=fecha_base,
+        ).count()
+        return fecha_base, intentos_periodo, 3
+
+    # Verificar si agotó los 3 intentos durante el período normal: no hay prórroga.
+    intentos_periodo = ActaExamenEstudiante.objects.filter(
+        dni=estudiante.dni,
+        acta__materia=regularidad.materia,
+        acta__fecha__gt=regularidad.fecha_cierre,
+        acta__fecha__lte=fecha_base,
+    ).count()
+    if intentos_periodo >= 3:
+        return fecha_base, intentos_periodo, 3
+
+    # --- Prórroga (post-2 años, solo si no agotó los 3 intentos) ---
     limite_60d = fecha_base + timedelta(days=60)
-    
-    # 3. Primer llamado posterior a la fecha base (2 años)
     primer_llamado_post_base = (
         MesaExamen.objects.filter(
             materia=regularidad.materia,
             tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
-            fecha__gt=fecha_base
+            fecha__gt=fecha_base,
         )
         .order_by("fecha")
         .values_list("fecha", flat=True)
         .first()
     )
-    
-    # El límite es lo que ocurra primero entre los 60 días o el siguiente llamado tras los 2 años
     if primer_llamado_post_base and primer_llamado_post_base < limite_60d:
         limite = primer_llamado_post_base
     else:
         limite = limite_60d
-        
-    # Intentos: inscripciones a examen realizadas DESDE el cierre de cursada hasta el límite calculado
-    intentos = ActaExamenEstudiante.objects.filter(
+
+    intentos_prorroga = ActaExamenEstudiante.objects.filter(
         dni=estudiante.dni,
         acta__materia=regularidad.materia,
-        acta__fecha__gt=regularidad.fecha_cierre,
+        acta__fecha__gt=fecha_base,
         acta__fecha__lte=limite,
     ).count()
-    
-    return limite, intentos
+    return limite, intentos_prorroga, 1
 
 
 def _to_iso(value):

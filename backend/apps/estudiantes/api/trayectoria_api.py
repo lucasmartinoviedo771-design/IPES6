@@ -86,10 +86,8 @@ def historial_estudiante(request, dni: str | None = None):
         if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             aprobadas_set.add(mid)
         elif reg.situacion == Regularidad.Situacion.REGULAR:
-            # Determinamos si la regularid continúa vigente según tiempo e intentos fallidos (Llamado)
-            vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
-            # "o un llamado lo que ocurra primer" -> máximo 1 intento (llamado)
-            if vigencia_limite >= hoy and intentos < 1:
+            vigencia_limite, intentos, intentos_max = _calcular_vigencia_regularidad(est, reg)
+            if vigencia_limite >= hoy and intentos < intentos_max:
                 regularizadas_set.add(mid)
 
     # 2. Análisis de Actas y Equivalencias
@@ -196,10 +194,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 aprobadas_set.add(reg.materia_id)
                 aprobadas_notas[reg.materia_id] = _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
             
-            # Si lo último es REGULAR, verificamos vigencia (Tiempo + 1 Llamado)
             elif reg.situacion == Regularidad.Situacion.REGULAR:
-                limite, intentos = _calcular_vigencia_regularidad(est, reg)
-                if limite >= hoy and intentos < 1:
+                limite, intentos, intentos_max = _calcular_vigencia_regularidad(est, reg)
+                if limite >= hoy and intentos < intentos_max:
                     regularizadas_set.add(reg.materia_id)
 
     materias_bloqueadas_final: set[int] = {
@@ -319,11 +316,11 @@ def trayectoria_estudiante(request, dni: str | None = None):
             es_bloqueada = reg.materia_id in materias_bloqueadas_final
             if reg.situacion == Regularidad.Situacion.REGULAR and not materia_ya_aprobada and not es_bloqueada:
                 # El helper calcula la vigencia base y resta los intentos fallidos (3 intentos o 18-24 meses)
-                vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
+                vigencia_limite, intentos, intentos_max = _calcular_vigencia_regularidad(est, reg)
                 dias_restantes = (vigencia_limite - hoy).days
-                vigente = dias_restantes >= 0
+                vigente = dias_restantes >= 0 and intentos < intentos_max
                 vigencia_str = format_date(vigencia_limite)
-                
+
                 regularidades_vigencia_data.append(
                     {
                         "materia_id": reg.materia_id,
@@ -335,7 +332,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                         "dias_restantes": dias_restantes,
                         "vigente": vigente,
                         "intentos_usados": intentos,
-                        "intentos_max": 1, 
+                        "intentos_max": intentos_max,
                     }
                 )
                 if vigente:

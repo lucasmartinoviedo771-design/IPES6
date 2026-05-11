@@ -1,4 +1,4 @@
-import { client } from "@/api/client";
+import { client, AppAxiosRequestConfig } from "@/api/client";
 import { fetchVentanas } from "@/api/ventanas";
 import {
   InscripcionMateriaPayload,
@@ -69,18 +69,21 @@ export async function obtenerVentanaMaterias(): Promise<VentanaInscripcion | nul
   }
 }
 
-export async function obtenerMateriasPlanEstudiante(params?: { dni?: string; plan_id?: number; profesorado_id?: number }): Promise<MateriaPlanDTO[]> {
-  const { data } = await client.get<MateriaPlanDTO[]>(`/estudiantes/materias-plan`, { params });
+export async function obtenerMateriasPlanEstudiante(params?: { dni?: string; plan_id?: number; profesorado_id?: number }, suppressErrorToast = false): Promise<MateriaPlanDTO[]> {
+  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+  const { data } = await client.get<MateriaPlanDTO[]>(`/estudiantes/materias-plan`, config);
   return data;
 }
 
-export async function obtenerCarrerasActivas(params?: { dni?: string }): Promise<TrayectoriaCarreraDetalleDTO[]> {
-  const { data } = await client.get<TrayectoriaCarreraDetalleDTO[]>(`/estudiantes/carreras-activas`, { params });
+export async function obtenerCarrerasActivas(params?: { dni?: string }, suppressErrorToast = false): Promise<TrayectoriaCarreraDetalleDTO[]> {
+  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+  const { data } = await client.get<TrayectoriaCarreraDetalleDTO[]>(`/estudiantes/carreras-activas`, config);
   return data;
 }
 
-export async function obtenerMateriasInscriptas(params?: { anio?: number; dni?: string }): Promise<MateriaInscriptaItemDTO[]> {
-  const { data } = await client.get<MateriaInscriptaItemDTO[]>(`/estudiantes/materias-inscriptas`, { params });
+export async function obtenerMateriasInscriptas(params?: { anio?: number; dni?: string }, suppressErrorToast = false): Promise<MateriaInscriptaItemDTO[]> {
+  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+  const { data } = await client.get<MateriaInscriptaItemDTO[]>(`/estudiantes/materias-inscriptas`, config);
   return data;
 }
 

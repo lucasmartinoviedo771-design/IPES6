@@ -202,6 +202,7 @@ export type MateriaPlanDTO = {
   tipo_formacion?: string;
   formato?: string;
   horas_semana?: number;
+  vigente?: boolean;
 };
 
 export type HistorialEstudianteDTO = {

@@ -5,7 +5,7 @@
  * y generación de certificados oficiales.
  */
 
-import { client } from "@/api/client";
+import { client, AppAxiosRequestConfig } from "@/api/client";
 import {
   HistorialEstudianteDTO,
   TrayectoriaDTO,
@@ -17,8 +17,9 @@ import {
  * Recupera el historial cronológico de eventos académicos del estudiante.
  * @param params Soporta filtrado por DNI (solo para administradores).
  */
-export async function obtenerHistorialEstudiante(params?: { dni?: string }): Promise<HistorialEstudianteDTO> {
-  const { data } = await client.get<HistorialEstudianteDTO>(`/estudiantes/historial`, { params });
+export async function obtenerHistorialEstudiante(params?: { dni?: string }, suppressErrorToast = false): Promise<HistorialEstudianteDTO> {
+  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+  const { data } = await client.get<HistorialEstudianteDTO>(`/estudiantes/historial`, config);
   return data;
 }
 

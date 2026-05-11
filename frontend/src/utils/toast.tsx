@@ -4,10 +4,23 @@ import { useSnackbar, VariantType } from "notistack";
 type ToastMsg = { message: string; variant?: VariantType };
 const listeners: Array<(t: ToastMsg) => void> = [];
 
+const recentErrors = new Map<string, number>();
+const DEDUP_MS = 1500;
+
+function deduped(message: string, variant: VariantType, fn: (t: ToastMsg) => void) {
+  if (variant === "error") {
+    const now = Date.now();
+    const last = recentErrors.get(message);
+    if (last && now - last < DEDUP_MS) return;
+    recentErrors.set(message, now);
+  }
+  fn({ message, variant });
+}
+
 /** API global para disparar toasts desde cualquier parte (servicios, interceptores, etc.) */
 export const toast = {
   success: (message: string) => listeners.forEach(l => l({ message, variant: "success" })),
-  error:   (message: string) => listeners.forEach(l => l({ message, variant: "error" })),
+  error:   (message: string) => listeners.forEach(l => deduped(message, "error", l)),
   info:    (message: string) => listeners.forEach(l => l({ message, variant: "info" })),
   warning: (message: string) => listeners.forEach(l => l({ message, variant: "warning" })),
 };

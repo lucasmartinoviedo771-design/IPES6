@@ -13,6 +13,7 @@ export type Materia = {
   profesorado?: string;
   profesoradoId?: number | null;
   planId?: number | null;
+  vigente: boolean;
 };
 
 export const cuatrimestreCompatible = (a: Materia["cuatrimestre"], b: Materia["cuatrimestre"]) => {
@@ -43,6 +44,7 @@ export function mapMateria(dto: MateriaPlanDTO): Materia {
     profesorado: dto.profesorado,
     profesoradoId: dto.profesorado_id ?? null,
     planId: dto.plan_id ?? null,
+    vigente: dto.vigente ?? true,
   };
 }
 

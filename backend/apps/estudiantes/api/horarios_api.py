@@ -120,12 +120,9 @@ def materias_plan(
 
     hoy = timezone.now().date()
     for m in plan.materias.all().order_by("anio_cursada", "nombre"):
-        # Filtrar por vigencia temporal
-        if m.fecha_fin and m.fecha_fin < hoy:
-            continue
         if m.fecha_inicio and m.fecha_inicio > hoy:
             continue
-        
+        es_vigente = not (m.fecha_fin and m.fecha_fin < hoy)
         materias.append(
             MateriaPlan(
                 id=m.id,
@@ -141,6 +138,7 @@ def materias_plan(
                 tipo_formacion=m.tipo_formacion,
                 formato=m.formato,
                 horas_semana=m.horas_semana,
+                vigente=es_vigente,
             )
         )
     return materias

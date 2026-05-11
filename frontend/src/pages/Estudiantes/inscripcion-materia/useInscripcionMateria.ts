@@ -102,7 +102,7 @@ export const useInscripcionMateria = () => {
 
   const carrerasQ = useQuery<TrayectoriaCarreraDetalleDTO[]>({
     queryKey: ["carreras-activas", dniFiltro],
-    queryFn: () => obtenerCarrerasActivas(shouldFetchInscriptas ? (dniFiltro ? { dni: dniFiltro } : undefined) : undefined),
+    queryFn: () => obtenerCarrerasActivas(shouldFetchInscriptas ? (dniFiltro ? { dni: dniFiltro } : undefined) : undefined, true),
     enabled: shouldFetchInscriptas,
     retry: false,
   });
@@ -158,7 +158,7 @@ export const useInscripcionMateria = () => {
       } else if (selectedCarreraIdNum) {
         params.profesorado_id = selectedCarreraIdNum;
       }
-      const data = await obtenerMateriasPlanEstudiante(Object.keys(params).length ? params : undefined);
+      const data = await obtenerMateriasPlanEstudiante(Object.keys(params).length ? params : undefined, true);
       return data.map(mapMateria);
     },
     retry: false,
@@ -176,7 +176,7 @@ export const useInscripcionMateria = () => {
   const historialQ = useQuery<HistorialEstudianteDTO>({
     queryKey: ["historial-estudiante", dniFiltro],
     queryFn: async () => {
-      const d: HistorialEstudianteDTO = await obtenerHistorialEstudiante(dniFiltro ? { dni: dniFiltro } : undefined);
+      const d: HistorialEstudianteDTO = await obtenerHistorialEstudiante(dniFiltro ? { dni: dniFiltro } : undefined, true);
       return {
         ...d,
         aprobadas: d.aprobadas || [],
@@ -194,7 +194,7 @@ export const useInscripcionMateria = () => {
 
   const inscripcionesQ = useQuery<MateriaInscriptaItemDTO[]>({
     queryKey: ["materias-inscriptas", normalizedDni],
-    queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined),
+    queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined, true),
     enabled: shouldFetchInscriptas,
   });
 
@@ -355,6 +355,17 @@ export const useInscripcionMateria = () => {
   const materiasEvaluadas: MateriaEvaluada[] = useMemo(() => materias.map((materia) => {
     if (historial.aprobadas.includes(materia.id)) {
       return { ...materia, status: "aprobada", motivos: ["Materia aprobada"], faltantesRegular: [], faltantesAprob: [] };
+    }
+
+    if (!materia.vigente) {
+      return {
+        ...materia,
+        status: "bloqueada",
+        motivos: ["Esta materia ya no está vigente en el plan"],
+        tipoBloqueo: "periodo",
+        faltantesRegular: [],
+        faltantesAprob: [],
+      };
     }
 
     if (historial.regularizadas.includes(materia.id)) {

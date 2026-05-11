@@ -27,6 +27,7 @@ class MateriaPlan(Schema):
     tipo_formacion: str | None = None
     formato: str | None = None
     horas_semana: int | None = None
+    vigente: bool = True
 
 class HistorialEstudiante(Schema):
     aprobadas: list[int] = Field(default_factory=list)
