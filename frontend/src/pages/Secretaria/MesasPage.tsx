@@ -11,6 +11,7 @@ import { NuevaMesaForm } from './mesas/NuevaMesaForm';
 import { FiltrosMesas } from './mesas/FiltrosMesas';
 import { MesaCard } from './mesas/MesaCard';
 import { PlanillaModal } from './mesas/PlanillaModal';
+import { SolicitudesList } from './mesas/SolicitudesList';
 import { Mesa } from './mesas/types';
 import { useAuth } from '@/context/AuthContext';
 
@@ -264,6 +265,7 @@ export default function MesasPage() {
           {canEdit && <Tab label="Nueva mesa" sx={{ fontWeight: 700 }} />}
           <Tab label="Activas / Futuras" sx={{ fontWeight: 700 }} />
           <Tab label="Historial / Pasadas" sx={{ fontWeight: 700 }} />
+          <Tab label="Solicitudes (Extra)" sx={{ fontWeight: 700 }} />
         </Tabs>
       </Box>
 
@@ -401,6 +403,15 @@ export default function MesasPage() {
         onCuentaIntentosChange={handlePlanillaCuentaIntentosChange}
         onTextoChange={handlePlanillaTextoChange}
       />
+
+      {activeTab === 3 && (
+        <Box sx={{ mt: 2 }}>
+           <Alert severity="info" sx={{ mb: 2 }}>
+             Aquí se listan las solicitudes de materias para mesas extraordinarias realizadas por los estudiantes.
+           </Alert>
+           <SolicitudesList />
+        </Box>
+      )}
     </Box>
   );
 }

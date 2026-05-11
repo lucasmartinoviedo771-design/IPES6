@@ -34,7 +34,7 @@ from .pedidos import (
     PedidoEquivalencia,
     PedidoEquivalenciaMateria,
 )
-from .mesas import InscripcionMesa, MesaActaOral, MesaExamen
+from .mesas import InscripcionMesa, MesaActaOral, MesaExamen, SolicitudMesa
 from .regularidades import (
     PlanillaCursada,
     PlanillaCursadaFila,
@@ -106,6 +106,7 @@ __all__ = [
     "MesaExamen",
     "InscripcionMesa",
     "MesaActaOral",
+    "SolicitudMesa",
     # regularidades
     "Regularidad",
     "RegularidadFormato",

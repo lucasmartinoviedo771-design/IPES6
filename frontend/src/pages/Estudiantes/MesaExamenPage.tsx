@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import CircularProgress from "@mui/material/CircularProgress";
+import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
@@ -17,19 +18,35 @@ import Stack from "@mui/material/Stack";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Divider from "@mui/material/Divider";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Container from "@mui/material/Container";
+
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import SendIcon from '@mui/icons-material/Send';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import HistoryIcon from '@mui/icons-material/History';
+
 import { formatDate } from '@/utils/date';
 import {
   listarMesas, inscribirMesa, bajaMesa,
   obtenerHistorialEstudiante, obtenerCarrerasActivas,
   obtenerTrayectoriaEstudiante,
+  solicitarMesa, listarMisSolicitudes,
   TrayectoriaCarreraDetalleDTO, MesaListadoItemDTO, TrayectoriaMesaDTO,
+  SolicitudMesaOutDTO,
 } from '@/api/estudiantes';
 import { CartonMateriaDTO } from '@/api/estudiantes/types';
 import { hasAnyRole } from '@/utils/roles';
 import { fetchVentanas, VentanaDto } from '@/api/ventanas';
 import { useAuth } from '@/context/AuthContext';
 import BackButton from '@/components/ui/BackButton';
-import FinalConfirmationDialog from '@/components/ui/FinalConfirmationDialog';
 
 const MESA_TIPO_LABEL: Record<string, string> = {
   FIN: 'Ordinaria', EXT: 'Extraordinaria', ESP: 'Especial',
@@ -76,6 +93,7 @@ const MesaExamenPage: React.FC = () => {
   const [mesas, setMesas] = useState<MesaListadoItemDTO[]>([]);
   const [historial, setHistorial] = useState<{ aprobadas: number[]; regularizadas: number[]; inscriptas_actuales: number[] }>({ aprobadas: [], regularizadas: [], inscriptas_actuales: [] });
   const [materiasAprobadas, setMateriasAprobadas] = useState<CartonMateriaDTO[]>([]);
+  const [materiasPlan, setMateriasPlan] = useState<any[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [carreras, setCarreras] = useState<TrayectoriaCarreraDetalleDTO[]>([]);
@@ -89,6 +107,10 @@ const MesaExamenPage: React.FC = () => {
   const [loadingMesas, setLoadingMesas] = useState(false);
   const [loadingTrayectoria, setLoadingTrayectoria] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState<Map<number, string>>(new Map());
+  const [solicitudes, setSolicitudes] = useState<SolicitudMesaOutDTO[]>([]);
+  const [loadingSolicitudes, setLoadingSolicitudes] = useState(false);
+  const [pendingSolicitud, setPendingSolicitud] = useState<{ materia_id: number; materia_nombre: string } | null>(null);
+  const [solicitando, setSolicitando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -96,6 +118,9 @@ const MesaExamenPage: React.FC = () => {
         const data = await fetchVentanas();
         const v = (data || []).filter((x) => ['MESAS_FINALES', 'MESAS_EXTRA'].includes(x.tipo));
         setVentanas(v);
+        // Si hay una ventana activa de tipo EXTRA, seleccionarla por defecto
+        const extra = v.find(x => x.tipo === 'MESAS_EXTRA');
+        if (extra) setVentanaId(String(extra.id));
       } catch (error) {
         console.warn("No se pudieron cargar las ventanas", error);
       }
@@ -183,18 +208,22 @@ const MesaExamenPage: React.FC = () => {
   }, [carrerasLoading, requiereSeleccionCarrera, requiereSeleccionPlan, selectedCarreraIdNum, selectedPlanIdNum, tipo, ventanaId, canGestionar, dniBusqueda]);
 
   const fetchTrayectoria = async () => {
-    if (canGestionar && !dniBusqueda.trim()) { setMisInscripciones([]); setMateriasAprobadas([]); return; }
+    if (canGestionar && !dniBusqueda.trim()) { setMisInscripciones([]); setMateriasAprobadas([]); setMateriasPlan([]); return; }
     setLoadingTrayectoria(true);
     try {
       const t = await obtenerTrayectoriaEstudiante(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
       setMisInscripciones((t.mesas || []).filter(m => m.estado === 'INS'));
+      
       const aprobadas: CartonMateriaDTO[] = [];
+      const planMaterias: any[] = [];
       for (const plan of t.carton || []) {
         for (const mat of plan.materias || []) {
+          planMaterias.push(mat);
           if (mat.final?.condicion === 'APR') aprobadas.push(mat);
         }
       }
       setMateriasAprobadas(aprobadas);
+      setMateriasPlan(planMaterias);
     } catch (error) {
       console.warn("No se pudo obtener la trayectoria", error);
     } finally {
@@ -202,27 +231,39 @@ const MesaExamenPage: React.FC = () => {
     }
   };
 
+  const fetchSolicitudes = async () => {
+    if (canGestionar && !dniBusqueda.trim()) { setSolicitudes([]); return; }
+    setLoadingSolicitudes(true);
+    try {
+      const data = await listarMisSolicitudes(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
+      setSolicitudes(data || []);
+    } catch (error) {
+      console.warn("No se pudieron obtener las solicitudes", error);
+    } finally {
+      setLoadingSolicitudes(false);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       if (canGestionar && !dniBusqueda.trim()) {
         setHistorial({ aprobadas: [], regularizadas: [], inscriptas_actuales: [] });
-        setMisInscripciones([]); setMateriasAprobadas([]); return;
+        return;
       }
       try {
         const h = await obtenerHistorialEstudiante(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
         setHistorial({ aprobadas: h.aprobadas || [], regularizadas: h.regularizadas || [], inscriptas_actuales: h.inscriptas_actuales || [] });
         await fetchTrayectoria();
+        await fetchSolicitudes();
       } catch (error) {
         console.warn("No se pudo obtener el historial", error);
       }
     })();
   }, [dniBusqueda, canGestionar]);
 
-  // Agrupa mesas por llamado según orden cronológico de fechas únicas.
-  // La primera fecha encontrada = Primer Llamado, la segunda = Segundo Llamado.
   const agruparPorLlamado = (lista: MesaListadoItemDTO[]) => {
     const fechasUnicas = [...new Set(lista.map(m => m.fecha))].sort();
-    if (fechasUnicas.length <= 1) return [{ llamado: 'Primer Llamado', fecha: fechasUnicas[0] ?? '', mesas: lista }];
+    if (fechasUnicas.length <= 1) return [{ llamado: 'Llamado Único', fecha: fechasUnicas[0] ?? '', mesas: lista }];
     return fechasUnicas.map((fecha, idx) => ({
       llamado: idx === 0 ? 'Primer Llamado' : idx === 1 ? 'Segundo Llamado' : `${idx + 1}º Llamado`,
       fecha,
@@ -236,7 +277,6 @@ const MesaExamenPage: React.FC = () => {
     for (const mesa of mesas) {
       if (misInscripciones.some(mi => mi.mesa_id === mesa.id)) continue;
       const materiaId = mesa.materia?.id ?? mesa.materia_id;
-      // Si la materia ya está aprobada, no mostrar la mesa en ninguna tab
       if (historial.aprobadas.includes(materiaId)) continue;
       const reqAPR: number[] = mesa.correlativas_aprob || [];
       let esDisponible = reqAPR.every(id => historial.aprobadas.includes(id));
@@ -245,7 +285,6 @@ const MesaExamenPage: React.FC = () => {
         esDisponible = !historial.regularizadas.includes(materiaId) && !historial.inscriptas_actuales.includes(materiaId);
       }
       if (esDisponible && modalidad && mesa.modalidad !== modalidad) esDisponible = false;
-      // Si tuvo un intento fallido registrado, va a bloqueadas aunque pasara los filtros anteriores
       if (esDisponible && failedAttempts.has(mesa.id)) esDisponible = false;
 
       if (esDisponible) {
@@ -275,9 +314,46 @@ const MesaExamenPage: React.FC = () => {
       setErr(message);
       setInfo(null);
       setPendingInscripcion(null);
-      setActiveTab(1);
+      setActiveTab(3);
     } finally {
       setInscribiendoId(null);
+    }
+  };
+
+  const handleConfirmBaja = async () => {
+    if (!pendingBaja) return;
+    setInscribiendoId(pendingBaja.mesaId);
+    try {
+      const res = await bajaMesa({ mesa_id: pendingBaja.mesaId, dni: canGestionar ? (dniBusqueda || undefined) : undefined });
+      setInfo(res.message);
+      setErr(null);
+      setPendingBaja(null);
+      await fetchTrayectoria();
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || 'No se pudo anular la inscripción.');
+    } finally {
+      setInscribiendoId(null);
+    }
+  };
+
+  const handleConfirmSolicitud = async () => {
+    if (!pendingSolicitud || !ventanaId) return;
+    setSolicitando(true);
+    try {
+      const res = await solicitarMesa({
+        materia_id: pendingSolicitud.materia_id,
+        ventana_id: Number(ventanaId),
+        dni: canGestionar ? (dniBusqueda || undefined) : undefined
+      });
+      setInfo(res.message);
+      setErr(null);
+      setPendingSolicitud(null);
+      await fetchSolicitudes();
+      setActiveTab(1);
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || 'No se pudo enviar la solicitud.');
+    } finally {
+      setSolicitando(false);
     }
   };
 
@@ -290,16 +366,17 @@ const MesaExamenPage: React.FC = () => {
     </Stack>
   );
 
+  const materiasAprobadasSet = useMemo(() => new Set(historial.aprobadas), [historial.aprobadas]);
   const mostrarContenido = !carrerasLoading && !(canGestionar && !dniBusqueda.trim());
   const necesitaContexto = requiereSeleccionCarrera || requiereSeleccionPlan;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
       <BackButton fallbackPath="/estudiantes" />
-      <Typography variant="h4" gutterBottom>Mesas de Examen</Typography>
+      <Typography variant="h4" fontWeight={700} gutterBottom>Mesas de Examen</Typography>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} sx={{ mb: 2, flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} gap={2} sx={{ mb: 3 }}>
+        <FormControl size="small" sx={{ minWidth: 150 }}>
           <InputLabel>Tipo</InputLabel>
           <Select label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value as any)}>
             <MenuItem value="">Todos</MenuItem>
@@ -308,7 +385,7 @@ const MesaExamenPage: React.FC = () => {
             <MenuItem value="ESP">Especial</MenuItem>
           </Select>
         </FormControl>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
+        <FormControl size="small" sx={{ minWidth: 150 }}>
           <InputLabel>Modalidad</InputLabel>
           <Select label="Modalidad" value={modalidad} onChange={(e) => setModalidad(e.target.value as any)}>
             <MenuItem value="">Todas</MenuItem>
@@ -317,172 +394,95 @@ const MesaExamenPage: React.FC = () => {
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel>Periodo</InputLabel>
-          <Select label="Periodo" value={ventanaId} onChange={(e) => setVentanaId(e.target.value)}>
+          <InputLabel>Llamado / Período</InputLabel>
+          <Select label="Llamado / Período" value={ventanaId} onChange={(e) => setVentanaId(e.target.value)}>
             <MenuItem value="">Todos los activos</MenuItem>
             {ventanas.map((v) => (
               <MenuItem key={v.id} value={String(v.id)}>
-                {formatDate(v.desde)} – {formatDate(v.hasta)} ({v.tipo === 'MESAS_FINALES' ? 'Ordinarias' : 'Extraordinarias'})
+                {formatDate(v.desde)} ({v.tipo === 'MESAS_FINALES' ? 'Ord.' : 'Extra.'})
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        <FormControl size="small" sx={{ minWidth: 220 }} disabled={carrerasLoading}>
-          <InputLabel>Profesorado</InputLabel>
-          <Select label="Profesorado" value={selectedCarreraId}
-            onChange={(e) => { setSelectedCarreraId(String(e.target.value ?? '')); setSelectedPlanId(''); }}>
-            {carrerasLoading && <MenuItem value="">Cargando...</MenuItem>}
-            {!carrerasLoading && !carreras.length && <MenuItem value="">Sin profesorados</MenuItem>}
-            {carreras.map((c) => <MenuItem key={c.profesorado_id} value={String(c.profesorado_id)}>{c.nombre}</MenuItem>)}
-          </Select>
-        </FormControl>
-        {planesDisponibles.length > 1 && (
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Plan</InputLabel>
-            <Select label="Plan" value={selectedPlanId} onChange={(e) => setSelectedPlanId(String(e.target.value ?? ''))}>
-              {planesDisponibles.map((p) => (
-                <MenuItem key={p.id} value={String(p.id)}>
-                  {p.resolucion ? `Plan ${p.resolucion}` : `Plan ${p.id}`}{p.vigente ? ' (vigente)' : ''}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
         {canGestionar && (
-          <Stack direction="row" gap={1}>
-            <TextField size="small" label="DNI estudiante" value={dni}
+          <Stack direction="row" gap={1} flexGrow={1}>
+            <TextField fullWidth size="small" label="DNI Estudiante" value={dni}
               onChange={(e) => setDni(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') setDniBusqueda(dni); }} />
-            <Button variant="contained" onClick={() => setDniBusqueda(dni)} disabled={carrerasLoading}>Buscar</Button>
+            <Button variant="contained" onClick={() => setDniBusqueda(dni)}>Buscar</Button>
           </Stack>
         )}
       </Stack>
 
-      {canGestionar && !dniBusqueda.trim() && <Alert severity="info" sx={{ mb: 2 }}>Ingresá un DNI para gestionar las mesas de un estudiante.</Alert>}
-      {requiereSeleccionCarrera && <Alert severity="info" sx={{ mb: 2 }}>Seleccioná un profesorado para ver las mesas.</Alert>}
-      {requiereSeleccionPlan && <Alert severity="info" sx={{ mb: 2 }}>Seleccioná un plan de estudios para filtrar las mesas.</Alert>}
       {info && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
       {err && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
 
       {mostrarContenido && !necesitaContexto && (
         <>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} textColor="primary" indicatorColor="primary">
-              <Tab label={tabLabel('Inscripción', misInscripciones.length + mesasDisponibles.length)} />
-              <Tab label={tabLabel('No habilitadas', mesasBloqueadas.length)} />
-              <Tab label={tabLabel('Aprobadas', materiasAprobadas.length)} />
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={(_, v) => setActiveTab(v)} 
+              textColor="primary" 
+              indicatorColor="primary"
+              variant="scrollable"
+              scrollButtons="auto"
+            >
+              <Tab icon={<CalendarMonthIcon fontSize="small"/>} iconPosition="start" label={tabLabel('Inscribirme', mesasDisponibles.length)} />
+              <Tab icon={<SendIcon fontSize="small"/>} iconPosition="start" label={tabLabel('Mis Solicitudes', solicitudes.length)} />
+              <Tab icon={<TaskAltIcon fontSize="small"/>} iconPosition="start" label={tabLabel('Mi Agenda', misInscripciones.length)} />
+              <Tab icon={<ErrorOutlineIcon fontSize="small"/>} iconPosition="start" label={tabLabel('No habilitadas', mesasBloqueadas.length)} />
+              <Tab icon={<HistoryIcon fontSize="small"/>} iconPosition="start" label={tabLabel('Aprobadas', materiasAprobadas.length)} />
             </Tabs>
           </Box>
 
-          {/* TAB 0: INSCRIPCIÓN */}
+          {/* TAB 0: INSCRIBIRME */}
           {activeTab === 0 && (
             <Box>
-              {loadingMesas ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
-              ) : (
+              {loadingMesas ? <LinearProgress sx={{ mb: 2 }} /> : (
                 <>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" fontWeight={700} color="primary" gutterBottom>
-                      Mis inscripciones activas
-                    </Typography>
-                    {loadingTrayectoria ? (
-                      <CircularProgress size={20} />
-                    ) : misInscripciones.length === 0 ? (
-                      <Alert severity="info" variant="outlined">No tenés inscripciones activas en este período.</Alert>
-                    ) : (
-                      <Grid container spacing={1.5}>
-                        {misInscripciones.map((mi) => (
-                          <Grid item xs={12} md={6} lg={4} key={mi.id}>
-                            <Paper variant="outlined" sx={{ p: 1.5, borderLeft: '5px solid', borderLeftColor: 'primary.main' }}>
-                              <Stack gap={0.5}>
-                                <Typography variant="subtitle2" fontWeight={700}>{mi.materia_nombre}</Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {MESA_TIPO_LABEL[mi.tipo] ?? mi.tipo} · {formatDate(mi.fecha)}
-                                </Typography>
-                                <Button size="small" color="error" variant="outlined"
-                                  onClick={() => setPendingBaja({ mesaId: mi.mesa_id, materiaNombre: mi.materia_nombre })}
-                                  disabled={inscribiendoId !== null}>
-                                  Anular inscripción
-                                </Button>
-                              </Stack>
-                            </Paper>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    )}
-                    <Divider sx={{ my: 3 }} />
-                  </Box>
-
-                  <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                    Disponibles para inscribirse
+                  <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CalendarMonthIcon color="primary" /> Mesas Disponibles
                   </Typography>
                   {mesasDisponibles.length === 0 ? (
-                    <Alert severity="info">No hay mesas disponibles con los filtros seleccionados.</Alert>
+                    <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
+                      <Typography color="textSecondary">No se encontraron mesas disponibles para los filtros seleccionados.</Typography>
+                    </Paper>
                   ) : (() => {
                     const grupos = agruparPorLlamado(mesasDisponibles);
                     const MesaCard = ({ mesa }: { mesa: MesaListadoItemDTO }) => (
-                      <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
-                        <Stack gap={0.5}>
-                          <Typography variant="subtitle2" fontWeight={700}>
-                            {mesa.materia?.nombre ?? mesa.materia_nombre}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'}
-                            {mesa.hora_desde ? ` · ${mesa.hora_desde}${mesa.hora_hasta ? ' - ' + mesa.hora_hasta : ''}` : ''}
-                          </Typography>
-                          {mesa.aula && <Typography variant="caption" color="text.secondary">Aula: {mesa.aula}</Typography>}
-                          {mesa.tribunal && (mesa.tribunal.presidente || mesa.tribunal.vocal1) && (
-                            <Box sx={{ mt: 0.5, p: 0.75, bgcolor: 'action.hover', borderRadius: 1 }}>
-                              <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: 'text.secondary' }}>Tribunal</Typography>
-                              {mesa.tribunal.presidente && <Typography variant="caption" display="block" sx={{ fontSize: '0.7rem' }}>Pres: {mesa.tribunal.presidente}</Typography>}
-                              {(mesa.tribunal.vocal1 || mesa.tribunal.vocal2) && (
-                                <Typography variant="caption" display="block" sx={{ fontSize: '0.7rem' }}>
-                                  Voc: {[mesa.tribunal.vocal1, mesa.tribunal.vocal2].filter(Boolean).join(' / ')}
-                                </Typography>
-                              )}
+                      <Card variant="outlined" sx={{ mb: 2, '&:hover': { boxShadow: 1 } }}>
+                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                            <Box>
+                              <Typography variant="subtitle1" fontWeight={700}>
+                                {mesa.materia?.nombre ?? mesa.materia_nombre}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'}
+                                {mesa.hora_desde ? ` · ${mesa.hora_desde}` : ''}
+                                {mesa.aula ? ` · Aula ${mesa.aula}` : ''}
+                              </Typography>
                             </Box>
-                          )}
-                          <Button size="small" variant="contained" sx={{ mt: 0.5 }}
-                            onClick={() => setPendingInscripcion({ mesa })}
-                            disabled={inscribiendoId === mesa.id}>
-                            Inscribirme
-                          </Button>
-                        </Stack>
-                      </Paper>
+                            <Button size="small" variant="contained"
+                              onClick={() => setPendingInscripcion({ mesa })}
+                              disabled={inscribiendoId === mesa.id}>
+                              Inscribirme
+                            </Button>
+                          </Stack>
+                        </CardContent>
+                      </Card>
                     );
-                    // Un solo llamado: lista normal
-                    if (grupos.length === 1) return (
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                          <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
-                          <Chip label={`${grupos[0].llamado} — ${formatDate(grupos[0].fecha)}`} color="primary" variant="outlined" sx={{ fontWeight: 700 }} />
-                          <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
-                        </Box>
-                        {grupos[0].mesas.map(m => <MesaCard key={m.id} mesa={m} />)}
-                      </Box>
-                    );
-                    // Dos o más llamados: columnas lado a lado
+                    
                     return (
                       <Grid container spacing={2}>
-                        {grupos.map(({ llamado, fecha, mesas: grupo }, idx) => (
-                          <Grid item xs={12} md={6} key={fecha}>
-                            <Box sx={{
-                              p: 2, borderRadius: 2, border: '2px solid',
-                              borderColor: idx === 0 ? 'primary.main' : 'secondary.main',
-                              bgcolor: idx === 0 ? 'primary.50' : 'secondary.50',
-                              height: '100%',
-                            }}>
-                              <Box sx={{ textAlign: 'center', mb: 2 }}>
-                                <Typography variant="h6" fontWeight={800}
-                                  color={idx === 0 ? 'primary.main' : 'secondary.main'}>
-                                  {llamado}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                                  {formatDate(fecha)}
-                                </Typography>
-                              </Box>
-                              <Divider sx={{ mb: 2 }} />
-                              {grupo.map(m => <MesaCard key={m.id} mesa={m} />)}
+                        {grupos.map((grupo, idx) => (
+                          <Grid item xs={12} md={grupos.length > 1 ? 6 : 12} key={idx}>
+                            <Box sx={{ mb: 2 }}>
+                              <Divider textAlign="left" sx={{ mb: 2 }}>
+                                <Chip label={`${grupo.llamado} - ${formatDate(grupo.fecha)}`} color="primary" size="small" />
+                              </Divider>
+                              {grupo.mesas.map(m => <MesaCard key={m.id} mesa={m} />)}
                             </Box>
                           </Grid>
                         ))}
@@ -494,37 +494,144 @@ const MesaExamenPage: React.FC = () => {
             </Box>
           )}
 
-          {/* TAB 1: NO HABILITADAS */}
+          {/* TAB 1: MIS SOLICITUDES */}
           {activeTab === 1 && (
             <Box>
-              {loadingMesas ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
-              ) : mesasBloqueadas.length === 0 ? (
+              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <SendIcon color="primary" /> Mis Solicitudes
+              </Typography>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Si necesitás rendir una materia que <b>no figura en el cronograma</b> y estamos en período de inscripciones extraordinarias, podés solicitarla aquí.
+              </Alert>
+
+              {loadingSolicitudes ? <LinearProgress sx={{ mb: 2 }} /> : (
+                <Stack spacing={2}>
+                  <Grid container spacing={2}>
+                    {solicitudes.map(s => (
+                      <Grid item xs={12} md={6} key={s.id}>
+                        <Card variant="outlined">
+                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Box>
+                                <Typography variant="subtitle2" fontWeight={700}>{s.materia_nombre}</Typography>
+                                <Typography variant="caption" color="textSecondary">Solicitado el {formatDate(s.fecha_solicitud)}</Typography>
+                              </Box>
+                              <Chip 
+                                label={s.estado_display} 
+                                color={s.estado === 'PRO' ? 'success' : s.estado === 'REC' ? 'error' : 'warning'} 
+                                size="small" 
+                                variant="outlined"
+                              />
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                  
+                  {solicitudes.length === 0 && <Typography variant="body2" color="textSecondary">No tenés solicitudes registradas.</Typography>}
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Typography variant="subtitle1" fontWeight={700}>Nueva Solicitud</Typography>
+                  <Typography variant="body2" color="textSecondary" gutterBottom>Seleccioná la materia que deseás solicitar para este llamado extraordinario:</Typography>
+                  
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
+                    {materiasPlan
+                      .filter(m => !materiasAprobadasSet.has(m.id))
+                      .filter(m => !mesasDisponibles.some(mesa => mesa.materia_id === m.id))
+                      .filter(m => !solicitudes.some(sol => sol.materia_id === m.id && sol.estado === 'PEN'))
+                      .map(m => (
+                        <Grid item xs={12} sm={6} md={4} key={m.id}>
+                          <Paper variant="outlined" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <Typography variant="subtitle2" fontWeight={600}>{m.nombre}</Typography>
+                            <Button 
+                              size="small" 
+                              variant="outlined" 
+                              startIcon={<AddCircleIcon />}
+                              sx={{ mt: 1.5 }}
+                              onClick={() => setPendingSolicitud({ materia_id: m.id, materia_nombre: m.nombre })}
+                              disabled={!ventanaId}
+                            >
+                              Solicitar Mesa
+                            </Button>
+                          </Paper>
+                        </Grid>
+                      ))
+                    }
+                  </Grid>
+                </Stack>
+              )}
+            </Box>
+          )}
+
+          {/* TAB 2: MI AGENDA */}
+          {activeTab === 2 && (
+            <Box>
+              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TaskAltIcon color="success" /> Mi Agenda
+              </Typography>
+              {loadingTrayectoria ? <LinearProgress sx={{ mb: 2 }} /> : (
+                <>
+                  {misInscripciones.length === 0 ? (
+                    <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
+                      <Typography color="textSecondary">No tenés inscripciones activas para este llamado.</Typography>
+                    </Paper>
+                  ) : (
+                    <Grid container spacing={2}>
+                      {misInscripciones.map((mi) => (
+                        <Grid item xs={12} md={6} lg={4} key={mi.id}>
+                          <Card sx={{ borderLeft: '6px solid', borderLeftColor: 'primary.main' }}>
+                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                              <Stack gap={1}>
+                                <Typography variant="subtitle1" fontWeight={700}>{mi.materia_nombre}</Typography>
+                                <Typography variant="body2">
+                                  <b>{MESA_TIPO_LABEL[mi.tipo] ?? mi.tipo}</b> · {formatDate(mi.fecha)} {mi.hora_desde && ` · ${mi.hora_desde}`}
+                                </Typography>
+                                {mi.aula && <Typography variant="body2" color="textSecondary">Aula: {mi.aula}</Typography>}
+                                <Divider sx={{ my: 0.5 }} />
+                                {mi.tribunal && (
+                                  <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
+                                    <Typography variant="caption" fontWeight={700} display="block">TRIBUNAL:</Typography>
+                                    <Typography variant="caption" display="block">Pres: {mi.tribunal.presidente || '-'}</Typography>
+                                    <Typography variant="caption" display="block">Voc: {mi.tribunal.vocal1 || '-'}</Typography>
+                                  </Box>
+                                )}
+                                <Button size="small" color="error" variant="outlined" fullWidth
+                                  onClick={() => setPendingBaja({ mesaId: mi.mesa_id, materiaNombre: mi.materia_nombre })}
+                                >
+                                  Anular inscripción
+                                </Button>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  )}
+                </>
+              )}
+            </Box>
+          )}
+
+          {/* TAB 3: NO HABILITADAS */}
+          {activeTab === 3 && (
+            <Box>
+              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ErrorOutlineIcon color="warning" /> Materias no habilitadas
+              </Typography>
+              {mesasBloqueadas.length === 0 ? (
                 <Alert severity="success">No hay mesas bloqueadas para este período.</Alert>
               ) : (
-                <Grid container spacing={1.5}>
+                <Grid container spacing={2}>
                   {mesasBloqueadas.map(({ mesa, motivo }) => (
                     <Grid item xs={12} md={6} lg={4} key={mesa.id}>
-                      <Paper variant="outlined" sx={{
-                        p: 1.5, opacity: 0.85,
-                        borderLeft: '5px solid',
-                        borderLeftColor: getMotivoColor(motivo) === 'error' ? 'error.main' : getMotivoColor(motivo) === 'warning' ? 'warning.main' : 'grey.400',
-                      }}>
-                        <Stack gap={0.5}>
-                          <Typography variant="subtitle2" fontWeight={700}>
-                            {mesa.materia?.nombre ?? mesa.materia_nombre}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'} · {formatDate(mesa.fecha)}
-                          </Typography>
-                          <Chip
-                            label={motivo}
-                            size="small"
-                            color={getMotivoColor(motivo)}
-                            variant="outlined"
-                            sx={{ alignSelf: 'flex-start', fontSize: '0.7rem' }}
-                          />
-                        </Stack>
+                      <Paper variant="outlined" sx={{ p: 2, opacity: 0.8, borderLeft: '4px solid', borderLeftColor: getMotivoColor(motivo) === 'error' ? 'error.main' : 'warning.main' }}>
+                        <Typography variant="subtitle2" fontWeight={700}>{mesa.materia?.nombre ?? mesa.materia_nombre}</Typography>
+                        <Typography variant="caption" display="block" color="textSecondary">
+                          {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {formatDate(mesa.fecha)}
+                        </Typography>
+                        <Chip label={motivo} size="small" color={getMotivoColor(motivo)} variant="outlined" sx={{ mt: 1 }} />
                       </Paper>
                     </Grid>
                   ))}
@@ -533,28 +640,23 @@ const MesaExamenPage: React.FC = () => {
             </Box>
           )}
 
-          {/* TAB 2: APROBADAS */}
-          {activeTab === 2 && (
+          {/* TAB 4: APROBADAS */}
+          {activeTab === 4 && (
             <Box>
-              {loadingTrayectoria ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
-              ) : materiasAprobadas.length === 0 ? (
-                <Alert severity="info">No hay materias aprobadas registradas.</Alert>
+              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <HistoryIcon color="primary" /> Historial de Finales
+              </Typography>
+              {materiasAprobadas.length === 0 ? (
+                <Typography color="textSecondary">No se registraron materias aprobadas.</Typography>
               ) : (
-                <Grid container spacing={1.5}>
+                <Grid container spacing={2}>
                   {materiasAprobadas.map((mat) => (
-                    <Grid item xs={12} sm={6} md={4} key={mat.materia_id}>
-                      <Paper variant="outlined" sx={{ p: 1.5, borderLeft: '5px solid', borderLeftColor: 'success.main' }}>
-                        <Stack gap={0.25}>
-                          <Typography variant="subtitle2" fontWeight={700}>{mat.materia_nombre}</Typography>
-                          {mat.anio && <Typography variant="caption" color="text.secondary">{mat.anio}º año</Typography>}
-                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                            <Chip label="Aprobada" size="small" color="success" variant="outlined" sx={{ fontSize: '0.7rem' }} />
-                            {mat.final?.nota && <Chip label={`Nota: ${mat.final.nota}`} size="small" color="success" sx={{ fontSize: '0.7rem' }} />}
-                          </Stack>
-                          {mat.final?.fecha && (
-                            <Typography variant="caption" color="text.secondary">Fecha: {mat.final.fecha}</Typography>
-                          )}
+                    <Grid item xs={12} md={6} lg={4} key={mat.materia_id}>
+                      <Paper variant="outlined" sx={{ p: 2, bgcolor: 'success.50' }}>
+                        <Typography variant="subtitle2" fontWeight={700}>{mat.materia_nombre}</Typography>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
+                          <Typography variant="body2" color="success.main" fontWeight={700}>Nota: {mat.final?.nota || '-'}</Typography>
+                          <Typography variant="caption" color="textSecondary">{formatDate(mat.final?.fecha_iso)}</Typography>
                         </Stack>
                       </Paper>
                     </Grid>
@@ -566,38 +668,43 @@ const MesaExamenPage: React.FC = () => {
         </>
       )}
 
-      <FinalConfirmationDialog
-        open={Boolean(pendingInscripcion)}
-        onConfirm={handleConfirmInscripcion}
-        onCancel={() => { if (inscribiendoId === null) setPendingInscripcion(null); }}
-        contextText={pendingInscripcion ? `inscripción a la mesa de ${pendingInscripcion.mesa.materia?.nombre ?? pendingInscripcion.mesa.materia_nombre}` : ''}
-        loading={inscribiendoId !== null}
-      />
+      {/* DIALOGS */}
+      <Dialog open={!!pendingInscripcion} onClose={() => setPendingInscripcion(null)}>
+        <DialogTitle>Confirmar Inscripción</DialogTitle>
+        <DialogContent>
+          <Typography>¿Confirmas tu inscripción a la mesa de <b>{pendingInscripcion?.mesa.materia?.nombre || pendingInscripcion?.mesa.materia_nombre}</b>?</Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>Fecha: {pendingInscripcion && formatDate(pendingInscripcion.mesa.fecha)}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingInscripcion(null)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleConfirmInscripcion} disabled={inscribiendoId !== null}>Confirmar</Button>
+        </DialogActions>
+      </Dialog>
 
-      <FinalConfirmationDialog
-        open={Boolean(pendingBaja)}
-        onConfirm={async () => {
-          if (!pendingBaja) return;
-          setInscribiendoId(pendingBaja.mesaId);
-          try {
-            const res = await bajaMesa({ mesa_id: pendingBaja.mesaId, dni: canGestionar ? (dniBusqueda || undefined) : undefined });
-            setInfo(res.message);
-            setErr(null);
-            setPendingBaja(null);
-            await fetchTrayectoria();
-          } catch (e: any) {
-            setErr(e?.response?.data?.message || 'No se pudo anular la inscripción. Verificá que falten más de 48hs hábiles.');
-          } finally {
-            setInscribiendoId(null);
-          }
-        }}
-        onCancel={() => setPendingBaja(null)}
-        contextText={pendingBaja ? `anulación definitiva de tu inscripción a la mesa de ${pendingBaja.materiaNombre}` : ''}
-        loading={inscribiendoId !== null}
-        confirmColor="error"
-        confirmLabel="Anular Inscripción"
-      />
-    </Box>
+      <Dialog open={!!pendingBaja} onClose={() => setPendingBaja(null)}>
+        <DialogTitle>Anular Inscripción</DialogTitle>
+        <DialogContent>
+          <Typography>¿Estás seguro que deseas anular tu inscripción a <b>{pendingBaja?.materiaNombre}</b>?</Typography>
+          <Alert severity="warning" sx={{ mt: 2 }}>Esta acción liberará tu cupo en la mesa.</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingBaja(null)}>Cancelar</Button>
+          <Button color="error" variant="contained" onClick={handleConfirmBaja}>Anular</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!pendingSolicitud} onClose={() => setPendingSolicitud(null)}>
+        <DialogTitle>Solicitar Mesa Extraordinaria</DialogTitle>
+        <DialogContent>
+          <Typography>¿Confirmas la solicitud de mesa para <b>{pendingSolicitud?.materia_nombre}</b>?</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>Bedelía evaluará si hay demanda suficiente y docentes disponibles para armar la mesa.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingSolicitud(null)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleConfirmSolicitud} disabled={solicitando}>Enviar Solicitud</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
 

@@ -193,3 +193,25 @@ class MesaActaOral(models.Model):
 
     def __str__(self):
         return f"Acta oral {self.acta_numero or self.inscripcion_id}"
+
+class SolicitudMesa(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PEN", "Pendiente"
+        PROCESADA = "PRO", "Procesada"
+        RECHAZADA = "REC", "Rechazada"
+
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name="solicitudes_mesa")
+    materia = models.ForeignKey(Materia, on_delete=models.CASCADE)
+    ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.CASCADE)
+    fecha_solicitud = models.DateTimeField(auto_now_add=True)
+    observaciones = models.TextField(blank=True, null=True)
+    estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.PENDIENTE)
+    mesa_asignada = models.ForeignKey("MesaExamen", on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        unique_together = ("estudiante", "materia", "ventana")
+        verbose_name = "Solicitud de mesa"
+        verbose_name_plural = "Solicitudes de mesa"
+
+    def __str__(self):
+        return f"Solicitud {self.materia.nombre} - {self.estudiante.persona.dni} ({self.get_estado_display()})"

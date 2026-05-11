@@ -6,7 +6,11 @@
       "Bash(/home/admin486321/.nvm/versions/node/v24.13.1/lib/node_modules/corepack/shims/pnpm why:*)",
       "Bash(python3 -c ':*)",
       "Bash(/home/admin486321/.nvm/versions/node/v24.13.1/lib/node_modules/corepack/shims/pnpm exec:*)",
-      "Bash(ls /home/admin486321/IPES6/backend/test_*.py)"
+      "Bash(ls /home/admin486321/IPES6/backend/test_*.py)",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(find /home/admin486321/IPES6/frontend/src/pages/Estudiante* -type f)",
+      "Bash(cat /home/admin486321/scripts/daily_backup.sh | head -20; echo \"---\"; ls /home/admin486321/IPES6/backend/scripts/ 2>/dev/null || echo \"sin scripts\"; docker ps --format \"{{.Names}}\" 2>/dev/null | grep -i ipes)",
+      "Read(//home/admin486321/scripts/**)"
     ]
   }
 }

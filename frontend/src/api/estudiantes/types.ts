@@ -589,6 +589,33 @@ export type ConstanciaExamenDTO = {
   tribunal_vocal2?: string | null;
 };
 
+export interface SolicitudMesaInDTO {
+  materia_id: number;
+  ventana_id: number;
+  observaciones?: string;
+  dni?: string;
+}
+
+export interface SolicitudMesaOutDTO {
+  id: number;
+  materia_id: number;
+  materia_nombre: string;
+  estado: "PEN" | "PRO" | "REC";
+  estado_display: string;
+  fecha_solicitud: string;
+  observaciones?: string;
+  mesa_asignada_id?: number;
+}
+
+export interface SolicitudMesaAdminDTO extends SolicitudMesaOutDTO {
+  estudiante_id: number;
+  estudiante_nombre: string;
+  estudiante_dni: string;
+  profesorado_nombre?: string;
+  ventana_id: number;
+}
+
+
 // Admin
 export interface EstudianteAdminDocumentacionDTO {
   dni_legalizado?: boolean;

@@ -17,6 +17,8 @@ import {
   MesaPlanillaDTO,
   TrayectoriaCarreraDetalleDTO,
   SolicitudCambioComisionDTO,
+  SolicitudMesaInDTO,
+  SolicitudMesaOutDTO,
 } from "./types";
 
 export const solicitarInscripcionMateria = (payload: InscripcionMateriaPayload) =>
@@ -130,5 +132,15 @@ export async function actualizarMesaPlanilla(mesaId: number, payload: {
 
 export async function gestionarMesaPlanillaCierre(mesaId: number, accion: "cerrar" | "reabrir"): Promise<ApiResponseDTO> {
   const { data } = await client.post<ApiResponseDTO>(`/estudiantes/mesas/${mesaId}/cierre`, { accion });
+  return data;
+}
+
+export async function solicitarMesa(payload: SolicitudMesaInDTO): Promise<{ message: string }> {
+  const { data } = await client.post<{ message: string }>(`/estudiantes/solicitar_mesa`, payload);
+  return data;
+}
+
+export async function listarMisSolicitudes(params?: { dni?: string }): Promise<SolicitudMesaOutDTO[]> {
+  const { data } = await client.get<SolicitudMesaOutDTO[]>(`/estudiantes/mis_solicitudes`, { params });
   return data;
 }

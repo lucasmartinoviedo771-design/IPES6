@@ -32,6 +32,24 @@ class BajaMesaOut(Schema):
     limite_baja: str  # Datetime formateado (DD/MM/YYYY HH:MM)
 
 
+class SolicitudMesaIn(Schema):
+    materia_id: int
+    ventana_id: int
+    observaciones: str | None = None
+    dni: str | None = None
+
+
+class SolicitudMesaOut(Schema):
+    id: int
+    materia_id: int
+    materia_nombre: str
+    estado: str
+    estado_display: str
+    fecha_solicitud: str
+    observaciones: str | None = None
+    mesa_asignada_id: int | None = None
+
+
 class ConstanciaExamenItem(Schema):
     inscripcion_id: int
     estudiante: str

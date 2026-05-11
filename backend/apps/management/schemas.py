@@ -43,6 +43,21 @@ class MesaOut(Schema):
     esta_cerrada: bool = False
     inscriptos_count: int = 0
 
+class SolicitudMesaOut(Schema):
+    id: int
+    estudiante_id: int
+    estudiante_nombre: str
+    estudiante_dni: str
+    materia_id: int
+    materia_nombre: str
+    profesorado_nombre: str | None = None
+    ventana_id: int
+    estado: str
+    estado_display: str
+    fecha_solicitud: datetime
+    observaciones: str | None = None
+    mesa_asignada_id: int | None = None
+
 
 class VentanaIn(Schema):
     tipo: str

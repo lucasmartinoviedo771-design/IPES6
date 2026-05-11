@@ -41,6 +41,8 @@ from apps.estudiantes.schemas.mesas import (
     MesaPlanillaCierreIn,
     BajaMesaIn,
     BajaMesaOut,
+    SolicitudMesaIn,
+    SolicitudMesaOut,
 )
 
 from apps.estudiantes.schemas.actas import (
@@ -177,6 +179,8 @@ __all__ = [
     "MesaPlanillaCierreIn",
     "BajaMesaIn",
     "BajaMesaOut",
+    "SolicitudMesaIn",
+    "SolicitudMesaOut",
     # actas
     "ActaDocenteIn",
     "ActaEstudianteIn",

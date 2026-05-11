@@ -3,12 +3,12 @@ from django.db import transaction
 from django.db.models import Prefetch, Q, Count
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
-from core.models import MesaExamen, Materia, Docente, Profesorado
+from core.models import MesaExamen, Materia, Docente, Profesorado, SolicitudMesa
 from core.permissions import ensure_profesorado_access, ensure_roles, allowed_profesorados
 from apps.common.date_utils import calcular_limite_baja_mesa
 from datetime import datetime
 from ..router import management_router
-from ..schemas import MesaIn, MesaOut, MesaDocenteOut
+from ..schemas import MesaIn, MesaOut, MesaDocenteOut, SolicitudMesaOut
 
 def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
     m = mesa.materia
@@ -135,3 +135,64 @@ def delete_mesa(request, mesa_id: int):
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
     mesa.delete()
     return 204, None
+
+@management_router.get("/solicitudes_mesas", response=list[SolicitudMesaOut], auth=JWTAuth())
+def list_solicitudes(request, ventana_id: int | None = None, estado: str | None = None):
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    
+    qs = SolicitudMesa.objects.select_related(
+        "estudiante__persona", 
+        "materia__plan_de_estudio__profesorado"
+    ).all()
+    
+    if ventana_id: qs = qs.filter(ventana_id=ventana_id)
+    if estado: qs = qs.filter(estado=estado.upper())
+    
+    # Filtro por profesorado si no es admin total
+    allowed = allowed_profesorados(request.user)
+    if allowed is not None:
+        qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
+        
+    return [
+        SolicitudMesaOut(
+            id=s.id,
+            estudiante_id=s.estudiante_id,
+            estudiante_nombre=f"{s.estudiante.persona.apellido}, {s.estudiante.persona.nombre}",
+            estudiante_dni=s.estudiante.persona.dni,
+            materia_id=s.materia_id,
+            materia_nombre=s.materia.nombre,
+            profesorado_nombre=s.materia.plan_de_estudio.profesorado.nombre,
+            ventana_id=s.ventana_id,
+            estado=s.estado,
+            estado_display=s.get_estado_display(),
+            fecha_solicitud=s.fecha_solicitud,
+            observaciones=s.observaciones,
+            mesa_asignada_id=s.mesa_asignada_id
+        ) for s in qs.order_by("-fecha_solicitud")
+    ]
+
+@management_router.post("/solicitudes_mesas/{sol_id}/procesar", response=SolicitudMesaOut, auth=JWTAuth())
+def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = None):
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    sol = get_object_or_404(SolicitudMesa, id=sol_id)
+    
+    sol.estado = estado.upper()
+    if mesa_id:
+        sol.mesa_asignada_id = mesa_id
+    sol.save()
+    
+    return SolicitudMesaOut(
+        id=sol.id,
+        estudiante_id=sol.estudiante_id,
+        estudiante_nombre=f"{sol.estudiante.persona.apellido}, {sol.estudiante.persona.nombre}",
+        estudiante_dni=sol.estudiante.persona.dni,
+        materia_id=sol.materia_id,
+        materia_nombre=sol.materia.nombre,
+        profesorado_nombre=sol.materia.plan_de_estudio.profesorado.nombre,
+        ventana_id=sol.ventana_id,
+        estado=sol.estado,
+        estado_display=sol.get_estado_display(),
+        fecha_solicitud=sol.fecha_solicitud,
+        observaciones=sol.observaciones,
+        mesa_asignada_id=sol.mesa_asignada_id
+    )
