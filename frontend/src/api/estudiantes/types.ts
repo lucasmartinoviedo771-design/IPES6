@@ -237,6 +237,9 @@ export type TrayectoriaMesaDTO = {
   estado_display: string;
   aula?: string | null;
   nota?: string | null;
+  hora_desde?: string | null;
+  hora_hasta?: string | null;
+  tribunal?: { presidente?: string | null; vocal1?: string | null; [key: string]: string | null | undefined } | null;
 };
 
 export type RegularidadResumenDTO = {
