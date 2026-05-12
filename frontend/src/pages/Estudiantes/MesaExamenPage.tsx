@@ -454,504 +454,504 @@ const MesaExamenPage: React.FC = () => {
         <BackButton fallbackPath="/estudiantes" />
         <Typography variant="h4" fontWeight={700} gutterBottom sx={{ color: '#5d4037' }}>Mesas de Examen</Typography>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} gap={2} sx={{ mb: 3 }}>
-        <FormControl size="small" sx={{ minWidth: 220, bgcolor: "#fff" }}>
-          <InputLabel id="select-ventana-label">Llamado / Período</InputLabel>
-          <Select 
-            labelId="select-ventana-label"
-            label="Llamado / Período" 
-            value={ventanaId} 
-            onChange={(e) => setVentanaId(e.target.value)}
-          >
-            <MenuItem value="">Todos los activos</MenuItem>
-            {ventanas.map((v) => (
-              <MenuItem key={v.id} value={String(v.id)}>
-                {formatDate(v.desde)} ({v.tipo === 'MESAS_FINALES' ? 'Ordinaria' : 'Extraordinaria'})
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {canGestionar && (
-          <Stack direction="row" gap={1} flexGrow={1}>
-            <TextField fullWidth size="small" label="DNI Estudiante" value={dni}
-              sx={{ bgcolor: "#fff" }}
-              onChange={(e) => setDni(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') setDniBusqueda(dni); }} />
-            <Button variant="contained" 
-              sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' } }}
-              onClick={() => setDniBusqueda(dni)}>
-              Buscar
-            </Button>
-          </Stack>
-        )}
-      </Stack>
-
-      {info && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
-      {err && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
-
-      {canGestionar && estudianteEncontrado && (
-        <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: '#fff', border: '1px solid #e3d7bc', borderRadius: 2 }}>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Avatar sx={{ bgcolor: '#8b4513' }}>{estudianteEncontrado.nombre.charAt(0)}</Avatar>
-            <Box>
-              <Typography variant="subtitle2" color="#8b4513" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.7rem' }}>
-                ESTUDIANTE SELECCIONADO
-              </Typography>
-              <Typography variant="h6" fontWeight={700} color="#5d4037">
-                {estudianteEncontrado.nombre}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                DNI: {estudianteEncontrado.dni}
-              </Typography>
-            </Box>
-          </Stack>
-        </Paper>
-      )}
-
-      {mostrarContenido && !necesitaContexto && (
-        <>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
-              aria-label="Categorías de mesas"
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{
-                '& .MuiTab-root': { fontWeight: 600, fontSize: '0.95rem', textTransform: 'none' },
-                '& .Mui-selected': { color: '#8b4513' },
-                '& .MuiTabs-indicator': { backgroundColor: '#8b4513' }
-              }}
+        <Stack direction={{ xs: 'column', md: 'row' }} gap={2} sx={{ mb: 3 }}>
+          <FormControl size="small" sx={{ minWidth: 220, bgcolor: "#fff" }}>
+            <InputLabel id="select-ventana-label">Llamado / Período</InputLabel>
+            <Select
+              labelId="select-ventana-label"
+              label="Llamado / Período"
+              value={ventanaId}
+              onChange={(e) => setVentanaId(e.target.value)}
             >
-              <Tab icon={<CalendarMonthIcon fontSize="small" />} iconPosition="start" label={tabLabel('Inscripción Mesa Ordinaria', mesasDisponibles.length)} />
-              <Tab icon={<SendIcon fontSize="small" />} iconPosition="start" label={tabLabel('Mesa Extraordinaria', solicitudes.length)} />
-              <Tab icon={<TaskAltIcon fontSize="small" />} iconPosition="start" label={tabLabel('Cronograma de Mesas', misInscripciones.length)} />
-              <Tab icon={<ErrorOutlineIcon fontSize="small" />} iconPosition="start" label={tabLabel('No habilitadas', mesasBloqueadas.length)} />
-              <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="start" label={tabLabel('Aprobadas', materiasAprobadas.length)} />
-            </Tabs>
-          </Box>
+              <MenuItem value="">Todos los activos</MenuItem>
+              {ventanas.map((v) => (
+                <MenuItem key={v.id} value={String(v.id)}>
+                  {formatDate(v.desde)} ({v.tipo === 'MESAS_FINALES' ? 'Ordinaria' : 'Extraordinaria'})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {canGestionar && (
+            <Stack direction="row" gap={1} flexGrow={1}>
+              <TextField fullWidth size="small" label="DNI Estudiante" value={dni}
+                sx={{ bgcolor: "#fff" }}
+                onChange={(e) => setDni(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setDniBusqueda(dni); }} />
+              <Button variant="contained"
+                sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' } }}
+                onClick={() => setDniBusqueda(dni)}>
+                Buscar
+              </Button>
+            </Stack>
+          )}
+        </Stack>
 
-          {/* TAB 0: INSCRIBIRME */}
-          {activeTab === 0 && (
-            <Box>
-              {loadingMesas ? <LinearProgress sx={{ mb: 2 }} /> : (
-                <>
-                  <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CalendarMonthIcon color="primary" /> Mesas Disponibles
-                  </Typography>
-                  {mesasDisponibles.length === 0 ? (
-                    <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
-                      <Typography color="textSecondary">No se encontraron mesas disponibles para los filtros seleccionados.</Typography>
-                    </Paper>
-                  ) : (() => {
-                    const grupos = agruparPorLlamado(mesasDisponibles);
-                    const MesaCard = ({ mesa }: { mesa: MesaListadoItemDTO }) => (
-                      <Box
-                        sx={{ p: 2.5, mb: 2, borderRadius: 2, border: "1px solid #d4c4a5", bgcolor: "#fefbf4" }}
-                      >
-                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={700} color="#5d4037">
-                              {mesa.materia?.nombre ?? mesa.materia_nombre}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'}
-                              {mesa.hora_desde ? ` · ${mesa.hora_desde}` : ''}
-                              {mesa.aula ? ` · Aula ${mesa.aula}` : ''}
-                            </Typography>
-                            <Stack direction="row" spacing={1} mt={1}>
-                               <Chip size="small" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} label="Habilitada" />
-                            </Stack>
-                          </Box>
-                          <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#fff", minWidth: 200, display: 'flex', alignItems: 'center' }}>
-                            <Button
-                              variant="contained"
-                              fullWidth
-                              sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' } }}
-                              onClick={() => setPendingInscripcion({ mesa })}
-                              disabled={inscribiendoId === mesa.id}
-                            >
-                              Inscribirme
-                            </Button>
-                          </Box>
-                        </Stack>
-                      </Box>
-                    );
+        {info && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo(null)}>{info}</Alert>}
+        {err && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErr(null)}>{err}</Alert>}
 
-                    return (
+        {canGestionar && estudianteEncontrado && (
+          <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: '#fff', border: '1px solid #e3d7bc', borderRadius: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Avatar sx={{ bgcolor: '#B7694E' }}>{estudianteEncontrado.nombre.charAt(0)}</Avatar>
+              <Box>
+                <Typography variant="subtitle2" color="#B7694E" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.7rem' }}>
+                  ESTUDIANTE SELECCIONADO
+                </Typography>
+                <Typography variant="h6" fontWeight={700} color="#5d4037">
+                  {estudianteEncontrado.nombre}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  DNI: {estudianteEncontrado.dni}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
+        )}
+
+        {mostrarContenido && !necesitaContexto && (
+          <>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+              <Tabs
+                value={activeTab}
+                onChange={(_, v) => setActiveTab(v)}
+                aria-label="Categorías de mesas"
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  '& .MuiTab-root': { fontWeight: 600, fontSize: '0.95rem', textTransform: 'none' },
+                  '& .Mui-selected': { color: '#B7694E' },
+                  '& .MuiTabs-indicator': { backgroundColor: '#B7694E' }
+                }}
+              >
+                <Tab icon={<CalendarMonthIcon fontSize="small" />} iconPosition="start" label={tabLabel('Inscripción Mesa Ordinaria', mesasDisponibles.length)} />
+                <Tab icon={<SendIcon fontSize="small" />} iconPosition="start" label={tabLabel('Mesa Extraordinaria', solicitudes.length)} />
+                <Tab icon={<TaskAltIcon fontSize="small" />} iconPosition="start" label={tabLabel('Cronograma de Mesas', misInscripciones.length)} />
+                <Tab icon={<ErrorOutlineIcon fontSize="small" />} iconPosition="start" label={tabLabel('No habilitadas', mesasBloqueadas.length)} />
+                <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="start" label={tabLabel('Aprobadas', materiasAprobadas.length)} />
+              </Tabs>
+            </Box>
+
+            {/* TAB 0: INSCRIBIRME */}
+            {activeTab === 0 && (
+              <Box>
+                {loadingMesas ? <LinearProgress sx={{ mb: 2 }} /> : (
+                  <>
+                    <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CalendarMonthIcon color="primary" /> Mesas Disponibles
+                    </Typography>
+                    {mesasDisponibles.length === 0 ? (
+                      <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
+                        <Typography color="textSecondary">No se encontraron mesas disponibles para los filtros seleccionados.</Typography>
+                      </Paper>
+                    ) : (() => {
+                      const grupos = agruparPorLlamado(mesasDisponibles);
+                      const MesaCard = ({ mesa }: { mesa: MesaListadoItemDTO }) => (
+                        <Box
+                          sx={{ p: 2.5, mb: 2, borderRadius: 2, border: "1px solid #d4c4a5", bgcolor: "#fefbf4" }}
+                        >
+                          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
+                            <Box>
+                              <Typography variant="subtitle1" fontWeight={700} color="#5d4037">
+                                {mesa.materia?.nombre ?? mesa.materia_nombre}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {mesa.modalidad === 'LIB' ? 'Libre' : 'Regular'}
+                                {mesa.hora_desde ? ` · ${mesa.hora_desde}` : ''}
+                                {mesa.aula ? ` · Aula ${mesa.aula}` : ''}
+                              </Typography>
+                              <Stack direction="row" spacing={1} mt={1}>
+                                <Chip size="small" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} label="Habilitada" />
+                              </Stack>
+                            </Box>
+                            <Box sx={{ p: 1.5, borderRadius: 2, border: "1px solid #cbb891", bgcolor: "#fff", minWidth: 200, display: 'flex', alignItems: 'center' }}>
+                              <Button
+                                variant="contained"
+                                fullWidth
+                                sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' } }}
+                                onClick={() => setPendingInscripcion({ mesa })}
+                                disabled={inscribiendoId === mesa.id}
+                              >
+                                Inscribirme
+                              </Button>
+                            </Box>
+                          </Stack>
+                        </Box>
+                      );
+
+                      return (
+                        <Grid container spacing={2}>
+                          {grupos.map((grupo, idx) => (
+                            <Grid item xs={12} md={grupos.length > 1 ? 6 : 12} key={idx}>
+                              <Box sx={{ mb: 2 }}>
+                                <Divider textAlign="left" sx={{ mb: 2 }}>
+                                  <Chip label={`${grupo.llamado} - ${formatDate(grupo.fecha)}`} color="primary" size="small" />
+                                </Divider>
+                                {grupo.mesas.map(m => <MesaCard key={m.id} mesa={m} />)}
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      );
+                    })()}
+                  </>
+                )}
+              </Box>
+            )}
+
+            {/* TAB 1: MIS SOLICITUDES */}
+            {activeTab === 1 && (
+              <Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SendIcon color="primary" /> Solicitudes de Mesa Extraordinaria
+                </Typography>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  Si necesitás rendir una materia que <b>no figura en el cronograma</b> y estamos en período de inscripciones extraordinarias, podés solicitarla aquí.
+                </Alert>
+
+                {loadingSolicitudes ? <LinearProgress sx={{ mb: 2 }} /> : (
+                  <Stack spacing={2}>
+                    <Grid container spacing={2}>
+                      {solicitudes.map(s => (
+                        <Grid item xs={12} md={6} key={s.id}>
+                          <Card variant="outlined">
+                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Box sx={{ flex: 1 }}>
+                                  <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                                    <Typography variant="subtitle2" fontWeight={700}>{s.materia_nombre}</Typography>
+                                    {s.modalidad && (
+                                      <Chip
+                                        label={s.modalidad === 'REG' ? 'Regular' : 'Libre'}
+                                        size="small"
+                                        sx={{ height: 18, fontSize: '0.65rem', bgcolor: s.modalidad === 'REG' ? '#1976d2' : '#ed6c02', color: '#fff', fontWeight: 700 }}
+                                      />
+                                    )}
+                                  </Stack>
+                                  <Typography variant="caption" color="textSecondary">Solicitado el {formatDate(s.fecha_solicitud)}</Typography>
+                                </Box>
+                                <Chip
+                                  label={s.estado_display}
+                                  color={s.estado === 'PRO' ? 'success' : s.estado === 'REC' ? 'error' : 'warning'}
+                                  size="small"
+                                  variant="outlined"
+                                />
+                                {s.estado === 'PEN' && (
+                                  <Button
+                                    size="small"
+                                    color="error"
+                                    onClick={() => setPendingCancelSolicitudId(s.id)}
+                                    disabled={solicitando}
+                                    sx={{ ml: 1, minWidth: 'auto', px: 1 }}
+                                  >
+                                    Anular
+                                  </Button>
+                                )}
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+
+                    {solicitudes.length === 0 && <Typography variant="body2" color="textSecondary">No tenés solicitudes registradas.</Typography>}
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <Typography variant="subtitle1" fontWeight={700}>Nueva Solicitud</Typography>
+                    <Typography variant="body2" color="textSecondary" gutterBottom>Seleccioná la materia que deseás solicitar para este llamado extraordinario:</Typography>
+
+                    {loadingSolicitables ? <LinearProgress sx={{ mt: 1 }} /> : (() => {
+                      const yaEnMesa = (mid: number) => mesasDisponibles.some(m => (m.materia?.id ?? m.materia_id) === mid);
+                      const yaSolicitada = (mid: number) => solicitudes.some(s => s.materia_id === mid && s.estado === 'PEN');
+                      const reg = materiasSolicitables.filter(m => m.modalidad === 'REG' && !yaEnMesa(m.materia_id) && !yaSolicitada(m.materia_id));
+                      const lib = materiasSolicitables.filter(m => m.modalidad === 'LIB' && !yaEnMesa(m.materia_id) && !yaSolicitada(m.materia_id));
+
+                      const MateriasGrid = ({ lista, label, isLibre }: { lista: typeof materiasSolicitables, label: string, isLibre: boolean }) => {
+                        type MatSol = typeof materiasSolicitables[number];
+                        const porAnio: Record<string, MatSol[]> = {};
+                        for (const m of lista) {
+                          const key = `${m.anio}`;
+                          if (!porAnio[key]) porAnio[key] = [];
+                          porAnio[key].push(m);
+                        }
+
+                        return (
+                          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e3d7bc', bgcolor: '#fff', height: '100%' }}>
+                            <Typography variant="h6" fontWeight={700} gutterBottom color="#5d4037">
+                              {label}
+                            </Typography>
+                            {lista.length === 0 ? (
+                              <Alert severity="info" sx={{ bgcolor: '#fefbf4', border: '1px solid #e3d7bc', color: '#5d4037' }}>No hay materias disponibles en esta modalidad.</Alert>
+                            ) : (
+                              <Stack spacing={3}>
+                                {Object.entries(porAnio).sort((a, b) => Number(a[0]) - Number(b[0])).map(([anio, mats]) => (
+                                  <Box key={anio}>
+                                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: '#B7694E' }}>{anio}º año</Typography>
+                                    <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
+                                      {mats.map(m => (
+                                        <Box key={`${m.materia_id}-${m.modalidad}`} sx={{ p: 2, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4' }}>
+                                          <Stack direction="column" justifyContent="space-between" spacing={1} height="100%">
+                                            <Box>
+                                              <Typography variant="h6" fontSize="0.9rem" fontWeight={700} color="#5d4037" sx={{ lineHeight: 1.2 }}>{m.materia_nombre}</Typography>
+                                              <Typography variant="caption" color="text.secondary" display="block">{m.plan_resolucion}</Typography>
+                                              <Stack direction="row" spacing={0.5} mt={1} flexWrap="wrap">
+                                                {isLibre
+                                                  ? <Chip size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 600 }} label="Libre" />
+                                                  : <Chip size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} label="Regular" />
+                                                }
+                                                <Chip size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#efebe9', color: '#5d4037', fontWeight: 600 }} label="Solicitar" />
+                                              </Stack>
+                                            </Box>
+                                            <Box sx={{ mt: 'auto', pt: 1 }}>
+                                              <Button
+                                                variant="contained"
+                                                size="small"
+                                                fullWidth
+                                                sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' }, fontSize: '0.75rem', py: 0.5 }}
+                                                onClick={() => { setModalidadSolicitud(m.modalidad as 'REG' | 'LIB'); setPendingSolicitud({ materia_id: m.materia_id, materia_nombre: m.materia_nombre }); }}
+                                                disabled={!ventanaId}
+                                              >
+                                                Solicitar Mesa
+                                              </Button>
+                                            </Box>
+                                          </Stack>
+                                        </Box>
+                                      ))}
+                                    </Box>
+                                  </Box>
+                                ))}
+                              </Stack>
+                            )}
+                          </Paper>
+                        );
+                      };
+
+                      return (
+                        <Grid container spacing={3} sx={{ mt: 0.5 }}>
+                          <Grid item xs={12} md={6}>
+                            <MateriasGrid lista={reg} label="Regular" isLibre={false} />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <MateriasGrid lista={lib} label="Libre" isLibre={true} />
+                          </Grid>
+                        </Grid>
+                      );
+                    })()}
+                  </Stack>
+                )}
+              </Box>
+            )}
+
+            {/* TAB 2: MI AGENDA */}
+            {activeTab === 2 && (
+              <Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#5d4037' }}>
+                  <TaskAltIcon color="success" /> Cronograma de Mesas Inscriptas
+                </Typography>
+                {loadingTrayectoria ? <LinearProgress sx={{ mb: 2 }} /> : (
+                  <>
+                    {misInscripciones.length === 0 ? (
+                      <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#fff', border: '1px solid #e3d7bc' }}>
+                        <Typography color="textSecondary">No tenés inscripciones activas para este llamado.</Typography>
+                      </Paper>
+                    ) : (
                       <Grid container spacing={2}>
-                        {grupos.map((grupo, idx) => (
-                          <Grid item xs={12} md={grupos.length > 1 ? 6 : 12} key={idx}>
-                            <Box sx={{ mb: 2 }}>
-                              <Divider textAlign="left" sx={{ mb: 2 }}>
-                                <Chip label={`${grupo.llamado} - ${formatDate(grupo.fecha)}`} color="primary" size="small" />
-                              </Divider>
-                              {grupo.mesas.map(m => <MesaCard key={m.id} mesa={m} />)}
+                        {misInscripciones.map((mi) => (
+                          <Grid item xs={12} md={6} lg={4} key={mi.id}>
+                            <Box sx={{ p: 2.5, borderRadius: 2, border: "1px solid #d4c4a5", bgcolor: "#fefbf4", height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                              <Stack gap={1}>
+                                <Typography variant="subtitle1" fontWeight={700} color="#5d4037">{mi.materia_nombre}</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  <b>{MESA_TIPO_LABEL[mi.tipo] ?? mi.tipo}</b> · {formatDate(mi.fecha)} {mi.hora_desde && ` · ${mi.hora_desde}`}
+                                </Typography>
+                                {mi.aula && <Typography variant="body2" color="textSecondary">Aula: {mi.aula}</Typography>}
+                                <Divider sx={{ my: 0.5, borderColor: '#e3d7bc' }} />
+                                {mi.tribunal && (
+                                  <Box sx={{ bgcolor: '#fff', p: 1, borderRadius: 1, border: '1px solid #cbb891' }}>
+                                    <Typography variant="caption" fontWeight={700} display="block" color="#B7694E">TRIBUNAL:</Typography>
+                                    <Typography variant="caption" display="block">Pres: {mi.tribunal.presidente || '-'}</Typography>
+                                    <Typography variant="caption" display="block">Voc: {mi.tribunal.vocal1 || '-'}</Typography>
+                                  </Box>
+                                )}
+                                <Button size="small" color="error" variant="outlined" fullWidth sx={{ mt: 1 }}
+                                  onClick={() => setPendingBaja({ mesaId: mi.mesa_id, materiaNombre: mi.materia_nombre })}
+                                >
+                                  Anular inscripción
+                                </Button>
+                              </Stack>
                             </Box>
                           </Grid>
                         ))}
                       </Grid>
-                    );
-                  })()}
-                </>
-              )}
-            </Box>
-          )}
+                    )}
+                  </>
+                )}
+              </Box>
+            )}
 
-          {/* TAB 1: MIS SOLICITUDES */}
-          {activeTab === 1 && (
-            <Box>
-              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <SendIcon color="primary" /> Solicitudes de Mesa Extraordinaria
-              </Typography>
-              <Alert severity="info" sx={{ mb: 3 }}>
-                Si necesitás rendir una materia que <b>no figura en el cronograma</b> y estamos en período de inscripciones extraordinarias, podés solicitarla aquí.
-              </Alert>
-
-              {loadingSolicitudes ? <LinearProgress sx={{ mb: 2 }} /> : (
-                <Stack spacing={2}>
+            {/* TAB 3: NO HABILITADAS */}
+            {activeTab === 3 && (
+              <Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#5d4037' }}>
+                  <ErrorOutlineIcon color="warning" /> Materias no habilitadas
+                </Typography>
+                {mesasBloqueadas.length === 0 ? (
+                  <Alert severity="success" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32' }}>No hay mesas bloqueadas para este período.</Alert>
+                ) : (
                   <Grid container spacing={2}>
-                    {solicitudes.map(s => (
-                      <Grid item xs={12} md={6} key={s.id}>
-                        <Card variant="outlined">
-                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Box sx={{ flex: 1 }}>
-                                <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
-                                  <Typography variant="subtitle2" fontWeight={700}>{s.materia_nombre}</Typography>
-                                  {s.modalidad && (
-                                    <Chip
-                                      label={s.modalidad === 'REG' ? 'Regular' : 'Libre'}
-                                      size="small"
-                                      sx={{ height: 18, fontSize: '0.65rem', bgcolor: s.modalidad === 'REG' ? '#1976d2' : '#ed6c02', color: '#fff', fontWeight: 700 }}
-                                    />
-                                  )}
-                                </Stack>
-                                <Typography variant="caption" color="textSecondary">Solicitado el {formatDate(s.fecha_solicitud)}</Typography>
-                              </Box>
-                              <Chip
-                                label={s.estado_display}
-                                color={s.estado === 'PRO' ? 'success' : s.estado === 'REC' ? 'error' : 'warning'}
-                                size="small"
-                                variant="outlined"
-                              />
-                              {s.estado === 'PEN' && (
-                                <Button
-                                  size="small"
-                                  color="error"
-                                  onClick={() => setPendingCancelSolicitudId(s.id)}
-                                  disabled={solicitando}
-                                  sx={{ ml: 1, minWidth: 'auto', px: 1 }}
-                                >
-                                  Anular
-                                </Button>
-                              )}
-                            </Stack>
-                          </CardContent>
-                        </Card>
+                    {mesasBloqueadas.map(({ mesa, motivo }) => (
+                      <Grid item xs={12} md={6} lg={4} key={mesa.id}>
+                        <Box sx={{ p: 2, opacity: 0.8, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4', borderLeft: '4px solid', borderLeftColor: getMotivoColor(motivo) === 'error' ? 'error.main' : 'warning.main' }}>
+                          <Typography variant="subtitle2" fontWeight={700} color="#5d4037">{mesa.materia?.nombre ?? mesa.materia_nombre}</Typography>
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {formatDate(mesa.fecha)}
+                          </Typography>
+                          <Chip label={motivo} size="small" color={getMotivoColor(motivo)} variant="outlined" sx={{ mt: 1 }} />
+                        </Box>
                       </Grid>
                     ))}
                   </Grid>
-
-                  {solicitudes.length === 0 && <Typography variant="body2" color="textSecondary">No tenés solicitudes registradas.</Typography>}
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Typography variant="subtitle1" fontWeight={700}>Nueva Solicitud</Typography>
-                  <Typography variant="body2" color="textSecondary" gutterBottom>Seleccioná la materia que deseás solicitar para este llamado extraordinario:</Typography>
-
-                  {loadingSolicitables ? <LinearProgress sx={{ mt: 1 }} /> : (() => {
-                    const yaEnMesa = (mid: number) => mesasDisponibles.some(m => (m.materia?.id ?? m.materia_id) === mid);
-                    const yaSolicitada = (mid: number) => solicitudes.some(s => s.materia_id === mid && s.estado === 'PEN');
-                    const reg = materiasSolicitables.filter(m => m.modalidad === 'REG' && !yaEnMesa(m.materia_id) && !yaSolicitada(m.materia_id));
-                    const lib = materiasSolicitables.filter(m => m.modalidad === 'LIB' && !yaEnMesa(m.materia_id) && !yaSolicitada(m.materia_id));
-
-                    const MateriasGrid = ({ lista, label, isLibre }: { lista: typeof materiasSolicitables, label: string, isLibre: boolean }) => {
-                      type MatSol = typeof materiasSolicitables[number];
-                      const porAnio: Record<string, MatSol[]> = {};
-                      for (const m of lista) {
-                        const key = `${m.anio}`;
-                        if (!porAnio[key]) porAnio[key] = [];
-                        porAnio[key].push(m);
-                      }
-
-                      return (
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e3d7bc', bgcolor: '#fff', height: '100%' }}>
-                          <Typography variant="h6" fontWeight={700} gutterBottom color="#5d4037">
-                            {label}
-                          </Typography>
-                          {lista.length === 0 ? (
-                            <Alert severity="info" sx={{ bgcolor: '#fefbf4', border: '1px solid #e3d7bc', color: '#5d4037' }}>No hay materias disponibles en esta modalidad.</Alert>
-                          ) : (
-                            <Stack spacing={3}>
-                              {Object.entries(porAnio).sort((a, b) => Number(a[0]) - Number(b[0])).map(([anio, mats]) => (
-                                <Box key={anio}>
-                                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: '#8b4513' }}>{anio}º año</Typography>
-                                  <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
-                                    {mats.map(m => (
-                                      <Box key={`${m.materia_id}-${m.modalidad}`} sx={{ p: 2, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4' }}>
-                                        <Stack direction="column" justifyContent="space-between" spacing={1} height="100%">
-                                          <Box>
-                                            <Typography variant="h6" fontSize="0.9rem" fontWeight={700} color="#5d4037" sx={{ lineHeight: 1.2 }}>{m.materia_nombre}</Typography>
-                                            <Typography variant="caption" color="text.secondary" display="block">{m.plan_resolucion}</Typography>
-                                            <Stack direction="row" spacing={0.5} mt={1} flexWrap="wrap">
-                                              {isLibre
-                                                ? <Chip size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 600 }} label="Libre" />
-                                                : <Chip size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 600 }} label="Regular" />
-                                              }
-                                              <Chip size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#efebe9', color: '#5d4037', fontWeight: 600 }} label="Solicitar" />
-                                            </Stack>
-                                          </Box>
-                                          <Box sx={{ mt: 'auto', pt: 1 }}>
-                                            <Button
-                                              variant="contained"
-                                              size="small"
-                                              fullWidth
-                                              sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' }, fontSize: '0.75rem', py: 0.5 }}
-                                              onClick={() => { setModalidadSolicitud(m.modalidad as 'REG' | 'LIB'); setPendingSolicitud({ materia_id: m.materia_id, materia_nombre: m.materia_nombre }); }}
-                                              disabled={!ventanaId}
-                                            >
-                                              Solicitar Mesa
-                                            </Button>
-                                          </Box>
-                                        </Stack>
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                </Box>
-                              ))}
-                            </Stack>
-                          )}
-                        </Paper>
-                      );
-                    };
-
-                  return (
-                  <Grid container spacing={3} sx={{ mt: 0.5 }}>
-                    <Grid item xs={12} md={6}>
-                      <MateriasGrid lista={reg} label="Regular" isLibre={false} />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <MateriasGrid lista={lib} label="Libre" isLibre={true} />
-                    </Grid>
-                  </Grid>
-                  );
-                  })()}
-                </Stack>
-              )}
-            </Box>
-          )}
-
-          {/* TAB 2: MI AGENDA */}
-          {activeTab === 2 && (
-            <Box>
-              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#5d4037' }}>
-                <TaskAltIcon color="success" /> Cronograma de Mesas Inscriptas
-              </Typography>
-              {loadingTrayectoria ? <LinearProgress sx={{ mb: 2 }} /> : (
-                <>
-                  {misInscripciones.length === 0 ? (
-                    <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#fff', border: '1px solid #e3d7bc' }}>
-                      <Typography color="textSecondary">No tenés inscripciones activas para este llamado.</Typography>
-                    </Paper>
-                  ) : (
-                    <Grid container spacing={2}>
-                      {misInscripciones.map((mi) => (
-                        <Grid item xs={12} md={6} lg={4} key={mi.id}>
-                          <Box sx={{ p: 2.5, borderRadius: 2, border: "1px solid #d4c4a5", bgcolor: "#fefbf4", height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                            <Stack gap={1}>
-                              <Typography variant="subtitle1" fontWeight={700} color="#5d4037">{mi.materia_nombre}</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                <b>{MESA_TIPO_LABEL[mi.tipo] ?? mi.tipo}</b> · {formatDate(mi.fecha)} {mi.hora_desde && ` · ${mi.hora_desde}`}
-                              </Typography>
-                              {mi.aula && <Typography variant="body2" color="textSecondary">Aula: {mi.aula}</Typography>}
-                              <Divider sx={{ my: 0.5, borderColor: '#e3d7bc' }} />
-                              {mi.tribunal && (
-                                <Box sx={{ bgcolor: '#fff', p: 1, borderRadius: 1, border: '1px solid #cbb891' }}>
-                                  <Typography variant="caption" fontWeight={700} display="block" color="#8b4513">TRIBUNAL:</Typography>
-                                  <Typography variant="caption" display="block">Pres: {mi.tribunal.presidente || '-'}</Typography>
-                                  <Typography variant="caption" display="block">Voc: {mi.tribunal.vocal1 || '-'}</Typography>
-                                </Box>
-                              )}
-                              <Button size="small" color="error" variant="outlined" fullWidth sx={{ mt: 1 }}
-                                onClick={() => setPendingBaja({ mesaId: mi.mesa_id, materiaNombre: mi.materia_nombre })}
-                              >
-                                Anular inscripción
-                              </Button>
-                            </Stack>
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  )}
-                </>
-              )}
-            </Box>
-          )}
-
-          {/* TAB 3: NO HABILITADAS */}
-          {activeTab === 3 && (
-            <Box>
-              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#5d4037' }}>
-                <ErrorOutlineIcon color="warning" /> Materias no habilitadas
-              </Typography>
-              {mesasBloqueadas.length === 0 ? (
-                <Alert severity="success" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32' }}>No hay mesas bloqueadas para este período.</Alert>
-              ) : (
-                <Grid container spacing={2}>
-                  {mesasBloqueadas.map(({ mesa, motivo }) => (
-                    <Grid item xs={12} md={6} lg={4} key={mesa.id}>
-                      <Box sx={{ p: 2, opacity: 0.8, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4', borderLeft: '4px solid', borderLeftColor: getMotivoColor(motivo) === 'error' ? 'error.main' : 'warning.main' }}>
-                        <Typography variant="subtitle2" fontWeight={700} color="#5d4037">{mesa.materia?.nombre ?? mesa.materia_nombre}</Typography>
-                        <Typography variant="caption" display="block" color="textSecondary">
-                          {MESA_TIPO_LABEL[mesa.tipo] ?? mesa.tipo} · {formatDate(mesa.fecha)}
-                        </Typography>
-                        <Chip label={motivo} size="small" color={getMotivoColor(motivo)} variant="outlined" sx={{ mt: 1 }} />
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Box>
-          )}
-
-          {/* TAB 4: APROBADAS */}
-          {activeTab === 4 && (
-            <Box>
-              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#5d4037' }}>
-                <HistoryIcon color="primary" /> Historial de Finales
-              </Typography>
-              {materiasAprobadas.length === 0 ? (
-                <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#fff', border: '1px solid #e3d7bc' }}>
-                  <Typography color="textSecondary">No se registraron materias aprobadas.</Typography>
-                </Paper>
-              ) : (
-                <Grid container spacing={2}>
-                  {materiasAprobadas.map((mat) => (
-                    <Grid item xs={12} md={6} lg={4} key={mat.materia_id}>
-                      <Box sx={{ p: 2.5, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4', borderLeft: '4px solid', borderLeftColor: '#2e7d32' }}>
-                        <Typography variant="subtitle2" fontWeight={700} color="#5d4037">{mat.materia_nombre}</Typography>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
-                          <Typography variant="body2" color="#2e7d32" fontWeight={700}>Nota: {mat.final?.nota || '-'}</Typography>
-                          <Typography variant="caption" color="textSecondary">{formatDate(mat.final?.fecha_iso)}</Typography>
-                        </Stack>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Box>
-          )}
-        </>
-      )}
-
-      {mostrarContenido && necesitaContexto && (
-        <Box sx={{ mt: 4 }}>
-          <Alert severity="info" sx={{ mb: 3, bgcolor: '#fff', border: '1px solid #e3d7bc', color: '#5d4037' }}>El estudiante tiene múltiples carreras o planes activos. Seleccioná uno para continuar.</Alert>
-          <Grid container spacing={3}>
-            {requiereSeleccionCarrera && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom color="#5d4037">Seleccioná Profesorado:</Typography>
-                <Stack spacing={1}>
-                  {carreras.map((c) => (
-                    <Button
-                      key={c.profesorado_id}
-                      variant="outlined"
-                      onClick={() => setSelectedCarreraId(String(c.profesorado_id))}
-                      sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#8b4513' } }}
-                    >
-                      {c.nombre}
-                    </Button>
-                  ))}
-                </Stack>
-              </Grid>
-            )}
-
-            {requiereSeleccionPlan && (
-              <Grid item xs={12} md={6}>
-                <Typography variant="subtitle1" fontWeight={700} gutterBottom color="#5d4037">Seleccioná Plan de Estudio:</Typography>
-                <Stack spacing={1}>
-                  {planesDisponibles.map((p) => (
-                    <Button
-                      key={p.id}
-                      variant="outlined"
-                      onClick={() => setSelectedPlanId(String(p.id))}
-                      sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#8b4513' } }}
-                    >
-                      Plan {p.resolucion} {p.vigente ? '(Vigente)' : ''}
-                    </Button>
-                  ))}
-                </Stack>
-                {carreras.length > 1 && (
-                  <Button size="small" sx={{ mt: 2, color: '#8b4513' }} onClick={() => { setSelectedCarreraId(''); setSelectedPlanId(''); }}>
-                    Volver a elegir carrera
-                  </Button>
                 )}
-              </Grid>
+              </Box>
             )}
-          </Grid>
-        </Box>
-      )}
 
-      {/* DIALOGS */}
-      <Dialog open={!!pendingInscripcion} onClose={() => setPendingInscripcion(null)}>
-        <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Confirmar Inscripción</DialogTitle>
-        <DialogContent>
-          <Typography>¿Confirmas tu inscripción a la mesa de <b>{pendingInscripcion?.mesa.materia?.nombre || pendingInscripcion?.mesa.materia_nombre}</b>?</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>Fecha: {pendingInscripcion && formatDate(pendingInscripcion.mesa.fecha)}</Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setPendingInscripcion(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleConfirmInscripcion} disabled={inscribiendoId !== null} sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' } }}>
-            Confirmar
-          </Button>
-        </DialogActions>
-      </Dialog>
+            {/* TAB 4: APROBADAS */}
+            {activeTab === 4 && (
+              <Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#5d4037' }}>
+                  <HistoryIcon color="primary" /> Historial de Finales
+                </Typography>
+                {materiasAprobadas.length === 0 ? (
+                  <Paper sx={{ p: 4, textAlign: 'center', bgcolor: '#fff', border: '1px solid #e3d7bc' }}>
+                    <Typography color="textSecondary">No se registraron materias aprobadas.</Typography>
+                  </Paper>
+                ) : (
+                  <Grid container spacing={2}>
+                    {materiasAprobadas.map((mat) => (
+                      <Grid item xs={12} md={6} lg={4} key={mat.materia_id}>
+                        <Box sx={{ p: 2.5, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4', borderLeft: '4px solid', borderLeftColor: '#2e7d32' }}>
+                          <Typography variant="subtitle2" fontWeight={700} color="#5d4037">{mat.materia_nombre}</Typography>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
+                            <Typography variant="body2" color="#2e7d32" fontWeight={700}>Nota: {mat.final?.nota || '-'}</Typography>
+                            <Typography variant="caption" color="textSecondary">{formatDate(mat.final?.fecha_iso)}</Typography>
+                          </Stack>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </Box>
+            )}
+          </>
+        )}
 
-      <Dialog open={!!pendingBaja} onClose={() => setPendingBaja(null)}>
-        <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Anular Inscripción</DialogTitle>
-        <DialogContent>
-          <Typography>¿Estás seguro que deseas anular tu inscripción a <b>{pendingBaja?.materiaNombre}</b>?</Typography>
-          <Alert severity="warning" sx={{ mt: 2 }}>Esta acción liberará tu cupo en la mesa.</Alert>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setPendingBaja(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button color="error" variant="contained" onClick={handleConfirmBaja}>Anular</Button>
-        </DialogActions>
-      </Dialog>
+        {mostrarContenido && necesitaContexto && (
+          <Box sx={{ mt: 4 }}>
+            <Alert severity="info" sx={{ mb: 3, bgcolor: '#fff', border: '1px solid #e3d7bc', color: '#5d4037' }}>El estudiante tiene múltiples carreras o planes activos. Seleccioná uno para continuar.</Alert>
+            <Grid container spacing={3}>
+              {requiereSeleccionCarrera && (
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" fontWeight={700} gutterBottom color="#5d4037">Seleccioná Profesorado:</Typography>
+                  <Stack spacing={1}>
+                    {carreras.map((c) => (
+                      <Button
+                        key={c.profesorado_id}
+                        variant="outlined"
+                        onClick={() => setSelectedCarreraId(String(c.profesorado_id))}
+                        sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#B7694E' } }}
+                      >
+                        {c.nombre}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Grid>
+              )}
 
-      <Dialog open={!!pendingSolicitud} onClose={() => setPendingSolicitud(null)}>
-        <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Solicitar Mesa Extraordinaria</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 1 }}>¿Confirmás la solicitud de mesa para <b>{pendingSolicitud?.materia_nombre}</b>?</Typography>
-          <Chip
-            label={modalidadSolicitud === 'REG' ? 'Modalidad: Regular' : 'Modalidad: Libre'}
-            sx={{ mb: 2, bgcolor: modalidadSolicitud === 'REG' ? '#e8f5e9' : '#fff3e0', color: modalidadSolicitud === 'REG' ? '#2e7d32' : '#e65100', fontWeight: 700 }}
-            size="small"
-          />
-          <Typography variant="body2" color="textSecondary">Bedelía evaluará si hay demanda suficiente y docentes disponibles para armar la mesa.</Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setPendingSolicitud(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleConfirmSolicitud} disabled={solicitando} sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' } }}>
-            Enviar Solicitud
-          </Button>
-        </DialogActions>
-      </Dialog>
+              {requiereSeleccionPlan && (
+                <Grid item xs={12} md={6}>
+                  <Typography variant="subtitle1" fontWeight={700} gutterBottom color="#5d4037">Seleccioná Plan de Estudio:</Typography>
+                  <Stack spacing={1}>
+                    {planesDisponibles.map((p) => (
+                      <Button
+                        key={p.id}
+                        variant="outlined"
+                        onClick={() => setSelectedPlanId(String(p.id))}
+                        sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#B7694E' } }}
+                      >
+                        Plan {p.resolucion} {p.vigente ? '(Vigente)' : ''}
+                      </Button>
+                    ))}
+                  </Stack>
+                  {carreras.length > 1 && (
+                    <Button size="small" sx={{ mt: 2, color: '#B7694E' }} onClick={() => { setSelectedCarreraId(''); setSelectedPlanId(''); }}>
+                      Volver a elegir carrera
+                    </Button>
+                  )}
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        )}
 
-      <Dialog open={!!pendingCancelSolicitudId} onClose={() => setPendingCancelSolicitudId(null)}>
-        <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Anular Solicitud</DialogTitle>
-        <DialogContent>
-          <Typography>¿Estás seguro que deseas anular esta solicitud de mesa extraordinaria?</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>Esta acción eliminará el pedido y la materia volverá a estar disponible para solicitar si el período sigue abierto.</Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setPendingCancelSolicitudId(null)} sx={{ color: 'text.secondary' }}>Cerrar</Button>
-          <Button color="error" variant="contained" onClick={handleConfirmCancelacionSolicitud} disabled={solicitando}>Eliminar Pedido</Button>
-        </DialogActions>
-      </Dialog>
-    </Stack>
-  </Box>
+        {/* DIALOGS */}
+        <Dialog open={!!pendingInscripcion} onClose={() => setPendingInscripcion(null)}>
+          <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Confirmar Inscripción</DialogTitle>
+          <DialogContent>
+            <Typography>¿Confirmas tu inscripción a la mesa de <b>{pendingInscripcion?.mesa.materia?.nombre || pendingInscripcion?.mesa.materia_nombre}</b>?</Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>Fecha: {pendingInscripcion && formatDate(pendingInscripcion.mesa.fecha)}</Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setPendingInscripcion(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+            <Button variant="contained" onClick={handleConfirmInscripcion} disabled={inscribiendoId !== null} sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' } }}>
+              Confirmar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={!!pendingBaja} onClose={() => setPendingBaja(null)}>
+          <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Anular Inscripción</DialogTitle>
+          <DialogContent>
+            <Typography>¿Estás seguro que deseas anular tu inscripción a <b>{pendingBaja?.materiaNombre}</b>?</Typography>
+            <Alert severity="warning" sx={{ mt: 2 }}>Esta acción liberará tu cupo en la mesa.</Alert>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setPendingBaja(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+            <Button color="error" variant="contained" onClick={handleConfirmBaja}>Anular</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={!!pendingSolicitud} onClose={() => setPendingSolicitud(null)}>
+          <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Solicitar Mesa Extraordinaria</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ mb: 1 }}>¿Confirmás la solicitud de mesa para <b>{pendingSolicitud?.materia_nombre}</b>?</Typography>
+            <Chip
+              label={modalidadSolicitud === 'REG' ? 'Modalidad: Regular' : 'Modalidad: Libre'}
+              sx={{ mb: 2, bgcolor: modalidadSolicitud === 'REG' ? '#e8f5e9' : '#fff3e0', color: modalidadSolicitud === 'REG' ? '#2e7d32' : '#e65100', fontWeight: 700 }}
+              size="small"
+            />
+            <Typography variant="body2" color="textSecondary">Bedelía evaluará si hay demanda suficiente y docentes disponibles para armar la mesa.</Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setPendingSolicitud(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
+            <Button variant="contained" onClick={handleConfirmSolicitud} disabled={solicitando} sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' } }}>
+              Enviar Solicitud
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={!!pendingCancelSolicitudId} onClose={() => setPendingCancelSolicitudId(null)}>
+          <DialogTitle sx={{ color: '#5d4037', fontWeight: 700 }}>Anular Solicitud</DialogTitle>
+          <DialogContent>
+            <Typography>¿Estás seguro que deseas anular esta solicitud de mesa extraordinaria?</Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>Esta acción eliminará el pedido y la materia volverá a estar disponible para solicitar si el período sigue abierto.</Typography>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setPendingCancelSolicitudId(null)} sx={{ color: 'text.secondary' }}>Cerrar</Button>
+            <Button color="error" variant="contained" onClick={handleConfirmCancelacionSolicitud} disabled={solicitando}>Eliminar Pedido</Button>
+          </DialogActions>
+        </Dialog>
+      </Stack>
+    </Box>
   );
 };
 
