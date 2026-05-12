@@ -43,7 +43,7 @@ export const SolicitudesList: React.FC = () => {
   }, []);
 
   const handleProcesar = async (id: number, estado: string) => {
-    if (!window.confirm(`¿Estás seguro de marcar esta solicitud como ${estado === 'PRO' ? 'PROCESADA' : 'RECHAZADA'}?`)) return;
+    if (!window.confirm(`¿Estás seguro de marcar esta solicitud como ${estado === 'PRO' ? 'APROBADA' : 'RECHAZADA'}?`)) return;
     try {
       await procesarSolicitudMesa(id, estado);
       await load();
@@ -104,7 +104,7 @@ export const SolicitudesList: React.FC = () => {
                 <TableCell align="center">
                   {s.estado === 'PEN' && (
                     <Stack direction="row" spacing={1} justifyContent="center">
-                      <Tooltip title="Procesar / Aprobar">
+                      <Tooltip title="Aprobar Mesa">
                         <IconButton size="small" color="success" onClick={() => handleProcesar(s.id, 'PRO')}>
                           <CheckCircleIcon fontSize="small" />
                         </IconButton>
@@ -117,7 +117,7 @@ export const SolicitudesList: React.FC = () => {
                     </Stack>
                   )}
                   {s.estado !== 'PEN' && (
-                    <Typography variant="caption" color="textSecondary">Procesada</Typography>
+                    <Typography variant="caption" color="textSecondary">Mesa Aprobada</Typography>
                   )}
                 </TableCell>
               </TableRow>
