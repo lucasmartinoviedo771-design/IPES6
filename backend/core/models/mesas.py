@@ -197,7 +197,7 @@ class MesaActaOral(models.Model):
 class SolicitudMesa(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "PEN", "Pendiente"
-        PROCESADA = "PRO", "Procesada"
+        PROCESADA = "PRO", "Mesa Aprobada"
         RECHAZADA = "REC", "Rechazada"
 
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, related_name="solicitudes_mesa")
