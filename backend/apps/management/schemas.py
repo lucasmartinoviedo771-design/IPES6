@@ -21,6 +21,17 @@ class MesaIn(Schema):
     docente_vocal1_id: int | None = None
     docente_vocal2_id: int | None = None
 
+class CrearMesaDesdeSolicitudIn(Schema):
+    solicitud_id: int
+    fecha: date
+    hora_desde: str | None = None
+    hora_hasta: str | None = None
+    aula: str | None = None
+    cupo: int | None = 0
+    docente_presidente_id: int | None = None
+    docente_vocal1_id: int | None = None
+    docente_vocal2_id: int | None = None
+
 class MesaOut(Schema):
     id: int
     materia_id: int
