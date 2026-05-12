@@ -494,7 +494,7 @@ const MesaExamenPage: React.FC = () => {
             <Stack direction="row" alignItems="center" spacing={2}>
               <Avatar sx={{ bgcolor: '#B7694E' }}>{estudianteEncontrado.nombre.charAt(0)}</Avatar>
               <Box>
-                <Typography variant="subtitle2" color="#B7694E" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.7rem' }}>
+                <Typography variant="subtitle2" color="#8b4513" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.7rem' }}>
                   ESTUDIANTE SELECCIONADO
                 </Typography>
                 <Typography variant="h6" fontWeight={700} color="#5d4037">
@@ -520,7 +520,7 @@ const MesaExamenPage: React.FC = () => {
                 sx={{
                   '& .MuiTab-root': { fontWeight: 600, fontSize: '0.95rem', textTransform: 'none' },
                   '& .Mui-selected': { color: '#B7694E' },
-                  '& .MuiTabs-indicator': { backgroundColor: '#B7694E' }
+                  '& .MuiTabs-indicator': { backgroundColor: '#8b4513' }
                 }}
               >
                 <Tab icon={<CalendarMonthIcon fontSize="small" />} iconPosition="start" label={tabLabel('Inscripción Mesa Ordinaria', mesasDisponibles.length)} />
@@ -604,9 +604,6 @@ const MesaExamenPage: React.FC = () => {
                 <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <SendIcon color="primary" /> Solicitudes de Mesa Extraordinaria
                 </Typography>
-                <Alert severity="info" sx={{ mb: 3 }}>
-                  Si necesitás rendir una materia que <b>no figura en el cronograma</b> y estamos en período de inscripciones extraordinarias, podés solicitarla aquí.
-                </Alert>
 
                 {loadingSolicitudes ? <LinearProgress sx={{ mb: 2 }} /> : (
                   <Stack spacing={2}>
@@ -686,7 +683,7 @@ const MesaExamenPage: React.FC = () => {
                               <Stack spacing={3}>
                                 {Object.entries(porAnio).sort((a, b) => Number(a[0]) - Number(b[0])).map(([anio, mats]) => (
                                   <Box key={anio}>
-                                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: '#B7694E' }}>{anio}º año</Typography>
+                                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: '#8b4513' }}>{anio}º año</Typography>
                                     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' } }}>
                                       {mats.map(m => (
                                         <Box key={`${m.materia_id}-${m.modalidad}`} sx={{ p: 2, borderRadius: 2, border: '1px solid #d4c4a5', bgcolor: '#fefbf4' }}>
@@ -707,7 +704,7 @@ const MesaExamenPage: React.FC = () => {
                                                 variant="contained"
                                                 size="small"
                                                 fullWidth
-                                                sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' }, fontSize: '0.75rem', py: 0.5 }}
+                                                sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' }, fontSize: '0.75rem', py: 0.5 }}
                                                 onClick={() => { setModalidadSolicitud(m.modalidad as 'REG' | 'LIB'); setPendingSolicitud({ materia_id: m.materia_id, materia_nombre: m.materia_nombre }); }}
                                                 disabled={!ventanaId}
                                               >
@@ -768,7 +765,7 @@ const MesaExamenPage: React.FC = () => {
                                 <Divider sx={{ my: 0.5, borderColor: '#e3d7bc' }} />
                                 {mi.tribunal && (
                                   <Box sx={{ bgcolor: '#fff', p: 1, borderRadius: 1, border: '1px solid #cbb891' }}>
-                                    <Typography variant="caption" fontWeight={700} display="block" color="#B7694E">TRIBUNAL:</Typography>
+                                    <Typography variant="caption" fontWeight={700} display="block" color="#8b4513">TRIBUNAL:</Typography>
                                     <Typography variant="caption" display="block">Pres: {mi.tribunal.presidente || '-'}</Typography>
                                     <Typography variant="caption" display="block">Voc: {mi.tribunal.vocal1 || '-'}</Typography>
                                   </Box>
@@ -858,7 +855,7 @@ const MesaExamenPage: React.FC = () => {
                         key={c.profesorado_id}
                         variant="outlined"
                         onClick={() => setSelectedCarreraId(String(c.profesorado_id))}
-                        sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#B7694E' } }}
+                        sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#8b4513' } }}
                       >
                         {c.nombre}
                       </Button>
@@ -876,14 +873,14 @@ const MesaExamenPage: React.FC = () => {
                         key={p.id}
                         variant="outlined"
                         onClick={() => setSelectedPlanId(String(p.id))}
-                        sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#B7694E' } }}
+                        sx={{ justifyContent: 'flex-start', textAlign: 'left', py: 2, borderColor: '#d4c4a5', color: '#5d4037', '&:hover': { bgcolor: '#fefbf4', borderColor: '#8b4513' } }}
                       >
                         Plan {p.resolucion} {p.vigente ? '(Vigente)' : ''}
                       </Button>
                     ))}
                   </Stack>
                   {carreras.length > 1 && (
-                    <Button size="small" sx={{ mt: 2, color: '#B7694E' }} onClick={() => { setSelectedCarreraId(''); setSelectedPlanId(''); }}>
+                    <Button size="small" sx={{ mt: 2, color: '#8b4513' }} onClick={() => { setSelectedCarreraId(''); setSelectedPlanId(''); }}>
                       Volver a elegir carrera
                     </Button>
                   )}
@@ -902,7 +899,7 @@ const MesaExamenPage: React.FC = () => {
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={() => setPendingInscripcion(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-            <Button variant="contained" onClick={handleConfirmInscripcion} disabled={inscribiendoId !== null} sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' } }}>
+            <Button variant="contained" onClick={handleConfirmInscripcion} disabled={inscribiendoId !== null} sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' } }}>
               Confirmar
             </Button>
           </DialogActions>
@@ -933,7 +930,7 @@ const MesaExamenPage: React.FC = () => {
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={() => setPendingSolicitud(null)} sx={{ color: 'text.secondary' }}>Cancelar</Button>
-            <Button variant="contained" onClick={handleConfirmSolicitud} disabled={solicitando} sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' } }}>
+            <Button variant="contained" onClick={handleConfirmSolicitud} disabled={solicitando} sx={{ bgcolor: '#8b4513', '&:hover': { bgcolor: '#5d4037' } }}>
               Enviar Solicitud
             </Button>
           </DialogActions>
