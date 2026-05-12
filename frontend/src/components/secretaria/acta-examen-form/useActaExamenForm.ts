@@ -457,6 +457,7 @@ export function useActaExamenForm({
       folio: folio.trim(), libro: libro.trim() || undefined, observaciones: observaciones.trim() || undefined,
       docentes: docentesPayload, estudiantes: estudiantesPayload,
       total_aprobados: summary.aprobados, total_desaprobados: summary.desaprobados, total_ausentes: summary.ausentes,
+      strict,
     };
 
     setPendingActaPayload(payload);

@@ -285,6 +285,7 @@ export type ActaCreatePayload = {
   total_aprobados?: number;
   total_desaprobados?: number;
   total_ausentes?: number;
+  strict?: boolean;
 };
 
 export type ActaCreateResult = {

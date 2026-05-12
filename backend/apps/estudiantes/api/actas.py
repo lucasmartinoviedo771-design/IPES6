@@ -362,13 +362,27 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         # Ausentes no se validan académicamente
         if est_item.calificacion_definitiva in AUSENTES:
             continue
+        
+        # SI NO ES ESTRICTO (Primera Carga), saltamos validaciones académicas pesadas
+        if not payload.strict:
+            continue
+
         est_obj = Estudiante.objects.filter(persona__dni=clean_dni).first()
         if not est_obj:
             continue  # Legajo histórico nuevo — se validará en otro momento
         # Buscar la mesa asociada por materia y fecha
         mesa = MesaExamen.objects.filter(materia=materia, fecha=acta_fecha).first()
         if mesa:
-            eligible, motivo, _ = _check_academic_eligibility(est_obj, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa)
+            eligible, motivo, _ = _check_academic_eligibility(
+                est_obj, 
+                materia=mesa.materia, 
+                modalidad=mesa.modalidad, 
+                mesa=mesa,
+                bypass_legajo=True,
+                bypass_correlativas=True,
+                bypass_regularidad=True,
+                bypass_historial=True  # En Actas siempre somos un poco más flexibles si el admin fuerza
+            )
             if not eligible:
                 # Advertencia no bloqueante para inscripciones ya existentes;
                 # bloqueante si el estudiante no está inscripto (caso manual sin mesa)
@@ -387,8 +401,8 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         if est_item.calificacion_definitiva not in ACTA_NOTA_CHOICES:
             return 400, ApiResponse(ok=False, message=f"Nota inválida para {est_item.dni}")
 
-        # Salvaguarda: Evitar dobles aprobaciones en trayectoria
-        if _clasificar_resultado(est_item.calificacion_definitiva) == "aprobado":
+        # Salvaguarda: Evitar dobles aprobaciones en trayectoria (Omitir si no es estricto)
+        if payload.strict and _clasificar_resultado(est_item.calificacion_definitiva) == "aprobado":
             est_obj = Estudiante.objects.filter(persona__dni=est_item.dni).first()
             if est_obj and estudiante_tiene_materia_aprobada(est_obj, materia):
                 return 400, ApiResponse(ok=False, message=f"El estudiante {est_obj.dni} ya aprobó esta materia anteriormente.")

@@ -53,7 +53,7 @@ from .router import estudiantes_router
 MESA_TIPOS_ORDINARIOS = (MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL, MesaExamen.Tipo.EXTRAORDINARIA)
 
 
-def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_examen: date | None = None, mesa_tipo: str | None = None, mesa: MesaExamen | None = None, bypass_legajo: bool = False, bypass_correlativas: bool = False):
+def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_examen: date | None = None, mesa_tipo: str | None = None, mesa: MesaExamen | None = None, bypass_legajo: bool = False, bypass_correlativas: bool = False, bypass_regularidad: bool = False, bypass_historial: bool = False):
     """
     Unified academic validation for exam enrollment or request.
     Returns (is_eligible, error_message, extra_data)
@@ -83,7 +83,7 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
             estudiante=est, mesa__materia=materia,
             condicion=InscripcionMesa.Condicion.APROBADO,
         ).exists()
-    if aprobado_historial:
+    if aprobado_historial and not bypass_historial:
         return False, "La materia ya figura aprobada en su historial.", {}
 
     # B. Cupo (B4 - Validación de capacidad) - Solo si hay mesa física
@@ -106,34 +106,39 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                         return False, "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.", {}
 
             # 2. Verificación de Regularidad
-            reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
-            if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
-                if reg and reg.situacion in (Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO):
-                    return False, "Materia ya aprobada/promocionada en cursada.", {}
-                return False, "No posee regularidad vigente en la materia.", {}
-
-            if not reg.fecha_cierre:
-                return False, "Regularidad sin fecha de cierre válida.", {}
-
-            fecha_base = _add_years(reg.fecha_cierre, 2)
-            allowed_until = (fecha_base + timedelta(days=60)) if fecha_base else None
-            if fecha_examen and allowed_until and fecha_examen > allowed_until:
-                return False, f"La vigencia de su regularidad ha expirado. Venció el {format_date(allowed_until)}.", {}
+            if not bypass_regularidad:
+                reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
+                if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
+                    if reg and reg.situacion in (Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO):
+                        return False, "Materia ya aprobada/promocionada en cursada.", {}
+                    return False, "No posee regularidad vigente en la materia.", {}
+    
+                if not reg.fecha_cierre:
+                    return False, "Regularidad sin fecha de cierre válida.", {}
+    
+                fecha_base = _add_years(reg.fecha_cierre, 2)
+                allowed_until = (fecha_base + timedelta(days=60)) if fecha_base else None
+                if fecha_examen and allowed_until and fecha_examen > allowed_until:
+                    return False, f"La vigencia de su regularidad ha expirado. Venció el {format_date(allowed_until)}.", {}
+            else:
+                reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
+                allowed_until = None # no aplica si bypass
 
             # 3. Conteo de Intentos (excluye la mesa actual para no contarse a sí mismo)
-            intentos_qs = InscripcionMesa.objects.filter(
-                estudiante=est, cuenta_para_intentos=True,
-                mesa__materia=materia, mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
-                mesa__fecha__gte=reg.fecha_cierre,
-            )
-            if allowed_until:
-                intentos_qs = intentos_qs.filter(mesa__fecha__lte=allowed_until)
-            
-            if mesa:
-                intentos_qs = intentos_qs.exclude(mesa=mesa)
+            if not bypass_regularidad and reg:
+                intentos_qs = InscripcionMesa.objects.filter(
+                    estudiante=est, cuenta_para_intentos=True,
+                    mesa__materia=materia, mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
+                    mesa__fecha__gte=reg.fecha_cierre,
+                )
+                if allowed_until:
+                    intentos_qs = intentos_qs.filter(mesa__fecha__lte=allowed_until)
                 
-            if intentos_qs.count() >= 3:
-                return False, "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.", {}
+                if mesa:
+                    intentos_qs = intentos_qs.exclude(mesa=mesa)
+                    
+                if intentos_qs.count() >= 3:
+                    return False, "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.", {}
 
             # 4. Correlatividades (omitido si el staff gestiona el pedido)
             if not bypass_correlativas:
@@ -372,7 +377,13 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     # --- VALIDACIÓN UNIFICADA ---
     from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
     es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
-    is_ok, msg, extra = _check_academic_eligibility(est, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa, bypass_legajo=bool(es_staff))
+    is_ok, msg, extra = _check_academic_eligibility(
+        est, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa,
+        bypass_legajo=bool(es_staff),
+        bypass_correlativas=bool(es_staff),
+        bypass_regularidad=bool(es_staff),
+        bypass_historial=bool(es_staff)
+    )
     if not is_ok:
         return 400, {"message": msg, **extra}
 
@@ -475,7 +486,14 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
     # --- VALIDACIÓN ACADÉMICA ---
     from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
     es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
-    is_ok, msg, extra = _check_academic_eligibility(est, materia=materia, modalidad=modalidad, mesa_tipo=MesaExamen.Tipo.EXTRAORDINARIA, bypass_legajo=bool(es_staff))
+    is_ok, msg, extra = _check_academic_eligibility(
+        est, materia=materia, modalidad=modalidad,
+        mesa_tipo=MesaExamen.Tipo.EXTRAORDINARIA,
+        bypass_legajo=bool(es_staff),
+        bypass_correlativas=bool(es_staff),
+        bypass_regularidad=bool(es_staff),
+        bypass_historial=bool(es_staff)
+    )
     if not is_ok:
         return 400, {"message": f"No cumple las condiciones: {msg}", **extra}
 
