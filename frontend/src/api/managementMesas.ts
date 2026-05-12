@@ -12,3 +12,13 @@ export async function procesarSolicitudMesa(solId: number, estado: string, mesaI
   });
   return data;
 }
+
+export async function listarMesas(params?: any): Promise<any[]> {
+  const { data } = await api.get<any[]>("/mesas", { params });
+  return data;
+}
+
+export async function crearMesaDesdeSolicitud(payload: any): Promise<any> {
+  const { data } = await api.post("/mesas/crear_desde_solicitud", payload);
+  return data;
+}

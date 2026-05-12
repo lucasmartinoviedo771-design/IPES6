@@ -239,6 +239,7 @@ export type TrayectoriaMesaDTO = {
   nota?: string | null;
   hora_desde?: string | null;
   hora_hasta?: string | null;
+  puede_baja: boolean;
   tribunal?: { presidente?: string | null; vocal1?: string | null; [key: string]: string | null | undefined } | null;
 };
 
