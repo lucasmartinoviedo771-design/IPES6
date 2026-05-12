@@ -178,10 +178,18 @@ def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = 
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
     sol = get_object_or_404(SolicitudMesa, id=sol_id)
     
-    sol.estado = estado.upper()
-    if mesa_id:
-        sol.mesa_asignada_id = mesa_id
-    sol.save()
+    with transaction.atomic():
+        sol.estado = estado.upper()
+        if mesa_id:
+            sol.mesa_asignada_id = mesa_id
+            if sol.estado == 'PRO':
+                from core.models import InscripcionMesa
+                InscripcionMesa.objects.get_or_create(
+                    mesa_id=mesa_id,
+                    estudiante_id=sol.estudiante_id,
+                    defaults={'estado': 'INS'}
+                )
+        sol.save()
     
     return SolicitudMesaOut(
         id=sol.id,
