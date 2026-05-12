@@ -654,8 +654,7 @@ const MesaExamenPage: React.FC = () => {
 
                     <Divider sx={{ my: 2 }} />
 
-                    <Typography variant="subtitle1" fontWeight={700}>Nueva Solicitud</Typography>
-                    <Typography variant="body2" color="textSecondary" gutterBottom>Seleccioná la materia que deseás solicitar para este llamado extraordinario:</Typography>
+                    <Typography variant="subtitle1" fontWeight={700} color="#5d4037" gutterBottom>Seleccioná la materia que deseás solicitar para este llamado extraordinario:</Typography>
 
                     {loadingSolicitables ? <LinearProgress sx={{ mt: 1 }} /> : (() => {
                       const yaEnMesa = (mid: number) => mesasDisponibles.some(m => (m.materia?.id ?? m.materia_id) === mid);
