@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from apps.common.date_utils import format_date, format_datetime, parse_date
 
@@ -104,6 +104,8 @@ def _to_iso(value):
         return format_datetime(value)
     if isinstance(value, date):
         return format_date(value)
+    if isinstance(value, time):
+        return value.strftime("%H:%M")
     return str(value)
 
 

@@ -274,6 +274,13 @@ def trayectoria_estudiante(request, dni: str | None = None):
             "estado_display": estado_lbl,
             "aula": insc.mesa.aula,
             "nota": nota_str,
+            "hora_desde": _to_iso(insc.mesa.hora_desde) if insc.mesa.hora_desde else None,
+            "hora_hasta": _to_iso(insc.mesa.hora_hasta) if insc.mesa.hora_hasta else None,
+            "tribunal": {
+                "presidente": str(insc.mesa.docente_presidente) if insc.mesa.docente_presidente else None,
+                "vocal1": str(insc.mesa.docente_vocal1) if insc.mesa.docente_vocal1 else None,
+                "vocal2": str(insc.mesa.docente_vocal2) if insc.mesa.docente_vocal2 else None,
+            },
         })
         
     # Integración de actas históricas que no tienen 'inscripción previa' registrada
@@ -298,6 +305,13 @@ def trayectoria_estudiante(request, dni: str | None = None):
             "estado_display": cond_lbl,
             "aula": None,
             "nota": a.calificacion_definitiva,
+            "hora_desde": _to_iso(a.acta.hora_desde) if hasattr(a.acta, "hora_desde") and a.acta.hora_desde else None,
+            "hora_hasta": _to_iso(a.acta.hora_hasta) if hasattr(a.acta, "hora_hasta") and a.acta.hora_hasta else None,
+            "tribunal": {
+                "presidente": str(a.acta.docente_presidente) if hasattr(a.acta, "docente_presidente") and a.acta.docente_presidente else None,
+                "vocal1": str(a.acta.docente_vocal1) if hasattr(a.acta, "docente_vocal1") and a.acta.docente_vocal1 else None,
+                "vocal2": str(a.acta.docente_vocal2) if hasattr(a.acta, "docente_vocal2") and a.acta.docente_vocal2 else None,
+            },
         })
 
     # --- 3. AUDITORÍA DE VENCIMIENTOS Y ALERTAS ---

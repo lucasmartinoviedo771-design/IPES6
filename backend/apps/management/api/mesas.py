@@ -166,6 +166,8 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
             estado=s.estado,
             estado_display=s.get_estado_display(),
             fecha_solicitud=s.fecha_solicitud,
+            modalidad=s.modalidad,
+            modalidad_display=s.get_modalidad_display(),
             observaciones=s.observaciones,
             mesa_asignada_id=s.mesa_asignada_id
         ) for s in qs.order_by("-fecha_solicitud")
@@ -193,6 +195,8 @@ def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = 
         estado=sol.estado,
         estado_display=sol.get_estado_display(),
         fecha_solicitud=sol.fecha_solicitud,
+        modalidad=sol.modalidad,
+        modalidad_display=sol.get_modalidad_display(),
         observaciones=sol.observaciones,
         mesa_asignada_id=sol.mesa_asignada_id
     )

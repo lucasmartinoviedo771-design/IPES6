@@ -93,7 +93,7 @@ export function usePedidoEquivalencias() {
       try {
         const data = await obtenerCarrerasActivas(canGestionar ? { dni: dniObjetivo || undefined } : undefined);
         if (!cancelado) {
-          setCarrerasEstudiante(data || []);
+          setCarrerasEstudiante(data.carreras || []);
         }
       } catch (error) {
         if (!cancelado) {

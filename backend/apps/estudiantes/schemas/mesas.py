@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from ninja import Schema, Field
@@ -35,6 +36,7 @@ class BajaMesaOut(Schema):
 class SolicitudMesaIn(Schema):
     materia_id: int
     ventana_id: int
+    modalidad: str | None = None
     observaciones: str | None = None
     dni: str | None = None
 
@@ -45,7 +47,9 @@ class SolicitudMesaOut(Schema):
     materia_nombre: str
     estado: str
     estado_display: str
-    fecha_solicitud: str
+    fecha_solicitud: datetime
+    modalidad: str | None = None
+    modalidad_display: str | None = None
     observaciones: str | None = None
     mesa_asignada_id: int | None = None
 

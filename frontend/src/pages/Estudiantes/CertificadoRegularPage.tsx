@@ -50,7 +50,7 @@ const CertificadoRegularPage: React.FC = () => {
     enabled: (isOnlyStudent || Boolean(dniObjetivo)) && (canGestionar || isOnlyStudent),
   });
 
-  const carreras = carrerasQuery.data ?? [];
+  const carreras = carrerasQuery.data?.carreras ?? [];
 
   useEffect(() => {
     if (!carreras.length) {

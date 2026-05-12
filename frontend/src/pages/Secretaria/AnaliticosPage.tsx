@@ -122,8 +122,8 @@ export default function AnaliticosPage() {
       try {
         const data = await obtenerCarrerasActivas({ dni: form.dni.trim() });
         if (!cancelled) {
-          setCarrerasModal(data || []);
-          if (!(data || []).length) { setSelectedCarreraModal(''); setSelectedPlanModal(''); }
+          setCarrerasModal(data.carreras || []);
+          if (!(data.carreras || []).length) { setSelectedCarreraModal(''); setSelectedPlanModal(''); }
         }
       } catch {
         if (!cancelled) setCarrerasModal([]);

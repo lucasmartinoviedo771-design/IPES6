@@ -10,6 +10,7 @@ import {
   obtenerHistorialEstudiante,
   obtenerVentanaMaterias,
   obtenerCarrerasActivas,
+  CarrerasActivasDTO,
   HistorialEstudianteDTO,
   MateriaInscriptaItemDTO,
   ApiResponseDTO,
@@ -100,14 +101,14 @@ export const useInscripcionMateria = () => {
     // setSelectedPlanId("");
   }, [dniFiltro]);
 
-  const carrerasQ = useQuery<TrayectoriaCarreraDetalleDTO[]>({
+  const carrerasQ = useQuery<CarrerasActivasDTO>({
     queryKey: ["carreras-activas", dniFiltro],
     queryFn: () => obtenerCarrerasActivas(shouldFetchInscriptas ? (dniFiltro ? { dni: dniFiltro } : undefined) : undefined, true),
     enabled: shouldFetchInscriptas,
     retry: false,
   });
 
-  const carrerasDisponibles = carrerasQ.data ?? [];
+  const carrerasDisponibles = carrerasQ.data?.carreras ?? [];
   const selectedCarreraIdNum = selectedCarreraId ? Number(selectedCarreraId) : undefined;
   const selectedPlanIdNum = selectedPlanId ? Number(selectedPlanId) : undefined;
   const puedeSolicitarMaterias = !shouldFetchInscriptas || (carrerasQ.isSuccess && (carrerasDisponibles.length <= 1 || !!selectedCarreraIdNum || !!selectedPlanIdNum));

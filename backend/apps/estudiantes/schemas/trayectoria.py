@@ -35,6 +35,9 @@ class TrayectoriaMesa(Schema):
     estado_display: str
     aula: str | None = None
     nota: str | None = None
+    hora_desde: str | None = None
+    hora_hasta: str | None = None
+    tribunal: dict[str, str | None] | None = None
 
 class MateriaSugerida(Schema):
     materia_id: int
@@ -74,6 +77,11 @@ class CarreraDetalleResumen(Schema):
     profesorado_id: int
     nombre: str
     planes: list[CarreraPlanResumen] = Field(default_factory=list)
+
+class CarrerasActivasOut(Schema):
+    estudiante_nombre: str
+    estudiante_dni: str
+    carreras: list[CarreraDetalleResumen]
 
 class EstudianteResumen(Schema):
     dni: str

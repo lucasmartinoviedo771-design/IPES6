@@ -32,18 +32,17 @@ export const ddmmyyyyToISO = (s: string) => {
 export const formatDate = (date: string | Date | null | undefined, format: string = "DD/MM/YYYY") => {
   if (!date) return "-";
 
-  // Caso 1: Ya viene formateado como DD/MM/YYYY (Ej: Mesas de examen)
-  if (typeof date === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
-    return date;
+  // Caso 1: Ya viene formateado como DD/MM/YYYY o contiene una fecha DD/MM/YYYY al inicio
+  if (typeof date === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(date)) {
+    // Si solo tiene la fecha, la devolvemos. Si tiene hora, cortamos solo la fecha.
+    return date.substring(0, 10);
   }
 
   // Caso 2: Viene como ISO corto YYYY-MM-DD (Ej: Equivalencias)
-  // Evitamos new Date() o dayjs directo para no sufrir el desplazamiento de zona horaria (UTC jump)
   if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
     const [y, m, d] = date.split("-");
     if (format === "DD/MM/YYYY") return `${d}/${m}/${y}`;
-    // Si piden otro formato específico para ISO corto, usamos dayjs pero forzando local
-    return dayjs(`${y}/${m}/${y}`).format(format);
+    return dayjs(`${y}/${m}/${d}`).format(format);
   }
 
   // Caso 3: Objeto Date o ISO completo

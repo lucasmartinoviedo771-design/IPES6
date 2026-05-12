@@ -66,7 +66,7 @@ const MiAnaliticoTab: React.FC = () => {
     if (canGestionar && !dni.trim()) { setCarreras([]); setSelectedCarreraId(""); setSelectedPlanId(""); return; }
     setCarrerasLoading(true);
     obtenerCarrerasActivas(canGestionar ? (dni ? { dni } : undefined) : undefined)
-      .then((data) => { if (!cancelled) setCarreras(data || []); })
+      .then((data) => { if (!cancelled) setCarreras(data.carreras || []); })
       .catch(() => { if (!cancelled) setCarreras([]); })
       .finally(() => { if (!cancelled) setCarrerasLoading(false); });
     return () => { cancelled = true; };

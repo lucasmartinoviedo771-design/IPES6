@@ -330,6 +330,12 @@ export type TrayectoriaCarreraDetalleDTO = {
   }[];
 };
 
+export interface CarrerasActivasDTO {
+  estudiante_nombre: string;
+  estudiante_dni: string;
+  carreras: TrayectoriaCarreraDetalleDTO[];
+}
+
 export type CartonEventoDTO = {
   fecha?: string | null;
   fecha_iso?: string | null;
@@ -595,6 +601,7 @@ export type ConstanciaExamenDTO = {
 export interface SolicitudMesaInDTO {
   materia_id: number;
   ventana_id: number;
+  modalidad?: string;
   observaciones?: string;
   dni?: string;
 }
@@ -606,6 +613,8 @@ export interface SolicitudMesaOutDTO {
   estado: "PEN" | "PRO" | "REC";
   estado_display: string;
   fecha_solicitud: string;
+  modalidad?: string;
+  modalidad_display?: string;
   observaciones?: string;
   mesa_asignada_id?: number;
 }

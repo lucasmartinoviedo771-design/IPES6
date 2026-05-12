@@ -29,8 +29,8 @@ export default function MesasPage() {
   
   // Determinar si el usuario tiene permisos de edición (Secretaría o Admin)
   const canEdit = React.useMemo(() => {
-    const roles = new Set(roleOverride ? [roleOverride] : user?.roles?.map((r: string) => r.toLowerCase()) || []);
-    return roles.has('admin') || roles.has('secretaria');
+    const roles = new Set(roleOverride ? [roleOverride.toLowerCase()] : user?.roles?.map((r: string) => r.toLowerCase()) || []);
+    return roles.has('admin') || roles.has('secretaria') || roles.has('bedel') || roles.has('administrador');
   }, [roleOverride, user]);
 
   // Si no puede editar, la pestaña inicial debe ser la 1 (Activas)
@@ -263,9 +263,9 @@ export default function MesasPage() {
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 3, mb: 2 }}>
         <Tabs value={activeTab} onChange={handleTabChange} textColor="primary" indicatorColor="primary">
           {canEdit && <Tab label="Nueva mesa" sx={{ fontWeight: 700 }} />}
+          <Tab label="Solicitudes (Extra)" sx={{ fontWeight: 700 }} />
           <Tab label="Activas / Futuras" sx={{ fontWeight: 700 }} />
           <Tab label="Historial / Pasadas" sx={{ fontWeight: 700 }} />
-          <Tab label="Solicitudes (Extra)" sx={{ fontWeight: 700 }} />
         </Tabs>
       </Box>
 
@@ -332,8 +332,21 @@ export default function MesasPage() {
         </Alert>
       </Snackbar>
 
-      {/* TABS 1 Y 2: LISTADOS CON FILTROS */}
-      {(activeTab === 1 || activeTab === 2) && (
+      {/* TAB DE SOLICITUDES: Ahora es el índice 1 si canEdit, o índice 0 si no */}
+      {((canEdit && activeTab === 1) || (!canEdit && activeTab === 0)) && (
+        <Box sx={{ mt: 2 }}>
+           <Alert severity="info" sx={{ mb: 2 }}>
+             Aquí se listan las solicitudes de materias para mesas extraordinarias realizadas por los estudiantes.
+           </Alert>
+           <SolicitudesList />
+        </Box>
+      )}
+
+      {/* TABS DE LISTADOS: 
+          Si canEdit: Activas=2, Pasadas=3
+          Si !canEdit: Activas=1, Pasadas=2
+      */}
+      {((canEdit && (activeTab === 2 || activeTab === 3)) || (!canEdit && (activeTab === 1 || activeTab === 2))) && (
         <Box sx={{ mt: 2 }}>
           <Box sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 2, mb: 3 }}>
             <Typography variant="subtitle1" fontWeight={700} mb={2}>Filtrar mesas</Typography>
@@ -366,7 +379,7 @@ export default function MesasPage() {
           </Box>
 
           <Grid container spacing={2}>
-            {(activeTab === 1 ? mesasFuturas : mesasPasadas).map(m => (
+            {((canEdit ? activeTab === 2 : activeTab === 1) ? mesasFuturas : mesasPasadas).map(m => (
               <Grid item xs={12} md={6} lg={4} key={m.id}>
                 <MesaCard
                   mesa={m}
@@ -377,7 +390,7 @@ export default function MesasPage() {
                 />
               </Grid>
             ))}
-            {(activeTab === 1 ? mesasFuturas : mesasPasadas).length === 0 && (
+            {((canEdit ? activeTab === 2 : activeTab === 1) ? mesasFuturas : mesasPasadas).length === 0 && (
               <Box sx={{ width: '100%', textAlign: 'center', py: 8 }}>
                 <Typography color="text.secondary">No se encontraron mesas para este criterio.</Typography>
               </Box>
@@ -403,15 +416,6 @@ export default function MesasPage() {
         onCuentaIntentosChange={handlePlanillaCuentaIntentosChange}
         onTextoChange={handlePlanillaTextoChange}
       />
-
-      {activeTab === 3 && (
-        <Box sx={{ mt: 2 }}>
-           <Alert severity="info" sx={{ mb: 2 }}>
-             Aquí se listan las solicitudes de materias para mesas extraordinarias realizadas por los estudiantes.
-           </Alert>
-           <SolicitudesList />
-        </Box>
-      )}
     </Box>
   );
 }

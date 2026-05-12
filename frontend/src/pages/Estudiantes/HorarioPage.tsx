@@ -23,6 +23,7 @@ import { isAxiosError } from "axios";
 import {
   HorarioTablaDTO,
   TrayectoriaCarreraDetalleDTO,
+  CarrerasActivasDTO,
   obtenerCarrerasActivas,
   obtenerHorarioEstudiante,
 } from "@/api/estudiantes";
@@ -113,8 +114,8 @@ const HorarioPage: React.FC = () => {
 
   useEffect(() => {
     if (!profesoradoId) {
-      if (targetDni && carrerasQuery.data && carrerasQuery.data.length > 0) {
-        setProfesoradoId(String(carrerasQuery.data[0].profesorado_id));
+      if (targetDni && carrerasQuery.data && carrerasQuery.data.carreras.length > 0) {
+        setProfesoradoId(String(carrerasQuery.data.carreras[0].profesorado_id));
       }
       if (!targetDni && profesoradosQuery.data && profesoradosQuery.data.length > 0) {
         setProfesoradoId(String(profesoradosQuery.data[0].id));
@@ -125,7 +126,7 @@ const HorarioPage: React.FC = () => {
   const planesDisponibles = useMemo<PlanOption[]>(() => {
     if (targetDni) {
       if (!carrerasQuery.data) return [];
-      const selected = carrerasQuery.data.find(
+      const selected = carrerasQuery.data.carreras.find(
         (item) => item.profesorado_id === Number(profesoradoId),
       );
       return selected?.planes ?? [];
@@ -348,7 +349,7 @@ const HorarioPage: React.FC = () => {
 
       const fileNameParts = ["Horario"];
       if (isEstudiante) {
-        const carrera = carrerasQuery.data?.find(
+        const carrera = carrerasQuery.data?.carreras.find(
           (item) => item.profesorado_id === Number(profesoradoId),
         );
         if (carrera) {
@@ -413,7 +414,7 @@ const HorarioPage: React.FC = () => {
     planesAdminQuery.isLoading ||
     horarioQuery.isLoading;
   const sinCarreras =
-    !!targetDni && !loading && (!carrerasQuery.data || carrerasQuery.data.length === 0);
+    !!targetDni && !loading && (!carrerasQuery.data || carrerasQuery.data.carreras.length === 0);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -435,7 +436,7 @@ const HorarioPage: React.FC = () => {
               disabled={carrerasQuery.isLoading}
             >
               {targetDni
-                ? carrerasQuery.data?.map((carrera: TrayectoriaCarreraDetalleDTO) => (
+                ? carrerasQuery.data?.carreras.map((carrera: TrayectoriaCarreraDetalleDTO) => (
                   <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
                     {carrera.nombre}
                   </MenuItem>

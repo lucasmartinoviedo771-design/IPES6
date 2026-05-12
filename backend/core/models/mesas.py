@@ -204,6 +204,11 @@ class SolicitudMesa(models.Model):
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE)
     ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.CASCADE)
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
+    modalidad = models.CharField(
+        max_length=3,
+        choices=MesaExamen.Modalidad.choices,
+        default=MesaExamen.Modalidad.REGULAR
+    )
     observaciones = models.TextField(blank=True, null=True)
     estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.PENDIENTE)
     mesa_asignada = models.ForeignKey("MesaExamen", on_delete=models.SET_NULL, null=True, blank=True)

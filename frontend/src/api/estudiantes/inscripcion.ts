@@ -19,6 +19,7 @@ import {
   SolicitudCambioComisionDTO,
   SolicitudMesaInDTO,
   SolicitudMesaOutDTO,
+  CarrerasActivasDTO,
 } from "./types";
 
 export const solicitarInscripcionMateria = (payload: InscripcionMateriaPayload) =>
@@ -77,9 +78,9 @@ export async function obtenerMateriasPlanEstudiante(params?: { dni?: string; pla
   return data;
 }
 
-export async function obtenerCarrerasActivas(params?: { dni?: string }, suppressErrorToast = false): Promise<TrayectoriaCarreraDetalleDTO[]> {
+export async function obtenerCarrerasActivas(params?: { dni?: string }, suppressErrorToast = false): Promise<CarrerasActivasDTO> {
   const config: AppAxiosRequestConfig = { params, suppressErrorToast };
-  const { data } = await client.get<TrayectoriaCarreraDetalleDTO[]>(`/estudiantes/carreras-activas`, config);
+  const { data } = await client.get<CarrerasActivasDTO>(`/estudiantes/carreras-activas`, config);
   return data;
 }
 
@@ -142,5 +143,27 @@ export async function solicitarMesa(payload: SolicitudMesaInDTO): Promise<{ mess
 
 export async function listarMisSolicitudes(params?: { dni?: string }): Promise<SolicitudMesaOutDTO[]> {
   const { data } = await client.get<SolicitudMesaOutDTO[]>(`/estudiantes/mis_solicitudes`, { params });
+  return data;
+}
+
+export async function cancelarSolicitud(solicitudId: number): Promise<{ message: string }> {
+  const { data } = await client.delete<{ message: string }>(`/estudiantes/cancelar_solicitud/${solicitudId}`);
+  return data;
+}
+
+export async function listarMateriasSolicitables(params?: { dni?: string, modalidad?: string, plan_id?: number }): Promise<Array<{
+  materia_id: number;
+  materia_nombre: string;
+  anio: number;
+  plan_resolucion: string;
+  modalidad: string;
+}>> {
+  const { data } = await client.get<Array<{
+    materia_id: number;
+    materia_nombre: string;
+    anio: number;
+    plan_resolucion: string;
+    modalidad: string;
+  }>>(`/estudiantes/materias_solicitables`, { params });
   return data;
 }

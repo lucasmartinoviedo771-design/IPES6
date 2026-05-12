@@ -117,22 +117,19 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
     setCarrerasLoading(true);
     try {
       const data = await obtenerCarrerasActivas({ dni: dniTrimmed });
-      if (!data.length) {
+      if (!data.carreras.length) {
         enqueueSnackbar("El estudiante no tiene profesorados asociados.", { variant: "warning" });
       }
-      setCarreras(data);
-      if (data.length === 1) {
-        setSelectedProfesoradoId(String(data[0].profesorado_id));
+      setCarreras(data.carreras);
+      if (data.carreras.length === 1) {
+        setSelectedProfesoradoId(String(data.carreras[0].profesorado_id));
       } else {
         setSelectedProfesoradoId("");
       }
 
-      // Intentar obtener el nombre si no lo tenemos
-      if (!estudianteNombre) {
-        try {
-          const det = await fetchEstudianteAdminDetail(dniTrimmed);
-          setEstudianteNombre(`${det.apellido}, ${det.nombre}`);
-        } catch { /* ignore */ }
+      // Aprovechar el nombre que ya viene del backend
+      if (data.estudiante_nombre) {
+        setEstudianteNombre(data.estudiante_nombre);
       }
     } catch (error) {
       enqueueSnackbar(getErrorMessage(error, "No se pudieron obtener las carreras del estudiante."), {

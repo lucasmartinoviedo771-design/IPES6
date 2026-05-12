@@ -55,6 +55,8 @@ class SolicitudMesaOut(Schema):
     estado: str
     estado_display: str
     fecha_solicitud: datetime
+    modalidad: str | None = None
+    modalidad_display: str | None = None
     observaciones: str | None = None
     mesa_asignada_id: int | None = None
 

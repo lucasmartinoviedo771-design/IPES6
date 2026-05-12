@@ -4,7 +4,7 @@ Gestiona el catálogo de mesas de examen final y el proceso de inscripción para
 
 Reglas Generales de Examen:
 1. Condición de Alumno: El alumno debe tener legajo 'COMPLETO' o permiso condicional (Título en trámite).
-2. Modalidad Regular: Requiere cursada aprobada y vigente (2 años + 60 días o 1 llamado). Límite de 1 intento fallido.
+2. Modalidad Regular: Requiere cursada aprobada y vigente (2 años + 60 días o 1 llamado). Límite de 3 intentos fallidos.
 3. Modalidad Libre: Permite rendir sin regularidad previa, siempre que no esté cursando la materia o tenga regularidad vigente.
 4. Correlatividades: Verifica el cumplimiento de materias aprobadas requeridas para rendir el final.
 """
@@ -50,10 +50,10 @@ from .helpers import (
 )
 from .router import estudiantes_router
 
-MESA_TIPOS_ORDINARIOS = (MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL)
+MESA_TIPOS_ORDINARIOS = (MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL, MesaExamen.Tipo.EXTRAORDINARIA)
 
 
-def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_examen: date | None = None, mesa_tipo: str | None = None, mesa: MesaExamen | None = None):
+def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_examen: date | None = None, mesa_tipo: str | None = None, mesa: MesaExamen | None = None, bypass_legajo: bool = False, bypass_correlativas: bool = False):
     """
     Unified academic validation for exam enrollment or request.
     Returns (is_eligible, error_message, extra_data)
@@ -95,14 +95,15 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
     # --- MODALIDAD REGULAR ---
     if modalidad == MesaExamen.Modalidad.REGULAR:
         if mesa_tipo is None or mesa_tipo in MESA_TIPOS_ORDINARIOS:
-            # 1. Estado de Legajo
-            legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
-            if not legajo_ok:
-                prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
-                pre = Preinscripcion.objects.filter(estudiante=est, carrera=prof).order_by("-anio", "-id").first()
-                cl = getattr(pre, "checklist", None) if pre else None
-                if not (cl and cl.certificado_titulo_en_tramite):
-                    return False, "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.", {}
+            # 1. Estado de Legajo (omitido si un administrativo gestiona la inscripción)
+            if not bypass_legajo:
+                legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
+                if not legajo_ok:
+                    prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
+                    pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first()
+                    cl = getattr(pre, "checklist", None) if pre else None
+                    if not (cl and cl.certificado_titulo_en_tramite):
+                        return False, "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.", {}
 
             # 2. Verificación de Regularidad
             reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
@@ -131,23 +132,24 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
             if mesa:
                 intentos_qs = intentos_qs.exclude(mesa=mesa)
                 
-            if intentos_qs.count() >= 1:
-                return False, "Ha agotado el llamado permitido (1) para esta regularidad.", {}
+            if intentos_qs.count() >= 3:
+                return False, "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.", {}
 
-            # 4. Correlatividades
-            req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
-            if req_ids:
-                faltan = []
-                regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
-                latest_regs = {}
-                for r in regs: latest_regs.setdefault(r.materia_id, r)
-                for mid in req_ids:
-                    r = latest_regs.get(mid)
-                    if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-                        m = Materia.objects.filter(id=mid).first()
-                        faltan.append(m.nombre if m else f"Materia {mid}")
-                if faltan:
-                    return False, "Faltan correlativas aprobadas para rendir final.", {"faltantes": faltan}
+            # 4. Correlatividades (omitido si el staff gestiona el pedido)
+            if not bypass_correlativas:
+                req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
+                if req_ids:
+                    faltan = []
+                    regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
+                    latest_regs = {}
+                    for r in regs: latest_regs.setdefault(r.materia_id, r)
+                    for mid in req_ids:
+                        r = latest_regs.get(mid)
+                        if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                            m = Materia.objects.filter(id=mid).first()
+                            faltan.append(m.nombre if m else f"Materia {mid}")
+                    if faltan:
+                        return False, "Faltan correlativas aprobadas para rendir final.", {"faltantes": faltan}
 
     # --- MODALIDAD LIBRE ---
     elif modalidad == MesaExamen.Modalidad.LIBRE:
@@ -173,20 +175,21 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
             if fecha_examen and allowed_until and fecha_examen <= allowed_until:
                 return False, "Posee regularidad vigente. Debe inscribirse en modalidad REGULAR.", {}
 
-        # Correlatividades para LIBRE (igual que regular: se exigen las aprobadas para rendir)
-        req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
-        if req_ids:
-            faltan = []
-            regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
-            latest_regs = {}
-            for r in regs: latest_regs.setdefault(r.materia_id, r)
-            for mid in req_ids:
-                r = latest_regs.get(mid)
-                if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-                    m = Materia.objects.filter(id=mid).first()
-                    faltan.append(m.nombre if m else f"Materia {mid}")
-            if faltan:
-                return False, "Faltan correlativas (aprobadas o promocionadas) para rendir LIBRE.", {"faltantes": faltan}
+        # Correlatividades para LIBRE (omitido si el staff gestiona el pedido)
+        if not bypass_correlativas:
+            req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
+            if req_ids:
+                faltan = []
+                regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
+                latest_regs = {}
+                for r in regs: latest_regs.setdefault(r.materia_id, r)
+                for mid in req_ids:
+                    r = latest_regs.get(mid)
+                    if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                        m = Materia.objects.filter(id=mid).first()
+                        faltan.append(m.nombre if m else f"Materia {mid}")
+                if faltan:
+                    return False, "Faltan correlativas (aprobadas o promocionadas) para rendir LIBRE.", {"faltantes": faltan}
 
     return True, "", {}
 
@@ -367,7 +370,9 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
         return 404, {"message": "Mesa no encontrada"}
 
     # --- VALIDACIÓN UNIFICADA ---
-    is_ok, msg, extra = _check_academic_eligibility(est, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa)
+    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+    is_ok, msg, extra = _check_academic_eligibility(est, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa, bypass_legajo=bool(es_staff))
     if not is_ok:
         return 400, {"message": msg, **extra}
 
@@ -454,12 +459,16 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
     if not ventana.activo:
         return 400, {"message": "El período de solicitudes no está activo."}
 
-    # Determinamos la modalidad (predeterminada a Regular si tiene regularidad, sino Libre)
-    reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
-    modalidad = MesaExamen.Modalidad.REGULAR if (reg and reg.situacion == Regularidad.Situacion.REGULAR) else MesaExamen.Modalidad.LIBRE
+    # Determinamos la modalidad (priorizamos payload, sino predeterminada a Regular si tiene regularidad, sino Libre)
+    modalidad = payload.modalidad
+    if not modalidad:
+        reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
+        modalidad = MesaExamen.Modalidad.REGULAR if (reg and reg.situacion == Regularidad.Situacion.REGULAR) else MesaExamen.Modalidad.LIBRE
 
     # --- VALIDACIÓN ACADÉMICA ---
-    is_ok, msg, extra = _check_academic_eligibility(est, materia=materia, modalidad=modalidad, mesa_tipo=MesaExamen.Tipo.EXTRAORDINARIA)
+    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+    is_ok, msg, extra = _check_academic_eligibility(est, materia=materia, modalidad=modalidad, mesa_tipo=MesaExamen.Tipo.EXTRAORDINARIA, bypass_legajo=bool(es_staff))
     if not is_ok:
         return 400, {"message": f"No cumple las condiciones: {msg}", **extra}
 
@@ -467,7 +476,10 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
         estudiante=est,
         materia=materia,
         ventana=ventana,
-        defaults={"observaciones": payload.observaciones}
+        defaults={
+            "observaciones": payload.observaciones,
+            "modalidad": modalidad
+        }
     )
     
     if not created:
@@ -496,12 +508,104 @@ def listar_solicitudes_estudiante(request, dni: str | None = None):
             "materia_nombre": s.materia.nombre,
             "estado": s.estado,
             "estado_display": s.get_estado_display(),
-            "fecha_solicitud": format_datetime(s.fecha_solicitud),
+            "fecha_solicitud": s.fecha_solicitud,
+            "modalidad": s.modalidad,
+            "modalidad_display": s.get_modalidad_display(),
             "observaciones": s.observaciones,
             "mesa_asignada_id": s.mesa_asignada_id
         }
         for s in qs
     ]
+
+
+@estudiantes_router.delete(
+    "/cancelar_solicitud/{solicitud_id}",
+    auth=JWTAuth(),
+)
+def cancelar_solicitud(request, solicitud_id: int):
+    """
+    Permite al estudiante cancelar su propia solicitud si aún no ha sido procesada (Pendiente).
+    """
+    from django.shortcuts import get_object_or_404
+    solicitud = get_object_or_404(SolicitudMesa, id=solicitud_id)
+    
+    # Seguridad: solo el dueño de la solicitud (o un administrativo) puede borrarla
+    _ensure_estudiante_access(request, solicitud.estudiante.dni)
+    
+    if solicitud.estado != SolicitudMesa.Estado.PENDIENTE:
+        return 400, {"message": "Solo se pueden cancelar solicitudes en estado Pendiente."}
+        
+    solicitud.delete()
+    return {"message": "Solicitud cancelada correctamente."}
+
+
+@estudiantes_router.get(
+    "/materias_solicitables",
+    response=list[dict],
+    auth=JWTAuth(),
+)
+def listar_materias_solicitables(request, dni: str | None = None, modalidad: str | None = None, plan_id: int | None = None):
+    """
+    Lista las materias del plan del alumno que están en condiciones de ser solicitadas
+    para un llamado extraordinario.
+    """
+    _ensure_estudiante_access(request, dni)
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return []
+
+    # 1. Obtener todas las materias de sus carreras (o el plan específico)
+    if plan_id:
+        materias_qs = Materia.objects.filter(plan_de_estudio_id=plan_id)
+    else:
+        materias_qs = Materia.objects.filter(
+            plan_de_estudio__profesorado__in=est.carreras.all()
+        )
+    
+    materias_qs = materias_qs.select_related("plan_de_estudio")
+
+    # 2. Filtro de Formato (Excluir lo que no tiene final tradicional)
+    formatos_excluidos = [
+        Materia.FormatoMateria.PRACTICA,
+        Materia.FormatoMateria.TALLER,
+        Materia.FormatoMateria.LABORATORIO,
+        Materia.FormatoMateria.SEMINARIO
+    ]
+    materias_qs = materias_qs.exclude(formato__in=formatos_excluidos)
+
+    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    es_staff = bool(dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES))
+
+    solicitables = []
+
+    # Si no se especifica modalidad, devolvemos ambas (REG y LIB) para que el frontend las separe
+    modalidades_a_chequear = [modalidad] if modalidad else ["REG", "LIB"]
+
+    # 3. Validación Académica para cada materia
+    for m in materias_qs:
+        for mod in modalidades_a_chequear:
+            if mod == "LIB" and not m.permite_mesa_libre:
+                continue
+
+            is_ok, _, _ = _check_academic_eligibility(
+                est,
+                materia=m,
+                modalidad=mod,
+                mesa_tipo=MesaExamen.Tipo.EXTRAORDINARIA,
+                bypass_legajo=es_staff,
+                bypass_correlativas=es_staff,
+            )
+
+            if is_ok:
+                solicitables.append({
+                    "materia_id": m.id,
+                    "materia_nombre": m.nombre,
+                    "anio": m.anio_cursada,
+                    "plan_resolucion": m.plan_de_estudio.resolucion,
+                    "modalidad": mod,
+                })
+
+    return solicitables
 
 
 @estudiantes_router.post("/mesa-examen", response=MesaExamenOut, auth=JWTAuth())

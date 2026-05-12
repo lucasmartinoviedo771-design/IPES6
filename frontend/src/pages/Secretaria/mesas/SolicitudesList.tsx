@@ -72,6 +72,7 @@ export const SolicitudesList: React.FC = () => {
               <TableCell sx={{ fontWeight: 700 }}>Estudiante</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>DNI</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Materia</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Condición</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Profesorado</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
               <TableCell align="center" sx={{ fontWeight: 700 }}>Acciones</TableCell>
@@ -84,6 +85,14 @@ export const SolicitudesList: React.FC = () => {
                 <TableCell>{s.estudiante_nombre}</TableCell>
                 <TableCell>{s.estudiante_dni}</TableCell>
                 <TableCell>{s.materia_nombre}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={s.modalidad_display || (s.modalidad === 'REG' ? 'Regular' : 'Libre')} 
+                    variant="outlined" 
+                    size="small" 
+                    color={s.modalidad === 'LIB' ? 'secondary' : 'default'}
+                  />
+                </TableCell>
                 <TableCell>{s.profesorado_nombre}</TableCell>
                 <TableCell>
                   <Chip 

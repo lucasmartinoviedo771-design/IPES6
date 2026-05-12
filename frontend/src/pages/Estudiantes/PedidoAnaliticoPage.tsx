@@ -57,7 +57,7 @@ const PedidoAnaliticoPage: React.FC = () => {
       setCarrerasLoading(true);
       try {
         const data = await obtenerCarrerasActivas(canGestionar ? (dni ? { dni } : undefined) : undefined);
-        const list = data || [];
+        const list = data.carreras || [];
         if (!cancelled) {
           setCarreras(list);
           if (!list.length) {

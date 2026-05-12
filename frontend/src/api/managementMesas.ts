@@ -2,12 +2,12 @@ import { client as api } from "./client";
 import { SolicitudMesaAdminDTO } from "./estudiantes/types";
 
 export async function listarSolicitudesMesas(params?: { ventana_id?: number, estado?: string }): Promise<SolicitudMesaAdminDTO[]> {
-  const { data } = await api.get<SolicitudMesaAdminDTO[]>("/management/solicitudes_mesas", { params });
+  const { data } = await api.get<SolicitudMesaAdminDTO[]>("/solicitudes_mesas", { params });
   return data;
 }
 
 export async function procesarSolicitudMesa(solId: number, estado: string, mesaId?: number): Promise<SolicitudMesaAdminDTO> {
-  const { data } = await api.post<SolicitudMesaAdminDTO>(`/management/solicitudes_mesas/${solId}/procesar`, null, {
+  const { data } = await api.post<SolicitudMesaAdminDTO>(`/solicitudes_mesas/${solId}/procesar`, null, {
     params: { estado, mesa_id: mesaId }
   });
   return data;

@@ -141,6 +141,7 @@ from apps.estudiantes.schemas.trayectoria import (
     HorarioFranja,
     HorarioCelda,
     HorarioTabla,
+    CarrerasActivasOut,
 )
 
 __all__ = [
@@ -266,4 +267,5 @@ __all__ = [
     "HorarioFranja",
     "HorarioCelda",
     "HorarioTabla",
+    "CarrerasActivasOut",
 ]
