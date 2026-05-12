@@ -281,6 +281,12 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 "vocal1": str(insc.mesa.docente_vocal1) if insc.mesa.docente_vocal1 else None,
                 "vocal2": str(insc.mesa.docente_vocal2) if insc.mesa.docente_vocal2 else None,
             },
+            "puede_baja": (
+                insc.estado == InscripcionMesa.Estado.INSCRIPTO and (
+                    (insc.mesa.ventana.desde <= hoy <= insc.mesa.ventana.hasta and insc.mesa.ventana.activo) 
+                    if insc.mesa.ventana else (insc.mesa.fecha > hoy)
+                )
+            )
         })
         
     # Integración de actas históricas que no tienen 'inscripción previa' registrada
@@ -312,6 +318,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 "vocal1": str(a.acta.docente_vocal1) if hasattr(a.acta, "docente_vocal1") and a.acta.docente_vocal1 else None,
                 "vocal2": str(a.acta.docente_vocal2) if hasattr(a.acta, "docente_vocal2") and a.acta.docente_vocal2 else None,
             },
+            "puede_baja": False
         })
 
     # --- 3. AUDITORÍA DE VENCIMIENTOS Y ALERTAS ---

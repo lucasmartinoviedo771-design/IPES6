@@ -37,6 +37,7 @@ class TrayectoriaMesa(Schema):
     nota: str | None = None
     hora_desde: str | None = None
     hora_hasta: str | None = None
+    puede_baja: bool = False
     tribunal: dict[str, str | None] | None = None
 
 class MateriaSugerida(Schema):
