@@ -20,6 +20,7 @@ class MesaIn(Schema):
     docente_presidente_id: int | None = None
     docente_vocal1_id: int | None = None
     docente_vocal2_id: int | None = None
+    numero_mesa: int | None = None
 
 class CrearMesaDesdeSolicitudIn(Schema):
     solicitud_id: int
@@ -31,6 +32,7 @@ class CrearMesaDesdeSolicitudIn(Schema):
     docente_presidente_id: int | None = None
     docente_vocal1_id: int | None = None
     docente_vocal2_id: int | None = None
+    numero_mesa: int | None = None
 
 class MesaOut(Schema):
     id: int
@@ -50,6 +52,7 @@ class MesaOut(Schema):
     aula: str | None
     cupo: int
     codigo: str | None = None
+    numero_mesa: int | None = None
     docentes: list[MesaDocenteOut] = Field(default_factory=list)
     esta_cerrada: bool = False
     inscriptos_count: int = 0

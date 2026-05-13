@@ -90,9 +90,14 @@ def obtener_mesa_planilla(request, mesa_id: int):
     estudiantes = []
     for insc in inscripciones:
         estudiante = insc.estudiante
-        nombre = estudiante.user.get_full_name().strip()
-        if not nombre:
-            nombre = f"{estudiante.user.last_name} {estudiante.user.first_name}".strip() or estudiante.dni
+        apellido = (estudiante.user.last_name or "").strip().upper()
+        nombre_p = (estudiante.user.first_name or "").strip()
+        if apellido and nombre_p:
+            nombre = f"{apellido}, {nombre_p}"
+        elif apellido:
+            nombre = apellido
+        else:
+            nombre = estudiante.dni
         estudiantes.append(
             {
                 "inscripcion_id": insc.id,
@@ -135,6 +140,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
         hora_desde=hora_desde,
         hora_hasta=hora_hasta,
         mesa_codigo=mesa.codigo,
+        numero_mesa=mesa.numero_mesa,
         tribunal_presidente=_docente_full_name(mesa.docente_presidente),
         tribunal_vocal1=_docente_full_name(mesa.docente_vocal1),
         tribunal_vocal2=_docente_full_name(mesa.docente_vocal2),

@@ -19,6 +19,11 @@ export async function listarMesas(params?: any): Promise<any[]> {
 }
 
 export async function crearMesaDesdeSolicitud(payload: any): Promise<any> {
-  const { data } = await api.post("/mesas/crear_desde_solicitud", payload);
+  const { data } = await api.post("/crear_mesa_desde_solicitud", payload);
+  return data;
+}
+
+export async function actualizarMesa(mesaId: number, payload: any): Promise<any> {
+  const { data } = await api.put(`/mesas/${mesaId}`, payload);
   return data;
 }

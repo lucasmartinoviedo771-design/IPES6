@@ -39,6 +39,7 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         aula=mesa.aula,
         cupo=mesa.cupo or 0,
         codigo=mesa.codigo,
+        numero_mesa=mesa.numero_mesa,
         docentes=docentes,
         esta_cerrada=mesa.planilla_cerrada_en is not None,
         inscriptos_count=getattr(mesa, "num_inscriptos", 0)
@@ -108,6 +109,7 @@ def create_mesa(request, payload: MesaIn):
         docente_presidente_id=payload.docente_presidente_id,
         docente_vocal1_id=payload.docente_vocal1_id,
         docente_vocal2_id=payload.docente_vocal2_id,
+        numero_mesa=payload.numero_mesa,
     )
     return _serialize_mesa(mesa)
 
@@ -135,6 +137,64 @@ def delete_mesa(request, mesa_id: int):
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
     mesa.delete()
     return 204, None
+
+@management_router.post("/crear_mesa_desde_solicitud", response=MesaOut, auth=JWTAuth())
+def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
+    """
+    Crea una mesa de examen a partir de una solicitud 'semilla' y agrupa 
+    automáticamente a todos los demás alumnos con solicitudes idénticas 
+    (misma materia, modalidad y ventana) que estén pendientes.
+    """
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    
+    # 1. Obtener la solicitud semilla
+    semilla = get_object_or_404(SolicitudMesa, id=payload.solicitud_id)
+    materia = semilla.materia
+    ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
+
+    with transaction.atomic():
+        # 2. Crear la Mesa de Examen
+        mesa = MesaExamen.objects.create(
+            materia=materia,
+            tipo=MesaExamen.Tipo.EXTRAORDINARIA,
+            modalidad=semilla.modalidad,
+            fecha=payload.fecha,
+            hora_desde=payload.hora_desde,
+            hora_hasta=payload.hora_hasta,
+            aula=payload.aula,
+            cupo=payload.cupo,
+            ventana=semilla.ventana,
+            docente_presidente_id=payload.docente_presidente_id,
+            docente_vocal1_id=payload.docente_vocal1_id,
+            docente_vocal2_id=payload.docente_vocal2_id,
+            numero_mesa=payload.numero_mesa,
+        )
+
+        # 3. Buscar todas las solicitudes coincidentes que estén PENDIENTES
+        # Misma materia, misma modalidad y misma ventana de tiempo
+        solicitudes_coincidentes = SolicitudMesa.objects.filter(
+            materia=materia,
+            modalidad=semilla.modalidad,
+            ventana=semilla.ventana,
+            estado='PEN'
+        )
+
+        from core.models import InscripcionMesa
+        
+        # 4. Procesar cada solicitud: Aprobar, Vincular e Inscribir
+        for sol in solicitudes_coincidentes:
+            sol.estado = 'PRO' # Mesa Aprobada
+            sol.mesa_asignada = mesa
+            sol.save()
+
+            # Inscripción automática a la mesa
+            InscripcionMesa.objects.get_or_create(
+                mesa=mesa,
+                estudiante_id=sol.estudiante_id,
+                defaults={'estado': 'INS'}
+            )
+
+    return _serialize_mesa(mesa)
 
 @management_router.get("/solicitudes_mesas", response=list[SolicitudMesaOut], auth=JWTAuth())
 def list_solicitudes(request, ventana_id: int | None = None, estado: str | None = None):
@@ -209,59 +269,3 @@ def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = 
         mesa_asignada_id=sol.mesa_asignada_id
     )
 
-@management_router.post("/mesas/crear_desde_solicitud", response=MesaOut, auth=JWTAuth())
-def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
-    """
-    Crea una mesa de examen a partir de una solicitud 'semilla' y agrupa 
-    automáticamente a todos los demás alumnos con solicitudes idénticas 
-    (misma materia, modalidad y ventana) que estén pendientes.
-    """
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
-    
-    # 1. Obtener la solicitud semilla
-    semilla = get_object_or_404(SolicitudMesa, id=payload.solicitud_id)
-    materia = semilla.materia
-    ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
-
-    with transaction.atomic():
-        # 2. Crear la Mesa de Examen
-        mesa = MesaExamen.objects.create(
-            materia=materia,
-            tipo=MesaExamen.Tipo.EXTRAORDINARIA,
-            modalidad=semilla.modalidad,
-            fecha=payload.fecha,
-            hora_desde=payload.hora_desde,
-            hora_hasta=payload.hora_hasta,
-            aula=payload.aula,
-            cupo=payload.cupo,
-            ventana=semilla.ventana,
-            docente_presidente_id=payload.docente_presidente_id,
-            docente_vocal1_id=payload.docente_vocal1_id,
-            docente_vocal2_id=payload.docente_vocal2_id,
-        )
-
-        # 3. Buscar todas las solicitudes coincidentes que estén PENDIENTES
-        # Misma materia, misma modalidad y misma ventana de tiempo
-        solicitudes_coincidentes = SolicitudMesa.objects.filter(
-            materia=materia,
-            modalidad=semilla.modalidad,
-            ventana=semilla.ventana,
-            estado='PEN'
-        )
-
-        from core.models import InscripcionMesa
-        
-        # 4. Procesar cada solicitud: Aprobar, Vincular e Inscribir
-        for sol in solicitudes_coincidentes:
-            sol.estado = 'PRO' # Mesa Aprobada
-            sol.mesa_asignada = mesa
-            sol.save()
-
-            # Inscripción automática a la mesa
-            InscripcionMesa.objects.get_or_create(
-                mesa=mesa,
-                estudiante_id=sol.estudiante_id,
-                defaults={'estado': 'INS'}
-            )
-
-    return _serialize_mesa(mesa)

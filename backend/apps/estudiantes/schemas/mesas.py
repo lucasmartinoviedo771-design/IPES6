@@ -112,6 +112,7 @@ class MesaPlanillaOut(Schema):
     hora_desde: str | None = None
     hora_hasta: str | None = None
     mesa_codigo: str | None = None
+    numero_mesa: int | None = None
     tribunal_presidente: str | None = None
     tribunal_vocal1: str | None = None
     tribunal_vocal2: str | None = None

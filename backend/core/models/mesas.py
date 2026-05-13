@@ -26,6 +26,7 @@ class MesaExamen(models.Model):
     fecha = models.DateField()
     hora_desde = models.TimeField(null=True, blank=True)
     hora_hasta = models.TimeField(null=True, blank=True)
+    numero_mesa = models.PositiveIntegerField(null=True, blank=True)
     aula = models.CharField(max_length=64, blank=True, null=True)
     cupo = models.IntegerField(default=0)
     ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.SET_NULL, null=True, blank=True)

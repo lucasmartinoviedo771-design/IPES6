@@ -522,6 +522,7 @@ export type MesaPlanillaDTO = {
   hora_desde?: string | null;
   hora_hasta?: string | null;
   mesa_codigo?: string | null;
+  numero_mesa?: number | null;
   tribunal_presidente?: string | null;
   tribunal_vocal1?: string | null;
   tribunal_vocal2?: string | null;

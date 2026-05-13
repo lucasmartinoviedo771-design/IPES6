@@ -4,7 +4,7 @@ FROM node:20-slim AS builder
 WORKDIR /app
 
 # Instalar pnpm globalmente
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@9
 
 # Copiar archivos de dependencias
 COPY package.json pnpm-lock.yaml ./
