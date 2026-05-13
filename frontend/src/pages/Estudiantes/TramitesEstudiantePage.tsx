@@ -34,8 +34,8 @@ import { DNI_COMPLETO_LENGTH } from "./pedido-equivalencias/utils";
 // ── Estilos tabs ────────────────────────────────────────────────────────────
 const TAB_SX = {
   "& .MuiTab-root": { fontWeight: 600, textTransform: "none", fontSize: "1rem", minHeight: 52 },
-  "& .Mui-selected": { color: "#8b4513" },
-  "& .MuiTabs-indicator": { backgroundColor: "#8b4513" },
+  "& .Mui-selected": { color: "#B7694E" },
+  "& .MuiTabs-indicator": { backgroundColor: "#B7694E" },
 };
 
 // ── Tab 0: Mi Analítico ─────────────────────────────────────────────────────

@@ -102,8 +102,8 @@ const PedidoEquivalenciasPage: React.FC = () => {
                 onChange={handleTabChange}
                 sx={{
                     '& .MuiTab-root': { fontWeight: 600, textTransform: 'none', fontSize: '1rem' },
-                    '& .Mui-selected': { color: '#8b4513' },
-                    '& .MuiTabs-indicator': { backgroundColor: '#8b4513' }
+                    '& .Mui-selected': { color: '#B7694E' },
+                    '& .MuiTabs-indicator': { backgroundColor: '#B7694E' }
                 }}
             >
               <Tab label="Pedidos en curso" />

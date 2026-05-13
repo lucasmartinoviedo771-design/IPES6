@@ -127,8 +127,8 @@ const InscripcionMateriaPage: React.FC = () => {
               scrollButtons="auto"
               sx={{
                 '& .MuiTab-root': { fontWeight: 600, fontSize: '0.95rem', textTransform: 'none' },
-                '& .Mui-selected': { color: '#8b4513' },
-                '& .MuiTabs-indicator': { backgroundColor: '#8b4513' }
+                '& .Mui-selected': { color: '#B7694E' },
+                '& .MuiTabs-indicator': { backgroundColor: '#B7694E' }
               }}
             >
               <Tab label="Inscripción Abierta" />

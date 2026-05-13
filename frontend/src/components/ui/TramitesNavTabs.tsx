@@ -26,8 +26,8 @@ const TAB_SX = {
     fontSize: "0.95rem",
     minHeight: 48,
   },
-  "& .Mui-selected": { color: "#8b4513" },
-  "& .MuiTabs-indicator": { backgroundColor: "#8b4513" },
+  "& .Mui-selected": { color: "#B7694E" },
+  "& .MuiTabs-indicator": { backgroundColor: "#B7694E" },
 };
 
 export const TramitesNavTabs: React.FC = () => {
