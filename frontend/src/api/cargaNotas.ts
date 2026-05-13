@@ -488,3 +488,33 @@ export async function descargarActaOralPdf(mesaId: number, inscripcionId: number
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export async function descargarActaPdf(actaId: number, codigo: string): Promise<void> {
+  const { data } = await client.get(
+    `/estudiantes/carga-notas/actas/${actaId}/pdf`,
+    { responseType: "blob" },
+  );
+  const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ACTA_${codigo}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export async function descargarActaComisionadosPdf(actaId: number, codigo: string): Promise<void> {
+  const { data } = await client.get(
+    `/estudiantes/carga-notas/actas/${actaId}/pdf-comisionados`,
+    { responseType: "blob" },
+  );
+  const url = URL.createObjectURL(new Blob([data], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ACTA_${codigo}_COMISIONADOS.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

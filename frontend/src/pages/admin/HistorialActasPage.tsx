@@ -41,7 +41,16 @@ import { enqueueSnackbar } from 'notistack';
 import { useAuth } from '@/context/AuthContext';
 import { hasRole } from '@/utils/roles';
 
-import { listarActas, obtenerActa, actualizarCabeceraActa, actualizarDocentesActa, fetchActaMetadata, ActaDocentePayload } from '@/api/cargaNotas';
+import { 
+    listarActas, 
+    obtenerActa, 
+    actualizarCabeceraActa, 
+    actualizarDocentesActa, 
+    fetchActaMetadata, 
+    ActaDocentePayload,
+    descargarActaPdf,
+    descargarActaComisionadosPdf
+} from '@/api/cargaNotas';
 import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -298,8 +307,8 @@ const HistorialActasPage: React.FC = () => {
                                     </TableCell>
                                     <TableCell align="center">{acta.total_estudiantes}</TableCell>
                                     <TableCell align="right">
-                                        <Tooltip title="Imprimir">
-                                            <IconButton onClick={() => window.open(`/admin/actas/${acta.id}/print`, '_blank')}>
+                                        <Tooltip title="Imprimir Acta Principal">
+                                            <IconButton onClick={() => descargarActaPdf(acta.id, acta.codigo)}>
                                                 <PrintIcon />
                                             </IconButton>
                                         </Tooltip>
@@ -592,8 +601,20 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
                         Editar Planilla
                     </Button>
                 )}
-                <Button startIcon={<PrintIcon />} onClick={() => window.open(`/admin/actas/${actaId}/print`, '_blank')}>
-                    Imprimir
+                <Button 
+                    startIcon={<PrintIcon />} 
+                    onClick={() => descargarActaPdf(actaId, acta?.codigo || '')}
+                    disabled={!acta}
+                >
+                    Imprimir Acta
+                </Button>
+                <Button 
+                    startIcon={<PrintIcon />} 
+                    onClick={() => descargarActaComisionadosPdf(actaId, acta?.codigo || '')}
+                    disabled={!acta}
+                    color="secondary"
+                >
+                    Comisionados
                 </Button>
                 <Button onClick={onClose} disabled={reopenMutation.isPending || closeMutation.isPending}>Cerrar</Button>
             </DialogActions>

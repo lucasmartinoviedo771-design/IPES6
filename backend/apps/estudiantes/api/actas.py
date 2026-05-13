@@ -49,6 +49,8 @@ from apps.estudiantes.api.actas_helpers import (
     _next_acta_numero,
     _nota_label,
 )
+from apps.estudiantes.services.actas_pdf import generar_acta_examen_pdf
+from django.http import HttpResponse
 
 router = Router(tags=["actas"])
 
@@ -730,3 +732,41 @@ def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLoc
         )
 
     return ApiResponse(ok=True, message="Tribunal actualizado correctamente.")
+
+
+@router.get(
+    "/actas/{acta_id}/pdf",
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+def descargar_acta_pdf(request, acta_id: int):
+    """Genera y descarga el PDF del acta principal (alumnos del profesorado)."""
+    acta = ActaExamen.objects.filter(id=acta_id).first()
+    if not acta:
+        return HttpResponse("Acta no encontrada", status=404)
+    
+    pdf_bytes = generar_acta_examen_pdf(acta, es_comisionados=False)
+    
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    filename = f"ACTA_{acta.codigo}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@router.get(
+    "/actas/{acta_id}/pdf-comisionados",
+    auth=JWTAuth(),
+)
+@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+def descargar_acta_comisionados_pdf(request, acta_id: int):
+    """Genera y descarga el PDF de alumnos comisionados de un acta."""
+    acta = ActaExamen.objects.filter(id=acta_id).first()
+    if not acta:
+        return HttpResponse("Acta no encontrada", status=404)
+    
+    pdf_bytes = generar_acta_examen_pdf(acta, es_comisionados=True)
+    
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    filename = f"ACTA_{acta.codigo}_COMISIONADOS.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response

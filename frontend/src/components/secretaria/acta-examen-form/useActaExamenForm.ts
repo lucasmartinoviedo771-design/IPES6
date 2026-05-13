@@ -58,6 +58,7 @@ export function useActaExamenForm({
   const [pendingActaPayload, setPendingActaPayload] = useState<ActaCreatePayload | null>(null);
   const [isEditing] = useState(!!editId);
   const [isInitialPopulated, setIsInitialPopulated] = useState(false);
+  const [createdActa, setCreatedActa] = useState<{ id: number; codigo: string } | null>(null);
 
   const { data: actaParaEditar } = useQuery({
     queryKey: ["acta-edicion", editId],
@@ -284,6 +285,11 @@ export function useActaExamenForm({
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["acta-examen-metadata"] });
       enqueueSnackbar(response.message || successMessage, { variant: "success" });
+      
+      if (response.data) {
+        setCreatedActa(response.data);
+      }
+
       setDocentes(createEmptyDocentes());
       setEstudiantes([createEmptyEstudiante(1)]);
       setFolio(""); setLibro(""); setObservaciones("");
@@ -508,5 +514,6 @@ export function useActaExamenForm({
     handleSubmit, handleConfirmActaSubmit, handleCancelActaSubmit,
     // status
     isEditing, isSaving, tribunalInfo,
+    createdActa, setCreatedActa,
   };
 }

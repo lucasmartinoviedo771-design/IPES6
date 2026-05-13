@@ -8,6 +8,13 @@ import Typography from "@mui/material/Typography";
 
 import OralExamActaDialog from "@/components/secretaria/OralExamActaDialog";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import { descargarActaPdf, descargarActaComisionadosPdf } from "@/api/cargaNotas";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PrintIcon from '@mui/icons-material/Print';
 
 import { ActaExamenFormProps } from './acta-examen-form/types';
 import { useActaExamenForm } from './acta-examen-form/useActaExamenForm';
@@ -159,6 +166,42 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
         contextText={f.confirmActaContext}
         loading={f.isSaving}
       />
+
+      <Dialog open={!!f.createdActa} onClose={() => f.setCreatedActa(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CheckCircleIcon color="success" />
+          Acta Generada
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            El acta <b>{f.createdActa?.codigo}</b> ha sido generada correctamente.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            ¿Desea descargar los documentos PDF ahora?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ flexDirection: 'column', gap: 1, p: 2 }}>
+          <Button 
+            fullWidth 
+            variant="contained" 
+            startIcon={<PrintIcon />}
+            onClick={() => f.createdActa && descargarActaPdf(f.createdActa.id, f.createdActa.codigo)}
+          >
+            Descargar Acta Principal
+          </Button>
+          <Button 
+            fullWidth 
+            variant="outlined" 
+            startIcon={<PrintIcon />}
+            onClick={() => f.createdActa && descargarActaComisionadosPdf(f.createdActa.id, f.createdActa.codigo)}
+          >
+            Descargar Comisionados
+          </Button>
+          <Button fullWidth onClick={() => f.setCreatedActa(null)}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
