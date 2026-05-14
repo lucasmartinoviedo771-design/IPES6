@@ -86,3 +86,24 @@ export async function autorizarRendirEstudiante(
   );
   return data;
 }
+
+export type ResguardoMateriaItemDTO = {
+  tipo: "REG" | "EQUIV";
+  dni: string;
+  nombre: string;
+  profesorado: string | null;
+  materia: string;
+  situacion: string;
+  motivos: string[];
+};
+
+export async function fetchResguardoMaterias(params: {
+  profesorado_id?: number;
+  dni?: string;
+} = {}): Promise<ResguardoMateriaItemDTO[]> {
+  const { data } = await client.get<ResguardoMateriaItemDTO[]>(
+    "/estudiantes/admin/resguardo-materias",
+    { params }
+  );
+  return data;
+}

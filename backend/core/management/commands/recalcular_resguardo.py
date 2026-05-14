@@ -14,6 +14,7 @@ Usar:
 Cron sugerido (noche, una vez por semana):
     0 3 * * 0 cd /app && python manage.py recalcular_resguardo
 """
+from datetime import date
 from django.core.management.base import BaseCommand
 from core.models import Estudiante, Regularidad, EquivalenciaDisposicionDetalle
 
@@ -34,6 +35,10 @@ class Command(BaseCommand):
         parser.add_argument("--solo-regularidades", action="store_true")
         parser.add_argument("--dni", type=str, default=None,
                             help="Procesar solo un estudiante por DNI.")
+        parser.add_argument("--solo-activos", action="store_true",
+                            help="Procesar solo estudiantes con estado académico ACTIVO.")
+        parser.add_argument("--profesorado", type=int, default=None,
+                            help="Filtrar por ID de profesorado.")
 
     def handle(self, *args, **options):
         from apps.estudiantes.api.helpers import (
@@ -45,11 +50,22 @@ class Command(BaseCommand):
         solo_equiv = options["solo_equivalencias"]
         solo_reg = options["solo_regularidades"]
         dni = options["dni"]
+        solo_activos = options["solo_activos"]
+        profesorado_id = options["profesorado"]
         prefijo = "[DRY-RUN] " if dry_run else ""
 
         est_qs = Estudiante.objects.select_related("persona").prefetch_related("materias_autorizadas")
         if dni:
             est_qs = est_qs.filter(persona__dni=dni)
+        if solo_activos or profesorado_id:
+            from core.models import EstudianteCarrera
+            ec_qs = EstudianteCarrera.objects.all()
+            if solo_activos:
+                ec_qs = ec_qs.filter(estado_academico="ACT")
+            if profesorado_id:
+                ec_qs = ec_qs.filter(profesorado_id=profesorado_id)
+            ids_filtrados = ec_qs.values_list("estudiante_id", flat=True).distinct()
+            est_qs = est_qs.filter(id__in=ids_filtrados)
 
         total_reg_marcadas = 0
         total_reg_liberadas = 0
@@ -61,23 +77,71 @@ class Command(BaseCommand):
 
             # --- Regularidades ---
             if not solo_equiv:
-                for reg in Regularidad.objects.filter(
+                reg_qs = Regularidad.objects.filter(
                     estudiante=est,
                     situacion__in=SITUACIONES_POSITIVAS,
-                ).select_related("materia"):
-                    # Calcular si debería estar en resguardo
-                    # Una regularidad está en resguardo si sus correlativas de cursada
-                    # no están satisfechas de forma válida.
+                ).select_related("materia")
+                if profesorado_id:
+                    reg_qs = reg_qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
+                for reg in reg_qs:
                     from apps.estudiantes.api.helpers.misc_utils import _calcular_resguardo_equivalencia
+                    from apps.estudiantes.api.helpers import _tiene_aprobacion_valida
+                    from core.models import Correlatividad, Materia as Mat
                     deberia_resguardo = _calcular_resguardo_equivalencia(
-                        est, reg.materia, autorizadas_ids=autorizadas_ids
+                        est, reg.materia, autorizadas_ids=autorizadas_ids,
+                        situacion=reg.situacion,
                     )
 
                     if deberia_resguardo and not reg.en_resguardo:
                         total_reg_marcadas += 1
+                        nombre = f"{est.persona.apellido}, {est.persona.nombre}" if est.persona else str(est.id)
+                        from core.models import Correlatividad as Corr
+                        from apps.estudiantes.api.helpers.misc_utils import _calcular_vigencia_regularidad
+                        hoy = date.today()
+                        faltantes = []
+                        # Correlativas de APROBACIÓN
+                        for corr in Corr.objects.filter(
+                            materia_origen=reg.materia,
+                            tipo=Corr.TipoCorrelatividad.APROBADA_PARA_CURSAR,
+                        ).select_related("materia_correlativa"):
+                            if not _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
+                                faltantes.append(f"Necesita APROBAR: {corr.materia_correlativa.nombre}")
+                        # Correlativas de REGULARIDAD — chequeo con vigencia
+                        for corr in Corr.objects.filter(
+                            materia_origen=reg.materia,
+                            tipo=Corr.TipoCorrelatividad.REGULAR_PARA_CURSAR,
+                        ).select_related("materia_correlativa"):
+                            if _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
+                                continue  # aprobada, ok
+                            regs_corr = Regularidad.objects.filter(
+                                estudiante=est,
+                                materia=corr.materia_correlativa,
+                                situacion=Regularidad.Situacion.REGULAR,
+                                en_resguardo=False,
+                            )
+                            if not regs_corr.exists():
+                                faltantes.append(f"Necesita REGULARIZAR: {corr.materia_correlativa.nombre}")
+                            else:
+                                for rc in regs_corr:
+                                    limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
+                                    if hoy > limite:
+                                        faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
+                                    elif intentos >= max_i:
+                                        faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
+                        # Para APROBADO/PROMOCIONADO: correlativas APROBADA_PARA_RENDIR
+                        if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                            for corr in Corr.objects.filter(
+                                materia_origen=reg.materia,
+                                tipo=Corr.TipoCorrelatividad.APROBADA_PARA_RENDIR,
+                            ).select_related("materia_correlativa"):
+                                if not _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
+                                    faltantes.append(f"Necesita APROBAR (para rendir): {corr.materia_correlativa.nombre}")
+                        faltantes_str = "\n    ".join(dict.fromkeys(faltantes)) if faltantes else "Sin detalle"
                         self.stdout.write(
                             f"{prefijo}REG en resguardo: {est.persona.dni if est.persona else est.id} "
-                            f"— {reg.materia.nombre} ({reg.get_situacion_display()})"
+                            f"| {nombre}\n"
+                            f"  Materia en resguardo : {reg.materia.nombre} ({reg.get_situacion_display()})\n"
+                            f"  Motivo               : {faltantes_str}\n"
                         )
                         if not dry_run:
                             reg.en_resguardo = True
@@ -103,9 +167,44 @@ class Command(BaseCommand):
 
                     if deberia_resguardo and not eq.en_resguardo:
                         total_eq_marcadas += 1
+                        nombre = f"{est.persona.apellido}, {est.persona.nombre}" if est.persona else str(est.id)
+                        from core.models import Correlatividad as Corr
+                        from apps.estudiantes.api.helpers.misc_utils import _calcular_vigencia_regularidad
+                        hoy = date.today()
+                        faltantes = []
+                        for corr in Corr.objects.filter(
+                            materia_origen=eq.materia,
+                            tipo=Corr.TipoCorrelatividad.APROBADA_PARA_CURSAR,
+                        ).select_related("materia_correlativa"):
+                            if not _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
+                                faltantes.append(f"Necesita APROBAR: {corr.materia_correlativa.nombre}")
+                        for corr in Corr.objects.filter(
+                            materia_origen=eq.materia,
+                            tipo=Corr.TipoCorrelatividad.REGULAR_PARA_CURSAR,
+                        ).select_related("materia_correlativa"):
+                            if _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
+                                continue
+                            regs_corr = Regularidad.objects.filter(
+                                estudiante=est,
+                                materia=corr.materia_correlativa,
+                                situacion=Regularidad.Situacion.REGULAR,
+                                en_resguardo=False,
+                            )
+                            if not regs_corr.exists():
+                                faltantes.append(f"Necesita REGULARIZAR: {corr.materia_correlativa.nombre}")
+                            else:
+                                for rc in regs_corr:
+                                    limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
+                                    if hoy > limite:
+                                        faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
+                                    elif intentos >= max_i:
+                                        faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
+                        faltantes_str = "\n    ".join(dict.fromkeys(faltantes)) if faltantes else "Sin detalle"
                         self.stdout.write(
                             f"{prefijo}EQUIV en resguardo: {est.persona.dni if est.persona else est.id} "
-                            f"— {eq.materia.nombre}"
+                            f"| {nombre}\n"
+                            f"  Materia en resguardo : {eq.materia.nombre}\n"
+                            f"  Motivo               : {faltantes_str}\n"
                         )
                         if not dry_run:
                             eq.en_resguardo = True
