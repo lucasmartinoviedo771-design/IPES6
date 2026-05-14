@@ -85,7 +85,7 @@ class Estudiante(models.Model):
     dni_legalizado = models.BooleanField(default=False)
     fotos_4x4 = models.BooleanField(default=False)
     certificado_salud = models.BooleanField(default=False)
-    folios_oficio = models.IntegerField(default=0)
+    folios_oficio = models.BooleanField(default=False)
     titulo_secundario_legalizado = models.BooleanField(default=False)
     certificado_titulo_en_tramite = models.BooleanField(default=False)
     analitico_legalizado = models.BooleanField(default=False)

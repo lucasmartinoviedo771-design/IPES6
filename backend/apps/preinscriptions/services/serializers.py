@@ -15,14 +15,28 @@ def serialize_pre(pre) -> dict:
     persisted_estudiante_extra = getattr(a, "datos_extra", {}) or {}
 
     def ensure_extra(field: str):
+        # 1. Prioritize model fields if they have data
+        p = getattr(a, "persona", None)
+        field_map = {
+            "emergencia_telefono": "telefono_emergencia",
+            "emergencia_parentesco": "parentesco_emergencia",
+        }
+        model_field = field_map.get(field, field)
+        
+        for obj in (a, p):
+            if obj and hasattr(obj, model_field):
+                val = getattr(obj, model_field)
+                if val not in (None, "", 0, False):
+                    extra[field] = val
+                    return
+
         if extra.get(field) not in (None, ""):
             return
-        for source in (pre_estudiante_extra, persisted_estudiante_extra):
-            if isinstance(source, dict):
-                value = source.get(field)
-                if value not in (None, ""):
-                    extra[field] = value
-                    return
+
+        if isinstance(persisted_estudiante_extra, dict):
+            value = persisted_estudiante_extra.get(field)
+            if value not in (None, ""):
+                extra[field] = value
 
     campos_a_bubbling = [
         "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",

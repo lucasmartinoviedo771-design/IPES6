@@ -192,7 +192,7 @@ def generar_acta_examen_pdf(acta: ActaExamen, filtro_profesorado_id: int = None,
     # We might need to fetch the MesaExamen to get the time/hour
     from core.models import MesaExamen
     mesa = MesaExamen.objects.filter(materia=acta.materia, fecha=acta.fecha, modalidad=acta.tipo).first()
-    hora_str = mesa.hora.strftime('%H:%M') if mesa and mesa.hora else "08:00"
+    hora_str = mesa.hora_desde.strftime('%H:%M') if mesa and mesa.hora_desde else "08:00"
     mesa_nro = str(mesa.id) if mesa else "-"
 
     row2_data = [

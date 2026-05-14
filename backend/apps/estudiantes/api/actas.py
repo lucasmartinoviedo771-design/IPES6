@@ -550,6 +550,13 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         # Limpiar InscripcionMesa de la mesa vieja vinculadas a este acta
         if mesa_vieja:
             InscripcionMesa.objects.filter(mesa=mesa_vieja, folio=acta.folio).delete()
+            
+            # Limpieza de "mesa fantasma": si la mesa vieja queda sin inscriptos 
+            # y era una mesa generada automáticamente (MA-), la eliminamos.
+            if (mesa_vieja.codigo and mesa_vieja.codigo.startswith("MA-") and 
+                not mesa_vieja.inscripciones.exists() and
+                not ActaExamen.objects.filter(materia=mesa_vieja.materia, fecha=mesa_vieja.fecha).exclude(id=acta.id).exists()):
+                mesa_vieja.delete()
     else:
         mesa = mesa_vieja
 

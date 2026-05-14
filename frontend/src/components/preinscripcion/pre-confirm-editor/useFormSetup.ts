@@ -54,18 +54,21 @@ export function useFormReset(
     sanitized.nombres = String(estudianteDto?.nombres ?? estudianteDto?.nombre ?? formDefaults.nombres);
     sanitized.apellido = String(estudianteDto?.apellido ?? formDefaults.apellido);
     sanitized.dni = String(estudianteDto?.dni ?? sanitized.dni ?? "");
-    sanitized.cuil = String(estudianteDto?.cuil ?? getExtra(extra, 'cuil') ?? sanitized.cuil ?? "");
     sanitized.email = String(estudianteDto?.email ?? sanitized.email ?? "");
     sanitized.tel_movil = String(estudianteDto?.telefono ?? sanitized.tel_movil ?? "");
     sanitized.domicilio = String(estudianteDto?.domicilio ?? sanitized.domicilio ?? "");
+    
+    sanitized.cuil = String(estudianteDto?.cuil ?? getExtra(extra, 'cuil') ?? sanitized.cuil ?? "");
     const rawBirthDate = estudianteDto?.fecha_nacimiento ?? getExtra(extra, 'fecha_nacimiento') ?? sanitized.fecha_nacimiento ?? "";
     sanitized.fecha_nacimiento = toDisplayDate(String(rawBirthDate));
+    
     sanitized.nacionalidad = String(getExtra(extra, 'nacionalidad') ?? sanitized.nacionalidad ?? "");
     sanitized.estado_civil = String(getExtra(extra, 'estado_civil') ?? sanitized.estado_civil ?? "");
     sanitized.genero = String(getExtra(extra, 'genero') ?? sanitized.genero ?? "");
     sanitized.pais_nac = String(getExtra(extra, 'pais_nac') ?? sanitized.pais_nac ?? "");
     sanitized.provincia_nac = String(getExtra(extra, 'provincia_nac') ?? sanitized.provincia_nac ?? "");
     sanitized.localidad_nac = String(getExtra(extra, 'localidad_nac') ?? sanitized.localidad_nac ?? "");
+    
     sanitized.carrera_id = Number(data.carrera?.id ?? 0);
     const cohorteFallback = getExtra(extra, 'cohorte') ?? data.anio ?? formDefaults.cohorte ?? "";
     sanitized.cohorte = cohorteFallback ? String(cohorteFallback) : String(new Date().getFullYear());

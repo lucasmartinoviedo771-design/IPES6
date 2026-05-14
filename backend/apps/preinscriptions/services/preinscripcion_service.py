@@ -101,15 +101,7 @@ class PreinscripcionService:
                     setattr(cl, k, v)
             cl.save()
             
-            # Sync to student datos_extra
-            datos_extra = pre.alumno.datos_extra or {}
-            docs_extra = datos_extra.get("documentacion") or {}
-            for k, v in checklist_payload.items():
-                if v not in (None, ""):
-                    docs_extra[k] = v
-            datos_extra["documentacion"] = docs_extra
-            pre.alumno.datos_extra = datos_extra
-            pre.alumno.save(update_fields=["datos_extra"])
+
 
         # Career assignment
         inscripcion = pre.alumno.asignar_profesorado(
