@@ -138,6 +138,7 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
           fecha_iso: reg.fecha_iso || undefined,
           condicion: reg.condicion || undefined,
           nota: reg.nota || undefined,
+          en_resguardo: reg.en_resguardo || false,
         });
       });
     }

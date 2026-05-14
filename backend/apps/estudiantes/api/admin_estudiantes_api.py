@@ -983,3 +983,45 @@ def admin_resguardo_materias(
         })
 
     return 200, resultado
+
+
+@router.post("/admin/resguardo-materias/recalcular")
+def admin_recalcular_resguardo(
+    request,
+    profesorado_id: int | None = None,
+    solo_activos: bool = True,
+):
+    """
+    Ejecuta el comando recalcular_resguardo a demanda.
+    Solo para admin y secretaria (operación costosa).
+    """
+    from io import StringIO
+    from django.core.management import call_command
+    ensure_roles(request.user, {"admin", "secretaria"})
+
+    out = StringIO()
+    kwargs = {"stdout": out, "dry_run": False, "solo_equivalencias": False, "solo_regularidades": False, "dni": None, "solo_activos": solo_activos, "profesorado": profesorado_id}
+    call_command("recalcular_resguardo", **kwargs)
+    output = out.getvalue()
+
+    # Extraer totales del output
+    reg_marcadas = reg_liberadas = eq_marcadas = eq_liberadas = 0
+    for line in output.splitlines():
+        if "Regularidades →" in line:
+            parts = line.split("→")[1].strip()
+            nums = [int(s) for s in parts.replace(",", "").split() if s.isdigit()]
+            if len(nums) >= 2:
+                reg_marcadas, reg_liberadas = nums[0], nums[1]
+        elif "Equivalencias →" in line:
+            parts = line.split("→")[1].strip()
+            nums = [int(s) for s in parts.replace(",", "").split() if s.isdigit()]
+            if len(nums) >= 2:
+                eq_marcadas, eq_liberadas = nums[0], nums[1]
+
+    return 200, {
+        "ok": True,
+        "regularidades_marcadas": reg_marcadas,
+        "regularidades_liberadas": reg_liberadas,
+        "equivalencias_marcadas": eq_marcadas,
+        "equivalencias_liberadas": eq_liberadas,
+    }

@@ -107,3 +107,23 @@ export async function fetchResguardoMaterias(params: {
   );
   return data;
 }
+
+export type RecalcularResguardoResult = {
+  ok: boolean;
+  regularidades_marcadas: number;
+  regularidades_liberadas: number;
+  equivalencias_marcadas: number;
+  equivalencias_liberadas: number;
+};
+
+export async function recalcularResguardo(params: {
+  profesorado_id?: number;
+  solo_activos?: boolean;
+} = {}): Promise<RecalcularResguardoResult> {
+  const { data } = await client.post<RecalcularResguardoResult>(
+    "/estudiantes/admin/resguardo-materias/recalcular",
+    null,
+    { params }
+  );
+  return data;
+}

@@ -19,18 +19,24 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import InputAdornment from "@mui/material/InputAdornment";
 import IconButton from "@mui/material/IconButton";
+import Button from "@mui/material/Button";
 import ClearIcon from "@mui/icons-material/Clear";
-import { useQuery } from "@tanstack/react-query";
+import SyncIcon from "@mui/icons-material/Sync";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSnackbar } from "notistack";
 
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
-import { fetchResguardoMaterias, ResguardoMateriaItemDTO } from "@/api/estudiantes/admin";
+import { fetchResguardoMaterias, recalcularResguardo, ResguardoMateriaItemDTO } from "@/api/estudiantes/admin";
 import { fetchCarreras } from "@/api/carreras";
 
 export default function ResguardoMateriasPage() {
     const [profesoradoId, setProfesoradoId] = useState<number | "">("");
     const [dniSearch, setDniSearch] = useState("");
     const [nombreSearch, setNombreSearch] = useState("");
+    const [recalculando, setRecalculando] = useState(false);
+    const queryClient = useQueryClient();
+    const { enqueueSnackbar } = useSnackbar();
 
     const { data: carreras } = useQuery({
         queryKey: ["carreras-vigentes"],
@@ -45,6 +51,25 @@ export default function ResguardoMateriasPage() {
         }),
         staleTime: 1000 * 60 * 5,
     });
+
+    const handleRecalcular = async () => {
+        setRecalculando(true);
+        try {
+            const result = await recalcularResguardo({
+                profesorado_id: profesoradoId || undefined,
+                solo_activos: true,
+            });
+            enqueueSnackbar(
+                `Actualizado: ${result.regularidades_marcadas} en resguardo, ${result.regularidades_liberadas} liberadas.`,
+                { variant: "success" }
+            );
+            queryClient.invalidateQueries({ queryKey: ["resguardo-materias"] });
+        } catch {
+            enqueueSnackbar("Error al recalcular el resguardo.", { variant: "error" });
+        } finally {
+            setRecalculando(false);
+        }
+    };
 
     const items: ResguardoMateriaItemDTO[] = (data || []).filter((item) => {
         if (dniSearch && !item.dni?.includes(dniSearch)) return false;
@@ -114,11 +139,23 @@ export default function ResguardoMateriasPage() {
                         }}
                     />
 
-                    {data && (
-                        <Typography variant="body2" color="text.secondary" sx={{ ml: "auto !important" }}>
-                            {items.length} registro{items.length !== 1 ? "s" : ""} · {estudiantesUnicos} estudiante{estudiantesUnicos !== 1 ? "s" : ""}
-                        </Typography>
-                    )}
+                    <Box sx={{ ml: "auto !important", display: "flex", alignItems: "center", gap: 2 }}>
+                        {data && (
+                            <Typography variant="body2" color="text.secondary">
+                                {items.length} registro{items.length !== 1 ? "s" : ""} · {estudiantesUnicos} estudiante{estudiantesUnicos !== 1 ? "s" : ""}
+                            </Typography>
+                        )}
+                        <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={recalculando ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                            onClick={handleRecalcular}
+                            disabled={recalculando}
+                            sx={{ bgcolor: "#b45309", "&:hover": { bgcolor: "#92400e" }, whiteSpace: "nowrap" }}
+                        >
+                            {recalculando ? "Actualizando..." : "Actualizar resguardo"}
+                        </Button>
+                    </Box>
                 </Stack>
             </Paper>
 

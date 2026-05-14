@@ -33,8 +33,15 @@ const TabVigencias = ({ vigencias }: Props) => {
       </TableHead>
       <TableBody>
         {vigencias.map((vig) => (
-          <TableRow key={`vig-${vig.materia_id}`}>
-            <TableCell>{vig.materia_nombre}</TableCell>
+          <TableRow key={`vig-${vig.materia_id}`} sx={vig.en_resguardo ? { bgcolor: "#fff7ed" } : {}}>
+            <TableCell>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <span>{vig.materia_nombre}</span>
+                {vig.en_resguardo && (
+                  <Chip label="En resguardo" size="small" sx={{ bgcolor: "#f97316", color: "#fff", fontWeight: 700, fontSize: "0.7rem" }} />
+                )}
+              </Stack>
+            </TableCell>
             <TableCell>{vig.situacion_display}</TableCell>
             <TableCell>{formatDate(vig.fecha_cierre)}</TableCell>
             <TableCell>

@@ -290,6 +290,7 @@ export type RegularidadVigenciaDTO = {
   vigente: boolean;
   intentos_usados: number;
   intentos_max: number;
+  en_resguardo: boolean;
 };
 
 export type RecomendacionesTrayectoriaDTO = {
@@ -345,6 +346,7 @@ export type CartonEventoDTO = {
   folio?: string | null;
   libro?: string | null;
   id_fila?: number | null;
+  en_resguardo?: boolean;
 };
 
 export type CartonMateriaDTO = {
