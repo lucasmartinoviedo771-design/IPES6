@@ -9,7 +9,7 @@ from .carreras import (
     PlanDeEstudio,
     Profesorado,
 )
-from .estudiantes import Estudiante, EstudianteCarrera
+from .estudiantes import Estudiante, EstudianteCarrera, ProrrogaTituloSecundario, ResidenciaCondicional
 from .horarios import (
     Bloque,
     Comision,
@@ -76,6 +76,8 @@ __all__ = [
     # estudiantes
     "Estudiante",
     "EstudianteCarrera",
+    "ProrrogaTituloSecundario",
+    "ResidenciaCondicional",
     # horarios
     "Turno",
     "Bloque",

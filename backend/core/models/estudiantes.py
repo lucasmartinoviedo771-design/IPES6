@@ -252,3 +252,104 @@ class EstudianteCarrera(models.Model):
 
     def __str__(self):
         return f"{self.estudiante.dni} → {self.profesorado.nombre}"
+
+
+class ProrrogaTituloSecundario(models.Model):
+    """
+    Prórroga individual autorizada para la entrega del título secundario.
+    Mientras la prórroga esté vigente, el estudiante puede rendir exámenes
+    aunque el título no esté en el legajo.
+    """
+    estudiante = models.ForeignKey(
+        Estudiante,
+        on_delete=models.CASCADE,
+        related_name="prorrogas_titulo",
+    )
+    fecha_otorgada = models.DateField()
+    fecha_vencimiento = models.DateField()
+    autorizado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="prorrogas_otorgadas",
+    )
+    observaciones = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_vencimiento"]
+        verbose_name = "Prórroga título secundario"
+        verbose_name_plural = "Prórrogas título secundario"
+
+    def __str__(self):
+        return f"Prórroga {self.estudiante.dni} — vence {self.fecha_vencimiento}"
+
+    @property
+    def vigente(self) -> bool:
+        from django.utils import timezone
+        return self.fecha_vencimiento >= timezone.localdate()
+
+    @property
+    def dias_restantes(self) -> int:
+        from django.utils import timezone
+        return (self.fecha_vencimiento - timezone.localdate()).days
+
+
+class ResidenciaCondicional(models.Model):
+    """
+    Inscripción condicional a Residencia (Práctica IV / Talleres de Residencia).
+    El estudiante adeuda exactamente una materia de años anteriores y acepta
+    la condición de aprobarla en las mesas extraordinarias de mayo.
+    Si al 01/06 no la aprobó, la cursada de Residencia cae automáticamente.
+    """
+    estudiante = models.ForeignKey(
+        Estudiante,
+        on_delete=models.CASCADE,
+        related_name="residencias_condicionales",
+    )
+    materia_residencia = models.ForeignKey(
+        Materia,
+        on_delete=models.CASCADE,
+        related_name="inscripciones_condicionales",
+        help_text="Materia de Residencia en la que se inscribió condicionalmente.",
+    )
+    materia_pendiente = models.ForeignKey(
+        Materia,
+        on_delete=models.CASCADE,
+        related_name="residencias_condicionales_pendientes",
+        help_text="La única materia que adeuda y debe aprobar en mayo.",
+    )
+    ciclo_lectivo = models.PositiveIntegerField(help_text="Año lectivo de la inscripción condicional.")
+    fecha_limite = models.DateField(help_text="01/06 del ciclo lectivo — fecha límite para aprobar.")
+    aceptada_en = models.DateTimeField(auto_now_add=True)
+    autorizado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="residencias_condicionales_autorizadas",
+    )
+    resuelta = models.BooleanField(
+        default=False,
+        help_text="True cuando el estudiante aprobó la materia pendiente antes del límite.",
+    )
+    caida = models.BooleanField(
+        default=False,
+        help_text="True cuando venció el plazo sin aprobar y la Residencia cayó.",
+    )
+
+    class Meta:
+        ordering = ["-ciclo_lectivo", "estudiante"]
+        verbose_name = "Residencia condicional"
+        verbose_name_plural = "Residencias condicionales"
+        unique_together = ("estudiante", "materia_residencia", "ciclo_lectivo")
+
+    def __str__(self):
+        return f"{self.estudiante.dni} — {self.materia_residencia.nombre} ({self.ciclo_lectivo}) cond:{self.materia_pendiente.nombre}"
+
+    @property
+    def vigente(self) -> bool:
+        from datetime import date
+        return not self.resuelta and not self.caida and date.today() <= self.fecha_limite

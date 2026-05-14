@@ -275,6 +275,10 @@ class EquivalenciaDisposicionDetalle(models.Model):
     )
     nota = models.CharField(max_length=32)
     observaciones = models.CharField(max_length=255, blank=True, default="")
+    en_resguardo = models.BooleanField(
+        default=False,
+        help_text="La equivalencia no computa como correlativa válida hasta que se aprueben las correlativas previas.",
+    )
 
     class Meta:
         unique_together = [("disposicion", "materia")]

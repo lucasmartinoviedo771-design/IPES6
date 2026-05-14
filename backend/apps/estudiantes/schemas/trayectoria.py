@@ -68,6 +68,7 @@ class RegularidadVigenciaOut(Schema):
     vigente: bool
     intentos_usados: int
     intentos_max: int
+    en_resguardo: bool = False
 
 class CarreraPlanResumen(Schema):
     id: int

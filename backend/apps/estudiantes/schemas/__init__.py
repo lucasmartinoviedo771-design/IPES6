@@ -26,6 +26,8 @@ from apps.estudiantes.schemas.inscripciones import (
     CambioComisionOut,
     AutorizarCambioComisionIn,
     SolicitudCambioComisionItem,
+    ResidenciaCondicionalPropuestaOut,
+    AceptarResidenciaCondicionalIn,
 )
 
 from apps.estudiantes.schemas.mesas import (
@@ -119,6 +121,8 @@ from apps.estudiantes.schemas.estudiantes_admin import (
     EstudianteAdminDetail,
     EstudianteAdminUpdateIn,
     AutorizarRendirIn,
+    ProrrogaTituloIn,
+    ProrrogaTituloOut,
 )
 
 from apps.estudiantes.schemas.trayectoria import (

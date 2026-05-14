@@ -49,6 +49,8 @@ from apps.estudiantes.api.helpers.misc_utils import (
     _to_iso,
     _parse_optional_date,
     _correlatividades_qs,
+    _tiene_aprobacion_valida,
+    _calcular_resguardo_equivalencia,
 )
 
 __all__ = [
@@ -92,4 +94,6 @@ __all__ = [
     "_to_iso",
     "_parse_optional_date",
     "_correlatividades_qs",
+    "_tiene_aprobacion_valida",
+    "_calcular_resguardo_equivalencia",
 ]

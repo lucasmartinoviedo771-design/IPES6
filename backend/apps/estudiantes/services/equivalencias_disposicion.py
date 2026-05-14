@@ -238,20 +238,27 @@ def registrar_disposicion_equivalencia(
         nota = (payload.get("nota") or "").strip()
         if not nota:
             raise ValueError(f"Debe indicar la nota para {materia.nombre}.")
-        if validar_correlatividades:
+        # Calcular si corresponde resguardo por correlativas faltantes
+        from apps.estudiantes.api.helpers import _calcular_resguardo_equivalencia
+        en_resguardo = _calcular_resguardo_equivalencia(estudiante, materia)
+
+        if validar_correlatividades and en_resguardo:
             faltantes = _verificar_correlatividades_final(estudiante, materia)
-            if faltantes:
-                nombres = list(
-                    Materia.objects.filter(id__in=faltantes).values_list("nombre", flat=True)
-                )
-                raise ValueError(
-                    f"No se cumplen las correlatividades para rendir {materia.nombre}: {', '.join(nombres)}."
-                )
+            nombres = list(
+                Materia.objects.filter(id__in=faltantes).values_list("nombre", flat=True)
+            ) if faltantes else []
+            # No bloqueamos la creación — se registra en resguardo con advertencia
+            import logging
+            logging.getLogger(__name__).warning(
+                "Equivalencia en resguardo para %s - %s: correlativas faltantes: %s",
+                estudiante, materia.nombre, nombres,
+            )
 
         detalle = EquivalenciaDisposicionDetalle.objects.create(
             disposicion=dispo,
             materia=materia,
             nota=nota,
+            en_resguardo=en_resguardo,
         )
         detalles.append(detalle)
         _crear_acta_equivalencia(

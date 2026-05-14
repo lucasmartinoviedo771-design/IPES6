@@ -21,6 +21,7 @@ class RegularidadResumen(Schema):
     excepcion: bool = False
     observaciones: str | None = None
     aprobada: bool = False
+    en_resguardo: bool = False
     vigencia_hasta: str | None = None
     vigente: bool | None = None
     dias_restantes: int | None = None
@@ -197,3 +198,20 @@ class AutorizarRendirIn(Schema):
     autorizado: bool
     observacion: str | None = None
     materias_autorizadas: list[int] = Field(default_factory=list)
+
+
+class ProrrogaTituloIn(Schema):
+    fecha_otorgada: str
+    fecha_vencimiento: str
+    observaciones: str | None = None
+
+
+class ProrrogaTituloOut(Schema):
+    id: int
+    fecha_otorgada: str
+    fecha_vencimiento: str
+    observaciones: str | None = None
+    autorizado_por_nombre: str | None = None
+    vigente: bool
+    dias_restantes: int
+    created_at: str

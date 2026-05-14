@@ -33,6 +33,7 @@ from core.models.inscripciones import InscripcionMateriaMovimiento
 
 from ..schemas import (
     AutorizarCambioComisionIn,
+    AceptarResidenciaCondicionalIn,
     BajaInscripcionIn,
     CambioComisionIn,
     CambioComisionOut,
@@ -40,14 +41,24 @@ from ..schemas import (
     InscripcionMateriaIn,
     InscripcionMateriaOut,
     MateriaInscriptaItem,
+    ResidenciaCondicionalPropuestaOut,
     SolicitudCambioComisionItem,
 )
 from .helpers import (
     _correlatividades_qs,
+    _tiene_aprobacion_valida,
     _ensure_estudiante_access,
     _resolve_estudiante,
 )
 from .router import estudiantes_router
+
+
+def _es_materia_residencia(materia) -> bool:
+    """Retorna True si la materia es Residencia (Práctica IV o Taller de Residencia de 4° año)."""
+    if materia.anio_cursada != 4:
+        return False
+    nombre = (materia.nombre or "").upper()
+    return "RESIDENCIA" in nombre or nombre.startswith("PRÁCTICA IV") or nombre.startswith("PRACTICA IV")
 
 
 def _comision_to_resumen(comision):
@@ -93,7 +104,7 @@ def _comision_to_resumen(comision):
 
 @estudiantes_router.post(
     "/inscripcion-materia",
-    response={200: InscripcionMateriaOut, 400: ApiResponse, 404: ApiResponse},
+    response={200: InscripcionMateriaOut, 202: ResidenciaCondicionalPropuestaOut, 400: ApiResponse, 404: ApiResponse},
 )
 def inscripcion_materia(request, payload: InscripcionMateriaIn):
     """
@@ -152,81 +163,65 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
              return 400, ApiResponse(ok=False, message=f"La materia {mat.nombre} no corresponde a este turno de inscripción.")
 
     # --- 2. VALIDACIÓN: MATERIA YA APROBADA ---
-    ya_aprobada = (
-        Regularidad.objects.filter(
-            estudiante=est,
-            materia=mat,
-            situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO],
-        ).exists()
-        or ActaExamenEstudiante.objects.filter(
-            dni=est.dni,
-            acta__materia=mat,
-        ).filter(
-            calificacion_definitiva__in=[str(n) for n in range(6, 11)]
-        ).exists()
-        or InscripcionMesa.objects.filter(
-            estudiante=est,
-            mesa__materia=mat,
-            condicion=InscripcionMesa.Condicion.APROBADO,
-        ).exists()
-        or EquivalenciaDisposicionDetalle.objects.filter(
-            disposicion__estudiante=est,
-            materia=mat,
-        ).exists()
-    )
-    if ya_aprobada:
+    # Usa _tiene_aprobacion_valida para cubrir Regularidad, Equivalencia y Acta,
+    # respetando en_resguardo en todas las fuentes.
+    if _tiene_aprobacion_valida(est, mat):
         return 400, ApiResponse(ok=False, message=f"La materia '{mat.nombre}' ya se encuentra aprobada en su historial académico.")
 
     # --- 3. VALIDACIÓN DE CORRELATIVIDADES ---
     req_reg = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
     req_apr = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
 
-    # Consolidación de estado académico del alumno
-    aprobadas_ids = set()
-    regulares_ids = set()
-    materias_interes = list(set(req_reg + req_apr))
-
-    # 1. Por Regularidades (Cursadas cerradas)
-    for r in Regularidad.objects.filter(estudiante=est, materia_id__in=materias_interes):
-        if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-            aprobadas_ids.add(r.materia_id)
-        elif r.situacion == Regularidad.Situacion.REGULAR:
-            regulares_ids.add(r.materia_id)
-
-    # 2. Por Actas de Examen / Equivalencias (Resultado final)
-    from .helpers import _acta_condicion
-    for a in ActaExamenEstudiante.objects.filter(dni=est.dni, acta__materia_id__in=materias_interes).select_related("acta"):
-        cond_val, _ = _acta_condicion(a.calificacion_definitiva)
-        is_equiv = (
-            (a.permiso_examen == "EQUIV") or 
-            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
-            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
-        )
-        if cond_val == "APR" or is_equiv:
-            aprobadas_ids.add(a.acta.materia_id)
-
-    # 3. Por Inscripciones a Mesa (Auditoría de aprobación rápida)
-    for insc in InscripcionMesa.objects.filter(
-        estudiante=est, 
-        mesa__materia_id__in=materias_interes,
-        condicion=InscripcionMesa.Condicion.APROBADO,
-        estado=InscripcionMesa.Estado.INSCRIPTO
-    ):
-        aprobadas_ids.add(insc.mesa.materia_id)
-
-    # Reporte de faltantes
+    autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
     faltan = []
+    faltan_ids = []  # IDs de materias faltantes (para lógica condicional de Residencia)
+
     for mid in req_reg:
-        if mid not in regulares_ids and mid not in aprobadas_ids:
-            m = Materia.objects.filter(id=mid).first()
-            faltan.append(f"Regular en {m.nombre if m else mid}")
-            
+        if mid in autorizadas_ids:
+            continue
+        m_corr = Materia.objects.filter(id=mid).first()
+        nombre = m_corr.nombre if m_corr else str(mid)
+        tiene_regular = Regularidad.objects.filter(
+            estudiante=est, materia_id=mid,
+            situacion=Regularidad.Situacion.REGULAR,
+            en_resguardo=False,
+        ).exists()
+        if not tiene_regular and not (m_corr and _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids)):
+            faltan.append(f"Regular en {nombre}")
+            faltan_ids.append(mid)
+
     for mid in req_apr:
-        if mid not in aprobadas_ids:
-            m = Materia.objects.filter(id=mid).first()
-            faltan.append(f"Aprobada {m.nombre if m else mid}")
-            
+        if mid in autorizadas_ids:
+            continue
+        m_corr = Materia.objects.filter(id=mid).first()
+        nombre = m_corr.nombre if m_corr else str(mid)
+        if not m_corr or not _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids):
+            faltan.append(f"Aprobada {nombre}")
+            if mid not in faltan_ids:
+                faltan_ids.append(mid)
+
     if faltan:
+        # Caso especial: Residencia con exactamente 1 materia faltante → inscripción condicional
+        if _es_materia_residencia(mat) and len(faltan_ids) == 1:
+            from datetime import date
+            anio = date.today().year
+            fecha_limite = date(anio, 6, 1)
+            mat_pend_id = faltan_ids[0]
+            mat_pend = Materia.objects.filter(id=mat_pend_id).first()
+            return 202, ResidenciaCondicionalPropuestaOut(
+                materia_residencia_id=mat.id,
+                materia_residencia_nombre=mat.nombre,
+                materia_pendiente_id=mat_pend_id,
+                materia_pendiente_nombre=mat_pend.nombre if mat_pend else str(mat_pend_id),
+                fecha_limite=fecha_limite.strftime("%d/%m/%Y"),
+                mensaje=(
+                    f"Tu inscripción a '{mat.nombre}' es condicional. "
+                    f"Adeudás '{mat_pend.nombre if mat_pend else mat_pend_id}' y debés aprobarla "
+                    f"en las mesas extraordinarias de mayo. "
+                    f"Si al {fecha_limite.strftime('%d/%m/%Y')} no la aprobás, "
+                    f"tu cursada de Residencia caerá automáticamente. ¿Aceptás esta condición?"
+                ),
+            )
         return 400, ApiResponse(ok=False, message="No cumple correlatividades exigidas.", data={"faltantes": faltan})
 
     # --- 4. DETECCIÓN DE SUPERPOSICIÓN HORARIA ---
@@ -753,3 +748,85 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
         print(f"Error enviando notificación de cambio comisión: {e}")
 
     return ApiResponse(ok=True, message="Trámite de cambio de comisión procesado y estudiante notificado.")
+
+
+@estudiantes_router.post(
+    "/inscripcion-materia/residencia-condicional/aceptar",
+    response={200: InscripcionMateriaOut, 400: ApiResponse, 404: ApiResponse},
+)
+def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondicionalIn):
+    """
+    Confirma la inscripción condicional a Residencia.
+    El estudiante aceptó la condición de aprobar la materia pendiente antes del 01/06.
+    Crea la InscripcionMateriaEstudiante y registra el ResidenciaCondicional.
+    """
+    from datetime import date
+    from core.models import ResidenciaCondicional
+
+    _ensure_estudiante_access(request, payload.dni)
+    est = _resolve_estudiante(request, payload.dni)
+    if not est:
+        return 400, ApiResponse(ok=False, message="Estudiante no identificado.")
+
+    mat = Materia.objects.filter(id=payload.materia_residencia_id).first()
+    if not mat or not _es_materia_residencia(mat):
+        return 404, ApiResponse(ok=False, message="Materia de Residencia no encontrada.")
+
+    mat_pend = Materia.objects.filter(id=payload.materia_pendiente_id).first()
+    if not mat_pend:
+        return 404, ApiResponse(ok=False, message="Materia pendiente no encontrada.")
+
+    anio_actual = date.today().year
+    fecha_limite = date(anio_actual, 6, 1)
+
+    # Verificar que ya existe una ResidenciaCondicional previa (idempotencia)
+    if ResidenciaCondicional.objects.filter(
+        estudiante=est, materia_residencia=mat, ciclo_lectivo=anio_actual
+    ).exists():
+        return 400, ApiResponse(ok=False, message="Ya existe una inscripción condicional a esta Residencia para el ciclo actual.")
+
+    # Crear la inscripción a la materia (mismo flujo que inscripcion_materia pero sin chequeo de correlativas)
+    comision_obj = Comision.objects.filter(materia=mat, anio_lectivo=anio_actual).order_by("orden", "id").first()
+    if not comision_obj:
+        turno_def = Turno.objects.first() or Turno.objects.create(nombre="No definido")
+        comision_obj = Comision.objects.create(
+            materia=mat,
+            anio_lectivo=anio_actual,
+            codigo="A",
+            turno=turno_def,
+            estado=Comision.Estado.ABIERTA,
+            observaciones="Asignada automáticamente — inscripción condicional de Residencia.",
+        )
+
+    inscripcion, _ = InscripcionMateriaEstudiante.objects.update_or_create(
+        estudiante=est,
+        materia=mat,
+        anio=anio_actual,
+        defaults={
+            "comision": comision_obj,
+            "estado": InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+            "baja_fecha": None,
+            "baja_motivo": None,
+        },
+    )
+
+    InscripcionMateriaMovimiento.objects.create(
+        inscripcion=inscripcion,
+        tipo=InscripcionMateriaMovimiento.Tipo.INSCRIPCION,
+        operador=request.user.username if request.user.is_authenticated else "Anon",
+        motivo_detalle=f"Inscripción condicional a Residencia. Materia pendiente: {mat_pend.nombre}. Límite: {fecha_limite}.",
+    )
+
+    # Registrar la condición
+    ResidenciaCondicional.objects.create(
+        estudiante=est,
+        materia_residencia=mat,
+        materia_pendiente=mat_pend,
+        ciclo_lectivo=anio_actual,
+        fecha_limite=fecha_limite,
+        autorizado_por=request.user if request.user.is_authenticated else None,
+    )
+
+    return 200, InscripcionMateriaOut(
+        message=f"Inscripción condicional a '{mat.nombre}' registrada. Debés aprobar '{mat_pend.nombre}' antes del {fecha_limite.strftime('%d/%m/%Y')}.",
+    )

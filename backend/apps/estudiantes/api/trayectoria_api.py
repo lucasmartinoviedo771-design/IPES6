@@ -354,6 +354,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                         "vigente": vigente,
                         "intentos_usados": intentos,
                         "intentos_max": intentos_max,
+                        "en_resguardo": reg.en_resguardo,
                     }
                 )
                 if vigente:
@@ -475,6 +476,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     "fecha_iso": reg.fecha_cierre.isoformat() if reg.fecha_cierre else None,
                     "condicion": reg.situacion,
                     "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
+                    "en_resguardo": reg.en_resguardo,
                 } for reg in regularidades_item_list]
                 
                 # Seleccionamos la regularidad más reciente (o la mejor si hubiera lógica de éxito)

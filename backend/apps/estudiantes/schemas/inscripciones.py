@@ -139,3 +139,24 @@ InscripcionMateriaOut.model_rebuild()
 
 
 CambioComisionOut = InscripcionMateriaOut
+
+
+class ResidenciaCondicionalPropuestaOut(Schema):
+    """
+    Respuesta especial cuando un estudiante intenta inscribirse a Residencia
+    con exactamente 1 materia pendiente. El frontend debe mostrar un modal
+    pidiendo confirmación de la condición.
+    """
+    code: str = "RESIDENCIA_CONDICIONAL"
+    materia_residencia_id: int
+    materia_residencia_nombre: str
+    materia_pendiente_id: int
+    materia_pendiente_nombre: str
+    fecha_limite: str
+    mensaje: str
+
+
+class AceptarResidenciaCondicionalIn(Schema):
+    materia_residencia_id: int
+    materia_pendiente_id: int
+    dni: str | None = None

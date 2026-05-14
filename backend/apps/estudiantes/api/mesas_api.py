@@ -1,5 +1,5 @@
 """
-API de Mesas de Examen.
+        API de Mesas de Examen.
 Gestiona el catálogo de mesas de examen final y el proceso de inscripción para alumnos.
 
 Reglas Generales de Examen:
@@ -44,6 +44,7 @@ from ..schemas import (
 from .helpers import (
     _add_years,
     _correlatividades_qs,
+    _tiene_aprobacion_valida,
     _ensure_estudiante_access,
     _listar_carreras_detalle,
     _resolve_estudiante,
@@ -99,17 +100,24 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
             if not bypass_legajo:
                 legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
                 if not legajo_ok:
-                    prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
-                    pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first()
-                    cl = getattr(pre, "checklist", None) if pre else None
-                    if not (cl and cl.certificado_titulo_en_tramite):
-                        return False, "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.", {}
+                    from core.models import ProrrogaTituloSecundario
+                    prorroga_vigente = ProrrogaTituloSecundario.objects.filter(
+                        estudiante=est,
+                        fecha_vencimiento__gte=date.today(),
+                    ).exists()
+                    if not prorroga_vigente:
+                        prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
+                        pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first()
+                        cl = getattr(pre, "checklist", None) if pre else None
+                        if not (cl and cl.certificado_titulo_en_tramite):
+                            return False, "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.", {}
 
             # 2. Verificación de Regularidad
             if not bypass_regularidad:
                 reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
                 if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
-                    if reg and reg.situacion in (Regularidad.Situacion.PROMOCIONADO, Regularidad.Situacion.APROBADO):
+                    # Si tiene aprobación válida por cualquier fuente → ya está superada
+                    if _tiene_aprobacion_valida(est, materia):
                         return False, "Materia ya aprobada/promocionada en cursada.", {}
                     return False, "No posee regularidad vigente en la materia.", {}
     
@@ -140,26 +148,58 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                 if intentos_qs.count() >= 3:
                     return False, "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.", {}
 
+            # 4a. Correlativas de cursada caídas (resguardo dinámico)
+            # Verifica que las correlativas que habilitaban cursar esta materia
+            # siguen siendo válidas (cubre Regularidad, Equivalencia y Acta).
+            if not bypass_correlativas and reg:
+                req_cursar_reg = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
+                req_cursar_apr = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
+                autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
+                caidas = []
+
+                for mid in req_cursar_reg:
+                    if mid in autorizadas_ids:
+                        continue
+                    m_obj = Materia.objects.filter(id=mid).first()
+                    if not m_obj:
+                        continue
+                    # REGULAR_PARA_CURSAR: alcanza con regularidad vigente O aprobación válida
+                    tiene_regular_vigente = Regularidad.objects.filter(
+                        estudiante=est, materia_id=mid,
+                        situacion=Regularidad.Situacion.REGULAR,
+                        en_resguardo=False,
+                    ).exists()
+                    if not tiene_regular_vigente and not _tiene_aprobacion_valida(est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                        caidas.append(f"{m_obj.nombre} (correlativa caída o en resguardo)")
+
+                for mid in req_cursar_apr:
+                    if mid in autorizadas_ids:
+                        continue
+                    m_obj = Materia.objects.filter(id=mid).first()
+                    if not m_obj or not _tiene_aprobacion_valida(est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                        nombre = m_obj.nombre if m_obj else f"Materia {mid}"
+                        caidas.append(f"{nombre} (aprobación requerida caída o en resguardo)")
+
+                if caidas:
+                    return False, "Correlativas de cursada en resguardo o caídas. No se puede rendir.", {"caidas": caidas}
+
             # 4. Correlatividades (omitido si el staff gestiona el pedido)
             if not bypass_correlativas:
                 req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
                 if req_ids:
                     faltan = []
-                    regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
-                    latest_regs = {}
-                    for r in regs: latest_regs.setdefault(r.materia_id, r)
+                    autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
                     for mid in req_ids:
-                        r = latest_regs.get(mid)
-                        if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-                            m = Materia.objects.filter(id=mid).first()
-                            faltan.append(m.nombre if m else f"Materia {mid}")
+                        m = Materia.objects.filter(id=mid).first()
+                        nombre = m.nombre if m else f"Materia {mid}"
+                        if not m or not _tiene_aprobacion_valida(est, m, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                            faltan.append(nombre)
                     if faltan:
                         return False, "Faltan correlativas aprobadas para rendir final.", {"faltantes": faltan}
 
     # --- MODALIDAD LIBRE ---
     elif modalidad == MesaExamen.Modalidad.LIBRE:
-        reg_aprobada = Regularidad.objects.filter(estudiante=est, materia=materia, situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO]).exists()
-        if reg_aprobada:
+        if _tiene_aprobacion_valida(est, materia):
             return False, "Materia ya superada en el ciclo de cursada.", {}
 
         current_year = date.today().year
@@ -185,14 +225,12 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
             req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
             if req_ids:
                 faltan = []
-                regs = Regularidad.objects.filter(estudiante=est, materia_id__in=req_ids).order_by("materia_id", "-fecha_cierre")
-                latest_regs = {}
-                for r in regs: latest_regs.setdefault(r.materia_id, r)
+                autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
                 for mid in req_ids:
-                    r = latest_regs.get(mid)
-                    if not r or r.situacion not in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-                        m = Materia.objects.filter(id=mid).first()
-                        faltan.append(m.nombre if m else f"Materia {mid}")
+                    m = Materia.objects.filter(id=mid).first()
+                    nombre = m.nombre if m else f"Materia {mid}"
+                    if not m or not _tiene_aprobacion_valida(est, m, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                        faltan.append(nombre)
                 if faltan:
                     return False, "Faltan correlativas (aprobadas o promocionadas) para rendir LIBRE.", {"faltantes": faltan}
 
