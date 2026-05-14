@@ -79,6 +79,13 @@ export default function ResidenciasCondicionalesWidget() {
         );
     }
 
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return "-";
+        const parts = dateStr.split("-");
+        if (parts.length !== 3) return dateStr;
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    };
+
     return (
         <Card variant="outlined" sx={{ borderColor: "rgba(230,168,23,0.4)", bgcolor: "#fffbf0" }}>
             <CardHeader
@@ -131,7 +138,7 @@ export default function ResidenciasCondicionalesWidget() {
                                     </TableCell>
                                     <TableCell>
                                         <Typography variant="body2" fontWeight={600}>
-                                            {g.fecha_limite}
+                                            {formatDate(g.fecha_limite)}
                                         </Typography>
                                     </TableCell>
                                     <TableCell>
