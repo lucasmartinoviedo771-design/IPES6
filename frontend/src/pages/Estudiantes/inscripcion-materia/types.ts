@@ -21,8 +21,8 @@ export const cuatrimestreCompatible = (a: Materia["cuatrimestre"], b: Materia["c
   return a === b;
 };
 
-export type Status = "aprobada" | "habilitada" | "bloqueada";
-export type TipoBloqueo = "correlativas" | "periodo" | "choque" | "inscripta" | "otro";
+export type Status = "aprobada" | "habilitada" | "bloqueada" | "condicional_residencia";
+export type TipoBloqueo = "correlativas" | "periodo" | "choque" | "inscripta" | "otro" | "condicional_residencia";
 
 export type MateriaEvaluada = Materia & {
   status: Status;
@@ -30,6 +30,7 @@ export type MateriaEvaluada = Materia & {
   tipoBloqueo?: TipoBloqueo;
   faltantesRegular?: string[];
   faltantesAprob?: string[];
+  pendienteId?: number;
 };
 
 export function mapMateria(dto: MateriaPlanDTO): Materia {
@@ -65,6 +66,7 @@ export const STATUS_LABEL: Record<Status, string> = {
   habilitada: "Habilitada",
   bloqueada: "No disponible",
   aprobada: "Materia aprobada",
+  condicional_residencia: "Inscripción condicional disponible",
 };
 
 export const BLOQUEO_LABEL: Record<TipoBloqueo | "otros", string> = {
@@ -74,7 +76,14 @@ export const BLOQUEO_LABEL: Record<TipoBloqueo | "otros", string> = {
   inscripta: "Ya inscripta",
   otro: "Otros motivos",
   otros: "Otros motivos",
+  condicional_residencia: "Inscripción condicional",
 };
+
+export function esResidencia(nombre: string, anio: number): boolean {
+  if (anio !== 4) return false;
+  const n = nombre.toUpperCase();
+  return n.includes("RESIDENCIA") || n.startsWith("PRÁCTICA IV") || n.startsWith("PRACTICA IV");
+}
 
 export const EMPTY_HISTORIAL = {
   aprobadas: [] as number[],

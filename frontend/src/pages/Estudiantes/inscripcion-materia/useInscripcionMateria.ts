@@ -26,6 +26,7 @@ import {
   mapMateria,
   hayChoque,
   cuatrimestreCompatible,
+  esResidencia,
   EMPTY_HISTORIAL,
 } from "./types";
 
@@ -391,12 +392,39 @@ export const useInscripcionMateria = () => {
       };
     }
 
+    // Chequear inscripción activa ANTES que correlativas para que materias
+    // ya inscriptas condicionalmente no aparezcan en el listado condicional
+    if (yaInscriptas.has(materia.id)) {
+      return {
+        ...materia,
+        status: "bloqueada",
+        motivos: ["Ya estás inscripto/a en esta materia"],
+        tipoBloqueo: "inscripta",
+        faltantesRegular: [],
+        faltantesAprob: [],
+      };
+    }
+
     const faltasReg = materia.correlativasRegular.filter((id) => !historial.regularizadas.includes(id) && !historial.aprobadas.includes(id));
     const faltasApr = materia.correlativasAprob.filter((id) => !historial.aprobadas.includes(id));
     const faltasRegNombres = Array.from(new Set(faltasReg.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
     const faltasAprNombres = Array.from(new Set(faltasApr.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
 
     if (faltasReg.length || faltasApr.length) {
+      // Caso especial: Residencia con exactamente 1 materia faltante → inscripción condicional
+      const totalFaltantes = [...new Set([...faltasReg, ...faltasApr])];
+      if (esResidencia(materia.nombre, materia.anio) && totalFaltantes.length === 1) {
+        const nombreFaltante = materiaById.get(totalFaltantes[0])?.nombre || `Materia ${totalFaltantes[0]}`;
+        return {
+          ...materia,
+          status: "condicional_residencia",
+          motivos: [`Podés inscribirte condicionalmente. Adeudás: ${nombreFaltante}`],
+          tipoBloqueo: "condicional_residencia",
+          faltantesRegular: faltasRegNombres,
+          faltantesAprob: faltasAprNombres,
+          pendienteId: totalFaltantes[0],
+        };
+      }
       const motivos: string[] = [];
       if (faltasRegNombres.length) motivos.push(`Regularizar: ${faltasRegNombres.join(", ")}`);
       if (faltasAprNombres.length) motivos.push(`Aprobar: ${faltasAprNombres.join(", ")}`);
@@ -407,17 +435,6 @@ export const useInscripcionMateria = () => {
         tipoBloqueo: "correlativas",
         faltantesRegular: faltasRegNombres,
         faltantesAprob: faltasAprNombres,
-      };
-    }
-
-    if (yaInscriptas.has(materia.id)) {
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos: ["Ya estás inscripto/a en esta materia"],
-        tipoBloqueo: "inscripta",
-        faltantesRegular: [],
-        faltantesAprob: [],
       };
     }
 
@@ -477,6 +494,7 @@ export const useInscripcionMateria = () => {
   const materiasHabilitadas = materiasEvaluadas.filter((m) => m.status === "habilitada");
   const materiasBloqueadas = materiasEvaluadas.filter((m) => m.status === "bloqueada");
   const materiasAprobadas = materiasEvaluadas.filter((m) => m.status === "aprobada");
+  const materiasCondicionales = materiasEvaluadas.filter((m) => m.status === "condicional_residencia");
 
   const habilitadasFiltradas = materiasHabilitadas.filter(matchesFilters);
   const bloqueadasFiltradas = materiasBloqueadas.filter(matchesFilters);
@@ -498,7 +516,7 @@ export const useInscripcionMateria = () => {
     if (!acc[tipo]) acc[tipo] = [];
     acc[tipo].push(materia);
     return acc;
-  }, { correlativas: [], periodo: [], choque: [], inscripta: [], otro: [] });
+  }, { correlativas: [], periodo: [], choque: [], inscripta: [], otro: [], condicional_residencia: [] });
 
   const inscriptasDetalle = (historial.inscriptasActuales || [])
     .map((id) => {
@@ -598,6 +616,7 @@ export const useInscripcionMateria = () => {
     // evaluated data
     habilitadasPorAnio,
     bloqueadasPorTipo,
+    materiasCondicionales,
     aprobadasFiltradas,
     inscriptasDetalle,
     // mutation state

@@ -779,11 +779,24 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
     anio_actual = date.today().year
     fecha_limite = date(anio_actual, 6, 1)
 
-    # Verificar que ya existe una ResidenciaCondicional previa (idempotencia)
-    if ResidenciaCondicional.objects.filter(
+    # Si ya existe un ResidenciaCondicional, permitir re-inscripción solo si la inscripción fue cancelada/dada de baja
+    rc_existente = ResidenciaCondicional.objects.filter(
         estudiante=est, materia_residencia=mat, ciclo_lectivo=anio_actual
-    ).exists():
-        return 400, ApiResponse(ok=False, message="Ya existe una inscripción condicional a esta Residencia para el ciclo actual.")
+    ).first()
+    if rc_existente:
+        insc_activa = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est, materia=mat, anio=anio_actual,
+            estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+        ).exists()
+        if insc_activa:
+            return 400, ApiResponse(ok=False, message="Ya existe una inscripción condicional activa a esta Residencia para el ciclo actual.")
+        # La inscripción fue cancelada — resetear el registro condicional para permitir re-inscripción
+        rc_existente.resuelta = False
+        rc_existente.caida = False
+        rc_existente.materia_pendiente = mat_pend
+        rc_existente.fecha_limite = date(anio_actual, 6, 1)
+        rc_existente.autorizado_por = request.user if request.user.is_authenticated else None
+        rc_existente.save()
 
     # Crear la inscripción a la materia (mismo flujo que inscripcion_materia pero sin chequeo de correlativas)
     comision_obj = Comision.objects.filter(materia=mat, anio_lectivo=anio_actual).order_by("orden", "id").first()
@@ -817,15 +830,16 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
         motivo_detalle=f"Inscripción condicional a Residencia. Materia pendiente: {mat_pend.nombre}. Límite: {fecha_limite}.",
     )
 
-    # Registrar la condición
-    ResidenciaCondicional.objects.create(
-        estudiante=est,
-        materia_residencia=mat,
-        materia_pendiente=mat_pend,
-        ciclo_lectivo=anio_actual,
-        fecha_limite=fecha_limite,
-        autorizado_por=request.user if request.user.is_authenticated else None,
-    )
+    # Registrar la condición (si no se actualizó un registro existente)
+    if not rc_existente:
+        ResidenciaCondicional.objects.create(
+            estudiante=est,
+            materia_residencia=mat,
+            materia_pendiente=mat_pend,
+            ciclo_lectivo=anio_actual,
+            fecha_limite=fecha_limite,
+            autorizado_por=request.user if request.user.is_authenticated else None,
+        )
 
     return 200, InscripcionMateriaOut(
         message=f"Inscripción condicional a '{mat.nombre}' registrada. Debés aprobar '{mat_pend.nombre}' antes del {fecha_limite.strftime('%d/%m/%Y')}.",

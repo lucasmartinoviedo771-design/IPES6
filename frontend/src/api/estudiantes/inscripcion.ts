@@ -25,6 +25,26 @@ import {
 export const solicitarInscripcionMateria = (payload: InscripcionMateriaPayload) =>
   client.post<GenericResponse>("/estudiantes/inscripcion-materia", payload).then(res => res.data);
 
+export const aceptarResidenciaCondicional = (payload: { materia_residencia_id: number; materia_pendiente_id: number; dni?: string }) =>
+  client.post<GenericResponse>("/estudiantes/inscripcion-materia/residencia-condicional/aceptar", payload).then(res => res.data);
+
+export type ResidenciaCondicionalItemDTO = {
+  id: number;
+  dni: string;
+  nombre: string;
+  materia_residencia: string;
+  materia_pendiente: string;
+  ciclo_lectivo: number;
+  fecha_limite: string;
+  estado: "PENDIENTE" | "RESUELTA" | "CAÍDA";
+  profesorado?: string;
+};
+
+export async function listarResidenciasCondicionales(params?: { ciclo?: number; carrera_id?: number; solo_pendientes?: boolean }): Promise<ResidenciaCondicionalItemDTO[]> {
+  const { data } = await client.get<ResidenciaCondicionalItemDTO[]>("/estudiantes/admin/residencias-condicionales", { params });
+  return data;
+}
+
 export const solicitarCambioComision = (payload: CambioComisionPayload) =>
   client.post<GenericResponse>("/estudiantes/cambio-comision", payload).then(res => res.data);
 

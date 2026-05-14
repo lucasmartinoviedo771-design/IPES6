@@ -1,13 +1,26 @@
 import React, { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
+import Typography from "@mui/material/Typography";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import BackButton from "@/components/ui/BackButton";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import { aceptarResidenciaCondicional } from "@/api/estudiantes/inscripcion";
+import type { MateriaEvaluada } from "./inscripcion-materia/types";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useInscripcionMateria } from "./inscripcion-materia/useInscripcionMateria";
 import PageHeader from "./inscripcion-materia/PageHeader";
 import MateriasHabilitadasPanel from "./inscripcion-materia/MateriasHabilitadasPanel";
@@ -45,6 +58,7 @@ const InscripcionMateriaPage: React.FC = () => {
     // evaluated data
     habilitadasPorAnio,
     bloqueadasPorTipo,
+    materiasCondicionales,
     aprobadasFiltradas,
     inscriptasDetalle,
     // mutation state
@@ -65,6 +79,35 @@ const InscripcionMateriaPage: React.FC = () => {
   } = useInscripcionMateria();
 
   const [tabValue, setTabValue] = useState(0);
+  const [condicionalPendiente, setCondicionalPendiente] = useState<MateriaEvaluada | null>(null);
+  const [condicionalLoading, setCondicionalLoading] = useState(false);
+  const [condicionalError, setCondicionalError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const handleAceptarCondicional = async () => {
+    if (!condicionalPendiente) return;
+    const faltanteId = condicionalPendiente.pendienteId;
+    if (!faltanteId) return;
+    setCondicionalLoading(true);
+    setCondicionalError(null);
+    try {
+      await aceptarResidenciaCondicional({
+        materia_residencia_id: condicionalPendiente.id,
+        materia_pendiente_id: faltanteId,
+        ...(dniFiltro ? { dni: dniFiltro } : {}),
+      });
+      setCondicionalPendiente(null);
+      await queryClient.invalidateQueries({ queryKey: ["historial-estudiante"] });
+      await queryClient.invalidateQueries({ queryKey: ["materias-inscriptas"] });
+      await queryClient.invalidateQueries({ queryKey: ["carreras-activas"] });
+      await queryClient.invalidateQueries({ queryKey: ["materias-plan"] });
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setCondicionalError(msg || "Error al registrar la inscripción condicional.");
+    } finally {
+      setCondicionalLoading(false);
+    }
+  };
 
   if (loadingEstudiante || isVentanaLoading) {
     return <Skeleton variant="rectangular" height={160} />;
@@ -140,7 +183,6 @@ const InscripcionMateriaPage: React.FC = () => {
 
           {tabValue === 0 && (
             <Stack spacing={3}>
-               {/* Integrando las ya inscriptas dentro de la pestaña activa como solicitaste */}
                <MateriasInscriptasPanel
                 inscriptasDetalle={inscriptasDetalle}
                 ventanaActiva={ventanaActiva}
@@ -150,7 +192,43 @@ const InscripcionMateriaPage: React.FC = () => {
                 onBaja={handleBaja}
                 mBajaIsPending={mBaja.isPending}
               />
-              
+
+              {/* Residencias con inscripción condicional disponible */}
+              {materiasCondicionales.length > 0 && (
+                <Box>
+                  <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 2 }}>
+                    Las siguientes materias de Residencia admiten inscripción <strong>condicional</strong>.
+                    Adeudás una materia que debés aprobar en las mesas extraordinarias de mayo.
+                  </Alert>
+                  <Stack spacing={1.5}>
+                    {materiasCondicionales.map((mat) => (
+                      <Card key={mat.id} variant="outlined" sx={{ borderColor: "#e6a817", bgcolor: "#fffbf0" }}>
+                        <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", py: 1.5, "&:last-child": { pb: 1.5 } }}>
+                          <Box>
+                            <Typography fontWeight={600}>{mat.nombre}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {mat.motivos[0]}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Chip label="Condicional" color="warning" size="small" />
+                            <Button
+                              variant="contained"
+                              size="small"
+                              disabled={!puedeInscribirse}
+                              onClick={() => setCondicionalPendiente(mat)}
+                              sx={{ bgcolor: "#e6a817", "&:hover": { bgcolor: "#c88c00" } }}
+                            >
+                              Inscribirme
+                            </Button>
+                          </Stack>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+
               <MateriasHabilitadasPanel
                 habilitadasPorAnio={habilitadasPorAnio}
                 puedeInscribirse={puedeInscribirse}
@@ -163,12 +241,13 @@ const InscripcionMateriaPage: React.FC = () => {
 
           {tabValue === 1 && (
             <MateriasBloqueadasAccordion
-              bloqueadasPorTipo={{ 
+              bloqueadasPorTipo={{
                 correlativas: bloqueadasPorTipo.correlativas,
                 choque: bloqueadasPorTipo.choque,
-                inscripta: [], // No mostramos inscriptas aquí porque están en la Tab 0
-                periodo: [],   // No mostramos periodo aquí porque están en la Tab 2
-                otro: bloqueadasPorTipo.otro
+                inscripta: [],
+                periodo: [],
+                otro: bloqueadasPorTipo.otro,
+                condicional_residencia: [],
               }}
               aprobadasFiltradas={[]}
             />
@@ -176,12 +255,13 @@ const InscripcionMateriaPage: React.FC = () => {
 
           {tabValue === 2 && (
             <MateriasBloqueadasAccordion
-              bloqueadasPorTipo={{ 
-                correlativas: [], 
-                choque: [], 
+              bloqueadasPorTipo={{
+                correlativas: [],
+                choque: [],
                 inscripta: [],
                 periodo: bloqueadasPorTipo.periodo,
-                otro: []
+                otro: [],
+                condicional_residencia: [],
               }}
               aprobadasFiltradas={[]}
               customTitle="Materias fuera de período de inscripción"
@@ -191,7 +271,7 @@ const InscripcionMateriaPage: React.FC = () => {
           {tabValue === 3 && (
             <MateriasBloqueadasAccordion
               bloqueadasPorTipo={{
-                 correlativas: [], choque: [], inscripta: [], periodo: [], otro: []
+                correlativas: [], choque: [], inscripta: [], periodo: [], otro: [], condicional_residencia: []
               }}
               aprobadasFiltradas={aprobadasFiltradas}
               customTitle="Trayectoria de materias aprobadas"
@@ -207,6 +287,43 @@ const InscripcionMateriaPage: React.FC = () => {
         contextText="Nuevos Registros"
         loading={mInscribir.isPending}
       />
+
+      {/* Modal de confirmación para inscripción condicional de Residencia */}
+      <Dialog open={!!condicionalPendiente} onClose={() => !condicionalLoading && setCondicionalPendiente(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, color: "#b45309" }}>
+          <WarningAmberIcon /> Inscripción condicional a Residencia
+        </DialogTitle>
+        <DialogContent>
+          {condicionalPendiente && (
+            <Stack spacing={2}>
+              <Typography>
+                Tu inscripción a <strong>{condicionalPendiente.nombre}</strong> es <strong>condicional</strong>.
+              </Typography>
+              <Alert severity="warning">
+                Adeudás <strong>{condicionalPendiente.motivos[0]?.replace("Podés inscribirte condicionalmente. Adeudás: ", "")}</strong>.
+                Tenés hasta las mesas extraordinarias de <strong>mayo</strong> para aprobarla (fecha límite: <strong>01/06/{new Date().getFullYear()}</strong>).
+              </Alert>
+              <Typography color="error.main" fontWeight={600}>
+                Si al 01/06 no aprobás esa materia, tu cursada de Residencia caerá automáticamente.
+              </Typography>
+              {condicionalError && <Alert severity="error">{condicionalError}</Alert>}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCondicionalPendiente(null)} disabled={condicionalLoading}>
+            No, cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAceptarCondicional}
+            disabled={condicionalLoading}
+            sx={{ bgcolor: "#e6a817", "&:hover": { bgcolor: "#c88c00" } }}
+          >
+            {condicionalLoading ? "Registrando..." : "Sí, acepto la condición"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

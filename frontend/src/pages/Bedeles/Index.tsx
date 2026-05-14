@@ -1,9 +1,11 @@
 import { useMemo } from "react";
+import Stack from "@mui/material/Stack";
 
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
+import ResidenciasCondicionalesWidget from "@/components/dashboard/ResidenciasCondicionalesWidget";
 
 export default function BedelesIndex() {
   const { user } = useAuth();
@@ -74,10 +76,13 @@ export default function BedelesIndex() {
   );
 
   return (
-    <RoleDashboard
-      title="Bedeles"
-      subtitle="Accesos rápidos a la operatoria diaria del equipo de bedelía."
-      sections={sections}
-    />
+    <Stack spacing={4}>
+      <RoleDashboard
+        title="Bedeles"
+        subtitle="Accesos rápidos a la operatoria diaria del equipo de bedelía."
+        sections={sections}
+      />
+      <ResidenciasCondicionalesWidget />
+    </Stack>
   );
 }
