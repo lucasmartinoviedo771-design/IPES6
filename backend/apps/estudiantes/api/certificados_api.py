@@ -8,17 +8,36 @@ from core.models import Estudiante, PlanDeEstudio, Profesorado
 from .helpers import _resolve_estudiante, _ensure_estudiante_access
 from .router import estudiantes_router
 
-@estudiantes_router.get("/certificados/estudiante-regular")
-def descargar_certificado_estudiante_regular(
-    request, 
-    profesorado_id: int, 
-    plan_id: int, 
-    dni: str | None = None
-):
-    """Genera y descarga la constancia de estudiante regular en formato PDF."""
+def _calcular_anio_estudio(est, plan) -> int:
     from django.db.models import Max
     from core.models import Regularidad, InscripcionMateriaEstudiante
+    max_anio_reg = Regularidad.objects.filter(estudiante=est, materia__plan_de_estudio=plan, materia__is_edi=False).aggregate(Max('materia__anio_cursada'))['materia__anio_cursada__max']
+    max_anio_ins = InscripcionMateriaEstudiante.objects.filter(estudiante=est, materia__plan_de_estudio=plan, materia__is_edi=False).aggregate(Max('materia__anio_cursada'))['materia__anio_cursada__max']
+    return max(max_anio_reg or 1, max_anio_ins or 1)
 
+
+@estudiantes_router.get("/certificados/anio-estudio")
+def obtener_anio_estudio(request, profesorado_id: int, plan_id: int, dni: str | None = None):
+    """Devuelve el año de estudio calculado automáticamente para el estudiante."""
+    _ensure_estudiante_access(request, dni)
+    est = _resolve_estudiante(request, dni)
+    if not est:
+        return 404, {"message": "Estudiante no encontrado."}
+    plan = PlanDeEstudio.objects.filter(id=plan_id).first()
+    if not plan:
+        return 404, {"message": "Plan no encontrado."}
+    return {"anio_estudio": _calcular_anio_estudio(est, plan)}
+
+
+@estudiantes_router.get("/certificados/estudiante-regular")
+def descargar_certificado_estudiante_regular(
+    request,
+    profesorado_id: int,
+    plan_id: int,
+    dni: str | None = None,
+    anio_override: int | None = None,
+):
+    """Genera y descarga la constancia de estudiante regular en formato PDF."""
     _ensure_estudiante_access(request, dni)
     est = _resolve_estudiante(request, dni)
     if not est:
@@ -32,10 +51,8 @@ def descargar_certificado_estudiante_regular(
 
     # Calcular el año de estudio aproximado
     # Buscamos regularidades o inscripciones para ver el nivel
-    max_anio_reg = Regularidad.objects.filter(estudiante=est, materia__plan_de_estudio=plan).aggregate(Max('materia__anio_cursada'))['materia__anio_cursada__max']
-    max_anio_ins = InscripcionMateriaEstudiante.objects.filter(estudiante=est, comision__materia__plan_de_estudio=plan).aggregate(Max('comision__materia__anio_cursada'))['comision__materia__anio_cursada__max']
-    
-    anio_estudio = max(max_anio_reg or 1, max_anio_ins or 1)
+    anio_calculado = _calcular_anio_estudio(est, plan)
+    anio_estudio = anio_override if (anio_override and anio_override <= anio_calculado) else anio_calculado
 
     from django.conf import settings
     import os

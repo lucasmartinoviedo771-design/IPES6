@@ -19,6 +19,7 @@ import { useSnackbar } from "notistack";
 
 import {
   descargarCertificadoRegular,
+  obtenerAnioEstudio,
   obtenerCarrerasActivas,
   TrayectoriaCarreraDetalleDTO,
 } from "@/api/estudiantes";
@@ -40,6 +41,7 @@ const CertificadoRegularPage: React.FC = () => {
   const [profesoradoId, setProfesoradoId] = useState<SelectValue>("");
   const [planId, setPlanId] = useState<SelectValue>("");
   const [dniManual, setDniManual] = useState<string>("");
+  const [anioOverride, setAnioOverride] = useState<SelectValue>("");
   const [descargando, setDescargando] = useState(false);
 
   const dniObjetivo = isOnlyStudent ? (user?.dni ?? "") : dniManual.trim();
@@ -81,6 +83,22 @@ const CertificadoRegularPage: React.FC = () => {
   }, [planesDisponibles, planId]);
 
   const puedeCambiarDni = canGestionar;
+
+  const anioQuery = useQuery({
+    queryKey: ["estudiantes", "anio-estudio", dniObjetivo, profesoradoId, planId],
+    queryFn: () => obtenerAnioEstudio({
+      profesorado_id: Number(profesoradoId),
+      plan_id: Number(planId),
+      dni: puedeCambiarDni ? dniObjetivo : undefined,
+    }),
+    enabled: Boolean(profesoradoId) && Boolean(planId) && Boolean(dniObjetivo),
+  });
+
+  const anioMax = anioQuery.data?.anio_estudio ?? 4;
+
+  useEffect(() => {
+    setAnioOverride(String(anioMax));
+  }, [anioMax]);
   const handleDescargar = async () => {
     if (!profesoradoId || !planId) {
       enqueueSnackbar("Selecciona un profesorado y un plan de estudio.", { variant: "warning" });
@@ -97,6 +115,7 @@ const CertificadoRegularPage: React.FC = () => {
         profesorado_id: Number(profesoradoId),
         plan_id: Number(planId),
         dni: puedeCambiarDni ? dniObjetivo : undefined,
+        anio_override: anioOverride ? Number(anioOverride) : undefined,
       });
 
       if (blob.type && blob.type.includes("application/json")) {
@@ -197,7 +216,24 @@ const CertificadoRegularPage: React.FC = () => {
           </FormControl>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center" height="100%">
+          <FormControl fullWidth size="small" disabled={!planId || anioQuery.isLoading}>
+            <InputLabel id="anio-select-label">Año a certificar</InputLabel>
+            <Select
+              labelId="anio-select-label"
+              label="Año a certificar"
+              value={anioOverride}
+              onChange={(event: SelectChangeEvent<string>) => setAnioOverride(event.target.value)}
+            >
+              {Array.from({ length: anioMax }, (_, i) => i + 1).map((anio) => (
+                <MenuItem key={anio} value={String(anio)}>
+                  {anio}° Año{anio === anioMax ? " (calculado)" : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12}>
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button
               variant="contained"
               startIcon={descargando ? <CircularProgress size={18} color="inherit" /> : <DownloadIcon />}

@@ -75,10 +75,20 @@ export async function descargarConstanciaExamenPDF(params: {
 /**
  * Genera y descarga el Certificado de Alumno Regular en formato PDF (Blob).
  */
+export async function obtenerAnioEstudio(params: {
+  profesorado_id: number;
+  plan_id: number;
+  dni?: string;
+}): Promise<{ anio_estudio: number }> {
+  const response = await client.get(`/estudiantes/certificados/anio-estudio`, { params });
+  return response.data;
+}
+
 export async function descargarCertificadoRegular(params: {
   profesorado_id: number;
   plan_id: number;
   dni?: string;
+  anio_override?: number;
 }): Promise<Blob> {
   const response = await client.get(`/estudiantes/certificados/estudiante-regular`, {
     params,
