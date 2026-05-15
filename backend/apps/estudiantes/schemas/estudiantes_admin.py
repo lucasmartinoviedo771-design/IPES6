@@ -27,21 +27,21 @@ class RegularidadResumen(Schema):
     dias_restantes: int | None = None
 
 class EstudianteAdminDocumentacion(Schema):
-    dni_legalizado: bool | None = None
-    fotos_4x4: bool | None = None
-    certificado_salud: bool | None = None
-    folios_oficio: int | None = None
-    titulo_secundario_legalizado: bool | None = None
-    certificado_titulo_en_tramite: bool | None = None
-    analitico_legalizado: bool | None = None
-    certificado_alumno_regular_sec: bool | None = None
-    adeuda_materias: bool | None = None
-    adeuda_materias_detalle: str | None = None
-    escuela_secundaria: str | None = None
-    es_certificacion_docente: bool | None = None
-    titulo_terciario_univ: bool | None = None
-    incumbencia: bool | None = None
-    articulo_7: bool | None = None
+    dni_legalizado: Any | None = None
+    fotos_4x4: Any | None = None
+    certificado_salud: Any | None = None
+    folios_oficio: Any | None = None
+    titulo_secundario_legalizado: Any | None = None
+    certificado_titulo_en_tramite: Any | None = None
+    analitico_legalizado: Any | None = None
+    certificado_alumno_regular_sec: Any | None = None
+    adeuda_materias: Any | None = None
+    adeuda_materias_detalle: Any | None = None
+    escuela_secundaria: Any | None = None
+    es_certificacion_docente: Any | None = None
+    titulo_terciario_univ: Any | None = None
+    incumbencia: Any | None = None
+    articulo_7: Any | None = None
 
 class CarreraStatus(Schema):
     profesorado_id: int
@@ -78,7 +78,7 @@ class EstudianteDocumentacionListItem(Schema):
     dni_legalizado: bool
     fotos_4x4: bool
     certificado_salud: bool
-    folios_oficio: int
+    folios_oficio: bool
     titulo_secundario_ok: bool
     articulo_7: bool
 
@@ -92,7 +92,7 @@ class EstudianteDocumentacionUpdateIn(Schema):
     dni_legalizado: bool | None = None
     fotos_4x4: bool | None = None
     certificado_salud: bool | None = None
-    folios_oficio: int | None = None
+    folios_oficio: bool | None = None
     titulo_secundario_ok: bool | None = None
     articulo_7: bool | None = None
 
@@ -136,6 +136,8 @@ EstudianteAdminDetail.model_rebuild()
 class CarreraUpdateIn(Schema):
     profesorado_id: int
     estado_academico: str | None = None
+    nombre: str | None = None
+    condicion: str | None = None
 
 class EstudianteAdminUpdateIn(Schema):
     dni: str | None = None
@@ -144,13 +146,13 @@ class EstudianteAdminUpdateIn(Schema):
     email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None
-    estado_legajo: str | None = Field(default=None, pattern="^(COM|INC|PEN)$", description="COM, INC o PEN")
+    estado_legajo: Any | None = None
     must_change_password: bool | None = None
     activo: bool | None = None
     fecha_nacimiento: str | None = None
     lugar_nacimiento: str | None = None
     documentacion: EstudianteAdminDocumentacion | None = None
-    anio_ingreso: str | None = None
+    anio_ingreso: Any | None = None
     genero: str | None = None
     rol_extra: str | None = None
     observaciones: str | None = None

@@ -534,11 +534,11 @@ export default function DocumentacionEstudiantesPage() {
                       </TableCell>
                       <TableCell align="center">
                         <EditableCheckCell 
-                          value={(getFieldValue(est, "folios_oficio") as number) >= 3} 
-                          onChange={(val) => handleUpdate(est.dni, "folios_oficio", val ? 3 : 0)}
+                          value={getFieldValue(est, "folios_oficio") as boolean} 
+                          onChange={(val) => handleUpdate(est.dni, "folios_oficio", val)}
                           loading={isUpdating(est.dni, "folios_oficio")}
                           modified={isFieldModified(est.dni, "folios_oficio")}
-                          tooltip={((getFieldValue(est, "folios_oficio") as number) || 0) >= 3 ? `Tiene ${getFieldValue(est, "folios_oficio")} folios` : "No tiene los folios suficientes"}
+                          tooltip={getFieldValue(est, "folios_oficio") ? "Folios entregados" : "No tiene los folios suficientes"}
                         />
                       </TableCell>
                       <TableCell align="center">

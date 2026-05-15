@@ -128,8 +128,10 @@ def _apply_estudiante_updates(
     # ya que en Estudiante son propiedades de solo lectura.
 
     if allow_estado_legajo and payload.estado_legajo is not None:
-        est.estado_legajo = payload.estado_legajo.upper()
-        fields_to_update.add("estado_legajo")
+        val = str(payload.estado_legajo).upper()
+        if val in ("COM", "INC", "PEN"):
+            est.estado_legajo = val
+            fields_to_update.add("estado_legajo")
 
     if allow_force_password and payload.must_change_password is not None:
         est.must_change_password = payload.must_change_password
@@ -149,7 +151,11 @@ def _apply_estudiante_updates(
         est.fecha_nacimiento_temp = new_date # Temporary storage for persona sync
 
     if payload.documentacion is not None:
-        doc_updates = payload.documentacion.model_dump(exclude_unset=True)
+        if hasattr(payload.documentacion, "model_dump"):
+            doc_updates = payload.documentacion.model_dump(exclude_unset=True)
+        else:
+            doc_updates = payload.documentacion if isinstance(payload.documentacion, dict) else {}
+        
         for key, value in doc_updates.items():
             if hasattr(est, key):
                 setattr(est, key, value)
@@ -167,7 +173,7 @@ def _apply_estudiante_updates(
         
         # Sincronización de Identidad
         if payload.dni is not None:
-            est.persona.dni = payload.dni.strip()
+            est.persona.dni = str(payload.dni).strip()
             persona_updates.append("dni")
         
         if payload.fecha_nacimiento is not None:
@@ -205,6 +211,8 @@ def _apply_estudiante_updates(
     for key in ESTUDIANTE_KEYS:
         value = getattr(payload, key, None)
         if value is not None:
+            if key == "anio_ingreso" and value == "":
+                value = None
             setattr(est, key, value)
             fields_to_update.add(key)
 
@@ -222,12 +230,21 @@ def _apply_estudiante_updates(
     if payload.carreras_update is not None:
         from core.models import EstudianteCarrera
         for cu in payload.carreras_update:
-            ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=cu.profesorado_id).first()
+            # Handle both dict (when Any) and Pydantic objects
+            profesorado_id = cu.get("profesorado_id") if isinstance(cu, dict) else getattr(cu, "profesorado_id", None)
+            
+            if profesorado_id is None:
+                continue
+
+            ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=profesorado_id).first()
             if ec:
                 ec_updates = []
-                if cu.estado_academico is not None:
-                    ec.estado_academico = cu.estado_academico
+                estado_academico = cu.get("estado_academico") if isinstance(cu, dict) else getattr(cu, "estado_academico", None)
+                
+                if estado_academico is not None:
+                    ec.estado_academico = estado_academico
                     ec_updates.append("estado_academico")
+                
                 if ec_updates:
                     ec.save(update_fields=ec_updates)
 

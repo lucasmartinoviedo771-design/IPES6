@@ -635,7 +635,7 @@ export interface EstudianteAdminDocumentacionDTO {
   dni_legalizado?: boolean;
   fotos_4x4?: boolean;
   certificado_salud?: boolean;
-  folios_oficio?: number;
+  folios_oficio?: boolean;
   titulo_secundario_legalizado?: boolean;
   certificado_titulo_en_tramite?: boolean;
   analitico_legalizado?: boolean;
@@ -686,7 +686,7 @@ export interface EstudianteDocumentacionListItemDTO {
   dni_legalizado: boolean;
   fotos_4x4: boolean;
   certificado_salud: boolean;
-  folios_oficio: number;
+  folios_oficio: boolean;
   titulo_secundario_ok: boolean;
   articulo_7: boolean;
 }
@@ -697,7 +697,7 @@ export interface EstudianteDocumentacionUpdatePayload {
   dni_legalizado?: boolean;
   fotos_4x4?: boolean;
   certificado_salud?: boolean;
-  folios_oficio?: number;
+  folios_oficio?: boolean;
   titulo_secundario_ok?: boolean;
   articulo_7?: boolean;
 }

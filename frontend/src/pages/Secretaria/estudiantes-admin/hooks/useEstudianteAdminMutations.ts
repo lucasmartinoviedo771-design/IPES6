@@ -43,12 +43,12 @@ export function useUpdateEstudianteMutation(
           }
         });
         if (typeof doc.folios_oficio === "boolean") {
-          documentacionPayload.folios_oficio = doc.folios_oficio ? 3 : 0;
+          documentacionPayload.folios_oficio = doc.folios_oficio;
         }
-        documentacionPayload.adeuda_materias_detalle = doc.adeuda_materias_detalle.trim()
+        documentacionPayload.adeuda_materias_detalle = doc.adeuda_materias_detalle?.trim()
           ? doc.adeuda_materias_detalle.trim()
           : undefined;
-        documentacionPayload.escuela_secundaria = doc.escuela_secundaria.trim()
+        documentacionPayload.escuela_secundaria = doc.escuela_secundaria?.trim()
           ? doc.escuela_secundaria.trim()
           : undefined;
       }
