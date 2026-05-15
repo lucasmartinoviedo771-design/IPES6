@@ -52,6 +52,14 @@ class MesaExamen(models.Model):
         blank=True,
         related_name="mesas_como_vocal2",
     )
+    estudiante_exclusivo = models.ForeignKey(
+        Estudiante,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mesas_exclusivas",
+        help_text="Solo para mesas ESP: el estudiante para quien fue creada.",
+    )
     planilla_cerrada_en = models.DateTimeField(null=True, blank=True)
     planilla_cerrada_por = models.ForeignKey(
         User,

@@ -22,6 +22,7 @@ import IconButton from "@mui/material/IconButton";
 import Button from "@mui/material/Button";
 import ClearIcon from "@mui/icons-material/Clear";
 import SyncIcon from "@mui/icons-material/Sync";
+import SearchIcon from "@mui/icons-material/Search";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 
@@ -30,11 +31,17 @@ import { PageHero } from "@/components/ui/GradientTitles";
 import { fetchResguardoMaterias, recalcularResguardo, ResguardoMateriaItemDTO } from "@/api/estudiantes/admin";
 import { fetchCarreras } from "@/api/carreras";
 
+const LS_KEY = "resguardo_ultima_actualizacion";
+
 export default function ResguardoMateriasPage() {
     const [profesoradoId, setProfesoradoId] = useState<number | "">("");
+    const [profesoradoIdCargado, setProfesoradoIdCargado] = useState<number | null>(null);
     const [dniSearch, setDniSearch] = useState("");
     const [nombreSearch, setNombreSearch] = useState("");
     const [recalculando, setRecalculando] = useState(false);
+    const [ultimaActualizacion, setUltimaActualizacion] = useState<string | null>(
+        () => localStorage.getItem(LS_KEY)
+    );
     const queryClient = useQueryClient();
     const { enqueueSnackbar } = useSnackbar();
 
@@ -45,25 +52,35 @@ export default function ResguardoMateriasPage() {
     });
 
     const { data, isLoading, isError } = useQuery({
-        queryKey: ["resguardo-materias", profesoradoId],
+        queryKey: ["resguardo-materias", profesoradoIdCargado],
         queryFn: () => fetchResguardoMaterias({
-            profesorado_id: profesoradoId || undefined,
+            profesorado_id: profesoradoIdCargado ?? undefined,
         }),
+        enabled: profesoradoIdCargado !== null,
         staleTime: 1000 * 60 * 5,
     });
+
+    const handleCargar = () => {
+        if (!profesoradoId) return;
+        setDniSearch("");
+        setNombreSearch("");
+        setProfesoradoIdCargado(profesoradoId as number);
+    };
 
     const handleRecalcular = async () => {
         setRecalculando(true);
         try {
-            const result = await recalcularResguardo({
-                profesorado_id: profesoradoId || undefined,
+            await recalcularResguardo({
+                profesorado_id: profesoradoIdCargado ?? undefined,
                 solo_activos: true,
             });
-            enqueueSnackbar(
-                `Actualizado: ${result.regularidades_marcadas} en resguardo, ${result.regularidades_liberadas} liberadas.`,
-                { variant: "success" }
-            );
-            queryClient.invalidateQueries({ queryKey: ["resguardo-materias"] });
+            const ahora = new Date().toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
+            localStorage.setItem(LS_KEY, ahora);
+            setUltimaActualizacion(ahora);
+            enqueueSnackbar("Resguardo actualizado correctamente.", { variant: "success" });
+            setTimeout(() => {
+                queryClient.invalidateQueries({ queryKey: ["resguardo-materias"] });
+            }, 3000);
         } catch {
             enqueueSnackbar("Error al recalcular el resguardo.", { variant: "error" });
         } finally {
@@ -77,7 +94,6 @@ export default function ResguardoMateriasPage() {
         return true;
     });
 
-    // Agrupar por estudiante para el conteo
     const estudiantesUnicos = new Set(items.map((i) => i.dni)).size;
 
     return (
@@ -85,79 +101,113 @@ export default function ResguardoMateriasPage() {
             <BackButton />
             <PageHero
                 title="Resguardo de Materias"
-                subtitle="Regularidades y equivalencias en resguardo por correlativas no satisfechas"
+                subtitle="Regularidades y equivalencias en resguardo por correlativas no satisfechas — solo estudiantes activos"
             />
 
             {/* Filtros */}
             <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
-                    <FormControl size="small" sx={{ minWidth: 260 }}>
-                        <InputLabel>Profesorado</InputLabel>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center" flexWrap="wrap">
+                    {/* Selector de profesorado + botón Cargar */}
+                    <FormControl size="small" sx={{ minWidth: 280 }}>
+                        <InputLabel>Profesorado *</InputLabel>
                         <Select
                             value={profesoradoId}
-                            label="Profesorado"
+                            label="Profesorado *"
                             onChange={(e) => setProfesoradoId(e.target.value as number | "")}
                         >
-                            <MenuItem value="">Todos los profesorados</MenuItem>
+                            <MenuItem value="" disabled>Seleccionar profesorado</MenuItem>
                             {(carreras || []).map((c) => (
                                 <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
                             ))}
                         </Select>
                     </FormControl>
 
-                    <TextField
+                    <Button
+                        variant="outlined"
                         size="small"
-                        label="Buscar por DNI"
-                        value={dniSearch}
-                        onChange={(e) => setDniSearch(e.target.value)}
-                        sx={{ width: 160 }}
-                        InputProps={{
-                            endAdornment: dniSearch ? (
-                                <InputAdornment position="end">
-                                    <IconButton size="small" onClick={() => setDniSearch("")}>
-                                        <ClearIcon fontSize="small" />
-                                    </IconButton>
-                                </InputAdornment>
-                            ) : null,
-                        }}
-                    />
+                        startIcon={<SearchIcon />}
+                        onClick={handleCargar}
+                        disabled={!profesoradoId}
+                        sx={{ whiteSpace: "nowrap" }}
+                    >
+                        Cargar
+                    </Button>
 
-                    <TextField
-                        size="small"
-                        label="Buscar por nombre"
-                        value={nombreSearch}
-                        onChange={(e) => setNombreSearch(e.target.value)}
-                        sx={{ width: 240 }}
-                        InputProps={{
-                            endAdornment: nombreSearch ? (
-                                <InputAdornment position="end">
-                                    <IconButton size="small" onClick={() => setNombreSearch("")}>
-                                        <ClearIcon fontSize="small" />
-                                    </IconButton>
-                                </InputAdornment>
-                            ) : null,
-                        }}
-                    />
+                    {/* Búsquedas — solo visibles si hay datos cargados */}
+                    {profesoradoIdCargado !== null && (
+                        <>
+                            <TextField
+                                size="small"
+                                label="Buscar por DNI"
+                                value={dniSearch}
+                                onChange={(e) => setDniSearch(e.target.value)}
+                                sx={{ width: 160 }}
+                                InputProps={{
+                                    endAdornment: dniSearch ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setDniSearch("")}>
+                                                <ClearIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null,
+                                }}
+                            />
 
-                    <Box sx={{ ml: "auto !important", display: "flex", alignItems: "center", gap: 2 }}>
-                        {data && (
-                            <Typography variant="body2" color="text.secondary">
-                                {items.length} registro{items.length !== 1 ? "s" : ""} · {estudiantesUnicos} estudiante{estudiantesUnicos !== 1 ? "s" : ""}
-                            </Typography>
-                        )}
-                        <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={recalculando ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-                            onClick={handleRecalcular}
-                            disabled={recalculando}
-                            sx={{ bgcolor: "#b45309", "&:hover": { bgcolor: "#92400e" }, whiteSpace: "nowrap" }}
-                        >
-                            {recalculando ? "Actualizando..." : "Actualizar resguardo"}
-                        </Button>
-                    </Box>
+                            <TextField
+                                size="small"
+                                label="Buscar por nombre"
+                                value={nombreSearch}
+                                onChange={(e) => setNombreSearch(e.target.value)}
+                                sx={{ width: 220 }}
+                                InputProps={{
+                                    endAdornment: nombreSearch ? (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setNombreSearch("")}>
+                                                <ClearIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ) : null,
+                                }}
+                            />
+                        </>
+                    )}
+
+                    {/* Contador + última actualización + botón actualizar */}
+                    {profesoradoIdCargado !== null && (
+                        <Box sx={{ ml: "auto !important", display: "flex", alignItems: "center", gap: 2 }}>
+                            <Box sx={{ textAlign: "right" }}>
+                                {data && (
+                                    <Typography variant="body2" color="text.secondary">
+                                        {items.length} registro{items.length !== 1 ? "s" : ""} · {estudiantesUnicos} estudiante{estudiantesUnicos !== 1 ? "s" : ""}
+                                    </Typography>
+                                )}
+                                {ultimaActualizacion && (
+                                    <Typography variant="caption" color="text.disabled">
+                                        Última actualización: {ultimaActualizacion}
+                                    </Typography>
+                                )}
+                            </Box>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={recalculando ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                                onClick={handleRecalcular}
+                                disabled={recalculando}
+                                sx={{ bgcolor: "#b45309", "&:hover": { bgcolor: "#92400e" }, whiteSpace: "nowrap" }}
+                            >
+                                {recalculando ? "Actualizando..." : "Actualizar resguardo"}
+                            </Button>
+                        </Box>
+                    )}
                 </Stack>
             </Paper>
+
+            {/* Estado inicial: pedir que seleccione profesorado */}
+            {profesoradoIdCargado === null && (
+                <Alert severity="info">
+                    Seleccioná un profesorado y hacé clic en <strong>Cargar</strong> para ver las materias en resguardo.
+                </Alert>
+            )}
 
             {isLoading && (
                 <Box display="flex" justifyContent="center" py={6}>
@@ -169,8 +219,8 @@ export default function ResguardoMateriasPage() {
                 <Alert severity="error">No se pudo cargar la información de resguardo.</Alert>
             )}
 
-            {!isLoading && !isError && items.length === 0 && (
-                <Alert severity="success">No hay materias en resguardo con los filtros seleccionados.</Alert>
+            {profesoradoIdCargado !== null && !isLoading && !isError && items.length === 0 && (
+                <Alert severity="success">No hay materias en resguardo para el profesorado seleccionado.</Alert>
             )}
 
             {!isLoading && !isError && items.length > 0 && (
@@ -180,7 +230,6 @@ export default function ResguardoMateriasPage() {
                             <TableRow sx={{ "& th": { fontWeight: 700, bgcolor: "#fafafa" } }}>
                                 <TableCell>Estudiante</TableCell>
                                 <TableCell>DNI</TableCell>
-                                <TableCell>Profesorado</TableCell>
                                 <TableCell>Materia en resguardo</TableCell>
                                 <TableCell>Situación</TableCell>
                                 <TableCell>Tipo</TableCell>
@@ -192,11 +241,6 @@ export default function ResguardoMateriasPage() {
                                 <TableRow key={idx} hover>
                                     <TableCell sx={{ fontWeight: 600 }}>{item.nombre}</TableCell>
                                     <TableCell>{item.dni}</TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {item.profesorado || "—"}
-                                        </Typography>
-                                    </TableCell>
                                     <TableCell>{item.materia}</TableCell>
                                     <TableCell>
                                         <Chip

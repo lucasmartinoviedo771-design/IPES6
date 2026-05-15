@@ -136,6 +136,14 @@ class Command(BaseCommand):
                             ).select_related("materia_correlativa"):
                                 if not _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
                                     faltantes.append(f"Necesita APROBAR (para rendir): {corr.materia_correlativa.nombre}")
+                        # Si una materia requiere APROBACIÓN para rendir, la regularidad es redundante
+                        materias_req_aprobacion = {
+                            f.split(": ", 1)[1] for f in faltantes if f.startswith("Necesita APROBAR (para rendir):")
+                        }
+                        faltantes = [
+                            f for f in faltantes
+                            if not (f.startswith("Necesita REGULARIZAR:") and f.split(": ", 1)[1] in materias_req_aprobacion)
+                        ]
                         faltantes_str = "\n    ".join(dict.fromkeys(faltantes)) if faltantes else "Sin detalle"
                         self.stdout.write(
                             f"{prefijo}REG en resguardo: {est.persona.dni if est.persona else est.id} "

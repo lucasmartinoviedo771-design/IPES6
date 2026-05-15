@@ -120,6 +120,7 @@ class CartonEvento(Schema):
     folio: str | None = None
     libro: str | None = None
     id_fila: int | None = None
+    en_resguardo: bool = False
 
 class CartonMateria(Schema):
     materia_id: int

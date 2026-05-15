@@ -21,6 +21,8 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
     if mesa.docente_vocal2:
         docentes.append(MesaDocenteOut(rol="Vocal 2", docente_id=mesa.docente_vocal2_id, nombre=f"{mesa.docente_vocal2.persona.apellido}, {mesa.docente_vocal2.persona.nombre}", dni=mesa.docente_vocal2.persona.dni))
 
+    est_exc = mesa.estudiante_exclusivo
+    est_exc_persona = est_exc.persona if est_exc else None
     return MesaOut(
         id=mesa.id,
         materia_id=mesa.materia_id,
@@ -42,7 +44,9 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         numero_mesa=mesa.numero_mesa,
         docentes=docentes,
         esta_cerrada=mesa.planilla_cerrada_en is not None,
-        inscriptos_count=getattr(mesa, "num_inscriptos", 0)
+        inscriptos_count=getattr(mesa, "num_inscriptos", 0),
+        estudiante_exclusivo_dni=est_exc_persona.dni if est_exc_persona else None,
+        estudiante_exclusivo_nombre=f"{est_exc_persona.apellido}, {est_exc_persona.nombre}" if est_exc_persona else None,
     )
 
 def _auto_cleanup_deserted_mesas(dias_gracia: int = 5):
@@ -96,6 +100,13 @@ def create_mesa(request, payload: MesaIn):
     if payload.modalidad and payload.modalidad.upper() == "LIB" and not materia.permite_mesa_libre:
         raise HttpError(422, "Esta materia no está habilitada para exámenes en condición libre.")
 
+    est_exclusivo = None
+    if payload.tipo.upper() == "ESP" and payload.estudiante_exclusivo_dni:
+        from core.models import Estudiante
+        est_exclusivo = Estudiante.objects.filter(persona__dni=payload.estudiante_exclusivo_dni).first()
+        if not est_exclusivo:
+            raise HttpError(404, f"Estudiante con DNI {payload.estudiante_exclusivo_dni} no encontrado.")
+
     mesa = MesaExamen.objects.create(
         materia=materia,
         tipo=payload.tipo.upper(),
@@ -110,6 +121,7 @@ def create_mesa(request, payload: MesaIn):
         docente_vocal1_id=payload.docente_vocal1_id,
         docente_vocal2_id=payload.docente_vocal2_id,
         numero_mesa=payload.numero_mesa,
+        estudiante_exclusivo=est_exclusivo,
     )
     return _serialize_mesa(mesa)
 
@@ -123,10 +135,18 @@ def update_mesa(request, mesa_id: int, payload: MesaIn):
         raise HttpError(422, "Esta materia no está habilitada para exámenes en condición libre.")
 
     for attr, value in payload.dict().items():
-        if attr == "materia_id":
-            continue  # materia no se puede cambiar en un update
+        if attr in ("materia_id", "estudiante_exclusivo_dni"):
+            continue
         if value is not None:
             setattr(mesa, attr, value)
+
+    if mesa.tipo == "ESP" and payload.estudiante_exclusivo_dni is not None:
+        from core.models import Estudiante
+        est_exc = Estudiante.objects.filter(persona__dni=payload.estudiante_exclusivo_dni).first()
+        mesa.estudiante_exclusivo = est_exc
+    elif payload.estudiante_exclusivo_dni is None and mesa.tipo == "ESP":
+        mesa.estudiante_exclusivo = None
+
     mesa.save()
     return _serialize_mesa(mesa)
 

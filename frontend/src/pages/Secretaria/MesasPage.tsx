@@ -77,6 +77,7 @@ export default function MesasPage() {
       docente_vocal1_id: state.tribunalDocentes.vocal1?.id ?? null,
       docente_vocal2_id: state.tribunalDocentes.vocal2?.id ?? null,
       ventana_id: state.mesaEspecial ? null : Number(state.ventanaNueva),
+      estudiante_exclusivo_dni: state.mesaEspecial ? (state.form.estudiante_exclusivo_dni || null) : null,
     };
     setSaving(true);
     try {

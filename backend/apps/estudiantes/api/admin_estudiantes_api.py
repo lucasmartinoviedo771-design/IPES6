@@ -932,10 +932,26 @@ def admin_resguardo_materias(
             ).select_related("materia_correlativa"):
                 if not _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
                     faltantes.append(f"Necesita APROBAR (para rendir): {corr.materia_correlativa.nombre}")
+        # Si una materia aparece como "Necesita APROBAR (para rendir)", la regularidad
+        # es irrelevante — eliminar entradas "Necesita REGULARIZAR" duplicadas para esa materia.
+        materias_que_requieren_aprobacion = {
+            f.split(": ", 1)[1] for f in faltantes if f.startswith("Necesita APROBAR (para rendir):")
+        }
+        faltantes = [
+            f for f in faltantes
+            if not (f.startswith("Necesita REGULARIZAR:") and f.split(": ", 1)[1] in materias_que_requieren_aprobacion)
+        ]
         return list(dict.fromkeys(faltantes))
 
+    # Estudiantes activos en el profesorado indicado
+    from core.models import EstudianteCarrera
+    activos_en_prof_qs = EstudianteCarrera.objects.filter(estado_academico="ACT")
+    if profesorado_id:
+        activos_en_prof_qs = activos_en_prof_qs.filter(profesorado_id=profesorado_id)
+    activos_ids = activos_en_prof_qs.values_list("estudiante_id", flat=True)
+
     # Regularidades en resguardo
-    reg_qs = Regularidad.objects.filter(en_resguardo=True).select_related(
+    reg_qs = Regularidad.objects.filter(en_resguardo=True, estudiante_id__in=activos_ids).select_related(
         "estudiante__persona", "materia__plan_de_estudio__profesorado"
     )
     if profesorado_id:
@@ -959,7 +975,7 @@ def admin_resguardo_materias(
         })
 
     # Equivalencias en resguardo
-    eq_qs = EquivalenciaDisposicionDetalle.objects.filter(en_resguardo=True).select_related(
+    eq_qs = EquivalenciaDisposicionDetalle.objects.filter(en_resguardo=True, disposicion__estudiante_id__in=activos_ids).select_related(
         "disposicion__estudiante__persona", "materia__plan_de_estudio__profesorado"
     )
     if profesorado_id:
@@ -992,36 +1008,35 @@ def admin_recalcular_resguardo(
     solo_activos: bool = True,
 ):
     """
-    Ejecuta el comando recalcular_resguardo a demanda.
-    Solo para admin y secretaria (operación costosa).
+    Ejecuta el comando recalcular_resguardo en un hilo de fondo para evitar timeout.
+    Solo para admin y secretaria.
     """
-    from io import StringIO
+    import threading
     from django.core.management import call_command
     ensure_roles(request.user, {"admin", "secretaria"})
 
-    out = StringIO()
-    kwargs = {"stdout": out, "dry_run": False, "solo_equivalencias": False, "solo_regularidades": False, "dni": None, "solo_activos": solo_activos, "profesorado": profesorado_id}
-    call_command("recalcular_resguardo", **kwargs)
-    output = out.getvalue()
+    kwargs = {
+        "dry_run": False,
+        "solo_equivalencias": False,
+        "solo_regularidades": False,
+        "dni": None,
+        "solo_activos": solo_activos,
+        "profesorado": profesorado_id,
+    }
 
-    # Extraer totales del output
-    reg_marcadas = reg_liberadas = eq_marcadas = eq_liberadas = 0
-    for line in output.splitlines():
-        if "Regularidades →" in line:
-            parts = line.split("→")[1].strip()
-            nums = [int(s) for s in parts.replace(",", "").split() if s.isdigit()]
-            if len(nums) >= 2:
-                reg_marcadas, reg_liberadas = nums[0], nums[1]
-        elif "Equivalencias →" in line:
-            parts = line.split("→")[1].strip()
-            nums = [int(s) for s in parts.replace(",", "").split() if s.isdigit()]
-            if len(nums) >= 2:
-                eq_marcadas, eq_liberadas = nums[0], nums[1]
+    def run():
+        try:
+            call_command("recalcular_resguardo", **kwargs)
+        except Exception:
+            pass
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
 
     return 200, {
         "ok": True,
-        "regularidades_marcadas": reg_marcadas,
-        "regularidades_liberadas": reg_liberadas,
-        "equivalencias_marcadas": eq_marcadas,
-        "equivalencias_liberadas": eq_liberadas,
+        "regularidades_marcadas": 0,
+        "regularidades_liberadas": 0,
+        "equivalencias_marcadas": 0,
+        "equivalencias_liberadas": 0,
     }

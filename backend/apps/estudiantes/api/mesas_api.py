@@ -345,6 +345,18 @@ def listar_mesas_estudiante(
         elif not isinstance(request.user, AnonymousUser):
             estudiante_para_rendir = getattr(request.user, "estudiante", None)
 
+    # Mesas EXT/ESP: restringidas al estudiante consultado (aplica siempre que haya un est resuelto)
+    mesas_ext_permitidas: set[int] = set()
+    if est:
+        from core.models import SolicitudMesa
+        mesas_ext_permitidas = set(
+            SolicitudMesa.objects.filter(
+                estudiante=est,
+                estado=SolicitudMesa.Estado.PROCESADA,
+                mesa_asignada__isnull=False,
+            ).values_list("mesa_asignada_id", flat=True)
+        )
+
     # Cache de estado académico para optimizar el filtro 'solo_rendibles'
     aprobadas_rendir_set = set()
     if estudiante_para_rendir:
@@ -385,11 +397,19 @@ def listar_mesas_estudiante(
             }
         }
         
+        # Mesas EXT: el alumno queda inscripto automáticamente al crearse — no deben aparecer para inscripción manual
+        if est and m.tipo == MesaExamen.Tipo.EXTRAORDINARIA:
+            continue
+        # Mesas ESP: solo visibles para el estudiante_exclusivo asignado
+        if est and m.tipo == MesaExamen.Tipo.ESPECIAL:
+            if m.estudiante_exclusivo_id is None or m.estudiante_exclusivo_id != est.id:
+                continue
+
         if solo_rendibles and estudiante_para_rendir:
             is_ok, _, _ = _check_academic_eligibility(estudiante_para_rendir, materia=m.materia, modalidad=m.modalidad, mesa=m)
             if not is_ok:
                 continue
-                    
+
         out.append(row)
     return out
 
@@ -415,6 +435,17 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
     # --- VALIDACIÓN UNIFICADA ---
     from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
     es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+
+    # Validar que la ventana esté activa y dentro de fecha (solo para alumnos)
+    if not es_staff:
+        from datetime import date as _date
+        hoy = _date.today()
+        ventana = mesa.ventana
+        if not ventana or not ventana.activo:
+            return 400, {"message": "La inscripción no está habilitada para esta mesa."}
+        if hoy < ventana.desde or hoy > ventana.hasta:
+            return 400, {"message": f"La inscripción solo está habilitada entre el {ventana.desde.strftime('%d/%m/%Y')} y el {ventana.hasta.strftime('%d/%m/%Y')}."}
+
     is_ok, msg, extra = _check_academic_eligibility(
         est, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa,
         bypass_legajo=bool(es_staff),

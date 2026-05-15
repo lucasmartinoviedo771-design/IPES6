@@ -448,6 +448,18 @@ const MesaExamenPage: React.FC = () => {
   const mostrarContenido = !carrerasLoading && !(canGestionar && !dniBusqueda.trim());
   const necesitaContexto = requiereSeleccionCarrera || requiereSeleccionPlan;
 
+  const ventanaExtraInfo = useMemo(() => {
+    const extra = ventanas.find(v => v.tipo === 'MESAS_EXTRA');
+    if (!extra) return { habilitada: false, mensaje: 'No hay período de solicitudes extraordinarias configurado.' };
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const desde = new Date(extra.desde + 'T00:00:00');
+    const hasta = new Date(extra.hasta + 'T00:00:00');
+    if (!extra.activo) return { habilitada: false, mensaje: 'Las solicitudes de mesas extraordinarias están cerradas.' };
+    if (hoy < desde) return { habilitada: false, mensaje: `Las solicitudes se habilitarán el ${desde.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}.` };
+    if (hoy > hasta) return { habilitada: false, mensaje: `El período de solicitudes cerró el ${hasta.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}.` };
+    return { habilitada: true, mensaje: '' };
+  }, [ventanas]);
+
   return (
     <Box sx={{ p: 3, bgcolor: "#f9f5ea", minHeight: "100vh" }}>
       <Stack spacing={3} maxWidth={1180} mx="auto">
@@ -656,6 +668,12 @@ const MesaExamenPage: React.FC = () => {
 
                     <Typography variant="subtitle1" fontWeight={700} color="#5d4037" gutterBottom>Seleccioná la materia que deseás solicitar para este llamado extraordinario:</Typography>
 
+                    {!ventanaExtraInfo.habilitada && (
+                      <Alert severity="warning" sx={{ mb: 2 }}>
+                        {ventanaExtraInfo.mensaje}
+                      </Alert>
+                    )}
+
                     {loadingSolicitables ? <LinearProgress sx={{ mt: 1 }} /> : (() => {
                       const yaEnMesa = (mid: number) => mesasDisponibles.some(m => (m.materia?.id ?? m.materia_id) === mid);
                       const yaSolicitada = (mid: number) => solicitudes.some(s => s.materia_id === mid && s.estado === 'PEN');
@@ -705,9 +723,9 @@ const MesaExamenPage: React.FC = () => {
                                                 fullWidth
                                                 sx={{ bgcolor: '#B7694E', '&:hover': { bgcolor: '#5d4037' }, fontSize: '0.75rem', py: 0.5 }}
                                                 onClick={() => { setModalidadSolicitud(m.modalidad as 'REG' | 'LIB'); setPendingSolicitud({ materia_id: m.materia_id, materia_nombre: m.materia_nombre }); }}
-                                                disabled={!ventanaId}
+                                                disabled={!ventanaId || !ventanaExtraInfo.habilitada}
                                               >
-                                                Solicitar Mesa
+                                                {ventanaExtraInfo.habilitada ? 'Solicitar Mesa' : 'Solicitudes cerradas'}
                                               </Button>
                                             </Box>
                                           </Stack>
