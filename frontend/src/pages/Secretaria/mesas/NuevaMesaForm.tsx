@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -18,6 +18,7 @@ import { DocenteDTO } from '@/api/docentes';
 import { Mesa, MateriaOption, MesaModalidad } from './types';
 import { MESA_MODALIDAD_LABEL } from './constants';
 import { buildVentanaLabel, formatDocenteLabel } from './utils';
+import { fetchEstudianteAdminDetail } from '@/api/estudiantes/admin';
 
 interface NuevaMesaFormProps {
   ventanas: VentanaDto[];
@@ -84,6 +85,30 @@ export function NuevaMesaForm({
   onGuardar,
   saving,
 }: NuevaMesaFormProps) {
+  const [estudianteBuscado, setEstudianteBuscado] = useState<{ nombre: string } | null | "notfound">(null);
+  const [buscandoEstudiante, setBuscandoEstudiante] = useState(false);
+
+  const dniValue = form.estudiante_exclusivo_dni || '';
+
+  useEffect(() => {
+    if (!mesaEspecial || dniValue.length < 7) {
+      setEstudianteBuscado(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setBuscandoEstudiante(true);
+      try {
+        const est = await fetchEstudianteAdminDetail(dniValue);
+        setEstudianteBuscado({ nombre: `${est.apellido}, ${est.nombre}` });
+      } catch {
+        setEstudianteBuscado("notfound");
+      } finally {
+        setBuscandoEstudiante(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [dniValue, mesaEspecial]);
+
   return (
     <Box sx={{ mt: 1 }}>
       <Grid container spacing={3}>
@@ -291,6 +316,37 @@ export function NuevaMesaForm({
                   control={<Checkbox size="small" checked={mesaEspecial} onChange={(e) => handleMesaEspecialChange(e.target.checked)} />}
                   label={<Typography variant="body2">¿Es Mesa Especial?</Typography>}
                 />
+                {mesaEspecial && (
+                  <Box sx={{ mt: 1 }}>
+                    <TextField
+                      size="small"
+                      label="DNI del estudiante *"
+                      placeholder="Ej: 40123456"
+                      value={form.estudiante_exclusivo_dni || ''}
+                      onChange={(e) => setForm(f => ({ ...f, estudiante_exclusivo_dni: e.target.value }))}
+                      fullWidth
+                      inputProps={{ maxLength: 20 }}
+                      InputProps={{
+                        endAdornment: buscandoEstudiante ? <CircularProgress size={14} /> : null,
+                      }}
+                    />
+                    {estudianteBuscado === "notfound" && (
+                      <Typography variant="caption" color="error.main" sx={{ mt: 0.5, display: 'block' }}>
+                        No se encontró ningún estudiante con ese DNI.
+                      </Typography>
+                    )}
+                    {estudianteBuscado && estudianteBuscado !== "notfound" && (
+                      <Typography variant="caption" color="success.main" fontWeight={600} sx={{ mt: 0.5, display: 'block' }}>
+                        ✓ {estudianteBuscado.nombre}
+                      </Typography>
+                    )}
+                    {!estudianteBuscado && !buscandoEstudiante && dniValue.length > 0 && dniValue.length < 7 && (
+                      <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+                        Ingresá al menos 7 dígitos para buscar.
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
             </Stack>
           </Box>

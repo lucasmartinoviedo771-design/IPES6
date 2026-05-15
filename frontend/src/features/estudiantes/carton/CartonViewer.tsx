@@ -415,6 +415,8 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                       backgroundColor: '#fff',
                     };
 
+                    const enResguardo = record.tipo === 'regularidad' && record.en_resguardo;
+                    const resguardoBg = enResguardo ? '#fff7ed' : '#fff';
                     return (
                       <TableRow
                         key={`${record.espacioCurricular}-${index}`}
@@ -422,14 +424,19 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
                       >
                         {isFirstInGroup && (
                           <>
-                            <TableCell rowSpan={rowSpan} align="center" sx={spanningCellSx}>
+                            <TableCell rowSpan={rowSpan} align="center" sx={{ ...spanningCellSx, backgroundColor: resguardoBg }}>
                               {record.anio}
                             </TableCell>
-                            <TableCell rowSpan={rowSpan} align="center" sx={{ ...spanningCellSx, borderLeft: 'none' }}>
+                            <TableCell rowSpan={rowSpan} align="center" sx={{ ...spanningCellSx, borderLeft: 'none', backgroundColor: resguardoBg }}>
                               {record.cuatrimestre}
                             </TableCell>
-                            <TableCell rowSpan={rowSpan} sx={{ ...spanningCellSx, borderLeft: 'none', fontWeight: 600 }}>
+                            <TableCell rowSpan={rowSpan} sx={{ ...spanningCellSx, borderLeft: 'none', fontWeight: 600, color: enResguardo ? '#c2410c' : 'inherit', backgroundColor: resguardoBg }}>
                               {record.espacioCurricular}
+                              {enResguardo && (
+                                <Typography variant="caption" display="block" sx={{ color: '#f97316', fontWeight: 700, fontSize: '0.65rem' }}>
+                                  ⚠ EN RESGUARDO
+                                </Typography>
+                              )}
                             </TableCell>
                           </>
                         )}

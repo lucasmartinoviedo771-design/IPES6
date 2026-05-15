@@ -21,6 +21,7 @@ class MesaIn(Schema):
     docente_vocal1_id: int | None = None
     docente_vocal2_id: int | None = None
     numero_mesa: int | None = None
+    estudiante_exclusivo_dni: str | None = None
 
 class CrearMesaDesdeSolicitudIn(Schema):
     solicitud_id: int
@@ -56,6 +57,8 @@ class MesaOut(Schema):
     docentes: list[MesaDocenteOut] = Field(default_factory=list)
     esta_cerrada: bool = False
     inscriptos_count: int = 0
+    estudiante_exclusivo_dni: str | None = None
+    estudiante_exclusivo_nombre: str | None = None
 
 class SolicitudMesaOut(Schema):
     id: int

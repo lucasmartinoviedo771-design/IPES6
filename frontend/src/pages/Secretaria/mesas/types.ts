@@ -19,6 +19,8 @@ export type Mesa = {
   codigo?: string | null;
   docentes?: MesaTribunalDocente[];
   inscriptos_count?: number;
+  estudiante_exclusivo_dni?: string | null;
+  estudiante_exclusivo_nombre?: string | null;
 };
 
 export type MesaTribunalDocente = {

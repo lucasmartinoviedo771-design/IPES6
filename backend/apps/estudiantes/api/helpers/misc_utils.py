@@ -166,6 +166,16 @@ def _tiene_aprobacion_valida(
     ).exists():
         return True
 
+    # 2b. Mesa pandemia aprobada (InscripcionMesa con folio/libro PANDEMIA y condicion APR)
+    from core.models import InscripcionMesa
+    if InscripcionMesa.objects.filter(
+        estudiante=estudiante,
+        mesa__materia=materia,
+        condicion=InscripcionMesa.Condicion.APROBADO,
+        folio="PANDEMIA",
+    ).exists():
+        return True
+
     # 3. Acta de examen aprobada — chequeo dinámico de correlativas
     from apps.estudiantes.api.helpers.misc_utils import _correlatividades_qs
     acta_aprobada = ActaExamenEstudiante.objects.filter(
@@ -199,10 +209,14 @@ def _calcular_resguardo_equivalencia(
     estudiante: Estudiante,
     materia: Materia,
     autorizadas_ids: set[int] | None = None,
+    situacion: str | None = None,
 ) -> bool:
     """
-    Determina si una equivalencia para `materia` debe quedar en resguardo.
+    Determina si una aprobación/equivalencia para `materia` debe quedar en resguardo.
     Retorna True si debe estar en resguardo (correlativas no satisfechas).
+
+    Para APROBADO/PROMOCIONADO también se verifican las correlativas APROBADA_PARA_RENDIR,
+    ya que representan un requisito académico que debe mantenerse válido.
     """
     if autorizadas_ids is None:
         autorizadas_ids = set(estudiante.materias_autorizadas.values_list("id", flat=True))
@@ -224,22 +238,45 @@ def _calcular_resguardo_equivalencia(
         if not req_mat:
             continue
         if not _tiene_aprobacion_valida(estudiante, req_mat, autorizadas_ids=autorizadas_ids):
-            return True  # correlativa de aprobación no satisfecha
+            return True
 
     for req_id in req_reg:
         if req_id in autorizadas_ids:
             continue
-        # Para REGULAR_PARA_CURSAR alcanza con tener regularidad vigente o aprobación válida
-        tiene_regular = Regularidad.objects.filter(
+        req_mat_obj = Materia.objects.filter(id=req_id).first()
+        if _tiene_aprobacion_valida(estudiante, req_mat_obj, autorizadas_ids=autorizadas_ids):
+            continue
+        reg_vigente = False
+        for reg_corr in Regularidad.objects.filter(
             estudiante=estudiante,
             materia_id=req_id,
             situacion=Regularidad.Situacion.REGULAR,
             en_resguardo=False,
-        ).exists()
-        if not tiene_regular and not _tiene_aprobacion_valida(
-            estudiante, Materia.objects.filter(id=req_id).first(), autorizadas_ids=autorizadas_ids
         ):
+            limite, intentos, max_intentos = _calcular_vigencia_regularidad(estudiante, reg_corr)
+            hoy = date.today()
+            if hoy <= limite and intentos < max_intentos:
+                reg_vigente = True
+                break
+        if not reg_vigente:
             return True
+
+    # Para materias APROBADAS o PROMOCIONADAS: verificar también APROBADA_PARA_RENDIR
+    es_aprobada = situacion in (
+        Regularidad.Situacion.APROBADO,
+        Regularidad.Situacion.PROMOCIONADO,
+    )
+    if es_aprobada:
+        req_rendir = list(
+            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
+            .values_list("materia_correlativa_id", flat=True)
+        )
+        for req_id in req_rendir:
+            req_mat = Materia.objects.filter(id=req_id).first()
+            if not req_mat:
+                continue
+            if not _tiene_aprobacion_valida(estudiante, req_mat, autorizadas_ids=autorizadas_ids):
+                return True
 
     return False
 

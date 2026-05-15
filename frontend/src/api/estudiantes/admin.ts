@@ -86,3 +86,44 @@ export async function autorizarRendirEstudiante(
   );
   return data;
 }
+
+export type ResguardoMateriaItemDTO = {
+  tipo: "REG" | "EQUIV";
+  dni: string;
+  nombre: string;
+  profesorado: string | null;
+  materia: string;
+  situacion: string;
+  motivos: string[];
+};
+
+export async function fetchResguardoMaterias(params: {
+  profesorado_id?: number;
+  dni?: string;
+} = {}): Promise<ResguardoMateriaItemDTO[]> {
+  const { data } = await client.get<ResguardoMateriaItemDTO[]>(
+    "/estudiantes/admin/resguardo-materias",
+    { params }
+  );
+  return data;
+}
+
+export type RecalcularResguardoResult = {
+  ok: boolean;
+  regularidades_marcadas: number;
+  regularidades_liberadas: number;
+  equivalencias_marcadas: number;
+  equivalencias_liberadas: number;
+};
+
+export async function recalcularResguardo(params: {
+  profesorado_id?: number;
+  solo_activos?: boolean;
+} = {}): Promise<RecalcularResguardoResult> {
+  const { data } = await client.post<RecalcularResguardoResult>(
+    "/estudiantes/admin/resguardo-materias/recalcular",
+    null,
+    { params }
+  );
+  return data;
+}

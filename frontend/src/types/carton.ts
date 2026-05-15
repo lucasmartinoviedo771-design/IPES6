@@ -31,6 +31,7 @@ export interface ExamRecord {
   folio?: string;
   libro?: string;
   idFila?: string | number;
+  en_resguardo?: boolean;
 }
 
 export interface CartonData {

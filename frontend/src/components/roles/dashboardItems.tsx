@@ -234,6 +234,12 @@ export const DASHBOARD_ITEMS = {
     icon: <GavelIcon />,
     path: "/admin/auditoria-inconsistencias",
   },
+  RESGUARDO_MATERIAS: {
+    title: "Resguardo de materias",
+    subtitle: "Regularidades y equivalencias bloqueadas por correlativas no satisfechas.",
+    icon: <HourglassBottomIcon />,
+    path: "/admin/resguardo-materias",
+  },
 } satisfies Record<string, SectionCardProps>;
 
 export type DashboardItemKey = keyof typeof DASHBOARD_ITEMS;
