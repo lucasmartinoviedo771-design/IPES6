@@ -113,21 +113,24 @@ class Command(BaseCommand):
                         ).select_related("materia_correlativa"):
                             if _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
                                 continue  # aprobada, ok
-                            regs_corr = Regularidad.objects.filter(
-                                estudiante=est,
-                                materia=corr.materia_correlativa,
-                                situacion=Regularidad.Situacion.REGULAR,
-                                en_resguardo=False,
+                            rc = (
+                                Regularidad.objects.filter(
+                                    estudiante=est,
+                                    materia=corr.materia_correlativa,
+                                    situacion=Regularidad.Situacion.REGULAR,
+                                    en_resguardo=False,
+                                )
+                                .order_by("-fecha_cierre")
+                                .first()
                             )
-                            if not regs_corr.exists():
+                            if not rc:
                                 faltantes.append(f"Necesita REGULARIZAR: {corr.materia_correlativa.nombre}")
                             else:
-                                for rc in regs_corr:
-                                    limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
-                                    if hoy > limite:
-                                        faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
-                                    elif intentos >= max_i:
-                                        faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
+                                limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
+                                if hoy > limite:
+                                    faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
+                                elif intentos >= max_i:
+                                    faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
                         # Para APROBADO/PROMOCIONADO: correlativas APROBADA_PARA_RENDIR
                         if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
                             for corr in Corr.objects.filter(
@@ -192,21 +195,24 @@ class Command(BaseCommand):
                         ).select_related("materia_correlativa"):
                             if _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
                                 continue
-                            regs_corr = Regularidad.objects.filter(
-                                estudiante=est,
-                                materia=corr.materia_correlativa,
-                                situacion=Regularidad.Situacion.REGULAR,
-                                en_resguardo=False,
+                            rc = (
+                                Regularidad.objects.filter(
+                                    estudiante=est,
+                                    materia=corr.materia_correlativa,
+                                    situacion=Regularidad.Situacion.REGULAR,
+                                    en_resguardo=False,
+                                )
+                                .order_by("-fecha_cierre")
+                                .first()
                             )
-                            if not regs_corr.exists():
+                            if not rc:
                                 faltantes.append(f"Necesita REGULARIZAR: {corr.materia_correlativa.nombre}")
                             else:
-                                for rc in regs_corr:
-                                    limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
-                                    if hoy > limite:
-                                        faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
-                                    elif intentos >= max_i:
-                                        faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
+                                limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
+                                if hoy > limite:
+                                    faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
+                                elif intentos >= max_i:
+                                    faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
                         faltantes_str = "\n    ".join(dict.fromkeys(faltantes)) if faltantes else "Sin detalle"
                         self.stdout.write(
                             f"{prefijo}EQUIV en resguardo: {est.persona.dni if est.persona else est.id} "

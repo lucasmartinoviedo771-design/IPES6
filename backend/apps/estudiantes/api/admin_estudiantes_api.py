@@ -910,21 +910,26 @@ def admin_resguardo_materias(
         ).select_related("materia_correlativa"):
             if _tiene_aprobacion_valida(est, corr.materia_correlativa, autorizadas_ids=autorizadas_ids):
                 continue
-            regs_corr = Regularidad.objects.filter(
-                estudiante=est,
-                materia=corr.materia_correlativa,
-                situacion=Regularidad.Situacion.REGULAR,
-                en_resguardo=False,
+            # Solo la regularidad más reciente: si la última está vencida/agotada,
+            # las anteriores también lo estarían (son más viejas).
+            rc = (
+                Regularidad.objects.filter(
+                    estudiante=est,
+                    materia=corr.materia_correlativa,
+                    situacion=Regularidad.Situacion.REGULAR,
+                    en_resguardo=False,
+                )
+                .order_by("-fecha_cierre")
+                .first()
             )
-            if not regs_corr.exists():
+            if not rc:
                 faltantes.append(f"Necesita REGULARIZAR: {corr.materia_correlativa.nombre}")
             else:
-                for rc in regs_corr:
-                    limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
-                    if hoy > limite:
-                        faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
-                    elif intentos >= max_i:
-                        faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
+                limite, intentos, max_i = _calcular_vigencia_regularidad(est, rc)
+                if hoy > limite:
+                    faltantes.append(f"Regularidad VENCIDA ({rc.fecha_cierre}): {corr.materia_correlativa.nombre}")
+                elif intentos >= max_i:
+                    faltantes.append(f"Regularidad AGOTADA ({intentos}/{max_i} intentos): {corr.materia_correlativa.nombre}")
         if situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             for corr in Correlatividad.objects.filter(
                 materia_origen=materia,
@@ -1013,7 +1018,7 @@ def admin_recalcular_resguardo(
     """
     import threading
     from django.core.management import call_command
-    ensure_roles(request.user, {"admin", "secretaria"})
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
 
     kwargs = {
         "dry_run": False,

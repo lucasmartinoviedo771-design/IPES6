@@ -46,6 +46,8 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
     - Si al cumplirse los 2 años le quedan intentos, tiene una prórroga (hasta 60 días
       o el siguiente llamado disponible) para usar los intentos restantes.
     - Si agota los 3 intentos antes de los 2 años: la regularidad cae sin prórroga.
+    - Si el estudiante re-cursó la materia y tiene una regularidad posterior, los intentos
+      de este período solo cuentan hasta la fecha de esa nueva regularidad (no se mezclan).
     """
     from datetime import timedelta
     from core.models import MesaExamen, ActaExamenEstudiante
@@ -59,43 +61,67 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
 
     fecha_base = _add_years(regularidad.fecha_cierre, 2)
 
-    # Límite de la prórroga post-2-años
-    limite_60d = fecha_base + timedelta(days=60)
-    primer_llamado_post_base = (
-        MesaExamen.objects.filter(
+    # Si existe una regularidad posterior para la misma materia, este período termina ahí.
+    # Los intentos posteriores a esa fecha pertenecen al nuevo período.
+    prox_reg = (
+        Regularidad.objects.filter(
+            estudiante=regularidad.estudiante,
             materia=regularidad.materia,
-            tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
-            fecha__gt=fecha_base,
+            situacion=Regularidad.Situacion.REGULAR,
+            fecha_cierre__gt=regularidad.fecha_cierre,
         )
-        .order_by("fecha")
-        .values_list("fecha", flat=True)
+        .order_by("fecha_cierre")
         .first()
     )
-    limite_prorroga = (
-        primer_llamado_post_base
-        if primer_llamado_post_base and primer_llamado_post_base < limite_60d
-        else limite_60d
-    )
+    fecha_tope_superior = prox_reg.fecha_cierre if prox_reg else None
 
-    # Total de intentos usados (período normal + prórroga, todo suma al mismo pool de 3)
-    intentos = ActaExamenEstudiante.objects.filter(
-        dni=estudiante.dni,
-        acta__materia=regularidad.materia,
-        acta__fecha__gt=regularidad.fecha_cierre,
-        acta__fecha__lte=limite_prorroga,
-    ).count()
+    if fecha_tope_superior:
+        # Con regularidad posterior: el período de vigencia termina en la nueva fecha_cierre.
+        # No hay prórroga más allá de eso.
+        limite_efectivo = min(fecha_base, fecha_tope_superior)
+        intentos = ActaExamenEstudiante.objects.filter(
+            dni=estudiante.dni,
+            acta__materia=regularidad.materia,
+            acta__fecha__gt=regularidad.fecha_cierre,
+            acta__fecha__lte=fecha_tope_superior,
+        ).count()
+        intentos_en_periodo = intentos
+    else:
+        # Sin regularidad posterior: lógica original con prórroga.
+        limite_60d = fecha_base + timedelta(days=60)
+        primer_llamado_post_base = (
+            MesaExamen.objects.filter(
+                materia=regularidad.materia,
+                tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
+                fecha__gt=fecha_base,
+            )
+            .order_by("fecha")
+            .values_list("fecha", flat=True)
+            .first()
+        )
+        limite_prorroga = (
+            primer_llamado_post_base
+            if primer_llamado_post_base and primer_llamado_post_base < limite_60d
+            else limite_60d
+        )
+        limite_efectivo = limite_prorroga
+        intentos = ActaExamenEstudiante.objects.filter(
+            dni=estudiante.dni,
+            acta__materia=regularidad.materia,
+            acta__fecha__gt=regularidad.fecha_cierre,
+            acta__fecha__lte=limite_prorroga,
+        ).count()
+        intentos_en_periodo = ActaExamenEstudiante.objects.filter(
+            dni=estudiante.dni,
+            acta__materia=regularidad.materia,
+            acta__fecha__gt=regularidad.fecha_cierre,
+            acta__fecha__lte=fecha_base,
+        ).count()
 
-    # Si agotó los 3 intentos dentro del período normal: no accede a la prórroga
-    intentos_en_periodo = ActaExamenEstudiante.objects.filter(
-        dni=estudiante.dni,
-        acta__materia=regularidad.materia,
-        acta__fecha__gt=regularidad.fecha_cierre,
-        acta__fecha__lte=fecha_base,
-    ).count()
     if intentos_en_periodo >= INTENTOS_MAX:
-        return fecha_base, intentos_en_periodo, INTENTOS_MAX
+        return fecha_base if not fecha_tope_superior else limite_efectivo, intentos_en_periodo, INTENTOS_MAX
 
-    return limite_prorroga, intentos, INTENTOS_MAX
+    return limite_efectivo, intentos, INTENTOS_MAX
 
 
 def _to_iso(value):
@@ -246,19 +272,22 @@ def _calcular_resguardo_equivalencia(
         req_mat_obj = Materia.objects.filter(id=req_id).first()
         if _tiene_aprobacion_valida(estudiante, req_mat_obj, autorizadas_ids=autorizadas_ids):
             continue
-        reg_vigente = False
-        for reg_corr in Regularidad.objects.filter(
-            estudiante=estudiante,
-            materia_id=req_id,
-            situacion=Regularidad.Situacion.REGULAR,
-            en_resguardo=False,
-        ):
-            limite, intentos, max_intentos = _calcular_vigencia_regularidad(estudiante, reg_corr)
-            hoy = date.today()
-            if hoy <= limite and intentos < max_intentos:
-                reg_vigente = True
-                break
-        if not reg_vigente:
+        # Solo evaluar la regularidad más reciente: si la última está vencida/agotada,
+        # las anteriores también lo están (son más viejas).
+        reg_corr_reciente = (
+            Regularidad.objects.filter(
+                estudiante=estudiante,
+                materia_id=req_id,
+                situacion=Regularidad.Situacion.REGULAR,
+                en_resguardo=False,
+            )
+            .order_by("-fecha_cierre")
+            .first()
+        )
+        if not reg_corr_reciente:
+            return True
+        limite, intentos, max_intentos = _calcular_vigencia_regularidad(estudiante, reg_corr_reciente)
+        if date.today() > limite or intentos >= max_intentos:
             return True
 
     # Para materias APROBADAS o PROMOCIONADAS: verificar también APROBADA_PARA_RENDIR
