@@ -469,6 +469,15 @@ def cerrar_planilla_cursada(request, planilla_id: int):
             if not fila.estudiante:
                 continue
 
+            # Fila huérfana: la inscripción original fue anulada/dada de baja y quedó
+            # en NULL por on_delete=SET_NULL. No generar regularidad oficial sin inscripción.
+            if fila.inscripcion_id is not None and fila.inscripcion is None:
+                nombre = fila.estudiante.persona.apellido_nombre if fila.estudiante.persona else str(fila.estudiante_id)
+                warnings.append(
+                    f"{nombre}: fila ignorada — inscripción original fue anulada (sin inscripción activa)."
+                )
+                continue
+
             situacion = fila.situacion
             if situacion not in SITUACIONES_POSITIVAS:
                 # Actualizar situación en la fila antes de cerrar

@@ -60,6 +60,10 @@ class MesaExamen(models.Model):
         related_name="mesas_exclusivas",
         help_text="Solo para mesas ESP: el estudiante para quien fue creada.",
     )
+    activa = models.BooleanField(
+        default=True,
+        help_text="False cuando la mesa fue descartada administrativamente (soft-delete).",
+    )
     planilla_cerrada_en = models.DateTimeField(null=True, blank=True)
     planilla_cerrada_por = models.ForeignKey(
         User,
@@ -74,14 +78,14 @@ class MesaExamen(models.Model):
     @staticmethod
     def auto_cleanup_deserted_mesas(dias_gracia: int = 5):
         """
-        Elimina mesas sin inscriptos activos que ya superaron el período de gracia post-ventana.
+        Desactiva (soft-delete) mesas sin inscriptos activos que superaron el período de gracia.
 
-        Criterio de borrado:
-        - Si la mesa tiene ventana: se borra solo si pasaron `dias_gracia` días del cierre de la ventana.
-        - Si no tiene ventana (mesa especial): se borra si pasaron `dias_gracia` días de la fecha del examen.
+        Criterio:
+        - Si la mesa tiene ventana: se desactiva si pasaron `dias_gracia` días del cierre de la ventana.
+        - Si no tiene ventana (mesa especial): se desactiva si pasaron `dias_gracia` días de la fecha del examen.
 
-        Esto evita borrar mesas que la secretaría pueda necesitar para inscribir alumnos
-        manualmente después del examen pero dentro del período administrativo.
+        Usa soft-delete (activa=False) para preservar el historial de inscripciones
+        canceladas y no destruir trazabilidad administrativa.
         """
         from django.db.models import Count, Q
         from datetime import date, timedelta
@@ -89,12 +93,13 @@ class MesaExamen(models.Model):
         hoy = date.today()
 
         mesas_candidatas = MesaExamen.objects.select_related("ventana").filter(
-            fecha__lt=hoy
+            fecha__lt=hoy,
+            activa=True,
         ).annotate(
             count_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
         ).filter(count_inscriptos=0)
 
-        deleted_count = 0
+        deactivated_count = 0
         for mesa in mesas_candidatas:
             if mesa.ventana:
                 fecha_limite = mesa.ventana.hasta + timedelta(days=dias_gracia)
@@ -102,10 +107,10 @@ class MesaExamen(models.Model):
                 fecha_limite = mesa.fecha + timedelta(days=dias_gracia)
 
             if hoy > fecha_limite:
-                mesa.delete()
-                deleted_count += 1
+                type(mesa).objects.filter(pk=mesa.pk).update(activa=False)
+                deactivated_count += 1
 
-        return deleted_count
+        return deactivated_count
 
     def __str__(self):
         return f"Mesa {self.get_tipo_display()} {self.materia.nombre} {self.fecha}"

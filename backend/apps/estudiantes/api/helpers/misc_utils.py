@@ -87,18 +87,19 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
         ).count()
         intentos_en_periodo = intentos
     else:
-        # Sin regularidad posterior: lógica original con prórroga.
+        # Sin regularidad posterior: lógica con prórroga.
+        # Filtrar mesas por plan_de_estudio_id para no tomar fechas de otra carrera
+        # que comparta el mismo objeto Materia.
         limite_60d = fecha_base + timedelta(days=60)
-        primer_llamado_post_base = (
-            MesaExamen.objects.filter(
-                materia=regularidad.materia,
-                tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
-                fecha__gt=fecha_base,
-            )
-            .order_by("fecha")
-            .values_list("fecha", flat=True)
-            .first()
+        plan_id = getattr(regularidad.materia, "plan_de_estudio_id", None)
+        mesa_qs = MesaExamen.objects.filter(
+            materia=regularidad.materia,
+            tipo__in=(MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL),
+            fecha__gt=fecha_base,
         )
+        if plan_id:
+            mesa_qs = mesa_qs.filter(materia__plan_de_estudio_id=plan_id)
+        primer_llamado_post_base = mesa_qs.order_by("fecha").values_list("fecha", flat=True).first()
         limite_prorroga = (
             primer_llamado_post_base
             if primer_llamado_post_base and primer_llamado_post_base < limite_60d
@@ -145,6 +146,8 @@ def _tiene_aprobacion_valida(
     materia: Materia,
     fecha_ref: date | None = None,
     autorizadas_ids: set[int] | None = None,
+    _cache: dict[int, bool] | None = None,
+    _computing: set[int] | None = None,
 ) -> bool:
     """
     Retorna True si el estudiante tiene la materia aprobada de forma válida,
@@ -152,22 +155,30 @@ def _tiene_aprobacion_valida(
     Y sin flag en_resguardo activo.
 
     Fuentes consideradas (en orden de prioridad):
-    1. Regularidad con situacion APROBADO o PROMOCIONADO, en_resguardo=False
-    2. EquivalenciaDisposicionDetalle, en_resguardo=False
+    1. Regularidad con situacion APROBADO o PROMOCIONADO — re-verifica dinámicamente
+       las correlativas APROBADA_PARA_RENDIR aunque el flag en_resguardo sea False.
+       Si detecta que una correlativa base caducó, actualiza en_resguardo=True en DB
+       (auto-sana el flag sin depender del cron recalcular_resguardo).
+    2. EquivalenciaDisposicionDetalle, en_resguardo=False — ídem re-verificación.
     3. ActaExamenEstudiante con calificacion >= 6 (chequeo dinámico de correlativas)
 
-    Para las Actas, como el documento está sellado, el resguardo se evalúa
-    dinámicamente: si las correlativas de la materia estaban satisfechas al
-    momento de rendir, la aprobación es válida.
+    Parámetros internos (no pasar desde afuera):
+    - _cache: dict materia_id → bool, evita re-consultar la misma materia en la
+      misma cadena de evaluación (performance).
+    - _computing: set de materia_ids que están siendo evaluados en este frame de
+      recursión, usado para detectar ciclos en el grafo de correlativas.
 
     El parámetro `autorizadas_ids` contiene materias con autorización excepcional
     otorgada por secretaría (ignoran el resguardo).
     """
-    from datetime import timedelta
     from core.models import ActaExamenEstudiante
 
     if autorizadas_ids is None:
         autorizadas_ids = set(estudiante.materias_autorizadas.values_list("id", flat=True))
+    if _cache is None:
+        _cache = {}
+    if _computing is None:
+        _computing = set()
 
     materia_id = materia.id
 
@@ -175,22 +186,90 @@ def _tiene_aprobacion_valida(
     if materia_id in autorizadas_ids:
         return True
 
-    # 1. Regularidad APR/PRO sin resguardo
-    if Regularidad.objects.filter(
+    # Cache hit — resultado ya calculado en esta cadena
+    if materia_id in _cache:
+        return _cache[materia_id]
+
+    # Ciclo detectado en el grafo de correlativas — asumir válido para no bloquear
+    if materia_id in _computing:
+        return True
+
+    _computing.add(materia_id)
+    try:
+        result = _evaluar_aprobacion(estudiante, materia, materia_id, fecha_ref, autorizadas_ids, _cache, _computing)
+    finally:
+        _computing.discard(materia_id)
+
+    _cache[materia_id] = result
+    return result
+
+
+def _evaluar_aprobacion(
+    estudiante: Estudiante,
+    materia: Materia,
+    materia_id: int,
+    fecha_ref: date | None,
+    autorizadas_ids: set[int],
+    _cache: dict[int, bool],
+    _computing: set[int],
+) -> bool:
+    """Lógica interna de _tiene_aprobacion_valida, separada para claridad."""
+    from core.models import ActaExamenEstudiante
+
+    # 1. Regularidad APR/PRO — re-verifica correlativas APROBADA_PARA_RENDIR en tiempo real
+    reg = Regularidad.objects.filter(
         estudiante=estudiante,
         materia=materia,
         situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO],
         en_resguardo=False,
-    ).exists():
-        return True
+    ).first()
 
-    # 2. Equivalencia sin resguardo
-    if EquivalenciaDisposicionDetalle.objects.filter(
+    if reg:
+        req_ids = list(
+            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
+            .values_list("materia_correlativa_id", flat=True)
+        )
+        correlativas_ok = True
+        for req_id in req_ids:
+            req_mat = Materia.objects.filter(id=req_id).first()
+            if not req_mat:
+                continue
+            if not _tiene_aprobacion_valida(estudiante, req_mat, fecha_ref, autorizadas_ids, _cache, _computing):
+                correlativas_ok = False
+                break
+
+        if correlativas_ok:
+            return True
+
+        # Correlativa de base caducó → auto-sanar el flag en DB sin esperar el cron
+        Regularidad.objects.filter(pk=reg.pk).update(en_resguardo=True)
+        # No retornar True — continúa a verificar otras fuentes
+
+    # 2. Equivalencia sin resguardo — re-verifica correlativas en tiempo real
+    eq = EquivalenciaDisposicionDetalle.objects.filter(
         disposicion__estudiante=estudiante,
         materia=materia,
         en_resguardo=False,
-    ).exists():
-        return True
+    ).first()
+
+    if eq:
+        req_ids = list(
+            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
+            .values_list("materia_correlativa_id", flat=True)
+        )
+        correlativas_ok = True
+        for req_id in req_ids:
+            req_mat = Materia.objects.filter(id=req_id).first()
+            if not req_mat:
+                continue
+            if not _tiene_aprobacion_valida(estudiante, req_mat, fecha_ref, autorizadas_ids, _cache, _computing):
+                correlativas_ok = False
+                break
+
+        if correlativas_ok:
+            return True
+
+        EquivalenciaDisposicionDetalle.objects.filter(pk=eq.pk).update(en_resguardo=True)
 
     # 2b. Mesa pandemia aprobada (InscripcionMesa con folio/libro PANDEMIA y condicion APR)
     from core.models import InscripcionMesa
@@ -203,29 +282,28 @@ def _tiene_aprobacion_valida(
         return True
 
     # 3. Acta de examen aprobada — chequeo dinámico de correlativas
-    from apps.estudiantes.api.helpers.misc_utils import _correlatividades_qs
+    # Incluye notas numéricas >= 6 y las etiquetas textuales APR/EQUI usadas
+    # para equivalencias externas y aprobaciones no numéricas.
+    _CALIFS_APROBADAS = [str(n) for n in range(6, 11)] + ["APR", "EQUI", "APROBADO", "EQUIVALENCIA"]
     acta_aprobada = ActaExamenEstudiante.objects.filter(
         dni=estudiante.dni,
         acta__materia=materia,
-        calificacion_definitiva__in=[str(n) for n in range(6, 11)],
+        calificacion_definitiva__in=_CALIFS_APROBADAS,
     ).select_related("acta").order_by("acta__fecha").first()
 
     if acta_aprobada:
-        # Verificar que las correlativas necesarias estaban satisfechas
-        # (las APROBADA_PARA_RENDIR son las que se exigen para rendir el final)
         req_ids = list(
             _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
             .values_list("materia_correlativa_id", flat=True)
         )
         if not req_ids:
-            return True  # no tiene correlativas exigidas, la aprobación es válida
-        # Cada correlativa requerida debe tener aprobación válida
+            return True
         for req_id in req_ids:
             req_materia = Materia.objects.filter(id=req_id).first()
             if not req_materia:
                 continue
-            if not _tiene_aprobacion_valida(estudiante, req_materia, fecha_ref, autorizadas_ids):
-                return False  # correlativa sin aprobación válida → acta queda en resguardo dinámico
+            if not _tiene_aprobacion_valida(estudiante, req_materia, fecha_ref, autorizadas_ids, _cache, _computing):
+                return False
         return True
 
     return False
@@ -236,6 +314,7 @@ def _calcular_resguardo_equivalencia(
     materia: Materia,
     autorizadas_ids: set[int] | None = None,
     situacion: str | None = None,
+    _cache: dict[int, bool] | None = None,
 ) -> bool:
     """
     Determina si una aprobación/equivalencia para `materia` debe quedar en resguardo.
@@ -246,6 +325,8 @@ def _calcular_resguardo_equivalencia(
     """
     if autorizadas_ids is None:
         autorizadas_ids = set(estudiante.materias_autorizadas.values_list("id", flat=True))
+    if _cache is None:
+        _cache = {}
 
     if materia.id in autorizadas_ids:
         return False
@@ -263,14 +344,14 @@ def _calcular_resguardo_equivalencia(
         req_mat = Materia.objects.filter(id=req_id).first()
         if not req_mat:
             continue
-        if not _tiene_aprobacion_valida(estudiante, req_mat, autorizadas_ids=autorizadas_ids):
+        if not _tiene_aprobacion_valida(estudiante, req_mat, autorizadas_ids=autorizadas_ids, _cache=_cache):
             return True
 
     for req_id in req_reg:
         if req_id in autorizadas_ids:
             continue
         req_mat_obj = Materia.objects.filter(id=req_id).first()
-        if _tiene_aprobacion_valida(estudiante, req_mat_obj, autorizadas_ids=autorizadas_ids):
+        if _tiene_aprobacion_valida(estudiante, req_mat_obj, autorizadas_ids=autorizadas_ids, _cache=_cache):
             continue
         # Solo evaluar la regularidad más reciente: si la última está vencida/agotada,
         # las anteriores también lo están (son más viejas).
@@ -304,7 +385,7 @@ def _calcular_resguardo_equivalencia(
             req_mat = Materia.objects.filter(id=req_id).first()
             if not req_mat:
                 continue
-            if not _tiene_aprobacion_valida(estudiante, req_mat, autorizadas_ids=autorizadas_ids):
+            if not _tiene_aprobacion_valida(estudiante, req_mat, autorizadas_ids=autorizadas_ids, _cache=_cache):
                 return True
 
     return False
