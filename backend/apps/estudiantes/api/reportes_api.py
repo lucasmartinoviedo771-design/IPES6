@@ -94,7 +94,7 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     # 4. Regularidades (latest for each student/materia)
     regs_qs = Regularidad.objects.filter(
         estudiante_id__in=est_ids
-    ).only('estudiante_id', 'materia_id', 'situacion', 'fecha_cierre').order_by('estudiante_id', 'materia_id', '-fecha_cierre')
+    ).only('estudiante_id', 'materia_id', 'situacion', 'fecha_cierre', 'en_resguardo').order_by('estudiante_id', 'materia_id', '-fecha_cierre')
     
     # Cache manual de las últimas regularidades por [est_id][materia_id]
     latest_regs_map = {}
@@ -136,15 +136,13 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
             motivo = ""
             
             if reg:
-                if reg.situacion in [Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO]:
+                if reg.en_resguardo:
+                    motivo = "Regularidad en resguardo"
+                elif reg.situacion in [Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO]:
                     is_ok = True
                 elif reg.situacion == Regularidad.Situacion.REGULAR:
-                    try:
-                        limit_base = reg.fecha_cierre.replace(year=reg.fecha_cierre.year + 2)
-                    except ValueError:
-                        limit_base = reg.fecha_cierre.replace(month=2, day=28, year=reg.fecha_cierre.year + 2)
-                    
-                    if date.today() <= limit_base:
+                    limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg)
+                    if date.today() <= limite and intentos < max_intentos:
                         is_ok = True
                     else:
                         motivo = "Regularidad vencida"
@@ -262,16 +260,19 @@ def _generar_auditoria_academica(
         regularizadas = {} # materia_id -> [fecha_cierre, limite_vigencia, intentos]
         
         for r in regs_raw:
+            if r.en_resguardo:
+                continue
             if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
                 mid = r.materia_id
                 fecha = r.fecha_cierre
                 if mid not in aprobadas or fecha < aprobadas[mid]:
                     aprobadas[mid] = fecha
             elif r.situacion == Regularidad.Situacion.REGULAR:
-                limit, intentos = _calcular_vigencia_regularidad(est, r)
-                mid = r.materia_id
-                if mid not in regularizadas or r.fecha_cierre > regularizadas[mid][0]:
-                    regularizadas[mid] = [r.fecha_cierre, limit, intentos]
+                limit, intentos, max_intentos = _calcular_vigencia_regularidad(est, r)
+                if limit >= date.today() and intentos < max_intentos:
+                    mid = r.materia_id
+                    if mid not in regularizadas or r.fecha_cierre > regularizadas[mid][0]:
+                        regularizadas[mid] = [r.fecha_cierre, limit, intentos]
 
         # 2. Auditar Aprobaciones (Finales / Equivalencias)
         for mid, fecha_aprob in aprobadas.items():
@@ -301,9 +302,10 @@ def _generar_auditoria_academica(
                         'motivo': 'Prerrequisito no aprobado'
                     })
 
-        # 3. Auditar Regularidades
         for r in regs_raw:
             if r.situacion != Regularidad.Situacion.REGULAR:
+                continue
+            if r.en_resguardo:
                 continue
                 
             materia = r.materia

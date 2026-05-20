@@ -83,6 +83,8 @@ def historial_estudiante(request, dni: str | None = None):
 
     hoy = timezone.now().date()
     for mid, reg in situacion_por_materia.items():
+        if reg.en_resguardo:
+            continue
         if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             aprobadas_set.add(mid)
         elif reg.situacion == Regularidad.Situacion.REGULAR:
@@ -183,12 +185,15 @@ def trayectoria_estudiante(request, dni: str | None = None):
         Regularidad.Situacion.DESAPROBADO_TP,
     }
     
-    # 1. PRE-CÁLCULO DE ESTADOS (Tomando siempre la última instancia)
+    # 1. PRE-CÁLCULO DE ESTADOS
     ultima_situacion_por_materia: dict[int, str] = {}
-    for reg in regularidades_list:
+    for reg in reversed(regularidades_list):
         if reg.materia_id not in ultima_situacion_por_materia:
             ultima_situacion_por_materia[reg.materia_id] = reg.situacion
             
+            if reg.en_resguardo:
+                continue
+                
             # Si lo último es APROBADO o PROMOCIONADO
             if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
                 aprobadas_set.add(reg.materia_id)
@@ -324,7 +329,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # --- 3. AUDITORÍA DE VENCIMIENTOS Y ALERTAS ---
     
     materias_procesadas_vigencia = set()
-    for reg in regularidades_list:
+    for reg in reversed(regularidades_list):
         vigencia_iso = None
         vigencia_str = None
         vigente = None

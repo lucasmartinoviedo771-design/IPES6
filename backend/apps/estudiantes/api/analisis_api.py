@@ -80,14 +80,36 @@ def analizar_habilitados_materia(request, materia_id: int):
             "en_curso": set()
         }
 
+    from django.utils import timezone
+    from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+
+    hoy = timezone.now().date()
+    dni_to_student = {est.persona.dni: est for est in estudiantes_list}
+
+    latest_regs: Dict[tuple[str, int], Regularidad] = {}
     for r in regularidades:
         dni = student_id_to_dni.get(r.estudiante_id)
         if not dni: continue
+        key = (dni, r.materia_id)
+        if key not in latest_regs:
+            latest_regs[key] = r
+        else:
+            old_r = latest_regs[key]
+            if r.fecha_cierre and (not old_r.fecha_cierre or r.fecha_cierre > old_r.fecha_cierre):
+                latest_regs[key] = r
+
+    for (dni, materia_id), r in latest_regs.items():
+        if r.en_resguardo:
+            continue
         
         if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
-            student_academic_state[dni]["aprobadas"].add(r.materia_id)
+            student_academic_state[dni]["aprobadas"].add(materia_id)
         elif r.situacion == Regularidad.Situacion.REGULAR:
-            student_academic_state[dni]["regulares"].add(r.materia_id)
+            est_obj = dni_to_student.get(dni)
+            if est_obj:
+                limite, intentos, intentos_max = _calcular_vigencia_regularidad(est_obj, r)
+                if limite >= hoy and intentos < intentos_max:
+                    student_academic_state[dni]["regulares"].add(materia_id)
 
     for a in actas:
         if a.dni not in student_academic_state: continue

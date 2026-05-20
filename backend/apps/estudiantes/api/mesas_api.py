@@ -164,11 +164,19 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                     if not m_obj:
                         continue
                     # REGULAR_PARA_CURSAR: alcanza con regularidad vigente O aprobación válida
-                    tiene_regular_vigente = Regularidad.objects.filter(
+                    reg_corr_reciente = Regularidad.objects.filter(
                         estudiante=est, materia_id=mid,
                         situacion=Regularidad.Situacion.REGULAR,
                         en_resguardo=False,
-                    ).exists()
+                    ).order_by("-fecha_cierre").first()
+                    
+                    tiene_regular_vigente = False
+                    if reg_corr_reciente:
+                        from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+                        limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg_corr_reciente)
+                        fecha_comparacion = fecha_examen if fecha_examen else date.today()
+                        if fecha_comparacion <= limite and intentos < max_intentos:
+                            tiene_regular_vigente = True
                     if not tiene_regular_vigente and not _tiene_aprobacion_valida(est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
                         caidas.append(f"{m_obj.nombre} (correlativa caída o en resguardo)")
 
