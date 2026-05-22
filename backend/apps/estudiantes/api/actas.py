@@ -528,19 +528,23 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
 
     # Mesa vinculada a la materia/fecha ORIGINAL (antes de editar)
     fecha_original = acta.fecha
+    tipo_original = acta.tipo
     mesa_modalidad = MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
     mesa_vieja = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=fecha_original, modalidad=mesa_modalidad).first()
 
-    # Si cambió materia o fecha, buscar/crear la mesa correspondiente a los nuevos valores
+    # Si cambió materia, fecha o tipo, buscar/crear la mesa correspondiente a los nuevos valores
     nueva_fecha = payload.fecha
     materia_cambio = acta.materia_id != payload.materia_id
     fecha_cambio = str(fecha_original) != str(nueva_fecha)
+    tipo_cambio = acta.tipo != payload.tipo
+    
+    nueva_modalidad = MesaExamen.Modalidad.LIBRE if payload.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
 
-    if materia_cambio or fecha_cambio:
+    if materia_cambio or fecha_cambio or tipo_cambio:
         mesa, _ = MesaExamen.objects.get_or_create(
             materia_id=payload.materia_id,
             fecha=nueva_fecha,
-            modalidad=mesa_modalidad,
+            modalidad=nueva_modalidad,
             defaults={
                 "tipo": MesaExamen.Tipo.FINAL,
                 "codigo": f"MA-{acta.id}-{nueva_fecha}-R",
@@ -555,7 +559,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             # y era una mesa generada automáticamente (MA-), la eliminamos.
             if (mesa_vieja.codigo and mesa_vieja.codigo.startswith("MA-") and 
                 not mesa_vieja.inscripciones.exists() and
-                not ActaExamen.objects.filter(materia=mesa_vieja.materia, fecha=mesa_vieja.fecha).exclude(id=acta.id).exists()):
+                not ActaExamen.objects.filter(materia=mesa_vieja.materia, fecha=mesa_vieja.fecha, tipo=tipo_original).exclude(id=acta.id).exists()):
                 mesa_vieja.delete()
     else:
         mesa = mesa_vieja
@@ -569,6 +573,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     # Capturar estado previo para auditoría
     before = snapshot(acta)
     with transaction.atomic():
+        acta.tipo = payload.tipo
         acta.materia = nueva_materia
         acta.profesorado = nuevo_profesorado
         acta.fecha = payload.fecha
