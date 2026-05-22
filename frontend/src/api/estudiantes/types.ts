@@ -757,6 +757,7 @@ export interface EstudianteAdminUpdatePayload {
   carreras_update?: Array<{
     profesorado_id: number;
     estado_academico?: string | null;
+    force_baja_materias?: boolean;
   }>;
 }
 

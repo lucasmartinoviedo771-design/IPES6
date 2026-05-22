@@ -23,8 +23,8 @@ from .schemas import (
     HorarioCatedraDetalleIn, HorarioCatedraDetalleOut
 )
 
-STRUCTURE_VIEW_ROLES = {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"}
-STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
+STRUCTURE_VIEW_ROLES = {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta", "rectorado", "attp"}
+STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel", "attp"}
 
 def _ensure_structure_view(user, profesorado_id: int | None = None) -> None:
     ensure_roles(user, STRUCTURE_VIEW_ROLES)

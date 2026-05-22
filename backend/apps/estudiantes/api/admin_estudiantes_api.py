@@ -458,7 +458,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     Actualiza la información base del estudiante (Perfil, Legajo, Password).
     Permite el reseteo forzado de contraseña desde la administración.
     """
-    _ensure_admin(request)
+    _ensure_admin(request, include_attp=True)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")

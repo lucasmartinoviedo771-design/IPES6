@@ -11,6 +11,8 @@ import {
 import { fetchCarreras } from "@/api/carreras";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import BackButton from "@/components/ui/BackButton";
+import { useAuth } from "@/context/AuthContext";
+import { hasAnyRole } from "@/utils/roles";
 
 import { EstadoLegajo, EstadoAcademico, DetailFormValues, DEFAULT_LIMIT } from "./estudiantes-admin/types";
 import { useDebouncedValue } from "./estudiantes-admin/hooks/useDebouncedValue";
@@ -30,6 +32,11 @@ import { EstudiantesTable } from "./estudiantes-admin/components/EstudiantesTabl
 import { EstudianteDetailDialog } from "./estudiantes-admin/components/EstudianteDetailDialog";
 
 export default function EstudiantesAdminPage() {
+  const { user } = useAuth();
+  const isAdminOrSec = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const isRectorado = hasAnyRole(user, ["rectorado"]) && !isAdminOrSec;
+  const isAttp = hasAnyRole(user, ["attp"]) && !isAdminOrSec;
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [estado, setEstado] = useState<EstadoLegajo>("");
@@ -52,6 +59,9 @@ export default function EstudiantesAdminPage() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDetailValues, setPendingDetailValues] = useState<DetailFormValues | null>(null);
+
+  // Nuevo estado para el modal de advertencia de materias
+  const [activeEnrollmentsWarning, setActiveEnrollmentsWarning] = useState<any[] | null>(null);
 
   const anioIngresoOptions = useAnioIngresoOptions(carreraId);
 
@@ -94,6 +104,7 @@ export default function EstudiantesAdminPage() {
     setConfirmDialogOpen(false);
     setDeleteConfirmOpen(false);
     setPendingDetailValues(null);
+    setActiveEnrollmentsWarning(null);
     form.reset();
   };
 
@@ -132,12 +143,46 @@ export default function EstudiantesAdminPage() {
     updateMutation.mutate(
       { dni: selectedDni, data: pendingDetailValues },
       {
-        onSettled: () => {
+        onSuccess: () => {
           setPendingDetailValues(null);
         },
+        onError: (error: any) => {
+          const apiResponse = error?.response?.data?.data;
+          if (apiResponse?.code === "ACTIVE_ENROLLMENTS") {
+             setActiveEnrollmentsWarning(apiResponse.inscripciones || []);
+          } else {
+             setPendingDetailValues(null);
+          }
+        }
       },
     );
     setConfirmDialogOpen(false);
+  };
+
+  const handleForceBajaMaterias = () => {
+    if (!selectedDni || !pendingDetailValues) return;
+    
+    // Forzamos el flag en las carreras que estén marcadas como BAJ
+    const forcedValues = {
+      ...pendingDetailValues,
+      carreras_situacion: pendingDetailValues.carreras_situacion?.map(c => 
+        c.estado_academico === 'BAJ' ? { ...c, force_baja_materias: true } : c
+      )
+    };
+
+    updateMutation.mutate(
+      { dni: selectedDni, data: forcedValues },
+      {
+        onSuccess: () => {
+          setPendingDetailValues(null);
+          setActiveEnrollmentsWarning(null);
+        },
+        onError: () => {
+          setPendingDetailValues(null);
+          setActiveEnrollmentsWarning(null);
+        }
+      }
+    );
   };
 
   const handleCancelDetailSave = () => {
@@ -146,6 +191,7 @@ export default function EstudiantesAdminPage() {
     }
     setConfirmDialogOpen(false);
     setPendingDetailValues(null);
+    setActiveEnrollmentsWarning(null);
   };
 
   const handleResetPassword = () => {
@@ -237,6 +283,8 @@ export default function EstudiantesAdminPage() {
           autorizarRendirMutation.mutate({ autorizado, observacion, materias_autorizadas: materias_autorizadas || [] })
         }
         autorizarRendirIsPending={autorizarRendirMutation.isPending}
+        isAttp={isAttp}
+        isRectorado={isRectorado}
       />
 
       <FinalConfirmationDialog
@@ -255,6 +303,22 @@ export default function EstudiantesAdminPage() {
         confirmColor="error"
         confirmLabel="Sí, eliminar definitivamente"
       />
+
+      {/* Dialogo de confirmación de Baja en Cascada */}
+      {activeEnrollmentsWarning && (
+        <FinalConfirmationDialog
+          open={Boolean(activeEnrollmentsWarning)}
+          onConfirm={handleForceBajaMaterias}
+          onCancel={() => {
+            setActiveEnrollmentsWarning(null);
+            setPendingDetailValues(null);
+          }}
+          contextText={`dar de baja la carrera de este estudiante. Atención: El estudiante tiene ${activeEnrollmentsWarning.length} inscripciones activas (ej: ${activeEnrollmentsWarning.map(m => m.materia).join(', ')}). Al confirmar, el sistema automáticamente dará de baja todas estas inscripciones también.`}
+          confirmLabel="Sí, dar de baja carrera y materias"
+          confirmColor="warning"
+          loading={updateMutation.isPending}
+        />
+      )}
     </Box>
   );
 }

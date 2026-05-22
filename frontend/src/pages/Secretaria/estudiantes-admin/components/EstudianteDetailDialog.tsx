@@ -61,6 +61,8 @@ type Props = {
   onAutorizarRendir?: (autorizado: boolean, observacion: string, materias_autorizadas?: number[]) => void;
   autorizarRendirIsPending?: boolean;
   isAdmin?: boolean;
+  isAttp?: boolean;
+  isRectorado?: boolean;
 };
 
 export function EstudianteDetailDialog({
@@ -87,7 +89,9 @@ export function EstudianteDetailDialog({
   onResetPassword,
   onAutorizarRendir,
   autorizarRendirIsPending,
-  isAdmin = true
+  isAdmin = true,
+  isAttp = false,
+  isRectorado = false,
 }: Props) {
   const estudiante = detailQuery.data;
   const [activeTab, setActiveTab] = useState(0);
@@ -206,6 +210,8 @@ export function EstudianteDetailDialog({
               autorizarRendirIsPending={autorizarRendirIsPending}
               detailData={detailQuery.data}
               isAdmin={isAdmin}
+              isAttp={isAttp}
+              isRectorado={isRectorado}
             />
 
           </Stack>
@@ -214,27 +220,31 @@ export function EstudianteDetailDialog({
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
-        <Button
-          color="error"
-          startIcon={<DeleteIcon />}
-          onClick={onDeleteClick}
-          disabled={updateIsPending || deleteIsPending}
-        >
-          Eliminar estudiante
-        </Button>
-        <Stack direction="row" spacing={1}>
+        {(!isAttp && !isRectorado) && (
+          <Button
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={onDeleteClick}
+            disabled={updateIsPending || deleteIsPending}
+          >
+            Eliminar estudiante
+          </Button>
+        )}
+        <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
           <Button startIcon={<CloseIcon />} onClick={onClose}>
             Cerrar
           </Button>
-          <Button
-            type="submit"
-            form="estudiante-admin-form"
-            variant="contained"
-            startIcon={updateIsPending ? <CircularProgress size={18} color="inherit" /> : undefined}
-            disabled={updateIsPending || deleteIsPending}
-          >
-            {updateIsPending ? "Guardando..." : "Guardar cambios"}
-          </Button>
+          {(!isAttp && !isRectorado) && (
+            <Button
+              type="submit"
+              form="estudiante-admin-form"
+              variant="contained"
+              startIcon={updateIsPending ? <CircularProgress size={18} color="inherit" /> : undefined}
+              disabled={updateIsPending || deleteIsPending}
+            >
+              {updateIsPending ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          )}
         </Stack>
       </DialogActions>
     </Dialog>

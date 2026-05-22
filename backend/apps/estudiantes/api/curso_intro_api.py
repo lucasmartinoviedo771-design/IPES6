@@ -408,14 +408,19 @@ def curso_intro_listar_registros(
 
 
 @estudiantes_router.get("/curso-intro/pendientes", response=list[CursoIntroPendienteOut], auth=JWTAuth())
-def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
+def curso_intro_listar_pendientes(
+    request, 
+    profesorado_id: int | None = None,
+    solo_activos: bool = False,
+    anio_ingreso: int | None = None,
+):
     ensure_roles(request.user, CI_ALLOWED_ROLES)
     
     from django.core.cache import cache
     allowed = _ci_allowed_profesorados(request.user)
     
     # Generar clave de caché basada en permisos y filtro
-    cache_key = f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}"
+    cache_key = f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_anio{anio_ingreso or 'all'}"
     if allowed is not None:
         cache_key += f"_a{'-'.join(map(str, sorted(list(allowed))))}"
     
@@ -439,6 +444,11 @@ def curso_intro_listar_pendientes(request, profesorado_id: int | None = None):
         .prefetch_related("carreras_detalle__profesorado")
         .distinct()
     )
+
+    if solo_activos:
+        qs = qs.filter(carreras_detalle__estado_academico="ACT")
+    if anio_ingreso:
+        qs = qs.filter(carreras_detalle__anio_ingreso=anio_ingreso)
 
     allowed = _ci_allowed_profesorados(request.user)
     if profesorado_id:

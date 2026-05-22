@@ -24,17 +24,19 @@ type Section = {
 export default function SecretariaIndex() {
   const { user } = useAuth();
 
-  const canManageDocentes = hasAnyRole(user, ["admin", "secretaria"]);
-  const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]);
-  const canManageHorarios = hasAnyRole(user, ["admin", "secretaria"]);
-  const canManageMesas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canManageCatDoc = hasAnyRole(user, ["admin", "secretaria"]);
+  const canManageDocentes = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
+  const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]); // Solo ellos asignan roles
+  const canManageHorarios = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
+  const canManageMesas = hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado", "attp"]);
+  const canManageCatDoc = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
   const canManageVentanas = hasAnyRole(user, [
     "admin",
     "secretaria",
     "jefa_aaee",
+    "rectorado",
+    "attp"
   ]);
-  const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado", "attp"]);
 
   const sections: Section[] = [
     {

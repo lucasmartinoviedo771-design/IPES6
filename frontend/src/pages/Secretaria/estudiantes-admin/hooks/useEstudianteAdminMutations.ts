@@ -105,6 +105,7 @@ export function useUpdateEstudianteMutation(
         carreras_update: data.carreras_situacion?.map((c) => ({
           profesorado_id: c.profesorado_id,
           estado_academico: c.estado_academico || undefined,
+          force_baja_materias: c.force_baja_materias,
         })),
       };
 

@@ -26,6 +26,10 @@ const CursoIntroductorioPage: React.FC = () => {
     pendientesLoading,
     pendientesProfesoradoId,
     setPendientesProfesoradoId,
+    pendientesSoloActivos,
+    setPendientesSoloActivos,
+    pendientesAnioIngreso,
+    setPendientesAnioIngreso,
     registros,
     registrosLoading,
     registroFiltros,
@@ -97,9 +101,13 @@ const CursoIntroductorioPage: React.FC = () => {
         pendientes={pendientes}
         pendientesLoading={pendientesLoading}
         pendientesProfesoradoId={pendientesProfesoradoId}
+        pendientesSoloActivos={pendientesSoloActivos}
+        pendientesAnioIngreso={pendientesAnioIngreso}
         puedeGestionarRegistros={puedeGestionarRegistros}
         cohortesDisponibles={cohortes.length > 0}
         onChangePendientesProfesorado={setPendientesProfesoradoId}
+        onChangePendientesSoloActivos={setPendientesSoloActivos}
+        onChangePendientesAnioIngreso={setPendientesAnioIngreso}
         onInscribir={abrirDialogoInscripcion}
       />
 

@@ -114,9 +114,13 @@ export async function listarCursoIntroRegistros(
 
 export async function listarCursoIntroPendientes(
   profesoradoId?: number,
+  solo_activos?: boolean,
+  anio_ingreso?: number,
 ): Promise<CursoIntroPendienteDTO[]> {
-  const params: Record<string, number> = {};
+  const params: Record<string, number | boolean> = {};
   if (profesoradoId) params.profesorado_id = profesoradoId;
+  if (solo_activos) params.solo_activos = solo_activos;
+  if (anio_ingreso) params.anio_ingreso = anio_ingreso;
   const { data } = await client.get<CursoIntroPendienteDTO[]>("/estudiantes/curso-intro/pendientes", { params });
   return data;
 }

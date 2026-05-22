@@ -84,7 +84,7 @@ def _must_complete_profile(user) -> bool:
     management_roles = {
         "admin", "secretaria", "bedel", "docente", 
         "coordinador", "tutor", "jefes", "jefa_aaee", 
-        "equivalencias", "titulos"
+        "equivalencias", "titulos", "rectorado", "attp"
     }
     user_roles = {g.name.lower().strip() for g in user.groups.all()}
     if user.is_staff or user.is_superuser or user_roles.intersection(management_roles):

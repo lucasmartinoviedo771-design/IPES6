@@ -40,6 +40,8 @@ type Props = {
   autorizarRendirIsPending?: boolean;
   detailData?: any;
   isAdmin?: boolean;
+  isAttp?: boolean;
+  isRectorado?: boolean;
 };
 
 export function EstudianteDetailForm({
@@ -62,7 +64,9 @@ export function EstudianteDetailForm({
   onAutorizarRendir,
   autorizarRendirIsPending,
   detailData,
-  isAdmin = true
+  isAdmin = true,
+  isAttp = false,
+  isRectorado = false,
 }: Props) {
   const [materiasAutorizadas, setMateriasAutorizadas] = React.useState<number[]>(detailData?.materias_autorizadas || []);
 
@@ -79,11 +83,12 @@ export function EstudianteDetailForm({
   };
   return (
     <form id="estudiante-admin-form" onSubmit={handleSubmit(onSubmit)}>
+      <fieldset disabled={isRectorado} style={{ border: 'none', margin: 0, padding: 0 }}>
       <Stack spacing={2}>
         
         {/* TAB 0: DATOS PERSONALES */}
         {activeTab === 0 && (
-          <>
+          <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
             <Divider>Identidad y Nacimiento</Divider>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <Controller
@@ -250,7 +255,7 @@ export function EstudianteDetailForm({
                 )}
               />
             </Stack>
-          </>
+          </fieldset>
         )}
 
         {/* TAB 1: SITUACION ACADEMICA */}
@@ -289,6 +294,7 @@ export function EstudianteDetailForm({
               </Box>
             ))}
 
+            <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
             <Divider>Datos de Sistema</Divider>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
               <TextField label="Email registrado" value={detailData?.email || ""} size="small" fullWidth InputProps={{ readOnly: true }} />
@@ -317,11 +323,13 @@ export function EstudianteDetailForm({
                 )}
               />
             </Stack>
+          </fieldset>
           </>
         )}
 
         {/* TAB 2: LEGAJO Y DOCUMENTACION */}
         {activeTab === 2 && isAdmin && (
+          <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
           <>
             <Box mb={2}>
                <Stack direction="row" spacing={2}>
@@ -367,10 +375,12 @@ export function EstudianteDetailForm({
               )}
             />
           </>
+          </fieldset>
         )}
 
         {/* TAB 3: AUTORIZACION ESPECIAL */}
         {activeTab === 3 && isAdmin && (
+          <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
           <Box>
             <Paper variant="outlined" sx={{ p: 3, borderColor: autorizadoSwitch ? 'warning.main' : 'divider', bgcolor: autorizadoSwitch ? 'warning.50' : 'inherit' }}>
               <Stack spacing={2.5}>
@@ -442,9 +452,11 @@ export function EstudianteDetailForm({
               </Stack>
             </Paper>
           </Box>
+          </fieldset>
         )}
 
       </Stack>
+      </fieldset>
     </form>
   );
 }

@@ -18,14 +18,21 @@ import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import { ProfesoradoDTO } from "@/api/cargaNotas";
 import { CursoIntroPendienteDTO } from "@/api/cursoIntro";
 
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
+
 type Props = {
   profesorados: ProfesoradoDTO[];
   pendientes: CursoIntroPendienteDTO[];
   pendientesLoading: boolean;
   pendientesProfesoradoId: string;
+  pendientesSoloActivos: boolean;
+  pendientesAnioIngreso: string;
   puedeGestionarRegistros: boolean;
   cohortesDisponibles: boolean;
   onChangePendientesProfesorado: (value: string) => void;
+  onChangePendientesSoloActivos: (value: boolean) => void;
+  onChangePendientesAnioIngreso: (value: string) => void;
   onInscribir: (pendiente: CursoIntroPendienteDTO) => void;
 };
 
@@ -34,9 +41,13 @@ const PendientesTable: React.FC<Props> = ({
   pendientes,
   pendientesLoading,
   pendientesProfesoradoId,
+  pendientesSoloActivos,
+  pendientesAnioIngreso,
   puedeGestionarRegistros,
   cohortesDisponibles,
   onChangePendientesProfesorado,
+  onChangePendientesSoloActivos,
+  onChangePendientesAnioIngreso,
   onInscribir,
 }) => {
   return (
@@ -46,7 +57,7 @@ const PendientesTable: React.FC<Props> = ({
       </Typography>
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid container spacing={2} sx={{ mb: 2, alignItems: 'center' }}>
             <Grid item xs={12} md={4}>
               <TextField
                 select
@@ -63,6 +74,29 @@ const PendientesTable: React.FC<Props> = ({
                   </MenuItem>
                 ))}
               </TextField>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                label="Año de ingreso"
+                size="small"
+                type="number"
+                fullWidth
+                value={pendientesAnioIngreso}
+                onChange={(event) => onChangePendientesAnioIngreso(event.target.value)}
+                placeholder="Ej: 2026"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={pendientesSoloActivos}
+                    onChange={(event) => onChangePendientesSoloActivos(event.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="Solo estudiantes activos"
+              />
             </Grid>
           </Grid>
           {pendientesLoading ? (

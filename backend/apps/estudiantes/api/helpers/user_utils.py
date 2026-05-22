@@ -15,7 +15,7 @@ from core.models import (
 
 ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 # Roles que pueden ver información (solo lectura) pero no necesariamente editar
-STAFF_VIEW_ROLES = ADMIN_ALLOWED_ROLES | {"tutor", "coordinador", "jefes", "jefa_aaee", "consulta"}
+STAFF_VIEW_ROLES = ADMIN_ALLOWED_ROLES | {"tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "rectorado", "attp"}
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:
@@ -53,8 +53,11 @@ def _user_has_roles(user, roles: Iterable[str]) -> bool:
     return bool(user_groups.intersection(role_set))
 
 
-def _ensure_admin(request):
-    ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
+def _ensure_admin(request, include_attp: bool = False):
+    allowed = ADMIN_ALLOWED_ROLES
+    if include_attp:
+        allowed = allowed | {"attp"}
+    ensure_roles(request.user, allowed)
 
 
 def _ensure_staff_view(request):

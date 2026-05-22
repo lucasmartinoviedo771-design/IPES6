@@ -229,6 +229,11 @@ def _apply_estudiante_updates(
 
     if payload.carreras_update is not None:
         from core.models import EstudianteCarrera
+        from core.models.inscripciones import InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
+        from django.utils import timezone
+        
+        anio_actual = timezone.now().year
+
         for cu in payload.carreras_update:
             # Handle both dict (when Any) and Pydantic objects
             profesorado_id = cu.get("profesorado_id") if isinstance(cu, dict) else getattr(cu, "profesorado_id", None)
@@ -240,8 +245,46 @@ def _apply_estudiante_updates(
             if ec:
                 ec_updates = []
                 estado_academico = cu.get("estado_academico") if isinstance(cu, dict) else getattr(cu, "estado_academico", None)
+                force_baja = cu.get("force_baja_materias") if isinstance(cu, dict) else getattr(cu, "force_baja_materias", False)
                 
                 if estado_academico is not None:
+                    # Lógica de intercepción de Bajas
+                    if estado_academico == 'BAJ' and ec.estado_academico != 'BAJ':
+                        # Buscar inscripciones activas para este profesorado
+                        inscripciones_activas = InscripcionMateriaEstudiante.objects.filter(
+                            estudiante=est,
+                            anio=anio_actual,
+                            materia__plan_de_estudio__profesorado_id=profesorado_id,
+                            estado__in=[
+                                InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                                InscripcionMateriaEstudiante.Estado.PENDIENTE,
+                                InscripcionMateriaEstudiante.Estado.CONDICIONAL
+                            ]
+                        ).select_related('materia')
+                        
+                        if inscripciones_activas.exists():
+                            if not force_baja:
+                                # Abortar y devolver código especial para el Frontend
+                                materias_inscriptas = [{"id": i.id, "materia": i.materia.nombre} for i in inscripciones_activas]
+                                return False, (409, ApiResponse(
+                                    ok=False, 
+                                    message="El estudiante tiene inscripciones activas.",
+                                    data={"code": "ACTIVE_ENROLLMENTS", "inscripciones": materias_inscriptas}
+                                ))
+                            else:
+                                # Aplicar baja en cascada
+                                for ins in inscripciones_activas:
+                                    ins.estado = InscripcionMateriaEstudiante.Estado.BAJA
+                                    ins.baja_fecha = timezone.now().date()
+                                    ins.baja_motivo = "Baja automática por baja del profesorado."
+                                    ins.save(update_fields=["estado", "baja_fecha", "baja_motivo", "updated_at"])
+                                    InscripcionMateriaMovimiento.objects.create(
+                                        inscripcion=ins,
+                                        tipo=InscripcionMateriaMovimiento.Tipo.BAJA,
+                                        operador="Sistema (Admin)",
+                                        motivo_detalle="Baja automática en cascada."
+                                    )
+
                     ec.estado_academico = estado_academico
                     ec_updates.append("estado_academico")
                 

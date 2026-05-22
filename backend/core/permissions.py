@@ -22,13 +22,15 @@ _UNRESTRICTED_ROLES = {
     "consulta",
     "tutor",
     "jefes",
+    "rectorado",
+    "attp",
 }
 
 # --- MATRICES DE DEFINICIÓN DE ACCESO ---
 
 STRUCTURE_VIEW_ROLES = {
     "admin", "secretaria", "bedel", "coordinador", "tutor",
-    "jefes", "jefa_aaee", "consulta", "estudiante",
+    "jefes", "jefa_aaee", "consulta", "estudiante", "rectorado", "attp"
 }
 STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
 ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
@@ -37,11 +39,11 @@ VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "estudiante"}
 PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel"}
 GLOBAL_OVERVIEW_ROLES = {
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
-    "tutor", "coordinador", "consulta",
+    "tutor", "coordinador", "consulta", "rectorado", "attp"
 }
 ALL_ROLES: set[str] = {
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
-    "tutor", "coordinador", "consulta", "estudiante",
+    "tutor", "coordinador", "consulta", "estudiante", "rectorado", "attp"
 }
 
 # Define qué roles pueden asignar a otros roles (Admin Console)
@@ -80,6 +82,10 @@ def get_user_roles(user: User) -> set[str]:
             roles.add("estudiante")
         if name == "docentes" or "docente" in name:
             roles.add("docente")
+        if name == "rectorado":
+            roles.add("rectorado")
+        if name == "attp":
+            roles.add("attp")
 
     if user.is_superuser:
         roles.add("admin")

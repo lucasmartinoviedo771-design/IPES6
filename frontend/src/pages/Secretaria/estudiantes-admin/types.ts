@@ -44,6 +44,7 @@ export type CarreraUpdateForm = {
   nombre: string;
   estado_academico: EstadoAcademico;
   condicion: Condicion;
+  force_baja_materias?: boolean;
 };
 
 export type DetailFormValues = {

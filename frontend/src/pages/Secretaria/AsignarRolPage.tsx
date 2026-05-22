@@ -59,6 +59,8 @@ const ROLES = [
   { value: 'tutor',      label: 'Tutor',             requiereProf: false, requiereTurno: true,  multiProf: true, profOpcional: true },
   { value: 'coordinador',label: 'Coordinador',      requiereProf: true,  requiereTurno: false, multiProf: false },
   { value: 'consulta',   label: 'Consulta',          requiereProf: false, requiereTurno: false },
+  { value: 'rectorado',  label: 'Rectorado',         requiereProf: false, requiereTurno: false },
+  { value: 'attp',       label: 'A.T.T.P.',          requiereProf: false, requiereTurno: false },
 ];
 
 const TURNOS = [
@@ -98,7 +100,10 @@ const AsignarRolPage: React.FC = () => {
         axios.get('staff?' + Date.now()),
         axios.get('profesorados/'),
       ]);
-      setUsers(usersRes.data);
+      const sortedUsers = usersRes.data.sort((a: StaffUser, b: StaffUser) => 
+        (a.last_name || '').localeCompare(b.last_name || '')
+      );
+      setUsers(sortedUsers);
       setProfesorados(profRes.data);
       if (selectedUser) {
         const updated = usersRes.data.find((u: StaffUser) => u.id === selectedUser.id);

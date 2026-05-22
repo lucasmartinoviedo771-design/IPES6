@@ -136,6 +136,7 @@ EstudianteAdminDetail.model_rebuild()
 class CarreraUpdateIn(Schema):
     profesorado_id: int
     estado_academico: str | None = None
+    force_baja_materias: bool = False
     nombre: str | None = None
     condicion: str | None = None
 

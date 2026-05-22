@@ -123,9 +123,22 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if not est:
         return 400, ApiResponse(ok=False, message="Estudiante no identificado.")
         
-    mat = Materia.objects.filter(id=payload.materia_id).first()
+    mat = Materia.objects.filter(id=payload.materia_id).select_related("plan_de_estudio__profesorado").first()
     if not mat:
         return 404, ApiResponse(ok=False, message="Materia no encontrada.")
+
+    # --- 0. VALIDACIÓN DE ESTADO ACTIVO ---
+    from core.models.estudiantes import EstudianteCarrera
+    profesorado_id = mat.plan_de_estudio.profesorado_id if mat.plan_de_estudio else None
+    if profesorado_id:
+        carrera_estado = EstudianteCarrera.objects.filter(
+            estudiante=est, profesorado_id=profesorado_id
+        ).values_list('estado_academico', flat=True).first()
+        if carrera_estado != 'ACT':
+            return 400, ApiResponse(
+                ok=False, 
+                message="El alumno debe encontrarse en estado 'Activo' en el profesorado correspondiente para poder inscribirse a materias."
+            )
 
     anio_actual = datetime.now().year
 
@@ -385,7 +398,7 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
     ).exists()
 
     from core.permissions import get_user_roles
-    es_gestion = bool(get_user_roles(request.user) & {"admin", "secretaria", "bedel"})
+    es_gestion = bool(get_user_roles(request.user) & {"admin", "secretaria", "bedel", "attp"})
 
     est = _resolve_estudiante(request, dni)
     if not est:
@@ -454,7 +467,7 @@ from core.models.estudiantes import EstudianteCarrera
 @estudiantes_router.get("/cambio-comision/pendientes", response=list[SolicitudCambioComisionItem], auth=JWTAuth())
 def listar_cambios_comision_pendientes(request, dni: str | None = None, profesorado_id: int | None = None):
     """Lista inscripciones en estado CONDICIONAL (solicitudes de cambio de comisión pendientes)."""
-    ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor"})
+    ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor", "attp"})
     qs = (
         InscripcionMateriaEstudiante.objects.filter(estado=InscripcionMateriaEstudiante.Estado.CONDICIONAL)
         .select_related(
@@ -601,7 +614,7 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
     from django.utils.timezone import now
 
     roles = get_user_roles(request.user)
-    es_gestion = bool(roles & {"admin", "secretaria"})
+    es_gestion = bool(roles & {"admin", "secretaria", "attp"})
     es_bedel = "bedel" in roles
 
     # Resolver el estudiante según el payload
@@ -693,7 +706,7 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
     """
     from apps.estudiantes.services.notificaciones_service import NotificacionesService
     
-    ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor"})
+    ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor", "attp"})
     
     ins = get_object_or_404(InscripcionMateriaEstudiante, id=inscripcion_id)
     
