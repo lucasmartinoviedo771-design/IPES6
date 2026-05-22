@@ -10,7 +10,8 @@ from core.schemas import AsignarRolIn, UserSchema, ForceResetPasswordIn
 
 ALL_ROLES = {
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes", 
-    "tutor", "coordinador", "consulta", "estudiante", "docente"
+    "tutor", "coordinador", "consulta", "estudiante", "docente",
+    "rectorado", "attp"
 }
 
 @management_router.get("/staff", response=List[UserSchema], auth=JWTAuth())

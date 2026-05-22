@@ -100,6 +100,8 @@ export default function SecretariaIndex() {
           : []),
         ...(canManageNotas
           ? [
+            DASHBOARD_ITEMS.ACTAS_Y_NOTAS_GENERAL,
+            DASHBOARD_ITEMS.ACTA_MANUAL,
             {
               ...DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES,
               subtitle: "Consulta comisiones asignadas (vista docente).",

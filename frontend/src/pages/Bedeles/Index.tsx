@@ -59,6 +59,7 @@ export default function BedelesIndex() {
           ? [
             DASHBOARD_ITEMS.REGULARIDAD_CARGA,
             DASHBOARD_ITEMS.ACTAS_FINALES,
+            DASHBOARD_ITEMS.ACTA_MANUAL,
             DASHBOARD_ITEMS.EQUIV_CARGA_VALIDADA,
           ]
           : [],

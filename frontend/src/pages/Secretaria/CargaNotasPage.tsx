@@ -452,10 +452,35 @@ const CargaNotasPage: React.FC = () => {
             </Paper>
 
             {finalSelectedMesaId && (
-              <OralActasSection
-                mesaPreseleccionada={selectedMesaResumen}
-                finalRows={finalRows}
-              />
+              <Stack gap={3}>
+                <FinalExamPlanillaSection
+                  finalPlanilla={finalPlanilla}
+                  finalLoadingPlanilla={finalLoadingPlanilla}
+                  finalSelectedMesaId={finalSelectedMesaId}
+                  finalCondiciones={finalCondiciones}
+                  finalRows={finalRows}
+                  filteredFinalRows={filteredFinalRows}
+                  finalReadOnly={finalReadOnly}
+                  finalPermissionDenied={finalPermissionDenied}
+                  finalSaving={finalSaving}
+                  finalCierreLoading={finalCierreLoading}
+                  finalSearch={finalSearch}
+                  setFinalSearch={setFinalSearch}
+                  totalFinalRows={totalFinalRows}
+                  visibleFinalRows={visibleFinalRows}
+                  hasFinalSearch={hasFinalSearch}
+                  downloadingOralBatch={downloadingOralBatch}
+                  onRowChange={handleFinalRowChange}
+                  onOpenOralActa={handleOpenOralActa}
+                  onFinalSaveClick={handleFinalSaveClick}
+                  onFinalPlanillaCierre={handleFinalPlanillaCierre}
+                  onDownloadAllOralActas={handleDownloadAllOralActas}
+                />
+                <OralActasSection
+                  mesaPreseleccionada={selectedMesaResumen}
+                  finalRows={finalRows}
+                />
+              </Stack>
             )}
           </Stack>
         )}
