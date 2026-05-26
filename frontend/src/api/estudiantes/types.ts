@@ -652,10 +652,15 @@ export interface EstudianteAdminDocumentacionDTO {
 }
 
 export interface CarreraStatus {
+  profesorado_id: number;
   nombre: string;
   estado_academico: string;
   estado_academico_display: string;
   condicion: string;
+  estado_legajo?: string;
+  documentacion?: EstudianteAdminDocumentacionDTO | null;
+  curso_introductorio_aprobado?: boolean;
+  libreta_entregada?: boolean;
 }
 
 export interface EstudianteAdminListItemDTO {
@@ -746,6 +751,7 @@ export interface EstudianteAdminUpdatePayload {
   must_change_password?: boolean | null;
   fecha_nacimiento?: string | null;
   lugar_nacimiento?: string | null;
+  profesorado_id?: number | null;
   documentacion?: Partial<EstudianteAdminDocumentacionDTO>;
   anio_ingreso?: string | null;
   genero?: string | null;

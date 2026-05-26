@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from apps.common.api_schemas import ApiResponse
 from core.models import (
     Estudiante,
+    EstudianteCarrera,
     PlanDeEstudio,
     PreinscripcionChecklist,
     Profesorado,
@@ -45,10 +46,13 @@ DOCUMENTACION_FIELDS = {
     "articulo_7",
 }
 
+def _extract_documentacion_from_ec(ec: EstudianteCarrera) -> dict:
+    """Extrae los campos de documentación de un EstudianteCarrera."""
+    return {key: getattr(ec, key) for key in DOCUMENTACION_FIELDS if hasattr(ec, key)}
+
 
 def _extract_documentacion(est: Estudiante) -> dict:
-    if not est:
-        return {}
+    """Backward-compat: extrae docs del Estudiante (fallback si no hay EC)."""
     return {key: getattr(est, key) for key in DOCUMENTACION_FIELDS if hasattr(est, key)}
 
 
@@ -124,9 +128,6 @@ def _apply_estudiante_updates(
         if user_updates:
             user.save(update_fields=user_updates)
 
-    # Los campos telefono y domicilio se manejan en el bloque de Persona más abajo
-    # ya que en Estudiante son propiedades de solo lectura.
-
     if allow_estado_legajo and payload.estado_legajo is not None:
         val = str(payload.estado_legajo).upper()
         if val in ("COM", "INC", "PEN"):
@@ -148,18 +149,46 @@ def _apply_estudiante_updates(
                     message="Formato de fecha invalido. Usa DD/MM/AAAA o AAAA-MM-DD.",
                 ),
             )
-        est.fecha_nacimiento_temp = new_date # Temporary storage for persona sync
+        est.fecha_nacimiento_temp = new_date
 
-    if payload.documentacion is not None:
-        if hasattr(payload.documentacion, "model_dump"):
-            doc_updates = payload.documentacion.model_dump(exclude_unset=True)
-        else:
-            doc_updates = payload.documentacion if isinstance(payload.documentacion, dict) else {}
-        
-        for key, value in doc_updates.items():
-            if hasattr(est, key):
-                setattr(est, key, value)
-                fields_to_update.add(key)
+    # --- Documentación: se escribe en EstudianteCarrera (por carrera) ---
+    has_doc_updates = (
+        payload.documentacion is not None
+        or payload.curso_introductorio_aprobado is not None
+        or payload.libreta_entregada is not None
+    )
+    if has_doc_updates:
+        # Resolver la EC objetivo
+        profesorado_id = getattr(payload, "profesorado_id", None)
+        ecs = EstudianteCarrera.objects.filter(estudiante=est)
+        if profesorado_id:
+            ecs = ecs.filter(profesorado_id=profesorado_id)
+
+        ec_list = list(ecs)
+        for ec in ec_list:
+            ec_fields: list[str] = []
+
+            if payload.documentacion is not None:
+                if hasattr(payload.documentacion, "model_dump"):
+                    doc_updates = payload.documentacion.model_dump(exclude_unset=True)
+                else:
+                    doc_updates = payload.documentacion if isinstance(payload.documentacion, dict) else {}
+                for key, value in doc_updates.items():
+                    if hasattr(ec, key):
+                        setattr(ec, key, value)
+                        ec_fields.append(key)
+
+            if payload.curso_introductorio_aprobado is not None and hasattr(ec, "curso_introductorio_aprobado"):
+                ec.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
+                ec_fields.append("curso_introductorio_aprobado")
+
+            if payload.libreta_entregada is not None and hasattr(ec, "libreta_entregada"):
+                ec.libreta_entregada = payload.libreta_entregada
+                ec_fields.append("libreta_entregada")
+
+            if ec_fields:
+                ec.save(update_fields=ec_fields)
+                _recalcular_estado_legajo_ec(ec)
 
     # Fields to store directly in models (Persona or Estudiante)
     PERSONA_KEYS = (
@@ -170,12 +199,11 @@ def _apply_estudiante_updates(
 
     if est.persona:
         persona_updates = []
-        
-        # Sincronización de Identidad
+
         if payload.dni is not None:
             est.persona.dni = str(payload.dni).strip()
             persona_updates.append("dni")
-        
+
         if payload.fecha_nacimiento is not None:
             est.persona.fecha_nacimiento = getattr(est, "fecha_nacimiento_temp", None)
             persona_updates.append("fecha_nacimiento")
@@ -188,7 +216,6 @@ def _apply_estudiante_updates(
                 setattr(est.persona, key, value)
                 persona_updates.append(key)
 
-        # Especial handling for emergency contact in Persona
         if payload.emergencia_telefono is not None:
             est.persona.telefono_emergencia = payload.emergencia_telefono
             persona_updates.append("telefono_emergencia")
@@ -204,7 +231,6 @@ def _apply_estudiante_updates(
         "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
         "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
         "condicion_salud_detalle", "empleador", "horario_trabajo", "domicilio_trabajo",
-        "curso_introductorio_aprobado", "libreta_entregada",
         "cud_informado", "condicion_salud_informada", "trabaja"
     )
 
@@ -223,21 +249,15 @@ def _apply_estudiante_updates(
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))
 
-    # Si se modificó documentación, recalcular y persistir estado_legajo
-    if fields_to_update & DOCUMENTACION_FIELDS:
-        _recalcular_estado_legajo(est)
-
     if payload.carreras_update is not None:
-        from core.models import EstudianteCarrera
         from core.models.inscripciones import InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
         from django.utils import timezone
-        
+
         anio_actual = timezone.now().year
 
         for cu in payload.carreras_update:
-            # Handle both dict (when Any) and Pydantic objects
             profesorado_id = cu.get("profesorado_id") if isinstance(cu, dict) else getattr(cu, "profesorado_id", None)
-            
+
             if profesorado_id is None:
                 continue
 
@@ -246,11 +266,9 @@ def _apply_estudiante_updates(
                 ec_updates = []
                 estado_academico = cu.get("estado_academico") if isinstance(cu, dict) else getattr(cu, "estado_academico", None)
                 force_baja = cu.get("force_baja_materias") if isinstance(cu, dict) else getattr(cu, "force_baja_materias", False)
-                
+
                 if estado_academico is not None:
-                    # Lógica de intercepción de Bajas
                     if estado_academico == 'BAJ' and ec.estado_academico != 'BAJ':
-                        # Buscar inscripciones activas para este profesorado
                         inscripciones_activas = InscripcionMateriaEstudiante.objects.filter(
                             estudiante=est,
                             anio=anio_actual,
@@ -261,18 +279,16 @@ def _apply_estudiante_updates(
                                 InscripcionMateriaEstudiante.Estado.CONDICIONAL
                             ]
                         ).select_related('materia')
-                        
+
                         if inscripciones_activas.exists():
                             if not force_baja:
-                                # Abortar y devolver código especial para el Frontend
                                 materias_inscriptas = [{"id": i.id, "materia": i.materia.nombre} for i in inscripciones_activas]
                                 return False, (409, ApiResponse(
-                                    ok=False, 
+                                    ok=False,
                                     message="El estudiante tiene inscripciones activas.",
                                     data={"code": "ACTIVE_ENROLLMENTS", "inscripciones": materias_inscriptas}
                                 ))
                             else:
-                                # Aplicar baja en cascada
                                 for ins in inscripciones_activas:
                                     ins.estado = InscripcionMateriaEstudiante.Estado.BAJA
                                     ins.baja_fecha = timezone.now().date()
@@ -287,25 +303,29 @@ def _apply_estudiante_updates(
 
                     ec.estado_academico = estado_academico
                     ec_updates.append("estado_academico")
-                
+
                 if ec_updates:
                     ec.save(update_fields=ec_updates)
 
     return True, None
 
 
-def _recalcular_estado_legajo(est: Estudiante) -> None:
-    """Recalcula y persiste Estudiante.estado_legajo desde los checkboxes de documentación.
+def _recalcular_estado_legajo_ec(ec: EstudianteCarrera) -> None:
+    """Recalcula y persiste EstudianteCarrera.estado_legajo para una carrera específica."""
+    doc_data = _extract_documentacion_from_ec(ec)
 
-    Se llama automáticamente cada vez que cambian campos de documentación.
-    Es la única forma en que este campo se actualiza — nunca manualmente.
-    """
-    doc_data = _extract_documentacion(est)
-
-    # Merge con PreinscripcionChecklist (misma lógica que el listado y la ficha)
+    # Merge con PreinscripcionChecklist si existe uno para esta carrera
     checklist = PreinscripcionChecklist.objects.filter(
-        preinscripcion__alumno=est
+        preinscripcion__alumno=ec.estudiante,
+        preinscripcion__carrera_id=ec.profesorado_id,
     ).order_by("-updated_at").first()
+
+    # Si no hay checklist por carrera, intentar el más reciente del estudiante
+    if not checklist:
+        checklist = PreinscripcionChecklist.objects.filter(
+            preinscripcion__alumno=ec.estudiante
+        ).order_by("-updated_at").first()
+
     if checklist:
         checklist_map = {
             "dni_legalizado": checklist.dni_legalizado,
@@ -324,19 +344,29 @@ def _recalcular_estado_legajo(est: Estudiante) -> None:
     condicion = _determine_condicion(doc_data)
 
     CONDICION_TO_ESTADO = {
-        "Regular": Estudiante.EstadoLegajo.COMPLETO,
-        "Condicional": Estudiante.EstadoLegajo.INCOMPLETO,
-        "Pendiente": Estudiante.EstadoLegajo.PENDIENTE,
+        "Regular": EstudianteCarrera.EstadoLegajo.COMPLETO,
+        "Condicional": EstudianteCarrera.EstadoLegajo.INCOMPLETO,
+        "Pendiente": EstudianteCarrera.EstadoLegajo.PENDIENTE,
     }
-    nuevo_estado = CONDICION_TO_ESTADO.get(condicion, Estudiante.EstadoLegajo.PENDIENTE)
+    nuevo_estado = CONDICION_TO_ESTADO.get(condicion, EstudianteCarrera.EstadoLegajo.PENDIENTE)
 
-    if est.estado_legajo != nuevo_estado:
-        est.estado_legajo = nuevo_estado
-        est.save(update_fields=["estado_legajo"])
+    if ec.estado_legajo != nuevo_estado:
+        ec.estado_legajo = nuevo_estado
+        ec.save(update_fields=["estado_legajo"])
 
-    # Liberar resguardos si el legajo pasó a COMPLETO
-    if nuevo_estado == Estudiante.EstadoLegajo.COMPLETO:
-        Regularidad.objects.filter(estudiante=est, en_resguardo=True).update(en_resguardo=False)
+    # Liberar resguardos de la carrera si el legajo pasó a COMPLETO
+    if nuevo_estado == EstudianteCarrera.EstadoLegajo.COMPLETO:
+        Regularidad.objects.filter(
+            estudiante=ec.estudiante,
+            materia__plan_de_estudio__profesorado=ec.profesorado,
+            en_resguardo=True,
+        ).update(en_resguardo=False)
+
+
+def _recalcular_estado_legajo(est: Estudiante) -> None:
+    """Backward-compat: recalcula el estado en todas las carreras del estudiante."""
+    for ec in EstudianteCarrera.objects.filter(estudiante=est):
+        _recalcular_estado_legajo_ec(ec)
 
 
 def _determine_condicion(documentacion: dict | None) -> str:
@@ -350,19 +380,12 @@ def _determine_condicion(documentacion: dict | None) -> str:
             (documentacion.get("folios_oficio") or 0) >= 1,
         )
     )
-    # Requisito de titulación (Solo título completo o Analítico Legalizado cuentan para COM)
-    # Según usuario: "titulo en tramite no habilita legajo completo"
-    # "legajo completo es DNI true, folio true, fotos true certificado true y titulo secundario true"
-    # Exception: articulo_7
     titulo_ok = bool(documentacion.get("titulo_secundario_legalizado"))
     es_articulo_7 = bool(documentacion.get("articulo_7"))
 
-    # Para ser Regular (Legajo Completo) debe tener básicos y (Título Secundario o Art 7)
     if requisito_basico and (titulo_ok or es_articulo_7):
         return "Regular"
 
-    # Si tiene ALGO de documentación relevante, ya es Condicional (Incompleto)
-    # en lugar de Pendiente.
     indicadores_actividad = any(
         [
             bool(documentacion.get("dni_legalizado")),
@@ -388,52 +411,86 @@ def _determine_condicion(documentacion: dict | None) -> str:
 def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminDetail:
     user = estudiante.user if estudiante.user_id else None
     persona = estudiante.persona
-    documentacion_data = _extract_documentacion(estudiante)
 
-    # --- Check documentation from PreinscripcionChecklist if available ---
-    checklist = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=estudiante).order_by("-updated_at").first()
-    if checklist:
-        checklist_map = {
-            "dni_legalizado": checklist.dni_legalizado,
-            "fotos_4x4": checklist.fotos_4x4,
-            "certificado_salud": checklist.certificado_salud,
-            "folios_oficio": checklist.folios_oficio,
-            "titulo_secundario_legalizado": checklist.titulo_secundario_legalizado,
-            "certificado_titulo_en_tramite": checklist.certificado_titulo_en_tramite,
-            "analitico_legalizado": checklist.analitico_legalizado,
-            "certificado_alumno_regular_sec": checklist.certificado_alumno_regular_sec,
-            "adeuda_materias": checklist.adeuda_materias,
-            "adeuda_materias_detalle": checklist.adeuda_materias_detalle,
-            "escuela_secundaria": checklist.escuela_secundaria,
-            "es_certificacion_docente": getattr(checklist, "es_certificacion_docente", False),
-            "titulo_terciario_univ": getattr(checklist, "titulo_terciario_univ", False),
-            "incumbencia": getattr(checklist, "incumbencia", False),
-            "articulo_7": getattr(checklist, "articulo_7", False),
-        }
-        for k, v in checklist_map.items():
-            if documentacion_data.get(k) in (None, False, 0, ""):
-                documentacion_data[k] = v
+    ecs_list = list(estudiante.carreras_detalle.select_related("profesorado").all())
+    ecs_by_prof: dict[int, EstudianteCarrera] = {ec.profesorado_id: ec for ec in ecs_list}
 
-        curso_introductorio_aprobado = estudiante.curso_introductorio_aprobado or (checklist and checklist.curso_introductorio_aprobado)
-    else:
-        curso_introductorio_aprobado = estudiante.curso_introductorio_aprobado
-
-    documentacion = EstudianteAdminDocumentacion(**documentacion_data) if documentacion_data else None
-    condicion = _determine_condicion(documentacion_data)
+    # Pre-cachear el checklist global (fallback cuando no hay uno específico por carrera)
+    global_checklist = PreinscripcionChecklist.objects.filter(
+        preinscripcion__alumno=estudiante
+    ).order_by("-updated_at").first()
 
     carreras_det = []
     carreras_nombres = []
-    for cd in estudiante.carreras_detalle.select_related("profesorado").all():
+
+    for cd in ecs_list:
         if allowed_carrera_ids is not None and cd.profesorado_id not in allowed_carrera_ids:
             continue
+
+        ec = ecs_by_prof.get(cd.profesorado_id)
+        ec_doc_data = _extract_documentacion_from_ec(ec) if ec else {}
+
+        checklist = PreinscripcionChecklist.objects.filter(
+            preinscripcion__alumno=estudiante,
+            preinscripcion__carrera_id=cd.profesorado_id,
+        ).order_by("-updated_at").first() or global_checklist
+
+        if checklist:
+            checklist_map = {
+                "dni_legalizado": checklist.dni_legalizado,
+                "fotos_4x4": checklist.fotos_4x4,
+                "certificado_salud": checklist.certificado_salud,
+                "folios_oficio": checklist.folios_oficio,
+                "titulo_secundario_legalizado": checklist.titulo_secundario_legalizado,
+                "certificado_titulo_en_tramite": checklist.certificado_titulo_en_tramite,
+                "analitico_legalizado": checklist.analitico_legalizado,
+                "certificado_alumno_regular_sec": checklist.certificado_alumno_regular_sec,
+                "adeuda_materias": checklist.adeuda_materias,
+                "adeuda_materias_detalle": checklist.adeuda_materias_detalle,
+                "escuela_secundaria": checklist.escuela_secundaria,
+                "es_certificacion_docente": getattr(checklist, "es_certificacion_docente", False),
+                "titulo_terciario_univ": getattr(checklist, "titulo_terciario_univ", False),
+                "incumbencia": getattr(checklist, "incumbencia", False),
+                "articulo_7": getattr(checklist, "articulo_7", False),
+            }
+            for k, v in checklist_map.items():
+                if ec_doc_data.get(k) in (None, False, 0, ""):
+                    ec_doc_data[k] = v
+
+        condicion = _determine_condicion(ec_doc_data)
+        ec_estado_legajo = ec.estado_legajo if ec else "PEN"
+        ec_curso_intro = ec.curso_introductorio_aprobado if ec else False
+        if checklist and not ec_curso_intro:
+            ec_curso_intro = bool(checklist.curso_introductorio_aprobado)
+        ec_libreta = ec.libreta_entregada if ec else False
+
         carreras_det.append({
             "profesorado_id": cd.profesorado_id,
             "nombre": cd.profesorado.nombre,
             "estado_academico": cd.estado_academico,
             "estado_academico_display": cd.get_estado_academico_display(),
             "condicion": condicion,
+            "estado_legajo": ec_estado_legajo,
+            "documentacion": EstudianteAdminDocumentacion(**ec_doc_data) if ec_doc_data else None,
+            "curso_introductorio_aprobado": ec_curso_intro,
+            "libreta_entregada": ec_libreta,
         })
         carreras_nombres.append(cd.profesorado.nombre)
+
+    # Para los campos de nivel superior, usamos la primera carrera como referencia
+    if carreras_det:
+        first_det = carreras_det[0]
+        documentacion = first_det["documentacion"]
+        condicion_calculada = first_det["condicion"]
+        curso_introductorio_aprobado = first_det["curso_introductorio_aprobado"]
+        libreta_entregada = first_det["libreta_entregada"]
+        estado_legajo = first_det["estado_legajo"]
+    else:
+        documentacion = None
+        condicion_calculada = "Pendiente"
+        curso_introductorio_aprobado = False
+        libreta_entregada = False
+        estado_legajo = estudiante.estado_legajo
 
     regularidades_resumen = [
         RegularidadResumen(
@@ -490,8 +547,8 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
         telefono=estudiante.telefono,
         domicilio=estudiante.domicilio,
         fecha_nacimiento=format_date(estudiante.fecha_nacimiento),
-        estado_legajo=estudiante.estado_legajo,
-        estado_legajo_display=estudiante.get_estado_legajo_display(),
+        estado_legajo=estado_legajo,
+        estado_legajo_display=dict(EstudianteCarrera.EstadoLegajo.choices).get(estado_legajo, estado_legajo),
         must_change_password=estudiante.must_change_password,
         activo=user.is_active if user else False,
         carreras=carreras_nombres,
@@ -499,9 +556,9 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
         legajo=estudiante.legajo or None,
         datos_extra=extra_data,
         documentacion=documentacion,
-        condicion_calculada=condicion,
+        condicion_calculada=condicion_calculada,
         curso_introductorio_aprobado=curso_introductorio_aprobado,
-        libreta_entregada=estudiante.libreta_entregada,
+        libreta_entregada=libreta_entregada,
         autorizado_rendir=estudiante.autorizado_rendir,
         autorizado_rendir_observacion=estudiante.autorizado_rendir_observacion,
         materias_autorizadas=list(estudiante.materias_autorizadas.values_list("id", flat=True)),

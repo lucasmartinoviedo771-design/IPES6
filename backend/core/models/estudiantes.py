@@ -230,6 +230,36 @@ class EstudianteCarrera(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # --- Documentación del legajo por carrera ---
+    class EstadoLegajo(models.TextChoices):
+        COMPLETO = "COM", "Completo"
+        INCOMPLETO = "INC", "Incompleto / Condicional"
+        PENDIENTE = "PEN", "Pendiente de Revisión"
+
+    estado_legajo = models.CharField(
+        max_length=3,
+        choices=EstadoLegajo.choices,
+        default=EstadoLegajo.PENDIENTE,
+        help_text="Estado del legajo físico del estudiante para esta carrera.",
+    )
+    curso_introductorio_aprobado = models.BooleanField(default=False)
+    libreta_entregada = models.BooleanField(default=False)
+    dni_legalizado = models.BooleanField(default=False)
+    fotos_4x4 = models.BooleanField(default=False)
+    certificado_salud = models.BooleanField(default=False)
+    folios_oficio = models.BooleanField(default=False)
+    titulo_secundario_legalizado = models.BooleanField(default=False)
+    certificado_titulo_en_tramite = models.BooleanField(default=False)
+    analitico_legalizado = models.BooleanField(default=False)
+    articulo_7 = models.BooleanField(default=False)
+    adeuda_materias = models.BooleanField(default=False)
+    adeuda_materias_detalle = models.TextField(blank=True, default="")
+    escuela_secundaria = models.CharField(max_length=255, blank=True, default="")
+    certificado_alumno_regular_sec = models.BooleanField(default=False)
+    es_certificacion_docente = models.BooleanField(default=False)
+    titulo_terciario_univ = models.BooleanField(default=False)
+    incumbencia = models.BooleanField(default=False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._original_estado = self.estado_academico

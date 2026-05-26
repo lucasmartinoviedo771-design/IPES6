@@ -212,6 +212,7 @@ export function EstudianteDetailDialog({
               isAdmin={isAdmin}
               isAttp={isAttp}
               isRectorado={isRectorado}
+              carrerasDetalle={detailQuery.data?.carreras_detalle}
             />
 
           </Stack>

@@ -93,6 +93,7 @@ export type DetailFormValues = {
   horario_trabajo: string;
   domicilio_trabajo: string;
   carreras_situacion?: CarreraUpdateForm[];
+  legajo_profesorado_id?: number | null;
 };
 
 export const estadoColorMap: Record<string, "default" | "success" | "warning"> = {

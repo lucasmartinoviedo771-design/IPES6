@@ -16,8 +16,9 @@ import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { Controller, Control, UseFormHandleSubmit, UseFormWatch } from "react-hook-form";
-import { DetailFormValues, DetailDocumentacionForm, ESTADO_ACADEMICO_OPTIONS, generoOptions } from "../types";
+import { DetailFormValues, DetailDocumentacionForm, ESTADO_ACADEMICO_OPTIONS, generoOptions, normalizeDoc, EstadoLegajo } from "../types";
 import { DocumentacionSection } from "./DocumentacionSection";
+import { CarreraStatus } from "@/api/estudiantes/types";
 
 type Props = {
   control: Control<DetailFormValues>;
@@ -42,6 +43,7 @@ type Props = {
   isAdmin?: boolean;
   isAttp?: boolean;
   isRectorado?: boolean;
+  carrerasDetalle?: CarreraStatus[];
 };
 
 export function EstudianteDetailForm({
@@ -67,6 +69,7 @@ export function EstudianteDetailForm({
   isAdmin = true,
   isAttp = false,
   isRectorado = false,
+  carrerasDetalle,
 }: Props) {
   const [materiasAutorizadas, setMateriasAutorizadas] = React.useState<number[]>(detailData?.materias_autorizadas || []);
 
@@ -331,6 +334,39 @@ export function EstudianteDetailForm({
         {activeTab === 2 && isAdmin && (
           <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
           <>
+            {/* Selector de carrera cuando el estudiante tiene múltiples */}
+            {carrerasDetalle && carrerasDetalle.length > 1 && (
+              <Controller
+                name="legajo_profesorado_id"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                    <InputLabel>Editando legajo de</InputLabel>
+                    <Select
+                      value={field.value ?? carrerasDetalle[0]?.profesorado_id ?? ""}
+                      label="Editando legajo de"
+                      onChange={(e) => {
+                        const newId = e.target.value as number;
+                        field.onChange(newId);
+                        const carrera = carrerasDetalle.find((c) => c.profesorado_id === newId);
+                        if (carrera) {
+                          setValue("documentacion", normalizeDoc(carrera.documentacion), { shouldDirty: false });
+                          setValue("curso_introductorio_aprobado", carrera.curso_introductorio_aprobado ?? false, { shouldDirty: false });
+                          setValue("libreta_entregada", carrera.libreta_entregada ?? false, { shouldDirty: false });
+                          setValue("estado_legajo", (carrera.estado_legajo ?? "PEN") as EstadoLegajo, { shouldDirty: false });
+                        }
+                      }}
+                    >
+                      {carrerasDetalle.map((c) => (
+                        <MenuItem key={c.profesorado_id} value={c.profesorado_id}>
+                          {c.nombre}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
+            )}
             <Box mb={2}>
                <Stack direction="row" spacing={2}>
                  <Controller

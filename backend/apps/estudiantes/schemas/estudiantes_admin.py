@@ -49,6 +49,10 @@ class CarreraStatus(Schema):
     estado_academico: str
     estado_academico_display: str
     condicion: str
+    estado_legajo: str = "PEN"
+    documentacion: EstudianteAdminDocumentacion | None = None
+    curso_introductorio_aprobado: bool = False
+    libreta_entregada: bool = False
 
 class EstudianteAdminListItem(Schema):
     dni: str
@@ -152,6 +156,7 @@ class EstudianteAdminUpdateIn(Schema):
     activo: bool | None = None
     fecha_nacimiento: str | None = None
     lugar_nacimiento: str | None = None
+    profesorado_id: int | None = None
     documentacion: EstudianteAdminDocumentacion | None = None
     anio_ingreso: Any | None = None
     genero: str | None = None

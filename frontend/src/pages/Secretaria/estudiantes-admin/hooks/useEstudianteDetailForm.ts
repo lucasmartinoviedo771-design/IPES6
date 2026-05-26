@@ -185,13 +185,18 @@ export function usePopulateFormFromDetail(
       const detail = detailData;
       const extra = detail.datos_extra ?? {};
       const toStringOrEmpty = (value: unknown) => (value === null || value === undefined ? "" : String(value));
+      // La documentación ahora viene por carrera. Usamos la primera carrera como referencia inicial.
+      const firstCarrera = detail.carreras_detalle?.[0];
+      const docSource = firstCarrera ?? null;
+      const firstProfId = firstCarrera?.profesorado_id ?? null;
+
       const formValues: DetailFormValues = {
         dni: detail.dni,
         apellido: detail.apellido ?? "",
         nombre: detail.nombre ?? "",
         telefono: detail.telefono ?? "",
         domicilio: detail.domicilio ?? "",
-        estado_legajo: (detail.estado_legajo as EstadoLegajo) ?? "PEN",
+        estado_legajo: ((firstCarrera?.estado_legajo ?? detail.estado_legajo) as EstadoLegajo) ?? "PEN",
         must_change_password: false, // El usuario solicitó mantener esto siempre destildado por defecto al abrir.
         activo: detail.activo !== undefined ? detail.activo : true,
         fecha_nacimiento: detail.fecha_nacimiento ? detail.fecha_nacimiento.slice(0, 10) : "",
@@ -199,9 +204,10 @@ export function usePopulateFormFromDetail(
         genero: toStringOrEmpty(extra.genero),
         observaciones: toStringOrEmpty(extra.observaciones),
         cuil: toStringOrEmpty(extra.cuil),
-        documentacion: normalizeDoc(detail.documentacion),
-        curso_introductorio_aprobado: Boolean(detail.curso_introductorio_aprobado),
-        libreta_entregada: Boolean(detail.libreta_entregada),
+        documentacion: normalizeDoc(docSource?.documentacion ?? detail.documentacion),
+        curso_introductorio_aprobado: Boolean(docSource?.curso_introductorio_aprobado ?? detail.curso_introductorio_aprobado),
+        libreta_entregada: Boolean(docSource?.libreta_entregada ?? detail.libreta_entregada),
+        legajo_profesorado_id: firstProfId,
 
         nacionalidad: toStringOrEmpty(extra.nacionalidad),
         estado_civil: toStringOrEmpty(extra.estado_civil),
