@@ -96,7 +96,11 @@ export function DocumentacionSection({
               control={
                 <Checkbox
                   checked={Boolean(docValues.titulo_secundario_legalizado)}
-                  onChange={handleMainDocChange("titulo_secundario_legalizado")}
+                  disabled={Boolean(docValues.articulo_7)}
+                  onChange={(_, checked) => {
+                    handleMainDocChange("titulo_secundario_legalizado")(_, checked);
+                    if (checked) setValue("documentacion.articulo_7" as const, false, { shouldDirty: true });
+                  }}
                 />
               }
               label="Título secundario legalizado"
@@ -105,7 +109,11 @@ export function DocumentacionSection({
               control={
                 <Checkbox
                   checked={Boolean(docValues.certificado_titulo_en_tramite)}
-                  onChange={handleMainDocChange("certificado_titulo_en_tramite")}
+                  disabled={Boolean(docValues.articulo_7)}
+                  onChange={(_, checked) => {
+                    handleMainDocChange("certificado_titulo_en_tramite")(_, checked);
+                    if (checked) setValue("documentacion.articulo_7" as const, false, { shouldDirty: true });
+                  }}
                 />
               }
               label="Certificado título en trámite"
@@ -114,7 +122,11 @@ export function DocumentacionSection({
               control={
                 <Checkbox
                   checked={Boolean(docValues.analitico_legalizado)}
-                  onChange={handleMainDocChange("analitico_legalizado")}
+                  disabled={Boolean(docValues.articulo_7)}
+                  onChange={(_, checked) => {
+                    handleMainDocChange("analitico_legalizado")(_, checked);
+                    if (checked) setValue("documentacion.articulo_7" as const, false, { shouldDirty: true });
+                  }}
                 />
               }
               label="Analítico legalizado"
@@ -177,7 +189,15 @@ export function DocumentacionSection({
           control={
             <Checkbox
               checked={Boolean(docValues.articulo_7)}
-              onChange={(_, checked) => setValue("documentacion.articulo_7" as const, checked, { shouldDirty: true })}
+              disabled={Boolean(docValues.titulo_secundario_legalizado) || Boolean(docValues.certificado_titulo_en_tramite) || Boolean(docValues.analitico_legalizado)}
+              onChange={(_, checked) => {
+                setValue("documentacion.articulo_7" as const, checked, { shouldDirty: true });
+                if (checked) {
+                  setValue("documentacion.titulo_secundario_legalizado" as const, false, { shouldDirty: true });
+                  setValue("documentacion.certificado_titulo_en_tramite" as const, false, { shouldDirty: true });
+                  setValue("documentacion.analitico_legalizado" as const, false, { shouldDirty: true });
+                }
+              }}
             />
           }
           label="Mayor de 25 años s/título (Art. 7mo)"
