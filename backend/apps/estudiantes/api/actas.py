@@ -450,6 +450,10 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 planilla_cerrada_en=timezone.now(),
                 planilla_cerrada_por=usuario if getattr(usuario, "is_authenticated", False) else None
             )
+        elif not mesa.planilla_cerrada_en:
+            mesa.planilla_cerrada_en = timezone.now()
+            mesa.planilla_cerrada_por = usuario if getattr(usuario, "is_authenticated", False) else None
+            mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
 
         # Carga de renglones de acta y actualización de inscripciones a mesa
         for est_item in payload.estudiantes:
@@ -541,7 +545,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     nueva_modalidad = MesaExamen.Modalidad.LIBRE if payload.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
 
     if materia_cambio or fecha_cambio or tipo_cambio:
-        mesa, _ = MesaExamen.objects.get_or_create(
+        mesa, created = MesaExamen.objects.get_or_create(
             materia_id=payload.materia_id,
             fecha=nueva_fecha,
             modalidad=nueva_modalidad,
@@ -551,6 +555,9 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
                 "planilla_cerrada_en": timezone.now(),
             },
         )
+        if not created and not mesa.planilla_cerrada_en:
+            mesa.planilla_cerrada_en = timezone.now()
+            mesa.save(update_fields=["planilla_cerrada_en"])
         # Limpiar InscripcionMesa de la mesa vieja vinculadas a este acta
         if mesa_vieja:
             InscripcionMesa.objects.filter(mesa=mesa_vieja, folio=acta.folio).delete()
