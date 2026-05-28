@@ -92,6 +92,7 @@ export type DetailFormValues = {
   empleador: string;
   horario_trabajo: string;
   domicilio_trabajo: string;
+  email: string;
   carreras_situacion?: CarreraUpdateForm[];
   legajo_profesorado_id?: number | null;
 };

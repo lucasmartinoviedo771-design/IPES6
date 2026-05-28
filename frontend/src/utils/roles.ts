@@ -173,7 +173,11 @@ export const getDefaultHomeRoute = (user: User | null | undefined): string => {
   // 10. Curso Introductorio
   if (bag.has("curso_intro")) return "/curso-introductorio";
 
-  // 11. Estudiantes (Autogestión)
+  // 11. ATTP / Rectorado
+  if (bag.has("attp")) return "/attp";
+  if (bag.has("rectorado")) return "/rectorado";
+
+  // 12. Estudiantes (Autogestión)
   if (bag.has("estudiante")) return "/estudiantes";
 
   // Fallback para roles no contemplados o staff básico

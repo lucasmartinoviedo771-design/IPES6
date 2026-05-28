@@ -207,6 +207,22 @@ export function EstudianteDetailForm({
                     )}
                   />
                 </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Controller
+                    name="emergencia_telefono"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Teléfono de Emergencia" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="emergencia_parentesco"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Parentesco" size="small" fullWidth />
+                    )}
+                  />
+                </Stack>
 
                 <Divider>Salud y Accesibilidad</Divider>
                 <Stack direction="row" spacing={2} flexWrap="wrap">
@@ -239,15 +255,104 @@ export function EstudianteDetailForm({
                   )}
                 />
 
-                <Divider>Estudios Previos y Laboral</Divider>
+                <Divider>Estudios Secundarios</Divider>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                   <Controller
                     name="sec_titulo"
                     control={control}
                     render={({ field }) => (
-                      <TextField {...field} label="Título Secundario" size="small" fullWidth />
+                      <TextField {...field} label="Título obtenido" size="small" fullWidth />
                     )}
                   />
+                  <Controller
+                    name="sec_establecimiento"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Establecimiento" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sec_fecha_egreso"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Fecha de egreso" size="small" placeholder="AAAA-MM-DD" fullWidth />
+                    )}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Controller
+                    name="sec_localidad"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Localidad" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sec_provincia"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Provincia" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sec_pais"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="País" size="small" fullWidth />
+                    )}
+                  />
+                </Stack>
+
+                <Divider>Estudios Superiores Previos</Divider>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Controller
+                    name="sup1_titulo"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Título obtenido" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sup1_establecimiento"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Establecimiento" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sup1_fecha_egreso"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Fecha de egreso" size="small" placeholder="AAAA-MM-DD" fullWidth />
+                    )}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Controller
+                    name="sup1_localidad"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Localidad" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sup1_provincia"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Provincia" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="sup1_pais"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="País" size="small" fullWidth />
+                    )}
+                  />
+                </Stack>
+
+                <Divider>Situación Laboral</Divider>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center">
                   <Controller
                     name="trabaja"
                     control={control}
@@ -256,6 +361,29 @@ export function EstudianteDetailForm({
                         control={<Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
                         label="¿Trabaja actualmente?"
                       />
+                    )}
+                  />
+                  <Controller
+                    name="empleador"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Empleador" size="small" fullWidth />
+                    )}
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <Controller
+                    name="horario_trabajo"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Horario de trabajo" size="small" fullWidth />
+                    )}
+                  />
+                  <Controller
+                    name="domicilio_trabajo"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Domicilio de trabajo" size="small" fullWidth />
                     )}
                   />
                 </Stack>
@@ -302,7 +430,13 @@ export function EstudianteDetailForm({
               <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
                 <Divider sx={{ mb: 1 }}>Datos de Sistema</Divider>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                  <TextField label="Email registrado" value={detailData?.email || ""} size="small" fullWidth InputProps={{ readOnly: true }} />
+                  <Controller
+                    name="email"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField {...field} label="Email registrado" size="small" fullWidth />
+                    )}
+                  />
                   <Controller
                     name="anio_ingreso"
                     control={control}

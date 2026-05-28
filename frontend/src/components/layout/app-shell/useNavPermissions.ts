@@ -26,13 +26,13 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   ]));
   const canPreins = isNavAllowed("preinscripciones", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
   const canSeeCarreras = isNavAllowed("carreras", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee"
+    "admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "attp", "rectorado"
   ]));
   const canSeeReportes = isNavAllowed("reportes", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"
+    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "attp", "rectorado"
   ]));
   const canSecretaria = isNavAllowed("secretaria", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"
+    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "attp", "rectorado"
   ]));
   const canBedeles = isNavAllowed("bedeles", hasAnyRole(user, [
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"
@@ -43,13 +43,15 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const canTitulosPanel = isNavAllowed("titulos", hasAnyRole(user, ["titulos", "secretaria", "admin"]));
   const canCoordinacionPanel = isNavAllowed("coordinacion", hasAnyRole(user, ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"]));
   const canJefaturaPanel = isNavAllowed("jefatura", hasAnyRole(user, ["jefes", "jefa_aaee", "secretaria", "admin"]));
-  const canAsistenciaReportes = isNavAllowed("asistencia", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
+  const canAsistenciaReportes = isNavAllowed("asistencia", hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado"]));
   const canCursoIntro = isNavAllowed("cursoIntro", hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]));
   const canEstudiantePortal = isNavAllowed("estudiante", hasAnyRole(user, ["estudiante"]));
   const canEstudiantePanel = isNavAllowed("estudiante", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "tutor", "jefes", "jefa_aaee", "coordinador"
+    "admin", "secretaria", "bedel", "tutor", "jefes", "jefa_aaee", "coordinador", "attp", "rectorado"
   ]));
-  const canPrimeraCarga = isNavAllowed("primeraCarga", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
+  const canPrimeraCarga = isNavAllowed("primeraCarga", hasAnyRole(user, ["admin", "secretaria", "bedel", "attp"]));
+  const canAttpPanel = isNavAllowed("attp", hasAnyRole(user, ["attp"]));
+  const canRectoradoPanel = isNavAllowed("rectorado", hasAnyRole(user, ["rectorado"]));
   const canUseMessages = isNavAllowed("mensajes", !!user);
 
   return {
@@ -71,5 +73,7 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
     canEstudiantePanel,
     canPrimeraCarga,
     canUseMessages,
+    canAttpPanel,
+    canRectoradoPanel,
   };
 };

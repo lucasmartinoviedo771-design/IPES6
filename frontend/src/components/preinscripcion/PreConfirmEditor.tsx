@@ -310,7 +310,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
       <FinalConfirmationDialog open={Boolean(criticalAction)} onConfirm={executeCriticalAction} onCancel={cancelCriticalAction} loading={criticalActionLoading} contextText={criticalContextText} />
 
       {/* Dialog de éxito con contraseña */}
-      <Dialog open={!!successInfo} onClose={() => onActionSuccess?.()} maxWidth="xs" fullWidth>
+      <Dialog open={!!successInfo} onClose={() => { setSuccessInfo(null); onActionSuccess?.(); }} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>¡Preinscripción Confirmada!</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ py: 1 }}>
@@ -350,7 +350,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => onActionSuccess?.()} fullWidth variant="contained">
+          <Button onClick={() => { setSuccessInfo(null); onActionSuccess?.(); }} fullWidth variant="contained">
             Entendido y cerrar
           </Button>
         </DialogActions>

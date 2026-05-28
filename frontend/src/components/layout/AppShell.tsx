@@ -181,6 +181,8 @@ export default function AppShell({ children }: PropsWithChildren) {
         canEstudiantePortal={navPerms.canEstudiantePortal}
         canEstudiantePanel={navPerms.canEstudiantePanel}
         canPrimeraCarga={navPerms.canPrimeraCarga}
+        canAttpPanel={navPerms.canAttpPanel}
+        canRectoradoPanel={navPerms.canRectoradoPanel}
         onClose={() => setOpen(false)}
         onOpen={() => setOpen(true)}
       />

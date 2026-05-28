@@ -11,9 +11,9 @@ const MateriaInscriptosPage = lazyPage(() => import("@/pages/MateriaInscriptosPa
 const ReportesPage = lazyPage(() => import("@/pages/ReportesPage"));
 const ConfirmarInscripcionPage = lazyPage(() => import("@/pages/ConfirmarInscripcionPage"));
 
-const managementRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente"];
+const managementRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente", "attp", "rectorado"];
 const preinscripcionesRoles: string[] = ["admin", "secretaria", "bedel"];
-const mensajesRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "estudiante"];
+const mensajesRoles: string[] = ["admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "estudiante", "attp", "rectorado"];
 const confirmacionRoles: string[] = ["bedel", "secretaria", "admin"];
 
 export const buildGeneralRoutes = () => (

@@ -356,7 +356,14 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
                 <Controller
                   name="genero"
                   control={control}
-                  render={({ field }) => <TextField {...field} label="Género" fullWidth />}
+                  render={({ field }) => (
+                    <TextField {...field} select label="Género" fullWidth>
+                      <MenuItem value="">Sin especificar</MenuItem>
+                      <MenuItem value="F">Femenino</MenuItem>
+                      <MenuItem value="M">Masculino</MenuItem>
+                      <MenuItem value="X">X</MenuItem>
+                    </TextField>
+                  )}
                 />
               </Grid>
               <Grid item xs={12}>

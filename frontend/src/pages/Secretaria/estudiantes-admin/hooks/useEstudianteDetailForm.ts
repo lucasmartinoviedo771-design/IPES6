@@ -49,6 +49,7 @@ export function useEstudianteDetailForm() {
       empleador: "",
       horario_trabajo: "",
       domicilio_trabajo: "",
+      email: "",
     },
   });
 
@@ -235,6 +236,7 @@ export function usePopulateFormFromDetail(
         empleador: toStringOrEmpty(extra.empleador),
         horario_trabajo: toStringOrEmpty(extra.horario_trabajo),
         domicilio_trabajo: toStringOrEmpty(extra.domicilio_trabajo),
+        email: toStringOrEmpty(detail.email),
         carreras_situacion: detail.carreras_detalle?.map((c) => ({
           profesorado_id: (c as any).profesorado_id || 0,
           nombre: c.nombre,

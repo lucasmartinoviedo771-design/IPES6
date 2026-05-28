@@ -57,6 +57,8 @@ interface AppSidebarProps {
   canEstudiantePortal: boolean;
   canEstudiantePanel: boolean;
   canPrimeraCarga: boolean;
+  canAttpPanel: boolean;
+  canRectoradoPanel: boolean;
   onClose: () => void;
   onOpen: () => void;
 }
@@ -86,6 +88,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   canEstudiantePortal,
   canEstudiantePanel,
   canPrimeraCarga,
+  canAttpPanel,
+  canRectoradoPanel,
   onClose,
   onOpen,
 }) => {
@@ -311,6 +315,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             >
               <ListItemIcon><SchoolIcon fontSize="small" /></ListItemIcon>
               <ListItemText primary="Estudiantes" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+
+          {canAttpPanel && (
+            <ListItemButton
+              selected={current.startsWith("/attp")}
+              onClick={() => navigate("/attp")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="A.T.T.P." primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+
+          {canRectoradoPanel && (
+            <ListItemButton
+              selected={current.startsWith("/rectorado")}
+              onClick={() => navigate("/rectorado")}
+              sx={navButtonSx}
+            >
+              <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Rectorado" primaryTypographyProps={{ sx: { color: "#fff" } }} />
             </ListItemButton>
           )}
 

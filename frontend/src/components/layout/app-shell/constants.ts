@@ -51,6 +51,8 @@ export const ROLE_NAV_MAP: Record<string, string[]> = {
   equivalencias: ["equivalencias", "mensajes"],
   titulos: ["titulos", "mensajes"],
   curso_intro: ["cursoIntro", "mensajes"],
+  attp: ["attp", "estudiante", "mensajes", "primeraCarga"],
+  rectorado: ["rectorado", "estudiante", "mensajes", "asistencia"],
 };
 
 export const roleLabels: Record<string, string> = {
@@ -67,6 +69,8 @@ export const roleLabels: Record<string, string> = {
   equivalencias: "Equivalencias",
   titulos: "Títulos",
   curso_intro: "Curso Intro",
+  attp: "A.T.T.P.",
+  rectorado: "Rectorado",
 };
 
 export const roleHomeMap: Record<string, string> = {
@@ -83,6 +87,8 @@ export const roleHomeMap: Record<string, string> = {
   equivalencias: "/equivalencias",
   titulos: "/titulos",
   curso_intro: "/curso-introductorio",
+  attp: "/attp",
+  rectorado: "/rectorado",
 };
 
 export const navButtonSx = {

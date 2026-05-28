@@ -29,6 +29,8 @@ const EstudiantesAdminPage = lazyPage(() => import("@/pages/Secretaria/Estudiant
 const MesasPage = lazyPage(() => import("@/pages/Secretaria/MesasPage"));
 const PedidosEquivalenciasPage = lazyPage(() => import("@/pages/Secretaria/PedidosEquivalenciasPage"));
 const CambioComisionAdminPage = lazyPage(() => import("@/pages/Secretaria/CambioComisionAdminPage"));
+const AttpIndex = lazyPage(() => import("@/pages/Attp/Index"));
+const RectoradoIndex = lazyPage(() => import("@/pages/Rectorado/Index"));
 const CursoIntroductorioPage = lazyPage(() => import("@/pages/Secretaria/CursoIntroductorioPage"));
 const CorrelatividadesPage = lazyPage(() => import("@/pages/Secretaria/CorrelatividadesPage"));
 const CargaNotasPage = lazyPage(() => import("@/pages/Secretaria/CargaNotasPage"));
@@ -37,7 +39,7 @@ const ConfirmarInscripcionSecretaria = lazyPage(() => import("@/pages/Secretaria
 const DocumentacionEstudiantesPage = lazyPage(() => import("@/pages/Secretaria/DocumentacionEstudiantesPage"));
 const AnalisisMateriaPage = lazyPage(() => import("@/pages/Secretaria/AnalisisMateriaPage"));
 
-const secretariaPanelRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor"];
+const secretariaPanelRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor", "attp", "rectorado"];
 const bedelesRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"];
 const docentesRoles: string[] = ["docente", "secretaria", "admin", "bedel"];
 const tutoriaRoles: string[] = ["tutor", "secretaria", "admin", "bedel"];
@@ -45,13 +47,13 @@ const equivalenciasRoles: string[] = ["equivalencias", "secretaria", "admin", "b
 const titulosRoles: string[] = ["titulos", "secretaria", "admin"];
 const coordinacionRoles: string[] = ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"];
 const jefaturaRoles: string[] = ["jefes", "jefa_aaee", "secretaria", "admin"];
-const secretariaBaseRoles: string[] = ["secretaria", "admin", "bedel"];
+const secretariaBaseRoles: string[] = ["secretaria", "admin", "bedel", "attp", "rectorado"];
 const secretariaAdminRoles: string[] = ["secretaria", "admin"];
-const horariosRoles: string[] = ["secretaria", "admin", "coordinador", "bedel"];
+const horariosRoles: string[] = ["secretaria", "admin", "coordinador", "bedel", "attp", "rectorado"];
 const habilitarFechasRoles: string[] = ["secretaria", "admin", "jefa_aaee"];
 const analiticosRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "jefes", "jefa_aaee", "coordinador"];
-const mesasRoles: string[] = ["secretaria", "bedel", "admin", "jefes", "jefa_aaee"];
-const secretariaTutorRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta"];
+const mesasRoles: string[] = ["secretaria", "bedel", "admin", "jefes", "jefa_aaee", "attp", "rectorado"];
+const secretariaTutorRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "attp", "rectorado"];
 const cursoIntroRoles: string[] = ["secretaria", "bedel", "admin", "curso_intro", "coordinador", "tutor"];
 const docentesConsultaRoles: string[] = ["docente", "admin", "secretaria", "bedel"];
 
@@ -126,6 +128,12 @@ export const buildSecretariaRoutes = () => (
     </Route>
     <Route element={<ProtectedRoute roles={cursoIntroRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/curso-introductorio" element={<CursoIntroductorioPage />} />
+    </Route>
+    <Route element={<ProtectedRoute roles={["attp"]}><Outlet /></ProtectedRoute>}>
+      <Route path="/attp" element={<AttpIndex />} />
+    </Route>
+    <Route element={<ProtectedRoute roles={["rectorado"]}><Outlet /></ProtectedRoute>}>
+      <Route path="/rectorado" element={<RectoradoIndex />} />
     </Route>
   </>
 );

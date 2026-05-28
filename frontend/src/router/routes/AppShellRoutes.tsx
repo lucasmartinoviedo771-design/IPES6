@@ -20,6 +20,8 @@ const shellRoles: string[] = [
   "docente",
   "equivalencias",
   "titulos",
+  "attp",
+  "rectorado",
 ];
 
 export const buildAppShellRoutes = () => (

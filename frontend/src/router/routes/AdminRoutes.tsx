@@ -16,7 +16,7 @@ const ResguardoMateriasPage = lazyPage(() => import("@/pages/Bedeles/ResguardoMa
 
 const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
 
-const adminRoles: string[] = ["admin", "secretaria", "bedel", "titulos", "jefatura", "coordinador"];
+const adminRoles: string[] = ["admin", "secretaria", "bedel", "titulos", "jefatura", "coordinador", "attp"];
 
 export const buildAdminRoutes = () => (
   <>

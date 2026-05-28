@@ -227,11 +227,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const availableRoleOptions = useMemo(() => {
     if (!user) return [];
     const ROLE_LABELS: Record<string, string> = {
-      admin: "Administrador", secretaria: "Secretaría", bedel: "Bedelía", 
+      admin: "Administrador", secretaria: "Secretaría", bedel: "Bedelía",
       docente: "Docentes", tutor: "Tutorías", coordinador: "Coordinación",
       jefes: "Jefatura", jefa_aaee: "Jefa A.A.E.E.", consulta: "Consulta",
       estudiante: "Estudiante", equivalencias: "Equipo de equivalencias",
       titulos: "Títulos", curso_intro: "Curso Introductorio",
+      attp: "A.T.T.P.", rectorado: "Rectorado",
     };
     
     const normalized = new Set<string>();

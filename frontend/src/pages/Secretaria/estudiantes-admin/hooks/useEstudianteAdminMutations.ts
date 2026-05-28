@@ -103,6 +103,7 @@ export function useUpdateEstudianteMutation(
         horario_trabajo: data.horario_trabajo?.trim() || undefined,
         domicilio_trabajo: data.domicilio_trabajo?.trim() || undefined,
         profesorado_id: data.legajo_profesorado_id ?? undefined,
+        email: data.email?.trim() || undefined,
         carreras_update: data.carreras_situacion?.map((c) => ({
           profesorado_id: c.profesorado_id,
           estado_academico: c.estado_academico || undefined,
