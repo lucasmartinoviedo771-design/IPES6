@@ -38,6 +38,49 @@ from .helpers import (
 from apps.common.audit import log_action_from_request, snapshot
 
 
+@router.get("/admin/estudiantes/buscar-global", response=list[dict])
+def admin_buscar_estudiantes_global(request, q: str = ""):
+    """
+    Búsqueda global de estudiantes sin restricción de carrera.
+    Devuelve datos mínimos (dni, nombre, carreras actuales).
+    Usado para agregar un estudiante de otra carrera a la propia.
+    """
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    from django.db.models import Q as DQ
+
+    q = q.strip()[:100]
+    if len(q) < 2:
+        return []
+
+    qs = (
+        Estudiante.objects.select_related("user")
+        .prefetch_related("carreras_detalle__profesorado")
+        .filter(
+            DQ(persona__dni__icontains=q)
+            | DQ(user__first_name__icontains=q)
+            | DQ(user__last_name__icontains=q)
+        )
+        .order_by("user__last_name", "user__first_name")[:20]
+    )
+
+    result = []
+    for est in qs:
+        carreras = [
+            {
+                "nombre": ec.profesorado.nombre,
+                "estado_academico": ec.get_estado_academico_display(),
+            }
+            for ec in est.carreras_detalle.all()
+        ]
+        result.append({
+            "dni": est.dni,
+            "apellido": est.user.last_name,
+            "nombre": est.user.first_name,
+            "carreras": carreras,
+        })
+    return result
+
+
 @router.get(
     "/admin/estudiantes",
     response=EstudianteAdminListResponse,
@@ -686,6 +729,49 @@ def admin_delete_prorroga_titulo(request, prorroga_id: int):
     p = get_object_or_404(ProrrogaTituloSecundario, id=prorroga_id)
     p.delete()
     return 200, ApiResponse(ok=True, message="Prórroga eliminada.")
+
+
+from ninja import Schema as _Schema
+
+class AgregarCarreraIn(_Schema):
+    profesorado_id: int
+    anio_ingreso: int | None = None
+
+
+@router.post(
+    "/admin/estudiantes/{dni}/carreras",
+    response={200: EstudianteAdminDetail, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+)
+def admin_agregar_carrera(request, dni: str, payload: AgregarCarreraIn):
+    """Vincula a un estudiante existente con una nueva carrera (sin requerir preinscripción)."""
+    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    from core.models import Profesorado
+    from django.utils import timezone
+
+    est = Estudiante.objects.filter(persona__dni=dni).first()
+    if not est:
+        return 404, ApiResponse(ok=False, message="Estudiante no encontrado.")
+
+    carrera = Profesorado.objects.filter(id=payload.profesorado_id).first()
+    if not carrera:
+        return 404, ApiResponse(ok=False, message="Carrera no encontrada.")
+
+    allowed_ids = allowed_profesorados(request.user)
+    if allowed_ids is not None and payload.profesorado_id not in allowed_ids:
+        return 403, ApiResponse(ok=False, message="No tiene permisos para esta carrera.")
+
+    if EstudianteCarrera.objects.filter(estudiante=est, profesorado=carrera).exists():
+        return 400, ApiResponse(ok=False, message="El estudiante ya está vinculado a esa carrera.")
+
+    anio = payload.anio_ingreso or timezone.now().year
+    EstudianteCarrera.objects.create(
+        estudiante=est,
+        profesorado=carrera,
+        anio_ingreso=anio,
+        estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO,
+    )
+
+    return 200, _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
 
 
 @router.get(

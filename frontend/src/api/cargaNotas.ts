@@ -144,6 +144,11 @@ export async function listarProfesorados() {
   return data;
 }
 
+export async function listarTodosProfesorados() {
+  const { data } = await client.get<ProfesoradoDTO[]>("/profesorados/");
+  return data;
+}
+
 export async function listarPlanes(profesoradoId: number) {
   const { data } = await client.get<PlanDTO[]>(`/profesorados/${profesoradoId}/planes`);
   return data;

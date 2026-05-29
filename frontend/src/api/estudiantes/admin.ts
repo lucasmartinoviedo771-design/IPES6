@@ -87,6 +87,32 @@ export async function autorizarRendirEstudiante(
   return data;
 }
 
+export async function agregarCarreraEstudiante(
+  dni: string,
+  payload: { profesorado_id: number; anio_ingreso?: number | null }
+): Promise<EstudianteAdminDetailDTO> {
+  const { data } = await client.post<EstudianteAdminDetailDTO>(
+    `/estudiantes/admin/estudiantes/${dni}/carreras`,
+    payload
+  );
+  return data;
+}
+
+export type EstudianteGlobalResultDTO = {
+  dni: string;
+  apellido: string;
+  nombre: string;
+  carreras: { nombre: string; estado_academico: string }[];
+};
+
+export async function buscarEstudiantesGlobal(q: string): Promise<EstudianteGlobalResultDTO[]> {
+  const { data } = await client.get<EstudianteGlobalResultDTO[]>(
+    `/estudiantes/admin/estudiantes/buscar-global`,
+    { params: { q } }
+  );
+  return data;
+}
+
 export type ResguardoMateriaItemDTO = {
   tipo: "REG" | "EQUIV";
   dni: string;

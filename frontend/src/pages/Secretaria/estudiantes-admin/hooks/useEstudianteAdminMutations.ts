@@ -5,6 +5,7 @@ import {
   eliminarEstudianteAdmin,
   resetPasswordEstudiante,
   autorizarRendirEstudiante,
+  agregarCarreraEstudiante,
   EstudianteAdminDocumentacionDTO,
 } from "@/api/estudiantes";
 import { DetailFormValues, DetailDocumentacionForm } from "../types";
@@ -179,6 +180,27 @@ export function useAutorizarRendirMutation(selectedDni: string | null) {
     },
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo actualizar la autorización";
+      enqueueSnackbar(msg, { variant: "error" });
+    },
+  });
+}
+
+export function useAgregarCarreraMutation(selectedDni: string | null, onSuccess?: () => void) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ profesorado_id, anio_ingreso }: { profesorado_id: number; anio_ingreso?: number }) =>
+      agregarCarreraEstudiante(selectedDni!, { profesorado_id, anio_ingreso }),
+    onSuccess: () => {
+      enqueueSnackbar("Carrera agregada correctamente", { variant: "success" });
+      if (selectedDni) {
+        queryClient.invalidateQueries({ queryKey: ["admin-estudiante", selectedDni] });
+        queryClient.invalidateQueries({ queryKey: ["admin-estudiantes"] });
+      }
+      onSuccess?.();
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || "No se pudo agregar la carrera";
       enqueueSnackbar(msg, { variant: "error" });
     },
   });

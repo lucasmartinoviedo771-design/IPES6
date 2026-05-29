@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import TextField from "@mui/material/TextField";
@@ -14,7 +14,15 @@ import Button from "@mui/material/Button";
 import Switch from "@mui/material/Switch";
 import Paper from "@mui/material/Paper";
 import CircularProgress from "@mui/material/CircularProgress";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import AddIcon from "@mui/icons-material/Add";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import { useQuery } from "@tanstack/react-query";
+import { listarTodosProfesorados } from "@/api/cargaNotas";
+import { useAuth } from "@/context/AuthContext";
 import { Controller, Control, UseFormHandleSubmit, UseFormWatch } from "react-hook-form";
 import { DetailFormValues, DetailDocumentacionForm, ESTADO_ACADEMICO_OPTIONS, generoOptions, normalizeDoc, EstadoLegajo } from "../types";
 import { DocumentacionSection } from "./DocumentacionSection";
@@ -39,6 +47,8 @@ type Props = {
   setAutorizadoObs: (val: string) => void;
   onAutorizarRendir?: (autorizado: boolean, observacion: string, materias_autorizadas?: number[]) => void;
   autorizarRendirIsPending?: boolean;
+  onAgregarCarrera?: (profesorado_id: number, anio_ingreso?: number) => void;
+  agregarCarreraIsPending?: boolean;
   detailData?: any;
   isAdmin?: boolean;
   isAttp?: boolean;
@@ -65,6 +75,8 @@ export function EstudianteDetailForm({
   setAutorizadoObs,
   onAutorizarRendir,
   autorizarRendirIsPending,
+  onAgregarCarrera,
+  agregarCarreraIsPending,
   detailData,
   isAdmin = true,
   isAttp = false,
@@ -72,6 +84,31 @@ export function EstudianteDetailForm({
   carrerasDetalle,
 }: Props) {
   const [materiasAutorizadas, setMateriasAutorizadas] = React.useState<number[]>(detailData?.materias_autorizadas || []);
+  const [agregarCarreraOpen, setAgregarCarreraOpen] = useState(false);
+  const [nuevaCarreraId, setNuevaCarreraId] = useState<number | "">("");
+
+  const { user } = useAuth();
+  const myProfIds = user?.profesorado_ids ?? null;
+
+  const { data: profesorados = [] } = useQuery({
+    queryKey: ["profesorados-todos"],
+    queryFn: () => listarTodosProfesorados(),
+    enabled: agregarCarreraOpen,
+  });
+
+  const carrerasActualesIds = new Set((watch("carreras_situacion") || []).map((c: any) => c.profesorado_id));
+  const profesoradosDisponibles = profesorados.filter((p) => {
+    if (carrerasActualesIds.has(p.id)) return false;
+    if (myProfIds !== null && !myProfIds.includes(p.id)) return false;
+    return true;
+  });
+
+  const handleConfirmarAgregarCarrera = () => {
+    if (!nuevaCarreraId || !onAgregarCarrera) return;
+    onAgregarCarrera(nuevaCarreraId as number);
+    setAgregarCarreraOpen(false);
+    setNuevaCarreraId("");
+  };
 
   React.useEffect(() => {
     if (detailData?.materias_autorizadas) {
@@ -426,6 +463,50 @@ export function EstudianteDetailForm({
                   </Stack>
                 </Box>
               ))}
+
+              {onAgregarCarrera && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={() => setAgregarCarreraOpen(true)}
+                  sx={{ mt: 1 }}
+                >
+                  Agregar a otra carrera
+                </Button>
+              )}
+
+              <Dialog open={agregarCarreraOpen} onClose={() => setAgregarCarreraOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Agregar a otra carrera</DialogTitle>
+                <DialogContent>
+                  <TextField
+                    select
+                    label="Carrera"
+                    value={nuevaCarreraId}
+                    onChange={(e) => setNuevaCarreraId(Number(e.target.value))}
+                    size="small"
+                    fullWidth
+                    sx={{ mt: 1 }}
+                  >
+                    {profesoradosDisponibles.length === 0 && (
+                      <MenuItem disabled value="">Sin carreras disponibles</MenuItem>
+                    )}
+                    {profesoradosDisponibles.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>{p.nombre}</MenuItem>
+                    ))}
+                  </TextField>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => { setAgregarCarreraOpen(false); setNuevaCarreraId(""); }}>Cancelar</Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleConfirmarAgregarCarrera}
+                    disabled={!nuevaCarreraId || agregarCarreraIsPending}
+                  >
+                    {agregarCarreraIsPending ? <CircularProgress size={18} /> : "Confirmar"}
+                  </Button>
+                </DialogActions>
+              </Dialog>
 
               <fieldset disabled={isAttp} style={{ border: 'none', margin: 0, padding: 0 }}>
                 <Divider sx={{ mb: 1 }}>Datos de Sistema</Divider>

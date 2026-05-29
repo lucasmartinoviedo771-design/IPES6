@@ -60,6 +60,8 @@ type Props = {
   onResetPassword?: () => void;
   onAutorizarRendir?: (autorizado: boolean, observacion: string, materias_autorizadas?: number[]) => void;
   autorizarRendirIsPending?: boolean;
+  onAgregarCarrera?: (profesorado_id: number, anio_ingreso?: number) => void;
+  agregarCarreraIsPending?: boolean;
   isAdmin?: boolean;
   isAttp?: boolean;
   isRectorado?: boolean;
@@ -89,6 +91,8 @@ export function EstudianteDetailDialog({
   onResetPassword,
   onAutorizarRendir,
   autorizarRendirIsPending,
+  onAgregarCarrera,
+  agregarCarreraIsPending,
   isAdmin = true,
   isAttp = false,
   isRectorado = false,
@@ -208,6 +212,8 @@ export function EstudianteDetailDialog({
               setAutorizadoObs={setAutorizadoObs}
               onAutorizarRendir={onAutorizarRendir}
               autorizarRendirIsPending={autorizarRendirIsPending}
+              onAgregarCarrera={onAgregarCarrera}
+              agregarCarreraIsPending={agregarCarreraIsPending}
               detailData={detailQuery.data}
               isAdmin={isAdmin}
               isAttp={isAttp}

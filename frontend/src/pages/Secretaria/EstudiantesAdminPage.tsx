@@ -26,10 +26,11 @@ import {
   useDocumentacionSideEffects,
   usePopulateFormFromDetail,
 } from "./estudiantes-admin/hooks/useEstudianteDetailForm";
-import { useResetPasswordMutation, useAutorizarRendirMutation } from "./estudiantes-admin/hooks/useEstudianteAdminMutations";
+import { useResetPasswordMutation, useAutorizarRendirMutation, useAgregarCarreraMutation } from "./estudiantes-admin/hooks/useEstudianteAdminMutations";
 import { EstudiantesFilterBar } from "./estudiantes-admin/components/EstudiantesFilterBar";
 import { EstudiantesTable } from "./estudiantes-admin/components/EstudiantesTable";
 import { EstudianteDetailDialog } from "./estudiantes-admin/components/EstudianteDetailDialog";
+import { AgregarEstudianteExternoPanel } from "./estudiantes-admin/components/AgregarEstudianteExternoPanel";
 
 export default function EstudiantesAdminPage() {
   const { user } = useAuth();
@@ -114,6 +115,7 @@ export default function EstudiantesAdminPage() {
   );
   const resetPassMutation = useResetPasswordMutation();
   const autorizarRendirMutation = useAutorizarRendirMutation(selectedDni);
+  const agregarCarreraMutation = useAgregarCarreraMutation(selectedDni);
 
   const form = useEstudianteDetailForm();
   const { reset, control, handleSubmit, watch, setValue, getValues } = form;
@@ -221,6 +223,8 @@ export default function EstudiantesAdminPage() {
     <Box p={2} display="flex" flexDirection="column" gap={2}>
       <BackButton fallbackPath="/secretaria" />
 
+      <AgregarEstudianteExternoPanel />
+
       <EstudiantesFilterBar
         search={search}
         onSearchChange={setSearch}
@@ -283,6 +287,10 @@ export default function EstudiantesAdminPage() {
           autorizarRendirMutation.mutate({ autorizado, observacion, materias_autorizadas: materias_autorizadas || [] })
         }
         autorizarRendirIsPending={autorizarRendirMutation.isPending}
+        onAgregarCarrera={(profesorado_id, anio_ingreso) =>
+          agregarCarreraMutation.mutate({ profesorado_id, anio_ingreso })
+        }
+        agregarCarreraIsPending={agregarCarreraMutation.isPending}
         isAttp={isAttp}
         isRectorado={isRectorado}
       />
