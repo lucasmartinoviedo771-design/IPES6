@@ -1,6 +1,12 @@
 import copy
 from apps.common.date_utils import format_date, format_datetime
 
+_GENERO_TO_DISPLAY = {"M": "Masculino", "F": "Femenino", "X": "No binarie"}
+_ESTADO_CIVIL_TO_DISPLAY = {
+    "SOL": "Soltero/a", "CAS": "Casado/a", "DIV": "Divorciado/a",
+    "VIU": "Viudo/a", "CON": "Conviviente", "OTR": "Otro",
+}
+
 
 def serialize_pre(pre) -> dict:
     a = pre.alumno
@@ -27,6 +33,11 @@ def serialize_pre(pre) -> dict:
             if obj and hasattr(obj, model_field):
                 val = getattr(obj, model_field)
                 if val not in (None, "", 0, False):
+                    # Convertir códigos de vuelta a display strings para campos con choices
+                    if field == "genero":
+                        val = _GENERO_TO_DISPLAY.get(val, val)
+                    elif field == "estado_civil":
+                        val = _ESTADO_CIVIL_TO_DISPLAY.get(val, val)
                     extra[field] = val
                     return
 
