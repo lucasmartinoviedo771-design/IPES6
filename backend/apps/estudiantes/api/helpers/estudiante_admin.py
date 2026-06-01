@@ -510,33 +510,50 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
         for reg in Regularidad.objects.filter(estudiante=estudiante).select_related("materia").order_by("-fecha_cierre")
     ]
 
+    # Fallback: si los campos están vacíos, usar datos_extra de preinscripción pendiente
+    pre_extra = {}
+    from core.models import Preinscripcion as _Preinscripcion
+    pre_pendiente = (
+        _Preinscripcion.objects.filter(alumno=estudiante, estado__in=["Enviada", "Observada"])
+        .order_by("-updated_at")
+        .first()
+    )
+    if pre_pendiente:
+        pre_extra = pre_pendiente.datos_extra or {}
+
+    def _fb(value, key, default=None):
+        """Devuelve value si no es None/vacío, sino el fallback de pre_extra."""
+        if value not in (None, "", False, 0):
+            return value
+        return pre_extra.get(key, default)
+
     extra_data = {
         "anio_ingreso": estudiante.anio_ingreso,
         "cohorte": estudiante.cohorte,
         "observaciones": estudiante.observaciones,
         "lugar_nacimiento": persona.lugar_nacimiento if persona else None,
-        "genero": persona.genero if persona else None,
-        "cuil": persona.cuil if persona else None,
-        "nacionalidad": persona.nacionalidad if persona else None,
-        "estado_civil": persona.estado_civil if persona else None,
-        "localidad_nac": persona.localidad_nac if persona else None,
-        "provincia_nac": persona.provincia_nac if persona else None,
-        "pais_nac": persona.pais_nac if persona else None,
-        "emergencia_telefono": persona.telefono_emergencia if persona else None,
-        "emergencia_parentesco": persona.parentesco_emergencia if persona else None,
-        "trabaja": estudiante.trabaja,
-        "empleador": estudiante.empleador,
-        "horario_trabajo": estudiante.horario_trabajo,
-        "domicilio_trabajo": estudiante.domicilio_trabajo,
-        "cud_informado": estudiante.cud_informado,
-        "condicion_salud_informada": estudiante.condicion_salud_informada,
-        "condicion_salud_detalle": estudiante.condicion_salud_detalle,
-        "sec_titulo": estudiante.sec_titulo,
-        "sec_establecimiento": estudiante.sec_establecimiento,
-        "sec_fecha_egreso": format_date(estudiante.sec_fecha_egreso),
-        "sec_localidad": estudiante.sec_localidad,
-        "sec_provincia": estudiante.sec_provincia,
-        "sec_pais": estudiante.sec_pais,
+        "genero": _fb(persona.genero if persona else None, "genero"),
+        "cuil": _fb(persona.cuil if persona else None, "cuil"),
+        "nacionalidad": _fb(persona.nacionalidad if persona else None, "nacionalidad"),
+        "estado_civil": _fb(persona.estado_civil if persona else None, "estado_civil"),
+        "localidad_nac": _fb(persona.localidad_nac if persona else None, "localidad_nac"),
+        "provincia_nac": _fb(persona.provincia_nac if persona else None, "provincia_nac"),
+        "pais_nac": _fb(persona.pais_nac if persona else None, "pais_nac"),
+        "emergencia_telefono": _fb(persona.telefono_emergencia if persona else None, "emergencia_telefono"),
+        "emergencia_parentesco": _fb(persona.parentesco_emergencia if persona else None, "emergencia_parentesco"),
+        "trabaja": _fb(estudiante.trabaja, "trabaja", False),
+        "empleador": _fb(estudiante.empleador, "empleador"),
+        "horario_trabajo": _fb(estudiante.horario_trabajo, "horario_trabajo"),
+        "domicilio_trabajo": _fb(estudiante.domicilio_trabajo, "domicilio_trabajo"),
+        "cud_informado": _fb(estudiante.cud_informado, "cud_informado", False),
+        "condicion_salud_informada": _fb(estudiante.condicion_salud_informada, "condicion_salud_informada", False),
+        "condicion_salud_detalle": _fb(estudiante.condicion_salud_detalle, "condicion_salud_detalle"),
+        "sec_titulo": _fb(estudiante.sec_titulo, "sec_titulo"),
+        "sec_establecimiento": _fb(estudiante.sec_establecimiento, "sec_establecimiento"),
+        "sec_fecha_egreso": format_date(_fb(estudiante.sec_fecha_egreso, "sec_fecha_egreso")),
+        "sec_localidad": _fb(estudiante.sec_localidad, "sec_localidad"),
+        "sec_provincia": _fb(estudiante.sec_provincia, "sec_provincia"),
+        "sec_pais": _fb(estudiante.sec_pais, "sec_pais"),
     }
 
     return EstudianteAdminDetail(

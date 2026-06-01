@@ -65,7 +65,8 @@ class PreinscripcionService:
         data_dict.pop("captcha_token", None)
         data_dict.pop("honeypot", None)
 
-        # 1. Persona — mapear todos los campos del formulario de preinscripción
+        # 1. Persona — solo datos básicos de identidad y contacto
+        # Los campos adicionales (nacimiento, emergencia, etc.) se copian al CONFIRMAR
         persona, _ = Persona.objects.update_or_create(
             dni=dni,
             defaults={
@@ -76,14 +77,6 @@ class PreinscripcionService:
                 "domicilio": estudiante_data.domicilio,
                 "fecha_nacimiento": estudiante_data.fecha_nacimiento,
                 "cuil": getattr(estudiante_data, "cuil", None),
-                "nacionalidad": payload.nacionalidad or "Argentina",
-                "estado_civil": _map_estado_civil(payload.estado_civil),
-                "genero": _map_genero(payload.genero),
-                "localidad_nac": payload.localidad_nac,
-                "provincia_nac": payload.provincia_nac,
-                "pais_nac": payload.pais_nac,
-                "telefono_emergencia": payload.emergencia_telefono,
-                "parentesco_emergencia": payload.emergencia_parentesco,
             }
         )
 
@@ -136,8 +129,47 @@ class PreinscripcionService:
                 if hasattr(cl, k):
                     setattr(cl, k, v)
             cl.save()
-            
 
+        # Copiar datos_extra → Persona + Estudiante al confirmar
+        extra = pre.datos_extra or {}
+        persona = pre.alumno.persona
+        if persona:
+            persona_updates = {}
+            if extra.get("nacionalidad"):
+                persona_updates["nacionalidad"] = extra["nacionalidad"]
+            if extra.get("estado_civil"):
+                persona_updates["estado_civil"] = _map_estado_civil(extra["estado_civil"])
+            if extra.get("genero"):
+                persona_updates["genero"] = _map_genero(extra["genero"])
+            if extra.get("localidad_nac"):
+                persona_updates["localidad_nac"] = extra["localidad_nac"]
+            if extra.get("provincia_nac"):
+                persona_updates["provincia_nac"] = extra["provincia_nac"]
+            if extra.get("pais_nac"):
+                persona_updates["pais_nac"] = extra["pais_nac"]
+            if extra.get("emergencia_telefono"):
+                persona_updates["telefono_emergencia"] = extra["emergencia_telefono"]
+            if extra.get("emergencia_parentesco"):
+                persona_updates["parentesco_emergencia"] = extra["emergencia_parentesco"]
+            if persona_updates:
+                for k, v in persona_updates.items():
+                    setattr(persona, k, v)
+                persona.save(update_fields=list(persona_updates.keys()))
+
+        estudiante = pre.alumno
+        est_updates = {}
+        for field in ("sec_titulo", "sec_establecimiento", "sec_fecha_egreso",
+                      "sec_localidad", "sec_provincia", "sec_pais",
+                      "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo"):
+            if extra.get(field) is not None:
+                est_updates[field] = extra[field]
+        for field in ("cud_informado", "condicion_salud_informada", "condicion_salud_detalle"):
+            if extra.get(field) is not None:
+                est_updates[field] = extra[field]
+        if est_updates:
+            for k, v in est_updates.items():
+                setattr(estudiante, k, v)
+            estudiante.save(update_fields=list(est_updates.keys()))
 
         # Career assignment
         inscripcion = pre.alumno.asignar_profesorado(
