@@ -46,7 +46,7 @@ export default function EstudiosSecundarios() {
                 InputLabelProps={{ shrink: true }}
                 inputProps={{ max: dayjs().format("YYYY-MM-DD") }}
                 error={!!fieldState.error}
-                helperText={fieldState.error?.message || "Formato YYYY-MM-DD"}
+                helperText={fieldState.error?.message}
               />
             )}
           />
