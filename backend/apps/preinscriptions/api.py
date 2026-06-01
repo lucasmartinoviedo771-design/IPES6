@@ -38,6 +38,17 @@ from .views_pdf import preinscripcion_pdf
 
 logger = logging.getLogger(__name__)
 
+
+def _fmt_date(value) -> str:
+    """Convierte YYYY-MM-DD a DD/MM/YYYY para mostrar en templates."""
+    s = str(value or "").strip()
+    if not s:
+        return ""
+    parts = s.split("-")
+    if len(parts) == 3 and len(parts[0]) == 4:
+        return f"{parts[2]}/{parts[1]}/{parts[0]}"
+    return s
+
 # Grupos de seguridad para decoradores de permisos
 PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
@@ -244,7 +255,7 @@ def preview_pdf(request, payload: PreinscripcionIn):
         "nombres": est.get("nombres") or "",
         "dni": est.get("dni") or "",
         "cuil": est.get("cuil") or "",
-        "fecha_nacimiento": str(est.get("fecha_nacimiento") or ""),
+        "fecha_nacimiento": _fmt_date(est.get("fecha_nacimiento")),
         "email": est.get("email") or "",
         "tel_movil": est.get("telefono") or "",
         "domicilio": est.get("domicilio") or "",
@@ -262,14 +273,14 @@ def preview_pdf(request, payload: PreinscripcionIn):
         # Estudios secundarios
         "sec_titulo": raw.get("sec_titulo"),
         "sec_establecimiento": raw.get("sec_establecimiento"),
-        "sec_fecha_egreso": str(raw.get("sec_fecha_egreso") or ""),
+        "sec_fecha_egreso": _fmt_date(raw.get("sec_fecha_egreso")),
         "sec_localidad": raw.get("sec_localidad"),
         "sec_provincia": raw.get("sec_provincia"),
         "sec_pais": raw.get("sec_pais"),
         # Estudios superiores
         "sup1_titulo": raw.get("sup1_titulo"),
         "sup1_establecimiento": raw.get("sup1_establecimiento"),
-        "sup1_fecha_egreso": str(raw.get("sup1_fecha_egreso") or ""),
+        "sup1_fecha_egreso": _fmt_date(raw.get("sup1_fecha_egreso")),
         "sup1_localidad": raw.get("sup1_localidad"),
         "sup1_provincia": raw.get("sup1_provincia"),
         "sup1_pais": raw.get("sup1_pais"),

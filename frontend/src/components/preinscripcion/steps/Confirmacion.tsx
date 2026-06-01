@@ -11,6 +11,13 @@ import { PreinscripcionForm } from "../schema";
 import React, { useState } from "react";
 import { apiPreviewPdf } from "@/api/preinscripciones";
 
+const fmtDate = (iso?: string) => {
+  if (!iso) return undefined;
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+};
+
 function Row({ label, value }: { label: string; value?: any }) {
   return (
     <Grid container sx={{ mb: 0.5 }}>
@@ -66,7 +73,7 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
         <Row label="Apellido" value={v.apellido} />
         <Row label="DNI" value={v.dni} />
         <Row label="CUIL" value={v.cuil} />
-        <Row label="Fecha de nacimiento" value={v.fecha_nacimiento} />
+        <Row label="Fecha de nacimiento" value={fmtDate(v.fecha_nacimiento)} />
         <Row label="Nacionalidad" value={v.nacionalidad} />
         <Row label="Estado civil" value={v.estado_civil} />
         <Row label="Localidad de nacimiento" value={v.localidad_nac} />
@@ -103,7 +110,7 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
         <Typography variant="h6" sx={{ mb: 2 }}>Estudios secundarios</Typography>
         <Row label="Título" value={v.sec_titulo} />
         <Row label="Establecimiento" value={v.sec_establecimiento} />
-        <Row label="Fecha de egreso" value={v.sec_fecha_egreso} />
+        <Row label="Fecha de egreso" value={fmtDate(v.sec_fecha_egreso)} />
         <Row label="Localidad" value={v.sec_localidad} />
         <Row label="Provincia" value={v.sec_provincia} />
         <Row label="País" value={v.sec_pais} />
@@ -112,7 +119,7 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
         <Typography variant="h6" sx={{ mb: 2 }}>Estudios superiores</Typography>
         <Row label="Título" value={v.sup1_titulo} />
         <Row label="Establecimiento" value={v.sup1_establecimiento} />
-        <Row label="Fecha de egreso" value={v.sup1_fecha_egreso} />
+        <Row label="Fecha de egreso" value={fmtDate(v.sup1_fecha_egreso)} />
         <Row label="Localidad" value={v.sup1_localidad} />
         <Row label="Provincia" value={v.sup1_provincia} />
         <Row label="País" value={v.sup1_pais} />
