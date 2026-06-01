@@ -74,6 +74,26 @@ def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int
         raise HttpError(500, "No se pudieron recuperar las carreras.") from e
 
 
+@router.get("/ventana-activa", response=ApiResponse, auth=AllowPublic())
+def get_ventana_activa_publica(request):
+    """
+    Endpoint público para consultar si hay una ventana de preinscripción activa.
+    No requiere autenticación — usado por el formulario público de aspirantes.
+    """
+    ventana = ventana_preinscripcion_activa()
+    if not ventana:
+        return ApiResponse(ok=False, message="No hay ventana activa.", data=None)
+    return ApiResponse(ok=True, message="Ventana activa.", data={
+        "id": ventana.id,
+        "tipo": ventana.tipo,
+        "desde": str(ventana.desde),
+        "hasta": str(ventana.hasta),
+        "activo": ventana.activo,
+    })
+
+
+
+
 @router.get("/", response=PreinscripcionPaginatedOut, auth=JWTAuth())
 def listar_preinscripciones(
     request,

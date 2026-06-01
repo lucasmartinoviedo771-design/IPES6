@@ -42,7 +42,10 @@ def verify_recaptcha(token: str | None, remote_ip: str) -> bool:
     if not secret:
         return True
     if not token:
-        return False
+        # Token ausente: ocurre en WebViews (Facebook, Instagram) y con ad blockers.
+        # El honeypot y el rate limit siguen activos como protección real.
+        logger.warning("reCAPTCHA: token ausente desde IP %s — se permite la solicitud", remote_ip)
+        return True
     try:
         response = requests.post(
             "https://www.google.com/recaptcha/api/siteverify",
@@ -55,13 +58,14 @@ def verify_recaptcha(token: str | None, remote_ip: str) -> bool:
         )
         data = response.json()
     except requests.RequestException as exc:
-        logger.warning("No se pudo verificar reCAPTCHA: %s", exc)
-        return False
+        # Si no se puede contactar a Google, no bloqueamos al aspirante.
+        logger.warning("No se pudo verificar reCAPTCHA: %s — se permite la solicitud", exc)
+        return True
     if not data.get("success"):
         logger.info("reCAPTCHA rechazado: %s", data)
         return False
     score = data.get("score")
-    min_score = getattr(settings, "RECAPTCHA_MIN_SCORE", 0.3)
+    min_score = getattr(settings, "RECAPTCHA_MIN_SCORE", 0.1)
     if score is not None and score < min_score:
         logger.info("reCAPTCHA score bajo (%s)", score)
         return False

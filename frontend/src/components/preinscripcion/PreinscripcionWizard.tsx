@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FieldErrors, FormProvider, SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Box from "@mui/material/Box";
@@ -17,8 +17,7 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
@@ -26,7 +25,27 @@ import { defaultValues } from "./defaultValues";
 import { PreinscripcionOut } from "@/types/preinscripcion";
 import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
 import { apiUploadPreDoc } from "@/api/preinscripciones";
-import { fetchVentanas, VentanaDto } from "@/api/ventanas";
+import { client } from "@/api/client";
+
+export type VentanaPublicaDto = {
+  id?: number;
+  tipo: string;
+  desde: string;
+  hasta: string;
+  activo: boolean;
+};
+
+async function fetchVentanaActivaPublica(): Promise<VentanaPublicaDto | null> {
+  try {
+    const { data } = await client.get("/preinscripciones/ventana-activa", {
+      validateStatus: () => true,
+    } as any);
+    if (data?.ok && data?.data) return data.data as VentanaPublicaDto;
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 import DatosPersonales from "./steps/DatosPersonales";
 import Contacto from "./steps/Contacto";
@@ -41,8 +60,6 @@ import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 
 const STORAGE_KEY = "preinscripcion_form_data";
 
-dayjs.extend(isSameOrBefore);
-dayjs.extend(isSameOrAfter);
 
 const steps = [
   "Datos personales",
@@ -130,21 +147,11 @@ export default function PreinscripcionWizard() {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  const { isLoading: loadingVentana, data: ventanasPre } = useQuery<VentanaDto[]>({
-    queryKey: ["ventanas-preinscripcion"],
-    queryFn: () => fetchVentanas({ tipo: "PREINSCRIPCION" }),
+  const { isLoading: loadingVentana, data: ventanaActiva } = useQuery<VentanaPublicaDto | null>({
+    queryKey: ["ventana-preinscripcion-publica"],
+    queryFn: fetchVentanaActivaPublica,
+    staleTime: 60_000,
   });
-
-  const ventanaActiva = useMemo(() => {
-    if (!ventanasPre) return null;
-    const hoy = dayjs();
-    return ventanasPre.find(
-      (v) =>
-        v.activo &&
-        dayjs(v.desde).isSameOrBefore(hoy, "day") &&
-        dayjs(v.hasta).isSameOrAfter(hoy, "day")
-    );
-  }, [ventanasPre]);
 
   const [carreras, setCarreras] = useState<{id:number; nombre:string}[]>([]);
   const [carrerasLoading, setCarrerasLoading] = useState(false);
