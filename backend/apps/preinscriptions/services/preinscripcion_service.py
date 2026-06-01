@@ -27,6 +27,34 @@ def _generar_password_segura() -> str:
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(12))
 
+
+_ESTADO_CIVIL_MAP = {
+    "soltero/a": "SOL", "soltero": "SOL", "soltera": "SOL",
+    "casado/a": "CAS", "casado": "CAS", "casada": "CAS",
+    "divorciado/a": "DIV", "divorciado": "DIV", "divorciada": "DIV",
+    "viudo/a": "VIU", "viudo": "VIU", "viuda": "VIU",
+    "conviviente": "CON",
+    "otro": "OTR",
+}
+
+_GENERO_MAP = {
+    "masculino": "M",
+    "femenino": "F",
+    "no binario / otro": "X", "no binario": "X", "otro": "X",
+}
+
+
+def _map_estado_civil(value: str | None) -> str | None:
+    if not value:
+        return None
+    return _ESTADO_CIVIL_MAP.get(value.strip().lower(), None)
+
+
+def _map_genero(value: str | None) -> str | None:
+    if not value:
+        return None
+    return _GENERO_MAP.get(value.strip().lower(), None)
+
 class PreinscripcionService:
     @staticmethod
     @transaction.atomic
@@ -37,7 +65,7 @@ class PreinscripcionService:
         data_dict.pop("captcha_token", None)
         data_dict.pop("honeypot", None)
 
-        # 1. Persona
+        # 1. Persona — mapear todos los campos del formulario de preinscripción
         persona, _ = Persona.objects.update_or_create(
             dni=dni,
             defaults={
@@ -48,6 +76,14 @@ class PreinscripcionService:
                 "domicilio": estudiante_data.domicilio,
                 "fecha_nacimiento": estudiante_data.fecha_nacimiento,
                 "cuil": getattr(estudiante_data, "cuil", None),
+                "nacionalidad": payload.nacionalidad or "Argentina",
+                "estado_civil": _map_estado_civil(payload.estado_civil),
+                "genero": _map_genero(payload.genero),
+                "localidad_nac": payload.localidad_nac,
+                "provincia_nac": payload.provincia_nac,
+                "pais_nac": payload.pais_nac,
+                "telefono_emergencia": payload.emergencia_telefono,
+                "parentesco_emergencia": payload.emergencia_parentesco,
             }
         )
 
