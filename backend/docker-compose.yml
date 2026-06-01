@@ -39,7 +39,7 @@ services:
     environment:
       DJANGO_ENV: ${DJANGO_ENV:-production}
       DEBUG: ${DEBUG:-False}
-      SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
+      SECRET_KEY: ${SECRET_KEY}   # Sin fallback — falla explícitamente si no está definida en .env
       SECURE_SSL_REDIRECT: 'False'
       DB_HOST: db
       DB_PORT: ${DB_PORT:-3306}

@@ -1,7 +1,7 @@
 from django.db.models import Q
 from core.models import Estudiante, EstudianteCarrera, PreinscripcionChecklist
 from apps.estudiantes.schemas import EstudianteAdminListItem, EstudianteAdminListResponse
-from apps.estudiantes.api.helpers.estudiante_admin import _extract_documentacion, _determine_condicion
+from apps.estudiantes.api.helpers.estudiante_admin import _extract_documentacion, _extract_documentacion_from_ec, _determine_condicion
 
 CHECKLIST_DOC_FIELDS = [
     "dni_legalizado",
@@ -17,7 +17,8 @@ CHECKLIST_DOC_FIELDS = [
 
 def _calcular_condicion_estudiante(est: Estudiante, checklist_map: dict) -> str:
     """Calcula la condición documental del estudiante fusionando datos del modelo y del checklist."""
-    doc_data = _extract_documentacion(est)
+    ec = est.carreras_detalle.first()
+    doc_data = _extract_documentacion_from_ec(ec) if ec else _extract_documentacion(est)
     checklist = checklist_map.get(est.pk)
     if checklist:
         for k in CHECKLIST_DOC_FIELDS:

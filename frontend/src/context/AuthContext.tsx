@@ -103,11 +103,20 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const navigate = useNavigate();
 
   /**
-   * Acción de emergencia ante dectete de sesión expirada (401 en client.ts).
+   * Rutas que son 100% públicas y NO deben redirigir al login
+   * aunque el servidor devuelva 401 (p.ej. usuario sin sesión visitando preinscripción).
+   */
+  const PUBLIC_PATHS = ["/preinscripcion", "/login", "/403", "/auth/callback", "/docentes/asistencia", "/debug/inscripcion-preview"];
+
+  /**
+   * Acción de emergencia ante detección de sesión expirada (401 en client.ts).
+   * No redirige si la ruta actual es una ruta pública.
    */
   const redirectToLogin = useCallback(() => {
     setUser(null);
-    if (window.location.pathname !== "/login") {
+    const currentPath = window.location.pathname;
+    const isPublic = PUBLIC_PATHS.some((p) => currentPath === p || currentPath.startsWith(p + "/"));
+    if (!isPublic) {
       navigate("/login", { replace: true });
     }
   }, [navigate]);

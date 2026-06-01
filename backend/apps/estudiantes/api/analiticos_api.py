@@ -7,7 +7,7 @@ from apps.common.api_schemas import ApiResponse
 from apps.common.date_utils import format_datetime
 from core.auth_ninja import JWTAuth
 from core.permissions import ensure_roles
-from apps.estudiantes.api.common import TITULOS_ROLES
+from apps.estudiantes.api.common import TITULOS_ROLES, ADMIN_ALLOWED_ROLES
 from core.models import Estudiante, PedidoAnalitico, PlanDeEstudio, Profesorado, VentanaHabilitacion
 
 from ..schemas import PedidoAnaliticoIn, PedidoAnaliticoItem, PedidoAnaliticoOut
@@ -79,8 +79,10 @@ def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
     return {"message": "Solicitud registrada."}
 
 
-@estudiantes_router.get("/analiticos_ext", response=list[PedidoAnaliticoItem])
+@estudiantes_router.get("/analiticos_ext", response=list[PedidoAnaliticoItem], auth=JWTAuth())
 def listar_pedidos_analitico(request, ventana_id: int, dni: str | None = None):
+    # VULN-02 fix: restringir a roles administrativos — evita exposición de PII de estudiantes
+    ensure_roles(request.user, ADMIN_ALLOWED_ROLES | TITULOS_ROLES | {"coordinador", "tutor", "jefes"})
     qs = (
         PedidoAnalitico.objects.select_related("estudiante__user", "estudiante__persona", "profesorado", "ventana")
         .filter(ventana_id=ventana_id)
@@ -110,8 +112,10 @@ def listar_pedidos_analitico(request, ventana_id: int, dni: str | None = None):
     return salida
 
 
-@estudiantes_router.get("/analiticos_ext/pdf")
+@estudiantes_router.get("/analiticos_ext/pdf", auth=JWTAuth())
 def descargar_pedidos_analitico_pdf(request, ventana_id: int, dni: str | None = None):
+    # VULN-02 fix: mismo control de acceso que el endpoint de listado
+    ensure_roles(request.user, ADMIN_ALLOWED_ROLES | TITULOS_ROLES | {"coordinador", "tutor", "jefes"})
     from django.template.loader import render_to_string
     from django.http import HttpResponse
     from weasyprint import HTML

@@ -64,12 +64,10 @@ export function useAnioIngresoOptions(carreraId?: number | "") {
   });
 
   return useMemo(() => {
-    if (Array.isArray(data) && data.length > 0) {
-      return data.map(String);
-    }
-    // Fallback dinámico basado en el año actual por si falla la API
     const current = new Date().getFullYear();
-    const start = 2020; 
+    const MIN_YEAR = 2010;
+    const apiMin = Array.isArray(data) && data.length > 0 ? Math.min(...data) : current;
+    const start = Math.min(apiMin, MIN_YEAR);
     const values: string[] = [];
     for (let year = current; year >= start; year -= 1) {
       values.push(String(year));
