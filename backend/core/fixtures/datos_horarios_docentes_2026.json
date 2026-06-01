@@ -1,0 +1,2682 @@
+[
+  {
+    "model": "core.horariocatedra",
+    "pk": 59,
+    "fields": {
+      "espacio": 1,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 60,
+    "fields": {
+      "espacio": 1,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 68,
+    "fields": {
+      "espacio": 2,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 69,
+    "fields": {
+      "espacio": 2,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 66,
+    "fields": {
+      "espacio": 3,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 67,
+    "fields": {
+      "espacio": 3,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 64,
+    "fields": {
+      "espacio": 4,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 65,
+    "fields": {
+      "espacio": 4,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 62,
+    "fields": {
+      "espacio": 5,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 63,
+    "fields": {
+      "espacio": 5,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 70,
+    "fields": {
+      "espacio": 6,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 61,
+    "fields": {
+      "espacio": 7,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 71,
+    "fields": {
+      "espacio": 8,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 82,
+    "fields": {
+      "espacio": 11,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 83,
+    "fields": {
+      "espacio": 11,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 78,
+    "fields": {
+      "espacio": 12,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 79,
+    "fields": {
+      "espacio": 12,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 80,
+    "fields": {
+      "espacio": 13,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 81,
+    "fields": {
+      "espacio": 13,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 72,
+    "fields": {
+      "espacio": 14,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 73,
+    "fields": {
+      "espacio": 14,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 76,
+    "fields": {
+      "espacio": 15,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 77,
+    "fields": {
+      "espacio": 15,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 84,
+    "fields": {
+      "espacio": 16,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 85,
+    "fields": {
+      "espacio": 16,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 74,
+    "fields": {
+      "espacio": 17,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 75,
+    "fields": {
+      "espacio": 17,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 86,
+    "fields": {
+      "espacio": 18,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 96,
+    "fields": {
+      "espacio": 20,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 97,
+    "fields": {
+      "espacio": 20,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 98,
+    "fields": {
+      "espacio": 21,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 99,
+    "fields": {
+      "espacio": 21,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 90,
+    "fields": {
+      "espacio": 22,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 91,
+    "fields": {
+      "espacio": 22,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 92,
+    "fields": {
+      "espacio": 23,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 93,
+    "fields": {
+      "espacio": 23,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 94,
+    "fields": {
+      "espacio": 24,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 95,
+    "fields": {
+      "espacio": 24,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 87,
+    "fields": {
+      "espacio": 25,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 88,
+    "fields": {
+      "espacio": 26,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 89,
+    "fields": {
+      "espacio": 27,
+      "turno": 1,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 106,
+    "fields": {
+      "espacio": 30,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 107,
+    "fields": {
+      "espacio": 30,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 102,
+    "fields": {
+      "espacio": 31,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 103,
+    "fields": {
+      "espacio": 31,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 104,
+    "fields": {
+      "espacio": 32,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 105,
+    "fields": {
+      "espacio": 32,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 110,
+    "fields": {
+      "espacio": 33,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 111,
+    "fields": {
+      "espacio": 33,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 108,
+    "fields": {
+      "espacio": 34,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 109,
+    "fields": {
+      "espacio": 34,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 113,
+    "fields": {
+      "espacio": 35,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 114,
+    "fields": {
+      "espacio": 35,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "SCU"
+    }
+  },
+  {
+    "model": "core.horariocatedra",
+    "pk": 112,
+    "fields": {
+      "espacio": 36,
+      "turno": 3,
+      "anio_academico": 2026,
+      "cuatrimestre": "PCU"
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 190,
+    "fields": {
+      "horario_catedra": 59,
+      "bloque": 1
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 191,
+    "fields": {
+      "horario_catedra": 59,
+      "bloque": 2
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 192,
+    "fields": {
+      "horario_catedra": 59,
+      "bloque": 4
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 193,
+    "fields": {
+      "horario_catedra": 60,
+      "bloque": 1
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 194,
+    "fields": {
+      "horario_catedra": 60,
+      "bloque": 2
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 195,
+    "fields": {
+      "horario_catedra": 60,
+      "bloque": 4
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 196,
+    "fields": {
+      "horario_catedra": 61,
+      "bloque": 5
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 197,
+    "fields": {
+      "horario_catedra": 61,
+      "bloque": 7
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 232,
+    "fields": {
+      "horario_catedra": 61,
+      "bloque": 37
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 233,
+    "fields": {
+      "horario_catedra": 61,
+      "bloque": 38
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 200,
+    "fields": {
+      "horario_catedra": 62,
+      "bloque": 10
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 201,
+    "fields": {
+      "horario_catedra": 62,
+      "bloque": 11
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 202,
+    "fields": {
+      "horario_catedra": 62,
+      "bloque": 19
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 203,
+    "fields": {
+      "horario_catedra": 62,
+      "bloque": 20
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 204,
+    "fields": {
+      "horario_catedra": 63,
+      "bloque": 10
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 205,
+    "fields": {
+      "horario_catedra": 63,
+      "bloque": 11
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 206,
+    "fields": {
+      "horario_catedra": 63,
+      "bloque": 19
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 207,
+    "fields": {
+      "horario_catedra": 63,
+      "bloque": 20
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 208,
+    "fields": {
+      "horario_catedra": 64,
+      "bloque": 13
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 209,
+    "fields": {
+      "horario_catedra": 64,
+      "bloque": 14
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 210,
+    "fields": {
+      "horario_catedra": 64,
+      "bloque": 22
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 211,
+    "fields": {
+      "horario_catedra": 64,
+      "bloque": 23
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 212,
+    "fields": {
+      "horario_catedra": 65,
+      "bloque": 13
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 213,
+    "fields": {
+      "horario_catedra": 65,
+      "bloque": 14
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 214,
+    "fields": {
+      "horario_catedra": 65,
+      "bloque": 22
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 215,
+    "fields": {
+      "horario_catedra": 65,
+      "bloque": 23
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 216,
+    "fields": {
+      "horario_catedra": 66,
+      "bloque": 16
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 217,
+    "fields": {
+      "horario_catedra": 66,
+      "bloque": 17
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 218,
+    "fields": {
+      "horario_catedra": 66,
+      "bloque": 32
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 219,
+    "fields": {
+      "horario_catedra": 66,
+      "bloque": 34
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 220,
+    "fields": {
+      "horario_catedra": 66,
+      "bloque": 35
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 221,
+    "fields": {
+      "horario_catedra": 67,
+      "bloque": 16
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 222,
+    "fields": {
+      "horario_catedra": 67,
+      "bloque": 17
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 223,
+    "fields": {
+      "horario_catedra": 67,
+      "bloque": 32
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 224,
+    "fields": {
+      "horario_catedra": 67,
+      "bloque": 34
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 225,
+    "fields": {
+      "horario_catedra": 67,
+      "bloque": 35
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 226,
+    "fields": {
+      "horario_catedra": 68,
+      "bloque": 28
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 227,
+    "fields": {
+      "horario_catedra": 68,
+      "bloque": 29
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 228,
+    "fields": {
+      "horario_catedra": 68,
+      "bloque": 31
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 229,
+    "fields": {
+      "horario_catedra": 69,
+      "bloque": 28
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 230,
+    "fields": {
+      "horario_catedra": 69,
+      "bloque": 29
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 231,
+    "fields": {
+      "horario_catedra": 69,
+      "bloque": 31
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 234,
+    "fields": {
+      "horario_catedra": 70,
+      "bloque": 8
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 235,
+    "fields": {
+      "horario_catedra": 70,
+      "bloque": 9
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 244,
+    "fields": {
+      "horario_catedra": 70,
+      "bloque": 40
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 245,
+    "fields": {
+      "horario_catedra": 70,
+      "bloque": 41
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 241,
+    "fields": {
+      "horario_catedra": 71,
+      "bloque": 43
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 242,
+    "fields": {
+      "horario_catedra": 71,
+      "bloque": 44
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 243,
+    "fields": {
+      "horario_catedra": 71,
+      "bloque": 45
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 246,
+    "fields": {
+      "horario_catedra": 72,
+      "bloque": 1
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 247,
+    "fields": {
+      "horario_catedra": 72,
+      "bloque": 2
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 248,
+    "fields": {
+      "horario_catedra": 72,
+      "bloque": 19
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 249,
+    "fields": {
+      "horario_catedra": 72,
+      "bloque": 20
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 250,
+    "fields": {
+      "horario_catedra": 73,
+      "bloque": 1
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 251,
+    "fields": {
+      "horario_catedra": 73,
+      "bloque": 2
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 252,
+    "fields": {
+      "horario_catedra": 73,
+      "bloque": 19
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 253,
+    "fields": {
+      "horario_catedra": 73,
+      "bloque": 20
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 254,
+    "fields": {
+      "horario_catedra": 74,
+      "bloque": 4
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 255,
+    "fields": {
+      "horario_catedra": 74,
+      "bloque": 5
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 256,
+    "fields": {
+      "horario_catedra": 74,
+      "bloque": 43
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 257,
+    "fields": {
+      "horario_catedra": 74,
+      "bloque": 44
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 258,
+    "fields": {
+      "horario_catedra": 75,
+      "bloque": 4
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 259,
+    "fields": {
+      "horario_catedra": 75,
+      "bloque": 5
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 260,
+    "fields": {
+      "horario_catedra": 75,
+      "bloque": 43
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 261,
+    "fields": {
+      "horario_catedra": 75,
+      "bloque": 44
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 262,
+    "fields": {
+      "horario_catedra": 76,
+      "bloque": 7
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 263,
+    "fields": {
+      "horario_catedra": 76,
+      "bloque": 8
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 264,
+    "fields": {
+      "horario_catedra": 76,
+      "bloque": 16
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 265,
+    "fields": {
+      "horario_catedra": 76,
+      "bloque": 17
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 266,
+    "fields": {
+      "horario_catedra": 77,
+      "bloque": 7
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 267,
+    "fields": {
+      "horario_catedra": 77,
+      "bloque": 8
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 268,
+    "fields": {
+      "horario_catedra": 77,
+      "bloque": 16
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 269,
+    "fields": {
+      "horario_catedra": 77,
+      "bloque": 17
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 270,
+    "fields": {
+      "horario_catedra": 78,
+      "bloque": 10
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 271,
+    "fields": {
+      "horario_catedra": 78,
+      "bloque": 11
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 272,
+    "fields": {
+      "horario_catedra": 78,
+      "bloque": 28
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 273,
+    "fields": {
+      "horario_catedra": 78,
+      "bloque": 29
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 274,
+    "fields": {
+      "horario_catedra": 79,
+      "bloque": 10
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 275,
+    "fields": {
+      "horario_catedra": 79,
+      "bloque": 11
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 276,
+    "fields": {
+      "horario_catedra": 79,
+      "bloque": 28
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 277,
+    "fields": {
+      "horario_catedra": 79,
+      "bloque": 29
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 278,
+    "fields": {
+      "horario_catedra": 80,
+      "bloque": 13
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 279,
+    "fields": {
+      "horario_catedra": 80,
+      "bloque": 14
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 280,
+    "fields": {
+      "horario_catedra": 80,
+      "bloque": 31
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 281,
+    "fields": {
+      "horario_catedra": 80,
+      "bloque": 32
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 282,
+    "fields": {
+      "horario_catedra": 81,
+      "bloque": 13
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 283,
+    "fields": {
+      "horario_catedra": 81,
+      "bloque": 14
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 284,
+    "fields": {
+      "horario_catedra": 81,
+      "bloque": 31
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 285,
+    "fields": {
+      "horario_catedra": 81,
+      "bloque": 32
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 286,
+    "fields": {
+      "horario_catedra": 82,
+      "bloque": 22
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 287,
+    "fields": {
+      "horario_catedra": 82,
+      "bloque": 23
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 288,
+    "fields": {
+      "horario_catedra": 83,
+      "bloque": 22
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 289,
+    "fields": {
+      "horario_catedra": 83,
+      "bloque": 23
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 290,
+    "fields": {
+      "horario_catedra": 84,
+      "bloque": 25
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 291,
+    "fields": {
+      "horario_catedra": 84,
+      "bloque": 26
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 292,
+    "fields": {
+      "horario_catedra": 84,
+      "bloque": 40
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 293,
+    "fields": {
+      "horario_catedra": 84,
+      "bloque": 41
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 294,
+    "fields": {
+      "horario_catedra": 85,
+      "bloque": 25
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 295,
+    "fields": {
+      "horario_catedra": 85,
+      "bloque": 26
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 296,
+    "fields": {
+      "horario_catedra": 85,
+      "bloque": 40
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 297,
+    "fields": {
+      "horario_catedra": 85,
+      "bloque": 41
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 298,
+    "fields": {
+      "horario_catedra": 86,
+      "bloque": 34
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 299,
+    "fields": {
+      "horario_catedra": 86,
+      "bloque": 35
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 300,
+    "fields": {
+      "horario_catedra": 86,
+      "bloque": 37
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 301,
+    "fields": {
+      "horario_catedra": 86,
+      "bloque": 38
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 302,
+    "fields": {
+      "horario_catedra": 87,
+      "bloque": 1
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 303,
+    "fields": {
+      "horario_catedra": 87,
+      "bloque": 2
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 304,
+    "fields": {
+      "horario_catedra": 87,
+      "bloque": 22
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 305,
+    "fields": {
+      "horario_catedra": 87,
+      "bloque": 23
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 306,
+    "fields": {
+      "horario_catedra": 88,
+      "bloque": 4
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 307,
+    "fields": {
+      "horario_catedra": 88,
+      "bloque": 5
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 308,
+    "fields": {
+      "horario_catedra": 88,
+      "bloque": 25
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 309,
+    "fields": {
+      "horario_catedra": 88,
+      "bloque": 26
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 310,
+    "fields": {
+      "horario_catedra": 89,
+      "bloque": 7
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 311,
+    "fields": {
+      "horario_catedra": 89,
+      "bloque": 8
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 312,
+    "fields": {
+      "horario_catedra": 89,
+      "bloque": 31
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 313,
+    "fields": {
+      "horario_catedra": 89,
+      "bloque": 32
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 314,
+    "fields": {
+      "horario_catedra": 90,
+      "bloque": 10
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 315,
+    "fields": {
+      "horario_catedra": 90,
+      "bloque": 11
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 316,
+    "fields": {
+      "horario_catedra": 90,
+      "bloque": 28
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 317,
+    "fields": {
+      "horario_catedra": 90,
+      "bloque": 29
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 318,
+    "fields": {
+      "horario_catedra": 91,
+      "bloque": 10
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 319,
+    "fields": {
+      "horario_catedra": 91,
+      "bloque": 11
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 320,
+    "fields": {
+      "horario_catedra": 91,
+      "bloque": 28
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 321,
+    "fields": {
+      "horario_catedra": 91,
+      "bloque": 29
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 322,
+    "fields": {
+      "horario_catedra": 92,
+      "bloque": 13
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 323,
+    "fields": {
+      "horario_catedra": 92,
+      "bloque": 14
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 324,
+    "fields": {
+      "horario_catedra": 92,
+      "bloque": 19
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 325,
+    "fields": {
+      "horario_catedra": 92,
+      "bloque": 20
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 326,
+    "fields": {
+      "horario_catedra": 93,
+      "bloque": 13
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 327,
+    "fields": {
+      "horario_catedra": 93,
+      "bloque": 14
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 328,
+    "fields": {
+      "horario_catedra": 93,
+      "bloque": 19
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 329,
+    "fields": {
+      "horario_catedra": 93,
+      "bloque": 20
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 332,
+    "fields": {
+      "horario_catedra": 94,
+      "bloque": 16
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 333,
+    "fields": {
+      "horario_catedra": 94,
+      "bloque": 17
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 330,
+    "fields": {
+      "horario_catedra": 94,
+      "bloque": 34
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 331,
+    "fields": {
+      "horario_catedra": 94,
+      "bloque": 35
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 336,
+    "fields": {
+      "horario_catedra": 95,
+      "bloque": 16
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 337,
+    "fields": {
+      "horario_catedra": 95,
+      "bloque": 17
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 334,
+    "fields": {
+      "horario_catedra": 95,
+      "bloque": 34
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 335,
+    "fields": {
+      "horario_catedra": 95,
+      "bloque": 35
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 338,
+    "fields": {
+      "horario_catedra": 96,
+      "bloque": 37
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 339,
+    "fields": {
+      "horario_catedra": 96,
+      "bloque": 38
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 340,
+    "fields": {
+      "horario_catedra": 96,
+      "bloque": 40
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 341,
+    "fields": {
+      "horario_catedra": 97,
+      "bloque": 37
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 342,
+    "fields": {
+      "horario_catedra": 97,
+      "bloque": 38
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 343,
+    "fields": {
+      "horario_catedra": 97,
+      "bloque": 40
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 344,
+    "fields": {
+      "horario_catedra": 98,
+      "bloque": 41
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 345,
+    "fields": {
+      "horario_catedra": 98,
+      "bloque": 43
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 346,
+    "fields": {
+      "horario_catedra": 98,
+      "bloque": 44
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 347,
+    "fields": {
+      "horario_catedra": 99,
+      "bloque": 41
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 348,
+    "fields": {
+      "horario_catedra": 99,
+      "bloque": 43
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 349,
+    "fields": {
+      "horario_catedra": 99,
+      "bloque": 44
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 357,
+    "fields": {
+      "horario_catedra": 102,
+      "bloque": 110
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 358,
+    "fields": {
+      "horario_catedra": 102,
+      "bloque": 112
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 366,
+    "fields": {
+      "horario_catedra": 102,
+      "bloque": 113
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 360,
+    "fields": {
+      "horario_catedra": 103,
+      "bloque": 110
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 361,
+    "fields": {
+      "horario_catedra": 103,
+      "bloque": 112
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 367,
+    "fields": {
+      "horario_catedra": 103,
+      "bloque": 113
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 362,
+    "fields": {
+      "horario_catedra": 104,
+      "bloque": 115
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 363,
+    "fields": {
+      "horario_catedra": 104,
+      "bloque": 116
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 364,
+    "fields": {
+      "horario_catedra": 105,
+      "bloque": 115
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 365,
+    "fields": {
+      "horario_catedra": 105,
+      "bloque": 116
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 369,
+    "fields": {
+      "horario_catedra": 106,
+      "bloque": 119
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 387,
+    "fields": {
+      "horario_catedra": 106,
+      "bloque": 121
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 371,
+    "fields": {
+      "horario_catedra": 107,
+      "bloque": 119
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 388,
+    "fields": {
+      "horario_catedra": 107,
+      "bloque": 121
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 372,
+    "fields": {
+      "horario_catedra": 108,
+      "bloque": 122
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 373,
+    "fields": {
+      "horario_catedra": 108,
+      "bloque": 124
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 374,
+    "fields": {
+      "horario_catedra": 109,
+      "bloque": 122
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 375,
+    "fields": {
+      "horario_catedra": 109,
+      "bloque": 124
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 376,
+    "fields": {
+      "horario_catedra": 110,
+      "bloque": 125
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 377,
+    "fields": {
+      "horario_catedra": 110,
+      "bloque": 126
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 378,
+    "fields": {
+      "horario_catedra": 111,
+      "bloque": 125
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 379,
+    "fields": {
+      "horario_catedra": 111,
+      "bloque": 126
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 380,
+    "fields": {
+      "horario_catedra": 112,
+      "bloque": 128
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 381,
+    "fields": {
+      "horario_catedra": 112,
+      "bloque": 130
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 382,
+    "fields": {
+      "horario_catedra": 112,
+      "bloque": 131
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 383,
+    "fields": {
+      "horario_catedra": 113,
+      "bloque": 133
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 384,
+    "fields": {
+      "horario_catedra": 113,
+      "bloque": 134
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 385,
+    "fields": {
+      "horario_catedra": 114,
+      "bloque": 133
+    }
+  },
+  {
+    "model": "core.horariocatedradetalle",
+    "pk": 386,
+    "fields": {
+      "horario_catedra": 114,
+      "bloque": 134
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 2,
+    "fields": {
+      "materia": 7,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 145,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T22:55:50.677",
+      "updated_at": "2026-03-17T22:55:50.677"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 21,
+    "fields": {
+      "materia": 22,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 19,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:14:31.083",
+      "updated_at": "2026-03-18T08:14:31.083"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 3,
+    "fields": {
+      "materia": 4,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 21,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T22:56:14.033",
+      "updated_at": "2026-03-17T22:56:14.033"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 11,
+    "fields": {
+      "materia": 13,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 95,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:12:02.337",
+      "updated_at": "2026-03-18T08:12:02.338"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 4,
+    "fields": {
+      "materia": 8,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 159,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T22:56:23.539",
+      "updated_at": "2026-03-17T22:56:23.539"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 12,
+    "fields": {
+      "materia": 18,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 111,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:12:20.285",
+      "updated_at": "2026-03-18T08:12:20.286"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 40,
+    "fields": {
+      "materia": 15,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 138,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:19:50.013",
+      "updated_at": "2026-03-18T08:19:50.013"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 14,
+    "fields": {
+      "materia": 16,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 21,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:12:51.138",
+      "updated_at": "2026-03-18T08:12:51.138"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 22,
+    "fields": {
+      "materia": 23,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 30,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:14:43.283",
+      "updated_at": "2026-03-18T08:14:43.283"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 23,
+    "fields": {
+      "materia": 24,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 148,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:15:02.335",
+      "updated_at": "2026-06-01T03:36:27.493"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 15,
+    "fields": {
+      "materia": 12,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 7,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:13:04.488",
+      "updated_at": "2026-03-18T08:13:04.489"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 24,
+    "fields": {
+      "materia": 25,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 151,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:15:18.054",
+      "updated_at": "2026-03-18T08:15:18.054"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 25,
+    "fields": {
+      "materia": 26,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 125,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:15:34.494",
+      "updated_at": "2026-03-18T08:15:34.494"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 5,
+    "fields": {
+      "materia": 6,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 30,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T22:57:35.601",
+      "updated_at": "2026-03-17T22:57:35.601"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 41,
+    "fields": {
+      "materia": 31,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 148,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:38:04.617",
+      "updated_at": "2026-06-01T03:38:04.618"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 29,
+    "fields": {
+      "materia": 21,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 53,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:16:32.931",
+      "updated_at": "2026-06-01T03:36:47.747"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 28,
+    "fields": {
+      "materia": 21,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 92,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:16:32.807",
+      "updated_at": "2026-06-01T03:36:47.903"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 26,
+    "fields": {
+      "materia": 21,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 167,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:16:32.570",
+      "updated_at": "2026-06-01T03:36:48.046"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 6,
+    "fields": {
+      "materia": 3,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 47,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T22:57:51.277",
+      "updated_at": "2026-03-17T22:57:51.277"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 1,
+    "fields": {
+      "materia": 1,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 77,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T22:55:13.027",
+      "updated_at": "2026-03-17T22:55:13.027"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 9,
+    "fields": {
+      "materia": 2,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 115,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T23:04:53.929",
+      "updated_at": "2026-03-17T23:04:53.929"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 8,
+    "fields": {
+      "materia": 2,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 116,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T23:04:53.778",
+      "updated_at": "2026-03-17T23:04:53.778"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 18,
+    "fields": {
+      "materia": 11,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 16,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:13:36.764",
+      "updated_at": "2026-03-18T08:13:36.764"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 17,
+    "fields": {
+      "materia": 11,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 118,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:13:36.637",
+      "updated_at": "2026-03-18T08:13:36.637"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 30,
+    "fields": {
+      "materia": 20,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 118,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:16:58.248",
+      "updated_at": "2026-03-18T08:16:58.248"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 31,
+    "fields": {
+      "materia": 20,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 122,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:16:58.375",
+      "updated_at": "2026-03-18T08:16:58.375"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 42,
+    "fields": {
+      "materia": 30,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 115,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:38:18.491",
+      "updated_at": "2026-06-01T03:38:18.491"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 10,
+    "fields": {
+      "materia": 5,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 148,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-17T23:05:13.894",
+      "updated_at": "2026-06-01T03:32:27.358"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 19,
+    "fields": {
+      "materia": 14,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 24,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:13:54.397",
+      "updated_at": "2026-03-18T08:13:54.397"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 43,
+    "fields": {
+      "materia": 36,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 85,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "SUP",
+      "orden": 2,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:38:38.685",
+      "updated_at": "2026-06-01T03:38:38.685"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 20,
+    "fields": {
+      "materia": 17,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 91,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:14:08.550",
+      "updated_at": "2026-03-18T08:14:08.550"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 32,
+    "fields": {
+      "materia": 27,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 1,
+      "docente": 91,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-03-18T08:17:18.019",
+      "updated_at": "2026-03-18T08:17:18.019"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 44,
+    "fields": {
+      "materia": 34,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 21,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:38:47.479",
+      "updated_at": "2026-06-01T03:38:47.479"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 45,
+    "fields": {
+      "materia": 35,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 16,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:38:56.365",
+      "updated_at": "2026-06-01T03:38:56.365"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 46,
+    "fields": {
+      "materia": 32,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 138,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:39:08.876",
+      "updated_at": "2026-06-01T03:39:08.876"
+    }
+  },
+  {
+    "model": "core.comision",
+    "pk": 47,
+    "fields": {
+      "materia": 33,
+      "anio_lectivo": 2026,
+      "codigo": "A",
+      "turno": 3,
+      "docente": 22,
+      "horario": null,
+      "cupo_maximo": null,
+      "estado": "ABI",
+      "rol": "INT",
+      "orden": 1,
+      "observaciones": "",
+      "created_at": "2026-06-01T03:39:19.069",
+      "updated_at": "2026-06-01T03:39:19.069"
+    }
+  }
+]

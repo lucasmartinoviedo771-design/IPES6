@@ -112,3 +112,29 @@ with transaction.atomic():
 > [!NOTE]
 > * Si el nombre del contenedor de backend en producción es diferente (por ejemplo, `cfp_backend_prod`), sustituye `ipes6-backend-dev` en la primera línea por el nombre del contenedor de producción correspondiente.
 > * Esta consulta se ejecuta de forma **atómica** (bajo una transacción SQL `transaction.atomic()`), lo que significa que si algo falla, no se aplicará ningún cambio a medias, protegiendo al 100% la integridad de la base de datos.
+
+---
+
+## 💾 Fase 3: Importar Horarios y Asignación de Docentes (Ciclo 2026)
+
+Para evitar tener que cargar manualmente todos los horarios y la asignación de docentes que ya configuramos localmente en el ciclo 2026, hemos exportado un fixture de Django completo.
+
+El archivo contiene:
+* **54 Horarios de Cátedra** (`HorarioCatedra` del año 2026)
+* **182 Detalle de Horarios** (`HorarioCatedraDetalle` que representan cada bloque del cronograma)
+* **36 Comisiones y Docentes** (`Comision` del año 2026 con sus respectivos suplentes, titulares y estados)
+
+Este archivo se encuentra guardado en la ruta del repositorio: [datos_horarios_docentes_2026.json](file:///home/admin486321/IPES6/backend/core/fixtures/datos_horarios_docentes_2026.json) (se mapea automáticamente dentro del contenedor).
+
+### 🚀 Instrucción de Carga en Producción
+
+Ejecuta el siguiente comando en la terminal del servidor de producción para importar de manera automática e instantánea toda la carga de horarios y docentes de 2026:
+
+```bash
+docker exec -it ipes6-backend-dev /app/.venv/bin/python manage.py loaddata datos_horarios_docentes_2026.json
+```
+
+> [!TIP]
+> * **Orden Recomendado:** Ejecuta este comando **después** de haber corrido las migraciones y la **Fase 2** (limpieza de turnos erróneos).
+> * **Integridad de Base de Datos:** Este comando insertará/actualizará los registros de horarios y docentes correspondientes sin alterar las tablas de inscripciones ni el plan de estudios.
+
