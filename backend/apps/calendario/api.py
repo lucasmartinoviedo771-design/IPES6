@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.db.models import F, Q
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 from datetime import time
@@ -208,9 +209,24 @@ def delete_horario_detalle(request, detalle_id: int):
 
 
 @router.get("/horarios/ocupacion", response=list[BloqueOut], auth=JWTAuth())
-def get_occupied_blocks(request, anio_cursada: int, turno_id: int, cuatrimestre: str | None = None):
+def get_occupied_blocks(
+    request, 
+    anio_cursada: int, 
+    turno_id: int, 
+    anio_academico: int | None = None,
+    cuatrimestre: str | None = None
+):
     _ensure_structure_view(request.user)
-    schedules = HorarioCatedra.objects.filter(anio_academico=anio_cursada, turno_id=turno_id)
+    
+    # Resolver año académico por defecto si no viene
+    if not anio_academico:
+        anio_academico = timezone.now().year
+        
+    schedules = HorarioCatedra.objects.filter(
+        anio_academico=anio_academico, 
+        turno_id=turno_id,
+        espacio__anio_cursada=anio_cursada
+    )
     if cuatrimestre:
         schedules = schedules.filter(Q(cuatrimestre=Materia.TipoCursada.ANUAL) | Q(cuatrimestre=cuatrimestre))
     

@@ -133,8 +133,14 @@ export default function CatedraDocentePage() {
   };
 
   const guardarAsignaciones = async () => {
-    if (!dlgMateria || !filters.anioLectivo || !filters.turnoId) {
-      toast.error("Faltan datos para guardar (Año Lectivo o Turno)");
+    if (!dlgMateria) return;
+    
+    if (!filters.anioLectivo) {
+      toast.error("Falta seleccionar el Año Lectivo en los filtros de la página.");
+      return;
+    }
+    if (!filters.turnoId) {
+      toast.error("Falta seleccionar el Turno en los filtros de la página.");
       return;
     }
 
@@ -143,22 +149,57 @@ export default function CatedraDocentePage() {
     setSaving(true);
     try {
       const existing = comisiones.filter(c => c.materia_id === dlgMateria.id);
-      for (const ex of existing) {
-        await axios.delete(`/comisiones/${ex.id}`);
+      
+      // Mapear los ids que se conservan en la edición
+      const preservedIds = new Set(
+        dlgAsignaciones
+          .map(a => a.id)
+          .filter((id): id is number => typeof id === 'number')
+      );
+
+      // 1. Eliminar comisiones removidas (las que existían pero ya no están en el diálogo)
+      const toDelete = existing.filter(ex => !preservedIds.has(ex.id));
+      for (const ex of toDelete) {
+        try {
+          await axios.delete(`/comisiones/${ex.id}`);
+        } catch (err) {
+          console.warn("No se pudo eliminar la comisión por estar en uso, se limpiará el docente.", err);
+          // Si tiene inscripciones, la dejamos vacía en lugar de fallar (así no rompemos inscripciones)
+          await axios.put(`/comisiones/${ex.id}`, {
+            materia_id: dlgMateria.id,
+            anio_lectivo: filters.anioLectivo,
+            codigo: ex.codigo,
+            turno_id: filters.turnoId,
+            docente_id: null,
+            rol: ex.rol,
+            estado: 'CER', // Cerrar la comisión para que no se use
+            orden: ex.orden,
+          });
+        }
       }
 
+      // 2. Procesar las asignaciones actuales (crear o actualizar)
       for (const asig of dlgAsignaciones) {
         if (asig.docenteId === 0) continue;
-        await axios.post('/comisiones/', {
+        
+        const payload = {
           materia_id: dlgMateria.id,
           anio_lectivo: filters.anioLectivo,
-          codigo: 'A',
+          codigo: 'A', // Código de comisión por defecto
           turno_id: filters.turnoId,
           docente_id: asig.docenteId,
           rol: asig.rol,
           estado: asig.estado,
-          orden: asig.orden
-        });
+          orden: asig.orden,
+        };
+
+        if (asig.id) {
+          // Si ya existe, actualizamos sus campos en lugar de recrearla
+          await axios.put(`/comisiones/${asig.id}`, payload);
+        } else {
+          // Si es nueva, la creamos
+          await axios.post('/comisiones/', payload);
+        }
       }
 
       toast.success("Asignaciones guardadas correctamente");
@@ -241,8 +282,18 @@ export default function CatedraDocentePage() {
                   <td>{m.nombre}</td>
                   <td>{m.regimen}</td>
                   <td>{getDocentesDisplay(m.id)}</td>
-                  <td>
-                    <IconButton size="small" onClick={() => openGestion(m)} title="Gestionar"><EditIcon fontSize="small"/></IconButton>
+                   <td>
+                    <Tooltip title={!filters.turnoId ? "Seleccioná un Turno en los filtros de la página para gestionar la cátedra" : "Gestionar jerarquía"}>
+                      <span>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => openGestion(m)} 
+                          disabled={!filters.turnoId}
+                        >
+                          <EditIcon fontSize="small"/>
+                        </IconButton>
+                      </span>
+                    </Tooltip>
                   </td>
                 </tr>
               ))}

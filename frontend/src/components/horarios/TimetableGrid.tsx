@@ -121,13 +121,15 @@ interface TimetableGridProps {
   onExportar: () => void;
   setHorasRequeridas: (horas: number) => void;
   onBloquesChange?: (bloques: Bloque[]) => void;
+  anioLectivo: number | null;
 }
 
 const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
   const {
     profesoradoId, planId, anioCarrera, cuatrimestre, turnoId, turnoNombre,
     onMateriaChange, selectedMateriaId, onBlocksSelected,
-    selectedBlocks, setHorasRequeridas, onClear, onDuplicar, onGuardar, onExportar, onBloquesChange
+    selectedBlocks, setHorasRequeridas, onClear, onDuplicar, onGuardar, onExportar, onBloquesChange,
+    anioLectivo
   } = props;
 
   const [bloques, setBloques] = useState<Bloque[]>([]);
@@ -204,14 +206,19 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
     if (anioCarrera && turnoId) {
       axios
         .get<Bloque[]>(`/horarios/ocupacion`, {
-          params: { anio_cursada: anioCarrera, turno_id: turnoId, cuatrimestre },
+          params: { 
+            anio_cursada: anioCarrera, 
+            turno_id: turnoId, 
+            cuatrimestre,
+            anio_academico: anioLectivo 
+          },
         })
         .then(({ data }) => setOccupiedBlocks(new Set(data.map((b) => b.id))))
         .catch((e) => console.error("Error fetching ocupacion:", e));
     } else {
       setOccupiedBlocks(new Set());
     }
-  }, [anioCarrera, turnoId, cuatrimestre]);
+  }, [anioCarrera, turnoId, cuatrimestre, anioLectivo]);
 
   const selectedMateria = materias.find(m => m.id === selectedMateriaId) || null;
   const selectedCount = selectedBlocks.size;
@@ -231,7 +238,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
   );
   const botonDeshabilitado =
     !selectedMateria ||
-    (!esMateriaFlexible && selectedCount !== horasRequeridas) ||
+    (selectedCount > 0 && !esMateriaFlexible && selectedCount !== horasRequeridas) ||
     (esMateriaFlexible && selectedCount > horasRequeridas);
 
   useEffect(() => {
@@ -478,21 +485,23 @@ if (hasRealBloques) {
           <button
             type="button"
             className="btn"
-            disabled={botonDeshabilitado || !hasRealBloques}
+            disabled={selectedCount > 0 && botonDeshabilitado || !hasRealBloques}
             onClick={onGuardar}
             title={
               !selectedMateria
                 ? "Seleccione materia"
                 : !hasRealBloques
                 ? "Este turno no tiene bloques configurados"
-                : botonDeshabilitado
+                : botonDeshabilitado && selectedCount > 0
                 ? esMateriaFlexible
                   ? "No puede exceder las horas requeridas para esta práctica/residencia."
                   : "Debe asignar exactamente las horas requeridas."
+                : selectedCount === 0
+                ? "Eliminar horario"
                 : "Guardar"
             }
           >
-            Guardar
+            {selectedCount === 0 ? "Eliminar" : "Guardar"}
           </button>
           <button type="button" className="btn secondary" onClick={onExportar}>Imprimir / Exportar</button>
         </div>

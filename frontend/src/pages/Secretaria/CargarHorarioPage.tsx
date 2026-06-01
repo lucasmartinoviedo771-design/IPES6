@@ -145,6 +145,42 @@ const CargarHorarioPage: React.FC = () => {
         esTallerCuarto ||
         esTallerResidencia;
 
+      if (horasAsignadas === 0) {
+        const confirmDelete = window.confirm(
+          '¿Estás seguro de que deseas eliminar por completo el horario de esta materia para este turno?'
+        );
+        if (!confirmDelete) return;
+
+        let cuatrimestreValue: string | null = null;
+        if (materiaRegimen === 'PCU' || materiaRegimen === 'SCU') {
+          cuatrimestreValue = materiaRegimen;
+        } else if (filters.cuatrimestre) {
+          cuatrimestreValue = filters.cuatrimestre === 1 ? 'PCU' : 'SCU';
+        }
+
+        const deleteForCuatri = async (cuatri: string | null) => {
+          const params = {
+            espacio_id: selectedMateriaId,
+            turno_id: filters.turnoId,
+            anio_cursada: filters.anioLectivo,
+            cuatrimestre: cuatri,
+          };
+          const response = await api.get<HorarioCatedraDTO[]>('/horarios_catedra', { params });
+          if (response.data && response.data.length > 0) {
+            await api.delete(`/horarios_catedra/${response.data[0].id}`);
+          }
+        };
+
+        await deleteForCuatri(cuatrimestreValue);
+        if (materiaRegimen === 'ANU' && filters.cuatrimestre === 1) {
+          await deleteForCuatri('SCU');
+        }
+
+        alert('Horario de cátedra eliminado exitosamente!');
+        fetchHorario();
+        return;
+      }
+
       if (!esFlexible && horasAsignadas !== horasRequeridas) {
         alert(`Debes asignar exactamente ${horasRequeridas} horas. Actualmente tienes ${horasAsignadas} asignadas.`);
         return;
@@ -165,7 +201,7 @@ const CargarHorarioPage: React.FC = () => {
         const payload = {
           espacio_id: selectedMateriaId,
           turno_id: filters.turnoId,
-          anio_cursada: filters.anioLectivo,
+          anio_academico: filters.anioLectivo,
           cuatrimestre: cuatri,
         };
         const response = await api.post<HorarioCatedraDTO>('/horarios_catedra', payload);
@@ -264,6 +300,7 @@ const CargarHorarioPage: React.FC = () => {
             onDuplicar={handleDuplicateToOtherCuatri}
             onGuardar={handleSave}
             onExportar={handleExport}
+            anioLectivo={filters.anioLectivo}
           />
         </section>
       </div>

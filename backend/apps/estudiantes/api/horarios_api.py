@@ -226,6 +226,16 @@ def horarios_profesorado(
         .prefetch_related("detalles__bloque", "comisiones__docente")
     )
 
+    # Filtrar por el año académico activo (por defecto el año calendario actual)
+    current_year = timezone.now().year
+    # Si no hay horarios cargados para el año actual, caemos al año máximo disponible (ej. 2025)
+    if not horarios_qs.filter(anio_academico=current_year).exists():
+        max_year = horarios_qs.aggregate(max_year=Max("anio_academico"))["max_year"]
+        if max_year:
+            current_year = max_year
+            
+    horarios_qs = horarios_qs.filter(anio_academico=current_year)
+
     if turno_id is not None:
         horarios_qs = horarios_qs.filter(turno_id=turno_id)
     if anio_plan is not None:
