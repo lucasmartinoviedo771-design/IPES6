@@ -62,13 +62,15 @@ export async function updateEstudianteDocumentacion(dni: string, payload: Estudi
   return data;
 }
 
-export function getExportDocumentacionExcelUrl(params: { q?: string; carrera_id?: number } = {}): string {
-  const query = new URLSearchParams(params as any).toString();
+export function getExportDocumentacionExcelUrl(params: { q?: string; carrera_id?: number; estado_academico?: string; limit?: number } = {}): string {
+  const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+  const query = new URLSearchParams(clean as any).toString();
   return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/excel?${query}`;
 }
 
-export function getExportDocumentacionPdfUrl(params: { q?: string; carrera_id?: number } = {}): string {
-  const query = new URLSearchParams(params as any).toString();
+export function getExportDocumentacionPdfUrl(params: { q?: string; carrera_id?: number; estado_academico?: string; limit?: number } = {}): string {
+  const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+  const query = new URLSearchParams(clean as any).toString();
   return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/pdf?${query}`;
 }
 export async function resetPasswordEstudiante(dni: string): Promise<ApiResponseDTO> {

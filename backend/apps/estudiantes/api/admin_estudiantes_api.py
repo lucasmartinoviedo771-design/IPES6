@@ -161,6 +161,10 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
     """
     from core.models import PreinscripcionChecklist
 
+    # Defensivo: el frontend puede mandar "undefined" o "null" como string
+    if q and q.strip().lower() in ("undefined", "null"):
+        q = None
+
     # Filtros de territorialidad (Bedeles solo ven sus carreras permitidas)
     allowed_ids = allowed_profesorados(request.user)
     qs = (
@@ -221,15 +225,33 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
         if cl.preinscripcion.alumno_id not in checklist_map:
             checklist_map[cl.preinscripcion.alumno_id] = cl
 
+    # Pre-cachear EstudianteCarrera por estudiante para evitar N+1
+    from core.models import EstudianteCarrera as _EC
+    ec_qs = _EC.objects.filter(estudiante_id__in=estudiante_ids)
+    ec_map: dict[int, list] = {}
+    for ec in ec_qs:
+        ec_map.setdefault(ec.estudiante_id, []).append(ec)
+
+    EC_DOC_FIELDS = [
+        "dni_legalizado", "fotos_4x4", "certificado_salud", "folios_oficio",
+        "titulo_secundario_legalizado", "certificado_titulo_en_tramite",
+        "analitico_legalizado", "articulo_7", "certificado_alumno_regular_sec",
+        "adeuda_materias", "es_certificacion_docente",
+    ]
+
     items = []
     from .helpers import _determine_condicion, _extract_documentacion
-    
+
     for est in estudiantes_list:
         user = est.user if est.user_id else None
-        # En el nuevo modelo, los campos están en Estudiante directamente
-        # Pero conservamos retrocompatibilidad con datos_extra si se prefiere extraer vía helper
         doc_data = _extract_documentacion(est)
-        
+
+        # Mergear con datos de EstudianteCarrera (fuente primaria de documentación)
+        for ec in ec_map.get(est.id, []):
+            for field in EC_DOC_FIELDS:
+                if not doc_data.get(field):
+                    doc_data[field] = getattr(ec, field, False)
+
         cl = checklist_map.get(est.id)
         if cl:
             cl_fields = {
@@ -273,10 +295,10 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 
 
 @router.get("/admin/estudiantes-documentacion/export/excel")
-def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, carrera_id: int | None = None):
+def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None):
     """Genera exportación Excel de la nómina de documentación para auditoría interna."""
     _ensure_staff_view(request)
-    items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
+    _total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico)
     
     import openpyxl
     from openpyxl.styles import Font, Alignment
@@ -327,10 +349,10 @@ def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, 
 
 
 @router.get("/admin/estudiantes-documentacion/export/pdf")
-def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, carrera_id: int | None = None):
+def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None):
     """Genera exportación PDF de la nómina de documentación (formato imprimible)."""
     _ensure_staff_view(request)
-    items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id)
+    _total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico)
     
     from django.template.loader import render_to_string
     from django.http import HttpResponse
@@ -393,7 +415,23 @@ def _perform_documentacion_update(est, payload):
 
     if upd_fields:
         est.save(update_fields=upd_fields)
-        _recalcular_estado_legajo(est)
+
+        # Sincronizar los mismos campos en todas las EstudianteCarrera del alumno
+        # (_recalcular_estado_legajo_ec lee de EC, no de Estudiante)
+        ec_doc_fields = [f for f in mapping if mapping[f] is not None]
+        if ec_doc_fields:
+            for ec in est.carreras_detalle.all():
+                ec_changed = False
+                for field in ec_doc_fields:
+                    val = mapping[field]
+                    if getattr(ec, field, None) != val:
+                        setattr(ec, field, val)
+                        ec_changed = True
+                if payload.curso_introductorio_aprobado is not None and ec.curso_introductorio_aprobado != payload.curso_introductorio_aprobado:
+                    ec.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
+                    ec_changed = True
+                if ec_changed:
+                    ec.save(update_fields=ec_doc_fields + (["curso_introductorio_aprobado"] if payload.curso_introductorio_aprobado is not None else []))
 
         # Sincronizamos con el checklist si existe
         if checklist:
@@ -403,6 +441,9 @@ def _perform_documentacion_update(est, payload):
             if payload.curso_introductorio_aprobado is not None:
                 checklist.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
             checklist.save()
+
+        # Recalcular DESPUÉS de que tanto EC como checklist estén actualizados
+        _recalcular_estado_legajo(est)
 
 
 @router.patch(
@@ -612,7 +653,9 @@ def admin_reset_estudiante_password(request, dni: str):
 
     success = EstudianteService.reset_password(est)
     if not success:
-        return 400, ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
+        return ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
+
+    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. El alumno deberá cambiarla al primer ingreso.")
 
 
 @router.patch(
@@ -640,8 +683,6 @@ def admin_autorizar_rendir(request, dni: str, payload: AutorizarRendirIn):
 
     estado = "habilitado" if payload.autorizado else "deshabilitado"
     return 200, ApiResponse(ok=True, message=f"Autorización para rendir {estado} correctamente.")
-
-    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. El alumno deberá cambiarla al primer ingreso.")
 
 
 def _prorroga_to_out(p: ProrrogaTituloSecundario) -> dict:
