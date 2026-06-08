@@ -39,7 +39,7 @@ export default function BedelesIndex() {
       {
         title: "Gestión académica",
         items: [
-          ...(canFormalize ? [DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION] : []),
+          ...(canFormalize ? [DASHBOARD_ITEMS.PREINSCRIPCIONES, DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION] : []),
           ...(canManageAnaliticos ? [DASHBOARD_ITEMS.ANALYTICOS] : []),
           ...(canManageEquivalencias ? [DASHBOARD_ITEMS.EQUIV_LISTADO_GENERAL] : []),
           ...(canManageStructure ? [DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES, DASHBOARD_ITEMS.CORRELATIVIDADES_ANALISIS, DASHBOARD_ITEMS.AUDITORIA_INCONSISTENCIAS, DASHBOARD_ITEMS.RESGUARDO_MATERIAS] : []),

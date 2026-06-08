@@ -240,6 +240,12 @@ export const DASHBOARD_ITEMS = {
     icon: <HourglassBottomIcon />,
     path: "/admin/resguardo-materias",
   },
+  PREINSCRIPCIONES: {
+    title: "Preinscripciones",
+    subtitle: "Listado completo y gestión de solicitudes de preinscripción recibidas.",
+    icon: <ChecklistIcon />,
+    path: "/preinscripciones",
+  },
 } satisfies Record<string, SectionCardProps>;
 
 export type DashboardItemKey = keyof typeof DASHBOARD_ITEMS;

@@ -50,7 +50,7 @@ def list_preinscriptions(
     Optimiza la consulta mediante select_related para evitar el problema N+1 en las relaciones.
     """
     qs = Preinscripcion.objects.all().select_related(
-        'estudiante', 'estudiante__user', 'carrera'
+        'alumno', 'alumno__user', 'carrera'
     )
     
     # Aplicación de filtros según criterios de búsqueda
@@ -70,11 +70,11 @@ def list_preinscriptions(
     for p in qs:
         res.append({
             "id": p.id,
-            "dni": p.estudiante.dni,
-            "nombre": p.estudiante.user.first_name,
-            "apellido": p.estudiante.user.last_name,
-            "email": p.estudiante.user.email,
-            "telefono": p.estudiante.telefono,
+            "dni": p.alumno.dni,
+            "nombre": p.alumno.user.first_name,
+            "apellido": p.alumno.user.last_name,
+            "email": p.alumno.user.email,
+            "telefono": p.alumno.telefono,
             "carrera_nombre": p.carrera.nombre,
             "carrera_id": p.carrera.id,
             "anio": p.anio,
@@ -109,7 +109,7 @@ def confirm_preinscription(request, pre_id: int):
         pre.save()
         
         # Activación del legajo del estudiante
-        estudiante = pre.estudiante
+        estudiante = pre.alumno
         estudiante.estado_legajo = Estudiante.EstadoLegajo.COMPLETO
         estudiante.save()
         
@@ -127,7 +127,7 @@ def confirm_preinscription(request, pre_id: int):
 def update_preinscription(request, pre_id: int, data: PreinscripcionUpdateIn):
     """Actualiza parcialmente los datos de una solicitud y del usuario asociado."""
     pre = get_object_or_404(Preinscripcion, id=pre_id)
-    estudiante = pre.estudiante
+    estudiante = pre.alumno
     user = estudiante.user
     
     with transaction.atomic():

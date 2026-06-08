@@ -361,6 +361,38 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <ListItemText primary="Alertas de Sistema" primaryTypographyProps={{ sx: { color: "#fff" } }} />
             </ListItemButton>
           )}
+
+          {/* Opciones de perfil solo en móviles */}
+          {hasAnyRole(user, ["estudiante"]) && (
+            <ListItemButton
+              selected={current === "/estudiantes/completar-perfil"}
+              onClick={() => {
+                navigate("/estudiantes/completar-perfil");
+                onClose();
+              }}
+              sx={{
+                ...navButtonSx,
+                display: { xs: "flex", md: "none" },
+              }}
+            >
+              <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: "#fff" }} /></ListItemIcon>
+              <ListItemText primary="Mis Datos" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+            </ListItemButton>
+          )}
+          <ListItemButton
+            selected={current === "/cambiar-password"}
+            onClick={() => {
+              navigate("/cambiar-password");
+              onClose();
+            }}
+            sx={{
+              ...navButtonSx,
+              display: { xs: "flex", md: "none" },
+            }}
+          >
+            <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: "#fff" }} /></ListItemIcon>
+            <ListItemText primary="Cambiar contraseña" primaryTypographyProps={{ sx: { color: "#fff" } }} />
+          </ListItemButton>
         </List>
 
         <Box sx={{ mt: "auto", px: 3 }}>

@@ -17,14 +17,21 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
 
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
 import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues } from "./defaultValues";
 import { PreinscripcionOut } from "@/types/preinscripcion";
-import { listarCarreras, crearPreinscripcion } from "@/services/preinscripcion";
+import { listarCarreras, crearPreinscripcion, recuperarPreinscripcion } from "@/services/preinscripcion";
 import { apiUploadPreDoc } from "@/api/preinscripciones";
+import PrintIcon from "@mui/icons-material/Print";
 import { client } from "@/api/client";
 
 export type VentanaPublicaDto = {
@@ -116,6 +123,8 @@ export default function PreinscripcionWizard() {
   const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [recuperarOpen, setRecuperarOpen] = useState(false);
+  const [duplicatePdfUrl, setDuplicatePdfUrl] = useState<string | null>(null);
   const pageBgSx = {
     minHeight: "100vh",
     background: "radial-gradient(circle at 20% 20%, #f8f1e7 0, #f8f1e7 25%, #f0ede5 40%, #f7f5ef 100%)",
@@ -142,6 +151,10 @@ export default function PreinscripcionWizard() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
       } catch (e) {
         console.error("Error saving form to localStorage", e);
+      }
+      if (name === "carrera_id" || name === "dni") {
+        setDuplicatePdfUrl(null);
+        form.clearErrors("carrera_id");
       }
     });
     return () => subscription.unsubscribe();
@@ -194,6 +207,33 @@ export default function PreinscripcionWizard() {
       }
       if (!valid) return;
     }
+    
+    if (activeStep === 4) {
+      const carreraId = form.getValues("carrera_id");
+      const dni = form.getValues("dni");
+      const fechaNac = form.getValues("fecha_nacimiento");
+      
+      if (carreraId && dni && fechaNac) {
+        setSubmit({ status: "loading" });
+        try {
+          const res = await recuperarPreinscripcion(dni, Number(carreraId), fechaNac);
+          if (res.ok && res.data) {
+            setSubmit({ status: "idle" });
+            form.setError("carrera_id", {
+              type: "manual",
+              message: "Ya existe una preinscripción activa para esta carrera en el ciclo lectivo actual.",
+            });
+            setDuplicatePdfUrl(res.data.pdf_url);
+            return;
+          }
+        } catch (err: any) {
+          setSubmit({ status: "idle" });
+          form.clearErrors("carrera_id");
+          setDuplicatePdfUrl(null);
+        }
+      }
+    }
+    
     setActiveStep((s) => Math.min(s + 1, steps.length - 1));
   };
   const handleBack = () => setActiveStep((s) => s - 1);
@@ -301,15 +341,46 @@ export default function PreinscripcionWizard() {
       />
       <Box sx={pageBgSx}>
         <Stack spacing={3} maxWidth={1200} mx="auto">
-          <PageHero
-            title="Preinscripción 2026"
-            subtitle="Completá los 6 pasos, descargá la planilla y presentala con tu documentación."
-            actions={
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Chip label={`Inscripción abierta: ${ventanaLabel}`} color="success" sx={{ fontSize: "1rem", fontWeight: 700, px: 2, py: 2.5, height: "auto", "& .MuiChip-label": { px: 1 } }} />
-              </Stack>
-            }
-          />
+          <Grid container spacing={2.5}>
+            <Grid item xs={12}>
+              <PageHero
+                title="Preinscripción 2026"
+                subtitle="Completá los 6 pasos, descargá la planilla y presentala con tu documentación."
+                actions={
+                  <Stack spacing={1.5} alignItems="flex-end">
+                    <Chip label={`Inscripción abierta: ${ventanaLabel}`} color="success" sx={{ fontSize: "1rem", fontWeight: 700, px: 2, py: 2.5, height: "auto", "& .MuiChip-label": { px: 1 } }} />
+                    <Button
+                      variant="contained"
+                      startIcon={<PrintIcon />}
+                      onClick={() => setRecuperarOpen(true)}
+                      sx={{
+                        borderRadius: 4,
+                        height: "auto",
+                        py: 1.2,
+                        px: 3,
+                        fontWeight: 700,
+                        bgcolor: "#ffffff !important",
+                        color: "#7D7F6E !important",
+                        boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+                        textTransform: "none",
+                        "&:hover": {
+                          bgcolor: "#f5f3eb !important",
+                          boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+                        }
+                      }}
+                    >
+                      Reimprimir planilla
+                    </Button>
+                  </Stack>
+                }
+              />
+              <RecuperarPreinscripcionDialog
+                open={recuperarOpen}
+                onClose={() => setRecuperarOpen(false)}
+                carreras={carreras}
+              />
+            </Grid>
+          </Grid>
           <Grid container spacing={2.5} alignItems="stretch" direction={{ xs: "column-reverse", md: "row" }}>
             <Grid item xs={12} md={4}>
               <Stack spacing={2}>
@@ -401,11 +472,24 @@ export default function PreinscripcionWizard() {
                     )}
                     {activeStep === 3 && <AccesibilidadApoyos />}
                     {activeStep === 4 && (
-                      <CarreraDocumentacion
-                        carreras={carreras}
-                        isLoading={carrerasLoading}
-                        onFileChange={setPhotoFile}
-                      />
+                      <Stack spacing={2.5}>
+                        {duplicatePdfUrl && (
+                          <Alert severity="warning">
+                            <AlertTitle>Preinscripción duplicada detectada</AlertTitle>
+                            Ya te encontrás preinscripto/a en este profesorado. Podés descargar tu planilla haciendo clic abajo:
+                            <Box sx={{ mt: 1.5 }}>
+                              <Button variant="contained" color="warning" onClick={() => window.open(duplicatePdfUrl, "_blank")}>
+                                Descargar Planilla Existente (PDF)
+                              </Button>
+                            </Box>
+                          </Alert>
+                        )}
+                        <CarreraDocumentacion
+                          carreras={carreras}
+                          isLoading={carrerasLoading}
+                          onFileChange={setPhotoFile}
+                        />
+                      </Stack>
                     )}
                     {activeStep === 5 && (
                       submit.status !== "ok" ? 
@@ -460,5 +544,133 @@ export default function PreinscripcionWizard() {
         </Stack>
       </Box>
     </FormProvider>
+  );
+}
+
+interface RecuperarDialogProps {
+  open: boolean;
+  onClose: () => void;
+  carreras: Array<{ id: number; nombre: string }>;
+}
+
+function RecuperarPreinscripcionDialog({ open, onClose, carreras }: RecuperarDialogProps) {
+  const [dni, setDni] = useState("");
+  const [carreraId, setCarreraId] = useState<number | "">("");
+  const [fechaNac, setFechaNac] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState<string | null>(null);
+
+  const handleRecuperar = async () => {
+    if (!dni || !carreraId || !fechaNac) {
+      setError("Por favor, completa todos los campos.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setPdfUrl(null);
+    setCodigo(null);
+    try {
+      const res = await recuperarPreinscripcion(dni, Number(carreraId), fechaNac);
+      if (res.ok && res.data) {
+        setPdfUrl(res.data.pdf_url);
+        setCodigo(res.data.codigo);
+      } else {
+        setError(res.message || "Error al verificar los datos.");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.response?.data?.detail || "Ocurrió un error al verificar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (pdfUrl) {
+      window.open(pdfUrl, "_blank");
+      onClose();
+      // Reset state
+      setDni("");
+      setCarreraId("");
+      setFechaNac("");
+      setPdfUrl(null);
+      setCodigo(null);
+      setError(null);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ fontWeight: 700 }}>Reimprimir Planilla de Preinscripción</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2.5} sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Ingresá tus datos para validar tu identidad y descargar la planilla PDF de tu preinscripción.
+          </Typography>
+
+          {error && <Alert severity="error">{error}</Alert>}
+
+          {pdfUrl ? (
+            <Alert severity="success">
+              <AlertTitle>Preinscripción encontrada</AlertTitle>
+              Código de preinscripción: <strong>{codigo}</strong>
+              <Box sx={{ mt: 2 }}>
+                <Button variant="contained" color="success" onClick={handleDownload} fullWidth>
+                  Descargar Planilla PDF
+                </Button>
+              </Box>
+            </Alert>
+          ) : (
+            <>
+              <TextField
+                label="DNI"
+                value={dni}
+                onChange={(e) => setDni(e.target.value.trim())}
+                size="small"
+                fullWidth
+              />
+              <TextField
+                select
+                label="Carrera en la que te preinscribiste"
+                value={carreraId}
+                onChange={(e) => setCarreraId(Number(e.target.value))}
+                size="small"
+                fullWidth
+              >
+                {carreras.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.nombre}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Fecha de nacimiento"
+                type="date"
+                value={fechaNac}
+                onChange={(e) => setFechaNac(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                fullWidth
+              />
+            </>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ p: 2, px: 3 }}>
+        <Button onClick={onClose} color="inherit">
+          Cancelar
+        </Button>
+        {!pdfUrl && (
+          <Button
+            variant="contained"
+            onClick={handleRecuperar}
+            disabled={loading || !dni || !carreraId || !fechaNac}
+          >
+            {loading ? <CircularProgress size={24} /> : "Verificar e Imprimir"}
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }

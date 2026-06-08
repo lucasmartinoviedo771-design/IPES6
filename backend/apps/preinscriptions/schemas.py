@@ -48,6 +48,7 @@ class PreinscripcionIn(Schema):
     estudiante: EstudianteIn
     captcha_token: str | None = None
     honeypot: str | None = None  # Trampa para bots (debe ser None)
+    codigo: str | None = None  # Código para re-edición (opcional)
 
     # Datos personales y de nacimiento
     nacionalidad: str | None = None
@@ -205,3 +206,18 @@ class RequisitoDocumentacionUpdateIn(Schema):
     activo: bool | None = None
     orden: int | None = None
     personalizado: bool | None = None
+
+
+class RecuperarPreinscripcionIn(Schema):
+    """Payload para solicitar la reimpresión de una preinscripción pública."""
+    dni: str
+    carrera_id: int
+    fecha_nacimiento: date
+
+
+class RecuperarPreinscripcionOut(Schema):
+    """Detalles retornados para descargar el PDF de la preinscripción recuperada."""
+    id: int
+    codigo: str
+    estado: str
+    pdf_url: str

@@ -139,6 +139,30 @@ export async function crearPreinscripcion(payload: any): Promise<PreinscripcionO
   }
 }
 
+export async function recuperarPreinscripcion(
+  dni: string,
+  carrera_id: number,
+  fecha_nacimiento: string,
+): Promise<{ ok: boolean; message?: string; data?: { id: number; codigo: string; estado: string; pdf_url: string } }> {
+  try {
+    const { data } = await client.post("/preinscripciones/recuperar", {
+      dni,
+      carrera_id: Number(carrera_id),
+      fecha_nacimiento,
+    });
+    return data;
+  } catch (err: any) {
+    const backendMsg = err?.response?.data?.message || err?.response?.data?.detail;
+    if (backendMsg) {
+      toast.error(backendMsg);
+    } else {
+      toast.error("Error al recuperar la preinscripción.");
+    }
+    throw err;
+  }
+}
+
+
 
 
 

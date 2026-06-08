@@ -437,6 +437,8 @@ export function EstudianteDetailForm({
                   <Button size="small" variant="outlined" onClick={() => window.open(`/estudiantes/trayectoria?dni=${detailData?.dni}`, "_blank")}>Trayectoria</Button>
                   <Button size="small" variant="outlined" onClick={() => window.open(`/estudiantes/horarios?dni=${detailData?.dni}`, "_blank")}>Horarios</Button>
                   <Button size="small" variant="outlined" onClick={() => window.open(`/estudiantes/inscripcion-materia?dni=${detailData?.dni}`, "_blank")}>Inscripción</Button>
+                  <Button size="small" variant="outlined" onClick={() => window.open(`/preinscripciones?search=${detailData?.dni}`, "_blank")}>Ver Preinscripción</Button>
+                  <Button size="small" variant="outlined" onClick={() => window.open(`/api/preinscripciones/estudiante/${detailData?.dni}/pdf`, "_blank")}>PDF Preinscripción</Button>
                 </Stack>
               </Box>
 

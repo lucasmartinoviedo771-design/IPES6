@@ -37,6 +37,7 @@ export default function SecretariaIndex() {
     "attp"
   ]);
   const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado", "attp"]);
+  const canManagePreins = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
   const sections: Section[] = [
     {
@@ -68,6 +69,7 @@ export default function SecretariaIndex() {
     {
       title: "Gestión académica - Secretaría",
       items: [
+        ...(canManagePreins ? [DASHBOARD_ITEMS.PREINSCRIPCIONES] : []),
         ...(canManageHorarios
           ? [
             {

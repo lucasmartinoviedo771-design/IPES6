@@ -280,6 +280,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
                 dni=est.dni,
                 apellido=user.last_name if user else "",
                 nombre=user.first_name if user else "",
+                email=user.email if user else "",
                 condicion_administrativa=condicion,
                 curso_introductorio_aprobado=est.curso_introductorio_aprobado,
                 libreta_entregada=est.libreta_entregada,
@@ -310,10 +311,10 @@ def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, 
     ws.title = "Documentación"
 
     headers = [
-        "DNI", "Apellido", "Nombre", "Condición", "CI", "Libreta", 
+        "DNI", "Apellido", "Nombre", "Correo", "Condición", "CI", "Libreta",
         "DNI (F.)", "Fotos", "Cert. Salud", "Folios", "Título Sec.", "Art. 7mo"
     ]
-    
+
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True)
@@ -323,15 +324,16 @@ def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, 
         ws.cell(row=idx, column=1, value=item.dni)
         ws.cell(row=idx, column=2, value=item.apellido)
         ws.cell(row=idx, column=3, value=item.nombre)
-        ws.cell(row=idx, column=4, value=item.condicion_administrativa)
-        ws.cell(row=idx, column=5, value="SI" if item.curso_introductorio_aprobado else "NO")
-        ws.cell(row=idx, column=6, value="SI" if item.libreta_entregada else "NO")
-        ws.cell(row=idx, column=7, value="SI" if item.dni_legalizado else "NO")
-        ws.cell(row=idx, column=8, value="SI" if item.fotos_4x4 else "NO")
-        ws.cell(row=idx, column=9, value="SI" if item.certificado_salud else "NO")
-        ws.cell(row=idx, column=10, value=item.folios_oficio)
-        ws.cell(row=idx, column=11, value="SI" if item.titulo_secundario_ok else "NO")
-        ws.cell(row=idx, column=12, value="SI" if item.articulo_7 else "NO")
+        ws.cell(row=idx, column=4, value=item.email)
+        ws.cell(row=idx, column=5, value=item.condicion_administrativa)
+        ws.cell(row=idx, column=6, value="SI" if item.curso_introductorio_aprobado else "NO")
+        ws.cell(row=idx, column=7, value="SI" if item.libreta_entregada else "NO")
+        ws.cell(row=idx, column=8, value="SI" if item.dni_legalizado else "NO")
+        ws.cell(row=idx, column=9, value="SI" if item.fotos_4x4 else "NO")
+        ws.cell(row=idx, column=10, value="SI" if item.certificado_salud else "NO")
+        ws.cell(row=idx, column=11, value=item.folios_oficio)
+        ws.cell(row=idx, column=12, value="SI" if item.titulo_secundario_ok else "NO")
+        ws.cell(row=idx, column=13, value="SI" if item.articulo_7 else "NO")
 
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 15

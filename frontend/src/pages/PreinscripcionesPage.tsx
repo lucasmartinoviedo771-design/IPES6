@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -57,7 +57,9 @@ function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
 export default function PreinscripcionesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [search, setSearch] = React.useState("");
+  const [searchParams] = useSearchParams();
+  const initSearch = searchParams.get("search") || searchParams.get("q") || searchParams.get("dni") || "";
+  const [search, setSearch] = React.useState(initSearch);
   const [inclInactivas, setInclInactivas] = React.useState(false);
   const [profesoradoId, setProfesoradoId] = React.useState<number | "">("");
   const [anio, setAnio] = React.useState<number | "">("");

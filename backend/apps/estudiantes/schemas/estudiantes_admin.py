@@ -76,6 +76,7 @@ class EstudianteDocumentacionListItem(Schema):
     dni: str
     apellido: str
     nombre: str
+    email: str
     condicion_administrativa: str
     curso_introductorio_aprobado: bool
     libreta_entregada: bool

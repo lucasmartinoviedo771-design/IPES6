@@ -78,7 +78,7 @@ def historial_estudiante(request, dni: str | None = None):
 
     # 1. Análisis de cursadas (Tomamos la situación más reciente de cada materia)
     situacion_por_materia: dict[int, Regularidad] = {}
-    for reg in Regularidad.objects.filter(estudiante=est).order_by("fecha_cierre"):
+    for reg in Regularidad.objects.filter(estudiante=est).exclude(materia__nombre__startswith="CI:").order_by("fecha_cierre"):
         situacion_por_materia[reg.materia_id] = reg
 
     hoy = timezone.now().date()
@@ -93,7 +93,7 @@ def historial_estudiante(request, dni: str | None = None):
                 regularizadas_set.add(mid)
 
     # 2. Análisis de Actas y Equivalencias
-    actas_estudiante_qs = ActaExamenEstudiante.objects.filter(dni=est.dni).select_related("acta")
+    actas_estudiante_qs = ActaExamenEstudiante.objects.filter(dni=est.dni).exclude(acta__materia__nombre__startswith="CI:").select_related("acta")
     for a in actas_estudiante_qs:
         cond_val, _ = _acta_condicion(a.calificacion_definitiva)
         is_equiv = (
@@ -105,11 +105,11 @@ def historial_estudiante(request, dni: str | None = None):
             aprobadas_set.add(a.acta.materia_id)
 
     # 3. Análisis de Disposiciones de Equivalencia (NUEVAS)
-    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est):
+    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).exclude(materia__nombre__startswith="CI:"):
         aprobadas_set.add(equis.materia_id)
 
     # 4. Finales Recientes
-    insc_mesa_qs = InscripcionMesa.objects.filter(estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO, estado=InscripcionMesa.Estado.INSCRIPTO)
+    insc_mesa_qs = InscripcionMesa.objects.filter(estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO, estado=InscripcionMesa.Estado.INSCRIPTO).exclude(mesa__materia__nombre__startswith="CI:")
     for insc in insc_mesa_qs:
         if insc.mesa and insc.mesa.materia_id:
             aprobadas_set.add(insc.mesa.materia_id)
@@ -118,7 +118,7 @@ def historial_estudiante(request, dni: str | None = None):
     inscriptas_actuales = InscripcionMateriaEstudiante.objects.filter(
         estudiante=est,
         estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
-    ).values_list("materia_id", flat=True)
+    ).exclude(materia__nombre__startswith="CI:").values_list("materia_id", flat=True)
     inscriptas_actuales_set.update(inscriptas_actuales)
 
     return HistorialEstudiante(
@@ -171,6 +171,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # Análisis de cursadas cerradas
     regularidades_qs = (
         Regularidad.objects.filter(estudiante=est)
+        .exclude(materia__nombre__startswith="CI:")
         .select_related("materia", "materia__plan_de_estudio", "materia__plan_de_estudio__profesorado")
         .prefetch_related("materia__correlativas_requeridas__materia_correlativa")
         .order_by("fecha_cierre")
@@ -212,6 +213,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # Análisis de Actas / Equivalencias (Prioridad diagnóstica alta)
     actas_estudiante_qs = (
         ActaExamenEstudiante.objects.filter(dni=est.dni)
+        .exclude(acta__materia__nombre__startswith="CI:")
         .select_related("acta", "acta__materia")
         .order_by("-acta__fecha")
     )
@@ -227,13 +229,14 @@ def trayectoria_estudiante(request, dni: str | None = None):
             aprobadas_notas[a.acta.materia_id] = _format_acta_calificacion(a.calificacion_definitiva)
 
     # Análisis de Disposiciones de Equivalencia (NUEVAS)
-    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).select_related("disposicion"):
+    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).exclude(materia__nombre__startswith="CI:").select_related("disposicion"):
         aprobadas_set.add(equis.materia_id)
         aprobadas_notas[equis.materia_id] = _format_nota(equis.nota) if equis.nota else "-"
 
     # Análisis de Inscripciones confirmadas (In-Situ)
     inscripciones_mesa_qs = (
         InscripcionMesa.objects.filter(estudiante=est, estado=InscripcionMesa.Estado.INSCRIPTO)
+        .exclude(mesa__materia__nombre__startswith="CI:")
         .select_related("mesa__materia", "mesa__materia__plan_de_estudio", "mesa__materia__plan_de_estudio__profesorado")
         .order_by("-mesa__fecha")
     )
@@ -247,6 +250,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     
     inscripciones_mesa_all = (
         InscripcionMesa.objects.filter(estudiante=est)
+        .exclude(mesa__materia__nombre__startswith="CI:")
         .select_related("mesa", "mesa__materia")
         .order_by("-mesa__fecha")
     )
@@ -441,13 +445,29 @@ def trayectoria_estudiante(request, dni: str | None = None):
     for eq in equis_all:
         equis_map.setdefault(eq.materia_id, []).append(eq)
 
+    # Precalculamos nombres normalizados de EDIs en los que el estudiante ya tiene actividad
+    ids_con_actividad = (
+        aprobadas_set | 
+        regularizadas_set | 
+        inscriptas_actuales_set | 
+        set(regularidades_map.keys()) | 
+        set(actas_map.keys()) | 
+        set(finales_map.keys()) | 
+        set(equis_map.keys())
+    )
+    materias_con_actividad_nombres = Materia.objects.filter(
+        id__in=ids_con_actividad, 
+        is_edi=True
+    ).values_list("nombre", flat=True)
+    edi_nombres_con_actividad_normalizados = {n.strip().lower() for n in materias_con_actividad_nombres}
+
     for carrera in carreras_est:
         planes = PlanDeEstudio.objects.filter(profesorado=carrera, vigente=True)
         if not planes:
              planes = PlanDeEstudio.objects.filter(profesorado=carrera)
         
         for plan in planes:
-            materias_plan_qs = Materia.objects.filter(plan_de_estudio=plan).order_by("anio_cursada", "nombre")
+            materias_plan_qs = Materia.objects.filter(plan_de_estudio=plan).exclude(nombre__startswith="CI:").order_by("anio_cursada", "nombre")
             
             carton_materias = []
             for mat in materias_plan_qs:
@@ -462,6 +482,10 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     )
                     
                     if not tiene_actividad:
+                        # Si ya tiene actividad en un EDI con el mismo nombre normalizado, salteamos el duplicado nuevo
+                        if mat.nombre.strip().lower() in edi_nombres_con_actividad_normalizados:
+                            continue
+
                         # Si no tiene actividad, aplicamos las reglas de vigencia temporal
                         es_vigente = True
                         if mat.fecha_inicio and mat.fecha_fin:

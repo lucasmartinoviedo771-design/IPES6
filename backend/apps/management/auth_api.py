@@ -96,7 +96,8 @@ def _must_complete_profile(user) -> bool:
 
 def _serialize_user(user):
     estudiante = getattr(user, "estudiante", None)
-    must_change = getattr(estudiante, "must_change_password", False)
+    profile = getattr(user, "profile", None)
+    must_change = getattr(estudiante, "must_change_password", False) or getattr(profile, "must_change_password", False)
     must_complete_profile = _must_complete_profile(user)
     from core.permissions import allowed_profesorados
     allowed = allowed_profesorados(user)
@@ -238,7 +239,7 @@ def profile(request):
         "roles": roles,
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
-        "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False)), # Error fix here too, was wrong in original
+        "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False) or getattr(getattr(u, "profile", None), "must_change_password", False)),
         "must_complete_profile": _must_complete_profile(u),
         "profesorado_ids": prof_ids,
     }
@@ -273,6 +274,11 @@ def change_password(request, payload: ChangePasswordIn):
     if estudiante and estudiante.must_change_password:
         estudiante.must_change_password = False
         estudiante.save(update_fields=["must_change_password"])
+
+    profile = getattr(user, "profile", None)
+    if profile and profile.must_change_password:
+        profile.must_change_password = False
+        profile.save(update_fields=["must_change_password"])
 
     return {"detail": "Contraseña actualizada correctamente."}
 

@@ -53,7 +53,7 @@ def analizar_habilitados_materia(request, materia_id: int):
     # Como no sabemos qué correlativas tienen sin mirar al estudiante, traemos TODO el historial de estos estudiantes
     # de materias del mismo profesorado/plan.
     
-    plan_materias_ids = list(Materia.objects.filter(plan_de_estudio__profesorado=profesorado).values_list("id", flat=True))
+    plan_materias_ids = list(Materia.objects.filter(plan_de_estudio__profesorado=profesorado).exclude(nombre__startswith="CI:").values_list("id", flat=True))
 
     regularidades = Regularidad.objects.filter(
         materia_id__in=plan_materias_ids,

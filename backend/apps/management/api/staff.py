@@ -123,15 +123,15 @@ def force_reset_password(request, payload: ForceResetPasswordIn):
     """Permite el reseteo administrativo forzado para dar acceso inmediato a un usuario."""
     ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
     user = get_object_or_404(User, username=payload.username)
-    new_pass = payload.new_password if payload.new_password and payload.new_password.strip() else "pass12346789"
+    using_default = not (payload.new_password and payload.new_password.strip())
+    new_pass = "pass12346789" if using_default else payload.new_password
     user.set_password(new_pass)
     user.is_active = True
     user.save()
 
-    # Si es un perfil de estudiante, desactivamos el flag de cambio de contraseña
-    estudiante = Estudiante.objects.filter(user=user).first()
-    if estudiante:
-        estudiante.must_change_password = False
-        estudiante.save(update_fields=["must_change_password"])
+    from core.models import UserProfile
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.must_change_password = using_default
+    profile.save(update_fields=["must_change_password"])
 
     return {"message": f"Contraseña de {user.username} reseteada exitosamente."}

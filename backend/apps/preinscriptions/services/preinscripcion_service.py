@@ -29,28 +29,28 @@ def _generar_password_segura() -> str:
 
 
 _ESTADO_CIVIL_MAP = {
-    "soltero/a": "SOL", "soltero": "SOL", "soltera": "SOL",
-    "casado/a": "CAS", "casado": "CAS", "casada": "CAS",
-    "divorciado/a": "DIV", "divorciado": "DIV", "divorciada": "DIV",
-    "viudo/a": "VIU", "viudo": "VIU", "viuda": "VIU",
-    "conviviente": "CON",
-    "otro": "OTR",
+    "soltero/a": "SOL", "soltero": "SOL", "soltera": "SOL", "sol": "SOL",
+    "casado/a": "CAS", "casado": "CAS", "casada": "CAS", "cas": "CAS",
+    "divorciado/a": "DIV", "divorciado": "DIV", "divorciada": "DIV", "div": "DIV",
+    "viudo/a": "VIU", "viudo": "VIU", "viuda": "VIU", "viu": "VIU",
+    "conviviente": "CON", "con": "CON",
+    "otro": "OTR", "otr": "OTR",
 }
 
 _GENERO_MAP = {
-    "masculino": "M",
-    "femenino": "F",
-    "no binario / otro": "X", "no binario": "X", "otro": "X",
+    "masculino": "M", "m": "M",
+    "femenino": "F", "f": "F",
+    "no binario / otro": "X", "no binario": "X", "no binarie": "X", "otro": "X", "x": "X",
 }
 
 
-def _map_estado_civil(value: str | None) -> str | None:
+def map_estado_civil(value: str | None) -> str | None:
     if not value:
         return None
     return _ESTADO_CIVIL_MAP.get(value.strip().lower(), None)
 
 
-def _map_genero(value: str | None) -> str | None:
+def map_genero(value: str | None) -> str | None:
     if not value:
         return None
     return _GENERO_MAP.get(value.strip().lower(), None)
@@ -103,11 +103,40 @@ class PreinscripcionService:
 
         # 3. Preinscripción
         current_year = datetime.now().year
-        preinscripcion, created = Preinscripcion.objects.get_or_create(
-            alumno=estudiante,
-            carrera_id=payload.carrera_id,
-            anio=current_year,
-        )
+        
+        if getattr(payload, "codigo", None):
+            preinscripcion = Preinscripcion.objects.filter(codigo__iexact=payload.codigo).first()
+            if not preinscripcion:
+                from ninja.errors import HttpError
+                raise HttpError(404, "Preinscripción no encontrada para el código provisto.")
+            if preinscripcion.estado == "Confirmada":
+                from ninja.errors import HttpError
+                raise HttpError(400, "La preinscripción ya ha sido confirmada y no puede ser modificada.")
+            if preinscripcion.alumno.persona.dni != estudiante_data.dni:
+                from ninja.errors import HttpError
+                raise HttpError(400, "El DNI no coincide con el código de preinscripción.")
+            created = False
+        else:
+            existing = Preinscripcion.objects.filter(
+                alumno=estudiante,
+                carrera_id=payload.carrera_id,
+                anio=current_year,
+            ).first()
+            if existing:
+                if existing.activa:
+                    from ninja.errors import HttpError
+                    raise HttpError(400, "Ya existe una preinscripción activa para esta carrera en el ciclo lectivo actual.")
+                else:
+                    preinscripcion = existing
+                    preinscripcion.activa = True
+                    created = False
+            else:
+                preinscripcion = Preinscripcion(
+                    alumno=estudiante,
+                    carrera_id=payload.carrera_id,
+                    anio=current_year,
+                )
+                created = True
 
         preinscripcion.estado = "Enviada"
         preinscripcion.foto_4x4_dataurl = payload.foto_4x4_dataurl
@@ -115,6 +144,7 @@ class PreinscripcionService:
         preinscripcion.cuil = estudiante_data.cuil
         
         if created or not preinscripcion.codigo:
+            preinscripcion.save()
             preinscripcion.codigo = _generar_codigo(preinscripcion.id)
             
         preinscripcion.save()
@@ -138,9 +168,9 @@ class PreinscripcionService:
             if extra.get("nacionalidad"):
                 persona_updates["nacionalidad"] = extra["nacionalidad"]
             if extra.get("estado_civil"):
-                persona_updates["estado_civil"] = _map_estado_civil(extra["estado_civil"])
+                persona_updates["estado_civil"] = map_estado_civil(extra["estado_civil"])
             if extra.get("genero"):
-                persona_updates["genero"] = _map_genero(extra["genero"])
+                persona_updates["genero"] = map_genero(extra["genero"])
             if extra.get("localidad_nac"):
                 persona_updates["localidad_nac"] = extra["localidad_nac"]
             if extra.get("provincia_nac"):

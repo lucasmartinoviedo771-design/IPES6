@@ -28,6 +28,8 @@ from .schemas import (
     PreinscripcionUpdateIn,
     RequisitoDocumentacionOut,
     RequisitoDocumentacionUpdateIn,
+    RecuperarPreinscripcionIn,
+    RecuperarPreinscripcionOut,
 )
 from .services.requisitos import sync_profesorado_requisitos
 from .services.rate_limiting import check_rate_limit, client_ip, verify_recaptcha
@@ -103,6 +105,64 @@ def get_ventana_activa_publica(request):
     })
 
 
+@router.post("/recuperar", response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse}, auth=AllowPublic())
+def recuperar_preinscripcion(request, payload: RecuperarPreinscripcionIn):
+    """
+    Recupera una preinscripción activa mediante validación de DNI, Carrera y Fecha de Nacimiento.
+    Permite obtener el ID y código de preinscripción para su posterior reimpresión.
+    """
+    from core.models import Preinscripcion
+    
+    # 1. Buscar preinscripción activa para el DNI y la Carrera
+    pre = Preinscripcion.objects.filter(
+        alumno__persona__dni=payload.dni,
+        carrera_id=payload.carrera_id,
+        activa=True
+    ).order_by("-anio", "-created_at").first()
+    
+    if not pre:
+        return 404, ApiResponse(
+            ok=False, 
+            message="No se encontró ninguna preinscripción activa para el DNI y la carrera seleccionados."
+        )
+        
+    # 2. Validar fecha de nacimiento contra la base de datos o datos_extra
+    nac_persona = pre.alumno.persona.fecha_nacimiento
+    extra = pre.datos_extra or {}
+    nac_extra_str = extra.get("estudiante", {}).get("fecha_nacimiento")
+    
+    match = False
+    if nac_persona and nac_persona == payload.fecha_nacimiento:
+        match = True
+    elif nac_extra_str:
+        try:
+            payload_str = payload.fecha_nacimiento.strftime("%Y-%m-%d")
+            if payload_str in str(nac_extra_str):
+                match = True
+            else:
+                payload_latam = payload.fecha_nacimiento.strftime("%d/%m/%Y")
+                if payload_latam in str(nac_extra_str):
+                    match = True
+        except Exception:
+            pass
+            
+    if not match:
+        return 400, ApiResponse(
+            ok=False, 
+            message="La fecha de nacimiento ingresada es incorrecta."
+        )
+        
+    pdf_url = f"/preinscripciones/{pre.id}/pdf/"
+    return 200, ApiResponse(
+        ok=True, 
+        message="Validación exitosa.", 
+        data={
+            "id": pre.id,
+            "codigo": pre.codigo,
+            "estado": pre.estado,
+            "pdf_url": pdf_url,
+        }
+    )
 
 
 @router.get("/", response=PreinscripcionPaginatedOut, auth=JWTAuth())
@@ -230,6 +290,7 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optio
         "estado": preinscripcion.estado,
     })
 
+
 @router.post("/preview-pdf/", auth=AllowPublic())
 def preview_pdf(request, payload: PreinscripcionIn):
     """
@@ -239,7 +300,7 @@ def preview_pdf(request, payload: PreinscripcionIn):
     from .views_pdf import render_to_string
     from weasyprint import HTML
     from django.http import HttpResponse
-    from core.models import Profesorado
+    from core.models import Profesorado, Persona
     import os
     from django.conf import settings
 
@@ -250,18 +311,33 @@ def preview_pdf(request, payload: PreinscripcionIn):
     # El payload tiene estudiante anidado — aplanamos para la plantilla
     raw = payload.dict()
     est = raw.get("estudiante") or {}
+
+    # Formatear el CUIL de forma amigable (XX-XXXXXXXX-X) si tiene 11 dígitos
+    raw_cuil = est.get("cuil") or raw.get("cuil")
+    formatted_cuil = None
+    if raw_cuil:
+        cleaned_cuil = "".join(c for c in str(raw_cuil) if c.isdigit())
+        if len(cleaned_cuil) == 11:
+            formatted_cuil = f"{cleaned_cuil[:2]}-{cleaned_cuil[2:10]}-{cleaned_cuil[10]}"
+        else:
+            formatted_cuil = raw_cuil
+
+    # Obtener el display amigable para el estado civil
+    raw_ec = raw.get("estado_civil")
+    display_ec = dict(Persona.EstadoCivil.choices).get(raw_ec, raw_ec) if raw_ec else None
+
     v = {
         "apellido": (est.get("apellido") or "").upper(),
         "nombres": est.get("nombres") or "",
         "dni": est.get("dni") or "",
-        "cuil": est.get("cuil") or "",
+        "cuil": formatted_cuil,
         "fecha_nacimiento": _fmt_date(est.get("fecha_nacimiento")),
         "email": est.get("email") or "",
         "tel_movil": est.get("telefono") or "",
         "domicilio": est.get("domicilio") or "",
         # datos extra planos
         "nacionalidad": raw.get("nacionalidad"),
-        "estado_civil": raw.get("estado_civil"),
+        "estado_civil": display_ec,
         "localidad_nac": raw.get("localidad_nac"),
         "provincia_nac": raw.get("provincia_nac"),
         "pais_nac": raw.get("pais_nac"),
@@ -293,16 +369,26 @@ def preview_pdf(request, payload: PreinscripcionIn):
         "consentimiento_datos": raw.get("consentimiento_datos", True),
     }
     
-    checklist_items = [
-        {"label": "Fotocopia legalizada DNI", "checked": False},
-        {"label": "Copia legalizada Analítico", "checked": False},
-        {"label": "2 fotos carnet 4x4", "checked": False},
-        {"label": "Título Secundario", "checked": False},
-        {"label": "Certificado Alumno Regular", "checked": False},
-        {"label": "Certificado Título en Trámite", "checked": False},
-        {"label": "Certificado Buena Salud", "checked": False},
-        {"label": "3 Folios Oficio", "checked": False},
-    ]
+    if carrera and carrera.es_certificacion_docente:
+        checklist_items = [
+            {"label": "Fotocopia legalizada DNI", "checked": False},
+            {"label": "2 fotos carnet 4x4", "checked": False},
+            {"label": "Certificado Buena Salud", "checked": False},
+            {"label": "3 Folios Oficio", "checked": False},
+            {"label": "Título Terciario/Universitario", "checked": False},
+            {"label": "Incumbencias", "checked": False},
+        ]
+    else:
+        checklist_items = [
+            {"label": "Fotocopia legalizada DNI", "checked": False},
+            {"label": "Copia legalizada Analítico", "checked": False},
+            {"label": "2 fotos carnet 4x4", "checked": False},
+            {"label": "Título Secundario", "checked": False},
+            {"label": "Certificado Alumno Regular", "checked": False},
+            {"label": "Certificado Título en Trámite", "checked": False},
+            {"label": "Certificado Buena Salud", "checked": False},
+            {"label": "3 Folios Oficio", "checked": False},
+        ]
 
     # Rutas para recursos estáticos (Encabezado Universal)
     logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
@@ -459,6 +545,27 @@ def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = Non
     return [serialize_pre(p) for p in preins]
 
 
+@router.get("/estudiante/{dni}/pdf", auth=JWTAuth())
+def descargar_pdf_por_dni(request, dni: str):
+    """
+    Busca la preinscripción activa más reciente para el DNI y retorna el PDF de forma directa.
+    """
+    from core.models import Preinscripcion
+    from .views_pdf import preinscripcion_pdf
+    
+    check_roles(request, PREINS_ALLOWED_ROLES)
+    
+    pre = (
+        Preinscripcion.objects.filter(alumno__persona__dni=dni, activa=True)
+        .order_by("-anio", "-created_at")
+        .first()
+    )
+    if not pre:
+        raise HttpError(404, "No se encontró ninguna preinscripción activa para este DNI.")
+        
+    return preinscripcion_pdf(request, preinscripcion_id=pre.id)
+
+
 @router.post(
     "/by-code/{codigo}/carreras",
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
@@ -539,10 +646,16 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
         if est.telefono is not None: p.telefono = est.telefono
         if est.domicilio is not None: p.domicilio = est.domicilio
         if est.fecha_nacimiento: p.fecha_nacimiento = est.fecha_nacimiento
-        p.save()
         
-        if est.cuil:
+        if est.genero is not None:
+            from .services.preinscripcion_service import map_genero
+            p.genero = map_genero(est.genero)
+            
+        if est.cuil is not None:
+            p.cuil = est.cuil
             pre.cuil = est.cuil
+            
+        p.save()
 
     if payload.carrera_id:
         pre.carrera_id = payload.carrera_id

@@ -527,12 +527,14 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
             return value
         return pre_extra.get(key, default)
 
+    from apps.preinscriptions.services.preinscripcion_service import map_genero
+
     extra_data = {
         "anio_ingreso": estudiante.anio_ingreso,
         "cohorte": estudiante.cohorte,
         "observaciones": estudiante.observaciones,
         "lugar_nacimiento": persona.lugar_nacimiento if persona else None,
-        "genero": _fb(persona.genero if persona else None, "genero"),
+        "genero": map_genero(_fb(persona.genero if persona else None, "genero")),
         "cuil": _fb(persona.cuil if persona else None, "cuil"),
         "nacionalidad": _fb(persona.nacionalidad if persona else None, "nacionalidad"),
         "estado_civil": _fb(persona.estado_civil if persona else None, "estado_civil"),

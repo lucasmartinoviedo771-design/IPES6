@@ -16,6 +16,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import SchoolIcon from "@mui/icons-material/School";
 import { hasAnyRole } from "@/utils/roles";
 import {
   INSTITUTIONAL_TERRACOTTA,
@@ -78,7 +79,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
         transition: "margin 0.3s ease, width 0.3s ease",
       }}
     >
-      <Toolbar sx={{ gap: 2, minHeight: 64 }}>
+      <Toolbar sx={{ gap: { xs: 1, sm: 2 }, minHeight: 64 }}>
         <IconButton
           edge="start"
           onClick={onToggleSidebar}
@@ -93,20 +94,73 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
         >
           <MenuIcon fontSize="small" />
         </IconButton>
-        <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", gap: { xs: 1, sm: 3 } }}>
           <Box
             component="img"
             src={ipesLogoFull}
             alt="IPES"
-            sx={{ height: 64, objectFit: "contain" }}
+            sx={{ height: { xs: 32, sm: 48, md: 64 }, objectFit: "contain" }}
           />
+          {/* Versión Escritorio */}
+          <Button
+            component="a"
+            href="https://ipespaulofreire.edu.ar/campus/my/"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="outlined"
+            startIcon={<SchoolIcon fontSize="small" />}
+            sx={{
+              display: { xs: "none", md: "inline-flex" },
+              textTransform: "none",
+              fontWeight: 600,
+              color: INSTITUTIONAL_TERRACOTTA,
+              borderColor: INSTITUTIONAL_TERRACOTTA,
+              borderRadius: 10,
+              px: 2,
+              py: 0.5,
+              "&:hover": {
+                borderColor: INSTITUTIONAL_TERRACOTTA_DARK,
+                backgroundColor: "rgba(183, 105, 78, 0.08)",
+                color: INSTITUTIONAL_TERRACOTTA_DARK,
+              },
+            }}
+          >
+            Ir al Campus Virtual
+          </Button>
+
+          {/* Versión Móvil */}
+          <Tooltip title="Ir al Campus Virtual">
+            <IconButton
+              component="a"
+              href="https://ipespaulofreire.edu.ar/campus/my/"
+              target="_blank"
+              rel="noopener noreferrer"
+              size="small"
+              sx={{
+                display: { xs: "inline-flex", md: "none" },
+                borderRadius: 10,
+                border: `1px solid ${INSTITUTIONAL_TERRACOTTA}`,
+                backgroundColor: "#ffffff",
+                color: INSTITUTIONAL_TERRACOTTA,
+                p: 0.75,
+                "&:hover": {
+                  borderColor: INSTITUTIONAL_TERRACOTTA_DARK,
+                  backgroundColor: "rgba(183, 105, 78, 0.08)",
+                  color: INSTITUTIONAL_TERRACOTTA_DARK,
+                },
+              }}
+            >
+              <SchoolIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, sm: 2 } }}>
           <Tooltip title="Guía de Usuario">
             <IconButton
               size="small"
               onClick={onGuideOpen}
               sx={{
+                display: { xs: "none", sm: "inline-flex" },
                 borderRadius: 10,
                 border: "1px solid #e2e8f0",
                 backgroundColor: "#f8fafc",
@@ -121,10 +175,11 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
               size="small"
               variant="outlined"
               sx={{
-                minWidth: 220,
+                minWidth: { xs: 110, sm: 180, md: 220 },
                 "& .MuiInputBase-root": {
                   borderRadius: 2,
                   backgroundColor: "#f8fafc",
+                  fontSize: { xs: "0.8rem", sm: "0.875rem" },
                 },
               }}
             >
@@ -167,7 +222,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
               </IconButton>
             </Tooltip>
           )}
-          <Box sx={{ textAlign: "right" }}>
+          <Box sx={{ textAlign: "right", display: { xs: "none", md: "block" } }}>
             <Typography variant="body2" fontWeight={600}>
               {user?.name ?? user?.dni}
             </Typography>
@@ -196,6 +251,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
               component={Link}
               to="/estudiantes/completar-perfil"
               sx={{
+                display: { xs: "none", md: "inline-flex" },
                 textTransform: "none",
                 fontWeight: 600,
                 color: INSTITUTIONAL_TERRACOTTA,
@@ -209,6 +265,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
             component={Link}
             to="/cambiar-password"
             sx={{
+              display: { xs: "none", md: "inline-flex" },
               textTransform: "none",
               fontWeight: 600,
               color: INSTITUTIONAL_TERRACOTTA,
@@ -217,12 +274,14 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
           >
             Cambiar contraseña
           </Button>
+          {/* Botón Salir - Escritorio */}
           <Button
             variant="contained"
             color="primary"
             onClick={() => onLogout()}
             startIcon={<LogoutIcon fontSize="small" />}
             sx={{
+              display: { xs: "none", md: "inline-flex" },
               textTransform: "none",
               fontWeight: 600,
               borderRadius: 10,
@@ -233,6 +292,24 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
           >
             Salir
           </Button>
+          {/* Botón Salir - Móvil */}
+          <Tooltip title="Salir">
+            <IconButton
+              onClick={() => onLogout()}
+              sx={{
+                display: { xs: "inline-flex", md: "none" },
+                borderRadius: 10,
+                backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                color: "#ffffff",
+                p: 0.75,
+                "&:hover": {
+                  backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK,
+                },
+              }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Toolbar>
     </AppBar>
