@@ -262,12 +262,12 @@ def list_materias_for_plan(
     materias = plan.materias.all()
 
     # Filtrado por vigencia temporal (por defecto solo activos)
+    hoy = date.today()
     if not incluir_historial:
-        hoy = date.today()
-        # Excluir los que ya vencieron
-        materias = materias.exclude(fecha_fin__lt=hoy)
         # Excluir los que aún no empezaron
         materias = materias.exclude(fecha_inicio__gt=hoy)
+        # Excluir materias no-EDI que ya vencieron; los EDIs cerrados se muestran marcados
+        materias = materias.exclude(fecha_fin__lt=hoy, is_edi=False)
 
     # Aplicación de filtros según metadata de la materia
     if anio_cursada is not None: materias = materias.filter(anio_cursada=anio_cursada)

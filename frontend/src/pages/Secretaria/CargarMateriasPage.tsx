@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Checkbox from "@mui/material/Checkbox";
+import Chip from "@mui/material/Chip";
 import { client as api } from "@/api/client";
 import { useParams } from "react-router-dom";
 import { toast } from "@/utils/toast";
@@ -53,6 +54,7 @@ interface Materia {
   is_edi: boolean;
   fecha_inicio: string | null;
   fecha_fin: string | null;
+  esta_cerrada?: boolean;
 }
 
 interface MateriaFormInput {
@@ -747,7 +749,19 @@ export default function CargarMateriasPage() {
                   <TableRow key={materia.id}>
                     <TableCell>{materia.id}</TableCell>
                     <TableCell>{materia.anio_cursada}</TableCell>
-                    <TableCell>{materia.nombre}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {materia.nombre}
+                        {materia.is_edi && materia.esta_cerrada && (
+                          <Chip
+                            label="Cerrada"
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                          />
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell>{materia.horas_semana}</TableCell>
                     <TableCell>{FORMATO_CHOICES.find(f => f.value === materia.formato)?.label || materia.formato}</TableCell>
                     <TableCell>{TIPO_FORMACION_CHOICES.find(t => t.value === materia.tipo_formacion)?.label || materia.tipo_formacion}</TableCell>

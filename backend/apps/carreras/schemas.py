@@ -88,6 +88,11 @@ class MateriaOut(Schema):
     fecha_fin: date | None
     plan_resolucion: str | None = None
     permite_mesa_libre: bool = True
+    esta_cerrada: bool = False
+
+    @staticmethod
+    def resolve_esta_cerrada(obj) -> bool:
+        return obj.fecha_fin is not None and obj.fecha_fin < date.today()
 
 class CerrarEDIIn(Schema):
     """Payload para cerrar un EDI y crear uno nuevo en su lugar."""
