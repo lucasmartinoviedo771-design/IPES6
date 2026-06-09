@@ -395,3 +395,28 @@ export const listarHistoricoMesasPandemia = async (params?: { ordering?: string 
   );
   return data.data;
 };
+
+export const obtenerInscriptosActivos = async (
+  materiaId: number,
+  anio?: number,
+): Promise<Array<{ dni: string; apellido_nombre: string }>> => {
+  const { data } = await api.get<Array<{ dni: string; apellido_nombre: string }>>(
+    `/admin/primera-carga/regularidades/materias/${materiaId}/inscriptos-activos`,
+    { params: { anio } }
+  );
+  return data;
+};
+
+export const obtenerDocentesDefecto = async (
+  materiaId: number,
+  profesoradoId: number,
+  anio?: number,
+): Promise<Array<{ docente_id: number | null; nombre: string; dni: string; rol: string; orden: number }>> => {
+  const { data } = await api.get<Array<{ docente_id: number | null; nombre: string; dni: string; rol: string; orden: number }>>(
+    `/admin/primera-carga/regularidades/materias/${materiaId}/docentes-defecto`,
+    { params: { profesorado_id: profesoradoId, anio } }
+  );
+  return data;
+};
+
+

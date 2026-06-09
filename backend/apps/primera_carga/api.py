@@ -453,3 +453,84 @@ def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
     data = get_historico_mesas_pandemia(request.user, ordering=ordering)
     return ApiResponse(ok=True, message="Listado histórico.", data=data)
 
+
+@primera_carga_router.get(
+    "/regularidades/materias/{materia_id}/inscriptos-activos",
+    response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | None = None):
+    from datetime import date
+    from core.models import InscripcionMateriaEstudiante
+    if not anio:
+        anio = date.today().year
+    
+    inscripciones = (
+        InscripcionMateriaEstudiante.objects.filter(
+            materia_id=materia_id,
+            anio=anio,
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                InscripcionMateriaEstudiante.Estado.CONDICIONAL,
+            ],
+        )
+        .select_related("estudiante__persona")
+        .order_by("estudiante__persona__apellido", "estudiante__persona__nombre")
+    )
+    
+    return [
+        {
+            "dni": insc.estudiante.dni,
+            "apellido_nombre": f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}".strip(", "),
+        }
+        for insc in inscripciones
+    ]
+
+
+@primera_carga_router.get(
+    "/regularidades/materias/{materia_id}/docentes-defecto",
+    response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
+)
+@ensure_roles(["admin", "secretaria", "bedel"])
+def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: int, anio: int | None = None):
+    from datetime import date
+    from core.models import Comision, StaffAsignacion
+    if not anio:
+        anio = date.today().year
+
+    docentes_res = []
+
+    # 1. Buscar el docente de la comisión de esa materia para ese año
+    comisiones = Comision.objects.filter(materia_id=materia_id, anio_lectivo=anio).select_related("docente__persona")
+    for com in comisiones:
+        if com.docente and com.docente.persona:
+            docentes_res.append({
+                "docente_id": com.docente.id,
+                "nombre": f"{com.docente.persona.apellido}, {com.docente.persona.nombre}".strip(", "),
+                "dni": com.docente.persona.dni,
+                "rol": "profesor",
+                "orden": 1
+            })
+            break  # Tomamos el primero de la comisión
+
+    # 2. Buscar el bedel asignado a ese profesorado
+    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user")
+    orden_bedel = len(docentes_res) + 1
+    for bedel in bedeles:
+        nombre = f"{bedel.user.last_name}, {bedel.user.first_name}".strip(", ")
+        if not nombre:
+            nombre = bedel.user.get_full_name() or bedel.user.username
+        
+        docentes_res.append({
+            "docente_id": None,
+            "nombre": nombre,
+            "dni": bedel.user.username,
+            "rol": "bedel",
+            "orden": orden_bedel
+        })
+        break  # Tomamos el primer bedel
+
+    return docentes_res
+
+
+

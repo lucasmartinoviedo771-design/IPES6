@@ -116,8 +116,8 @@ export default function LoginPage() {
       }}
     >
       <Stack spacing={4} alignItems="center" sx={{ width: "100%", maxWidth: 420 }}>
-        <Stack spacing={1.5} alignItems="center">
-          <Box component="img" src={ipesLogoDark} alt="IPES Paulo Freire" sx={{ height: 96, objectFit: "contain" }} />
+        <Stack spacing={1.5} alignItems="center" sx={{ width: "100%" }}>
+          <Box component="img" src={ipesLogoDark} alt="IPES Paulo Freire" sx={{ height: 96, maxWidth: "100%", objectFit: "contain" }} />
         </Stack>
 
         <Paper
@@ -125,7 +125,7 @@ export default function LoginPage() {
           sx={{
             width: "100%",
             borderRadius: 4,
-            p: 4,
+            p: { xs: 2, sm: 4 },
             background: "rgba(19,25,48,0.85)",
             border: "1px solid rgba(255,255,255,0.1)",
             color: "#fff",
@@ -264,7 +264,7 @@ export default function LoginPage() {
           </Stack>
         </Paper>
 
-        <Box component="img" src={sigedFirma} alt="Firma de la dirección" sx={{ height: 75, opacity: 0.85 }} />
+        <Box component="img" src={sigedFirma} alt="Firma de la dirección" sx={{ height: 75, maxWidth: "100%", objectFit: "contain", opacity: 0.85 }} />
       </Stack>
     </Box>
   );

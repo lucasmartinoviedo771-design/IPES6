@@ -228,14 +228,27 @@ export function EstudianteDetailDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
         {(!isAttp && !isRectorado) && (
-          <Button
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={onDeleteClick}
-            disabled={updateIsPending || deleteIsPending}
-          >
-            Eliminar estudiante
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={onDeleteClick}
+              disabled={updateIsPending || deleteIsPending || !!resetPassIsPending}
+            >
+              Eliminar estudiante
+            </Button>
+            {onResetPassword && (
+              <Button
+                color="warning"
+                variant="outlined"
+                startIcon={resetPassIsPending ? <CircularProgress size={18} color="inherit" /> : <LockResetIcon />}
+                onClick={onResetPassword}
+                disabled={updateIsPending || deleteIsPending || !!resetPassIsPending}
+              >
+                Resetear Contraseña
+              </Button>
+            )}
+          </Stack>
         )}
         <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
           <Button startIcon={<CloseIcon />} onClick={onClose}>

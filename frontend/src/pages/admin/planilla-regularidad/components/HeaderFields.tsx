@@ -100,103 +100,139 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Controller
-            control={control}
-            name="profesoradoId"
-            rules={{ required: true }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                label="Profesorado"
-                fullWidth
-                size="small"
-                required
-                onChange={(e) => {
-                  field.onChange(e);
-                  setValue('materiaId', '');
-                  setValue('plantillaId', '');
-                  setValue('planResolucion', '');
-                }}
-              >
-                {profesorados.map((prof) => (
-                  <MenuItem key={prof.id} value={prof.id}>
-                    {prof.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
+          {isReadOnly ? (
+            <TextField
+              label="Profesorado"
+              value={selectedProfesorado?.nombre || 'Cargando...'}
+              fullWidth
+              size="small"
+              disabled
+            />
+          ) : (
+            <Controller
+              control={control}
+              name="profesoradoId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Profesorado"
+                  fullWidth
+                  size="small"
+                  required
+                  disabled={isReadOnly}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setValue('materiaId', '');
+                    setValue('plantillaId', '');
+                    setValue('planResolucion', '');
+                  }}
+                >
+                  {profesorados.map((prof) => (
+                    <MenuItem key={prof.id} value={prof.id}>
+                      {prof.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          )}
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Controller
-            control={control}
-            name="materiaId"
-            rules={{ required: true }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                label="Unidad curricular"
-                fullWidth
-                size="small"
-                required
-                disabled={!selectedProfesorado}
-                onChange={(e) => {
-                  field.onChange(e);
-                  // Solo recalculamos automáticamente en modo creación.
-                  // En edición, respetamos lo que viene de DB a menos que el usuario pulse el botón.
-                  if (mode === 'create') {
-                    setTimeout(() => {
-                      filaFields.forEach((_, idx) => calculateSituacionForRow(idx));
-                    }, 100);
+          {isReadOnly ? (
+            <TextField
+              label="Unidad curricular"
+              value={selectedMateria ? `${selectedMateria.nombre} (${selectedMateria.anio_cursada ?? '-'}°)` : 'Cargando...'}
+              fullWidth
+              size="small"
+              disabled
+            />
+          ) : (
+            <Controller
+              control={control}
+              name="materiaId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Unidad curricular"
+                  fullWidth
+                  size="small"
+                  required
+                  disabled={isReadOnly || !selectedProfesorado}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    // Solo recalculamos automáticamente en modo creación.
+                    // En edición, respetamos lo que viene de DB a menos que el usuario pulse el botón.
+                    if (mode === 'create') {
+                      setTimeout(() => {
+                        filaFields.forEach((_, idx) => calculateSituacionForRow(idx));
+                      }, 100);
+                    }
+                  }}
+                >
+                  {materias.map((materia) => (
+                    <MenuItem key={materia.id} value={materia.id}>
+                      {materia.nombre} ({materia.anio_cursada ?? '-'}°)
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          )}
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          {isReadOnly ? (
+            <TextField
+              label="Plantilla"
+              value={selectedPlantilla ? selectedPlantilla.nombre : 'Oficial / Estándar'}
+              fullWidth
+              size="small"
+              disabled
+              helperText={
+                selectedPlantilla
+                  ? `${selectedPlantilla.formato.nombre} - ${selectedPlantilla.dictado}`
+                  : (selectedMateria ? `${selectedMateria.formato || 'Estándar'} - ${selectedMateria.regimen || ''}` : 'Selecciona unidad curricular')
+              }
+            />
+          ) : (
+            <Controller
+              control={control}
+              name="plantillaId"
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Plantilla"
+                  fullWidth
+                  size="small"
+                  required
+                  disabled={isReadOnly || !selectedMateria}
+                  helperText={
+                    selectedPlantilla
+                      ? `${selectedPlantilla.formato.nombre} - ${selectedPlantilla.dictado}`
+                      : 'Selecciona unidad curricular para habilitar'
                   }
-                }}
-              >
-                {materias.map((materia) => (
-                  <MenuItem key={materia.id} value={materia.id}>
-                    {materia.nombre} ({materia.anio_cursada ?? '-'}°)
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Controller
-            control={control}
-            name="plantillaId"
-            rules={{ required: true }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                label="Plantilla"
-                fullWidth
-                size="small"
-                required
-                disabled={!selectedMateria}
-                helperText={
-                  selectedPlantilla
-                    ? `${selectedPlantilla.formato.nombre} - ${selectedPlantilla.dictado}`
-                    : 'Selecciona unidad curricular para habilitar'
-                }
-              >
-                {plantillasDisponibles.map((plantilla) => (
-                  <MenuItem key={plantilla.id} value={plantilla.id}>
-                    {plantilla.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
+                >
+                  {plantillasDisponibles.map((plantilla) => (
+                    <MenuItem key={plantilla.id} value={plantilla.id}>
+                      {plantilla.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+          )}
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Controller
             control={control}
             name="folio"
             render={({ field }) => (
-              <TextField {...field} label="Folio" fullWidth size="small" />
+              <TextField {...field} label="Folio" fullWidth size="small" disabled={isReadOnly} />
             )}
           />
         </Grid>
@@ -210,6 +246,7 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
                 label="Resolución del plan"
                 fullWidth
                 size="small"
+                disabled={isReadOnly}
                 helperText="Se sugiere mantener la resolución de la unidad curricular."
               />
             )}
@@ -227,6 +264,7 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
                 size="small"
                 multiline
                 minRows={2}
+                disabled={isReadOnly}
               />
             )}
           />

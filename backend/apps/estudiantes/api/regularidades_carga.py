@@ -194,7 +194,7 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
                 inscripcion_id=insc.id,
                 estudiante_id=insc.estudiante_id,
                 orden=idx,
-                apellido_nombre=insc.estudiante.user.get_full_name() if insc.estudiante.user_id else "",
+                apellido_nombre=f"{(insc.estudiante.user.last_name or '').upper()}, {insc.estudiante.user.first_name or ''}".strip(", ") if insc.estudiante.user_id else "",
                 dni=insc.estudiante.dni,
                 nota_tp=float(regularidad.nota_trabajos_practicos) if regularidad and regularidad.nota_trabajos_practicos is not None else None,
                 nota_final=regularidad.nota_final_cursada if regularidad else None,
@@ -436,6 +436,10 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                       raise HttpError(400, f"Faltan datos obligatorios para registrar regularidad del alumno {insc.estudiante.dni}.")
 
             # F. Persistencia
+            from apps.estudiantes.api.helpers.misc_utils import _calcular_resguardo_equivalencia
+            legajo_completo = insc.estudiante.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
+            en_resguardo = (not legajo_completo) or _calcular_resguardo_equivalencia(insc.estudiante, materia, situacion=situ_cod)
+
             Regularidad.objects.update_or_create(
                 inscripcion=insc,
                 defaults={
@@ -443,6 +447,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                     "nota_trabajos_practicos": Decimal(str(est_payload.nota_tp)) if est_payload.nota_tp is not None else None,
                     "nota_final_cursada": est_payload.nota_final, "asistencia_porcentaje": est_payload.asistencia,
                     "excepcion": est_payload.excepcion, "situacion": situ_cod, "observaciones": est_payload.observaciones or "",
+                    "en_resguardo": en_resguardo,
                 },
             )
 
@@ -520,3 +525,50 @@ def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(..
         return ApiResponse(ok=True, message="La planilla ha sido habilitada para edición.")
 
     return 400, ApiResponse(ok=False, message="Acción de gestión no válida.")
+
+
+@router.get(
+    "/regularidades/materias/{materia_id}/docentes-defecto",
+    response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth()
+)
+@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: int, anio: int | None = None):
+    from datetime import date
+    from core.models import Comision, StaffAsignacion
+    if not anio:
+        anio = date.today().year
+
+    docentes_res = []
+
+    # 1. Buscar el docente de la comisión de esa materia para ese año
+    comisiones = Comision.objects.filter(materia_id=materia_id, anio_lectivo=anio).select_related("docente__persona")
+    for com in comisiones:
+        if com.docente and com.docente.persona:
+            docentes_res.append({
+                "docente_id": com.docente.id,
+                "nombre": f"{com.docente.persona.apellido}, {com.docente.persona.nombre}".strip(", "),
+                "dni": com.docente.persona.dni,
+                "rol": "profesor",
+                "orden": 1
+            })
+            break  # Tomamos el primero de la comisión
+
+    # 2. Buscar el bedel asignado a ese profesorado
+    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user")
+    orden_bedel = len(docentes_res) + 1
+    for bedel in bedeles:
+        nombre = f"{bedel.user.last_name}, {bedel.user.first_name}".strip(", ")
+        if not nombre:
+            nombre = bedel.user.get_full_name() or bedel.user.username
+        
+        docentes_res.append({
+            "docente_id": None,
+            "nombre": nombre,
+            "dni": bedel.user.username,
+            "rol": "bedel",
+            "orden": orden_bedel
+        })
+        break  # Tomamos el primer bedel
+
+    return docentes_res

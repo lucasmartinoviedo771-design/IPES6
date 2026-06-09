@@ -29,22 +29,25 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   onClose,
   onCreated,
   planillaId,
-  mode = 'create'
+  mode = 'create',
+  defaultProfesoradoId,
+  defaultMateriaId,
+  scope = 'primera_carga',
+  comisionId,
 }) => {
   const isReadOnly = mode === 'view';
 
   const [crossLoadEnabled, setCrossLoadEnabled] = React.useState(false);
 
-  // Puente de estado para romper la dependencia circular entre form y metadata
   const [watchedIds, setWatchedIds] = React.useState({
-    profesoradoId: '' as number | '',
-    materiaId: '' as number | '',
+    profesoradoId: (defaultProfesoradoId ?? '') as number | '',
+    materiaId: (defaultMateriaId ?? '') as number | '',
     plantillaId: '' as number | '',
     fecha: null as string | null,
   });
 
   const metadata = useRegularidadMetadata({
-    open,
+    open: open && scope === 'primera_carga',
     crossLoadEnabled,
     profesoradoId: watchedIds.profesoradoId,
     materiaId: watchedIds.materiaId,
@@ -66,7 +69,70 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
     plantillasDisponibles: metadata.plantillasDisponibles,
     estudiantePorDni: metadata.estudiantePorDni,
     metadataQueryRefetch: metadata.metadataQuery.refetch,
+    defaultProfesoradoId,
+    defaultMateriaId,
+    scope,
+    comisionId,
   });
+
+  const profesorados = React.useMemo(() => {
+    if (scope === 'standard' && form.detailQuery.data?.data) {
+      const d = form.detailQuery.data.data;
+      return [{ id: Number(d.profesorado_id), nombre: d.profesorado_nombre || 'Cargando...', acronimo: '', planes: [] }];
+    }
+    return metadata.profesorados;
+  }, [scope, form.detailQuery.data?.data, metadata.profesorados]);
+
+  const materias = React.useMemo(() => {
+    if (scope === 'standard' && form.detailQuery.data?.data) {
+      const d = form.detailQuery.data.data;
+      return [{
+        id: Number(d.materia_id),
+        nombre: d.materia_nombre || 'Cargando...',
+        anio_cursada: d.materia_anio || null,
+        formato: d.formato || '',
+        dictado: d.regimen || null,
+        regimen: d.regimen || '',
+        plan_resolucion: d.plan_resolucion || ''
+      }];
+    }
+    return metadata.materias;
+  }, [scope, form.detailQuery.data?.data, metadata.materias]);
+
+  const selectedProfesorado = React.useMemo(() => {
+    if (scope === 'standard') {
+      return profesorados[0];
+    }
+    return metadata.selectedProfesorado;
+  }, [scope, profesorados, metadata.selectedProfesorado]);
+
+  const selectedMateria = React.useMemo(() => {
+    if (scope === 'standard') {
+      return materias[0];
+    }
+    return metadata.selectedMateria;
+  }, [scope, materias, metadata.selectedMateria]);
+
+  const selectedPlantilla = React.useMemo(() => {
+    if (scope === 'standard' && form.detailQuery.data?.data) {
+      const d = form.detailQuery.data.data;
+      const formats: Record<string, string> = { ASI: 'Asignatura', MOD: 'Módulo', TAL: 'Taller', PRA: 'Práctica', LAB: 'Laboratorio', SEM: 'Seminario' };
+      const dictados: Record<string, string> = { ANU: 'Anual', ANUAL: 'Anual', PCU: '1° Cuatrimestre', SCU: '2° Cuatrimestre', '1C': '1° Cuatrimestre', '2C': '2° Cuatrimestre' };
+      const fmtName = formats[d.formato?.toUpperCase()] || d.formato || 'Estándar';
+      const dictName = dictados[d.regimen?.toUpperCase()] || d.regimen || 'Anual';
+      return {
+        id: 1,
+        nombre: `Planilla de ${fmtName}`,
+        formato: { nombre: fmtName, slug: d.formato?.toLowerCase() || 'estandar' },
+        dictado: dictName,
+        columnas: [],
+        situaciones: [],
+        referencias: [],
+        descripcion: `Planilla oficial de cátedra para ${fmtName}.`
+      };
+    }
+    return metadata.selectedPlantilla;
+  }, [scope, form.detailQuery.data?.data, metadata.selectedPlantilla]);
 
   const fechaSeleccionada = form.watch('fecha');
   const watchProfesoradoId = form.watch('profesoradoId');
@@ -91,10 +157,11 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
   // previewCodigo necesita la fecha también
   const previewCodigo = React.useMemo(() => {
-    if (!metadata.selectedProfesorado || !fechaSeleccionada) return null;
+    const activeProfesorado = scope === 'standard' ? selectedProfesorado : metadata.selectedProfesorado;
+    if (!activeProfesorado || !fechaSeleccionada) return null;
     const day = fechaSeleccionada.replace(/-/g, '');
-    return `PRP${String(metadata.selectedProfesorado.id).padStart(2, '0')}${metadata.selectedProfesorado.acronimo}${day}XXX`;
-  }, [metadata.selectedProfesorado, fechaSeleccionada]);
+    return `PRP${String(activeProfesorado.id).padStart(2, '0')}${activeProfesorado.acronimo || 'PR'}${day}XXX`;
+  }, [scope, selectedProfesorado, metadata.selectedProfesorado, fechaSeleccionada]);
 
   return (
     <Dialog
@@ -121,37 +188,42 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
         <Typography variant="h6" fontWeight={700}>
           {mode === 'view' ? 'Ver Planilla de Regularidad' : mode === 'edit' ? 'Editar Planilla de Regularidad' : 'Generar planilla de regularidad / promoción'}
         </Typography>
-        {mode !== 'create' && <Chip label={`MODO: ${mode.toUpperCase()}`} color={mode === 'view' ? 'info' : 'primary'} size="small" variant="filled" />}
+        {mode !== 'create' && <Chip label={`MODO: ${scope === 'standard' ? 'OFICIAL / ESTÁNDAR' : mode.toUpperCase()}`} color={scope === 'standard' ? 'success' : mode === 'view' ? 'info' : 'primary'} size="small" variant="filled" />}
       </DialogTitle>
       <DialogContent dividers sx={{ position: 'relative' }}>
-        {(form.detailQuery.isLoading || metadata.metadataQuery.isLoading) && (
+        {(form.detailQuery.isLoading || (scope !== 'standard' && metadata.metadataQuery.isLoading)) && (
           <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, bgcolor: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <CircularProgress size={60} thickness={4} />
           </Box>
         )}
-        {metadata.metadataQuery.error && (
+        {scope !== 'standard' && metadata.metadataQuery.error && (
           <Alert severity="error">
             No se pudo cargar la información inicial. Actualice la página o vuelva a intentar.
           </Alert>
         )}
-        {!metadata.metadataQuery.isLoading && metadata.metadataQuery.data && (
+        {form.detailQuery.error && (
+          <Alert severity="error">
+            No se pudo cargar la planilla. Asegúrese de que la comisión exista y tenga alumnos inscriptos.
+          </Alert>
+        )}
+        {(scope === 'standard' ? (!form.detailQuery.isLoading && !form.detailQuery.isError) : (!metadata.metadataQuery.isLoading && metadata.metadataQuery.data)) && (
           <Box component="form" sx={{ mt: 1 }} onSubmit={form.handleSubmit(form.onSubmit)}>
             <HeaderFields
               control={form.control}
               setValue={form.setValue}
-              isReadOnly={isReadOnly}
+              isReadOnly={isReadOnly || scope === 'standard'}
               crossLoadEnabled={crossLoadEnabled}
               onCrossLoadChange={setCrossLoadEnabled}
-              profesorados={metadata.profesorados}
-              materias={metadata.materias}
-              plantillasDisponibles={metadata.plantillasDisponibles}
-              selectedProfesorado={metadata.selectedProfesorado}
-              selectedMateria={metadata.selectedMateria}
-              selectedPlantilla={metadata.selectedPlantilla}
-              materiaAnioLabel={metadata.materiaAnioLabel}
-              dictadoLabel={metadata.dictadoLabel}
+              profesorados={profesorados}
+              materias={materias}
+              plantillasDisponibles={scope === 'standard' ? [] : metadata.plantillasDisponibles}
+              selectedProfesorado={selectedProfesorado}
+              selectedMateria={selectedMateria}
+              selectedPlantilla={selectedPlantilla}
+              materiaAnioLabel={scope === 'standard' ? (selectedMateria?.anio_cursada ? `${selectedMateria.anio_cursada}°` : null) : metadata.materiaAnioLabel}
+              dictadoLabel={scope === 'standard' ? (selectedPlantilla?.dictado || null) : metadata.dictadoLabel}
               previewCodigo={previewCodigo}
-              situacionesDisponibles={metadata.situacionesDisponibles}
+              situacionesDisponibles={form.localSituacionesDisponibles}
               filaFields={form.filaFields}
               calculateSituacionForRow={form.calculateSituacionForRow}
               mode={mode}
@@ -165,8 +237,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
               isReadOnly={isReadOnly}
               docenteFields={form.docenteFields}
               docentesForm={docentesForm}
-              docentesOptions={metadata.docentesOptions}
-              docentesMap={metadata.docentesMap}
+              docentesOptions={scope === 'standard' ? [] : metadata.docentesOptions}
+              docentesMap={scope === 'standard' ? new Map() : metadata.docentesMap}
               handleAddDocente={form.handleAddDocente}
               handleRemoveDocente={form.handleRemoveDocente}
             />
@@ -175,7 +247,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 
             <HistorialPanel
               isReadOnly={isReadOnly}
-              selectedMateria={metadata.selectedMateria}
+              selectedMateria={selectedMateria}
               profesoradoId={watchProfesoradoId}
               historyQuery={historial.historyQuery}
               historyMenuAnchor={historial.historyMenuAnchor}
@@ -200,10 +272,10 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
               isReadOnly={isReadOnly}
               filaFields={form.filaFields}
               removeFila={form.removeFila}
-              columnasDinamicas={metadata.columnasDinamicas}
-              situacionesDisponibles={metadata.situacionesDisponibles}
-              estudiantesMetadata={metadata.estudiantesMetadata}
-              selectedMateria={metadata.selectedMateria}
+              columnasDinamicas={form.localColumnasDinamicas}
+              situacionesDisponibles={form.localSituacionesDisponibles}
+              estudiantesMetadata={scope === 'standard' ? [] : metadata.estudiantesMetadata}
+              selectedMateria={selectedMateria}
               handleStudentDniBlur={form.handleStudentDniBlur}
               handleAsistenciaBlur={form.handleAsistenciaBlur}
               calculateSituacionForRow={form.calculateSituacionForRow}

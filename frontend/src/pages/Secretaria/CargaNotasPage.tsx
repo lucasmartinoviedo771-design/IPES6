@@ -25,6 +25,8 @@ import { PageHero } from "@/components/ui/GradientTitles";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import GestionComisionesDialog from "./components/GestionComisionesDialog";
 import { INSTITUTIONAL_TERRACOTTA, INSTITUTIONAL_TERRACOTTA_DARK } from "@/styles/institutionalColors";
+import PlanillaRegularidadDialog from "@/pages/admin/PlanillaRegularidadDialog";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 
 import { FiltersState, FinalFiltersState } from "./carga-notas/types";
 import { useRegularidadFilters } from "./carga-notas/hooks/useRegularidadFilters";
@@ -77,6 +79,7 @@ const CargaNotasPage: React.FC = () => {
   );
   const [defaultObservaciones, setDefaultObservaciones] = useState<string>("");
   const [gestionComisionesOpen, setGestionComisionesOpen] = useState(false);
+  const [planillaOpen, setPlanillaOpen] = useState(false);
 
   const [finalFilters, setFinalFilters] = useState<FinalFiltersState>({
     ventanaId: "",
@@ -350,55 +353,64 @@ const CargaNotasPage: React.FC = () => {
                   <CircularProgress />
                 </Paper>
               ) : planilla ? (
-                <Stack spacing={2}>
-                  {planilla.esta_cerrada ? (
-                    <Alert severity={planilla.puede_editar ? "info" : "warning"}>
-                      Planilla cerrada el{" "}
-                      {planilla.cerrada_en ? new Date(planilla.cerrada_en).toLocaleString("es-AR") : "fecha desconocida"}
-                      {planilla.cerrada_por ? ` por ${planilla.cerrada_por}` : ""}.
-                      {!planilla.puede_editar && " Solo secretaría o admin pueden editarla o reabrirla."}
-                    </Alert>
-                  ) : (
-                    <Alert severity="info">
-                      Cuando finalices la carga, cerrá la planilla para bloquear nuevas ediciones.
-                    </Alert>
-                  )}
-                  <RegularidadPlanillaEditor
-                    comisionId={selectedComision.id}
-                    planilla={planilla}
-                    situaciones={planilla.situaciones}
-                    defaultFechaCierre={defaultFechaCierre}
-                    defaultObservaciones={defaultObservaciones}
-                    saving={saving}
-                    onSave={handleGuardarRegularidad}
-                    readOnly={regularidadReadOnly}
-                  />
-                  <Box display="flex" justifyContent="flex-end" gap={1} flexWrap="wrap">
-                    {planilla.puede_cerrar && (
-                      <Button
-                        variant="outlined"
-                        sx={{
-                          color: INSTITUTIONAL_TERRACOTTA,
-                          borderColor: INSTITUTIONAL_TERRACOTTA,
-                          '&:hover': { borderColor: INSTITUTIONAL_TERRACOTTA_DARK, bgcolor: 'rgba(183,105,78,0.05)' }
-                        }}
-                        onClick={() => handleRegularidadCierre("cerrar")}
-                        disabled={regularidadCierreLoading}
-                      >
-                        {regularidadCierreLoading ? "Cerrando..." : "Cerrar planilla"}
-                      </Button>
-                    )}
-                    {planilla.puede_reabrir && (
-                      <Button
-                        variant="contained"
-                        onClick={() => handleRegularidadCierre("reabrir")}
-                        disabled={regularidadCierreLoading}
-                      >
-                        {regularidadCierreLoading ? "Actualizando..." : "Reabrir planilla"}
-                      </Button>
-                    )}
-                  </Box>
-                </Stack>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: { xs: 4, md: 6 },
+                    borderRadius: 4,
+                    border: '1px solid rgba(183,105,78,0.2)',
+                    background: 'linear-gradient(to bottom, #ffffff, #fafafa)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <Stack spacing={3} alignItems="center" textAlign="center">
+                    <Box
+                      sx={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: "50%",
+                        bgcolor: "rgba(183,105,78,0.08)",
+                        color: INSTITUTIONAL_TERRACOTTA,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: '0 6px 15px rgba(183,105,78,0.1)',
+                      }}
+                    >
+                      <AssignmentIcon sx={{ fontSize: 36 }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="h5" fontWeight={700} color="text.primary">
+                        Planilla de Regularidad y Promoción Oficial
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, mt: 1.5, lineHeight: 1.6 }}>
+                        Utilizá el editor oficial emergente para registrar calificaciones de trabajos prácticos, parciales, asistencia y situaciones académicas finales según el reglamento institucional. La lista de estudiantes activos se auto-completa automáticamente.
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      sx={{
+                        borderRadius: 999,
+                        px: 5,
+                        py: 1.8,
+                        fontSize: "0.95rem",
+                        fontWeight: 600,
+                        backgroundColor: INSTITUTIONAL_TERRACOTTA,
+                        boxShadow: '0 8px 20px rgba(183,105,78,0.3)',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 10px 25px rgba(183,105,78,0.4)',
+                          backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK,
+                        }
+                      }}
+                      onClick={() => setPlanillaOpen(true)}
+                    >
+                      Cargar / Editar Planilla de Regularidad
+                    </Button>
+                  </Stack>
+                </Paper>
               ) : (
                 <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
                   <Typography color="text.secondary">
@@ -527,6 +539,14 @@ const CargaNotasPage: React.FC = () => {
         materiaNombre={materias.find((m) => m.id === filters.materiaId)?.nombre ?? ""}
         planId={filters.planId ?? 0}
         anioCursada={materias.find((m) => m.id === filters.materiaId)?.anio ?? 1}
+      />
+      <PlanillaRegularidadDialog
+        open={planillaOpen}
+        onClose={() => setPlanillaOpen(false)}
+        defaultProfesoradoId={filters.profesoradoId ?? undefined}
+        defaultMateriaId={filters.materiaId ?? undefined}
+        scope="standard"
+        comisionId={filters.comisionId ?? undefined}
       />
     </Box>
   );

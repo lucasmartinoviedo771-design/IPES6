@@ -7,12 +7,21 @@ import {
   obtenerPlanillaRegularidadDetalle,
   actualizarPlanillaRegularidad,
   PlanillaRegularidadCreatePayload,
+  obtenerInscriptosActivos,
+  obtenerDocentesDefecto,
 } from '@/api/primeraCarga';
 import {
   RegularidadMetadataPlantilla,
   RegularidadMetadataMateria,
   RegularidadMetadataProfesorado,
 } from '@/api/primeraCarga';
+import {
+  obtenerPlanillaRegularidad,
+  guardarPlanillaRegularidad,
+  gestionarCierreRegularidad,
+  obtenerDocentesDefecto as obtenerDocentesDefectoStandard,
+  GuardarRegularidadPayload,
+} from '@/api/cargaNotas';
 import { PlanillaFormValues, PlanillaFilaFormValues } from '../types';
 import {
   DEFAULT_DOCENTE,
@@ -36,6 +45,10 @@ interface UsePlanillaFormOptions {
   plantillasDisponibles: RegularidadMetadataPlantilla[];
   estudiantePorDni: Map<string, { apellido_nombre: string; profesorados: number[] }>;
   metadataQueryRefetch: () => void;
+  defaultProfesoradoId?: number;
+  defaultMateriaId?: number;
+  scope?: 'primera_carga' | 'standard';
+  comisionId?: number | null;
 }
 
 export function usePlanillaForm({
@@ -52,6 +65,10 @@ export function usePlanillaForm({
   plantillasDisponibles,
   estudiantePorDni,
   metadataQueryRefetch,
+  defaultProfesoradoId,
+  defaultMateriaId,
+  scope = 'primera_carga',
+  comisionId,
 }: UsePlanillaFormOptions) {
   const queryClient = useQueryClient();
 
@@ -64,8 +81,8 @@ export function usePlanillaForm({
     getValues,
   } = useForm<PlanillaFormValues>({
     defaultValues: {
-      profesoradoId: '',
-      materiaId: '',
+      profesoradoId: defaultProfesoradoId ?? '',
+      materiaId: defaultMateriaId ?? '',
       plantillaId: '',
       fecha: todayIso(),
       folio: '',
@@ -81,11 +98,129 @@ export function usePlanillaForm({
     },
   });
 
-  const detailQuery = useQuery({
-    queryKey: ['primera-carga', 'regularidades', 'detalle', planillaId],
-    queryFn: () => obtenerPlanillaRegularidadDetalle(planillaId!),
-    enabled: open && !!planillaId,
+  const detailQuery = useQuery<any>({
+    queryKey: scope === 'standard'
+      ? ['carga-notas', 'regularidad', comisionId]
+      : ['primera-carga', 'regularidades', 'detalle', planillaId],
+    queryFn: async (): Promise<any> => {
+      if (scope === 'standard') {
+        const data = await obtenerPlanillaRegularidad(comisionId!);
+        let defDocentes: any[] = [];
+        try {
+          const profId = data.profesorado_id || defaultProfesoradoId || 0;
+          const matId = data.materia_id || defaultMateriaId || 0;
+          const year = data.anio || new Date().getFullYear();
+          if (profId && matId) {
+            defDocentes = await obtenerDocentesDefectoStandard(Number(matId), Number(profId), year);
+          }
+        } catch (err) {
+          console.error("Error fetching default docentes in standard scope query:", err);
+        }
+
+        const mappedDocentes = defDocentes.length > 0
+          ? defDocentes.map((doc, idx) => ({
+              docente_id: doc.docente_id,
+              nombre: doc.nombre,
+              dni: doc.dni || '',
+              rol: doc.rol || 'profesor',
+              orden: doc.orden ?? (idx + 1)
+            }))
+          : data.docentes.map((name, idx) => ({
+              docente_id: null,
+              nombre: name,
+              dni: '',
+              rol: idx === 0 ? 'profesor' : 'bedel',
+              orden: idx + 1
+            }));
+
+        return {
+          ok: true,
+          message: 'Planilla cargada',
+          data: {
+            profesorado_id: data.profesorado_id || defaultProfesoradoId || '',
+            materia_id: data.materia_id || defaultMateriaId || '',
+            profesorado_nombre: data.profesorado_nombre || '',
+            materia_nombre: data.materia_nombre || '',
+            materia_anio: data.materia_anio || null,
+            formato: data.formato || '',
+            regimen: data.regimen || '',
+            plantilla_id: 1, // standard default/placeholder plantilla
+            fecha: data.fecha_cierre || todayIso(),
+            folio: '',
+            plan_resolucion: data.plan_resolucion || '',
+            observaciones: '',
+            docentes: mappedDocentes,
+            filas: data.estudiantes.map((e, idx) => ({
+              orden: e.orden || (idx + 1),
+              dni: e.dni,
+              apellido_nombre: e.apellido_nombre,
+              nota_final: e.nota_final !== null ? String(e.nota_final) : '',
+              asistencia: e.asistencia !== null ? String(e.asistencia) : '',
+              situacion: e.situacion || '',
+              excepcion: e.excepcion ?? false,
+              datos: {
+                tp_final: e.nota_tp !== null ? String(e.nota_tp) : '',
+              },
+              inscripcion_id: e.inscripcion_id,
+            })),
+            estado: data.esta_cerrada ? 'final' : 'draft',
+            force_upgrade: false,
+            situaciones: data.situaciones,
+          }
+        };
+      }
+      return obtenerPlanillaRegularidadDetalle(planillaId!);
+    },
+    enabled: open && (scope === 'standard' ? !!comisionId : !!planillaId),
   });
+
+  const localColumnasDinamicas = useMemo(() => {
+    if (scope === 'standard' && detailQuery.data?.data) {
+      const d = detailQuery.data.data;
+      const formato = (d.formato || '').toUpperCase();
+      const regimen = (d.regimen || '').toUpperCase();
+      const isAnual = regimen === 'ANU' || regimen === 'ANUAL';
+      const is1C = regimen === 'PCU' || regimen === '1C' || regimen === '1° CUATRIMESTRE';
+      const is2C = regimen === 'SCU' || regimen === '2C' || regimen === '2° CUATRIMESTRE';
+
+      // Asignatura / Módulo
+      if (formato === 'ASI' || formato === 'ASIGNATURA' || formato === 'MOD' || formato === 'MODULO') {
+        if (isAnual) {
+          return [
+            { key: 'tp_1c', label: 'Nota TP 1C', type: 'number', optional: true },
+            { key: 'parcial_1p', label: 'Parcial 1P', type: 'number', optional: true },
+            { key: 'parcial_1r', label: 'Recup. 1P', type: 'number', optional: true },
+            { key: 'tp_2c', label: 'Nota TP 2C', type: 'number', optional: true },
+            { key: 'parcial_2p', label: 'Parcial 2P', type: 'number', optional: true },
+            { key: 'parcial_2r', label: 'Recup. 2P', type: 'number', optional: true },
+          ];
+        } else if (is1C) {
+          return [
+            { key: 'tp_1c', label: 'Nota TP', type: 'number', optional: true },
+            { key: 'parcial_1p', label: 'Parcial 1P', type: 'number', optional: true },
+            { key: 'parcial_1r', label: 'Recup. 1P', type: 'number', optional: true },
+          ];
+        } else if (is2C) {
+          return [
+            { key: 'tp_2c', label: 'Nota TP', type: 'number', optional: true },
+            { key: 'parcial_2p', label: 'Parcial 2P', type: 'number', optional: true },
+            { key: 'parcial_2r', label: 'Recup. 2P', type: 'number', optional: true },
+          ];
+        }
+      }
+
+      // Taller / Práctica / Laboratorio / Seminario
+      return [{ key: 'tp_final', label: 'Nota TP', type: 'number', optional: true }];
+    }
+    return columnasDinamicas;
+  }, [scope, detailQuery.data?.data, columnasDinamicas]);
+
+  const localSituacionesDisponibles = useMemo(() => {
+    if (scope === 'standard') {
+      return detailQuery.data?.data?.situaciones ?? [];
+    }
+    return situacionesDisponibles;
+  }, [scope, detailQuery.data?.data?.situaciones, situacionesDisponibles]);
 
   const {
     fields: docenteFields,
@@ -107,19 +242,106 @@ export function usePlanillaForm({
     name: 'filas',
   });
 
+  const watchMateriaId = watch('materiaId');
+  const watchProfesoradoId = watch('profesoradoId');
+  const watchFecha = watch('fecha');
+
+  const watchFechaYear = React.useMemo(() => {
+    if (!watchFecha) return new Date().getFullYear();
+    const parsed = new Date(watchFecha);
+    return isNaN(parsed.getFullYear()) ? new Date().getFullYear() : parsed.getFullYear();
+  }, [watchFecha]);
+
+  const { data: inscriptosActivos } = useQuery({
+    queryKey: ['primera-carga', 'materias', watchMateriaId, 'inscriptos-activos', watchFechaYear],
+    queryFn: () => obtenerInscriptosActivos(Number(watchMateriaId), watchFechaYear),
+    enabled: open && mode === 'create' && !!watchMateriaId && scope === 'primera_carga',
+  });
+
+  const { data: docentesDefecto } = useQuery({
+    queryKey: scope === 'standard'
+      ? ['carga-notas', 'materias', watchMateriaId, 'docentes-defecto', watchProfesoradoId, watchFechaYear]
+      : ['primera-carga', 'materias', watchMateriaId, 'docentes-defecto', watchProfesoradoId, watchFechaYear],
+    queryFn: () => {
+      if (scope === 'standard') {
+        return obtenerDocentesDefectoStandard(Number(watchMateriaId), Number(watchProfesoradoId), watchFechaYear);
+      }
+      return obtenerDocentesDefecto(Number(watchMateriaId), Number(watchProfesoradoId), watchFechaYear);
+    },
+    enabled: open && (mode === 'create' || scope === 'standard') && !!watchMateriaId && !!watchProfesoradoId,
+  });
+
+  useEffect(() => {
+    if (mode === 'create' && inscriptosActivos && inscriptosActivos.length > 0 && scope === 'primera_carga') {
+      const nuevasFilas = inscriptosActivos.map((student, idx) => ({
+        ...buildDefaultRow(idx),
+        dni: student.dni,
+        apellido_nombre: student.apellido_nombre,
+        orden: idx + 1,
+      }));
+      replaceFilas(nuevasFilas);
+      enqueueSnackbar(`Se auto-completó con ${nuevasFilas.length} alumnos activos inscriptos.`, { variant: 'info' });
+    } else if (mode === 'create' && inscriptosActivos && inscriptosActivos.length === 0 && scope === 'primera_carga') {
+      replaceFilas(buildDefaultRows());
+    }
+  }, [inscriptosActivos, mode, replaceFilas, scope]);
+
+  useEffect(() => {
+    if ((mode === 'create' || scope === 'standard') && docentesDefecto && docentesDefecto.length > 0) {
+      const nuevosDocentes = docentesDefecto.map((doc, idx) => ({
+        docente_id: doc.docente_id,
+        nombre: doc.nombre,
+        dni: doc.dni || '',
+        rol: doc.rol || 'profesor',
+        orden: doc.orden ?? (idx + 1),
+      }));
+      replaceDocente(nuevosDocentes);
+    }
+  }, [docentesDefecto, mode, scope, replaceDocente]);
+
   const [persistStudents, setPersistStudents] = React.useState(false);
   const [rowsToAdd, setRowsToAdd] = React.useState<string>('5');
 
   const mutation = useMutation({
-    mutationFn: (payload: PlanillaRegularidadCreatePayload) => {
+    mutationFn: async (payload: PlanillaRegularidadCreatePayload) => {
+      if (scope === 'standard') {
+        const parseVal = (v: any) => {
+          if (v === undefined || v === null || String(v).trim() === '' || String(v).trim() === '---') return null;
+          return Number(String(v).replace(',', '.'));
+        };
+        const standardPayload: GuardarRegularidadPayload = {
+          comision_id: comisionId!,
+          fecha_cierre: payload.fecha,
+          observaciones_generales: payload.observaciones || undefined,
+          estudiantes: payload.filas.map(f => ({
+            inscripcion_id: (f as any).inscripcion_id || 0,
+            nota_tp: f.datos?.tp_final ? parseVal(f.datos.tp_final) : null,
+            nota_final: f.nota_final ? parseVal(f.nota_final) : null,
+            asistencia: f.asistencia ? parseVal(f.asistencia) : null,
+            excepcion: f.excepcion,
+            situacion: f.situacion,
+            observaciones: (f as any).observaciones || undefined,
+          })),
+        };
+        return guardarPlanillaRegularidad(standardPayload);
+      }
+
       if (mode === 'edit' && planillaId) {
         return actualizarPlanillaRegularidad(planillaId, payload);
       }
       return crearPlanillaRegularidad(payload);
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (data: any, variables) => {
+      if (scope === 'standard') {
+        queryClient.invalidateQueries({ queryKey: ['carga-notas', 'regularidad', comisionId] });
+        enqueueSnackbar(data.message || "Notas de regularidad guardadas correctamente.", { variant: 'success' });
+        onClose();
+        return;
+      }
+
       queryClient.invalidateQueries({ queryKey: ['primera-carga', 'regularidades', 'historial'] });
       enqueueSnackbar(data.message, { variant: 'success' });
+
       // ... (warnings logic same as before) ...
       if (typeof data.data?.regularidades_registradas === 'number') {
         const count = data.data.regularidades_registradas;
@@ -189,20 +411,38 @@ export function usePlanillaForm({
   useEffect(() => {
     if (open) {
       metadataQueryRefetch();
+      if (mode === 'create') {
+        reset({
+          profesoradoId: defaultProfesoradoId ?? '',
+          materiaId: defaultMateriaId ?? '',
+          plantillaId: '',
+          fecha: todayIso(),
+          folio: '',
+          planResolucion: '',
+          observaciones: '',
+          docentes: [
+            { ...DEFAULT_DOCENTE, orden: 1 },
+            { ...DEFAULT_DOCENTE_BEDEL, orden: 2 }
+          ],
+          filas: buildDefaultRows(),
+          dry_run: false,
+          force_upgrade: false,
+        });
+      }
     }
     if (!open) {
       reset();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, defaultProfesoradoId, defaultMateriaId, mode]);
 
   useEffect(() => {
-    if (detailQuery.data?.data) {
+    if (open && detailQuery.data?.data) {
       const d = detailQuery.data.data;
       reset({
-        profesoradoId: d.profesorado_id,
-        materiaId: d.materia_id,
-        plantillaId: d.plantilla_id,
+        profesoradoId: (d.profesorado_id ? Number(d.profesorado_id) : '') as number | '',
+        materiaId: (d.materia_id ? Number(d.materia_id) : '') as number | '',
+        plantillaId: (d.plantilla_id ? Number(d.plantilla_id) : '') as number | '',
         fecha: d.fecha.slice(0, 10),
         folio: d.folio || '',
         planResolucion: d.plan_resolucion || '',
@@ -224,13 +464,14 @@ export function usePlanillaForm({
           excepcion: f.excepcion ?? false,
           datos: Object.fromEntries(
             Object.entries(f.datos || {}).map(([k, v]) => [k, v?.toString() ?? ''])
-          )
+          ),
+          inscripcion_id: f.inscripcion_id,
         })),
         dry_run: false,
         force_upgrade: d.force_upgrade ?? false
       });
     }
-  }, [detailQuery.data, reset]);
+  }, [detailQuery.data, reset, open]);
 
   useEffect(() => {
     if (selectedMateria) {
@@ -426,11 +667,11 @@ export function usePlanillaForm({
     }
 
     // Normalización de Códigos (PRO -> PROMOCIONADO, etc)
-    const validCodes = situacionesDisponibles.map(s => s.codigo);
+    const validCodes = localSituacionesDisponibles.map((s: any) => s.codigo);
 
     // Helper to find best matching code
     const findCode = (search: string) => {
-      const found = situacionesDisponibles.find(s =>
+      const found = localSituacionesDisponibles.find((s: any) =>
         s.codigo === search ||
         s.label.toUpperCase() === search ||
         s.label.toUpperCase().includes(search)
@@ -459,7 +700,7 @@ export function usePlanillaForm({
     // If still not valid, try to find by name similar to strictly what we have
     if (!validCodes.includes(newSit)) {
       // Last resort lookup
-      const similar = situacionesDisponibles.find(s => s.label.toUpperCase().includes(newSit.replace(/_/g, ' ')));
+      const similar = localSituacionesDisponibles.find((s: any) => s.label.toUpperCase().includes(newSit.replace(/_/g, ' ')));
       if (similar) newSit = similar.codigo;
     }
 
@@ -769,13 +1010,13 @@ export function usePlanillaForm({
         .filter((docente) => docente.nombre.length > 0) ?? [];
 
     const payload: PlanillaRegularidadCreatePayload = {
-      profesorado_id: Number(selectedProfesorado.id),
-      materia_id: Number(selectedMateria.id),
-      plantilla_id: Number(selectedPlantilla.id),
-      dictado: selectedPlantilla.dictado,
+      profesorado_id: Number(values.profesoradoId || selectedProfesorado?.id),
+      materia_id: Number(values.materiaId || selectedMateria?.id),
+      plantilla_id: Number(values.plantillaId || selectedPlantilla?.id || 1),
+      dictado: selectedPlantilla?.dictado || 'ANUAL',
       fecha: values.fecha,
       folio: values.folio || undefined,
-      plan_resolucion: values.planResolucion || selectedMateria.plan_resolucion,
+      plan_resolucion: values.planResolucion || selectedMateria?.plan_resolucion || '',
       observaciones: values.observaciones || undefined,
       docentes: docentesPayload,
       filas: filasPayload,
@@ -820,5 +1061,7 @@ export function usePlanillaForm({
     handleCopyStudents,
     handlePasteStudents,
     onSubmit,
+    localColumnasDinamicas,
+    localSituacionesDisponibles,
   };
 }

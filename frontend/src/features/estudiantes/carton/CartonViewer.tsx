@@ -161,8 +161,8 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
         </Button>
       </Stack>
 
-      <Box ref={cartonRef} sx={{ backgroundColor: 'background.paper', p: { xs: 2, md: 4 } }}>
-        <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 2, md: 4 } }}>
+      <Box ref={cartonRef} sx={{ backgroundColor: 'background.paper', p: { xs: 0.5, sm: 2, md: 4 } }}>
+        <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', p: { xs: 1, sm: 2, md: 4 } }}>
           <Box sx={headerStyles}>
             <Typography variant="h4" component="h1" fontWeight={800} color="primary.dark">
               Registro Académico
@@ -306,10 +306,11 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
           </Box>
 
           <Box sx={{ mb: 4 }}>
-            <TableContainer component={Paper} elevation={0} variant="outlined">
+            <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ overflowX: 'auto', width: '100%' }}>
               <Table
                 size="small"
                 sx={{
+                  minWidth: 800,
                   borderCollapse: 'collapse',
                   borderSpacing: 0,
                 }}

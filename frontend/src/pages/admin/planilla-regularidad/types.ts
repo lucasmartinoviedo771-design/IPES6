@@ -17,6 +17,7 @@ export type PlanillaFilaFormValues = {
   situacion: string;
   excepcion: boolean;
   datos: Record<string, string>;
+  inscripcion_id?: number;
 };
 
 export type PlanillaFormValues = {
@@ -39,4 +40,9 @@ export interface PlanillaRegularidadDialogProps {
   onCreated?: (result: PlanillaRegularidadCreateResult | any, dryRun: boolean) => void;
   planillaId?: number | null;
   mode?: 'create' | 'edit' | 'view';
+  defaultProfesoradoId?: number;
+  defaultMateriaId?: number;
+  scope?: 'primera_carga' | 'standard';
+  comisionId?: number | null;
 }
+

@@ -1,5 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -93,15 +95,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onClose,
   onOpen,
 }) => {
-  const navigate = useNavigate();
+  const rawNavigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const navigate = (path: string) => {
+    rawNavigate(path);
+    if (isMobile) {
+      onClose();
+    }
+  };
 
   return (
     <>
       <Drawer
-        variant="permanent"
+        variant={isMobile ? "temporary" : "permanent"}
         open={open}
+        onClose={onClose}
+        ModalProps={{
+          keepMounted: true,
+        }}
         sx={{
-          width: open ? drawerWidth : 0,
+          width: isMobile ? "auto" : (open ? drawerWidth : 0),
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: {
             width: drawerWidth,
@@ -110,8 +125,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             borderRight: "1px solid rgba(255,255,255,0.08)",
             color: "#fff",
             paddingBottom: 3,
-            transform: open ? "translateX(0)" : `translateX(-${drawerWidth}px)`,
-            transition: "transform .3s ease",
+            transform: isMobile ? undefined : (open ? "translateX(0)" : `translateX(-${drawerWidth}px)`),
+            transition: isMobile ? undefined : "transform .3s ease",
           },
         }}
       >

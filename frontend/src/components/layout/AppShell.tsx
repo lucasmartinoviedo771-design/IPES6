@@ -197,7 +197,7 @@ export default function AppShell({ children }: PropsWithChildren) {
           backgroundColor: "#f1f3f9",
           transition: "margin 0.3s ease",
           pt: 1,
-          px: { xs: 2, md: 4 },
+          px: { xs: 1, sm: 2, md: 4 },
           pb: 1,
         }}
       >
@@ -210,7 +210,7 @@ export default function AppShell({ children }: PropsWithChildren) {
               backgroundColor: "#ffffff",
               border: "1px solid #e2e8f0",
               boxShadow: "0 25px 60px rgba(15,23,42,0.08)",
-              p: { xs: 2, md: 4 },
+              p: { xs: 1, sm: 2, md: 4 },
             }}
           >
             <Stack key={current} spacing={{ xs: 2, md: 3 }}>

@@ -1,5 +1,10 @@
 /* place for custom styles */
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background-color: #f1f3f9;
   color: #0f172a;

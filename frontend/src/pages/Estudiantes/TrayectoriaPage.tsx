@@ -128,7 +128,7 @@ const TrayectoriaPage: React.FC = () => {
   const estudiante = trayectoria?.estudiante;
 
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: { xs: 0, sm: 2 } }}>
       <BackButton fallbackPath="/estudiantes" />
       <PageHero
         title="Trayectoria del estudiante"

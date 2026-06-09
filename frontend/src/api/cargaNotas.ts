@@ -523,3 +523,16 @@ export async function descargarActaComisionadosPdf(actaId: number, codigo: strin
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export const obtenerDocentesDefecto = async (
+  materiaId: number,
+  profesoradoId: number,
+  anio?: number,
+): Promise<Array<{ docente_id: number | null; nombre: string; dni: string; rol: string; orden: number }>> => {
+  const { data } = await client.get<Array<{ docente_id: number | null; nombre: string; dni: string; rol: string; orden: number }>>(
+    `/estudiantes/carga-notas/regularidades/materias/${materiaId}/docentes-defecto`,
+    { params: { profesorado_id: profesoradoId, anio } }
+  );
+  return data;
+};
+
