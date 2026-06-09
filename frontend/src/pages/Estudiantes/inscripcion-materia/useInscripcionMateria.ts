@@ -290,7 +290,7 @@ export const useInscripcionMateria = () => {
       return Boolean(ventana?.activo);
     }
   }, [ventana]);
-  const puedeInscribirse = ventanaActiva;
+  const puedeInscribirse = ventanaActiva && puedeGestionar;
   const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
 
   const inscripcionesData = inscripcionesQ.data ?? [];

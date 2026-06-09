@@ -146,6 +146,12 @@ const InscripcionMateriaPage: React.FC = () => {
             handlePlanChange={handlePlanChange}
           />
 
+          {!puedeGestionar && (
+            <Alert severity="warning" variant="filled" sx={{ borderRadius: 2 }}>
+              La inscripción por parte de estudiantes se encuentra desactivada temporalmente por tareas de mantenimiento y carga de datos. Si necesitás inscribirte o realizar gestiones, por favor contactá a Bedelía o Secretaría.
+            </Alert>
+          )}
+
           {requiereSeleccionEstudiante && (
             <Alert severity="info">
               Ingresa un DNI para gestionar inscripciones de otro estudiante.

@@ -26,6 +26,7 @@ import {
   INSTITUTIONAL_TERRACOTTA,
 } from "@/styles/institutionalColors";
 import { useAuth } from "@/context/AuthContext";
+import { hasRole, hasAnyRole } from "@/utils/roles";
 import { fetchCursoIntroEstado } from "@/api/cursoIntro";
 import { getMisAlertas, CorrelativaCaidaItem } from "@/api/reportes";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
@@ -206,9 +207,8 @@ const eventCardStyles = {
 export default function EstudiantesIndex() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const roles = (user?.roles ?? []).map((role) => (role || "").toLowerCase());
-  const isStudent = roles.includes("estudiante") || roles.includes("estudiantes");
-  const isAdmin = user?.is_superuser || roles.some(r => ['admin', 'secretaria', 'bedel'].includes(r));
+  const isStudent = hasAnyRole(user, ["estudiante", "estudiantes"]);
+  const isAdmin = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
   const { data: cursoIntroEstado } = useQuery({
     queryKey: ["curso-intro", "estado"],
@@ -320,6 +320,26 @@ export default function EstudiantesIndex() {
       return filteredSections;
     }
 
+    // Si es estudiante y no es personal de gestión/admin, deshabilitamos temporalmente "Inscripción a Materias"
+    if (isStudent && !isAdmin) {
+      filteredSections = filteredSections.map(s => {
+        if (s.title !== "Inscripciones") return s;
+        return {
+          ...s,
+          items: s.items.map(item => {
+            if (item.path === "/estudiantes/inscripcion-materia") {
+              return {
+                ...item,
+                disabled: true,
+                subtitle: "Deshabilitada temporalmente por mantenimiento de inscripciones.",
+              };
+            }
+            return item;
+          })
+        };
+      });
+    }
+
     // 2. Lógica para estudiantes (Curso Intro y alertas)
     const subtitle = cursoIntroEstado
       ? cursoIntroEstado.aprobado
@@ -405,7 +425,12 @@ export default function EstudiantesIndex() {
               return (
                 <Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
                   <Box
-                    onClick={() => event.path && navigate(event.path)}
+                    onClick={() => {
+                      if (event.path === "/estudiantes/inscripcion-materia" && isStudent && !isAdmin) {
+                        return;
+                      }
+                      event.path && navigate(event.path);
+                    }}
                     sx={{
                       position: "relative",
                       display: "flex",
@@ -417,7 +442,7 @@ export default function EstudiantesIndex() {
                         : isFuture
                         ? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
                         : `1px solid rgba(158,158,158,0.35)`,
-                      cursor: event.path ? "pointer" : "default",
+                      cursor: (event.path && !(event.path === "/estudiantes/inscripcion-materia" && isStudent && !isAdmin)) ? "pointer" : "default",
                       backgroundColor: isUnscheduled ? "rgba(125,127,110,0.05)" : "#fff",
                       transition: "all 0.2s ease",
                       "&:hover": event.path
