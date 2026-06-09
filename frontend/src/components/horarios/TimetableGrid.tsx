@@ -230,11 +230,18 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
         .replace(/[\u0300-\u036f]/g, '')
     : '';
   const formatoNormalizado = (selectedMateria?.formato || '').toUpperCase();
+  const esTallerCuarto = nombreNormalizado.includes('taller') && anioCarrera === 4;
+  const esTallerResidencia = nombreNormalizado.includes('taller') && nombreNormalizado.includes('residencia');
   const esMateriaFlexible = !!selectedMateria && (
     formatoNormalizado === 'PRA' ||
+    formatoNormalizado === 'TAL' ||
+    formatoNormalizado === 'TALLER' ||
     nombreNormalizado.includes('practica') ||
     nombreNormalizado.includes('residencia') ||
-    nombreNormalizado.includes('campo de la practica')
+    nombreNormalizado.includes('campo de la practica') ||
+    nombreNormalizado.includes('taller integrador interdisciplinario') ||
+    esTallerCuarto ||
+    esTallerResidencia
   );
   const botonDeshabilitado =
     !selectedMateria ||
