@@ -47,7 +47,7 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const canCursoIntro = isNavAllowed("cursoIntro", hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]));
   const canEstudiantePortal = isNavAllowed("estudiante", hasAnyRole(user, ["estudiante"]));
   const canEstudiantePanel = isNavAllowed("estudiante", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "tutor", "jefes", "jefa_aaee", "coordinador", "attp", "rectorado"
+    "admin", "secretaria", "bedel", "tutor", "coordinador", "attp", "rectorado"
   ]));
   const canPrimeraCarga = isNavAllowed("primeraCarga", hasAnyRole(user, ["admin", "secretaria", "bedel", "attp"]));
   const canAttpPanel = isNavAllowed("attp", hasAnyRole(user, ["attp"]));
