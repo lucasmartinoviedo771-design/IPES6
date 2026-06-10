@@ -5,6 +5,7 @@ const sections: RoleDashboardSection[] = [
   {
     title: "Supervisión académica",
     items: [
+      DASHBOARD_ITEMS.STUDENT_MANAGEMENT,
       DASHBOARD_ITEMS.HABILITAR_FECHAS,
       DASHBOARD_ITEMS.EQUIV_LISTADO_GENERAL,
       DASHBOARD_ITEMS.ACTAS_Y_NOTAS_GENERAL,
