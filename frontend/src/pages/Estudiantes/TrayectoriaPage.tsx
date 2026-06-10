@@ -41,7 +41,7 @@ import TabVigencias from './trayectoria/TabVigencias';
 
 const TrayectoriaPage: React.FC = () => {
   const { user } = (useAuth?.() ?? { user: null }) as any;
-  const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel', 'tutor', 'coordinador', 'jefes', 'jefa_aaee', 'consulta']);
+  const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel', 'tutor', 'coordinador', 'jefes', 'jefa_aaee', 'consulta', 'attp', 'rectorado']);
   const [searchParams, setSearchParams] = useSearchParams();
   const dniParam = searchParams.get('dni');
   const [tab, setTab] = useState(0);

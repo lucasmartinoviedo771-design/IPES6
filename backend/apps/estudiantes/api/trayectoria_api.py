@@ -56,6 +56,7 @@ from .helpers import (
     _metadata_str,
     _resolve_estudiante,
     _to_iso,
+    _ensure_estudiante_access,
 )
 from apps.common.date_utils import format_date, format_datetime
 from .router import estudiantes_router
@@ -68,6 +69,7 @@ def historial_estudiante(request, dni: str | None = None):
     Se utiliza principalmente para lógica de visualización rápida en el frontend 
     (ej. habilitar botones de inscripción si tiene la materia aprobada).
     """
+    _ensure_estudiante_access(request, dni)
     est = _resolve_estudiante(request, dni)
     if not est:
         return HistorialEstudiante(aprobadas=[], regularizadas=[], inscriptas_actuales=[])
@@ -142,6 +144,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     5. Motor de Sugerencias: Verifica el grafo de correlatividades para detectar qué puede cursar el alumno.
     6. Mapeo al Cartón Visual: Agrupa la información por Planes de Estudio vigentes.
     """
+    _ensure_estudiante_access(request, dni)
     est = _resolve_estudiante(request, dni)
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado.")
