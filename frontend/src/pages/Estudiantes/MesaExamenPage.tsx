@@ -128,7 +128,7 @@ const MesaExamenPage: React.FC = () => {
         const extra = v.find(x => x.tipo === 'MESAS_EXTRA');
         if (extra) setVentanaId(String(extra.id));
       } catch (error) {
-        console.warn("No se pudieron cargar las ventanas", error);
+        void 0;
       }
     })();
   }, []);
@@ -258,7 +258,7 @@ const MesaExamenPage: React.FC = () => {
       }
       setMateriasAprobadas(aprobadas);
     } catch (error) {
-      console.warn("No se pudo obtener la trayectoria", error);
+      void 0;
     } finally {
       setLoadingTrayectoria(false);
     }
@@ -271,7 +271,7 @@ const MesaExamenPage: React.FC = () => {
       const data = await listarMisSolicitudes(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
       setSolicitudes(data || []);
     } catch (error) {
-      console.warn("No se pudieron obtener las solicitudes", error);
+      void 0;
     } finally {
       setLoadingSolicitudes(false);
     }
@@ -293,7 +293,7 @@ const MesaExamenPage: React.FC = () => {
     } catch (error) {
       const cur = contextRef.current;
       if (!cur.requiereSeleccionCarrera && !cur.requiereSeleccionPlan) {
-        console.warn("No se pudieron obtener las materias solicitables", error);
+        void 0;
       }
     } finally {
       setLoadingSolicitables(false);
@@ -312,7 +312,7 @@ const MesaExamenPage: React.FC = () => {
         await fetchTrayectoria();
         await fetchSolicitudes();
       } catch (error) {
-        console.warn("No se pudo obtener el historial", error);
+        void 0;
       }
     })();
   }, [dniBusqueda, canGestionar]);

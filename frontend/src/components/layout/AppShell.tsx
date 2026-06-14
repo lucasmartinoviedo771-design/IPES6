@@ -131,7 +131,7 @@ export default function AppShell({ children }: PropsWithChildren) {
     try {
       localStorage.setItem("sidebarOpen", open ? "1" : "0");
     } catch (error) {
-      console.warn("No se pudo persistir la preferencia del menú lateral", error);
+      void 0;
     }
   }, [open]);
 

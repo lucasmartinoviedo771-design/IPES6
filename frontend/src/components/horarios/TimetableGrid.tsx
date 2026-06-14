@@ -157,7 +157,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
           onBloquesChange?.(response.data);
         })
         .catch((error) => {
-          console.error("Error fetching bloques:", error);
+          void 0;
           setBloques([]);
           onBloquesChange?.([]);
         })
@@ -192,7 +192,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
           setMaterias(filteredMaterias);
         })
         .catch(e => {
-          console.error('Error fetching materias:', e);
+          void 0;
           setMaterias([]); // Ensure we clear materias on error
         });
     } else {
@@ -214,7 +214,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
           },
         })
         .then(({ data }) => setOccupiedBlocks(new Set(data.map((b) => b.id))))
-        .catch((e) => console.error("Error fetching ocupacion:", e));
+        .catch((e) => void 0);
     } else {
       setOccupiedBlocks(new Set());
     }

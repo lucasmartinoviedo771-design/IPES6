@@ -76,7 +76,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
       setEditData(data.estudiantes);
       setCondiciones(data.condiciones);
     } catch (error) {
-      console.error(error);
+      void 0;
       setEditData(mesa.estudiantes_detalle || []);
     } finally {
       setLoadingPlanilla(false);

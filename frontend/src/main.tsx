@@ -25,10 +25,10 @@ import { ErrorBoundary } from "react-error-boundary";
 import { SnackbarProvider } from "notistack";
 
 window.addEventListener("error", (e) => {
-  console.error("[window.onerror]", e.message, e.error);
+  void 0;
 });
 window.addEventListener("unhandledrejection", (e) => {
-  console.error("[unhandledrejection]", e.reason);
+  void 0;
 });
 
 const qc = new QueryClient({

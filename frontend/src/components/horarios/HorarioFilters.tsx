@@ -67,7 +67,7 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
         setProfesorados(profesoradosRes.data);
         setTurnos(turnosRes.data);
       } catch (error) {
-        console.error('Error fetching initial filter data:', error);
+        void 0;
       }
     };
 
@@ -77,7 +77,7 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
   useEffect(() => {
     if (profesoradoId) {
       axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data)).catch(error => {
-        console.error('Error fetching planes:', error);
+        void 0;
         setPlanes([]);
       });
     } else {

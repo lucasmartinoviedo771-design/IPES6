@@ -14,7 +14,7 @@ export default class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.group("%c[ErrorBoundary] UI crash", "color:#d32f2f;font-weight:bold;");
-    console.error(error);
+    void 0;
 
     console.groupEnd();
   }

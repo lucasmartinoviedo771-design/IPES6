@@ -141,7 +141,7 @@ export default function CargarDocentesPage() {
       toast.success("Docente eliminado exitosamente");
     },
     onError: (error: any) => {
-      console.error("Docente DELETE error:", error.response?.data);
+      void 0;
       toast.error("Error al eliminar el docente");
     },
   });

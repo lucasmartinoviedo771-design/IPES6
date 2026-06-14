@@ -23,7 +23,7 @@ export const lazyPage = <P extends object>(importer: () => Promise<unknown>) => 
 
       return { default: comp3 as ComponentType<P> };
     } catch (err) {
-      console.error('[Lazy] Error fatal cargando módulo:', err);
+      void 0;
       throw err;
     }
   });

@@ -7,7 +7,7 @@ async function tryGet(path: string): Promise<Carrera[] | null> {
   try {
     const res = await client.get(path, { validateStatus: () => true });
     const { status, data } = res;
-    console.info("[carreras][GET]", status, path, data);
+    void 0;
     if (status >= 200 && status < 300) {
       if (Array.isArray(data?.data)) return data.data as Carrera[]; // {ok,message,data:[...]}
       if (Array.isArray(data)) return data as Carrera[]; // array plano
@@ -15,7 +15,7 @@ async function tryGet(path: string): Promise<Carrera[] | null> {
     }
     return null; // permite que probemos la siguiente ruta
   } catch (e) {
-    console.warn("[carreras][error]", path, e);
+    void 0;
     return null;
   }
 }
@@ -205,17 +205,17 @@ export async function crearPreinscripcion(payload: PreinscripcionFormValues): Pr
     if (apiErr.response?.status === 422) {
       const msg = humanizeNinjaErrors(err);
       toast.error(msg);
-      console.error("[422 payload]", payload);
-      console.error("[422 response]", apiErr.response?.data);
+      void 0;
+      void 0;
     } else {
       // Para otros errores (500, red, etc.), mostramos mensaje del backend si viene
       const backendMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail;
       if (typeof backendMsg === "string") toast.error(backendMsg);
-      console.error("[crearPreinscripcion][payload]", payload);
+      void 0;
       try {
-        console.error("[crearPreinscripcion][mapped]", mapToApiPayload(payload));
+        void 0;
       } catch (_e) { /* Ignored, used for debugging purposes */ }
-      console.error("[crearPreinscripcion][response]", apiErr.response?.status, apiErr.response?.data);
+      void 0;
     }
     throw err;
   }

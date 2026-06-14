@@ -112,7 +112,7 @@ export default function CargarPlanPage() {
       reset();
     },
     onError: (error: any) => {
-      console.error("Plan POST error:", error.response?.data);
+      void 0;
       toast.error("Error al guardar el plan");
     },
   });
@@ -135,7 +135,7 @@ export default function CargarPlanPage() {
       reset();
     },
     onError: (error: any) => {
-      console.error("Plan PUT error:", error.response?.data);
+      void 0;
       toast.error("Error al actualizar el plan");
     },
   });

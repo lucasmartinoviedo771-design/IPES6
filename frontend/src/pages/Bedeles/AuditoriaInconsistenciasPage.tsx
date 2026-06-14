@@ -66,7 +66,7 @@ export default function AuditoriaInconsistenciasPage() {
         try {
             await downloadAuditoriaInconsistencias(filters);
         } catch (err) {
-            console.error("Error downloading report", err);
+            void 0;
         }
     };
 

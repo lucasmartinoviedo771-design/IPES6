@@ -48,7 +48,7 @@ export function useMatrix(planId: number | '', versionId: number | '') {
       const { data } = await axios.get<MatrixRow[]>(`/planes/${planId}/correlatividades_matrix${params}`);
       setAllRows(data);
     } catch (error) {
-      console.error('Error loading all materias:', error);
+      void 0;
       setAllRows(null);
     }
   };

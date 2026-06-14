@@ -22,7 +22,7 @@ export default function Forbidden() {
         await logout();
       }
     } catch (error) {
-      console.warn("Forbidden: error al cerrar sesion previo al login", error);
+      void 0;
     } finally {
       setLoggingOut(false);
       navigate("/login", {

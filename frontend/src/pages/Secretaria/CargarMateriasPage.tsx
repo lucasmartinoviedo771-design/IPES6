@@ -252,7 +252,7 @@ export default function CargarMateriasPage() {
       toast.success("Materia creada exitosamente");
     },
     onError: (error: Error) => {
-      console.error("Materia POST error:", (error as any).response?.data);
+      void 0;
       toast.error("Error al crear la materia");
     },
   });
@@ -272,7 +272,7 @@ export default function CargarMateriasPage() {
       toast.success("Materia actualizada exitosamente");
     },
     onError: (error: Error) => {
-      console.error("Materia PUT error:", (error as any).response?.data);
+      void 0;
       toast.error("Error al actualizar la materia");
     },
   });
@@ -290,7 +290,7 @@ export default function CargarMateriasPage() {
       toast.success("Materia eliminada exitosamente");
     },
     onError: (error: Error) => {
-      console.error("Materia DELETE error:", (error as any).response?.data);
+      void 0;
       toast.error("Error al eliminar la materia");
     },
   });

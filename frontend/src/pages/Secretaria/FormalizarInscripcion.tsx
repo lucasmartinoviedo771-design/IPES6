@@ -70,7 +70,7 @@ const FormalizarInscripcion: React.FC = () => {
       const response = await axios.get('profesorados');
       setProfesorados(response.data);
     } catch (err) {
-      console.error("Error al cargar profesorados", err);
+      void 0;
     }
   };
 
@@ -88,7 +88,7 @@ const FormalizarInscripcion: React.FC = () => {
       setPreinscripciones(response.data);
       setError(null);
     } catch (err) {
-      console.error('Error al cargar preinscripciones:', err);
+      void 0;
       setError('No se pudieron cargar las preinscripciones. Por favor, intente de nuevo más tarde.');
     } finally {
       setLoading(false);

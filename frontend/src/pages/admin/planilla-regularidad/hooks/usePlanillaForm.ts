@@ -114,7 +114,7 @@ export function usePlanillaForm({
             defDocentes = await obtenerDocentesDefectoStandard(Number(matId), Number(profId), year);
           }
         } catch (err) {
-          console.error("Error fetching default docentes in standard scope query:", err);
+          void 0;
         }
 
         const mappedDocentes = defDocentes.length > 0

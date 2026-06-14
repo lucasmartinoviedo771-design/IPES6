@@ -222,7 +222,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     try {
       await client.post("auth/logout/");
     } catch (err: any) {
-      console.error("Error during logout:", err);
+      void 0;
     } finally {
       setUser(null);
       setRoleOverride(null);

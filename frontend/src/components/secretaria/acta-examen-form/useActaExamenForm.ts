@@ -361,7 +361,7 @@ export function useActaExamenForm({
       setMesaSeleccionada(encontrada);
       applyMesaSeleccionada(encontrada);
     } catch (error) {
-      console.error("No se pudo buscar la mesa", error);
+      void 0;
       setMesaBusquedaError("No se pudo buscar la mesa. Intenta nuevamente.");
     } finally {
       setMesaBuscando(false);
@@ -395,7 +395,7 @@ export function useActaExamenForm({
       if (strict) {
         enqueueSnackbar(error?.response?.data?.message || "No se encontró un estudiante con ese DNI.", { variant: "error" });
       } else {
-        console.warn("Estudiante no encontrado en el sistema (modo no estricto).");
+        void 0;
       }
     } finally {
       setLoadingEstudianteDni((current) => (current === internoId ? null : current));

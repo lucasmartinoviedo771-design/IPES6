@@ -88,7 +88,7 @@ export function useMesasState() {
       const mesasFiltradas = modalidadFiltro ? mesasObtenidas.filter((m) => m.modalidad === modalidadFiltro) : mesasObtenidas;
       setMesas(mesasFiltradas);
     } catch (error) {
-      console.error('No se pudieron obtener las mesas', error);
+      void 0;
       setMesas([]);
     }
   };

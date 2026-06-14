@@ -382,7 +382,7 @@ const HorarioPage: React.FC = () => {
       pdf.save(`${fileNameParts.join("_")}.pdf`);
       enqueueSnackbar("PDF descargado correctamente.", { variant: "success" });
     } catch (error) {
-      console.error("Error generando PDF", error);
+      void 0;
       enqueueSnackbar("No se pudo generar el PDF.", { variant: "error" });
     }
   };

@@ -219,7 +219,7 @@ export default function DocumentacionEstudiantesPage() {
       setPendingChanges({});
       alert("Cambios guardados correctamente");
     } catch (err) {
-      console.error("Error saving documentation", err);
+      void 0;
       alert("Error al guardar los cambios");
     } finally {
       setIsSavingBulk(false);

@@ -78,7 +78,7 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
       pdf.save(`Carton_${safeName}.pdf`);
       enqueueSnackbar('PDF descargado exitosamente', { variant: 'success' });
     } catch (error) {
-      console.error('Error generando PDF:', error);
+      void 0;
       enqueueSnackbar('Error al generar el PDF', { variant: 'error' });
     }
   };

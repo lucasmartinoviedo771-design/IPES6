@@ -105,7 +105,7 @@ export default function MesasPage() {
       await state.loadMesas();
       setActiveTab(1); // Mover a la pestaña de activas tras crear
     } catch (error) {
-      console.error('No se pudieron crear las mesas', error);
+      void 0;
       setErrorMsg('No se pudieron crear las mesas.');
     } finally {
       setSaving(false);
@@ -124,7 +124,7 @@ export default function MesasPage() {
       await state.loadMesas();
       setSuccessMsg("Mesa eliminada correctamente.");
     } catch (error) {
-       console.error("Error al eliminar mesa", error);
+       void 0;
        setErrorMsg("No se pudo eliminar la mesa.");
     }
   };
@@ -137,7 +137,7 @@ export default function MesasPage() {
       state.setPlanillaCondiciones(data.condiciones);
       state.setPlanillaEstudiantes(data.estudiantes);
     } catch (error) {
-      console.error('No se pudieron cargar los datos de la planilla', error);
+      void 0;
       state.setPlanillaCondiciones([]);
       state.setPlanillaEstudiantes([]);
       state.setPlanillaError('No se pudieron cargar los resultados de la mesa.');
@@ -246,7 +246,7 @@ export default function MesasPage() {
       state.setPlanillaSuccess('Planilla guardada correctamente.');
       await fetchPlanilla(state.planillaMesa.id);
     } catch (error) {
-      console.error('No se pudieron guardar los cambios de la planilla', error);
+      void 0;
       state.setPlanillaError('No se pudieron guardar los cambios.');
     } finally {
       state.setPlanillaSaving(false);

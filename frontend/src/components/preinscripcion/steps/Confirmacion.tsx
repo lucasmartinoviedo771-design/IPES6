@@ -57,7 +57,7 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
       link.remove();
       onDownloaded && onDownloaded();
     } catch (error) {
-      console.error("Error downloading PDF:", error);
+      void 0;
       alert("Hubo un error al generar el PDF. Por favor, reintente en unos instantes.");
     } finally {
       setIsDownloading(false);

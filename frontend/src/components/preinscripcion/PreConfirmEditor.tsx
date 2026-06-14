@@ -224,7 +224,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
   const resetAgregarCarreraForm = () => { setNuevaCarreraId(''); setNuevaCarreraCohorte(String(new Date().getFullYear())); };
 
   const [validationErrors, setValidationErrors] = useState<any>(null);
-  const onInvalid = (errors: any) => { console.error("Validation errors", errors); setValidationErrors(errors); enqueueSnackbar("Hay errores en el formulario, revise los mensajes abajo", { variant: "error" }); };
+  const onInvalid = (errors: any) => { void 0; setValidationErrors(errors); enqueueSnackbar("Hay errores en el formulario, revise los mensajes abajo", { variant: "error" }); };
 
   const onSubmit = async (values: PreinscripcionForm) => {
     setValidationErrors(null);
@@ -232,7 +232,7 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
       await mUpdate.mutateAsync(values);
       if (canConfirm && data?.estado !== "confirmada") setConfirmInscripcionOpen(true);
     } catch (error) {
-      console.error("Error en flujo unificado:", error);
+      void 0;
     }
   };
 

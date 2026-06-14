@@ -131,7 +131,7 @@ export default function AnalisisMateriaPage() {
           setLoading(false);
         })
         .catch(err => {
-          console.error(err);
+          void 0;
           setError("No se pudo realizar el análisis de correlatividades.");
           setLoading(false);
         });

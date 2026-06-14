@@ -44,7 +44,7 @@ export function useVersiones(planId: number | '') {
         return data[data.length - 1].id;
       });
     } catch (error) {
-      console.error('Error fetching versiones de correlatividades:', error);
+      void 0;
       setVersiones([]);
       setVersionId('');
     } finally {

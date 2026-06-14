@@ -150,7 +150,7 @@ export default function PreinscripcionWizard() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
       } catch (e) {
-        console.error("Error saving form to localStorage", e);
+        void 0;
       }
       if (name === "carrera_id" || name === "dni") {
         setDuplicatePdfUrl(null);
@@ -182,7 +182,7 @@ export default function PreinscripcionWizard() {
           form.setValue("carrera_id", rows[0].id);
         }
       } catch (e) {
-        console.error("[carreras] fallo", e);
+        void 0;
       } finally {
         if (alive) setCarrerasLoading(false);
       }
@@ -256,7 +256,7 @@ export default function PreinscripcionWizard() {
         try {
           await apiUploadPreDoc(response.id, "foto4x4", photoFile);
         } catch (uploadError) {
-          console.error("La preinscripción se creó, pero falló la subida de la foto:", uploadError);
+          void 0;
         }
       }
 
@@ -277,7 +277,7 @@ export default function PreinscripcionWizard() {
   };
 
   const onSubmitError: SubmitErrorHandler<PreinscripcionForm> = (errors) => {
-    console.error("Errores de validación del formulario:", errors);
+    void 0;
     const errorKeys = Object.keys(errors) as Array<keyof typeof errors>;
     const firstErrorField = errorKeys.find((field) => !!errors[field]);
     if (firstErrorField) {

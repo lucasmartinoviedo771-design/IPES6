@@ -27,7 +27,7 @@ function ErrorBoundaryFallback({ error, resetErrorBoundary }: FallbackProps) {
       const updatedRetries = [...retries, now];
       sessionStorage.setItem(key, JSON.stringify(updatedRetries));
 
-      console.warn("Error de carga de chunk (" + (retries.length + 1) + "/" + retryLimit + "). Recargando...");
+      void 0;
       const timer = setTimeout(() => {
         window.location.reload();
       }, 500);

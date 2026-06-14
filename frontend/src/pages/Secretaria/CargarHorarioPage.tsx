@@ -101,7 +101,7 @@ const CargarHorarioPage: React.FC = () => {
           setHorasAsignadas(0);
         }
       } catch (error) {
-        console.error("CargarHorarioPage: Error fetching horario:", error);
+        void 0;
         setHorarioCatedra(null);
         setSelectedBlocks(new Set());
         setHorasAsignadas(0);
@@ -235,7 +235,7 @@ const CargarHorarioPage: React.FC = () => {
       alert('Horario guardado exitosamente!');
       fetchHorario(); // Recargar el horario
     } catch (error: any) {
-      console.error('CargarHorarioPage: Error al guardar horario:', error);
+      void 0;
       const data = error.response?.data;
       const conflictData = data?.conflict || data?.data?.conflict;
       let message = data?.message || data?.detail || error.message;

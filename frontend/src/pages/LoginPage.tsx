@@ -96,7 +96,7 @@ export default function LoginPage() {
     } catch (err: any) {
       const msg = err?.message || err?.response?.data?.detail || "Credenciales inválidas.";
       setError(msg);
-      console.warn("[Login] error:", err);
+      void 0;
       // Limpiar password en error también si se desea, pero suele ser molesto. 
       // El usuario pidió "borrar la contraseña... cuando pone mal la contraseña".
       setPassword("");

@@ -342,7 +342,7 @@ def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
     if dni:
         if not is_staff:
             raise HttpError(403, "No tenés permisos para ver la asistencia de otros estudiantes.")
-        estudiante = Estudiante.objects.filter(Q(persona__dni=dni) | Q(legajo=dni)).first()
+        estudiante = Estudiante.objects.select_related("persona", "user").filter(Q(persona__dni=dni) | Q(legajo=dni)).first()
         if not estudiante:
             raise HttpError(404, f"No se encontró un estudiante con DNI/Legajo {dni}.")
     else:

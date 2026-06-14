@@ -126,7 +126,7 @@ export function usePreConfirmData(
       qc.invalidateQueries({ queryKey: ["preinscripciones"] });
     },
     onError: (err) => {
-      console.error("Save error:", err);
+      void 0;
       enqueueSnackbar("No se pudo guardar los cambios", { variant: "error" });
     }
   });

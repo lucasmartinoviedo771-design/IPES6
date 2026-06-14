@@ -109,7 +109,7 @@ export const SolicitudesList: React.FC = () => {
       const data = await listarSolicitudesMesas();
       setSolicitudes(data);
     } catch (e) {
-      console.error(e);
+      void 0;
     } finally {
       setLoading(false);
     }
@@ -130,7 +130,7 @@ export const SolicitudesList: React.FC = () => {
       // Filtramos solo las EXT o las que correspondan al período
       setMesasCompatibles(data.filter(m => m.tipo === 'EXT'));
     } catch (e) {
-      console.error(e);
+      void 0;
     } finally {
       setLoadingMesas(false);
     }
@@ -166,7 +166,7 @@ export const SolicitudesList: React.FC = () => {
       await load();
       alert("Mesa creada y alumnos vinculados correctamente.");
     } catch (e: any) {
-      console.error(e);
+      void 0;
       alert(e.response?.data?.message || "Error al crear la mesa");
     }
   };
@@ -179,7 +179,7 @@ export const SolicitudesList: React.FC = () => {
       setSelectedSolicitud(null);
       await load();
     } catch (e) {
-      console.error(e);
+      void 0;
       alert("Error al vincular la mesa");
     }
   };
@@ -200,7 +200,7 @@ export const SolicitudesList: React.FC = () => {
       await procesarSolicitudMesa(id, 'REC');
       await load();
     } catch (e) {
-      console.error(e);
+      void 0;
       alert("Error al rechazar la solicitud");
     }
   };

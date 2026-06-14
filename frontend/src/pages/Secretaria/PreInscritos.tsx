@@ -81,7 +81,7 @@ const PreInscritos: React.FC = () => {
       setData(response.data);
       setError(null);
     } catch (err) {
-      console.error(err);
+      void 0;
       setError('Error al cargar los datos');
     } finally {
       setLoading(false);
@@ -94,7 +94,7 @@ const PreInscritos: React.FC = () => {
       const response = await axios.get('profesorados');
       setCarreras(response.data);
     } catch (err) {
-      console.error("Error cargando carreras");
+      void 0;
     }
   };
 

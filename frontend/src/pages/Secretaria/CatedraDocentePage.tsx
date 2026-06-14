@@ -163,7 +163,7 @@ export default function CatedraDocentePage() {
         try {
           await axios.delete(`/comisiones/${ex.id}`);
         } catch (err) {
-          console.warn("No se pudo eliminar la comisión por estar en uso, se limpiará el docente.", err);
+          void 0;
           // Si tiene inscripciones, la dejamos vacía en lugar de fallar (así no rompemos inscripciones)
           await axios.put(`/comisiones/${ex.id}`, {
             materia_id: dlgMateria.id,
@@ -206,7 +206,7 @@ export default function CatedraDocentePage() {
       fetchComisiones();
       setDlgOpen(false);
     } catch (err) {
-      console.error(err);
+      void 0;
       toast.error("Error al guardar asignaciones");
     } finally {
       setSaving(false);
