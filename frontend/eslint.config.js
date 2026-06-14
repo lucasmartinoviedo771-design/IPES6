@@ -76,7 +76,7 @@ export default [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
       "react-hooks/preserve-manual-memoization": "off",
       "react-hooks/set-state-in-effect": "off",
       "react/react-in-jsx-scope": "off",

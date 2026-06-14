@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  brace-expansion@1: '>=1.1.13'
+  brace-expansion@1: ^1.1.13
   brace-expansion@5: '>=5.0.5'
   picomatch: '>=4.0.4'
   yaml: '>=1.10.3'
@@ -77,9 +77,6 @@ importers:
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
-      lucide-react:
-        specifier: ^1.8.0
-        version: 1.8.0(react@18.3.1)
       notistack:
         specifier: ^3.0.2
         version: 3.0.2(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -114,6 +111,9 @@ importers:
         specifier: ^4.1.9
         version: 4.3.6
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.4
+        version: 9.39.4
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -129,6 +129,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.0
         version: 6.0.1(vite@8.0.8(esbuild@0.27.4)(yaml@2.8.3))
+      globals:
+        specifier: ^17.6.0
+        version: 17.6.0
       jsdom:
         specifier: ^27.2.0
         version: 27.4.0
@@ -1173,6 +1176,9 @@ packages:
     resolution: {integrity: sha512-Cg7TFGpIr01vOQNODXOOaGz2NpCU5gl8x1qJFbb6hbZxR7XrcE2vtbAsTAbJ7/xwJtUuJEw8K8Zr/AE0LHlesg==}
     engines: {node: '>=10', npm: '>=6'}
 
+  balanced-match@1.0.2:
+    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
@@ -1189,9 +1195,8 @@ packages:
   bidi-js@1.0.3:
     resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
 
-  brace-expansion@5.0.4:
-    resolution: {integrity: sha512-h+DEnpVvxmfVefa4jFbCf5HdH5YMDXRsmKflpf1pILZWRFlTbJpxeU55nJl4Smt5HQaGzg1o6RHFPJaOqnmBDg==}
-    engines: {node: 18 || 20 || >=22}
+  brace-expansion@1.1.15:
+    resolution: {integrity: sha512-EwOCDEex4quD37XhqM3omwtMoJjr//isUZz1JopUNWms+4Z2ViyM/k1YIRePpoVNnQhENnxtFjLaxNHrT7xIUg==}
 
   brace-expansion@5.0.5:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
@@ -1258,6 +1263,9 @@ packages:
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
+
+  concat-map@0.0.1:
+    resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
   convert-source-map@1.9.0:
     resolution: {integrity: sha512-ASFBup0Mz1uyiIjANan1jzLQami9z1PoYSZCiiYW2FczPbenXc45FZdBZLzOT+r6+iciuEModtmCti+hjaAk0A==}
@@ -1680,6 +1688,10 @@ packages:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
     engines: {node: '>=18'}
 
+  globals@17.6.0:
+    resolution: {integrity: sha512-sepffkT8stwnIYbsMBpoCHJuJM5l98FUF2AnE07hfvE0m/qp3R586hw4jF4uadbhvg1ooIdzuu7CsfD2jzCaNA==}
+    engines: {node: '>=18'}
+
   globalthis@1.0.4:
     resolution: {integrity: sha512-DpLKbNU4WylpxJykQujfCcwYWiV/Jhm50Goo0wrVILAv5jOr9d+H+UR3PhSCD2rCCEIg0uc+G+muBTwD54JhDQ==}
     engines: {node: '>= 0.4'}
@@ -2058,11 +2070,6 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
-
-  lucide-react@1.8.0:
-    resolution: {integrity: sha512-WuvlsjngSk7TnTBJ1hsCy3ql9V9VOdcPkd3PKcSmM34vJD8KG6molxz7m7zbYFgICwsanQWmJ13JlYs4Zp7Arw==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -3828,6 +3835,8 @@ snapshots:
       cosmiconfig: 7.1.0
       resolve: 1.22.11
 
+  balanced-match@1.0.2: {}
+
   balanced-match@4.0.4: {}
 
   base64-arraybuffer@1.0.2:
@@ -3839,9 +3848,10 @@ snapshots:
     dependencies:
       require-from-string: 2.0.2
 
-  brace-expansion@5.0.4:
+  brace-expansion@1.1.15:
     dependencies:
-      balanced-match: 4.0.4
+      balanced-match: 1.0.2
+      concat-map: 0.0.1
 
   brace-expansion@5.0.5:
     dependencies:
@@ -3916,6 +3926,8 @@ snapshots:
   combined-stream@1.0.8:
     dependencies:
       delayed-stream: 1.0.0
+
+  concat-map@0.0.1: {}
 
   convert-source-map@1.9.0: {}
 
@@ -4470,6 +4482,8 @@ snapshots:
 
   globals@14.0.0: {}
 
+  globals@17.6.0: {}
+
   globalthis@1.0.4:
     dependencies:
       define-properties: 1.2.1
@@ -4843,10 +4857,6 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@1.8.0(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-
   lz-string@1.5.0: {}
 
   magic-string@0.30.21:
@@ -4871,7 +4881,7 @@ snapshots:
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 5.0.4
+      brace-expansion: 1.1.15
 
   ms@2.1.3: {}
 
