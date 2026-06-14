@@ -69,28 +69,9 @@ def ensure_roles(required_roles: list[str]):
             if not request.user or not request.user.is_authenticated:
                 raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
 
-            # Normalización y extracción de roles reales del usuario
-            raw_names = {name.lower().strip() for name in request.user.groups.values_list("name", flat=True)}
-            user_roles = set(raw_names)
-
-            # Clasificación robusta de roles
-            exact_roles = {
-                "admin": "admin",
-                "bedel": "bedel",
-                "secretaria": "secretaria",
-                "coordinador": "coordinador",
-                "estudiante": "estudiante",
-                "docente": "docente",
-                "estudiantes": "estudiante",
-            }
-            for name in raw_names:
-                if name in exact_roles:
-                    user_roles.add(exact_roles[name])
-
-            # Los superusuarios tienen el rol implicito de admin.
-            # Se elimina is_staff para evitar escalada accidental de usuarios técnicos.
-            if request.user.is_superuser:
-                user_roles.add("admin")
+            # Delegamos la normalización de roles a la función centralizada
+            from core.permissions import get_user_roles
+            user_roles = get_user_roles(request.user)
 
             required = {role.lower() for role in required_roles}
 

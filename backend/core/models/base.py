@@ -110,12 +110,6 @@ class UserProfile(models.Model):
         default=False,
         help_text="Si está activo, el usuario debe cambiar la contraseña al iniciar sesión.",
     )
-    temp_password = models.CharField(
-        max_length=128,
-        blank=True,
-        null=True,
-        help_text="Contraseña temporal para envío por email (se borra después del primer login o envío)"
-    )
     credentials_sent_at = models.DateTimeField(
         blank=True,
         null=True,
