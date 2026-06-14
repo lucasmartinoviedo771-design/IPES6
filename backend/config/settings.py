@@ -66,7 +66,14 @@ LOGIN_RATE_LIMIT_ATTEMPTS = int(os.getenv("LOGIN_RATE_LIMIT_ATTEMPTS", "5"))
 LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
 
 # Seguridad para Kioscos de Asistencia (dispositivos físicos)
-KIOSK_API_KEY = os.getenv("KIOSK_API_KEY", "dev-kiosk-key-secure-123")
+KIOSK_API_KEY = os.getenv("KIOSK_API_KEY")
+if not KIOSK_API_KEY:
+    if IS_PROD:
+        raise RuntimeError(
+            "KIOSK_API_KEY no está configurada. "
+            "Define la variable de entorno KIOSK_API_KEY con un valor seguro en producción."
+        )
+    KIOSK_API_KEY = "dev-kiosk-key-secure-123"
 
 # Hosts permitidos (¡ajusta con tu dominio real!)
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1", "[::1]"])

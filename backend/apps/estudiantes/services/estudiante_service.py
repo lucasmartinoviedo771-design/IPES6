@@ -1,3 +1,4 @@
+import secrets
 from django.db.models import Q
 from core.models import Estudiante, EstudianteCarrera, PreinscripcionChecklist
 from apps.estudiantes.schemas import EstudianteAdminListItem, EstudianteAdminListResponse
@@ -166,19 +167,19 @@ class EstudianteService:
             )
         return EstudianteAdminListResponse(total=total, items=items)
     @staticmethod
-    def reset_password(estudiante: Estudiante) -> bool:
-        """Resetea la contraseña del estudiante al formato 'pass' + DNI."""
+    def reset_password(estudiante: Estudiante) -> str | None:
+        """Resetea la contraseña del estudiante a una clave segura aleatoria."""
         user = estudiante.user
         if not user:
-            return False
+            return None
         
-        new_password = f"pass{estudiante.dni}"
+        new_password = secrets.token_urlsafe(12)
         user.set_password(new_password)
         user.save(update_fields=["password"])
         
         estudiante.must_change_password = True
         estudiante.save(update_fields=["must_change_password"])
-        return True
+        return new_password
 
     @staticmethod
     def get_unique_admission_years(allowed_carrera_ids: set[int] | None = None) -> list[int]:

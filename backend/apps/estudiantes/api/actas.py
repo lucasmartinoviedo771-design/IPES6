@@ -6,6 +6,7 @@ creación automatizada de legajos para carga de datos históricos y validación 
 contra Mesas de Examen activas.
 """
 
+import secrets
 from datetime import datetime
 from decimal import Decimal
 import uuid
@@ -339,7 +340,9 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 from core.models import Persona
                 last_name, first_name = parts[0].strip(), parts[1].strip()
                 user, _ = User.objects.get_or_create(username=clean_dni, defaults={"first_name": first_name, "last_name": last_name})
-                if _: user.set_password(f"pass{clean_dni}"); user.save()
+                if _:
+                    user.set_password(secrets.token_urlsafe(12))
+                    user.save()
                 persona, _ = Persona.objects.update_or_create(dni=clean_dni, defaults={"nombre": first_name, "apellido": last_name})
                 estudiante = Estudiante.objects.create(user=user, persona=persona, estado_legajo=Estudiante.EstadoLegajo.PENDIENTE)
             else:

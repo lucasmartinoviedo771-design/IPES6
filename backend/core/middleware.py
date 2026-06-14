@@ -41,6 +41,9 @@ class AuditRequestMiddleware:
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
             # Confiamos solo en la última IP del header (la que agrega el proxy confiable)
+            # TODO(security): Este método asume la existencia de exactamente un proxy confiable
+            # (como Nginx o Cloudflare) que reescribe el header. Si la infraestructura cambia
+            # agregando otra capa de proxy, la IP registrada podría ser la del proxy intermedio.
             ips = [ip.strip() for ip in x_forwarded_for.split(",")]
             return ips[-1]
         return request.META.get("REMOTE_ADDR")

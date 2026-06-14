@@ -637,7 +637,7 @@ def admin_delete_estudiante(request, dni: str):
 )
 def admin_reset_estudiante_password(request, dni: str):
     """
-    Resetea la contraseña del estudiante al formato 'pass' + DNI.
+    Resetea la contraseña del estudiante a una clave segura aleatoria.
     Útil cuando el alumno olvida su primer acceso o hay problemas de login masivos.
     """
     _ensure_admin(request)
@@ -653,11 +653,11 @@ def admin_reset_estudiante_password(request, dni: str):
             from apps.common.constants import AppErrorCode
             raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar este legajo.")
 
-    success = EstudianteService.reset_password(est)
-    if not success:
+    new_password = EstudianteService.reset_password(est)
+    if not new_password:
         return ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
 
-    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}. El alumno deberá cambiarla al primer ingreso.")
+    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}: {new_password}. Copia esta contraseña y compártela de forma segura con el estudiante, ya que deberá cambiarla al primer ingreso.")
 
 
 @router.patch(

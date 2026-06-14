@@ -1,3 +1,4 @@
+import secrets
 from django.contrib.auth.models import User, Group
 from django.db.models import Q
 from ninja.errors import HttpError
@@ -53,7 +54,7 @@ class DocenteService:
             raise HttpError(400, "El docente no tiene DNI cargado; no podemos generar un usuario.")
 
         username = dni
-        temp_password = f"pass{dni}"
+        temp_password = secrets.token_urlsafe(12)
         user = User.objects.create_user(
             username=username,
             password=temp_password,
