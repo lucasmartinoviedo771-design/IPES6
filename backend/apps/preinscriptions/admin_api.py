@@ -50,7 +50,7 @@ def list_preinscriptions(
     Optimiza la consulta mediante select_related para evitar el problema N+1 en las relaciones.
     """
     qs = Preinscripcion.objects.all().select_related(
-        'alumno', 'alumno__user', 'carrera'
+        'alumno', 'alumno__persona', 'carrera'
     )
     
     # Aplicación de filtros según criterios de búsqueda
@@ -60,9 +60,9 @@ def list_preinscriptions(
         qs = qs.filter(carrera_id=carrera_id)
     if search:
         qs = qs.filter(
-            Q(estudiante__persona__dni__icontains=search) |
-            Q(estudiante__user__first_name__icontains=search) |
-            Q(estudiante__user__last_name__icontains=search)
+            Q(alumno__persona__dni__icontains=search) |
+            Q(alumno__persona__nombre__icontains=search) |
+            Q(alumno__persona__apellido__icontains=search)
         )
     
     # Mapeo manual a la estructura de salida para facilitar el consumo del frontend
@@ -71,9 +71,9 @@ def list_preinscriptions(
         res.append({
             "id": p.id,
             "dni": p.alumno.dni,
-            "nombre": p.alumno.user.first_name,
-            "apellido": p.alumno.user.last_name,
-            "email": p.alumno.user.email,
+            "nombre": p.alumno.nombre,
+            "apellido": p.alumno.apellido,
+            "email": p.alumno.email,
             "telefono": p.alumno.telefono,
             "carrera_nombre": p.carrera.nombre,
             "carrera_id": p.carrera.id,
@@ -131,14 +131,16 @@ def update_preinscription(request, pre_id: int, data: PreinscripcionUpdateIn):
     user = estudiante.user
     
     with transaction.atomic():
-        # Actualización de datos de identidad (User)
-        if data.nombre is not None:
-            user.first_name = data.nombre
-        if data.apellido is not None:
-            user.last_name = data.apellido
-        if data.email is not None:
-            user.email = data.email
-        user.save()
+        # Actualización de datos de identidad (Persona)
+        persona = estudiante.persona
+        if persona:
+            if data.nombre is not None:
+                persona.nombre = data.nombre.strip()
+            if data.apellido is not None:
+                persona.apellido = data.apellido.strip()
+            if data.email is not None:
+                persona.email = data.email.strip()
+            persona.save()
         
         # Actualización de contacto (Estudiante)
         if data.telefono is not None:

@@ -11,16 +11,21 @@ from core.schemas import AsignarRolIn, UserSchema, ForceResetPasswordIn
 @management_router.get("/staff", response=List[UserSchema], auth=JWTAuth())
 def list_staff(request):
     ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
-    users = User.objects.filter(is_active=True).prefetch_related("groups")
-    return [
-        UserSchema(
-            id=u.id, 
-            username=u.username, 
-            first_name=u.first_name, 
-            last_name=u.last_name, 
-            groups=[g.name for g in u.groups.all()]
-        ) for u in users if any(g.name in ALL_ROLES for g in u.groups.all())
-    ]
+    users = User.objects.filter(is_active=True).select_related("profile__persona").prefetch_related("groups")
+    res = []
+    for u in users:
+        if any(g.name in ALL_ROLES for g in u.groups.all()):
+            persona = getattr(getattr(u, "profile", None), "persona", None)
+            res.append(
+                UserSchema(
+                    id=u.id,
+                    username=u.username,
+                    first_name=persona.nombre if persona else u.first_name,
+                    last_name=persona.apellido if persona else u.last_name,
+                    groups=[g.name for g in u.groups.all()]
+                )
+            )
+    return res
 
 @management_router.post("/staff/roles", response={200: dict, 400: dict}, auth=JWTAuth())
 def manage_staff_role(request, payload: AsignarRolIn):

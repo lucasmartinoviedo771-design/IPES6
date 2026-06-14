@@ -514,12 +514,16 @@ def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: 
             break  # Tomamos el primero de la comisión
 
     # 2. Buscar el bedel asignado a ese profesorado
-    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user")
+    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user__profile__persona")
     orden_bedel = len(docentes_res) + 1
     for bedel in bedeles:
-        nombre = f"{bedel.user.last_name}, {bedel.user.first_name}".strip(", ")
+        persona = getattr(getattr(bedel.user, "profile", None), "persona", None)
+        if persona:
+            nombre = f"{persona.apellido}, {persona.nombre}".strip(", ")
+        else:
+            nombre = f"{bedel.user.last_name}, {bedel.user.first_name}".strip(", ")
         if not nombre:
-            nombre = bedel.user.get_full_name() or bedel.user.username
+            nombre = bedel.user.username
         
         docentes_res.append({
             "docente_id": None,

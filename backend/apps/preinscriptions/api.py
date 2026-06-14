@@ -182,7 +182,7 @@ def listar_preinscripciones(
     offset = max(0, offset)
     
     qs = Preinscripcion.objects.select_related(
-        "alumno__user", "carrera"
+        "alumno__persona", "carrera"
     ).all().order_by("-created_at")
 
     if not include_inactivas:
@@ -198,8 +198,8 @@ def listar_preinscripciones(
         search = search[:100]
         qs = qs.filter(
             Q(codigo__icontains=search)
-            | Q(alumno__user__first_name__icontains=search)
-            | Q(alumno__user__last_name__icontains=search)
+            | Q(alumno__persona__nombre__icontains=search)
+            | Q(alumno__persona__apellido__icontains=search)
             | Q(alumno__persona__dni__icontains=search)
         )
 
@@ -213,7 +213,7 @@ def obtener_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] =
     """Detalle completo de una solicitud específica."""
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
-    pre = Preinscripcion.objects.select_related("alumno__user", "carrera").filter(id=pre_id).first()
+    pre = Preinscripcion.objects.select_related("alumno__persona", "carrera").filter(id=pre_id).first()
     if not pre:
         raise HttpError(404, "Solicitud no encontrada.")
     return pre
@@ -533,7 +533,7 @@ def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = Non
     from core.models import Preinscripcion
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     preins = (
-        Preinscripcion.objects.select_related("alumno__user", "carrera")
+        Preinscripcion.objects.select_related("alumno__persona", "carrera")
         .filter(alumno__persona__dni=dni)
         .order_by("-anio", "-created_at")
     )

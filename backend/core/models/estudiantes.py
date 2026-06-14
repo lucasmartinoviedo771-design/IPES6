@@ -130,21 +130,15 @@ class Estudiante(models.Model):
 
     @property
     def nombre(self):
-        if self.persona:
-            return self.persona.nombre
-        return self.user.first_name
+        return self.persona.nombre if self.persona else ""
 
     @property
     def apellido(self):
-        if self.persona:
-            return self.persona.apellido
-        return self.user.last_name
+        return self.persona.apellido if self.persona else ""
 
     @property
     def email(self):
-        if self.persona:
-            return self.persona.email
-        return self.user.email
+        return self.persona.email if self.persona else ""
 
     @property
     def telefono_clean(self):

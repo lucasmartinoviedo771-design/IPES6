@@ -102,8 +102,8 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
 
     asistencias = list(
         AsistenciaEstudiante.objects.filter(clase=clase)
-        .select_related("estudiante__user")
-        .order_by("estudiante__user__last_name", "estudiante__user__first_name")
+        .select_related("estudiante__persona")
+        .order_by("estudiante__persona__apellido", "estudiante__persona__nombre")
     )
 
     stats = (
@@ -130,8 +130,8 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
             EstudianteResumenOut(
                 estudiante_id=asistencia.estudiante_id,
                 dni=asistencia.estudiante.dni,
-                nombre=asistencia.estudiante.user.first_name if asistencia.estudiante.user_id else "",
-                apellido=asistencia.estudiante.user.last_name if asistencia.estudiante.user_id else "",
+                nombre=asistencia.estudiante.nombre,
+                apellido=asistencia.estudiante.apellido,
                 estado=asistencia.estado,
                 justificada=asistencia.justificacion_id is not None,
                 porcentaje_asistencia=round(porcentaje, 1),

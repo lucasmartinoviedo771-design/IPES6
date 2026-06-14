@@ -78,8 +78,6 @@ class EstudianteService:
                 Q(persona__dni__icontains=q_clean)
                 | Q(persona__nombre__icontains=q_clean)
                 | Q(persona__apellido__icontains=q_clean)
-                | Q(user__first_name__icontains=q_clean)
-                | Q(user__last_name__icontains=q_clean)
                 | Q(legajo__icontains=q_clean)
             )
         
@@ -126,6 +124,7 @@ class EstudianteService:
         items = []
         for est in paginated:
             user = est.user if est.user_id else None
+            persona = est.persona
             condicion = _calcular_condicion_estudiante(est, checklist_map)
             # Obtener detalles de carrera para incluir el estado académico de cada una (filtrado por permisos)
             carreras_det = []
@@ -152,8 +151,8 @@ class EstudianteService:
             items.append(
                 EstudianteAdminListItem(
                     dni=est.dni,
-                    apellido=user.last_name if user else "",
-                    nombre=user.first_name if user else "",
+                    apellido=persona.apellido if persona else "",
+                    nombre=persona.nombre if persona else "",
                     email=user.email if user else None,
                     telefono=est.telefono or None,
                     estado_legajo=est.estado_legajo,

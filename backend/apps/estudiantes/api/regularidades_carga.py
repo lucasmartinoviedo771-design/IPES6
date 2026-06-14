@@ -194,7 +194,7 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
                 inscripcion_id=insc.id,
                 estudiante_id=insc.estudiante_id,
                 orden=idx,
-                apellido_nombre=f"{(insc.estudiante.user.last_name or '').upper()}, {insc.estudiante.user.first_name or ''}".strip(", ") if insc.estudiante.user_id else "",
+                apellido_nombre=f"{(insc.estudiante.apellido or '').upper()}, {insc.estudiante.nombre or ''}".strip(", "),
                 dni=insc.estudiante.dni,
                 nota_tp=float(regularidad.nota_trabajos_practicos) if regularidad and regularidad.nota_trabajos_practicos is not None else None,
                 nota_final=regularidad.nota_final_cursada if regularidad else None,
@@ -306,7 +306,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
 
         materia = comision.materia
         situaciones = situaciones_para_formato(materia.formato)
-        inscripciones = list(InscripcionMateriaEstudiante.objects.filter(comision_id=comision.id, anio=comision.anio_lectivo).select_related("estudiante__user", "materia").order_by("estudiante__user__last_name", "estudiante__user__first_name", "estudiante__persona__dni"))
+        inscripciones = list(InscripcionMateriaEstudiante.objects.filter(comision_id=comision.id, anio=comision.anio_lectivo).select_related("estudiante__persona", "materia").order_by("estudiante__persona__apellido", "estudiante__persona__nombre", "estudiante__persona__dni"))
         
         estudiantes = _build_regularidad_estudiantes(inscripciones)
         lock = regularidad_lock_for_scope(comision=comision)
@@ -333,7 +333,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
     if not materia:
         return 404, ApiResponse(ok=False, message="Materia virtual no encontrada.")
 
-    inscripciones = list(InscripcionMateriaEstudiante.objects.filter(materia_id=materia.id, comision__isnull=True, anio=anio_virtual if anio_virtual is not None else 0).select_related("estudiante__user", "materia").order_by("estudiante__user__last_name", "estudiante__user__first_name", "estudiante__persona__dni"))
+    inscripciones = list(InscripcionMateriaEstudiante.objects.filter(materia_id=materia.id, comision__isnull=True, anio=anio_virtual if anio_virtual is not None else 0).select_related("estudiante__persona", "materia").order_by("estudiante__persona__apellido", "estudiante__persona__nombre", "estudiante__persona__dni"))
     lock = regularidad_lock_for_scope(materia=materia, anio_virtual=anio_virtual if anio_virtual is not None else 0)
     esta_cerrada = lock is not None
 
@@ -555,11 +555,13 @@ def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: 
             break  # Tomamos el primero de la comisión
 
     # 2. Buscar el bedel asignado a ese profesorado
-    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user")
+    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user__profile__persona")
     orden_bedel = len(docentes_res) + 1
     for bedel in bedeles:
-        nombre = f"{bedel.user.last_name}, {bedel.user.first_name}".strip(", ")
-        if not nombre:
+        persona = getattr(getattr(bedel.user, "profile", None), "persona", None)
+        if persona:
+            nombre = f"{persona.apellido}, {persona.nombre}".strip(", ")
+        else:
             nombre = bedel.user.get_full_name() or bedel.user.username
         
         docentes_res.append({

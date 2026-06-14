@@ -83,23 +83,13 @@ class PreinscripcionService:
         # 2. Estudiante
         estudiante = Estudiante.objects.filter(persona=persona).first()
         if not estudiante:
-            user, _ = User.objects.get_or_create(username=dni, defaults={
-                "email": persona.email,
-                "first_name": persona.nombre,
-                "last_name": persona.apellido
-            })
+            user, _ = User.objects.get_or_create(username=dni)
             estudiante = Estudiante.objects.create(
                 user=user,
                 persona=persona,
             )
         else:
             estudiante.save()
-
-            user = estudiante.user
-            if user.first_name != persona.nombre or user.last_name != persona.apellido:
-                user.first_name = persona.nombre
-                user.last_name = persona.apellido
-                user.save(update_fields=['first_name', 'last_name'])
 
         # 3. Preinscripción
         current_year = datetime.now().year

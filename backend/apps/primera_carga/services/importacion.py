@@ -84,14 +84,12 @@ def _import_estudiante_record(
         }
     )
 
-    user = User.objects.filter(username=dni).first() or User.objects.filter(email=email).first() if email else None
+    user = User.objects.filter(username=dni).first()
     user_created = False
     if not user:
-        user = User.objects.create_user(username=dni, email=email, password=password or dni)
+        user = User.objects.create_user(username=dni, password=password or dni)
         user_created = True
     
-    user.first_name = first_name
-    user.last_name = last_name
     user.is_active = is_active
     user.save()
     user.groups.add(estudiante_group)
@@ -176,7 +174,7 @@ def crear_estudiante_manual(*, user: User, data: dict) -> dict:
     profesorado = Profesorado.objects.get(pk=data["profesorado_id"])
     with transaction.atomic():
         estudiante, created = _import_estudiante_record(data, profesorado=profesorado, estudiante_group=estudiante_group)
-    return {"estudiante_id": estudiante.id, "dni": estudiante.dni, "nombre": estudiante.user.get_full_name(), "created": created}
+    return {"estudiante_id": estudiante.id, "dni": estudiante.dni, "nombre": f"{estudiante.nombre} {estudiante.apellido}".strip(), "created": created}
 
 def process_folios_finales_csv(file_content: str, dry_run: bool = False) -> dict:
     processed_count = 0
@@ -269,7 +267,7 @@ def registrar_regularidad_individual_historica(user: User, data: dict) -> dict:
     else:
         docentes = [{"nombre": "SISTEMA (Carga Histórica)", "rol": "profesor", "orden": 1}]
     filas = [{
-        "orden": 1, "dni": dni, "apellido_nombre": f"{estudiante.user.last_name}, {estudiante.user.first_name}",
+        "orden": 1, "dni": dni, "apellido_nombre": f"{estudiante.apellido}, {estudiante.nombre}".strip(", "),
         "nota_final": data.get("nota_final"), "asistencia": data.get("asistencia"),
         "situacion": data["situacion"], "excepcion": data.get("excepcion", False),
         "observaciones": data.get("observaciones", "Carga histórica"), "datos": {}

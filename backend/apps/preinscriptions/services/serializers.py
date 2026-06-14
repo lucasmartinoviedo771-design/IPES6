@@ -10,11 +10,9 @@ _ESTADO_CIVIL_TO_DISPLAY = {
 
 def serialize_pre(pre) -> dict:
     a = pre.alumno
-    u = getattr(a, "user", None)
-
-    user_first_name = getattr(u, "first_name", "") if u else ""
-    user_last_name = getattr(u, "last_name", "") if u else ""
-    user_email = getattr(u, "email", "") if u else ""
+    user_first_name = getattr(a, "nombre", "") if a else ""
+    user_last_name = getattr(a, "apellido", "") if a else ""
+    user_email = getattr(a, "email", "") if a else ""
 
     extra = copy.deepcopy(pre.datos_extra or {})
     pre_estudiante_extra = extra.get("estudiante") if isinstance(extra.get("estudiante"), dict) else {}

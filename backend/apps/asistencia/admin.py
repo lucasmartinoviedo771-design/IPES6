@@ -39,7 +39,7 @@ class ClaseProgramadaAdmin(admin.ModelAdmin):
 class AsistenciaEstudianteAdmin(admin.ModelAdmin):
     list_display = ("clase", "estudiante", "estado", "registrado_via", "registrado_en")
     list_filter = ("estado", "registrado_via")
-    search_fields = ("estudiante__persona__dni", "estudiante__user__first_name", "estudiante__user__last_name")
+    search_fields = ("estudiante__persona__dni", "estudiante__persona__nombre", "estudiante__persona__apellido")
 
 
 @admin.register(AsistenciaDocente)

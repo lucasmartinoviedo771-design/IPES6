@@ -44,7 +44,7 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     from core.models import InscripcionMesa, EquivalenciaDisposicionDetalle
     
     qs = InscripcionMateriaEstudiante.objects.select_related(
-        "estudiante__user", "materia__plan_de_estudio"
+        "estudiante__persona", "materia__plan_de_estudio"
     ).filter(
         anio=anio,
         estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE]
@@ -159,7 +159,7 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
                 reporte.append({
                     "estudiante_id": est.id,
                     "dni": est.dni,
-                    "apellido_nombre": f"{est.user.last_name}, {est.user.first_name}" if est.user_id else est.dni,
+                    "apellido_nombre": f"{est.apellido}, {est.nombre}".strip(", ") or est.dni,
                     "materia_actual": materia.nombre,
                     "materia_correlativa": materia_names_cache[req_id],
                     "motivo": motivo

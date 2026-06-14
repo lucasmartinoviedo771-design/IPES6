@@ -149,6 +149,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 
     for est in estudiantes_list:
         user = est.user if est.user_id else None
+        persona = est.persona
         doc_data = _extract_documentacion(est)
 
         # Mergear con datos de EstudianteCarrera (fuente primaria de documentación)
@@ -183,8 +184,8 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
         items.append(
             EstudianteDocumentacionListItem(
                 dni=est.dni,
-                apellido=user.last_name if user else "",
-                nombre=user.first_name if user else "",
+                apellido=persona.apellido if persona else "",
+                nombre=persona.nombre if persona else "",
                 email=user.email if user else "",
                 condicion_administrativa=condicion,
                 curso_introductorio_aprobado=est.curso_introductorio_aprobado,

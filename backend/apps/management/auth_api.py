@@ -109,10 +109,13 @@ def _serialize_user(user):
         if "admin" not in roles:
             roles.append("admin")
 
+    persona = getattr(estudiante, "persona", None) or getattr(profile, "persona", None)
+    name = f"{persona.nombre} {persona.apellido}".strip() if persona else (user.get_full_name() or user.first_name or user.username)
+
     return {
         "id": user.id,
         "dni": user.username,
-        "name": (user.get_full_name() or user.first_name or user.username),
+        "name": name,
         "roles": roles,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
@@ -232,14 +235,19 @@ def profile(request):
         if "admin" not in roles:
             roles.append("admin")
 
+    estudiante = getattr(u, "estudiante", None)
+    profile = getattr(u, "profile", None)
+    persona = getattr(estudiante, "persona", None) or getattr(profile, "persona", None)
+    name = f"{persona.nombre} {persona.apellido}".strip() if persona else (u.get_full_name() or u.username)
+
     return {
         "id": u.id,
         "dni": getattr(u, "username", ""),
-        "name": u.get_full_name() or u.username,
+        "name": name,
         "roles": roles,
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
-        "must_change_password": bool(getattr(getattr(u, "estudiante", None), "must_change_password", False) or getattr(getattr(u, "profile", None), "must_change_password", False)),
+        "must_change_password": bool(getattr(estudiante, "must_change_password", False) or getattr(profile, "must_change_password", False)),
         "must_complete_profile": _must_complete_profile(u),
         "profesorado_ids": prof_ids,
     }

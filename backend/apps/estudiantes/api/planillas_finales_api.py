@@ -84,14 +84,14 @@ def obtener_mesa_planilla(request, mesa_id: int):
 
     inscripciones = (
         InscripcionMesa.objects.filter(mesa_id=mesa_id)
-        .select_related("estudiante__user")
-        .order_by("estudiante__user__last_name", "estudiante__user__first_name", "estudiante__persona__dni")
+        .select_related("estudiante__persona")
+        .order_by("estudiante__persona__apellido", "estudiante__persona__nombre", "estudiante__persona__dni")
     )
     estudiantes = []
     for insc in inscripciones:
         estudiante = insc.estudiante
-        apellido = (estudiante.user.last_name or "").strip().upper()
-        nombre_p = (estudiante.user.first_name or "").strip()
+        apellido = (estudiante.apellido or "").strip().upper()
+        nombre_p = (estudiante.nombre or "").strip()
         if apellido and nombre_p:
             nombre = f"{apellido}, {nombre_p}"
         elif apellido:
@@ -338,7 +338,7 @@ def listar_constancias_examen(request, dni: str | None = None):
         items.append(
             ConstanciaExamenItem(
                 inscripcion_id=insc.id,
-                estudiante=est.user.get_full_name() or est.dni,
+                estudiante=f"{est.apellido}, {est.nombre}".strip(", ") or est.dni,
                 dni=est.dni,
                 materia=materia.nombre if materia else "Materia",
                 materia_anio=materia_anio,
@@ -419,7 +419,7 @@ def descargar_constancia_examen_pdf(request, inscripcion_id: int, destinatario: 
         logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
 
     context = {
-        "estudiante": est.user.get_full_name() or est.dni,
+        "estudiante": f"{est.apellido}, {est.nombre}".strip(", ") or est.dni,
         "dni": est.dni,
         "materia": materia.nombre if materia else "Materia",
         "materia_anio": materia.anio_cursada if materia else None,

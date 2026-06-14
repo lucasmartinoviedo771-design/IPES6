@@ -58,10 +58,10 @@ def admin_buscar_estudiantes_global(request, q: str = ""):
         .prefetch_related("carreras_detalle__profesorado")
         .filter(
             DQ(persona__dni__icontains=q)
-            | DQ(user__first_name__icontains=q)
-            | DQ(user__last_name__icontains=q)
+            | DQ(persona__nombre__icontains=q)
+            | DQ(persona__apellido__icontains=q)
         )
-        .order_by("user__last_name", "user__first_name")[:20]
+        .order_by("persona__apellido", "persona__nombre")[:20]
     )
 
     result = []
@@ -75,8 +75,8 @@ def admin_buscar_estudiantes_global(request, q: str = ""):
         ]
         result.append({
             "dni": est.dni,
-            "apellido": est.user.last_name,
-            "nombre": est.user.first_name,
+            "apellido": est.apellido,
+            "nombre": est.nombre,
             "carreras": carreras,
         })
     return result

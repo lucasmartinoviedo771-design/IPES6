@@ -438,18 +438,10 @@ def _sync_estudiantes_snapshot(comision: Comision, *, anio: int | None = None) -
         inscripciones = inscripciones.filter(anio=anio)
 
     bulk = []
-    for inscripcion in inscripciones.select_related("estudiante__user"):
+    for inscripcion in inscripciones.select_related("estudiante__persona"):
         estudiante = inscripcion.estudiante
-        nombre = estudiante.user.first_name if estudiante.user_id else ""
-        apellido = estudiante.user.last_name if estudiante.user_id else ""
-        if estudiante.user_id and not (nombre and apellido):
-            full_name = estudiante.user.get_full_name()
-            if full_name:
-                parts = full_name.split(" ", 1)
-                if not nombre and parts:
-                    nombre = parts[-1] if len(parts) == 1 else parts[0]
-                if not apellido and len(parts) > 1:
-                    apellido = parts[1]
+        nombre = estudiante.nombre
+        apellido = estudiante.apellido
         bulk.append(
             CursoEstudianteSnapshot(
                 comision=comision,

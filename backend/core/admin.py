@@ -89,14 +89,24 @@ admin.site.register(CorrelatividadVersionDetalle)
 admin.site.register(Documento)
 @admin.register(Estudiante)
 class EstudianteAdmin(admin.ModelAdmin):
-    list_display = ("get_dni", "legajo", "user", "estado_legajo")
-    search_fields = ("persona__dni", "legajo", "user__first_name", "user__last_name")
+    list_display = ("get_dni", "get_apellido", "get_nombre", "legajo", "user", "estado_legajo")
+    search_fields = ("persona__dni", "legajo", "persona__nombre", "persona__apellido")
     autocomplete_fields = ["persona"]
 
     def get_dni(self, obj):
         return obj.persona.dni if obj.persona else "-"
     get_dni.short_description = "DNI"
     get_dni.admin_order_field = "persona__dni"
+
+    def get_nombre(self, obj):
+        return obj.persona.nombre if obj.persona else "-"
+    get_nombre.short_description = "Nombre"
+    get_nombre.admin_order_field = "persona__nombre"
+
+    def get_apellido(self, obj):
+        return obj.persona.apellido if obj.persona else "-"
+    get_apellido.short_description = "Apellido"
+    get_apellido.admin_order_field = "persona__apellido"
 
 admin.site.register(EstudianteCarrera)
 admin.site.register(Preinscripcion)

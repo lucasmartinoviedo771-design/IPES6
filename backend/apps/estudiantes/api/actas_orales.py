@@ -112,17 +112,17 @@ def listar_actas_orales(request, mesa_id: int):
 
     actas = (
         MesaActaOral.objects.filter(mesa_id=mesa_id)
-        .select_related("inscripcion__estudiante__user")
+        .select_related("inscripcion__estudiante__persona")
         .order_by(
-            "inscripcion__estudiante__user__last_name",
-            "inscripcion__estudiante__user__first_name",
+            "inscripcion__estudiante__persona__apellido",
+            "inscripcion__estudiante__persona__nombre",
         )
     )
 
     payload: list[ActaOralListItemSchema] = []
     for acta in actas:
         estudiante = acta.inscripcion.estudiante
-        full_name = estudiante.user.get_full_name().strip() or f"{estudiante.user.last_name} {estudiante.user.first_name}".strip()
+        full_name = f"{estudiante.apellido}, {estudiante.nombre}".strip(", ") or f"DNI {estudiante.dni}"
         payload.append(
             ActaOralListItemSchema(
                 inscripcion_id=acta.inscripcion_id,
@@ -161,7 +161,7 @@ def descargar_acta_oral_pdf(request, mesa_id: int, inscripcion_id: int):
     materia = mesa.materia
     profesorado = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
     estudiante = inscripcion.estudiante
-    est_nombre = estudiante.user.get_full_name().strip() or f"DNI {estudiante.dni}"
+    est_nombre = f"{estudiante.apellido}, {estudiante.nombre}".strip(", ") or f"DNI {estudiante.dni}"
 
     pres = mesa.docente_presidente
     voc1 = mesa.docente_vocal1

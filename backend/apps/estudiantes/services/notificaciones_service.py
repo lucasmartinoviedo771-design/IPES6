@@ -143,26 +143,28 @@ class NotificacionesService:
         """
         student_user = pedido.estudiante.user
         prof_nombre = pedido.profesorado.nombre if pedido.profesorado_id else "el profesorado"
+        est_nombre = pedido.estudiante.nombre
+        est_full = f"{pedido.estudiante.apellido}, {pedido.estudiante.nombre}".strip(", ")
 
         if accion == "entregado":
             asunto = "Tu Analítico fue entregado"
             cuerpo = (
-                f"Hola {student_user.first_name},\n\n"
+                f"Hola {est_nombre},\n\n"
                 f"Te informamos que tu analítico de {prof_nombre} ha sido entregado.\n\n"
                 f"Cualquier consulta podés acercarte al Departamento de Títulos.\n\n"
                 f"Saludos,\nDepartamento de Títulos - IPES"
             )
-            asunto_staff = f"Analítico entregado: {student_user.get_full_name()} ({pedido.estudiante.dni})"
+            asunto_staff = f"Analítico entregado: {est_full} ({pedido.estudiante.dni})"
         else:
             asunto = "Tu Analítico está listo para retirar"
             cuerpo = (
-                f"Hola {student_user.first_name},\n\n"
+                f"Hola {est_nombre},\n\n"
                 f"Te informamos que tu analítico de {prof_nombre} solicitado el "
                 f"{pedido.created_at.strftime('%d/%m/%Y')} ya fue confeccionado por el "
                 f"Departamento de Títulos y se encuentra listo para retirar.\n\n"
                 f"Saludos,\nDepartamento de Títulos - IPES"
             )
-            asunto_staff = f"Analítico confeccionado: {student_user.get_full_name()} ({pedido.estudiante.dni})"
+            asunto_staff = f"Analítico confeccionado: {est_full} ({pedido.estudiante.dni})"
 
         # Notificar al estudiante
         NotificacionesService.enviar_notificacion(
@@ -172,7 +174,7 @@ class NotificacionesService:
         # Notificar a tutores del profesorado
         cuerpo_staff = (
             f"El analítico de {prof_nombre} del/la estudiante "
-            f"{student_user.get_full_name()} (DNI {pedido.estudiante.dni}) "
+            f"{est_full} (DNI {pedido.estudiante.dni}) "
             f"fue marcado como '{accion}' por el Departamento de Títulos."
         )
         tutores = _get_tutores_estudiante(pedido.estudiante)
@@ -185,6 +187,8 @@ class NotificacionesService:
     def notificar_cambio_comision(inscripcion):
         """Notifica al estudiante y tutores sobre el resultado del cambio de comisión."""
         student_user = inscripcion.estudiante.user
+        est_nombre = inscripcion.estudiante.nombre
+        est_full = f"{inscripcion.estudiante.apellido}, {inscripcion.estudiante.nombre}".strip(", ")
         estado_desc = inscripcion.get_cambio_comision_estado_display()
         asunto = f"Resultado de tu Solicitud de Cambio de Comisión: {estado_desc}"
 
@@ -196,7 +200,7 @@ class NotificacionesService:
 
         if inscripcion.cambio_comision_estado == "APRO":
             cuerpo = (
-                f"Hola {student_user.first_name},\n\n"
+                f"Hola {est_nombre},\n\n"
                 f"Te informamos que se ha AUTORIZADO tu pedido de cambio de comisión para:\n\n"
                 f"  Espacio curricular: {espacio}\n"
                 f"  Año: {anio}º\n"
@@ -206,10 +210,10 @@ class NotificacionesService:
                 f"El cambio ya se encuentra reflejado en tu trayectoria académica.\n\n"
                 f"Saludos,\nSecretaría Académica - IPES"
             )
-            asunto_staff = f"Cambio de comisión autorizado: {student_user.get_full_name()} ({inscripcion.estudiante.dni})"
+            asunto_staff = f"Cambio de comisión autorizado: {est_full} ({inscripcion.estudiante.dni})"
             cuerpo_staff = (
                 f"Se autorizó el cambio de comisión del/la estudiante "
-                f"{student_user.get_full_name()} (DNI {inscripcion.estudiante.dni}).\n\n"
+                f"{est_full} (DNI {inscripcion.estudiante.dni}).\n\n"
                 f"  Espacio: {espacio} - {anio}º año\n"
                 f"  Profesorado: {prof_nombre}\n"
                 f"  Nueva Comisión: {comision_nueva}\n"
@@ -217,16 +221,16 @@ class NotificacionesService:
             )
         else:
             cuerpo = (
-                f"Hola {student_user.first_name},\n\n"
+                f"Hola {est_nombre},\n\n"
                 f"Te informamos que tu pedido de cambio de comisión para '{espacio}' "
                 f"del Profesorado {prof_nombre} ha sido RECHAZADO.\n\n"
                 f"Para más información podés acercarte a bedelía o consultarlo con tu tutora.\n\n"
                 f"Saludos,\nSecretaría Académica - IPES"
             )
-            asunto_staff = f"Cambio de comisión rechazado: {student_user.get_full_name()} ({inscripcion.estudiante.dni})"
+            asunto_staff = f"Cambio de comisión rechazado: {est_full} ({inscripcion.estudiante.dni})"
             cuerpo_staff = (
                 f"Se rechazó el cambio de comisión del/la estudiante "
-                f"{student_user.get_full_name()} (DNI {inscripcion.estudiante.dni}) "
+                f"{est_full} (DNI {inscripcion.estudiante.dni}) "
                 f"para '{espacio}' - {prof_nombre}."
             )
 
@@ -246,6 +250,8 @@ class NotificacionesService:
     def notificar_equivalencia_finalizada(pedido):
         """Notifica al estudiante y tutor sobre el otorgamiento de equivalencias."""
         student_user = pedido.estudiante.user
+        est_nombre = pedido.estudiante.nombre
+        est_full = f"{pedido.estudiante.apellido}, {pedido.estudiante.nombre}".strip(", ")
         asunto = f"Resultado de tu Trámite de Equivalencias: {pedido.resultado_final.upper()}"
         
         materias = pedido.materias.all()
@@ -253,7 +259,7 @@ class NotificacionesService:
         rechazadas = [m.nombre for m in materias if m.resultado == "rechazada"]
         
         cuerpo = (
-            f"Hola {student_user.first_name},\n\n"
+            f"Hola {est_nombre},\n\n"
             f"Te informamos que ha finalizado el trámite de equivalencias para el profesorado '{pedido.profesorado_destino_nombre}'.\n\n"
         )
         
@@ -274,7 +280,7 @@ class NotificacionesService:
         NotificacionesService.enviar_notificacion(student_user, asunto, cuerpo, context_type="equivalencia", context_id=pedido.id)
         
         # Notificar a tutores del profesorado
-        asunto_staff = f"Equivalencia Finalizada: {student_user.get_full_name()} ({pedido.estudiante.dni})"
+        asunto_staff = f"Equivalencia Finalizada: {est_full} ({pedido.estudiante.dni})"
         tutores = _get_tutores_estudiante(pedido.estudiante)
         for tutor in tutores:
             NotificacionesService.enviar_notificacion(

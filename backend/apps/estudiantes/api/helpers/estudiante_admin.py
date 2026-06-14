@@ -110,23 +110,9 @@ def _apply_estudiante_updates(
                 user.username = new_dni
                 user.save(update_fields=["username"])
 
-    if payload.email is not None and user:
-        user.email = payload.email or ""
-        user.save(update_fields=["email"])
-
-    if user:
-        user_updates = []
-        if payload.nombre is not None:
-            user.first_name = payload.nombre.strip()
-            user_updates.append("first_name")
-        if payload.apellido is not None:
-            user.last_name = payload.apellido.strip()
-            user_updates.append("last_name")
-        if payload.activo is not None:
-            user.is_active = payload.activo
-            user_updates.append("is_active")
-        if user_updates:
-            user.save(update_fields=user_updates)
+    if user and payload.activo is not None:
+        user.is_active = payload.activo
+        user.save(update_fields=["is_active"])
 
     if allow_estado_legajo and payload.estado_legajo is not None:
         val = str(payload.estado_legajo).upper()
