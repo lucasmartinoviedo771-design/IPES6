@@ -279,6 +279,9 @@ class EstudianteCarrera(models.Model):
         unique_together = ("estudiante", "profesorado")
         verbose_name = "Asignación estudiante-profesorado"
         verbose_name_plural = "Asignaciones estudiante-profesorado"
+        indexes = [
+            models.Index(fields=["estado_academico", "profesorado"]),
+        ]
 
     def __str__(self):
         return f"{self.estudiante.dni} → {self.profesorado.nombre}"

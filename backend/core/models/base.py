@@ -46,6 +46,9 @@ class Persona(models.Model):
         verbose_name = "Persona"
         verbose_name_plural = "Personas"
         ordering = ["apellido", "nombre"]
+        indexes = [
+            models.Index(fields=["apellido", "nombre"]),
+        ]
 
     def __str__(self):
         return f"{self.apellido}, {self.nombre} (DNI: {self.dni})"
