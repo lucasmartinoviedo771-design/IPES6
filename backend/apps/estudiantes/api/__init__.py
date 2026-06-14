@@ -11,7 +11,10 @@ from . import curso_intro_api  # noqa: F401
 from . import equivalencias_api  # noqa: F401
 from . import equivalencias_disposiciones_api  # noqa: F401
 from . import analiticos_api  # noqa: F401
-from . import admin_estudiantes_api  # noqa: F401
+from . import admin_estudiantes_core_api  # noqa: F401
+from . import admin_documentacion_api  # noqa: F401
+from . import admin_prorrogas_residencias_api  # noqa: F401
+from . import admin_resguardos_api  # noqa: F401
 from . import perfil_api  # noqa: F401
 from . import trayectoria_api  # noqa: F401
 from . import horarios_api  # noqa: F401
