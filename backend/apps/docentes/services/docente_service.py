@@ -31,22 +31,6 @@ class DocenteService:
         """
         existing = DocenteService.get_user_for_docente(docente)
         if existing:
-            updated = False
-            update_fields = []
-            email = docente.email or ""
-            first_name = docente.nombre or ""
-            last_name = docente.apellido or ""
-            if existing.email != email:
-                existing.email = email
-                update_fields.append("email")
-            if existing.first_name != first_name:
-                existing.first_name = first_name
-                update_fields.append("first_name")
-            if existing.last_name != last_name:
-                existing.last_name = last_name
-                update_fields.append("last_name")
-            if update_fields:
-                existing.save(update_fields=update_fields)
             return existing, False, None
 
         dni = (docente.dni or "").strip()
@@ -58,9 +42,6 @@ class DocenteService:
         user = User.objects.create_user(
             username=username,
             password=temp_password,
-            email=docente.email or "",
-            first_name=docente.nombre or "",
-            last_name=docente.apellido or "",
         )
         return user, True, temp_password
 

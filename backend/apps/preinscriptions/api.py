@@ -630,27 +630,30 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
     
     if payload.estudiante:
         est = payload.estudiante
-        u = pre.alumno.user
-        u.first_name = est.nombres or u.first_name
-        u.last_name = est.apellido or u.last_name
-        if est.email:
-            u.email = est.email
-        u.save()
-        
         p = pre.alumno.persona
-        if est.telefono is not None: p.telefono = est.telefono
-        if est.domicilio is not None: p.domicilio = est.domicilio
-        if est.fecha_nacimiento: p.fecha_nacimiento = est.fecha_nacimiento
-        
-        if est.genero is not None:
-            from .services.preinscripcion_service import map_genero
-            p.genero = map_genero(est.genero)
+        if p:
+            if est.nombres is not None:
+                p.nombre = est.nombres.strip()
+            if est.apellido is not None:
+                p.apellido = est.apellido.strip()
+            if est.email is not None:
+                p.email = est.email.strip()
+            if est.telefono is not None:
+                p.telefono = est.telefono
+            if est.domicilio is not None:
+                p.domicilio = est.domicilio
+            if est.fecha_nacimiento:
+                p.fecha_nacimiento = est.fecha_nacimiento
             
-        if est.cuil is not None:
-            p.cuil = est.cuil
-            pre.cuil = est.cuil
-            
-        p.save()
+            if est.genero is not None:
+                from .services.preinscripcion_service import map_genero
+                p.genero = map_genero(est.genero)
+                
+            if est.cuil is not None:
+                p.cuil = est.cuil
+                pre.cuil = est.cuil
+                
+            p.save()
 
     if payload.carrera_id:
         pre.carrera_id = payload.carrera_id
