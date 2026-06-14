@@ -1,28 +1,13 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { enqueueSnackbar } from 'notistack';
-import {
-  crearPlanillaRegularidad,
-  obtenerPlanillaRegularidadDetalle,
-  actualizarPlanillaRegularidad,
-  PlanillaRegularidadCreatePayload,
-  obtenerInscriptosActivos,
-  obtenerDocentesDefecto,
-} from '@/api/primeraCarga';
 import {
   RegularidadMetadataPlantilla,
   RegularidadMetadataMateria,
   RegularidadMetadataProfesorado,
+  PlanillaRegularidadCreatePayload
 } from '@/api/primeraCarga';
-import {
-  obtenerPlanillaRegularidad,
-  guardarPlanillaRegularidad,
-  gestionarCierreRegularidad,
-  obtenerDocentesDefecto as obtenerDocentesDefectoStandard,
-  GuardarRegularidadPayload,
-} from '@/api/cargaNotas';
-import { PlanillaFormValues, PlanillaFilaFormValues } from '../types';
+import { PlanillaFormValues } from '../types';
 import {
   DEFAULT_DOCENTE,
   DEFAULT_DOCENTE_BEDEL,
@@ -30,6 +15,10 @@ import {
   buildDefaultRows,
   todayIso,
 } from '../constants';
+
+import { usePlanillaColumns } from './usePlanillaColumns';
+import { usePlanillaCalculations } from './usePlanillaCalculations';
+import { usePlanillaQueries } from './usePlanillaQueries';
 
 interface UsePlanillaFormOptions {
   open: boolean;
@@ -51,26 +40,26 @@ interface UsePlanillaFormOptions {
   comisionId?: number | null;
 }
 
-export function usePlanillaForm({
-  open,
-  onClose,
-  onCreated,
-  planillaId,
-  mode = 'create',
-  selectedProfesorado,
-  selectedMateria,
-  selectedPlantilla,
-  columnasDinamicas,
-  situacionesDisponibles,
-  plantillasDisponibles,
-  estudiantePorDni,
-  metadataQueryRefetch,
-  defaultProfesoradoId,
-  defaultMateriaId,
-  scope = 'primera_carga',
-  comisionId,
-}: UsePlanillaFormOptions) {
-  const queryClient = useQueryClient();
+export function usePlanillaForm(options: UsePlanillaFormOptions) {
+  const {
+    open,
+    onClose,
+    onCreated,
+    planillaId,
+    mode = 'create',
+    selectedProfesorado,
+    selectedMateria,
+    selectedPlantilla,
+    columnasDinamicas,
+    situacionesDisponibles,
+    plantillasDisponibles,
+    estudiantePorDni,
+    metadataQueryRefetch,
+    defaultProfesoradoId,
+    defaultMateriaId,
+    scope = 'primera_carga',
+    comisionId,
+  } = options;
 
   const {
     control,
@@ -98,129 +87,52 @@ export function usePlanillaForm({
     },
   });
 
-  const detailQuery = useQuery<any>({
-    queryKey: scope === 'standard'
-      ? ['carga-notas', 'regularidad', comisionId]
-      : ['primera-carga', 'regularidades', 'detalle', planillaId],
-    queryFn: async (): Promise<any> => {
-      if (scope === 'standard') {
-        const data = await obtenerPlanillaRegularidad(comisionId!);
-        let defDocentes: any[] = [];
-        try {
-          const profId = data.profesorado_id || defaultProfesoradoId || 0;
-          const matId = data.materia_id || defaultMateriaId || 0;
-          const year = data.anio || new Date().getFullYear();
-          if (profId && matId) {
-            defDocentes = await obtenerDocentesDefectoStandard(Number(matId), Number(profId), year);
-          }
-        } catch (err) {
-          void 0;
-        }
+  const [persistStudents, setPersistStudents] = React.useState(false);
+  const [rowsToAdd, setRowsToAdd] = React.useState<string>('5');
 
-        const mappedDocentes = defDocentes.length > 0
-          ? defDocentes.map((doc, idx) => ({
-              docente_id: doc.docente_id,
-              nombre: doc.nombre,
-              dni: doc.dni || '',
-              rol: doc.rol || 'profesor',
-              orden: doc.orden ?? (idx + 1)
-            }))
-          : data.docentes.map((name, idx) => ({
-              docente_id: null,
-              nombre: name,
-              dni: '',
-              rol: idx === 0 ? 'profesor' : 'bedel',
-              orden: idx + 1
-            }));
+  const watchMateriaId = watch('materiaId');
+  const watchProfesoradoId = watch('profesoradoId');
+  const watchFecha = watch('fecha');
 
-        return {
-          ok: true,
-          message: 'Planilla cargada',
-          data: {
-            profesorado_id: data.profesorado_id || defaultProfesoradoId || '',
-            materia_id: data.materia_id || defaultMateriaId || '',
-            profesorado_nombre: data.profesorado_nombre || '',
-            materia_nombre: data.materia_nombre || '',
-            materia_anio: data.materia_anio || null,
-            formato: data.formato || '',
-            regimen: data.regimen || '',
-            plantilla_id: 1, // standard default/placeholder plantilla
-            fecha: data.fecha_cierre || todayIso(),
-            folio: '',
-            plan_resolucion: data.plan_resolucion || '',
-            observaciones: '',
-            docentes: mappedDocentes,
-            filas: data.estudiantes.map((e, idx) => ({
-              orden: e.orden || (idx + 1),
-              dni: e.dni,
-              apellido_nombre: e.apellido_nombre,
-              nota_final: e.nota_final !== null ? String(e.nota_final) : '',
-              asistencia: e.asistencia !== null ? String(e.asistencia) : '',
-              situacion: e.situacion || '',
-              excepcion: e.excepcion ?? false,
-              datos: {
-                tp_final: e.nota_tp !== null ? String(e.nota_tp) : '',
-              },
-              inscripcion_id: e.inscripcion_id,
-            })),
-            estado: data.esta_cerrada ? 'final' : 'draft',
-            force_upgrade: false,
-            situaciones: data.situaciones,
-          }
-        };
-      }
-      return obtenerPlanillaRegularidadDetalle(planillaId!);
-    },
-    enabled: open && (scope === 'standard' ? !!comisionId : !!planillaId),
+  const watchFechaYear = React.useMemo(() => {
+    if (!watchFecha) return new Date().getFullYear();
+    const parsed = new Date(watchFecha);
+    return isNaN(parsed.getFullYear()) ? new Date().getFullYear() : parsed.getFullYear();
+  }, [watchFecha]);
+
+  const { detailQuery, inscriptosActivosQuery, docentesDefectoQuery, mutation } = usePlanillaQueries({
+    open,
+    scope,
+    planillaId,
+    comisionId,
+    defaultProfesoradoId,
+    defaultMateriaId,
+    mode,
+    watchMateriaId,
+    watchProfesoradoId,
+    watchFechaYear,
+    onClose,
+    onCreated,
+    getValues,
+    setValue,
+    persistStudents,
   });
 
-  const localColumnasDinamicas = useMemo(() => {
-    if (scope === 'standard' && detailQuery.data?.data) {
-      const d = detailQuery.data.data;
-      const formato = (d.formato || '').toUpperCase();
-      const regimen = (d.regimen || '').toUpperCase();
-      const isAnual = regimen === 'ANU' || regimen === 'ANUAL';
-      const is1C = regimen === 'PCU' || regimen === '1C' || regimen === '1° CUATRIMESTRE';
-      const is2C = regimen === 'SCU' || regimen === '2C' || regimen === '2° CUATRIMESTRE';
+  const { localColumnasDinamicas, localSituacionesDisponibles } = usePlanillaColumns({
+    scope,
+    detailData: detailQuery.data?.data,
+    columnasDinamicas,
+    situacionesDisponibles,
+  });
 
-      // Asignatura / Módulo
-      if (formato === 'ASI' || formato === 'ASIGNATURA' || formato === 'MOD' || formato === 'MODULO') {
-        if (isAnual) {
-          return [
-            { key: 'tp_1c', label: 'Nota TP 1C', type: 'number', optional: true },
-            { key: 'parcial_1p', label: 'Parcial 1P', type: 'number', optional: true },
-            { key: 'parcial_1r', label: 'Recup. 1P', type: 'number', optional: true },
-            { key: 'tp_2c', label: 'Nota TP 2C', type: 'number', optional: true },
-            { key: 'parcial_2p', label: 'Parcial 2P', type: 'number', optional: true },
-            { key: 'parcial_2r', label: 'Recup. 2P', type: 'number', optional: true },
-          ];
-        } else if (is1C) {
-          return [
-            { key: 'tp_1c', label: 'Nota TP', type: 'number', optional: true },
-            { key: 'parcial_1p', label: 'Parcial 1P', type: 'number', optional: true },
-            { key: 'parcial_1r', label: 'Recup. 1P', type: 'number', optional: true },
-          ];
-        } else if (is2C) {
-          return [
-            { key: 'tp_2c', label: 'Nota TP', type: 'number', optional: true },
-            { key: 'parcial_2p', label: 'Parcial 2P', type: 'number', optional: true },
-            { key: 'parcial_2r', label: 'Recup. 2P', type: 'number', optional: true },
-          ];
-        }
-      }
-
-      // Taller / Práctica / Laboratorio / Seminario
-      return [{ key: 'tp_final', label: 'Nota TP', type: 'number', optional: true }];
-    }
-    return columnasDinamicas;
-  }, [scope, detailQuery.data?.data, columnasDinamicas]);
-
-  const localSituacionesDisponibles = useMemo(() => {
-    if (scope === 'standard') {
-      return detailQuery.data?.data?.situaciones ?? [];
-    }
-    return situacionesDisponibles;
-  }, [scope, detailQuery.data?.data?.situaciones, situacionesDisponibles]);
+  const { previewCodigo, calculateSituacionForRow } = usePlanillaCalculations({
+    selectedProfesorado,
+    selectedMateria,
+    selectedPlantilla,
+    localSituacionesDisponibles,
+    getValues,
+    setValue,
+  });
 
   const {
     fields: docenteFields,
@@ -242,34 +154,8 @@ export function usePlanillaForm({
     name: 'filas',
   });
 
-  const watchMateriaId = watch('materiaId');
-  const watchProfesoradoId = watch('profesoradoId');
-  const watchFecha = watch('fecha');
-
-  const watchFechaYear = React.useMemo(() => {
-    if (!watchFecha) return new Date().getFullYear();
-    const parsed = new Date(watchFecha);
-    return isNaN(parsed.getFullYear()) ? new Date().getFullYear() : parsed.getFullYear();
-  }, [watchFecha]);
-
-  const { data: inscriptosActivos } = useQuery({
-    queryKey: ['primera-carga', 'materias', watchMateriaId, 'inscriptos-activos', watchFechaYear],
-    queryFn: () => obtenerInscriptosActivos(Number(watchMateriaId), watchFechaYear),
-    enabled: open && mode === 'create' && !!watchMateriaId && scope === 'primera_carga',
-  });
-
-  const { data: docentesDefecto } = useQuery({
-    queryKey: scope === 'standard'
-      ? ['carga-notas', 'materias', watchMateriaId, 'docentes-defecto', watchProfesoradoId, watchFechaYear]
-      : ['primera-carga', 'materias', watchMateriaId, 'docentes-defecto', watchProfesoradoId, watchFechaYear],
-    queryFn: () => {
-      if (scope === 'standard') {
-        return obtenerDocentesDefectoStandard(Number(watchMateriaId), Number(watchProfesoradoId), watchFechaYear);
-      }
-      return obtenerDocentesDefecto(Number(watchMateriaId), Number(watchProfesoradoId), watchFechaYear);
-    },
-    enabled: open && (mode === 'create' || scope === 'standard') && !!watchMateriaId && !!watchProfesoradoId,
-  });
+  const inscriptosActivos = inscriptosActivosQuery.data;
+  const docentesDefecto = docentesDefectoQuery.data;
 
   useEffect(() => {
     if (mode === 'create' && inscriptosActivos && inscriptosActivos.length > 0 && scope === 'primera_carga') {
@@ -299,115 +185,6 @@ export function usePlanillaForm({
     }
   }, [docentesDefecto, mode, scope, replaceDocente]);
 
-  const [persistStudents, setPersistStudents] = React.useState(false);
-  const [rowsToAdd, setRowsToAdd] = React.useState<string>('5');
-
-  const mutation = useMutation({
-    mutationFn: async (payload: PlanillaRegularidadCreatePayload) => {
-      if (scope === 'standard') {
-        const parseVal = (v: any) => {
-          if (v === undefined || v === null || String(v).trim() === '' || String(v).trim() === '---') return null;
-          return Number(String(v).replace(',', '.'));
-        };
-        const standardPayload: GuardarRegularidadPayload = {
-          comision_id: comisionId!,
-          fecha_cierre: payload.fecha,
-          observaciones_generales: payload.observaciones || undefined,
-          estudiantes: payload.filas.map(f => ({
-            inscripcion_id: (f as any).inscripcion_id || 0,
-            nota_tp: f.datos?.tp_final ? parseVal(f.datos.tp_final) : null,
-            nota_final: f.nota_final ? parseVal(f.nota_final) : null,
-            asistencia: f.asistencia ? parseVal(f.asistencia) : null,
-            excepcion: f.excepcion,
-            situacion: f.situacion,
-            observaciones: (f as any).observaciones || undefined,
-          })),
-        };
-        return guardarPlanillaRegularidad(standardPayload);
-      }
-
-      if (mode === 'edit' && planillaId) {
-        return actualizarPlanillaRegularidad(planillaId, payload);
-      }
-      return crearPlanillaRegularidad(payload);
-    },
-    onSuccess: (data: any, variables) => {
-      if (scope === 'standard') {
-        queryClient.invalidateQueries({ queryKey: ['carga-notas', 'regularidad', comisionId] });
-        enqueueSnackbar(data.message || "Notas de regularidad guardadas correctamente.", { variant: 'success' });
-        onClose();
-        return;
-      }
-
-      queryClient.invalidateQueries({ queryKey: ['primera-carga', 'regularidades', 'historial'] });
-      enqueueSnackbar(data.message, { variant: 'success' });
-
-      // ... (warnings logic same as before) ...
-      if (typeof data.data?.regularidades_registradas === 'number') {
-        const count = data.data.regularidades_registradas;
-        const messageDetalle = variables.dry_run
-          ? `Simuladas ${count} regularidades.`
-          : `${count} regularidades registradas.`;
-        enqueueSnackbar(
-          messageDetalle,
-          { variant: 'info' },
-        );
-      }
-      if (data.data?.warnings?.length) {
-        data.data.warnings.forEach((warning: string) => {
-          if (warning && !warning.includes("No se encontró inscripción")) {
-            enqueueSnackbar(warning, { variant: 'warning' });
-          }
-        });
-      }
-      if (!variables.dry_run && data.data?.pdf_url) {
-        // ... (pdf open logic) ...
-        const base = import.meta.env.VITE_API_BASE || window.location.origin;
-        const mediaBase = base.replace(/\/api\/?$/, '/');
-        let targetUrl = data.data.pdf_url;
-        if (!/^https?:\/\//i.test(targetUrl)) {
-          try {
-            targetUrl = new URL(targetUrl, mediaBase).toString();
-          } catch (error) {
-          }
-        }
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
-      }
-
-      onCreated?.(data.data, !!variables.dry_run);
-
-      if (!variables.dry_run && !planillaId && persistStudents) {
-        // Si es creación y quiere persistir estudiantes:
-        // 1. Guardamos la lista de estudiantes retornada por el servidor (ya tiene los HIS- DNIs creados)
-        const serverFilas = data.data?.filas || getValues('filas');
-        const preservedFilas = serverFilas.map((f: any, idx: number) => ({
-          ...buildDefaultRow(idx),
-          dni: f.dni,
-          apellido_nombre: f.apellido_nombre,
-          orden: idx + 1
-        }));
-
-
-        // 2. Reseteamos formulario pero volvemos a poner las filas
-        // Cuidado: reset() borra todo. Mejor estrategia: setValue manual de campos cabecera.
-        setValue('materiaId', '');
-        setValue('plantillaId', '');
-        setValue('folio', '');
-        setValue('observaciones', '');
-        setValue('filas', preservedFilas);
-
-        enqueueSnackbar('Se han mantenido los estudiantes para la siguiente carga. Seleccione nueva materia.', { variant: 'info' });
-        // NO llamamos onClose()
-      } else {
-        onClose();
-      }
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.message ?? 'No se pudo generar la planilla.';
-      enqueueSnackbar(message, { variant: 'error' });
-    },
-  });
-
   useEffect(() => {
     if (open) {
       metadataQueryRefetch();
@@ -433,8 +210,7 @@ export function usePlanillaForm({
     if (!open) {
       reset();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultProfesoradoId, defaultMateriaId, mode]);
+  }, [open, defaultProfesoradoId, defaultMateriaId, mode, metadataQueryRefetch, reset]);
 
   useEffect(() => {
     if (open && detailQuery.data?.data) {
@@ -476,9 +252,6 @@ export function usePlanillaForm({
   useEffect(() => {
     if (selectedMateria) {
       setValue('planResolucion', selectedMateria.plan_resolucion || '');
-      // Al cambiar de materia, seleccionamos automáticamente la primera plantilla compatible disponible
-      // para evitar que quede seleccionada una plantilla incompatible (ej: Modulo en Asignatura).
-      // Solo intentamos mantener la actual si estamos en modo edición.
       if (mode === 'create') {
         if (plantillasDisponibles.length > 0) {
           setValue('plantillaId', plantillasDisponibles[0].id);
@@ -486,7 +259,6 @@ export function usePlanillaForm({
           setValue('plantillaId', '');
         }
       } else {
-        // En modo view/edit intentamos preservar si existe
         const currentId = getValues('plantillaId');
         const exists = plantillasDisponibles.some(p => p.id === Number(currentId));
         if (!exists && plantillasDisponibles.length > 0) {
@@ -498,216 +270,6 @@ export function usePlanillaForm({
       setValue('planResolucion', '');
     }
   }, [selectedMateria, plantillasDisponibles, setValue, mode, getValues]);
-
-  const previewCodigo = useMemo(() => {
-    const fechaSeleccionada = getValues('fecha');
-    if (!selectedProfesorado || !fechaSeleccionada) {
-      return null;
-    }
-    const day = fechaSeleccionada.replace(/-/g, '');
-    return `PRP${String(selectedProfesorado.id).padStart(2, '0')}${selectedProfesorado.acronimo}${day}XXX`;
-  }, [selectedProfesorado, getValues]);
-
-  const calculateSituacionForRow = (index: number) => {
-    const row = getValues(`filas.${index}`);
-    if (!selectedMateria) return;
-
-    // Parsers
-    const parseVal = (v: any) => {
-      if (!v || v === '---') return 0;
-      return Number(String(v).replace(',', '.'));
-    };
-
-    const asistencia = row.asistencia ? parseInt(row.asistencia, 10) : 0;
-    const notaVal = row.nota_final === '---' || !row.nota_final ? 0 : parseVal(row.nota_final);
-
-    let newSit = '';
-    const dictado = selectedPlantilla?.dictado || selectedMateria?.dictado || '';
-    let formato = selectedMateria?.formato?.toUpperCase() || '';
-
-    // Fallback if materia has no format but template does
-    if (!formato && selectedPlantilla) {
-      const pName = selectedPlantilla.nombre.toUpperCase();
-      if (pName.includes('TALLER')) formato = 'TALLER';
-      else if (pName.includes('SEMINARIO')) formato = 'SEMINARIO';
-      else if (pName.includes('ASIGNATURA')) formato = 'ASIGNATURA';
-      else if (pName.includes('MODULO')) formato = 'MODULO';
-      else if (pName.includes('LABORATORIO')) formato = 'LABORATORIO';
-    }
-
-    const isAnual = dictado === 'ANUAL';
-    const is1C = dictado === '1C' || dictado === '1° Cuatrimestre';
-    const is2C = dictado === '2C' || dictado === '2° Cuatrimestre';
-
-    // Logic groups
-    const isTallerGroup = ['TAL', 'TALLER', 'SEM', 'SEMINARIO', 'LAB', 'LABORATORIO', 'PRA', 'PRACTICA'].includes(formato || '');
-    const isAsignaturaGroup = ['ASI', 'ASIGNATURA'].includes(formato || '');
-    const isModuloGroup = ['MOD', 'MODULO'].includes(formato || '');
-
-    // LÓGICA STRICTA PARA MODULO/ASIGNATURA/TALLER
-
-    // Thresholds (Reglamento Académico)
-    // Taller/Práctica/Laboratorio/Módulo: 80% (65% con excepción justificada)
-    // Asignatura: 65%
-    let thresholdRegular = 65;
-    if (isTallerGroup || isModuloGroup) {
-      thresholdRegular = row.excepcion ? 65 : 80;
-    }
-
-    if (isModuloGroup || isAsignaturaGroup || isTallerGroup) {
-      if (asistencia < 30) {
-        newSit = 'LIBRE-AT';
-      } else if (asistencia < thresholdRegular) {
-        newSit = 'LIBRE-I';
-      } else {
-        // Attendance OK -> Check Grades
-        let desaprobado = false;
-
-        // Define keys based on dictado
-        if (isAnual) {
-          const tpFinal = parseVal(row.datos?.tp_final);
-          const tp1 = parseVal(row.datos?.tp_1c);
-          const tp2 = parseVal(row.datos?.tp_2c);
-
-          const hasTpFinal = row.datos && 'tp_final' in row.datos;
-          const hasTp1 = row.datos && 'tp_1c' in row.datos;
-          const hasTp2 = row.datos && 'tp_2c' in row.datos;
-
-          // Fail if any TP exists and is < 6
-          if (hasTpFinal && tpFinal < 6) desaprobado = true;
-          if (hasTp1 && tp1 < 6) desaprobado = true;
-          if (hasTp2 && tp2 < 6) desaprobado = true;
-
-          const p1 = parseVal(row.datos?.parcial_1p);
-          const r1 = parseVal(row.datos?.parcial_1r);
-          const p2 = parseVal(row.datos?.parcial_2p);
-          const r2 = parseVal(row.datos?.parcial_2r);
-
-          // Check Parciales only if NOT Taller/Lab/Seminario
-          if (!isTallerGroup) {
-            if (Math.max(p1, r1) < 6) desaprobado = true;
-            if (Math.max(p2, r2) < 6) desaprobado = true;
-          }
-        } else if (is1C) {
-          const tp = parseVal(row.datos?.tp_1c);
-          const p = parseVal(row.datos?.parcial_1p);
-          const r = parseVal(row.datos?.parcial_1r);
-
-          if (tp < 6) desaprobado = true;
-          if (!isTallerGroup && Math.max(p, r) < 6) desaprobado = true;
-        } else if (is2C) {
-          const tp = parseVal(row.datos?.tp_2c);
-          const p = parseVal(row.datos?.parcial_2p);
-          const r = parseVal(row.datos?.parcial_2r);
-
-          if (tp < 6) desaprobado = true;
-          if (!isTallerGroup && Math.max(p, r) < 6) desaprobado = true;
-        }
-
-        // Global Final Note Check
-        if (notaVal < 6) desaprobado = true;
-
-        if (desaprobado) {
-          // Determine specific failure status
-          let specificStatus = 'DESAPROBADO_PA'; // Default to Parcial fail
-
-          const tp1 = parseVal(row.datos?.tp_1c);
-          const tp2 = parseVal(row.datos?.tp_2c);
-          const tpFinal = parseVal(row.datos?.tp_final);
-
-          // If failure is due to TP, switch to DESAPROBADO_TP
-          if (is1C && tp1 < 6) specificStatus = 'DESAPROBADO_TP';
-          else if (is2C && tp2 < 6) specificStatus = 'DESAPROBADO_TP';
-          else if (isAnual) {
-            if ((row.datos && 'tp_final' in row.datos && tpFinal < 6) ||
-              (row.datos && 'tp_1c' in row.datos && tp1 < 6) ||
-              (row.datos && 'tp_2c' in row.datos && tp2 < 6)) {
-              specificStatus = 'DESAPROBADO_TP';
-            }
-          }
-
-          // Taller/Lab failure is always TP related (since no exams)
-          if (isTallerGroup) specificStatus = 'DESAPROBADO_TP';
-
-          newSit = specificStatus;
-        } else {
-          // Passed
-          if (isTallerGroup) {
-            // Taller/Seminario/Lab -> Direct Approval
-            newSit = 'APROBADO';
-          } else if (isModuloGroup) {
-            // MÓDULO LOGIC: Check for PROMOCIÓN (Art 63)
-            // 1. Asistencia >= 80%
-            // 2. Parciales >= 8 in FIRST INSTANCE (P). Taking Recuperatorio loses promotion.
-            // 3. TPs Approved (already checked above to reach this block)
-
-            let promo = false;
-            if (asistencia >= 80) {
-              if (isAnual) {
-                const p1 = parseVal(row.datos?.parcial_1p);
-                const p2 = parseVal(row.datos?.parcial_2p);
-                // Must have >= 8 in both P instances to promote
-                if (p1 >= 8 && p2 >= 8) promo = true;
-              } else if (is1C) {
-                const p = parseVal(row.datos?.parcial_1p);
-                if (p >= 8) promo = true;
-              } else if (is2C) {
-                const p = parseVal(row.datos?.parcial_2p);
-                if (p >= 8) promo = true;
-              }
-            }
-
-            newSit = promo ? 'PROMOCION' : 'REGULAR';
-          } else {
-            // Asignatura -> Regularity
-            newSit = 'REGULAR';
-          }
-        }
-      }
-    }
-
-    // Normalización de Códigos (PRO -> PROMOCIONADO, etc)
-    const validCodes = localSituacionesDisponibles.map((s: any) => s.codigo);
-
-    // Helper to find best matching code
-    const findCode = (search: string) => {
-      const found = localSituacionesDisponibles.find((s: any) =>
-        s.codigo === search ||
-        s.label.toUpperCase() === search ||
-        s.label.toUpperCase().includes(search)
-      );
-      return found ? found.codigo : search;
-    };
-
-    if (newSit === 'APROBADO') {
-      newSit = findCode('APROBADO'); // Tries to find matching code for APROBADO
-    }
-
-    // Mapeo de códigos cortos a largos si es necesario
-    const mapCode = (short: string, long: string) => {
-      if (newSit === short && !validCodes.includes(short) && validCodes.includes(long)) {
-        newSit = long;
-      } else if (newSit === long && !validCodes.includes(long) && validCodes.includes(short)) {
-        newSit = short;
-      }
-    }
-
-    mapCode('PRO', 'PROMOCIONADO');
-    mapCode('REG', 'REGULAR');
-    mapCode('LIBRE', 'LIBRE-I'); // Default libre
-    mapCode('APR', 'APROBADO'); // Try to map common abbreviations
-
-    // If still not valid, try to find by name similar to strictly what we have
-    if (!validCodes.includes(newSit)) {
-      // Last resort lookup
-      const similar = localSituacionesDisponibles.find((s: any) => s.label.toUpperCase().includes(newSit.replace(/_/g, ' ')));
-      if (similar) newSit = similar.codigo;
-    }
-
-    if (newSit !== row.situacion) {
-      setValue(`filas.${index}.situacion`, newSit, { shouldDirty: true });
-    }
-  };
 
   const handleAutoCalculateAll = () => {
     filaFields.forEach((_, index) => {
@@ -725,9 +287,8 @@ export function usePlanillaForm({
   };
 
   const handleInsertRow = (index: number) => {
-    // Usamos splite/insert logica manual porque useFieldArray.insert a veces da problemas de re-render index
-    const newRow = buildDefaultRow(0); // El orden se recalcula al enviar
-    // @ts-ignore - insert is available in useFieldArray returns but sometimes typed poorly in older RHF
+    const newRow = buildDefaultRow(0);
+    // @ts-ignore
     replaceFilas([
       ...getValues('filas').slice(0, index + 1),
       newRow,
@@ -747,14 +308,11 @@ export function usePlanillaForm({
     const newList = [...currentDocentes];
 
     if (bedelIndex !== -1) {
-      // Insertar antes del bedel
       newList.splice(bedelIndex, 0, newDocente);
     } else {
-      // Si no hay bedel (raro), al final
       newList.push(newDocente);
     }
 
-    // Recalcular orden
     const orderedList = newList.map((d, i) => ({
       ...d,
       orden: i + 1,
@@ -767,7 +325,6 @@ export function usePlanillaForm({
     const currentDocentes = getValues('docentes');
     const newList = currentDocentes.filter((_, i) => i !== index);
 
-    // Recalcular orden
     const orderedList = newList.map((d, i) => ({
       ...d,
       orden: i + 1,
@@ -791,16 +348,14 @@ export function usePlanillaForm({
     setValue(`filas.${index}.apellido_nombre`, match.apellido_nombre, { shouldDirty: true });
   };
 
-  // --- LÓGICA DE ASISTENCIA BLUR AUTO-FILL ---
   const handleAsistenciaBlur = (index: number, e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
-    // Auto-fill empty fields with '---' if attendance is entered
     if (val && val.trim() !== '') {
       const currentRow = getValues(`filas.${index}`);
 
       if (!currentRow.nota_final) setValue(`filas.${index}.nota_final`, '---', { shouldDirty: true });
 
-      columnasDinamicas.forEach(col => {
+      localColumnasDinamicas.forEach((col: any) => {
         const currentVal = currentRow.datos?.[col.key];
         if (!currentVal || String(currentVal).trim() === '') {
           setValue(`filas.${index}.datos.${col.key}`, '---', { shouldDirty: true });
@@ -808,12 +363,10 @@ export function usePlanillaForm({
       });
     }
 
-    // Trigger calculation
     calculateSituacionForRow(index);
   };
 
   const handleCopyStudents = () => {
-    // Obtenemos los alumnos actuales del listado
     const filas = getValues('filas');
     const validos = filas
       .filter(f => f.dni && f.dni.trim() !== '')
@@ -903,7 +456,6 @@ export function usePlanillaForm({
       return;
     }
 
-    // Actualizar el estado del formulario para remover físicamente las vacías de la UI
     if (filasConDatos.length !== values.filas.length) {
       const nuevasFilas = filasConDatos.map((f, i) => ({
         ...f,
@@ -915,7 +467,6 @@ export function usePlanillaForm({
     const filasPreparadas = filasConDatos.map((f, i) => ({
       ...f,
       orden: i + 1,
-      // Usar un índice lógico para el mensaje de error basado en la nueva tabla limpia
       displayIndex: i + 1
     }));
 
@@ -925,7 +476,6 @@ export function usePlanillaForm({
         enqueueSnackbar(`Ingrese el DNI o el Nombre en la fila ${rowNum}.`, { variant: 'warning' });
         return;
       }
-      // Validar que si no hay DNI, al menos el backend lo pueda manejar (ya cubierto por logica backend)
       if (!fila.apellido_nombre.trim()) {
         enqueueSnackbar(`Ingrese el nombre del estudiante en la fila ${rowNum}.`, { variant: 'warning' });
         return;
@@ -948,7 +498,7 @@ export function usePlanillaForm({
     try {
       filasPayload = filasPreparadas.map<PlanillaRegularidadCreatePayload['filas'][number]>((fila, idx) => {
         const datosLimpios: Record<string, string> = {};
-        columnasDinamicas.forEach((col) => {
+        localColumnasDinamicas.forEach((col: any) => {
           const valor = fila.datos?.[col.key];
           const stringValor = valor !== undefined && valor !== null ? String(valor).trim() : '';
           if (!stringValor) {
