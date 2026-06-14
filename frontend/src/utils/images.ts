@@ -10,7 +10,7 @@ export async function prepareStudentPhoto(
   // 2) Crear un bitmap que respete la orientación EXIF (si el navegador lo soporta)
   let bmp: ImageBitmap | null = null;
   try {
-    bmp = await createImageBitmap(new Blob([arrayBuf]), { imageOrientation: "from-image" as any });
+    bmp = await createImageBitmap(new Blob([arrayBuf]), { imageOrientation: "from-image" as ImageBitmapOptions["imageOrientation"] });
   } catch {
     // Fallback
   }

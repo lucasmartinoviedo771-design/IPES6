@@ -26,11 +26,92 @@ export async function listarCarreras(): Promise<Carrera[]> {
   return out ?? [];
 }
 
-function humanizeNinjaErrors(err: any): string {
+interface NinjaErrorDetail {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
+
+interface ApiErrorResponse {
+  response?: {
+    status?: number;
+    data?: {
+      detail?: NinjaErrorDetail[] | string;
+      message?: string;
+    };
+  };
+}
+
+export interface PreinscripcionFormValues {
+  carrera_id?: number | string;
+  foto_4x4_dataurl?: string | null;
+  foto_dataUrl?: string | null;
+  doc_dni?: boolean | null;
+  doc_secundario?: boolean | null;
+  doc_constancia_cuil?: boolean | null;
+  doc_cert_trabajo?: boolean | null;
+  doc_buenasalud?: boolean | null;
+  doc_foto4x4?: boolean | null;
+  doc_titulo_en_tramite?: boolean | null;
+  doc_otro?: boolean | null;
+  nacionalidad?: string | null;
+  estado_civil?: string | null;
+  genero?: string | null;
+  localidad_nac?: string | null;
+  provincia_nac?: string | null;
+  pais_nac?: string | null;
+  tel_fijo?: string | null;
+  tel_movil?: string | null;
+  emergencia_telefono?: string | null;
+  emergencia_parentesco?: string | null;
+  sec_titulo?: string | null;
+  sec_establecimiento?: string | null;
+  sec_fecha_egreso?: string | Date | null;
+  sec_localidad?: string | null;
+  sec_provincia?: string | null;
+  sec_pais?: string | null;
+  sup1_titulo?: string | null;
+  sup1_establecimiento?: string | null;
+  sup1_fecha_egreso?: string | Date | null;
+  sup1_localidad?: string | null;
+  sup1_provincia?: string | null;
+  sup1_pais?: string | null;
+  trabaja?: boolean | null;
+  empleador?: string | null;
+  horario_trabajo?: string | null;
+  horario?: string | null;
+  domicilio_trabajo?: string | null;
+  dom_trabajo?: string | null;
+  cud_informado?: boolean | null;
+  condicion_salud_informada?: boolean | null;
+  condicion_salud_detalle?: string | null;
+  cohorte?: string | number | null;
+  dni?: string | number | null;
+  nombres?: string | null;
+  apellido?: string | null;
+  cuil?: string | null;
+  fecha_nacimiento?: string | Date | null;
+  email?: string | null;
+  domicilio?: string | null;
+  estudiante?: {
+    dni?: string | number | null;
+    nombres?: string | null;
+    apellido?: string | null;
+    cuil?: string | null;
+    fecha_nacimiento?: string | Date | null;
+    email?: string | null;
+    telefono?: string | null;
+    domicilio?: string | null;
+    genero?: string | null;
+  } | null;
+}
+
+function humanizeNinjaErrors(err: unknown): string {
   // Django Ninja suele mandar {detail: [{loc: ["body","campo"], msg: "error"...}, ...]}
-  const detail = err?.response?.data?.detail;
+  const apiErr = err as ApiErrorResponse;
+  const detail = apiErr.response?.data?.detail;
   if (Array.isArray(detail) && detail.length) {
-    const msgs = detail.slice(0, 6).map((e: any) => {
+    const msgs = detail.slice(0, 6).map((e) => {
       const loc = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : e.loc; // saco "body"
       return `• ${loc}: ${e.msg}`;
     });
@@ -42,15 +123,15 @@ function humanizeNinjaErrors(err: any): string {
   return "Datos inválidos. Verificá campos obligatorios y formatos.";
 }
 
-function asDate(value: any): string | null {
+function asDate(value: string | Date | null | undefined): string | null {
   if (!value) return null;
-  const iso = dayjs(value as any, "YYYY-MM-DD", true);
+  const iso = dayjs(value, "YYYY-MM-DD", true);
   if (iso.isValid()) return iso.format("YYYY-MM-DD");
-  const dmy = dayjs(value as any, "DD/MM/YYYY", true);
+  const dmy = dayjs(value, "DD/MM/YYYY", true);
   return dmy.isValid() ? dmy.format("YYYY-MM-DD") : null;
 }
 
-function mapToApiPayload(v: any) {
+function mapToApiPayload(v: PreinscripcionFormValues) {
   return {
     carrera_id: Number(v.carrera_id),
     foto_4x4_dataurl: v.foto_4x4_dataurl || v.foto_dataUrl || null,
@@ -113,27 +194,28 @@ function mapToApiPayload(v: any) {
   };
 }
 
-export async function crearPreinscripcion(payload: any): Promise<PreinscripcionOut> {
+export async function crearPreinscripcion(payload: PreinscripcionFormValues): Promise<PreinscripcionOut> {
   try {
     const apiPayload = mapToApiPayload(payload);
     const { data } = await client.post("/preinscripciones", apiPayload);
     toast.success("¡Preinscripción enviada!");
     return data as PreinscripcionOut;
-  } catch (err: any) {
-    if (err?.response?.status === 422) {
+  } catch (err: unknown) {
+    const apiErr = err as ApiErrorResponse;
+    if (apiErr.response?.status === 422) {
       const msg = humanizeNinjaErrors(err);
       toast.error(msg);
       console.error("[422 payload]", payload);
-      console.error("[422 response]", err?.response?.data);
+      console.error("[422 response]", apiErr.response?.data);
     } else {
       // Para otros errores (500, red, etc.), mostramos mensaje del backend si viene
-      const backendMsg = err?.response?.data?.message || err?.response?.data?.detail;
-      if (backendMsg) toast.error(backendMsg);
+      const backendMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail;
+      if (typeof backendMsg === "string") toast.error(backendMsg);
       console.error("[crearPreinscripcion][payload]", payload);
       try {
         console.error("[crearPreinscripcion][mapped]", mapToApiPayload(payload));
-      } catch (e) { /* Ignored, used for debugging purposes */ }
-      console.error("[crearPreinscripcion][response]", err?.response?.status, err?.response?.data);
+      } catch (_e) { /* Ignored, used for debugging purposes */ }
+      console.error("[crearPreinscripcion][response]", apiErr.response?.status, apiErr.response?.data);
     }
     throw err;
   }
@@ -151,9 +233,10 @@ export async function recuperarPreinscripcion(
       fecha_nacimiento,
     });
     return data;
-  } catch (err: any) {
-    const backendMsg = err?.response?.data?.message || err?.response?.data?.detail;
-    if (backendMsg) {
+  } catch (err: unknown) {
+    const apiErr = err as ApiErrorResponse;
+    const backendMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail;
+    if (typeof backendMsg === "string") {
       toast.error(backendMsg);
     } else {
       toast.error("Error al recuperar la preinscripción.");

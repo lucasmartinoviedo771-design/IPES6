@@ -1,5 +1,5 @@
 
-import { Suspense, lazy } from "react";
+import { ComponentType, Suspense, lazy } from "react";
 
 const SuspenseFallback = (
   <div style={{ padding: 32, textAlign: "center", color: "#666" }}>
@@ -7,32 +7,36 @@ const SuspenseFallback = (
   </div>
 );
 
-export const lazyPage = (importer: () => Promise<any>) => {
+export const lazyPage = <P extends object>(importer: () => Promise<unknown>) => {
   const Component = lazy(async () => {
     try {
-      const module = await importer();
+      const module = (await importer()) as Record<string, unknown>;
 
       // Buscador agresivo de componente (Double Default fix para Rolldown/Vite 8)
-      let comp = module.default || module;
+      const comp1 = module.default || module;
+      const comp2 = (comp1 && typeof comp1 === 'object' && 'default' in comp1)
+        ? (comp1 as Record<string, unknown>).default
+        : comp1;
+      const comp3 = (comp2 && typeof comp2 === 'object' && 'default' in comp2)
+        ? (comp2 as Record<string, unknown>).default
+        : comp2;
 
-      if (comp && typeof comp === 'object' && comp.default) {
-        comp = comp.default;
-      }
-
-      if (typeof comp !== 'function' && comp && comp.default) {
-        comp = comp.default;
-      }
-
-      return { default: comp };
+      return { default: comp3 as ComponentType<P> };
     } catch (err) {
       console.error('[Lazy] Error fatal cargando módulo:', err);
       throw err;
     }
   });
 
-  return (props: any) => (
-    <Suspense fallback={SuspenseFallback}>
-      <Component {...props} />
-    </Suspense>
-  );
+  const LazyPageWrapper = (props: P) => {
+    const ComponentCast = Component as unknown as ComponentType<P>;
+    return (
+      <Suspense fallback={SuspenseFallback}>
+        <ComponentCast {...props} />
+      </Suspense>
+    );
+  };
+  LazyPageWrapper.displayName = "LazyPageWrapper";
+
+  return LazyPageWrapper;
 };
