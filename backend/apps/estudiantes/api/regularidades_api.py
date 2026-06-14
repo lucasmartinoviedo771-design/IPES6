@@ -23,7 +23,7 @@ def vigencia_regularidad(request, materia_id: int, dni: str | None = None):
     if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
         return {"vigente": False, "motivo": "sin_regularidad"}
 
-    vigencia_limite, intentos = _calcular_vigencia_regularidad(est, reg)
+    vigencia_limite, intentos, _ = _calcular_vigencia_regularidad(est, reg)
     return {
         "vigente": True,
         "fecha_cierre": format_date(reg.fecha_cierre),

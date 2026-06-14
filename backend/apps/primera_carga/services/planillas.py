@@ -310,7 +310,7 @@ def crear_planilla_regularidad(
             if situacion == Regularidad.Situacion.REGULAR:
                 last_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia).exclude(fecha_cierre=fecha).order_by("-fecha_cierre").first()
                 if last_reg and last_reg.situacion == Regularidad.Situacion.REGULAR:
-                    limite, intentos = _calcular_vigencia_regularidad(estudiante, last_reg)
+                    limite, intentos, _ = _calcular_vigencia_regularidad(estudiante, last_reg)
                     if limite >= fecha and intentos < 3:
                         warnings.append(f"[Fila {orden}] {estudiante.dni}: Posee regularidad vigente hasta {limite} (Intentos: {intentos}).")
 
@@ -551,7 +551,7 @@ def actualizar_planilla_regularidad(
                     if situacion == Regularidad.Situacion.REGULAR:
                         last_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia_actual).exclude(fecha_cierre=planilla.fecha).order_by("-fecha_cierre").first()
                         if last_reg and last_reg.situacion == Regularidad.Situacion.REGULAR:
-                            v_limite, v_intentos = _calcular_vigencia_regularidad(estudiante, last_reg)
+                            v_limite, v_intentos, _ = _calcular_vigencia_regularidad(estudiante, last_reg)
                             if v_limite >= planilla.fecha and v_intentos < 3:
                                 # Nota: En actualización los warnings no se devuelven directo sino por historial
                                 pass

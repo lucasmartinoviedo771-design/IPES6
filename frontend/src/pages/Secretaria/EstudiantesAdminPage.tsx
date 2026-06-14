@@ -35,8 +35,9 @@ import { AgregarEstudianteExternoPanel } from "./estudiantes-admin/components/Ag
 export default function EstudiantesAdminPage() {
   const { user } = useAuth();
   const isAdminOrSec = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const isRectorado = hasAnyRole(user, ["rectorado"]) && !isAdminOrSec;
-  const isAttp = hasAnyRole(user, ["attp"]) && !isAdminOrSec;
+  const isReadOnly = !isAdminOrSec;
+  const isRectorado = isReadOnly;
+  const isAttp = isReadOnly;
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -223,7 +224,7 @@ export default function EstudiantesAdminPage() {
     <Box p={2} display="flex" flexDirection="column" gap={2}>
       <BackButton fallbackPath="/secretaria" />
 
-      <AgregarEstudianteExternoPanel />
+      {isAdminOrSec && <AgregarEstudianteExternoPanel />}
 
       <EstudiantesFilterBar
         search={search}
