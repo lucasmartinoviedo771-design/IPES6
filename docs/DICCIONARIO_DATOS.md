@@ -2,7 +2,7 @@
 
 **Base de datos:** `ipes6` (MySQL 8.0, puerto local 3307)  
 **Backend:** Django — Python  
-**Última actualización:** 2026-05-06
+**Última actualización:** 2026-06-14
 
 ---
 
@@ -45,7 +45,7 @@
 
 Datos personales compartidos por estudiantes, docentes y usuarios administrativos. Es la entidad central de identidad del sistema.
 
-> **Señal automática:** Al guardar, sincroniza `auth_user.username` (con el DNI), `first_name` y `last_name`.
+> **Señal automática:** Al guardar, sincroniza únicamente `auth_user.username` (con el DNI).
 
 | Columna | Tipo | Restricciones | Descripción |
 |---------|------|---------------|-------------|
@@ -1452,9 +1452,9 @@ Usuarios del sistema (docentes, estudiantes, staff, administradores).
 |---------|------|-------------|
 | `id` | int PK | Identificador interno |
 | `username` | varchar(150) UQ | Nombre de usuario — en este sistema es el **DNI** de la persona |
-| `first_name` | varchar(150) | Nombre (sincronizado desde `core_persona`) |
-| `last_name` | varchar(150) | Apellido (sincronizado desde `core_persona`) |
-| `email` | varchar(254) | Correo electrónico |
+| `first_name` | varchar(150) | OBSOLETO — la única fuente de verdad es `core_persona` |
+| `last_name` | varchar(150) | OBSOLETO — la única fuente de verdad es `core_persona` |
+| `email` | varchar(254) | OBSOLETO — la única fuente de verdad es `core_persona` |
 | `password` | varchar(128) | Contraseña hasheada (PBKDF2) |
 | `is_active` | tinyint(1) | Si `1`, la cuenta está activa |
 | `is_staff` | tinyint(1) | Si `1`, puede acceder al panel de administración |
