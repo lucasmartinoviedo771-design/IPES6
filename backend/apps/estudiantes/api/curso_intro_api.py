@@ -17,8 +17,7 @@ from core.models import (
     Turno,
     VentanaHabilitacion,
 )
-from core.permissions import ensure_roles
-
+from core.permissions import ensure_roles, CI_ALLOWED_ROLES, CI_FULL_ACCESS_ROLES
 from ..schemas import (
     CursoIntroAsistenciaIn,
     CursoIntroAutoInscripcionIn,
@@ -33,9 +32,6 @@ from ..schemas import (
 )
 from .router import estudiantes_router
 from apps.common.date_utils import format_date, format_datetime
-
-CI_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "curso_intro", "tutor"}
-CI_FULL_ACCESS_ROLES = {"admin", "secretaria"}
 
 
 def _user_group_names(user: User | None) -> set[str]:

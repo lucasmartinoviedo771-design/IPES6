@@ -70,10 +70,6 @@ from .services import (
     sync_course_snapshots,
 )
 
-# Common Roles
-STRUCTURE_VIEW_ROLES = {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"}
-STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
-
 def _staff_profesorados(user, roles: set[str]) -> set[int]:
     if not user or not user.is_authenticated:
         return set()

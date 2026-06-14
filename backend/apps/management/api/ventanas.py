@@ -2,11 +2,9 @@ from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
 from core.models import VentanaHabilitacion
-from core.permissions import ensure_roles
+from core.permissions import ensure_roles, VENTANA_GESTION_ROLES
 from ..router import management_router
 from ..schemas import VentanaIn, VentanaOut
-
-VENTANA_GESTION_ROLES = {"admin", "secretaria", "jefa_aaee"}
 
 @management_router.get("/ventanas", response=list[VentanaOut], auth=JWTAuth())
 def list_ventanas(request, tipo: str | None = None):

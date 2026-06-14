@@ -11,13 +11,14 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate
 
 from core.models import Estudiante, StaffAsignacion, VentanaHabilitacion
-from core.permissions import ensure_roles
-
-ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
-TUTORIA_ROLES = {"admin", "secretaria", "tutor"}
-EQUIVALENCIAS_REVIEW_ROLES = {"admin", "secretaria", "equivalencias"}
-TITULOS_ROLES = {"admin", "secretaria", "titulos"}
-EQUIVALENCIAS_STAFF_ROLES = ADMIN_ALLOWED_ROLES | TUTORIA_ROLES | EQUIVALENCIAS_REVIEW_ROLES | TITULOS_ROLES
+from core.permissions import (
+    ensure_roles,
+    ADMIN_ALLOWED_ROLES,
+    TUTORIA_ROLES,
+    EQUIVALENCIAS_REVIEW_ROLES,
+    TITULOS_ROLES,
+    EQUIVALENCIAS_STAFF_ROLES,
+)
 
 
 def user_has_roles(user: User | None, roles: Iterable[str]) -> bool:

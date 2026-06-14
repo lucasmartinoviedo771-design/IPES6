@@ -7,15 +7,11 @@ from collections.abc import Iterable
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q
 
-from core.permissions import ensure_roles
+from core.permissions import ensure_roles, ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES
 from core.models import (
     Docente,
     Estudiante,
 )
-
-ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
-# Roles que pueden ver información (solo lectura) pero no necesariamente editar
-STAFF_VIEW_ROLES = ADMIN_ALLOWED_ROLES | {"tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "rectorado", "attp"}
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:

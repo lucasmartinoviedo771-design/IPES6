@@ -14,11 +14,9 @@ from apps.estudiantes.services.equivalencias_disposicion import (
     serialize_disposicion,
 )
 from apps.common.api_schemas import ApiResponse
-from core.permissions import ensure_roles
+from core.permissions import ensure_roles, EQUIVALENCIAS_ALLOWED_ROLES
 
 from .router import estudiantes_router
-
-EQUIVALENCIAS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
 
 
 def _serialize_disposicion_schema(dispo, detalles=None) -> EquivalenciaDisposicionOut:

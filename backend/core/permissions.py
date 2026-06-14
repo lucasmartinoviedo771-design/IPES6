@@ -43,8 +43,23 @@ GLOBAL_OVERVIEW_ROLES = {
 }
 ALL_ROLES: set[str] = {
     "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
-    "tutor", "coordinador", "consulta", "estudiante", "rectorado", "attp"
+    "tutor", "coordinador", "consulta", "estudiante", "docente", "rectorado", "attp"
 }
+
+# --- DEFINICIONES ADICIONALES CONSOLIDADAS ---
+VENTANA_GESTION_ROLES = {"admin", "secretaria", "jefa_aaee"}
+ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
+TUTORIA_ROLES = {"admin", "secretaria", "tutor"}
+EQUIVALENCIAS_REVIEW_ROLES = {"admin", "secretaria", "equivalencias"}
+TITULOS_ROLES = {"admin", "secretaria", "titulos"}
+EQUIVALENCIAS_STAFF_ROLES = ADMIN_ALLOWED_ROLES | TUTORIA_ROLES | EQUIVALENCIAS_REVIEW_ROLES | TITULOS_ROLES
+CI_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "curso_intro", "tutor"}
+CI_FULL_ACCESS_ROLES = {"admin", "secretaria"}
+STAFF_VIEW_ROLES = ADMIN_ALLOWED_ROLES | {"tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "rectorado", "attp"}
+PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
+DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
+EQUIVALENCIAS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
+CALENDARIO_EDIT_ROLES = {"admin", "secretaria", "bedel", "attp"}
 
 # Define qué roles pueden asignar a otros roles (Admin Console)
 ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {

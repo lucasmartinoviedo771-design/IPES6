@@ -18,7 +18,7 @@ from core.models import (
     CorrelatividadVersion, 
     CorrelatividadVersionDetalle
 )
-from core.permissions import ensure_profesorado_access, ensure_roles
+from core.permissions import ensure_profesorado_access, ensure_roles, STRUCTURE_VIEW_ROLES, STRUCTURE_EDIT_ROLES
 from .schemas import (
     CorrelatividadSetIn, 
     CorrelatividadSetOut, 
@@ -29,15 +29,6 @@ from .schemas import (
 )
 
 router = Router(tags=["Correlatividades"])
-
-# Roles autorizados para visualizar la estructura de correlatividades
-STRUCTURE_VIEW_ROLES = {
-    "admin", "secretaria", "bedel", "coordinador", "tutor", 
-    "jefes", "jefa_aaee", "consulta"
-}
-
-# Roles autorizados para modificar las reglas curriculares (Diseño Curricular)
-STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
 
 
 def _ensure_view(user, profesorado_id: int | None = None):

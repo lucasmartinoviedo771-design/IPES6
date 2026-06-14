@@ -7,7 +7,7 @@ from core.models import (
     Regularidad, VentanaHabilitacion, PedidoAnalitico,
     InscripcionMateriaEstudiante
 )
-from core.permissions import ensure_roles
+from core.permissions import ensure_roles, GLOBAL_OVERVIEW_ROLES
 from ..router import management_router
 from ..schemas import (
     GlobalOverviewOut, DashboardDocente, DashboardCatedra, 
@@ -16,11 +16,6 @@ from ..schemas import (
     DashboardPedidoAnalitico, DashboardMesas, DashboardMesaTipo,
     DashboardRegularidad, DashboardVentana, VentanaOut, VentanaIn
 )
-
-GLOBAL_OVERVIEW_ROLES = {
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", 
-    "tutor", "coordinador", "consulta",
-}
 
 @management_router.get("/overview", response=GlobalOverviewOut, auth=JWTAuth())
 def global_overview(request, profesorado_id: int = None, anio: int = None):

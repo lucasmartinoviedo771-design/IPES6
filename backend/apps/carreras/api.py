@@ -29,6 +29,8 @@ from core.permissions import (
     ensure_roles, 
     allowed_profesorados,
     get_user_roles,
+    STRUCTURE_VIEW_ROLES,
+    STRUCTURE_EDIT_ROLES,
 )
 from apps.common.errors import AppError
 from apps.common.constants import AppErrorCode
@@ -60,16 +62,6 @@ class MateriaInscriptoOut(Schema):
     asistencias_a: int = 0
     asistencias_t: int = 0
     asistencias_pct: str = "0%"
-
-
-# Definición de roles con permisos de lectura sobre la estructura académica
-STRUCTURE_VIEW_ROLES = {
-    "admin", "secretaria", "bedel", "coordinador", "tutor", 
-    "jefes", "jefa_aaee", "consulta", "estudiante",
-}
-
-# Definición de roles con capacidad de modificar carreras y planes (Backoffice)
-STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
 
 
 def _require_view(user, profesorado_id: int | None = None) -> None:

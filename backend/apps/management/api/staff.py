@@ -4,15 +4,9 @@ from django.contrib.auth.models import User, Group
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
 from core.models import StaffAsignacion, Profesorado, Docente, Estudiante
-from core.permissions import ensure_roles
+from core.permissions import ensure_roles, ALL_ROLES
 from ..router import management_router
 from core.schemas import AsignarRolIn, UserSchema, ForceResetPasswordIn
-
-ALL_ROLES = {
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", 
-    "tutor", "coordinador", "consulta", "estudiante", "docente",
-    "rectorado", "attp"
-}
 
 @management_router.get("/staff", response=List[UserSchema], auth=JWTAuth())
 def list_staff(request):

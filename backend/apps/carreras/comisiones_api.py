@@ -10,20 +10,17 @@ from django.db import transaction
 from ninja import Router
 from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
-from core.permissions import ensure_profesorado_access, ensure_roles, allowed_profesorados
+from core.permissions import (
+    ensure_profesorado_access, 
+    ensure_roles, 
+    allowed_profesorados,
+    ACADEMIC_MANAGE_ROLES,
+    ACADEMIC_VIEW_ROLES,
+)
 from core.models import Comision, Materia, Turno, PlanDeEstudio
 from .schemas import ComisionIn, ComisionOut, ComisionBulkGenerateIn
 
 router = Router(tags=["Comisiones"])
-
-# Roles autorizados para gestionar (crear/editar/borrar) comisiones
-ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
-
-# Roles autorizados solo para visualizar información de comisiones
-ACADEMIC_VIEW_ROLES = {
-    "admin", "secretaria", "bedel", "coordinador", "tutor", 
-    "jefes", "jefa_aaee", "consulta"
-}
 
 
 def _require_manage(user):

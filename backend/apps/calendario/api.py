@@ -14,7 +14,12 @@ from core.models import (
     Materia,
     Comision
 )
-from core.permissions import ensure_roles, ensure_profesorado_access
+from core.permissions import (
+    ensure_roles, 
+    ensure_profesorado_access,
+    STRUCTURE_VIEW_ROLES,
+    CALENDARIO_EDIT_ROLES as STRUCTURE_EDIT_ROLES,
+)
 from apps.common.api_schemas import ApiResponse
 
 from .schemas import (
@@ -23,9 +28,6 @@ from .schemas import (
     HorarioCatedraIn, HorarioCatedraOut, 
     HorarioCatedraDetalleIn, HorarioCatedraDetalleOut
 )
-
-STRUCTURE_VIEW_ROLES = {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta", "rectorado", "attp"}
-STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel", "attp"}
 
 def _ensure_structure_view(user, profesorado_id: int | None = None) -> None:
     ensure_roles(user, STRUCTURE_VIEW_ROLES)

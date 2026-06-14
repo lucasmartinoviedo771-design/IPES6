@@ -16,8 +16,7 @@ from ninja.errors import HttpError
 from .router import preins_router as router
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
-from core.permissions import ensure_profesorado_access, ensure_roles
-
+from core.permissions import ensure_profesorado_access, ensure_roles, PREINS_ALLOWED_ROLES, DOC_ALLOWED_ROLES
 from .schemas import (
     ChecklistIn,
     ChecklistOut,
@@ -50,10 +49,6 @@ def _fmt_date(value) -> str:
     if len(parts) == 3 and len(parts[0]) == 4:
         return f"{parts[2]}/{parts[1]}/{parts[0]}"
     return s
-
-# Grupos de seguridad para decoradores de permisos
-PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
-DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
 
 
 class AllowPublic:
