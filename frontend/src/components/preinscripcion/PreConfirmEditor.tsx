@@ -227,7 +227,6 @@ export default function PreConfirmEditor({ codigo, onActionSuccess }: { codigo: 
   const onInvalid = (errors: any) => { console.error("Validation errors", errors); setValidationErrors(errors); enqueueSnackbar("Hay errores en el formulario, revise los mensajes abajo", { variant: "error" }); };
 
   const onSubmit = async (values: PreinscripcionForm) => {
-    console.log("Submit triggered", values);
     setValidationErrors(null);
     try {
       await mUpdate.mutateAsync(values);

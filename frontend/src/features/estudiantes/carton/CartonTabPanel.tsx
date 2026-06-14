@@ -145,10 +145,7 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
 
     const finalesList = materia.finales && materia.finales.length > 0 ? materia.finales : (materia.final ? [materia.final] : []);
 
-    // Debug log to check if finales are coming through
-    if (materia.finales && materia.finales.length > 1) {
-      console.log(`Materia ${materia.materia_nombre} tiene ${materia.finales.length} finales`, materia.finales);
-    }
+
 
     if (finalesList.length > 0) {
       finalesList.forEach((fin) => {

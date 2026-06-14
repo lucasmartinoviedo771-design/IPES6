@@ -229,7 +229,6 @@ const CargarHorarioPage: React.FC = () => {
 
       // Duplicación automática para Anuales si se guarda en el primer cuatrimestre
       if (materiaRegimen === 'ANU' && filters.cuatrimestre === 1) {
-        console.log('Duplicando horario anual al segundo cuatrimestre...');
         await saveToCuatri('SCU');
       }
 
