@@ -18,6 +18,9 @@ def sync_user_from_persona(sender, instance, **kwargs):
         user = instance.estudiante_perfil.user
 
     if user:
+        # Sincronizamos SOLO username (DNI), necesario para login.
+        # first_name/last_name/email se dejan INTACTOS a propósito: la fuente de verdad
+        # es Persona (decisión P-1). No agregar sincronización de esos campos acá.
         # Sincronizar Username (DNI)
         if user.username != instance.dni:
             user.username = instance.dni

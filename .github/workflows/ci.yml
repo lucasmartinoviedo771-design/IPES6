@@ -66,3 +66,9 @@ jobs:
       - name: Run ruff format check
         run: uv run ruff format --check .
         working-directory: backend
+
+      - name: Run backend tests
+        run: uv run pytest core/tests/ -v --no-migrations -o cache_dir=/tmp
+        working-directory: backend
+        env:
+          DB_ENGINE: sqlite

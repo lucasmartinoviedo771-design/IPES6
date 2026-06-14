@@ -1,5 +1,20 @@
 # IPES6 — Instrucciones para Claude Code
 
+## ⚠️ Arquitectura: fuente de verdad de identidad (decisión P-1)
+
+`Persona` es la ÚNICA fuente de verdad para `nombre`, `apellido` y `email`.
+
+- `auth.User` guarda SOLO autenticación: `username` (= DNI), `password`, grupos/permisos.
+- Los campos `User.first_name`, `User.last_name`, `User.email` están OBSOLETOS.
+  Pueden contener datos históricos sucios — NO leerlos, NO escribirlos.
+- Para leer identidad de un estudiante: `estudiante.nombre/.apellido/.email`
+  (properties que leen de Persona). Para docentes/staff: vía `profile.persona`.
+- La señal `sync_user_from_persona` sincroniza únicamente `username`.
+
+Hay un test que vigila esto: `core/tests/test_fuente_de_verdad_persona.py`.
+Si lo ves fallar, es porque alguien reactivó la escritura en auth.User. No lo
+"arregles" llenando User — el fix es escribir en Persona.
+
 ## Cron pendiente de configurar en producción
 
 Agregar el siguiente cron en el servidor de producción para que el sistema verifique

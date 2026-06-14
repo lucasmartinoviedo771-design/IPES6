@@ -39,6 +39,7 @@ class DocenteService:
 
         username = dni
         temp_password = secrets.token_urlsafe(12)
+        # Solo credenciales. Identidad (nombre/apellido/email) vive en Persona. Ver P-1.
         user = User.objects.create_user(
             username=username,
             password=temp_password,

@@ -128,6 +128,9 @@ class Estudiante(models.Model):
     def dni_clean(self):
         return self.persona.dni if self.persona else self.dni
 
+    # ⚠️ FUENTE DE VERDAD: Persona. Estos campos NO se leen ni escriben en auth.User.
+    # auth.User guarda solo autenticación (username=DNI, password, permisos).
+    # Ver decisión P-1 en CLAUDE.md. No reactivar user.first_name/last_name/email.
     @property
     def nombre(self):
         return self.persona.nombre if self.persona else ""
