@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { UseFormSetValue, UseFormGetValues } from 'react-hook-form';
-import { PlanillaFormValues } from '../types';
+import { PlanillaFormValues, SituacionDisponible } from '../types';
 import {
   RegularidadMetadataMateria,
   RegularidadMetadataPlantilla,
@@ -11,7 +11,7 @@ interface UsePlanillaCalculationsOptions {
   selectedProfesorado?: RegularidadMetadataProfesorado;
   selectedMateria?: RegularidadMetadataMateria;
   selectedPlantilla?: RegularidadMetadataPlantilla;
-  localSituacionesDisponibles: any[];
+  localSituacionesDisponibles: SituacionDisponible[];
   getValues: UseFormGetValues<PlanillaFormValues>;
   setValue: UseFormSetValue<PlanillaFormValues>;
 }
@@ -42,7 +42,7 @@ export function usePlanillaCalculations({
     if (!selectedMateria) return;
 
     // Parsers
-    const parseVal = (v: any) => {
+    const parseVal = (v: string | number | null | undefined) => {
       if (!v || v === '---') return 0;
       return Number(String(v).replace(',', '.'));
     };
@@ -177,13 +177,13 @@ export function usePlanillaCalculations({
       }
     }
 
-    const validCodes = localSituacionesDisponibles.map((s: any) => s.codigo);
+    const validCodes = localSituacionesDisponibles.map((s) => s.codigo);
 
     const findCode = (search: string) => {
-      const found = localSituacionesDisponibles.find((s: any) =>
+      const found = localSituacionesDisponibles.find((s) =>
         s.codigo === search ||
-        s.label.toUpperCase() === search ||
-        s.label.toUpperCase().includes(search)
+        s.label?.toUpperCase() === search ||
+        s.label?.toUpperCase().includes(search)
       );
       return found ? found.codigo : search;
     };
@@ -206,7 +206,7 @@ export function usePlanillaCalculations({
     mapCode('APR', 'APROBADO');
 
     if (!validCodes.includes(newSit)) {
-      const similar = localSituacionesDisponibles.find((s: any) => s.label.toUpperCase().includes(newSit.replace(/_/g, ' ')));
+      const similar = localSituacionesDisponibles.find((s) => s.label?.toUpperCase().includes(newSit.replace(/_/g, ' ')));
       if (similar) newSit = similar.codigo;
     }
 

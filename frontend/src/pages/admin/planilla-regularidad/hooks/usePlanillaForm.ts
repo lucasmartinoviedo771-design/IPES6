@@ -5,9 +5,10 @@ import {
   RegularidadMetadataPlantilla,
   RegularidadMetadataMateria,
   RegularidadMetadataProfesorado,
-  PlanillaRegularidadCreatePayload
+  PlanillaRegularidadCreatePayload,
+  PlanillaRegularidadCreateResult
 } from '@/api/primeraCarga';
-import { PlanillaFormValues } from '../types';
+import { PlanillaFormValues, ColumnaDinamica, SituacionDisponible } from '../types';
 import {
   DEFAULT_DOCENTE,
   DEFAULT_DOCENTE_BEDEL,
@@ -23,14 +24,14 @@ import { usePlanillaQueries } from './usePlanillaQueries';
 interface UsePlanillaFormOptions {
   open: boolean;
   onClose: () => void;
-  onCreated?: (result: any, dryRun: boolean) => void;
+  onCreated?: (result: PlanillaRegularidadCreateResult | undefined, dryRun: boolean) => void;
   planillaId?: number | null;
   mode?: 'create' | 'edit' | 'view';
   selectedProfesorado?: RegularidadMetadataProfesorado;
   selectedMateria?: RegularidadMetadataMateria;
   selectedPlantilla?: RegularidadMetadataPlantilla;
-  columnasDinamicas: any[];
-  situacionesDisponibles: any[];
+  columnasDinamicas: ColumnaDinamica[];
+  situacionesDisponibles: SituacionDisponible[];
   plantillasDisponibles: RegularidadMetadataPlantilla[];
   estudiantePorDni: Map<string, { apellido_nombre: string; profesorados: number[] }>;
   metadataQueryRefetch: () => void;
@@ -223,24 +224,24 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
         folio: d.folio || '',
         planResolucion: d.plan_resolucion || '',
         observaciones: d.observaciones || '',
-        docentes: d.docentes.map((doc: any, idx: number) => ({
+        docentes: d.docentes.map((doc, idx) => ({
           docente_id: doc.docente_id,
           nombre: doc.nombre,
           dni: doc.dni || '',
           rol: doc.rol || 'profesor',
           orden: doc.orden ?? (idx + 1)
         })),
-        filas: d.filas.map((f: any) => ({
+        filas: d.filas.map((f) => ({
           orden: f.orden ?? null,
           dni: f.dni,
           apellido_nombre: f.apellido_nombre,
           nota_final: f.nota_final?.toString() || '',
           asistencia: f.asistencia?.toString() || '',
-          situacion: f.situacion,
+          situacion: f.situacion ?? '',
           excepcion: f.excepcion ?? false,
           datos: Object.fromEntries(
             Object.entries(f.datos || {}).map(([k, v]) => [k, v?.toString() ?? ''])
-          ),
+          ) as Record<string, string>,
           inscripcion_id: f.inscripcion_id,
         })),
         dry_run: false,
@@ -355,7 +356,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 
       if (!currentRow.nota_final) setValue(`filas.${index}.nota_final`, '---', { shouldDirty: true });
 
-      localColumnasDinamicas.forEach((col: any) => {
+      localColumnasDinamicas.forEach((col) => {
         const currentVal = currentRow.datos?.[col.key];
         if (!currentVal || String(currentVal).trim() === '') {
           setValue(`filas.${index}.datos.${col.key}`, '---', { shouldDirty: true });
@@ -402,7 +403,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
         return;
       }
 
-      const nuevasFilas = buffer.map((item: any, idx: number) => ({
+      const nuevasFilas = (buffer as Array<{ dni: string; apellido_nombre: string }>).map((item, idx) => ({
         ...buildDefaultRow(idx),
         dni: item.dni,
         apellido_nombre: item.apellido_nombre,
@@ -498,7 +499,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
     try {
       filasPayload = filasPreparadas.map<PlanillaRegularidadCreatePayload['filas'][number]>((fila, idx) => {
         const datosLimpios: Record<string, string> = {};
-        localColumnasDinamicas.forEach((col: any) => {
+        localColumnasDinamicas.forEach((col) => {
           const valor = fila.datos?.[col.key];
           const stringValor = valor !== undefined && valor !== null ? String(valor).trim() : '';
           if (!stringValor) {
@@ -543,8 +544,9 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
           datos: datosLimpios,
         };
       });
-    } catch (error: any) {
-      enqueueSnackbar(error.message ?? 'Verifique los datos de las filas cargadas.', { variant: 'error' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Verifique los datos de las filas cargadas.';
+      enqueueSnackbar(message, { variant: 'error' });
       return;
     }
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { ColumnaDinamica, SituacionDisponible, PlanillaDetalleData } from '../types';
 
 export function usePlanillaColumns({
   scope,
@@ -7,9 +8,9 @@ export function usePlanillaColumns({
   situacionesDisponibles,
 }: {
   scope: 'primera_carga' | 'standard';
-  detailData: any;
-  columnasDinamicas: any[];
-  situacionesDisponibles: any[];
+  detailData: PlanillaDetalleData | undefined;
+  columnasDinamicas: ColumnaDinamica[];
+  situacionesDisponibles: SituacionDisponible[];
 }) {
   const localColumnasDinamicas = useMemo(() => {
     if (scope === 'standard' && detailData) {
