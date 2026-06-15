@@ -28,6 +28,24 @@ def _calcular_condicion_estudiante(est: Estudiante, checklist_map: dict) -> str:
     return _determine_condicion(doc_data)
 
 
+def _build_checklist_map(est_ids: list[int]) -> dict[int, PreinscripcionChecklist]:
+    """Carga en bulk el checklist de preinscripción más reciente por estudiante (evita N+1)."""
+    if not est_ids:
+        return {}
+    checklists = (
+        PreinscripcionChecklist.objects
+        .filter(preinscripcion__alumno_id__in=est_ids)
+        .order_by("-updated_at")
+        .select_related("preinscripcion")
+    )
+    checklist_map: dict[int, PreinscripcionChecklist] = {}
+    for cl in checklists:
+        alumno_id = cl.preinscripcion.alumno_id
+        if alumno_id not in checklist_map:
+            checklist_map[alumno_id] = cl
+    return checklist_map
+
+
 class EstudianteService:
     @staticmethod
     def list_estudiantes_admin(filters: dict, limit: int = 50, offset: int = 0, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminListResponse:
@@ -89,37 +107,34 @@ class EstudianteService:
                 # Si es genérico, chequeamos el año de ingreso base del alumno
                 qs = qs.filter(anio_ingreso=anio_ingreso)
 
-        # Cargar checklists de preinscripción en bulk para evitar N+1
-        qs_list = list(qs.distinct())
-        est_ids = [e.pk for e in qs_list]
-        checklists = (
-            PreinscripcionChecklist.objects
-            .filter(preinscripcion__alumno_id__in=est_ids)
-            .order_by("-updated_at")
-            .select_related("preinscripcion")
-        )
-        checklist_map: dict[int, PreinscripcionChecklist] = {}
-        for cl in checklists:
-            alumno_id = cl.preinscripcion.alumno_id
-            if alumno_id not in checklist_map:
-                checklist_map[alumno_id] = cl
+        qs = qs.distinct()
 
-        # Filtrar por condición en Python (calculado dinámicamente)
+        # CONDICION_TO_ESTADO mapea la condición calculada (texto) al valor del select de la UI.
         CONDICION_TO_ESTADO = {
             "Regular": "COM",
             "Condicional": "INC",
             "Pendiente": "PEN",
         }
+
         if condicion_filter:
+            # Caso B: la "condición" se calcula en Python (no es columna), así que hay que
+            # materializar y evaluar todos los registros ANTES de poder paginar.
+            qs_list = list(qs)
+            checklist_map = _build_checklist_map([e.pk for e in qs_list])
             condicion_filter_upper = condicion_filter.upper()
             # Aceptar tanto "COM/INC/PEN" (valores legacy del select) como "Regular/Condicional/Pendiente"
             qs_list = [
                 e for e in qs_list
                 if CONDICION_TO_ESTADO.get(_calcular_condicion_estudiante(e, checklist_map), "PEN") == condicion_filter_upper
             ]
-
-        total = len(qs_list)
-        paginated = qs_list[offset: offset + limit] if limit else qs_list[offset:]
+            total = len(qs_list)
+            paginated = qs_list[offset: offset + limit] if limit else qs_list[offset:]
+        else:
+            # Caso A (el más común): todos los filtros corren en la base, así que paginamos
+            # en la base ANTES de materializar. Solo se traen y enriquecen los ~limit visibles.
+            total = qs.count()
+            paginated = list(qs[offset: offset + limit] if limit else qs[offset:])
+            checklist_map = _build_checklist_map([e.pk for e in paginated])
 
         items = []
         for est in paginated:
@@ -153,7 +168,7 @@ class EstudianteService:
                     dni=est.dni,
                     apellido=persona.apellido if persona else "",
                     nombre=persona.nombre if persona else "",
-                    email=user.email if user else None,
+                    email=persona.email if persona else None,
                     telefono=est.telefono or None,
                     estado_legajo=est.estado_legajo,
                     estado_legajo_display=est.get_estado_legajo_display(),
