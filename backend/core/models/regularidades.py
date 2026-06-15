@@ -314,7 +314,7 @@ class RegularidadPlanillaLock(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["materia", "anio_virtual"], name="uniq_regularidad_lock_materia_anio"),
             models.CheckConstraint(
-                check=(
+                condition=(
                     # Caso 1: Solo comisión
                     models.Q(comision__isnull=False, materia__isnull=True, anio_virtual__isnull=True) |
                     # Caso 2: Solo materia + año

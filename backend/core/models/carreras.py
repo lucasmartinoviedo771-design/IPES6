@@ -104,7 +104,7 @@ class Materia(models.Model):
             ),
             # Validación de rango de fechas
             models.CheckConstraint(
-                check=models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=models.F("fecha_inicio")),
+                condition=models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=models.F("fecha_inicio")),
                 name="materia_fecha_range_valid"
             )
         ]
