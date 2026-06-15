@@ -118,8 +118,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       const d = form.detailQuery.data.data;
       const formats: Record<string, string> = { ASI: 'Asignatura', MOD: 'Módulo', TAL: 'Taller', PRA: 'Práctica', LAB: 'Laboratorio', SEM: 'Seminario' };
       const dictados: Record<string, string> = { ANU: 'Anual', ANUAL: 'Anual', PCU: '1° Cuatrimestre', SCU: '2° Cuatrimestre', '1C': '1° Cuatrimestre', '2C': '2° Cuatrimestre' };
-      const fmtName = formats[d.formato?.toUpperCase()] || d.formato || 'Estándar';
-      const dictName = dictados[d.regimen?.toUpperCase()] || d.regimen || 'Anual';
+      const fmtName = formats[(d.formato || '').toUpperCase()] || d.formato || 'Estándar';
+      const dictName = dictados[(d.regimen || '').toUpperCase()] || d.regimen || 'Anual';
       return {
         id: 1,
         nombre: `Planilla de ${fmtName}`,

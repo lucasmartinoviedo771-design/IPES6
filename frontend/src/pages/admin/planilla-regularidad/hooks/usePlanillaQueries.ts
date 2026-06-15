@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { enqueueSnackbar } from 'notistack';
 import { UseFormGetValues, UseFormSetValue } from 'react-hook-form';
-import { PlanillaFormValues } from '../types';
+import { PlanillaFormValues, PlanillaDetalleResponse, PlanillaSubmitResult } from '../types';
 import { buildDefaultRow, todayIso } from '../constants';
 import {
   crearPlanillaRegularidad,
   obtenerPlanillaRegularidadDetalle,
   actualizarPlanillaRegularidad,
   PlanillaRegularidadCreatePayload,
+  PlanillaRegularidadCreateResult,
+  PlanillaRegularidadFilaPayload,
   obtenerInscriptosActivos,
   obtenerDocentesDefecto,
 } from '@/api/primeraCarga';
@@ -30,7 +32,7 @@ interface UsePlanillaQueriesOptions {
   watchProfesoradoId: string | number;
   watchFechaYear: number;
   onClose: () => void;
-  onCreated?: (result: any, dryRun: boolean) => void;
+  onCreated?: (result: PlanillaRegularidadCreateResult | undefined, dryRun: boolean) => void;
   getValues: UseFormGetValues<PlanillaFormValues>;
   setValue: UseFormSetValue<PlanillaFormValues>;
   persistStudents: boolean;
@@ -55,14 +57,14 @@ export function usePlanillaQueries({
 }: UsePlanillaQueriesOptions) {
   const queryClient = useQueryClient();
 
-  const detailQuery = useQuery<any>({
+  const detailQuery = useQuery<PlanillaDetalleResponse>({
     queryKey: scope === 'standard'
       ? ['carga-notas', 'regularidad', comisionId]
       : ['primera-carga', 'regularidades', 'detalle', planillaId],
-    queryFn: async (): Promise<any> => {
+    queryFn: async (): Promise<PlanillaDetalleResponse> => {
       if (scope === 'standard') {
         const data = await obtenerPlanillaRegularidad(comisionId!);
-        let defDocentes: any[] = [];
+        let defDocentes: Awaited<ReturnType<typeof obtenerDocentesDefectoStandard>> = [];
         try {
           const profId = data.profesorado_id || defaultProfesoradoId || 0;
           const matId = data.materia_id || defaultMateriaId || 0;
@@ -107,7 +109,7 @@ export function usePlanillaQueries({
             plan_resolucion: data.plan_resolucion || '',
             observaciones: '',
             docentes: mappedDocentes,
-            filas: data.estudiantes.map((e: any, idx: number) => ({
+            filas: data.estudiantes.map((e, idx) => ({
               orden: e.orden || (idx + 1),
               dni: e.dni,
               apellido_nombre: e.apellido_nombre,
@@ -150,10 +152,10 @@ export function usePlanillaQueries({
     enabled: open && (mode === 'create' || scope === 'standard') && !!watchMateriaId && !!watchProfesoradoId,
   });
 
-  const mutation = useMutation({
+  const mutation = useMutation<PlanillaSubmitResult, unknown, PlanillaRegularidadCreatePayload>({
     mutationFn: async (payload: PlanillaRegularidadCreatePayload) => {
       if (scope === 'standard') {
-        const parseVal = (v: any) => {
+        const parseVal = (v: string | number | null | undefined) => {
           if (v === undefined || v === null || String(v).trim() === '' || String(v).trim() === '---') return null;
           return Number(String(v).replace(',', '.'));
         };
@@ -161,14 +163,14 @@ export function usePlanillaQueries({
           comision_id: comisionId!,
           fecha_cierre: payload.fecha,
           observaciones_generales: payload.observaciones || undefined,
-          estudiantes: payload.filas.map(f => ({
-            inscripcion_id: (f as any).inscripcion_id || 0,
+          estudiantes: payload.filas.map((f: PlanillaRegularidadFilaPayload & { inscripcion_id?: number; observaciones?: string }) => ({
+            inscripcion_id: f.inscripcion_id || 0,
             nota_tp: f.datos?.tp_final ? parseVal(f.datos.tp_final) : null,
             nota_final: f.nota_final ? parseVal(f.nota_final) : null,
             asistencia: f.asistencia ? parseVal(f.asistencia) : null,
             excepcion: f.excepcion,
             situacion: f.situacion,
-            observaciones: (f as any).observaciones || undefined,
+            observaciones: f.observaciones || undefined,
           })),
         };
         return guardarPlanillaRegularidad(standardPayload);
@@ -179,7 +181,7 @@ export function usePlanillaQueries({
       }
       return crearPlanillaRegularidad(payload);
     },
-    onSuccess: (data: any, variables) => {
+    onSuccess: (data, variables) => {
       if (scope === 'standard') {
         queryClient.invalidateQueries({ queryKey: ['carga-notas', 'regularidad', comisionId] });
         enqueueSnackbar(data.message || "Notas de regularidad guardadas correctamente.", { variant: 'success' });
@@ -220,11 +222,11 @@ export function usePlanillaQueries({
         window.open(targetUrl, '_blank', 'noopener,noreferrer');
       }
 
-      onCreated?.(data.data, !!variables.dry_run);
+      onCreated?.(data.data ?? undefined, !!variables.dry_run);
 
       if (!variables.dry_run && !planillaId && persistStudents) {
-        const serverFilas = data.data?.filas || getValues('filas');
-        const preservedFilas = serverFilas.map((f: any, idx: number) => ({
+        const serverFilas: Array<{ dni: string; apellido_nombre: string }> = data.data?.filas || getValues('filas');
+        const preservedFilas = serverFilas.map((f, idx) => ({
           ...buildDefaultRow(idx),
           dni: f.dni,
           apellido_nombre: f.apellido_nombre,
@@ -242,8 +244,10 @@ export function usePlanillaQueries({
         onClose();
       }
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.message ?? 'No se pudo generar la planilla.';
+    onError: (error: unknown) => {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+        ?? 'No se pudo generar la planilla.';
       enqueueSnackbar(message, { variant: 'error' });
     },
   });

@@ -252,7 +252,7 @@ class JustificacionDetalle(models.Model):
                 name="unique_justificacion_clase_docente",
             ),
             models.CheckConstraint(
-                check=(
+                condition=(
                     models.Q(estudiante__isnull=False, docente__isnull=True) |
                     models.Q(estudiante__isnull=True, docente__isnull=False)
                 ),

@@ -60,7 +60,7 @@ class ActaExamen(models.Model):
         unique_together = ("profesorado", "anio_academico", "numero")
         constraints = [
             models.CheckConstraint(
-                check=models.Q(total_alumnos=models.F("total_aprobados") + models.F("total_desaprobados") + models.F("total_ausentes")),
+                condition=models.Q(total_alumnos=models.F("total_aprobados") + models.F("total_desaprobados") + models.F("total_ausentes")),
                 name="acta_examen_totals_parity"
             )
         ]
