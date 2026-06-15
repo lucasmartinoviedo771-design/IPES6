@@ -119,32 +119,15 @@ class EstudianteService:
 
         qs = qs.distinct()
 
-        # CONDICION_TO_ESTADO mapea la condición calculada (texto) al valor del select de la UI.
-        CONDICION_TO_ESTADO = {
-            "Regular": "COM",
-            "Condicional": "INC",
-            "Pendiente": "PEN",
-        }
-
         if condicion_filter:
-            # Caso B: la "condición" se calcula en Python (no es columna), así que hay que
-            # materializar y evaluar todos los registros ANTES de poder paginar.
-            qs_list = list(qs)
-            checklist_map = _build_checklist_map([e.pk for e in qs_list])
-            condicion_filter_upper = condicion_filter.upper()
-            # Aceptar tanto "COM/INC/PEN" (valores legacy del select) como "Regular/Condicional/Pendiente"
-            qs_list = [
-                e for e in qs_list
-                if CONDICION_TO_ESTADO.get(_calcular_condicion_estudiante(e, checklist_map), "PEN") == condicion_filter_upper
-            ]
-            total = len(qs_list)
-            paginated = qs_list[offset: offset + limit] if limit else qs_list[offset:]
-        else:
-            # Caso A (el más común): todos los filtros corren en la base, así que paginamos
-            # en la base ANTES de materializar. Solo se traen y enriquecen los ~limit visibles.
-            total = qs.count()
-            paginated = list(qs[offset: offset + limit] if limit else qs[offset:])
-            checklist_map = _build_checklist_map([e.pk for e in paginated])
+            # estado_legajo en EstudianteCarrera es COM/INC/PEN y se mantiene
+            # actualizado por _recalcular_estado_legajo_ec cada vez que se edita
+            # el legajo. Filtrar por él en SQL elimina el Caso B (materializar todo).
+            qs = qs.filter(carreras_detalle__estado_legajo=condicion_filter.upper())
+
+        total = qs.count()
+        paginated = list(qs[offset: offset + limit] if limit else qs[offset:])
+        checklist_map = _build_checklist_map([e.pk for e in paginated])
 
         items = []
         for est in paginated:
