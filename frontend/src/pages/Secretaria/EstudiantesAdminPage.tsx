@@ -58,6 +58,10 @@ export default function EstudiantesAdminPage() {
     }
   }, [dniParam]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, estado, estadoAcademico, carreraId, anioIngreso]);
+
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDetailValues, setPendingDetailValues] = useState<DetailFormValues | null>(null);

@@ -186,6 +186,7 @@ class JustificacionRechazarIn(Schema):
 class DocenteDniLogIn(Schema):
     dni: str
     origen: Optional[str] = "kiosk"
+    app_version: Optional[str] = None
 
 
 class EstudianteClaseListadoOut(Schema):
