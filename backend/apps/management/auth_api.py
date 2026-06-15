@@ -90,8 +90,7 @@ def _must_complete_profile(user) -> bool:
     if user.is_staff or user.is_superuser or user_roles.intersection(management_roles):
         return False
 
-    datos_extra = getattr(estudiante, "datos_extra", {}) or {}
-    return not bool(datos_extra.get("perfil_actualizado"))
+    return not bool(getattr(estudiante, "perfil_actualizado", False))
 
 
 def _serialize_user(user):

@@ -228,9 +228,9 @@ def _apply_estudiante_updates(
             setattr(est, key, value)
             fields_to_update.add(key)
 
-    if mark_profile_complete and not est.datos_extra.get("perfil_actualizado"):
-        est.datos_extra["perfil_actualizado"] = True
-        fields_to_update.add("datos_extra")
+    if mark_profile_complete and not est.perfil_actualizado:
+        est.perfil_actualizado = True
+        fields_to_update.add("perfil_actualizado")
 
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))

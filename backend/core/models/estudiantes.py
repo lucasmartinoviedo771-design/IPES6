@@ -100,6 +100,12 @@ class Estudiante(models.Model):
     titulo_terciario_univ = models.BooleanField(default=False)
     incumbencia = models.BooleanField(default=False)
 
+    perfil_actualizado = models.BooleanField(
+        default=False,
+        help_text="True cuando el estudiante completó/actualizó su perfil. "
+                  "Migrado desde datos_extra (ver plan JSON→columna).",
+    )
+
     datos_extra = models.JSONField(default=dict, blank=True)
     documentacion_presentada = models.ManyToManyField(Documento, blank=True, related_name="estudiantes_que_presentaron")
 
