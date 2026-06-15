@@ -1,5 +1,5 @@
 import secrets
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from core.models import Estudiante, EstudianteCarrera, PreinscripcionChecklist
 from apps.estudiantes.schemas import EstudianteAdminListItem, EstudianteAdminListResponse
 from apps.estudiantes.api.helpers.estudiante_admin import _extract_documentacion, _extract_documentacion_from_ec, _determine_condicion
@@ -57,7 +57,17 @@ class EstudianteService:
         
         qs = (
             Estudiante.objects.select_related("persona", "user")
-            .prefetch_related("carreras", "carreras_detalle", "carreras_detalle__profesorado")
+            .prefetch_related(
+                "carreras",
+                # Orden explícito por pk: hace que `est.carreras_detalle.first()`
+                # (en el cálculo de condición) use la CACHE del prefetch en vez de
+                # disparar una query por fila (N+1). Sigue eligiendo el mismo
+                # registro que antes (el de menor pk = el que devolvía .first()).
+                Prefetch(
+                    "carreras_detalle",
+                    queryset=EstudianteCarrera.objects.select_related("profesorado").order_by("pk"),
+                ),
+            )
             .order_by("persona__apellido", "persona__nombre", "persona__dni")
         )
 
