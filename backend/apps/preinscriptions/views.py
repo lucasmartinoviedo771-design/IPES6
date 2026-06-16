@@ -104,16 +104,26 @@ def serve_media(request, path):
             if roles.intersection({"admin", "secretaria", "bedel", "coordinador", "docente"}):
                 pass
             else:
-                # Verificar que la foto pertenece al estudiante autenticado
+                # Verificar que la foto pertenece al usuario autenticado
                 from core.models import Persona
                 filename = os.path.basename(path)
-                # El nombre de archivo es "foto_{dni}.ext" — extraemos el DNI
                 try:
                     dni = filename.split("_", 1)[1].rsplit(".", 1)[0]
-                    persona = Persona.objects.filter(dni=dni).first()
-                    if not persona or not hasattr(persona, "user_profile") or persona.user_profile.user_id != request.user.id:
-                        return HttpResponse(status=403)
-                except (IndexError, Exception):
+                except IndexError:
+                    return HttpResponse(status=403)
+
+                persona = Persona.objects.filter(dni=dni).first()
+                if not persona:
+                    return HttpResponse(status=403)
+
+                # Camino 1: estudiante (Persona → Estudiante → User)
+                estudiante_perfil = getattr(persona, "estudiante_perfil", None)
+                if estudiante_perfil and estudiante_perfil.user_id == request.user.id:
+                    pass  # OK
+                # Camino 2: staff/docente (Persona → UserProfile → User)
+                elif hasattr(persona, "user_profile") and persona.user_profile.user_id == request.user.id:
+                    pass  # OK
+                else:
                     return HttpResponse(status=403)
 
     else:
