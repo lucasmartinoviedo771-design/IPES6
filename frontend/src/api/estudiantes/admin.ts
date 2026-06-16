@@ -57,6 +57,19 @@ export async function bulkUpdateEstudianteDocumentacion(payload: EstudianteDocum
   return data;
 }
 
+export async function uploadFotoPerfil(file: File): Promise<ApiResponseDTO> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await client.post<ApiResponseDTO>("/estudiantes/perfil/foto", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export function getFotoPerfilUrl(): string {
+  return `${client.defaults.baseURL ?? ""}/estudiantes/perfil/foto`;
+}
+
 export async function updateEstudianteDocumentacion(dni: string, payload: EstudianteDocumentacionUpdatePayload): Promise<ApiResponseDTO> {
   const { data } = await client.patch<ApiResponseDTO>(`/estudiantes/admin/estudiantes-documentacion/${dni}`, payload);
   return data;

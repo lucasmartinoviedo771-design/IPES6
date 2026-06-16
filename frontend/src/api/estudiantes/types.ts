@@ -718,6 +718,7 @@ export interface EstudianteAdminDetailDTO {
   dni: string;
   apellido: string;
   nombre: string;
+  foto_url?: string | null;
   email?: string | null;
   telefono?: string | null;
   domicilio?: string | null;

@@ -95,6 +95,27 @@ def serve_media(request, path):
             else:
                 return HttpResponse(status=403)
 
+    elif path.startswith("personas/fotos/"):
+        # Foto de perfil: el propio estudiante puede ver la suya; staff tienen acceso total
+        if request.user.is_superuser:
+            pass
+        else:
+            roles = get_user_roles(request.user)
+            if roles.intersection({"admin", "secretaria", "bedel", "coordinador", "docente"}):
+                pass
+            else:
+                # Verificar que la foto pertenece al estudiante autenticado
+                from core.models import Persona
+                filename = os.path.basename(path)
+                # El nombre de archivo es "foto_{dni}.ext" — extraemos el DNI
+                try:
+                    dni = filename.split("_", 1)[1].rsplit(".", 1)[0]
+                    persona = Persona.objects.filter(dni=dni).first()
+                    if not persona or not hasattr(persona, "user_profile") or persona.user_profile.user_id != request.user.id:
+                        return HttpResponse(status=403)
+                except (IndexError, Exception):
+                    return HttpResponse(status=403)
+
     else:
         # Default Fail-Close: Only superusers and admin/secretaria can access other paths
         roles = get_user_roles(request.user)

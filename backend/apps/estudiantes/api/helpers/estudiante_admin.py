@@ -394,7 +394,7 @@ def _determine_condicion(documentacion: dict | None) -> str:
     return "Pendiente"
 
 
-def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminDetail:
+def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None, request=None) -> EstudianteAdminDetail:
     user = estudiante.user if estudiante.user_id else None
     persona = estudiante.persona
 
@@ -544,10 +544,18 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
         "sec_pais": _fb(estudiante.sec_pais, "sec_pais"),
     }
 
+    foto_url = None
+    if persona and persona.foto:
+        if request is not None:
+            foto_url = request.build_absolute_uri(persona.foto.url)
+        else:
+            foto_url = persona.foto.url
+
     return EstudianteAdminDetail(
         dni=estudiante.dni,
         apellido=estudiante.apellido,
         nombre=estudiante.nombre,
+        foto_url=foto_url,
         email=estudiante.email,
         telefono=estudiante.telefono,
         domicilio=estudiante.domicilio,

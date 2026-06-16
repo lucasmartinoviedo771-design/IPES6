@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+import os
+
+from django.http import FileResponse, HttpResponse
+from ninja import File
+from ninja.files import UploadedFile
+
 from apps.common.api_schemas import ApiResponse
+from apps.preinscriptions.upload_utils import is_allowed
 
 from ..schemas import EstudianteAdminDetail, EstudianteAdminUpdateIn
 from .helpers import _apply_estudiante_updates, _build_admin_detail, _resolve_estudiante
@@ -15,7 +22,7 @@ def estudiante_get_perfil_completar(request):
     est = _resolve_estudiante(request)
     if not est:
         return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
-    return _build_admin_detail(est)
+    return _build_admin_detail(est, request=request)
 
 
 @router.put(
@@ -49,3 +56,32 @@ def estudiante_update_perfil_completar(request, payload: EstudianteAdminUpdateIn
         return status_code, api_resp
 
     return _build_admin_detail(est)
+
+
+@router.get("/perfil/foto")
+def estudiante_get_foto(request):
+    est = _resolve_estudiante(request)
+    if not est or not est.persona:
+        return HttpResponse(status=404)
+    persona = est.persona
+    if not persona.foto:
+        return HttpResponse(status=404)
+    ext = os.path.splitext(persona.foto.name)[1].lower()
+    content_type_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+    content_type = content_type_map.get(ext, "application/octet-stream")
+    return FileResponse(persona.foto.open("rb"), content_type=content_type)
+
+
+@router.post("/perfil/foto", response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse})
+def estudiante_update_foto(request, file: UploadedFile = File(...)):  # noqa: B008
+    est = _resolve_estudiante(request)
+    if not est or not est.persona:
+        return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
+    ok_flag, err = is_allowed(file, file.size)
+    if not ok_flag:
+        return 400, ApiResponse(ok=False, message=err or "Formato no permitido.")
+    persona = est.persona
+    if persona.foto:
+        persona.foto.delete(save=False)
+    persona.foto.save(f"foto_{persona.dni}{os.path.splitext(file.name)[1]}", file, save=True)
+    return 200, ApiResponse(ok=True, message="Foto actualizada correctamente.")

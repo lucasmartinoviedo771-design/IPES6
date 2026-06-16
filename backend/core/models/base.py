@@ -39,6 +39,13 @@ class Persona(models.Model):
     provincia_nac = models.CharField(max_length=150, blank=True, null=True)
     pais_nac = models.CharField(max_length=150, blank=True, null=True)
 
+    foto = models.ImageField(
+        upload_to="personas/fotos/",
+        blank=True,
+        null=True,
+        help_text="Foto de perfil",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

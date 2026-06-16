@@ -27,6 +27,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { PageHero } from "@/components/ui/GradientTitles";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
+import FotoPerfilEditor from "@/components/ui/FotoPerfilEditor";
 
 type DocumentacionForm = {
   dni_legalizado: boolean;
@@ -358,15 +359,26 @@ export default function CompletarPerfilPage() {
           {detail && (
             <Stack spacing={2}>
               <Divider />
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Typography variant="h6" fontWeight={600}>
-                  DNI: {detail.dni}
-                </Typography>
-                <Chip
-                  label={detail.estado_legajo_display}
-                  size="small"
-                  color={detail.estado_legajo === "COM" ? "success" : "warning"}
+              <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+                <FotoPerfilEditor
+                  fotoUrl={detail.foto_url}
+                  nombre={detail.nombre}
                 />
+                <Stack spacing={0.5}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="h6" fontWeight={600}>
+                      DNI: {detail.dni}
+                    </Typography>
+                    <Chip
+                      label={detail.estado_legajo_display}
+                      size="small"
+                      color={detail.estado_legajo === "COM" ? "success" : "warning"}
+                    />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Hacé clic en la foto para actualizarla
+                  </Typography>
+                </Stack>
               </Stack>
 
               {detail.condicion_calculada && (

@@ -5,6 +5,7 @@ import string
 from django.db import transaction
 from django.contrib.auth.models import User, Group
 from core.models import Persona, Estudiante, Preinscripcion, PreinscripcionChecklist
+from apps.preinscriptions.models_uploads import PreinscripcionArchivo
 from apps.common.date_utils import format_date
 from apps.preinscriptions.schemas import PreinscripcionIn
 
@@ -175,6 +176,20 @@ class PreinscripcionService:
                 for k, v in persona_updates.items():
                     setattr(persona, k, v)
                 persona.save(update_fields=list(persona_updates.keys()))
+
+            # Migrar foto de preinscripción a Persona (si aún no tiene una)
+            if not persona.foto:
+                archivo_foto = (
+                    PreinscripcionArchivo.objects
+                    .filter(preinscripcion_id=pre.id, tipo__iexact="foto4x4")
+                    .order_by("-creado_en")
+                    .first()
+                )
+                if archivo_foto and archivo_foto.archivo:
+                    import os
+                    ext = os.path.splitext(archivo_foto.nombre_original)[1] or ".jpg"
+                    with archivo_foto.archivo.open("rb") as f:
+                        persona.foto.save(f"foto_{persona.dni}{ext}", f, save=True)
 
         estudiante = pre.alumno
         est_updates = {}

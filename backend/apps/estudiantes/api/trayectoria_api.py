@@ -649,6 +649,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
             telefono=est.telefono,
             fecha_nacimiento=str(est.fecha_nacimiento) if est.fecha_nacimiento else None,
             lugar_nacimiento=est.persona.lugar_nacimiento if est.persona_id else None,
+            fotoUrl=request.build_absolute_uri(est.persona.foto.url) if (est.persona_id and est.persona.foto) else None,
         ),
         historial=[], # Reservado para eventos cronológicos futuros
         mesas=[TrayectoriaMesa(**m) for m in mesas_raw],

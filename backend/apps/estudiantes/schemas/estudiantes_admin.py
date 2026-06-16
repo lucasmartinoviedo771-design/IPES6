@@ -112,6 +112,7 @@ class EstudianteAdminDetail(Schema):
     dni: str
     apellido: str
     nombre: str
+    foto_url: str | None = None
     email: str | None = None
     telefono: str | None = None
     domicilio: str | None = None
