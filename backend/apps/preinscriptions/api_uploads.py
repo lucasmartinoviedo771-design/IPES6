@@ -15,7 +15,7 @@ from core.auth_ninja import JWTAuth
 from core.permissions import allowed_profesorados
 from core.models.preinscripciones import Preinscripcion
 from .models_uploads import PreinscripcionArchivo
-from .upload_utils import is_allowed
+from .upload_utils import is_allowed, sanitize_image
 from apps.common.date_utils import format_datetime
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,24 @@ def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str
         raise HttpError(400, err or "El formato de archivo no está permitido.")
 
     # Normalización del nombre para evitar inyectores de path
+    ext = os.path.splitext(file.name.lower())[1]
     safe_name = get_valid_filename(file.name)
+    actual_content_type = getattr(file, "content_type", "") or ""
+
+    # Re-serializar imágenes para eliminar EXIF y payloads ocultos
+    if ext in (".jpg", ".jpeg", ".png", ".webp"):
+        try:
+            clean_io = sanitize_image(file)
+            from django.core.files.uploadedfile import InMemoryUploadedFile
+            file = InMemoryUploadedFile(
+                clean_io, "archivo",
+                os.path.splitext(safe_name)[0] + ".jpg",
+                "image/jpeg", clean_io.getbuffer().nbytes, None,
+            )
+            safe_name = os.path.splitext(safe_name)[0] + ".jpg"
+            actual_content_type = "image/jpeg"
+        except ValueError as exc:
+            raise HttpError(400, str(exc)) from exc
 
     try:
         obj = PreinscripcionArchivo.objects.create(
@@ -104,7 +121,7 @@ def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str
             archivo=file,
             nombre_original=safe_name,
             tamano=file.size,
-            content_type=getattr(file, "content_type", "") or "",
+            content_type=actual_content_type,
             subido_por_id=request.user.id,
         )
         logger.info(f"Documento almacenado exitosamente con ID {obj.id}")

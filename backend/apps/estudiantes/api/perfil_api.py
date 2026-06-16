@@ -7,7 +7,7 @@ from ninja import File
 from ninja.files import UploadedFile
 
 from apps.common.api_schemas import ApiResponse
-from apps.preinscriptions.upload_utils import is_allowed
+from apps.preinscriptions.upload_utils import is_allowed, sanitize_image
 
 from ..schemas import EstudianteAdminDetail, EstudianteAdminUpdateIn
 from .helpers import _apply_estudiante_updates, _build_admin_detail, _resolve_estudiante
@@ -81,7 +81,17 @@ def estudiante_update_foto(request, file: UploadedFile = File(...)):  # noqa: B0
     if not ok_flag:
         return 400, ApiResponse(ok=False, message=err or "Formato no permitido.")
     persona = est.persona
+    try:
+        clean_io = sanitize_image(file)
+    except ValueError as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
+
+    from django.core.files.base import ContentFile
     if persona.foto:
         persona.foto.delete(save=False)
-    persona.foto.save(f"foto_{persona.dni}{os.path.splitext(file.name)[1]}", file, save=True)
+    persona.foto.save(
+        f"foto_{persona.dni}.jpg",
+        ContentFile(clean_io.read()),
+        save=True,
+    )
     return 200, ApiResponse(ok=True, message="Foto actualizada correctamente.")
