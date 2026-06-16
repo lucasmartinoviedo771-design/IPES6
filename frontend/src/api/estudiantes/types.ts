@@ -738,6 +738,39 @@ export interface EstudianteAdminDetailDTO {
   autorizado_rendir?: boolean;
   autorizado_rendir_observacion?: string | null;
   genero?: string | null;
+  // Identidad extendida
+  cuil?: string | null;
+  nacionalidad?: string | null;
+  estado_civil?: string | null;
+  localidad_nac?: string | null;
+  provincia_nac?: string | null;
+  pais_nac?: string | null;
+  // Contacto de emergencia
+  emergencia_telefono?: string | null;
+  emergencia_parentesco?: string | null;
+  // Salud y accesibilidad
+  cud_informado?: boolean;
+  condicion_salud_informada?: boolean;
+  condicion_salud_detalle?: string | null;
+  // Estudios secundarios
+  sec_titulo?: string | null;
+  sec_establecimiento?: string | null;
+  sec_fecha_egreso?: string | null;
+  sec_localidad?: string | null;
+  sec_provincia?: string | null;
+  sec_pais?: string | null;
+  // Estudios superiores previos
+  sup1_titulo?: string | null;
+  sup1_establecimiento?: string | null;
+  sup1_fecha_egreso?: string | null;
+  sup1_localidad?: string | null;
+  sup1_provincia?: string | null;
+  sup1_pais?: string | null;
+  // Situación laboral
+  trabaja?: boolean;
+  empleador?: string | null;
+  horario_trabajo?: string | null;
+  domicilio_trabajo?: string | null;
 }
 
 export interface EstudianteAdminUpdatePayload {
@@ -760,6 +793,38 @@ export interface EstudianteAdminUpdatePayload {
   cuil?: string | null;
   curso_introductorio_aprobado?: boolean | null;
   libreta_entregada?: boolean | null;
+  // Identidad extendida
+  nacionalidad?: string | null;
+  estado_civil?: string | null;
+  localidad_nac?: string | null;
+  provincia_nac?: string | null;
+  pais_nac?: string | null;
+  // Contacto de emergencia
+  emergencia_telefono?: string | null;
+  emergencia_parentesco?: string | null;
+  // Salud y accesibilidad
+  cud_informado?: boolean | null;
+  condicion_salud_informada?: boolean | null;
+  condicion_salud_detalle?: string | null;
+  // Estudios secundarios
+  sec_titulo?: string | null;
+  sec_establecimiento?: string | null;
+  sec_fecha_egreso?: string | null;
+  sec_localidad?: string | null;
+  sec_provincia?: string | null;
+  sec_pais?: string | null;
+  // Estudios superiores previos
+  sup1_titulo?: string | null;
+  sup1_establecimiento?: string | null;
+  sup1_fecha_egreso?: string | null;
+  sup1_localidad?: string | null;
+  sup1_provincia?: string | null;
+  sup1_pais?: string | null;
+  // Situación laboral
+  trabaja?: boolean | null;
+  empleador?: string | null;
+  horario_trabajo?: string | null;
+  domicilio_trabajo?: string | null;
   carreras_update?: Array<{
     profesorado_id: number;
     estado_academico?: string | null;

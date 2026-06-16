@@ -72,6 +72,14 @@ class Estudiante(models.Model):
     sec_provincia = models.CharField(max_length=150, blank=True, null=True)
     sec_pais = models.CharField(max_length=100, blank=True, null=True)
 
+    # Datos de Estudios Superiores Previos
+    sup1_titulo = models.CharField(max_length=255, blank=True, null=True)
+    sup1_establecimiento = models.CharField(max_length=255, blank=True, null=True)
+    sup1_fecha_egreso = models.CharField(max_length=100, blank=True, null=True)
+    sup1_localidad = models.CharField(max_length=150, blank=True, null=True)
+    sup1_provincia = models.CharField(max_length=150, blank=True, null=True)
+    sup1_pais = models.CharField(max_length=100, blank=True, null=True)
+
     # Datos Laborales y Salud
     trabaja = models.BooleanField(default=False)
     empleador = models.CharField(max_length=255, blank=True, null=True)

@@ -134,6 +134,39 @@ class EstudianteAdminDetail(Schema):
     autorizado_rendir_observacion: str | None = None
     materias_autorizadas: list[int] = Field(default_factory=list)
     regularidades: list[RegularidadResumen] = Field(default_factory=list)
+    # Identidad extendida
+    cuil: str | None = None
+    nacionalidad: str | None = None
+    estado_civil: str | None = None
+    localidad_nac: str | None = None
+    provincia_nac: str | None = None
+    pais_nac: str | None = None
+    # Contacto de emergencia
+    emergencia_telefono: str | None = None
+    emergencia_parentesco: str | None = None
+    # Salud y accesibilidad
+    cud_informado: bool = False
+    condicion_salud_informada: bool = False
+    condicion_salud_detalle: str | None = None
+    # Estudios secundarios
+    sec_titulo: str | None = None
+    sec_establecimiento: str | None = None
+    sec_fecha_egreso: str | None = None
+    sec_localidad: str | None = None
+    sec_provincia: str | None = None
+    sec_pais: str | None = None
+    # Estudios superiores previos
+    sup1_titulo: str | None = None
+    sup1_establecimiento: str | None = None
+    sup1_fecha_egreso: str | None = None
+    sup1_localidad: str | None = None
+    sup1_provincia: str | None = None
+    sup1_pais: str | None = None
+    # Situación laboral
+    trabaja: bool = False
+    empleador: str | None = None
+    horario_trabajo: str | None = None
+    domicilio_trabajo: str | None = None
 
 EstudianteAdminDetail.model_rebuild()
 

@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import MenuItem from "@mui/material/MenuItem";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -44,14 +46,50 @@ type DocumentacionForm = {
 };
 
 type PerfilFormValues = {
+  // Identificación
   nombre: string;
   apellido: string;
+  // Contacto
   email: string;
   telefono: string;
   domicilio: string;
+  // Información personal
   fecha_nacimiento: string;
-  lugar_nacimiento: string;
   genero: string;
+  nacionalidad: string;
+  estado_civil: string;
+  // Lugar de nacimiento
+  lugar_nacimiento: string;
+  localidad_nac: string;
+  provincia_nac: string;
+  pais_nac: string;
+  // Contacto de emergencia
+  emergencia_telefono: string;
+  emergencia_parentesco: string;
+  // Salud y accesibilidad
+  cud_informado: boolean;
+  condicion_salud_informada: boolean;
+  condicion_salud_detalle: string;
+  // Estudios secundarios
+  sec_titulo: string;
+  sec_establecimiento: string;
+  sec_fecha_egreso: string;
+  sec_localidad: string;
+  sec_provincia: string;
+  sec_pais: string;
+  // Estudios superiores previos
+  sup1_titulo: string;
+  sup1_establecimiento: string;
+  sup1_fecha_egreso: string;
+  sup1_localidad: string;
+  sup1_provincia: string;
+  sup1_pais: string;
+  // Situación laboral
+  trabaja: boolean;
+  empleador: string;
+  horario_trabajo: string;
+  domicilio_trabajo: string;
+  // Documentación (solo lectura para el estudiante)
   documentacion: DocumentacionForm;
 };
 
@@ -74,6 +112,8 @@ function normalizeDocumentacion(detail?: EstudianteAdminDocumentacionDTO | null)
   };
 }
 
+const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+
 export default function CompletarPerfilPage() {
   const { refreshProfile } = useAuth();
   const navigate = useNavigate();
@@ -89,8 +129,19 @@ export default function CompletarPerfilPage() {
     { value: "X", label: "X" },
   ];
 
+  const estadoCivilOptions = [
+    { value: "", label: "Sin especificar" },
+    { value: "SOL", label: "Soltero/a" },
+    { value: "CAS", label: "Casado/a" },
+    { value: "DIV", label: "Divorciado/a" },
+    { value: "VIU", label: "Viudo/a" },
+    { value: "CON", label: "Conviviente" },
+    { value: "OTR", label: "Otro" },
+  ];
+
   const redirectTo =
-    (location.state as any)?.from?.pathname && (location.state as any)?.from?.pathname !== "/estudiantes/completar-perfil"
+    (location.state as any)?.from?.pathname &&
+    (location.state as any)?.from?.pathname !== "/estudiantes/completar-perfil"
       ? (location.state as any)?.from?.pathname
       : "/estudiantes";
 
@@ -102,13 +153,41 @@ export default function CompletarPerfilPage() {
       telefono: "",
       domicilio: "",
       fecha_nacimiento: "",
-      lugar_nacimiento: "",
       genero: "",
+      nacionalidad: "",
+      estado_civil: "",
+      lugar_nacimiento: "",
+      localidad_nac: "",
+      provincia_nac: "",
+      pais_nac: "",
+      emergencia_telefono: "",
+      emergencia_parentesco: "",
+      cud_informado: false,
+      condicion_salud_informada: false,
+      condicion_salud_detalle: "",
+      sec_titulo: "",
+      sec_establecimiento: "",
+      sec_fecha_egreso: "",
+      sec_localidad: "",
+      sec_provincia: "",
+      sec_pais: "",
+      sup1_titulo: "",
+      sup1_establecimiento: "",
+      sup1_fecha_egreso: "",
+      sup1_localidad: "",
+      sup1_provincia: "",
+      sup1_pais: "",
+      trabaja: false,
+      empleador: "",
+      horario_trabajo: "",
+      domicilio_trabajo: "",
       documentacion: normalizeDocumentacion(),
     },
   });
 
-  const { control, handleSubmit, reset } = form;
+  const { control, handleSubmit, reset, watch } = form;
+  const trabaja = watch("trabaja");
+  const condicionSalud = watch("condicion_salud_informada");
 
   const detailQuery = useQuery({
     queryKey: ["perfil-completar"],
@@ -119,25 +198,51 @@ export default function CompletarPerfilPage() {
     if (detailQuery.data) {
       const detail = detailQuery.data;
       const extra = detail.datos_extra ?? {};
-      const toStringOrEmpty = (value: unknown) => (value === null || value === undefined ? "" : String(value));
-      const values: PerfilFormValues = {
-        nombre: detail.nombre ?? "",
-        apellido: detail.apellido ?? "",
-        email: detail.email ?? "",
-        telefono: detail.telefono ?? "",
-        domicilio: detail.domicilio ?? "",
+      const fb = (direct: unknown, key: string) =>
+        direct !== null && direct !== undefined && direct !== "" ? direct : extra[key];
+
+      reset({
+        nombre: str(detail.nombre),
+        apellido: str(detail.apellido),
+        email: str(detail.email),
+        telefono: str(detail.telefono),
+        domicilio: str(detail.domicilio),
         fecha_nacimiento: detail.fecha_nacimiento ? detail.fecha_nacimiento.slice(0, 10) : "",
-        lugar_nacimiento: detail.lugar_nacimiento ?? "",
-        genero: detail.genero ?? toStringOrEmpty(extra.genero),
+        genero: str(fb(detail.genero, "genero")),
+        nacionalidad: str(fb(detail.nacionalidad, "nacionalidad")),
+        estado_civil: str(fb(detail.estado_civil, "estado_civil")),
+        lugar_nacimiento: str(fb(detail.lugar_nacimiento, "lugar_nacimiento")),
+        localidad_nac: str(fb(detail.localidad_nac, "localidad_nac")),
+        provincia_nac: str(fb(detail.provincia_nac, "provincia_nac")),
+        pais_nac: str(fb(detail.pais_nac, "pais_nac")),
+        emergencia_telefono: str(fb(detail.emergencia_telefono, "emergencia_telefono")),
+        emergencia_parentesco: str(fb(detail.emergencia_parentesco, "emergencia_parentesco")),
+        cud_informado: Boolean(fb(detail.cud_informado, "cud_informado")),
+        condicion_salud_informada: Boolean(fb(detail.condicion_salud_informada, "condicion_salud_informada")),
+        condicion_salud_detalle: str(fb(detail.condicion_salud_detalle, "condicion_salud_detalle")),
+        sec_titulo: str(fb(detail.sec_titulo, "sec_titulo")),
+        sec_establecimiento: str(fb(detail.sec_establecimiento, "sec_establecimiento")),
+        sec_fecha_egreso: str(fb(detail.sec_fecha_egreso, "sec_fecha_egreso")),
+        sec_localidad: str(fb(detail.sec_localidad, "sec_localidad")),
+        sec_provincia: str(fb(detail.sec_provincia, "sec_provincia")),
+        sec_pais: str(fb(detail.sec_pais, "sec_pais")),
+        sup1_titulo: str(fb(detail.sup1_titulo, "sup1_titulo")),
+        sup1_establecimiento: str(fb(detail.sup1_establecimiento, "sup1_establecimiento")),
+        sup1_fecha_egreso: str(fb(detail.sup1_fecha_egreso, "sup1_fecha_egreso")),
+        sup1_localidad: str(fb(detail.sup1_localidad, "sup1_localidad")),
+        sup1_provincia: str(fb(detail.sup1_provincia, "sup1_provincia")),
+        sup1_pais: str(fb(detail.sup1_pais, "sup1_pais")),
+        trabaja: Boolean(fb(detail.trabaja, "trabaja")),
+        empleador: str(fb(detail.empleador, "empleador")),
+        horario_trabajo: str(fb(detail.horario_trabajo, "horario_trabajo")),
+        domicilio_trabajo: str(fb(detail.domicilio_trabajo, "domicilio_trabajo")),
         documentacion: normalizeDocumentacion(detail.documentacion),
-      };
-      reset(values);
+      });
     }
   }, [detailQuery.data, reset]);
 
   const mutation = useMutation({
     mutationFn: async (values: PerfilFormValues) => {
-      // Solo enviamos los datos permitidos
       const payload: EstudianteAdminUpdatePayload = {
         nombre: values.nombre.trim() || undefined,
         apellido: values.apellido.trim() || undefined,
@@ -145,12 +250,36 @@ export default function CompletarPerfilPage() {
         telefono: values.telefono.trim() || undefined,
         domicilio: values.domicilio.trim() || undefined,
         fecha_nacimiento: values.fecha_nacimiento.trim() || undefined,
-        lugar_nacimiento: values.lugar_nacimiento.trim() || undefined,
         genero: values.genero.trim() || undefined,
+        nacionalidad: values.nacionalidad.trim() || undefined,
+        estado_civil: values.estado_civil.trim() || undefined,
+        lugar_nacimiento: values.lugar_nacimiento.trim() || undefined,
+        localidad_nac: values.localidad_nac.trim() || undefined,
+        provincia_nac: values.provincia_nac.trim() || undefined,
+        pais_nac: values.pais_nac.trim() || undefined,
+        emergencia_telefono: values.emergencia_telefono.trim() || undefined,
+        emergencia_parentesco: values.emergencia_parentesco.trim() || undefined,
+        cud_informado: values.cud_informado,
+        condicion_salud_informada: values.condicion_salud_informada,
+        condicion_salud_detalle: values.condicion_salud_detalle.trim() || undefined,
+        sec_titulo: values.sec_titulo.trim() || undefined,
+        sec_establecimiento: values.sec_establecimiento.trim() || undefined,
+        sec_fecha_egreso: values.sec_fecha_egreso.trim() || undefined,
+        sec_localidad: values.sec_localidad.trim() || undefined,
+        sec_provincia: values.sec_provincia.trim() || undefined,
+        sec_pais: values.sec_pais.trim() || undefined,
+        sup1_titulo: values.sup1_titulo.trim() || undefined,
+        sup1_establecimiento: values.sup1_establecimiento.trim() || undefined,
+        sup1_fecha_egreso: values.sup1_fecha_egreso.trim() || undefined,
+        sup1_localidad: values.sup1_localidad.trim() || undefined,
+        sup1_provincia: values.sup1_provincia.trim() || undefined,
+        sup1_pais: values.sup1_pais.trim() || undefined,
+        trabaja: values.trabaja,
+        empleador: values.empleador.trim() || undefined,
+        horario_trabajo: values.horario_trabajo.trim() || undefined,
+        domicilio_trabajo: values.domicilio_trabajo.trim() || undefined,
       };
-
-      const data = await completarPerfil(payload);
-      return data;
+      return await completarPerfil(payload);
     },
     onSuccess: async () => {
       await refreshProfile();
@@ -163,7 +292,7 @@ export default function CompletarPerfilPage() {
       const message =
         err?.response?.data?.message ||
         err?.response?.data?.detail ||
-        (error instanceof Error ? error.message : "No se pudo guardar la informacion.");
+        (error instanceof Error ? error.message : "No se pudo guardar la información.");
       enqueueSnackbar(message, { variant: "error" });
     },
   });
@@ -184,9 +313,7 @@ export default function CompletarPerfilPage() {
   };
 
   const handleCancelConfirm = () => {
-    if (mutation.isPending) {
-      return;
-    }
+    if (mutation.isPending) return;
     setConfirmOpen(false);
     setPendingValues(null);
   };
@@ -213,7 +340,7 @@ export default function CompletarPerfilPage() {
         <Stack spacing={3}>
           <PageHero
             title="Mis Datos Personales"
-            subtitle="Mantené tu información actualizada. Los campos DNI y otros datos administrativos solo pueden ser modificados por Bedelía."
+            subtitle="Mantené tu información actualizada. El DNI y CUIL solo pueden ser modificados por Bedelía."
           />
 
           {detailQuery.isLoading && (
@@ -224,7 +351,7 @@ export default function CompletarPerfilPage() {
 
           {detailQuery.isError && (
             <Alert severity="error">
-              No se pudo cargar la informacion del estudiante. Intenta nuevamente mas tarde.
+              No se pudo cargar la información del estudiante. Intentá nuevamente más tarde.
             </Alert>
           )}
 
@@ -235,7 +362,11 @@ export default function CompletarPerfilPage() {
                 <Typography variant="h6" fontWeight={600}>
                   DNI: {detail.dni}
                 </Typography>
-                <Chip label={detail.estado_legajo_display} size="small" color={detail.estado_legajo === 'COM' ? 'success' : 'warning'} />
+                <Chip
+                  label={detail.estado_legajo_display}
+                  size="small"
+                  color={detail.estado_legajo === "COM" ? "success" : "warning"}
+                />
               </Stack>
 
               {detail.condicion_calculada && (
@@ -245,90 +376,404 @@ export default function CompletarPerfilPage() {
               )}
 
               <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-                <Stack spacing={3} sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" fontWeight={600}>Identificación</Typography>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Controller
-                      name="nombre"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} label="Nombre" size="small" fullWidth />
-                      )}
-                    />
-                    <Controller
-                      name="apellido"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} label="Apellido" size="small" fullWidth />
-                      )}
-                    />
-                  </Stack>
+                <Stack spacing={4} sx={{ mt: 2 }}>
 
-                  <Typography variant="subtitle1" fontWeight={600}>Contacto y Residencia</Typography>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Controller
-                      name="email"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} label="Correo electrónico" size="small" fullWidth />
-                      )}
-                    />
-                    <Controller
-                      name="telefono"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} label="Teléfono" size="small" fullWidth />
-                      )}
-                    />
-                  </Stack>
-                  <Controller
-                    name="domicilio"
-                    control={control}
-                    render={({ field }) => (
-                      <TextField {...field} label="Domicilio completo" size="small" fullWidth />
-                    )}
-                  />
+                  {/* ── IDENTIFICACIÓN ── */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Identificación
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="nombre"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Nombre" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="apellido"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Apellido" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="fecha_nacimiento"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              label="Fecha de nacimiento"
+                              size="small"
+                              type="date"
+                              InputLabelProps={{ shrink: true }}
+                              fullWidth
+                            />
+                          )}
+                        />
+                        <Controller
+                          name="genero"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} select label="Género" size="small" fullWidth>
+                              {generoOptions.map((o) => (
+                                <MenuItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        />
+                        <Controller
+                          name="estado_civil"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} select label="Estado Civil" size="small" fullWidth>
+                              {estadoCivilOptions.map((o) => (
+                                <MenuItem key={o.value} value={o.value}>
+                                  {o.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        />
+                      </Stack>
+                      <Controller
+                        name="nacionalidad"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Nacionalidad" size="small" fullWidth />
+                        )}
+                      />
+                    </Stack>
+                  </Box>
 
-                  <Typography variant="subtitle1" fontWeight={600}>Información Personal</Typography>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Controller
-                      name="fecha_nacimiento"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          label="Fecha de nacimiento"
-                          size="small"
-                          type="date"
-                          InputLabelProps={{ shrink: true }}
-                          fullWidth
+                  <Divider />
+
+                  {/* ── LUGAR DE NACIMIENTO ── */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Lugar de Nacimiento
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Controller
+                        name="lugar_nacimiento"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Lugar de nacimiento (general)" size="small" fullWidth />
+                        )}
+                      />
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="localidad_nac"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Localidad" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="provincia_nac"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Provincia" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="pais_nac"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="País" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* ── CONTACTO Y DOMICILIO ── */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Contacto y Domicilio
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="email"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Correo electrónico" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="telefono"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Teléfono / Celular" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                      <Controller
+                        name="domicilio"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField {...field} label="Domicilio" size="small" fullWidth />
+                        )}
+                      />
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="emergencia_telefono"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Teléfono de Emergencia" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="emergencia_parentesco"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Parentesco" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* ── SALUD Y ACCESIBILIDAD ── */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Salud y Accesibilidad
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={2}>
+                        <Controller
+                          name="cud_informado"
+                          control={control}
+                          render={({ field }) => (
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={field.value}
+                                  onChange={(e) => field.onChange(e.target.checked)}
+                                />
+                              }
+                              label="Posee CUD"
+                            />
+                          )}
+                        />
+                        <Controller
+                          name="condicion_salud_informada"
+                          control={control}
+                          render={({ field }) => (
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={field.value}
+                                  onChange={(e) => field.onChange(e.target.checked)}
+                                />
+                              }
+                              label="Informa condición de salud"
+                            />
+                          )}
+                        />
+                      </Stack>
+                      {condicionSalud && (
+                        <Controller
+                          name="condicion_salud_detalle"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              label="Detalle de salud / Apoyo necesario"
+                              size="small"
+                              fullWidth
+                              multiline
+                              rows={3}
+                            />
+                          )}
                         />
                       )}
-                    />
-                    <Controller
-                      name="lugar_nacimiento"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} label="Lugar de nacimiento" size="small" fullWidth />
-                      )}
-                    />
-                    <Controller
-                      name="genero"
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} select label="Género" size="small" fullWidth>
-                          {generoOptions.map((option) => (
-                            <MenuItem key={option.value} value={option.value}>
-                              {option.label}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      )}
-                    />
-                  </Stack>
+                    </Stack>
+                  </Box>
 
+                  <Divider />
+
+                  {/* ── ESTUDIOS SECUNDARIOS ── */}
                   <Box>
-                    <Typography variant="subtitle2" fontWeight={600} gutterBottom sx={{ mt: 2 }}>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Estudios Secundarios
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="sec_titulo"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Título obtenido" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sec_establecimiento"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Establecimiento" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sec_fecha_egreso"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Fecha de egreso" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="sec_localidad"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Localidad" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sec_provincia"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Provincia" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sec_pais"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="País" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* ── ESTUDIOS SUPERIORES PREVIOS ── */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Estudios Superiores Previos
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="sup1_titulo"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Título obtenido" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sup1_establecimiento"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Establecimiento" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sup1_fecha_egreso"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Fecha de egreso" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                        <Controller
+                          name="sup1_localidad"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Localidad" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sup1_provincia"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="Provincia" size="small" fullWidth />
+                          )}
+                        />
+                        <Controller
+                          name="sup1_pais"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField {...field} label="País" size="small" fullWidth />
+                          )}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* ── SITUACIÓN LABORAL ── */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      Situación Laboral
+                    </Typography>
+                    <Stack spacing={2}>
+                      <Controller
+                        name="trabaja"
+                        control={control}
+                        render={({ field }) => (
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={field.value}
+                                onChange={(e) => field.onChange(e.target.checked)}
+                              />
+                            }
+                            label="¿Trabaja actualmente?"
+                          />
+                        )}
+                      />
+                      {trabaja && (
+                        <>
+                          <Controller
+                            name="empleador"
+                            control={control}
+                            render={({ field }) => (
+                              <TextField {...field} label="Empleador" size="small" fullWidth />
+                            )}
+                          />
+                          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                            <Controller
+                              name="horario_trabajo"
+                              control={control}
+                              render={({ field }) => (
+                                <TextField {...field} label="Horario de trabajo" size="small" fullWidth />
+                              )}
+                            />
+                            <Controller
+                              name="domicilio_trabajo"
+                              control={control}
+                              render={({ field }) => (
+                                <TextField {...field} label="Domicilio de trabajo" size="small" fullWidth />
+                              )}
+                            />
+                          </Stack>
+                        </>
+                      )}
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* ── DOCUMENTACIÓN (solo lectura) ── */}
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={700} gutterBottom>
                       Documentación registrada (Solo lectura)
                     </Typography>
                     <Stack
@@ -338,7 +783,7 @@ export default function CompletarPerfilPage() {
                         borderColor: "divider",
                         borderRadius: 1,
                         p: 2,
-                        bgcolor: 'action.hover'
+                        bgcolor: "action.hover",
                       }}
                     >
                       {docSummary.map((item) => (
@@ -362,6 +807,7 @@ export default function CompletarPerfilPage() {
                     </Alert>
                   </Box>
 
+                  {/* ── BOTÓN GUARDAR ── */}
                   <Stack direction="row" spacing={2} justifyContent="flex-end">
                     <Button
                       type="submit"

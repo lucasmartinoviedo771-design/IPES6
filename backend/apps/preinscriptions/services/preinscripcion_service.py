@@ -180,6 +180,8 @@ class PreinscripcionService:
         est_updates = {}
         for field in ("sec_titulo", "sec_establecimiento", "sec_fecha_egreso",
                       "sec_localidad", "sec_provincia", "sec_pais",
+                      "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso",
+                      "sup1_localidad", "sup1_provincia", "sup1_pais",
                       "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo"):
             if extra.get(field) is not None:
                 est_updates[field] = extra[field]

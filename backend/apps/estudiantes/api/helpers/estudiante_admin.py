@@ -570,4 +570,38 @@ def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | 
         regularidades=regularidades_resumen,
         lugar_nacimiento=persona.lugar_nacimiento if persona else None,
         genero=persona.genero if persona else None,
+        # Identidad extendida
+        cuil=_fb(persona.cuil if persona else None, "cuil"),
+        nacionalidad=_fb(persona.nacionalidad if persona else None, "nacionalidad"),
+        estado_civil=_fb(persona.estado_civil if persona else None, "estado_civil"),
+        localidad_nac=_fb(persona.localidad_nac if persona else None, "localidad_nac"),
+        provincia_nac=_fb(persona.provincia_nac if persona else None, "provincia_nac"),
+        pais_nac=_fb(persona.pais_nac if persona else None, "pais_nac"),
+        # Contacto de emergencia
+        emergencia_telefono=_fb(persona.telefono_emergencia if persona else None, "emergencia_telefono"),
+        emergencia_parentesco=_fb(persona.parentesco_emergencia if persona else None, "emergencia_parentesco"),
+        # Salud y accesibilidad
+        cud_informado=bool(_fb(estudiante.cud_informado, "cud_informado", False)),
+        condicion_salud_informada=bool(_fb(estudiante.condicion_salud_informada, "condicion_salud_informada", False)),
+        condicion_salud_detalle=_fb(estudiante.condicion_salud_detalle, "condicion_salud_detalle"),
+        # Estudios secundarios
+        sec_titulo=_fb(estudiante.sec_titulo, "sec_titulo"),
+        sec_establecimiento=_fb(estudiante.sec_establecimiento, "sec_establecimiento"),
+        sec_fecha_egreso=format_date(_fb(estudiante.sec_fecha_egreso, "sec_fecha_egreso")),
+        sec_localidad=_fb(estudiante.sec_localidad, "sec_localidad"),
+        sec_provincia=_fb(estudiante.sec_provincia, "sec_provincia"),
+        sec_pais=_fb(estudiante.sec_pais, "sec_pais"),
+        # Estudios superiores previos
+        sup1_titulo=_fb(estudiante.sup1_titulo, "sup1_titulo"),
+        sup1_establecimiento=_fb(estudiante.sup1_establecimiento, "sup1_establecimiento"),
+        sup1_fecha_egreso=format_date(_fb(estudiante.sup1_fecha_egreso, "sup1_fecha_egreso")),
+        sup1_localidad=_fb(estudiante.sup1_localidad, "sup1_localidad"),
+        sup1_provincia=_fb(estudiante.sup1_provincia, "sup1_provincia"),
+        sup1_pais=_fb(estudiante.sup1_pais, "sup1_pais"),
+
+        # Situación laboral
+        trabaja=bool(_fb(estudiante.trabaja, "trabaja", False)),
+        empleador=_fb(estudiante.empleador, "empleador"),
+        horario_trabajo=_fb(estudiante.horario_trabajo, "horario_trabajo"),
+        domicilio_trabajo=_fb(estudiante.domicilio_trabajo, "domicilio_trabajo"),
     )
