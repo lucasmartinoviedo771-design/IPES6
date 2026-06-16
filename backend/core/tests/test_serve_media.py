@@ -209,3 +209,37 @@ class TestServeMedia:
         client.force_login(u_other)
         response = client.get(f"/media/{rel_path}")
         assert response.status_code == 403
+
+    def test_foto_perfil_estudiante_access(self, client, media_setup):
+        """Estudiante puede ver su propia foto; otro usuario recibe 403.
+
+        Anti-drift: serve_media verifica propiedad vía estudiante_perfil (no user_profile).
+        Si alguien cambia ese camino, este test lo detecta antes de llegar a producción.
+        """
+        dni = "33333333"
+        rel_path = f"personas/fotos/foto_{dni}.jpg"
+        file_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb") as f:
+            f.write(b"fake_jpeg_content")
+
+        # Crear Persona → Estudiante → User (camino correcto, NO via UserProfile)
+        persona = Persona.objects.create(dni=dni, nombre="Ana", apellido="García")
+        user = User.objects.create_user(username=dni, password="pass")
+        g_est, _ = Group.objects.get_or_create(name="estudiante")
+        user.groups.add(g_est)
+        Estudiante.objects.create(user=user, persona=persona)
+
+        # Otro usuario sin relación con esa Persona
+        other_user = User.objects.create_user(username="otro_user", password="pass")
+        other_user.groups.add(g_est)
+
+        # El propio estudiante → 200
+        client.force_login(user)
+        response = client.get(f"/media/{rel_path}")
+        assert response.status_code == 200
+
+        # Otro estudiante → 403
+        client.force_login(other_user)
+        response = client.get(f"/media/{rel_path}")
+        assert response.status_code == 403
