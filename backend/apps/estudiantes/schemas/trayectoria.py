@@ -1,8 +1,7 @@
 from typing import Literal
 
-from ninja import Schema, Field
+from ninja import Field, Schema
 
-from apps.estudiantes.schemas.regularidad import RegularidadEstudianteOut
 from apps.estudiantes.schemas.estudiantes_admin import RegularidadResumen
 
 # ==========================================
@@ -10,6 +9,7 @@ from apps.estudiantes.schemas.estudiantes_admin import RegularidadResumen
 # ==========================================
 
 EventoTipo = Literal["preinscripcion", "inscripcion_materia", "regularidad", "mesa", "tramite", "nota"]
+
 
 class TrayectoriaEvento(Schema):
     id: str
@@ -22,6 +22,7 @@ class TrayectoriaEvento(Schema):
     profesorado_id: int | None = None
     profesorado_nombre: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
+
 
 class TrayectoriaMesa(Schema):
     id: int
@@ -40,6 +41,7 @@ class TrayectoriaMesa(Schema):
     puede_baja: bool = False
     tribunal: dict[str, str | None] | None = None
 
+
 class MateriaSugerida(Schema):
     materia_id: int
     materia_nombre: str
@@ -47,6 +49,7 @@ class MateriaSugerida(Schema):
     cuatrimestre: str
     motivos: list[str] = Field(default_factory=list)
     alertas: list[str] = Field(default_factory=list)
+
 
 class FinalHabilitado(Schema):
     materia_id: int
@@ -56,6 +59,7 @@ class FinalHabilitado(Schema):
     dias_restantes: int | None = None
     comentarios: list[str] = Field(default_factory=list)
     correlativas_aprobadas: list[str] = Field(default_factory=list)
+
 
 class RegularidadVigenciaOut(Schema):
     materia_id: int
@@ -70,20 +74,24 @@ class RegularidadVigenciaOut(Schema):
     intentos_max: int
     en_resguardo: bool = False
 
+
 class CarreraPlanResumen(Schema):
     id: int
     resolucion: str | None = None
     vigente: bool = False
+
 
 class CarreraDetalleResumen(Schema):
     profesorado_id: int
     nombre: str
     planes: list[CarreraPlanResumen] = Field(default_factory=list)
 
+
 class CarrerasActivasOut(Schema):
     estudiante_nombre: str
     estudiante_dni: str
     carreras: list[CarreraDetalleResumen]
+
 
 class EstudianteResumen(Schema):
     dni: str
@@ -107,10 +115,12 @@ class EstudianteResumen(Schema):
     materias_en_curso: int | None = None
     fotoUrl: str | None = None
 
+
 class RecomendacionesOut(Schema):
     materias_sugeridas: list[MateriaSugerida] = Field(default_factory=list)
     finales_habilitados: list[FinalHabilitado] = Field(default_factory=list)
     alertas: list[str] = Field(default_factory=list)
+
 
 class CartonEvento(Schema):
     fecha: str | None = None
@@ -121,6 +131,7 @@ class CartonEvento(Schema):
     libro: str | None = None
     id_fila: int | None = None
     en_resguardo: bool = False
+
 
 class CartonMateria(Schema):
     materia_id: int
@@ -135,12 +146,14 @@ class CartonMateria(Schema):
     final: CartonEvento | None = None
     finales: list[CartonEvento] = Field(default_factory=list)
 
+
 class CartonPlan(Schema):
     profesorado_id: int
     profesorado_nombre: str
     plan_id: int
     plan_resolucion: str
     materias: list[CartonMateria] = Field(default_factory=list)
+
 
 class TrayectoriaOut(Schema):
     estudiante: EstudianteResumen
@@ -155,12 +168,14 @@ class TrayectoriaOut(Schema):
     carton: list[CartonPlan] = Field(default_factory=list)
     updated_at: str
 
+
 TrayectoriaOut.model_rebuild()
 
 
 # ==========================================
 # 13. HORARIOS (GRILLA)
 # ==========================================
+
 
 class HorarioMateriaCelda(Schema):
     materia_id: int
@@ -172,9 +187,11 @@ class HorarioMateriaCelda(Schema):
     cuatrimestre: str | None = None
     es_cuatrimestral: bool = False
 
+
 class HorarioDia(Schema):
     numero: int
     nombre: str
+
 
 class HorarioFranja(Schema):
     orden: int
@@ -185,6 +202,7 @@ class HorarioFranja(Schema):
     desde_sec: str | None = None
     hasta_sec: str | None = None
 
+
 class HorarioCelda(Schema):
     dia_numero: int
     franja_orden: int
@@ -193,6 +211,7 @@ class HorarioCelda(Schema):
     desde: str
     hasta: str
     materias: list[HorarioMateriaCelda] = Field(default_factory=list)
+
 
 class HorarioTabla(Schema):
     key: str
@@ -209,5 +228,6 @@ class HorarioTabla(Schema):
     franjas: list[HorarioFranja] = Field(default_factory=list)
     celdas: list[HorarioCelda] = Field(default_factory=list)
     observaciones: str | None = None
+
 
 HorarioTabla.model_rebuild()

@@ -1,31 +1,27 @@
 """
 API para la gestión de Correlatividades y Trayectorias Curriculares.
 Implementa un sistema de versionado de reglas de correlatividad por cohorte,
-permitiendo que diferentes grupos de alumnos (según su año de ingreso) 
+permitiendo que diferentes grupos de alumnos (según su año de ingreso)
 tengan requisitos de cursada o finales distintos dentro del mismo plan.
 """
 
-from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
+
 from core.auth_ninja import JWTAuth
-from core.models import (
-    PlanDeEstudio, 
-    Materia, 
-    Correlatividad, 
-    CorrelatividadVersion, 
-    CorrelatividadVersionDetalle
-)
-from core.permissions import ensure_profesorado_access, ensure_roles, STRUCTURE_VIEW_ROLES, STRUCTURE_EDIT_ROLES
+from core.models import Correlatividad, CorrelatividadVersion, CorrelatividadVersionDetalle, Materia, PlanDeEstudio
+from core.permissions import STRUCTURE_EDIT_ROLES, STRUCTURE_VIEW_ROLES, ensure_profesorado_access, ensure_roles
+
 from .schemas import (
-    CorrelatividadSetIn, 
-    CorrelatividadSetOut, 
-    CorrelatividadVersionOut, 
-    CorrelatividadVersionCreateIn, 
+    CorrelatividadSetIn,
+    CorrelatividadSetOut,
+    CorrelatividadVersionCreateIn,
+    CorrelatividadVersionOut,
     CorrelatividadVersionUpdateIn,
-    MateriaCorrelatividadRow
+    MateriaCorrelatividadRow,
 )
 
 router = Router(tags=["Correlatividades"])
@@ -47,11 +43,7 @@ def _ensure_edit(user, profesorado_id: int | None = None):
 
 def _to_set_out(qs) -> dict[str, list[int]]:
     """Transforma un queryset de correlatividades en un diccionario categorizado por tipo."""
-    out = {
-        "regular_para_cursar": [], 
-        "aprobada_para_cursar": [], 
-        "aprobada_para_rendir": []
-    }
+    out = {"regular_para_cursar": [], "aprobada_para_cursar": [], "aprobada_para_rendir": []}
     for c in qs:
         if c.tipo == Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR:
             out["regular_para_cursar"].append(c.materia_correlativa_id)
@@ -79,66 +71,67 @@ def _version_to_schema(version: CorrelatividadVersion) -> CorrelatividadVersionO
     )
 
 
-def _validate_version_range(plan_id: int, cohorte_desde: int, cohorte_hasta: int | None, exclude_id: int | None = None, allow_autoclose: bool = False):
+def _validate_version_range(
+    plan_id: int,
+    cohorte_desde: int,
+    cohorte_hasta: int | None,
+    exclude_id: int | None = None,
+    allow_autoclose: bool = False,
+):
     """
     Valida que los rangos de cohortes no se solapen con versiones existentes.
     Previene inconsistencias donde una cohorte tenga múltiples definiciones de correlatividad.
     """
     if cohorte_hasta is not None and cohorte_hasta < cohorte_desde:
         raise HttpError(400, "El año final de cohorte debe ser mayor o igual al inicial.")
-        
+
     qs = CorrelatividadVersion.objects.filter(plan_de_estudio_id=plan_id)
     if exclude_id:
         qs = qs.exclude(id=exclude_id)
-        
+
     new_start = cohorte_desde
     new_end = cohorte_hasta if cohorte_hasta is not None else 9999
-    
+
     for version in qs:
         existing_start = version.cohorte_desde
         existing_end = version.cohorte_hasta if version.cohorte_hasta is not None else 9999
         overlaps = not (new_end < existing_start or new_start > existing_end)
-        
+
         if not overlaps:
             continue
         # Si se permite autoclose, ignoramos el solapamiento que será resuelto posteriormente
         if allow_autoclose and existing_start < new_start <= existing_end:
             continue
-            
+
         raise HttpError(400, f"El rango de cohortes se superpone con la versión '{version.nombre}'.")
 
 
 def _autoclose_previous_versions(plan_id: int, new_cohorte_desde: int, exclude_id: int | None = None):
     """Cierra automáticamente versiones anteriores si una nueva versión las 'pisa' en tiempo."""
-    overlaps = CorrelatividadVersion.objects.filter(
-        plan_de_estudio_id=plan_id, 
-        cohorte_desde__lt=new_cohorte_desde
-    )
+    overlaps = CorrelatividadVersion.objects.filter(plan_de_estudio_id=plan_id, cohorte_desde__lt=new_cohorte_desde)
     if exclude_id:
         overlaps = overlaps.exclude(id=exclude_id)
-        
+
     # Versiones abiertas o con fin posterior a la nueva fecha de inicio
     overlaps = overlaps.filter(Q(cohorte_hasta__isnull=True) | Q(cohorte_hasta__gte=new_cohorte_desde))
-    
+
     for version in overlaps:
         version.cohorte_hasta = new_cohorte_desde - 1
         version.save(update_fields=["cohorte_hasta", "updated_at"])
 
 
-def _resolve_version_for_plan(*, plan: PlanDeEstudio, version_id: int | None = None, cohorte: int | None = None) -> CorrelatividadVersion | None:
+def _resolve_version_for_plan(
+    *, plan: PlanDeEstudio, version_id: int | None = None, cohorte: int | None = None
+) -> CorrelatividadVersion | None:
     """Busca la versión de correlatividad aplicable según ID explícito, año de cohorte o vigencia actual."""
     if version_id is not None:
         version = get_object_or_404(CorrelatividadVersion, id=version_id)
         if version.plan_de_estudio_id != plan.id:
             raise HttpError(400, "La versión seleccionada no pertenece al plan indicado.")
         return version
-        
+
     if cohorte is not None:
-        return CorrelatividadVersion.vigente_para(
-            plan_id=plan.id, 
-            profesorado_id=plan.profesorado_id, 
-            cohorte=cohorte
-        )
+        return CorrelatividadVersion.vigente_para(plan_id=plan.id, profesorado_id=plan.profesorado_id, cohorte=cohorte)
     # Por defecto, retornar la más reciente
     return plan.correlatividad_versiones.order_by("-cohorte_desde").first()
 
@@ -157,30 +150,27 @@ def crear_version(request, plan_id: int, payload: CorrelatividadVersionCreateIn)
     """Crea una nueva versión de reglas, permitiendo duplicar las existentes para facilitar cambios menores."""
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
     _ensure_edit(request.user, plan.profesorado_id)
-    
+
     if not plan.profesorado_id:
         raise HttpError(400, "El plan seleccionado no está vinculado a una carrera activa.")
-        
+
     _validate_version_range(plan.id, payload.cohorte_desde, payload.cohorte_hasta, allow_autoclose=True)
-    
+
     version = CorrelatividadVersion.objects.create(
-        plan_de_estudio=plan, 
-        profesorado_id=plan.profesorado_id, 
-        **payload.dict(exclude={'duplicar_version_id'})
+        plan_de_estudio=plan, profesorado_id=plan.profesorado_id, **payload.dict(exclude={"duplicar_version_id"})
     )
-    
+
     # Cierre automático de vigencia del periodo anterior
     _autoclose_previous_versions(plan.id, version.cohorte_desde, exclude_id=version.id)
-    
+
     # Lógica de clonación (duplicación de reglas para el nuevo periodo)
     if payload.duplicar_version_id:
         origen = get_object_or_404(CorrelatividadVersion, id=payload.duplicar_version_id)
         detalles = origen.detalles.all()
-        CorrelatividadVersionDetalle.objects.bulk_create([
-            CorrelatividadVersionDetalle(version=version, correlatividad=d.correlatividad) 
-            for d in detalles
-        ])
-        
+        CorrelatividadVersionDetalle.objects.bulk_create(
+            [CorrelatividadVersionDetalle(version=version, correlatividad=d.correlatividad) for d in detalles]
+        )
+
     return _version_to_schema(version)
 
 
@@ -189,13 +179,13 @@ def get_correlatividades(request, materia_id: int, version_id: int | None = None
     """Recupera el conjunto de correlatividades de una materia para una versión o cohorte específica."""
     materia = get_object_or_404(Materia, id=materia_id)
     _ensure_view(request.user, materia.plan_de_estudio.profesorado_id)
-    
+
     version = _resolve_version_for_plan(plan=materia.plan_de_estudio, version_id=version_id, cohorte=cohorte)
     qs = Correlatividad.objects.filter(materia_origen=materia)
-    
+
     if version:
         qs = qs.filter(versiones__version=version)
-        
+
     return _to_set_out(qs)
 
 
@@ -205,13 +195,15 @@ def actualizar_version(request, version_id: int, payload: CorrelatividadVersionU
     version = get_object_or_404(CorrelatividadVersion, id=version_id)
     plan = version.plan_de_estudio
     _ensure_edit(request.user, plan.profesorado_id)
-    
-    _validate_version_range(plan.id, payload.cohorte_desde, payload.cohorte_hasta, exclude_id=version.id, allow_autoclose=True)
-    
+
+    _validate_version_range(
+        plan.id, payload.cohorte_desde, payload.cohorte_hasta, exclude_id=version.id, allow_autoclose=True
+    )
+
     for attr, value in payload.dict().items():
         setattr(version, attr, value)
     version.save()
-    
+
     _autoclose_previous_versions(plan.id, version.cohorte_desde, exclude_id=version.id)
     return _version_to_schema(version)
 
@@ -224,7 +216,7 @@ def set_correlatividades(request, materia_id: int, payload: CorrelatividadSetIn,
     """
     materia = get_object_or_404(Materia, id=materia_id)
     _ensure_edit(request.user, materia.plan_de_estudio.profesorado_id)
-    
+
     version = _resolve_version_for_plan(plan=materia.plan_de_estudio, version_id=version_id)
 
     # Validación de perímetro (materias correlativas deben ser del mismo plan)
@@ -237,7 +229,7 @@ def set_correlatividades(request, materia_id: int, payload: CorrelatividadSetIn,
     with transaction.atomic():
         if version:
             return _set_correlatividades_for_version(materia, version, payload)
-        
+
         # Modo 'Legacy' (sin versionado): Borrado y recreación masiva
         Correlatividad.objects.filter(materia_origen=materia).delete()
         for tipo, ids in [
@@ -246,11 +238,10 @@ def set_correlatividades(request, materia_id: int, payload: CorrelatividadSetIn,
             (Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, payload.aprobada_para_rendir),
         ]:
             if ids:
-                Correlatividad.objects.bulk_create([
-                    Correlatividad(materia_origen_id=materia.id, materia_correlativa_id=mid, tipo=tipo) 
-                    for mid in ids
-                ])
-    
+                Correlatividad.objects.bulk_create(
+                    [Correlatividad(materia_origen_id=materia.id, materia_correlativa_id=mid, tipo=tipo) for mid in ids]
+                )
+
     qs = Correlatividad.objects.filter(materia_origen=materia)
     return _to_set_out(qs)
 
@@ -263,22 +254,21 @@ def _set_correlatividades_for_version(materia, version, payload):
         (Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, payload.aprobada_para_cursar),
         (Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, payload.aprobada_para_rendir),
     ]:
-        for mid in ids: 
+        for mid in ids:
             desired.add((tipo, mid))
 
     # Limpieza de desvinculaciones
     existing_details = CorrelatividadVersionDetalle.objects.filter(
-        version=version, 
-        correlatividad__materia_origen=materia
+        version=version, correlatividad__materia_origen=materia
     ).select_related("correlatividad")
-    
+
     for detalle in existing_details:
         key = (detalle.correlatividad.tipo, detalle.correlatividad.materia_correlativa_id)
         if key not in desired:
             corr = detalle.correlatividad
             detalle.delete()
             # Si la regla de correlatividad ya no es usada por ninguna versión, borrar el objeto base
-            if not corr.versiones.exists(): 
+            if not corr.versiones.exists():
                 corr.delete()
 
     # Alta de nuevas vinculaciones
@@ -297,25 +287,27 @@ def correlatividades_matrix(request, plan_id: int, version_id: int | None = None
     """
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
     _ensure_view(request.user, plan.profesorado_id)
-    
+
     materias = plan.materias.all().order_by("anio_cursada", "nombre")
     version = _resolve_version_for_plan(plan=plan, version_id=version_id, cohorte=cohorte)
-    
+
     rows = []
     for m in materias:
         qs = Correlatividad.objects.filter(materia_origen=m)
-        if version: 
+        if version:
             qs = qs.filter(versiones__version=version)
-            
+
         v = _to_set_out(qs)
-        rows.append(MateriaCorrelatividadRow(
-            id=m.id, 
-            nombre=m.nombre, 
-            anio_cursada=m.anio_cursada,
-            regimen=m.regimen, 
-            formato=m.formato,
-            regular_para_cursar=v["regular_para_cursar"],
-            aprobada_para_cursar=v["aprobada_para_cursar"],
-            aprobada_para_rendir=v["aprobada_para_rendir"]
-        ))
+        rows.append(
+            MateriaCorrelatividadRow(
+                id=m.id,
+                nombre=m.nombre,
+                anio_cursada=m.anio_cursada,
+                regimen=m.regimen,
+                formato=m.formato,
+                regular_para_cursar=v["regular_para_cursar"],
+                aprobada_para_cursar=v["aprobada_para_cursar"],
+                aprobada_para_rendir=v["aprobada_para_rendir"],
+            )
+        )
     return rows

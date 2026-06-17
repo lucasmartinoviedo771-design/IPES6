@@ -5,10 +5,11 @@ Crea una MesaExamen + InscripcionMesa por cada fila, con validación mínima:
 - Solo verifica que la materia no esté ya aprobada para el estudiante
   (o que si está aprobada, sea con una fecha POSTERIOR a la mesa que se intenta cargar).
 """
+
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -136,13 +137,10 @@ def registrar_mesa_pandemia(
         # Si la mesa ya existía o el docente no está asignado, intentar resolverlo
         if (mesa_created or not mesa.docente_presidente_id) and docente_nombre:
             nombre_limpio = docente_nombre.split()[0].replace(",", "").strip() if docente_nombre else ""
-            docente_obj = Docente.objects.filter(
-                persona__apellido__icontains=nombre_limpio
-            ).first()
+            docente_obj = Docente.objects.filter(persona__apellido__icontains=nombre_limpio).first()
             if docente_obj:
                 mesa.docente_presidente = docente_obj
                 mesa.save(update_fields=["docente_presidente"])
-
 
         for idx, fila in enumerate(filas, start=1):
             dni = (fila.get("dni") or "").strip()
@@ -153,14 +151,24 @@ def registrar_mesa_pandemia(
 
             if not dni:
                 warnings.append(f"[Fila {idx}] Sin DNI – se omitió ({apellido_nombre or 'sin nombre'}).")
-                results.append({"fila": idx, "apellido_nombre": apellido_nombre, "estado": "omitida", "mensaje": "Sin DNI"})
+                results.append(
+                    {"fila": idx, "apellido_nombre": apellido_nombre, "estado": "omitida", "mensaje": "Sin DNI"}
+                )
                 continue
 
             # Buscar estudiante
             estudiante = Estudiante.objects.filter(persona__dni=dni).first()
             if not estudiante:
                 warnings.append(f"[Fila {idx}] No se encontró estudiante con DNI {dni}.")
-                results.append({"fila": idx, "dni": dni, "apellido_nombre": apellido_nombre, "estado": "error", "mensaje": "Estudiante no encontrado"})
+                results.append(
+                    {
+                        "fila": idx,
+                        "dni": dni,
+                        "apellido_nombre": apellido_nombre,
+                        "estado": "error",
+                        "mensaje": "Estudiante no encontrado",
+                    }
+                )
                 continue
 
             condicion, nota_val = _parse_nota(nota_raw)
@@ -168,20 +176,35 @@ def registrar_mesa_pandemia(
             # Validación: ¿ya aprobada la materia con fecha POSTERIOR a esta mesa?
             if condicion == InscripcionMesa.Condicion.APROBADO:
                 if _ya_aprobada_con_fecha_posterior(estudiante, materia, fecha):
-                    warnings.append(f"[Fila {idx}] DNI {dni}: la materia ya fue aprobada en fecha posterior a {fecha}. Se omite.")
-                    results.append({"fila": idx, "dni": dni, "apellido_nombre": apellido_nombre, "estado": "omitida", "mensaje": "Materia ya aprobada en fecha posterior"})
+                    warnings.append(
+                        f"[Fila {idx}] DNI {dni}: la materia ya fue aprobada en fecha posterior a {fecha}. Se omite."
+                    )
+                    results.append(
+                        {
+                            "fila": idx,
+                            "dni": dni,
+                            "apellido_nombre": apellido_nombre,
+                            "estado": "omitida",
+                            "mensaje": "Materia ya aprobada en fecha posterior",
+                        }
+                    )
                     continue
 
             # — No validamos si ya está aprobada en fecha anterior:
             #   estamos cargando un historial, puede existir una nota previa.
             #   Pero si YA está aprobada en ESTA misma mesa, actualizamos.
 
-            obs_completa = " | ".join(filter(None, [
-                docente_nombre and f"Docente: {docente_nombre}",
-                comision_obs and f"Comisión orig.: {comision_obs}",
-                fila_obs,
-                observaciones,
-            ]))
+            obs_completa = " | ".join(
+                filter(
+                    None,
+                    [
+                        docente_nombre and f"Docente: {docente_nombre}",
+                        comision_obs and f"Comisión orig.: {comision_obs}",
+                        fila_obs,
+                        observaciones,
+                    ],
+                )
+            )
 
             insc, created = InscripcionMesa.objects.get_or_create(
                 mesa=mesa,
@@ -189,7 +212,9 @@ def registrar_mesa_pandemia(
                 defaults={
                     "estado": InscripcionMesa.Estado.INSCRIPTO,
                     "condicion": condicion,
-                    "nota": Decimal(str(nota_val)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP) if nota_val is not None else None,
+                    "nota": Decimal(str(nota_val)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+                    if nota_val is not None
+                    else None,
                     "folio": folio or "",
                     "libro": libro or "",
                     "observaciones": obs_completa,
@@ -199,7 +224,11 @@ def registrar_mesa_pandemia(
             if not created:
                 # Actualizar si ya existía
                 insc.condicion = condicion
-                insc.nota = Decimal(str(nota_val)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP) if nota_val is not None else None
+                insc.nota = (
+                    Decimal(str(nota_val)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+                    if nota_val is not None
+                    else None
+                )
                 insc.folio = folio or insc.folio
                 insc.libro = libro or insc.libro
                 insc.observaciones = obs_completa or insc.observaciones
@@ -211,18 +240,20 @@ def registrar_mesa_pandemia(
                 InscripcionMesa.Condicion.AUSENTE: "ausente",
             }.get(condicion, condicion)
 
-            results.append({
-                "fila": idx,
-                "dni": dni,
-                "apellido_nombre": apellido_nombre,
-                "nota_raw": nota_raw,
-                "condicion": condicion,
-                "nota": float(nota_val) if nota_val is not None else None,
-                "estado": estado_str,
-                "inscripcion_id": insc.id,
-                "mesa_id": mesa.id,
-                "actualizada": not created,
-            })
+            results.append(
+                {
+                    "fila": idx,
+                    "dni": dni,
+                    "apellido_nombre": apellido_nombre,
+                    "nota_raw": nota_raw,
+                    "condicion": condicion,
+                    "nota": float(nota_val) if nota_val is not None else None,
+                    "estado": estado_str,
+                    "inscripcion_id": insc.id,
+                    "mesa_id": mesa.id,
+                    "actualizada": not created,
+                }
+            )
 
         return mesa
 

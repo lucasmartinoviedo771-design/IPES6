@@ -1,33 +1,41 @@
 from datetime import datetime
 from typing import Literal
 
-from ninja import Schema, Field
+from ninja import Field, Schema
 
 # ==========================================
 # 2. MESAS DE EXAMEN (ALUMNOS)
 # ==========================================
 
+
 class MesaExamenIn(Schema):
     materia_id: int
     tipo_examen: str  # parcial, final, libre, extraordinaria
 
+
 class MesaExamenOut(Schema):
     message: str
+
 
 class InscripcionMesaIn(Schema):
     mesa_id: int
     dni: str | None = None
 
+
 class InscripcionMesaOut(Schema):
     message: str
 
+
 class BajaMesaIn(Schema):
     """Payload para solicitar baja de una mesa"""
+
     mesa_id: int
     dni: str | None = None
 
+
 class BajaMesaOut(Schema):
     """Respuesta de confirmación de baja"""
+
     message: str
     mesa_id: int
     limite_baja: str  # Datetime formateado (DD/MM/YYYY HH:MM)
@@ -78,9 +86,11 @@ class ConstanciaExamenItem(Schema):
     tribunal_vocal1: str | None = None
     tribunal_vocal2: str | None = None
 
+
 # ==========================================
 # 4. GESTIÓN DE MESAS (PLANILLA)
 # ==========================================
+
 
 class MesaResultadoEstudiante(Schema):
     inscripcion_id: int
@@ -95,6 +105,7 @@ class MesaResultadoEstudiante(Schema):
     fecha_resultado: str | None = None
     cuenta_para_intentos: bool = True
     observaciones: str | None = None
+
 
 class MesaPlanillaOut(Schema):
     mesa_id: int
@@ -125,6 +136,7 @@ class MesaPlanillaOut(Schema):
     puede_cerrar: bool = True
     puede_reabrir: bool = False
 
+
 MesaPlanillaOut.model_rebuild()
 
 
@@ -138,8 +150,10 @@ class MesaResultadoIn(Schema):
     observaciones: str | None = None
     cuenta_para_intentos: bool | None = None
 
+
 class MesaPlanillaUpdateIn(Schema):
     estudiantes: list[MesaResultadoIn]
+
 
 class MesaPlanillaCierreIn(Schema):
     accion: Literal["cerrar", "reabrir"]

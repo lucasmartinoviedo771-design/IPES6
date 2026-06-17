@@ -13,12 +13,13 @@ Usar:
 Cron sugerido (primer semana de junio):
     0 6 1 6 * cd /app && python manage.py verificar_residencias_condicionales
 """
+
 from datetime import date
 
 from django.core.management.base import BaseCommand
 
-from core.models import Regularidad, ResidenciaCondicional
 from apps.estudiantes.api.helpers.misc_utils import _tiene_aprobacion_valida
+from core.models import Regularidad, ResidenciaCondicional
 
 
 class Command(BaseCommand):
@@ -91,6 +92,8 @@ class Command(BaseCommand):
                     f"Límite: {rc.fecha_limite}"
                 )
 
-        self.stdout.write(self.style.SUCCESS(
-            f"\n{prefijo}Ciclo {ciclo}: {resueltas} resueltas, {caidas} caídas, {total - resueltas - caidas} vigentes."
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"\n{prefijo}Ciclo {ciclo}: {resueltas} resueltas, {caidas} caídas, {total - resueltas - caidas} vigentes."
+            )
+        )

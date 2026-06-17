@@ -4,13 +4,15 @@ Provee clases de autenticación basadas en JWT y decoradores para control de acc
 """
 
 from functools import wraps
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from ninja.security.base import AuthBase
-from .authentication.jwt_service import JWTService
 
 from apps.common.constants import AppErrorCode
 from apps.common.errors import AppError
+
+from .authentication.jwt_service import JWTService
 
 User = get_user_model()
 
@@ -21,6 +23,7 @@ class JWTAuth(AuthBase):
     Soporta extracción de tokens desde Cookies (preferido por seguridad HttpOnly)
     y desde el encabezado Authorization (Bearer token).
     """
+
     openapi_type = "http"
     openapi_scheme = "bearer"
     openapi_bearer_format = "JWT"
@@ -63,6 +66,7 @@ def ensure_roles(required_roles: list[str]):
     Normaliza los nombres de los Grupos de Django (ej: 'Bedel Informática' -> 'bedel')
     para facilitar la validación declarativa en los Routers.
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
@@ -71,17 +75,14 @@ def ensure_roles(required_roles: list[str]):
 
             # Delegamos la normalización de roles a la función centralizada
             from core.permissions import get_user_roles
+
             user_roles = get_user_roles(request.user)
 
             required = {role.lower() for role in required_roles}
 
             # Intersección de conjuntos para validación eficiente
             if not user_roles.intersection(required):
-                raise AppError(
-                    403,
-                    AppErrorCode.PERMISSION_DENIED,
-                    "No tiene permisos para realizar esta acción."
-                )
+                raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para realizar esta acción.")
             return func(request, *args, **kwargs)
 
         return wrapper

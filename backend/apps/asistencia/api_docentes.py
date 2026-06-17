@@ -1,39 +1,41 @@
 from datetime import date
+
+from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
-from django.conf import settings
 from ninja import Router
 from ninja.errors import HttpError
 
+from apps.common.date_utils import format_date, format_datetime
+from core.auth_ninja import JWTAuth
 from core.models import Docente
 from core.permissions import get_user_roles
-from core.auth_ninja import JWTAuth
 
+from .api_helpers import (
+    _build_horario,
+    _calcular_ventanas,
+)
 from .models import (
     AsistenciaDocente,
     ClaseProgramada,
     DocenteMarcacionLog,
 )
 from .schemas import (
+    DocenteClaseOut,
     DocenteClasesResponse,
+    DocenteDniLogIn,
     DocenteHistorialOut,
     DocenteInfoOut,
-    DocenteClaseOut,
     DocenteMarcarPresenteIn,
     DocenteMarcarPresenteOut,
-    DocenteDniLogIn,
 )
 from .services import (
     generate_classes_for_range,
     registrar_log_docente,
 )
-from .api_helpers import (
-    _calcular_ventanas,
-    _build_horario,
-)
-from apps.common.date_utils import format_date, format_datetime
 
 router = Router(tags=["asistencia-docentes"], auth=JWTAuth())
+
 
 @router.get("/{dni}/clases", response=DocenteClasesResponse)
 def listar_clases_docente(
@@ -62,7 +64,7 @@ def listar_clases_docente(
 
     roles_usuario = get_user_roles(getattr(request, "user", None))
     is_admin_staff = bool(roles_usuario & {"admin", "secretaria", "bedel"})
-    
+
     # El docente solo puede verse a sí mismo, a menos que sea staff
     if not is_admin_staff and request.user.username != dni:
         raise HttpError(403, "No tenés permisos para consultar el horario de otro docente.")
@@ -95,8 +97,7 @@ def listar_clases_docente(
         clases.append(clase)
 
     asistencias = {
-        registro.clase_id: registro
-        for registro in AsistenciaDocente.objects.filter(clase__in=clases, docente=docente)
+        registro.clase_id: registro for registro in AsistenciaDocente.objects.filter(clase__in=clases, docente=docente)
     }
 
     roles_usuario = get_user_roles(getattr(request, "user", None))
@@ -130,9 +131,7 @@ def listar_clases_docente(
                 aula=None,
                 puede_marcar=puede_marcar,
                 editable_staff=puede_editar_staff and clase.estado != ClaseProgramada.Estado.CANCELADA,
-                ya_registrada=bool(
-                    asistencia and asistencia.estado == AsistenciaDocente.Estado.PRESENTE
-                ),
+                ya_registrada=bool(asistencia and asistencia.estado == AsistenciaDocente.Estado.PRESENTE),
                 registrada_en=format_datetime(asistencia.registrado_en) if asistencia else None,
                 ventana_inicio=format_datetime(ventana_inicio),
                 ventana_fin=format_datetime(ventana_fin),
@@ -166,13 +165,10 @@ def listar_clases_docente(
         historial=historial,
     )
 
+
 @router.post("/clases/{clase_id}/marcar-presente", response=DocenteMarcarPresenteOut)
 def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: DocenteMarcarPresenteIn):
-    clase = (
-        ClaseProgramada.objects.select_related("docente", "comision")
-        .filter(id=clase_id)
-        .first()
-    )
+    clase = ClaseProgramada.objects.select_related("docente", "comision").filter(id=clase_id).first()
     if not clase:
         raise HttpError(404, "La clase indicada no existe.")
 
@@ -241,7 +237,9 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     asistencia.observaciones = payload.observaciones or ""
     asistencia.justificacion = None
     asistencia.registrado_via = (
-        AsistenciaDocente.RegistradoVia.STAFF if (payload.via == "staff" and staff_override) else AsistenciaDocente.RegistradoVia.DOCENTE
+        AsistenciaDocente.RegistradoVia.STAFF
+        if (payload.via == "staff" and staff_override)
+        else AsistenciaDocente.RegistradoVia.DOCENTE
     )
     asistencia.registrado_por = request.user if request.user and request.user.is_authenticated else None
     asistencia.registrado_en = timezone.now()
@@ -277,6 +275,7 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
 
     if payload.propagar_turno:
         from .services import propagar_asistencia_docente_turno
+
         propagar_asistencia_docente_turno(
             clase_origen=clase,
             docente=docente,
@@ -301,11 +300,13 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
         turno=turno_nombre or None,
     )
 
+
 def check_kiosk_key(request):
     """Valida que la petición provenga de un dispositivo físico autorizado."""
     key = request.headers.get("X-Kiosk-Key")
     if not key or key != settings.KIOSK_API_KEY:
         raise HttpError(401, "Kiosk key inválida o ausente.")
+
 
 @router.post("/dni-log", response=None, auth=None)
 def registrar_dni_intent(request: HttpRequest, payload: DocenteDniLogIn):

@@ -5,10 +5,10 @@ from django.shortcuts import get_object_or_404
 
 from apps.common.api_schemas import ApiResponse
 from apps.common.date_utils import format_datetime
+from apps.estudiantes.api.common import ADMIN_ALLOWED_ROLES, TITULOS_ROLES
 from core.auth_ninja import JWTAuth
-from core.permissions import ensure_roles
-from apps.estudiantes.api.common import TITULOS_ROLES, ADMIN_ALLOWED_ROLES
 from core.models import Estudiante, PedidoAnalitico, PlanDeEstudio, Profesorado, VentanaHabilitacion
+from core.permissions import ensure_roles
 
 from ..schemas import PedidoAnaliticoIn, PedidoAnaliticoItem, PedidoAnaliticoOut
 from .helpers import _listar_carreras_detalle
@@ -21,7 +21,10 @@ def pedido_analitico(request):
     return {"message": "Solicitud de pedido de analítico recibida."}
 
 
-@estudiantes_router.post("/pedido_analitico", response={200: PedidoAnaliticoOut, 400: PedidoAnaliticoOut, 403: PedidoAnaliticoOut, 404: PedidoAnaliticoOut})
+@estudiantes_router.post(
+    "/pedido_analitico",
+    response={200: PedidoAnaliticoOut, 400: PedidoAnaliticoOut, 403: PedidoAnaliticoOut, 404: PedidoAnaliticoOut},
+)
 def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
     ventana = (
         VentanaHabilitacion.objects.filter(tipo=VentanaHabilitacion.Tipo.ANALITICOS, activo=True)
@@ -83,15 +86,14 @@ def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
 def listar_pedidos_analitico(request, ventana_id: int, dni: str | None = None):
     # VULN-02 fix: restringir a roles administrativos — evita exposición de PII de estudiantes
     ensure_roles(request.user, ADMIN_ALLOWED_ROLES | TITULOS_ROLES | {"coordinador", "tutor", "jefes"})
-    qs = (
-        PedidoAnalitico.objects.select_related("estudiante__user", "estudiante__persona", "profesorado", "ventana")
-        .filter(ventana_id=ventana_id)
-    )
+    qs = PedidoAnalitico.objects.select_related(
+        "estudiante__user", "estudiante__persona", "profesorado", "ventana"
+    ).filter(ventana_id=ventana_id)
     if dni:
         qs = qs.filter(estudiante__persona__dni__icontains=dni)
-        
+
     qs = qs.order_by("-created_at")
-    
+
     salida: list[PedidoAnaliticoItem] = []
     for pedido in qs:
         est = pedido.estudiante
@@ -116,12 +118,13 @@ def listar_pedidos_analitico(request, ventana_id: int, dni: str | None = None):
 def descargar_pedidos_analitico_pdf(request, ventana_id: int, dni: str | None = None):
     # VULN-02 fix: mismo control de acceso que el endpoint de listado
     ensure_roles(request.user, ADMIN_ALLOWED_ROLES | TITULOS_ROLES | {"coordinador", "tutor", "jefes"})
-    from django.template.loader import render_to_string
-    from django.http import HttpResponse
-    from weasyprint import HTML
     import datetime
-    from django.conf import settings
     import os
+
+    from django.conf import settings
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
 
     ventana = get_object_or_404(VentanaHabilitacion, id=ventana_id)
     items = listar_pedidos_analitico(request, ventana_id, dni)
@@ -152,11 +155,14 @@ def descargar_pedidos_analitico_pdf(request, ventana_id: int, dni: str | None = 
     return response
 
 
-@estudiantes_router.patch("/analiticos_ext/{pedido_id}/marcar-confeccionado", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
+@estudiantes_router.patch(
+    "/analiticos_ext/{pedido_id}/marcar-confeccionado", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth()
+)
 def marcar_analitico_confeccionado(request, pedido_id: int):
     """Marca un pedido de analítico como confeccionado y notifica al estudiante y tutores."""
-    from apps.estudiantes.services.notificaciones_service import NotificacionesService
     from django.utils import timezone
+
+    from apps.estudiantes.services.notificaciones_service import NotificacionesService
 
     ensure_roles(request.user, TITULOS_ROLES | {"bedel"})
 
@@ -177,17 +183,22 @@ def marcar_analitico_confeccionado(request, pedido_id: int):
     return 200, ApiResponse(ok=True, message="Pedido marcado como confeccionado. Se notificó al estudiante y tutores.")
 
 
-@estudiantes_router.patch("/analiticos_ext/{pedido_id}/marcar-entregado", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
+@estudiantes_router.patch(
+    "/analiticos_ext/{pedido_id}/marcar-entregado", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth()
+)
 def marcar_analitico_entregado(request, pedido_id: int):
     """Marca un pedido de analítico como entregado y notifica al estudiante y tutores."""
+
     from apps.estudiantes.services.notificaciones_service import NotificacionesService
-    from django.utils import timezone
 
     ensure_roles(request.user, TITULOS_ROLES | {"bedel"})
 
     pedido = get_object_or_404(PedidoAnalitico, id=pedido_id)
     if pedido.estado != PedidoAnalitico.Estado.CONFECCIONADO:
-        return 400, ApiResponse(ok=False, message=f"El pedido debe estar confeccionado antes de marcarlo como entregado. Estado actual: {pedido.get_estado_display()}.")
+        return 400, ApiResponse(
+            ok=False,
+            message=f"El pedido debe estar confeccionado antes de marcarlo como entregado. Estado actual: {pedido.get_estado_display()}.",
+        )
 
     pedido.estado = PedidoAnalitico.Estado.ENTREGADO
     pedido.save(update_fields=["estado", "updated_at"])

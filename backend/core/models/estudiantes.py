@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
-from .carreras import Documento, Profesorado, Materia
+from .carreras import Documento, Materia, Profesorado
 
 
 class Estudiante(models.Model):
@@ -61,13 +61,13 @@ class Estudiante(models.Model):
         Materia,
         blank=True,
         related_name="estudiantes_autorizados",
-        help_text="Materias específicas autorizadas excepcionalmente para rendir."
+        help_text="Materias específicas autorizadas excepcionalmente para rendir.",
     )
 
     # Datos de Educación Secundaria
     sec_titulo = models.CharField(max_length=255, blank=True, null=True)
     sec_establecimiento = models.CharField(max_length=255, blank=True, null=True)
-    sec_fecha_egreso = models.CharField(max_length=100, blank=True, null=True) # A veces no es una fecha exacta
+    sec_fecha_egreso = models.CharField(max_length=100, blank=True, null=True)  # A veces no es una fecha exacta
     sec_localidad = models.CharField(max_length=150, blank=True, null=True)
     sec_provincia = models.CharField(max_length=150, blank=True, null=True)
     sec_pais = models.CharField(max_length=100, blank=True, null=True)
@@ -111,7 +111,7 @@ class Estudiante(models.Model):
     perfil_actualizado = models.BooleanField(
         default=False,
         help_text="True cuando el estudiante completó/actualizó su perfil. "
-                  "Migrado desde datos_extra (ver plan JSON→columna).",
+        "Migrado desde datos_extra (ver plan JSON→columna).",
     )
 
     datos_extra = models.JSONField(default=dict, blank=True)
@@ -187,19 +187,11 @@ class Estudiante(models.Model):
         return registro
 
     def obtener_anio_ingreso(self, profesorado_id: int) -> int | None:
-        detalle = (
-            self.carreras_detalle.filter(profesorado_id=profesorado_id)
-            .order_by("-updated_at")
-            .first()
-        )
+        detalle = self.carreras_detalle.filter(profesorado_id=profesorado_id).order_by("-updated_at").first()
         return detalle.anio_ingreso if detalle else None
 
     def obtener_cohorte(self, profesorado_id: int) -> str | None:
-        detalle = (
-            self.carreras_detalle.filter(profesorado_id=profesorado_id)
-            .order_by("-updated_at")
-            .first()
-        )
+        detalle = self.carreras_detalle.filter(profesorado_id=profesorado_id).order_by("-updated_at").first()
         return detalle.cohorte if detalle and detalle.cohorte else None
 
 
@@ -282,7 +274,7 @@ class EstudianteCarrera(models.Model):
         elif not self.estado_academico_changed_at:
             # Caso de creación inicial
             self.estado_academico_changed_at = timezone.now()
-        
+
         super().save(*args, **kwargs)
         self._original_estado = self.estado_academico
 
@@ -304,6 +296,7 @@ class ProrrogaTituloSecundario(models.Model):
     Mientras la prórroga esté vigente, el estudiante puede rendir exámenes
     aunque el título no esté en el legajo.
     """
+
     estudiante = models.ForeignKey(
         Estudiante,
         on_delete=models.CASCADE,
@@ -333,11 +326,13 @@ class ProrrogaTituloSecundario(models.Model):
     @property
     def vigente(self) -> bool:
         from django.utils import timezone
+
         return self.fecha_vencimiento >= timezone.localdate()
 
     @property
     def dias_restantes(self) -> int:
         from django.utils import timezone
+
         return (self.fecha_vencimiento - timezone.localdate()).days
 
 
@@ -348,6 +343,7 @@ class ResidenciaCondicional(models.Model):
     la condición de aprobarla en las mesas extraordinarias de mayo.
     Si al 01/06 no la aprobó, la cursada de Residencia cae automáticamente.
     """
+
     estudiante = models.ForeignKey(
         Estudiante,
         on_delete=models.CASCADE,
@@ -396,4 +392,5 @@ class ResidenciaCondicional(models.Model):
     @property
     def vigente(self) -> bool:
         from datetime import date
+
         return not self.resuelta and not self.caida and date.today() <= self.fecha_limite

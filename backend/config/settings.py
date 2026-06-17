@@ -1,5 +1,4 @@
 import os
-from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -276,7 +275,7 @@ CSRF_USE_SESSIONS = False
 # === Seguridad en producción ============================================
 if IS_PROD:
     # Confiar en el header de Cloudflare/Nginx para saber que es HTTPS
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
     # Redirección a HTTPS + HSTS
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
@@ -306,5 +305,4 @@ else:
     CSRF_COOKIE_SECURE = False
     SESSION_COOKIE_SAMESITE = "Lax"
     CSRF_COOKIE_SAMESITE = "Lax"
-    RECAPTCHA_MIN_SCORE = 0.3 # En dev permitimos un umbral más bajo para pruebas
-
+    RECAPTCHA_MIN_SCORE = 0.3  # En dev permitimos un umbral más bajo para pruebas

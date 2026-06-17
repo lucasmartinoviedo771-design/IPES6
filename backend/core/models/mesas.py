@@ -87,17 +87,21 @@ class MesaExamen(models.Model):
         Usa soft-delete (activa=False) para preservar el historial de inscripciones
         canceladas y no destruir trazabilidad administrativa.
         """
-        from django.db.models import Count, Q
         from datetime import date, timedelta
+
+        from django.db.models import Count, Q
 
         hoy = date.today()
 
-        mesas_candidatas = MesaExamen.objects.select_related("ventana").filter(
-            fecha__lt=hoy,
-            activa=True,
-        ).annotate(
-            count_inscriptos=Count('inscripciones', filter=Q(inscripciones__estado='INS'))
-        ).filter(count_inscriptos=0)
+        mesas_candidatas = (
+            MesaExamen.objects.select_related("ventana")
+            .filter(
+                fecha__lt=hoy,
+                activa=True,
+            )
+            .annotate(count_inscriptos=Count("inscripciones", filter=Q(inscripciones__estado="INS")))
+            .filter(count_inscriptos=0)
+        )
 
         deactivated_count = 0
         for mesa in mesas_candidatas:
@@ -169,20 +173,22 @@ class InscripcionMesa(models.Model):
 
 class MesaActaOral(models.Model):
     mesa = models.ForeignKey(MesaExamen, on_delete=models.CASCADE, related_name="actas_orales")
-    inscripcion = models.OneToOneField(
-        InscripcionMesa, on_delete=models.CASCADE, related_name="acta_oral"
-    )
+    inscripcion = models.OneToOneField(InscripcionMesa, on_delete=models.CASCADE, related_name="acta_oral")
     acta_numero = models.CharField(max_length=64, blank=True, default="")
     folio_numero = models.CharField(max_length=64, blank=True, default="")
     fecha = models.DateField(null=True, blank=True)
     curso = models.CharField(max_length=128, blank=True, default="")
     nota_final = models.CharField(
-        max_length=32, blank=True, default="",
-        help_text="Transcripción literal de la nota o estado (ej: 'Siete', 'Ausente')"
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Transcripción literal de la nota o estado (ej: 'Siete', 'Ausente')",
     )
     nota_numeral = models.PositiveSmallIntegerField(
-        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)],
-        help_text="Valor numérico para promedios y estadísticas"
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text="Valor numérico para promedios y estadísticas",
     )
     observaciones = models.TextField(blank=True, default="")
     temas_alumno = models.JSONField(default=list, blank=True)
@@ -197,16 +203,20 @@ class MesaActaOral(models.Model):
     def clean(self):
         if self.nota_final:
             import re
+
             # Validar que si contiene números, estos sean coherentes
-            numeros = re.findall(r'\d+', self.nota_final)
+            numeros = re.findall(r"\d+", self.nota_final)
             if numeros:
                 # Opcional: validar que el primer número esté entre 1 y 10
                 nota_num = int(numeros[0])
                 if nota_num < 1 or nota_num > 10:
-                    raise ValidationError(f"La nota '{nota_num}' extraída de '{self.nota_final}' no es válida (debe ser de 1 a 10).")
+                    raise ValidationError(
+                        f"La nota '{nota_num}' extraída de '{self.nota_final}' no es válida (debe ser de 1 a 10)."
+                    )
 
     def __str__(self):
         return f"Acta oral {self.acta_numero or self.inscripcion_id}"
+
 
 class SolicitudMesa(models.Model):
     class Estado(models.TextChoices):
@@ -219,9 +229,7 @@ class SolicitudMesa(models.Model):
     ventana = models.ForeignKey(VentanaHabilitacion, on_delete=models.CASCADE)
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
     modalidad = models.CharField(
-        max_length=3,
-        choices=MesaExamen.Modalidad.choices,
-        default=MesaExamen.Modalidad.REGULAR
+        max_length=3, choices=MesaExamen.Modalidad.choices, default=MesaExamen.Modalidad.REGULAR
     )
     observaciones = models.TextField(blank=True, null=True)
     estado = models.CharField(max_length=3, choices=Estado.choices, default=Estado.PENDIENTE)

@@ -1,54 +1,55 @@
 """
 API para la gestión de la Estructura Académica (Carreras, Planes y Materias).
-centraliza la administración de los profesorados, sus planes de estudio 
+centraliza la administración de los profesorados, sus planes de estudio
 vigentes y la configuración detallada de cada materia.
 """
 
 import logging
-from typing import Optional
-from django.shortcuts import get_object_or_404
-from django.db.models import ProtectedError
-from django.contrib.auth.models import User
 from datetime import date
+
+from django.contrib.auth.models import User
+from django.db.models import ProtectedError
+from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
+from apps.common.constants import AppErrorCode
+from apps.common.errors import AppError
 from core.auth_ninja import JWTAuth
 from core.models import (
-    PlanDeEstudio, 
-    Profesorado, 
-    Materia, 
-    InscripcionMateriaEstudiante, 
     Comision,
-    ProfesoradoRequisitoDocumentacion
+    InscripcionMateriaEstudiante,
+    Materia,
+    PlanDeEstudio,
+    Profesorado,
+    ProfesoradoRequisitoDocumentacion,
 )
 from core.permissions import (
-    ensure_profesorado_access, 
-    ensure_roles, 
-    allowed_profesorados,
-    get_user_roles,
-    STRUCTURE_VIEW_ROLES,
     STRUCTURE_EDIT_ROLES,
+    STRUCTURE_VIEW_ROLES,
+    allowed_profesorados,
+    ensure_profesorado_access,
+    ensure_roles,
+    get_user_roles,
 )
-from apps.common.errors import AppError
-from apps.common.constants import AppErrorCode
 
 from .schemas import (
-    ProfesoradoIn, 
-    ProfesoradoOut, 
-    PlanDeEstudioIn, 
-    PlanDeEstudioOut, 
-    MateriaIn, 
-    MateriaOut, 
-    RequisitoDocumentacionOut,
     CerrarEDIIn,
+    MateriaIn,
+    MateriaOut,
+    PlanDeEstudioIn,
+    PlanDeEstudioOut,
+    ProfesoradoIn,
+    ProfesoradoOut,
+    RequisitoDocumentacionOut,
 )
 
 
 class MateriaInscriptoOut(Schema):
     """Información simplificada de un estudiante inscrito en una materia."""
+
     id: int
     estudiante_id: int
     estudiante: str
@@ -84,11 +85,16 @@ def _normalized_user_roles(user: User) -> set[str]:
     roles = set(raw_names)
     # Mapeo de prefijos comunes a roles base
     for name in raw_names:
-        if name.startswith("bedel"): roles.add("bedel")
-        if name.startswith("secretaria"): roles.add("secretaria")
-        if name.startswith("coordinador"): roles.add("coordinador")
-        if "estudiante" in name: roles.add("estudiante")
-        if "docente" in name: roles.add("docente")
+        if name.startswith("bedel"):
+            roles.add("bedel")
+        if name.startswith("secretaria"):
+            roles.add("secretaria")
+        if name.startswith("coordinador"):
+            roles.add("coordinador")
+        if "estudiante" in name:
+            roles.add("estudiante")
+        if "docente" in name:
+            roles.add("docente")
 
     if user.is_superuser or user.is_staff:
         roles.add("admin")
@@ -108,6 +114,7 @@ materias_router = Router(tags=["Materias"])
 
 # --- PROFESORADOS (CARRERAS) ---
 
+
 @profesorados_router.get("/", response=list[ProfesoradoOut], auth=JWTAuth())
 def listar_carreras(request, vigentes: bool | None = None):
     """
@@ -121,7 +128,7 @@ def listar_carreras(request, vigentes: bool | None = None):
         allowed = allowed_profesorados(request.user)
         if allowed is not None:
             qs = qs.filter(id__in=allowed)
-            
+
     if vigentes is not None:
         qs = qs.filter(activo=vigentes, inscripcion_abierta=vigentes)
     return qs
@@ -176,10 +183,7 @@ def eliminar_profesorado(request, profesorado_id: int):
 def planes_por_profesorado(request, profesorado_id: int):
     """Busca los planes de estudio vigentes asociados a una carrera."""
     _require_view(request.user, profesorado_id)
-    qs = PlanDeEstudio.objects.filter(
-        profesorado_id=profesorado_id, 
-        vigente=True
-    ).order_by("-anio_inicio", "id")
+    qs = PlanDeEstudio.objects.filter(profesorado_id=profesorado_id, vigente=True).order_by("-anio_inicio", "id")
     return list(qs)
 
 
@@ -192,7 +196,9 @@ def create_plan_for_profesorado(request, profesorado_id: int, payload: PlanDeEst
     return plan
 
 
-@profesorados_router.get("/{profesorado_id}/requisitos-documentacion", response=list[RequisitoDocumentacionOut], auth=JWTAuth())
+@profesorados_router.get(
+    "/{profesorado_id}/requisitos-documentacion", response=list[RequisitoDocumentacionOut], auth=JWTAuth()
+)
 def listar_requisitos_documentacion(request, profesorado_id: int):
     """Lista los requisitos documentales (DNI, Títulos, etc) para el legajo de esta carrera."""
     _require_view(request.user, profesorado_id)
@@ -201,6 +207,7 @@ def listar_requisitos_documentacion(request, profesorado_id: int):
 
 
 # --- PLANES DE ESTUDIO ---
+
 
 @planes_router.get("/{plan_id}", response=PlanDeEstudioOut, auth=JWTAuth())
 def get_plan(request, plan_id: int):
@@ -262,11 +269,16 @@ def list_materias_for_plan(
         materias = materias.exclude(fecha_fin__lt=hoy, is_edi=False)
 
     # Aplicación de filtros según metadata de la materia
-    if anio_cursada is not None: materias = materias.filter(anio_cursada=anio_cursada)
-    if nombre: materias = materias.filter(nombre__icontains=nombre)
-    if formato: materias = materias.filter(formato=formato)
-    if regimen: materias = materias.filter(regimen=regimen)
-    if tipo_formacion: materias = materias.filter(tipo_formacion=tipo_formacion)
+    if anio_cursada is not None:
+        materias = materias.filter(anio_cursada=anio_cursada)
+    if nombre:
+        materias = materias.filter(nombre__icontains=nombre)
+    if formato:
+        materias = materias.filter(formato=formato)
+    if regimen:
+        materias = materias.filter(regimen=regimen)
+    if tipo_formacion:
+        materias = materias.filter(tipo_formacion=tipo_formacion)
 
     # Asignar la resolución del plan y permiso de libre a cada materia para el esquema
     for m in materias:
@@ -288,21 +300,22 @@ def create_materia_for_plan(request, plan_id: int, payload: MateriaIn):
 
 # --- MATERIAS ---
 
+
 @materias_router.get("/", response=list[MateriaOut], auth=JWTAuth())
 def listar_materias(
-    request, 
-    search: str | None = None, 
+    request,
+    search: str | None = None,
     profesorado_id: int | None = None,
     solo_activos: bool = False,
-    incluir_edis_cerrados: bool = False
+    incluir_edis_cerrados: bool = False,
 ):
     """Buscador global de materias con filtros."""
     _require_view(request.user)
-    
+
     # Filtro de seguridad: solo materias de carreras permitidas para el usuario
     allowed = allowed_profesorados(request.user)
-    qs = Materia.objects.select_related('plan_de_estudio').all()
-    
+    qs = Materia.objects.select_related("plan_de_estudio").all()
+
     if allowed is not None:
         if profesorado_id:
             # Si pide uno, debe estar entre sus permitidos
@@ -319,17 +332,18 @@ def listar_materias(
 
     if search:
         qs = qs.filter(nombre__icontains=search)
-    
+
     if solo_activos:
         qs = qs.exclude(fecha_fin__lt=date.today())
 
     if not incluir_edis_cerrados:
         qs = qs.exclude(is_edi=True, fecha_fin__isnull=False)
-        
+
     for m in qs:
         m.plan_resolucion = m.plan_de_estudio.resolucion if m.plan_de_estudio else None
 
     return qs[:500]
+
 
 @materias_router.get("/{materia_id}", response=MateriaOut, auth=JWTAuth())
 def get_materia(request, materia_id: int):
@@ -411,7 +425,7 @@ def cerrar_edi(request, materia_id: int, payload: CerrarEDIIn):
 def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, estado: str | None = None):
     """
     Lista los alumnos inscritos en una materia para un ciclo lectivo.
-    
+
     Lógica de permisos especial:
     - Perfil administrativo: Ve todos los inscritos del profesorado.
     - Perfil Docente: Solo ve los alumnos de sus propias comisiones asignadas.
@@ -425,7 +439,7 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
     if "docente" in roles and not (roles & STRUCTURE_VIEW_ROLES):
         if not docente_profile:
             raise AppError(403, AppErrorCode.PERMISSION_DENIED, "Perfil docente no vinculado.")
-        
+
         asignado = Comision.objects.filter(materia_id=materia_id, docente=docente_profile).exists()
         if not asignado:
             raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No posees comisiones en esta asignatura.")
@@ -448,6 +462,7 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
 
     # Formateo del resultado para la UI
     from django.db.models import Count, Q
+
     from apps.asistencia.models import AsistenciaEstudiante
 
     estudiante_ids = [ins.estudiante_id for ins in inscripciones]
@@ -455,13 +470,14 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
 
     asistencias_stats = {}
     if estudiante_ids and comision_ids:
-        stats_query = AsistenciaEstudiante.objects.filter(
-            estudiante_id__in=estudiante_ids,
-            clase__comision_id__in=comision_ids
-        ).values("estudiante_id", "clase__comision_id").annotate(
-            presentes=Count('id', filter=Q(estado__in=['presente', 'tarde'])),
-            ausentes=Count('id', filter=Q(estado__in=['ausente', 'ausente_justificada'])),
-            total=Count('id')
+        stats_query = (
+            AsistenciaEstudiante.objects.filter(estudiante_id__in=estudiante_ids, clase__comision_id__in=comision_ids)
+            .values("estudiante_id", "clase__comision_id")
+            .annotate(
+                presentes=Count("id", filter=Q(estado__in=["presente", "tarde"])),
+                ausentes=Count("id", filter=Q(estado__in=["ausente", "ausente_justificada"])),
+                total=Count("id"),
+            )
         )
         for stat in stats_query:
             asistencias_stats[(stat["estudiante_id"], stat["clase__comision_id"])] = stat
@@ -483,19 +499,21 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
         t = stat.get("total", 0)
         pct = f"{int((p / t) * 100)}%" if t > 0 else "0%"
 
-        resultado.append(MateriaInscriptoOut(
-            id=ins.id, 
-            estudiante_id=est.id, 
-            estudiante=nombre_completo, 
-            dni=est.dni,
-            legajo=est.legajo, 
-            estado=ins.estado, 
-            anio=ins.anio,
-            comision_id=ins.comision_id,
-            comision_codigo=ins.comision.codigo if ins.comision_id else None,
-            asistencias_p=p,
-            asistencias_a=a,
-            asistencias_t=t,
-            asistencias_pct=pct,
-        ))
+        resultado.append(
+            MateriaInscriptoOut(
+                id=ins.id,
+                estudiante_id=est.id,
+                estudiante=nombre_completo,
+                dni=est.dni,
+                legajo=est.legajo,
+                estado=ins.estado,
+                anio=ins.anio,
+                comision_id=ins.comision_id,
+                comision_codigo=ins.comision.codigo if ins.comision_id else None,
+                asistencias_p=p,
+                asistencias_a=a,
+                asistencias_t=t,
+                asistencias_pct=pct,
+            )
+        )
     return resultado

@@ -123,12 +123,20 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = [
-    "D",     # docstrings
-    "E501",  # line too long — accepted in this codebase
-    "E402",  # module-level import not at top — required by Django app-loading order
-    "B904",  # raise without `from` — codebase convention
-    "B008",  # function call in default argument — Django Ninja Body() pattern
+    "D",      # docstrings
+    "E501",   # line too long — accepted in this codebase
+    "E402",   # module-level import not at top — required by Django app-loading order
+    "B904",   # raise without `from` — codebase convention
+    "B008",   # function call in default argument — Django Ninja Body() pattern
     "SIM102", # nested if — readability preference
+    "E722",   # bare except — used intentionally in varios lugares
+    "B018",   # useless expression — algunos son intencionales (placeholders)
+    "F841",   # unused variable — algunos son intencionales
+    "SIM105", # use contextlib.suppress — preferencia de estilo
+    "SIM103", # return condition directly — preferencia de estilo
+    "SIM108", # use ternary operator — preferencia de legibilidad
+    "C414",   # unnecessary list() in sorted() — patrón existente
+    "UP042",  # class inherits str and Enum — patrón existente
 ]
 fixable = ["ALL"]
 

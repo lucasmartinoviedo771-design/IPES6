@@ -1,14 +1,15 @@
-from typing import List
+from django.contrib.auth.models import Group, User
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import User, Group
-from ninja.errors import HttpError
-from core.auth_ninja import JWTAuth
-from core.models import StaffAsignacion, Profesorado, Docente, Estudiante
-from core.permissions import ensure_roles, ALL_ROLES
-from ..router import management_router
-from core.schemas import AsignarRolIn, UserSchema, ForceResetPasswordIn
 
-@management_router.get("/staff", response=List[UserSchema], auth=JWTAuth())
+from core.auth_ninja import JWTAuth
+from core.models import StaffAsignacion
+from core.permissions import ALL_ROLES, ensure_roles
+from core.schemas import AsignarRolIn, ForceResetPasswordIn, UserSchema
+
+from ..router import management_router
+
+
+@management_router.get("/staff", response=list[UserSchema], auth=JWTAuth())
 def list_staff(request):
     ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
     users = User.objects.filter(is_active=True).select_related("profile__persona").prefetch_related("groups")
@@ -22,10 +23,11 @@ def list_staff(request):
                     username=u.username,
                     first_name=persona.nombre if persona else u.first_name,
                     last_name=persona.apellido if persona else u.last_name,
-                    groups=[g.name for g in u.groups.all()]
+                    groups=[g.name for g in u.groups.all()],
                 )
             )
     return res
+
 
 @management_router.post("/staff/roles", response={200: dict, 400: dict}, auth=JWTAuth())
 def manage_staff_role(request, payload: AsignarRolIn):
@@ -45,11 +47,15 @@ def manage_staff_role(request, payload: AsignarRolIn):
         if role == "coordinador":
             if len(payload.profesorado_ids) != 1:
                 return 400, {"message": "Un coordinador debe tener exactamente un profesorado asignado."}
-            ya_tiene = StaffAsignacion.objects.filter(user=user, rol="coordinador").exclude(
-                profesorado_id=payload.profesorado_ids[0]
-            ).exists()
+            ya_tiene = (
+                StaffAsignacion.objects.filter(user=user, rol="coordinador")
+                .exclude(profesorado_id=payload.profesorado_ids[0])
+                .exists()
+            )
             if ya_tiene:
-                return 400, {"message": "Este coordinador ya tiene un profesorado asignado. Quitá el anterior antes de asignar uno nuevo."}
+                return 400, {
+                    "message": "Este coordinador ya tiene un profesorado asignado. Quitá el anterior antes de asignar uno nuevo."
+                }
 
         # --- BEDEL: 1 o más profesorados, sin turno ---
         elif role == "bedel":
@@ -64,7 +70,9 @@ def manage_staff_role(request, payload: AsignarRolIn):
                 return 400, {"message": f"Turno inválido: '{payload.turno}'. Opciones: manana, tarde, vespertino."}
             ya_tiene_turno = StaffAsignacion.objects.filter(user=user, rol="tutor", turno=payload.turno).exists()
             if ya_tiene_turno:
-                return 400, {"message": f"Este tutor ya tiene una asignación para el turno {payload.turno}. Eliminá la existente antes de crear una nueva."}
+                return 400, {
+                    "message": f"Este tutor ya tiene una asignación para el turno {payload.turno}. Eliminá la existente antes de crear una nueva."
+                }
 
         user.groups.add(group)
 
@@ -72,17 +80,25 @@ def manage_staff_role(request, payload: AsignarRolIn):
             if payload.profesorado_ids:
                 for pid in payload.profesorado_ids:
                     StaffAsignacion.objects.get_or_create(
-                        user=user, profesorado_id=pid, rol=role, turno=payload.turno,
+                        user=user,
+                        profesorado_id=pid,
+                        rol=role,
+                        turno=payload.turno,
                     )
             else:
                 # Sin profesorado → cubre todos los del turno
                 StaffAsignacion.objects.get_or_create(
-                    user=user, profesorado=None, rol=role, turno=payload.turno,
+                    user=user,
+                    profesorado=None,
+                    rol=role,
+                    turno=payload.turno,
                 )
         else:
             for pid in payload.profesorado_ids:
                 StaffAsignacion.objects.get_or_create(
-                    user=user, profesorado_id=pid, rol=role,
+                    user=user,
+                    profesorado_id=pid,
+                    rol=role,
                 )
     else:
         # Desasignar
@@ -90,16 +106,15 @@ def manage_staff_role(request, payload: AsignarRolIn):
             StaffAsignacion.objects.filter(user=user, rol=role).delete()
             user.groups.remove(group)
         else:
-            StaffAsignacion.objects.filter(
-                user=user, rol=role, profesorado_id__in=payload.profesorado_ids
-            ).delete()
+            StaffAsignacion.objects.filter(user=user, rol=role, profesorado_id__in=payload.profesorado_ids).delete()
             # Si no quedan asignaciones, quitar el grupo
             if not StaffAsignacion.objects.filter(user=user, rol=role).exists():
                 user.groups.remove(group)
 
     return 200, {"message": "Operación completada con éxito"}
 
-@management_router.get("/staff/{user_id}/asignaciones", response=List[dict], auth=JWTAuth())
+
+@management_router.get("/staff/{user_id}/asignaciones", response=list[dict], auth=JWTAuth())
 def list_user_assignments(request, user_id: int):
     ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
     user = get_object_or_404(User, id=user_id)
@@ -110,10 +125,11 @@ def list_user_assignments(request, user_id: int):
             "rol": a.rol,
             "turno": a.turno,
             "profesorado_id": a.profesorado_id,
-            "profesorado_nombre": a.profesorado.nombre if a.profesorado_id else (
-                f"Todos los profesorados del turno {a.get_turno_display()}" if a.turno else "Todos los profesorados"
-            ),
-        } for a in asignaciones
+            "profesorado_nombre": a.profesorado.nombre
+            if a.profesorado_id
+            else (f"Todos los profesorados del turno {a.get_turno_display()}" if a.turno else "Todos los profesorados"),
+        }
+        for a in asignaciones
     ]
 
 
@@ -129,6 +145,7 @@ def force_reset_password(request, payload: ForceResetPasswordIn):
     user.save()
 
     from core.models import UserProfile
+
     profile, _ = UserProfile.objects.get_or_create(user=user)
     profile.must_change_password = using_default
     profile.save(update_fields=["must_change_password"])

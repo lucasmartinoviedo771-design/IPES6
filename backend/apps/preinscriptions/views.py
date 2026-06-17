@@ -3,8 +3,8 @@ import os
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponse
 
-
 PUBLIC_PREFIXES = ()
+
 
 def serve_media(request, path):
     media_root = os.path.realpath(settings.MEDIA_ROOT)
@@ -22,12 +22,13 @@ def serve_media(request, path):
         raise Http404
 
     # Import authorization helpers and models locally to avoid any potential circular imports
-    from core.permissions import get_user_roles, allowed_profesorados
-    from core.models import Preinscripcion, PlanillaRegularidad, Message, ConversationParticipant
+    from core.models import ConversationParticipant, Message, PlanillaRegularidad, Preinscripcion
+    from core.permissions import allowed_profesorados, get_user_roles
 
     # 1. Access control by file path prefix
     if path.startswith("preinscripciones/"):
         from .models_uploads import PreinscripcionArchivo
+
         doc = PreinscripcionArchivo.objects.filter(archivo=path).first()
         if not doc:
             raise Http404
@@ -41,10 +42,12 @@ def serve_media(request, path):
         else:
             roles = get_user_roles(request.user)
             # Staff admin/secretaria have total access
-            if roles.intersection({"admin", "secretaria"}):
-                pass
-            # Student can only access their own preinscription files
-            elif "estudiante" in roles and preins.alumno and preins.alumno.user_id == request.user.id:
+            if (
+                roles.intersection({"admin", "secretaria"})
+                or "estudiante" in roles
+                and preins.alumno
+                and preins.alumno.user_id == request.user.id
+            ):
                 pass
             # Bedeles/coordinadores can only access within their assigned profesorados
             elif roles.intersection({"bedel", "coordinador"}):
@@ -65,10 +68,11 @@ def serve_media(request, path):
         else:
             roles = get_user_roles(request.user)
             # Staff admin/secretaria/bedel are allowed
-            if roles.intersection({"admin", "secretaria", "bedel"}):
-                pass
-            # Docente assigned to this planilla is allowed
-            elif "docente" in roles and planilla.docentes.filter(docente__persona__user_profile__user=request.user).exists():
+            if (
+                roles.intersection({"admin", "secretaria", "bedel"})
+                or "docente" in roles
+                and planilla.docentes.filter(docente__persona__user_profile__user=request.user).exists()
+            ):
                 pass
             else:
                 return HttpResponse(status=403)
@@ -84,13 +88,11 @@ def serve_media(request, path):
         else:
             roles = get_user_roles(request.user)
             # Staff admin/secretaria are allowed
-            if roles.intersection({"admin", "secretaria"}):
-                pass
-            # Author of the message is allowed
-            elif msg.author_id == request.user.id:
-                pass
-            # Conversation participants are allowed
-            elif ConversationParticipant.objects.filter(conversation=msg.conversation, user=request.user).exists():
+            if (
+                roles.intersection({"admin", "secretaria"})
+                or msg.author_id == request.user.id
+                or ConversationParticipant.objects.filter(conversation=msg.conversation, user=request.user).exists()
+            ):
                 pass
             else:
                 return HttpResponse(status=403)
@@ -106,6 +108,7 @@ def serve_media(request, path):
             else:
                 # Verificar que la foto pertenece al usuario autenticado
                 from core.models import Persona
+
                 filename = os.path.basename(path)
                 try:
                     dni = filename.split("_", 1)[1].rsplit(".", 1)[0]
@@ -118,10 +121,12 @@ def serve_media(request, path):
 
                 # Camino 1: estudiante (Persona → Estudiante → User)
                 estudiante_perfil = getattr(persona, "estudiante_perfil", None)
-                if estudiante_perfil and estudiante_perfil.user_id == request.user.id:
-                    pass  # OK
-                # Camino 2: staff/docente (Persona → UserProfile → User)
-                elif hasattr(persona, "user_profile") and persona.user_profile.user_id == request.user.id:
+                if (
+                    estudiante_perfil
+                    and estudiante_perfil.user_id == request.user.id
+                    or hasattr(persona, "user_profile")
+                    and persona.user_profile.user_id == request.user.id
+                ):
                     pass  # OK
                 else:
                     return HttpResponse(status=403)

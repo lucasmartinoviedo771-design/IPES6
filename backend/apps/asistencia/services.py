@@ -1,28 +1,26 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Iterable, Sequence
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from core.models import Comision, Docente, Estudiante, InscripcionMateriaEstudiante
 
 from .models import (
-    AsistenciaEstudiante,
     AsistenciaDocente,
-    ClaseProgramada,
+    AsistenciaEstudiante,
     CalendarioAsistenciaEvento,
+    ClaseProgramada,
     CursoEstudianteSnapshot,
     CursoHorarioSnapshot,
     DocenteMarcacionLog,
     Justificacion,
     JustificacionDetalle,
 )
-
 
 TOLERANCIA_ANTERIOR_MINUTOS = 10
 TOLERANCIA_TARDE_MINUTOS = 15
@@ -107,7 +105,9 @@ def _aplicar_evento_sobre_clase(
     evento_docentes: CalendarioAsistenciaEvento | None,
     evento_estudiantes: CalendarioAsistenciaEvento | None,
 ) -> None:
-    nota_evento = _mensaje_evento(evento_docentes or evento_estudiantes) if (evento_docentes or evento_estudiantes) else ""
+    nota_evento = (
+        _mensaje_evento(evento_docentes or evento_estudiantes) if (evento_docentes or evento_estudiantes) else ""
+    )
     campos_actualizados: list[str] = []
     if clase.estado != ClaseProgramada.Estado.CANCELADA:
         clase.estado = ClaseProgramada.Estado.CANCELADA
@@ -191,11 +191,7 @@ def calcular_ventanas_turno(clase: ClaseProgramada):
     """
     if not clase.docente:
         return None
-    clases_turno = list(
-        _obtener_clases_del_turno(clase)
-        .exclude(hora_inicio__isnull=True)
-        .order_by("hora_inicio")
-    )
+    clases_turno = list(_obtener_clases_del_turno(clase).exclude(hora_inicio__isnull=True).order_by("hora_inicio"))
     if not clases_turno:
         return None
 
@@ -237,7 +233,6 @@ def calcular_ventanas_turno(clase: ClaseProgramada):
         ventana_fin = base_fin
     turno_nombre = clase.comision.turno.nombre if clase.comision and clase.comision.turno_id else ""
     return ventana_inicio, umbral_tarde, ventana_fin, turno_nombre
-
 
 
 @transaction.atomic
@@ -331,7 +326,9 @@ def generate_classes_for_date(target_date: date, *, comision_ids: Sequence[int] 
     return generadas
 
 
-def generate_classes_for_range(start: date, end: date, *, comision_ids: Sequence[int] | None = None) -> list[ClaseGenerada]:
+def generate_classes_for_range(
+    start: date, end: date, *, comision_ids: Sequence[int] | None = None
+) -> list[ClaseGenerada]:
     """
     Genera clases programadas para un rango de fechas (inclusive).
     """
@@ -538,19 +535,17 @@ def propagar_asistencia_docente_turno(
     - Clases concurrentes/mismo bloque: Se marcan igual que la origen.
     """
     turno = clase_origen.comision.turno if clase_origen.comision_id else None
-    
+
     # Buscamos todas las clases del docente en esa fecha y turno (o sin turno si es null)
     # Excluimos la clase origen que ya fue procesada
     otras_clases = ClaseProgramada.objects.filter(
-        docente=docente,
-        fecha=clase_origen.fecha,
-        comision__turno=turno
+        docente=docente, fecha=clase_origen.fecha, comision__turno=turno
     ).exclude(id=clase_origen.id)
 
     ahora = timezone.now()
     if settings.USE_TZ:
         ahora = timezone.localtime(ahora)
-    
+
     # Convertimos 'ahora' a time para comparar con hora_inicio/fin
     ahora_time = ahora.time()
 
@@ -559,18 +554,18 @@ def propagar_asistencia_docente_turno(
         nuevo_estado = None
         nueva_observacion = observaciones
         es_futura = False
-        
+
         if otra_clase.hora_inicio and otra_clase.hora_inicio > ahora_time:
             # Clase futura: Se asume presente si marcó en el turno
             nuevo_estado = AsistenciaDocente.Estado.PRESENTE
             nueva_observacion = f"Propagado desde {clase_origen.hora_inicio}"
             es_futura = True
-        
+
         elif otra_clase.hora_fin and otra_clase.hora_fin < ahora_time:
             # Clase pasada: Si ya pasó y no marcó antes, es Ausente.
             nuevo_estado = AsistenciaDocente.Estado.AUSENTE
             nueva_observacion = "No marcó asistencia a tiempo (turno vencido)"
-        
+
         else:
             # Clase actual/concurrente: Copiamos el estado de la origen
             nuevo_estado = estado_origen
@@ -581,9 +576,9 @@ def propagar_asistencia_docente_turno(
             clase=otra_clase,
             docente=docente,
             defaults={
-                "estado": AsistenciaDocente.Estado.AUSENTE, # Default seguro
+                "estado": AsistenciaDocente.Estado.AUSENTE,  # Default seguro
                 "registrado_via": AsistenciaDocente.RegistradoVia.SISTEMA,
-            }
+            },
         )
 
         # Si ya estaba PRESENTE, no la tocamos (quizás marcó esa específicamente antes).
@@ -595,7 +590,7 @@ def propagar_asistencia_docente_turno(
         asistencia.registrado_via = AsistenciaDocente.RegistradoVia.SISTEMA
         asistencia.registrado_por = registrado_por
         asistencia.registrado_en = ahora
-        
+
         # Limpiamos alertas para las propagadas futuras (asumimos que llega bien)
         if es_futura:
             asistencia.alerta = False
@@ -608,5 +603,5 @@ def propagar_asistencia_docente_turno(
             asistencia.alerta_tipo = alerta_tipo
             asistencia.alerta_motivo = alerta_motivo
             asistencia.marcacion_categoria = marcacion_categoria
-        
+
         asistencia.save()

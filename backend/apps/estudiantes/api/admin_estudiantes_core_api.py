@@ -1,42 +1,39 @@
 """
 API de Administración Centralizada de Estudiantes y Legajos.
-Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de 
-documentación física (DNI, Títulos) hasta la auditoría de legajos y 
+Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de
+documentación física (DNI, Títulos) hasta la auditoría de legajos y
 la baja administrativa bajo estrictas reglas de integridad académica.
 """
 
 from __future__ import annotations
-from django.db.models import Q
+
 from django.shortcuts import get_object_or_404
+
 from apps.common.api_schemas import ApiResponse
-from core.models import Estudiante, EstudianteCarrera, ProrrogaTituloSecundario, ResidenciaCondicional, Regularidad, EquivalenciaDisposicionDetalle
-from core.permissions import allowed_profesorados, ensure_roles, ensure_profesorado_access
-from apps.common.date_utils import format_datetime
+from apps.common.audit import log_action_from_request, snapshot
+from core.models import (
+    Estudiante,
+    EstudianteCarrera,
+    ProrrogaTituloSecundario,
+)
+from core.permissions import allowed_profesorados, ensure_roles
 
 from ..schemas import (
     AutorizarRendirIn,
     EstudianteAdminDetail,
-    EstudianteAdminListItem,
     EstudianteAdminListResponse,
     EstudianteAdminUpdateIn,
-    EstudianteDocumentacionListItem,
-    EstudianteDocumentacionListResponse,
-    EstudianteDocumentacionUpdateIn,
-    EstudianteDocumentacionBulkUpdateIn,
     ProrrogaTituloIn,
     ProrrogaTituloOut,
 )
-from .router import estudiantes_router as router
 from ..services.estudiante_service import EstudianteService
 from .helpers import (
-    _ensure_admin,
-    _ensure_staff_view,
     _apply_estudiante_updates,
     _build_admin_detail,
-    _recalcular_estado_legajo,
+    _ensure_admin,
+    _ensure_staff_view,
 )
-from apps.common.audit import log_action_from_request, snapshot
-
+from .router import estudiantes_router as router
 
 
 @router.get("/admin/estudiantes/buscar-global", response=list[dict])
@@ -56,11 +53,7 @@ def admin_buscar_estudiantes_global(request, q: str = ""):
     qs = (
         Estudiante.objects.select_related("user")
         .prefetch_related("carreras_detalle__profesorado")
-        .filter(
-            DQ(persona__dni__icontains=q)
-            | DQ(persona__nombre__icontains=q)
-            | DQ(persona__apellido__icontains=q)
-        )
+        .filter(DQ(persona__dni__icontains=q) | DQ(persona__nombre__icontains=q) | DQ(persona__apellido__icontains=q))
         .order_by("persona__apellido", "persona__nombre")[:20]
     )
 
@@ -73,12 +66,14 @@ def admin_buscar_estudiantes_global(request, q: str = ""):
             }
             for ec in est.carreras_detalle.all()
         ]
-        result.append({
-            "dni": est.dni,
-            "apellido": est.apellido,
-            "nombre": est.nombre,
-            "carreras": carreras,
-        })
+        result.append(
+            {
+                "dni": est.dni,
+                "apellido": est.apellido,
+                "nombre": est.nombre,
+                "carreras": carreras,
+            }
+        )
     return result
 
 
@@ -123,14 +118,14 @@ def admin_list_anios_ingreso(request, carrera_id: int | None = None):
     """
     _ensure_staff_view(request)
     allowed_ids = allowed_profesorados(request.user)
-    
+
     # Si se pasa una carrera_id, debemos verificar que el usuario tenga acceso
     effective_allowed_ids = allowed_ids
     if carrera_id:
         if allowed_ids is not None and carrera_id not in allowed_ids:
             return []
         effective_allowed_ids = {carrera_id}
-        
+
     return EstudianteService.get_unique_admission_years(effective_allowed_ids)
 
 
@@ -198,7 +193,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
 def admin_delete_estudiante(request, dni: str):
     """
     Elimina físicamente a un estudiante del sistema.
-    
+
     REGLA CRÍTICA DE INTEGRIDAD: Solo se permite si NO tiene historial académico.
     Se verifica: Inscripciones a materias, mesas, regularidades y actas históricas.
     """
@@ -225,6 +220,7 @@ def admin_delete_estudiante(request, dni: str):
 
     # 4. Auditoría en Actas Históricas (Datos Externos)
     from core.models import ActaExamenEstudiante
+
     actas_count = ActaExamenEstudiante.objects.filter(dni=dni).count()
     if actas_count > 0:
         reasons.append(f"Figura como alumno en {actas_count} actas de examen.")
@@ -244,6 +240,8 @@ def admin_delete_estudiante(request, dni: str):
         user.delete()
 
     return 200, ApiResponse(ok=True, message=f"Legajo de {nombre_completo} eliminado correctamente.")
+
+
 @router.post(
     "/admin/estudiantes/{dni}/reset-password",
     response=ApiResponse,
@@ -255,22 +253,29 @@ def admin_reset_estudiante_password(request, dni: str):
     """
     _ensure_admin(request)
     est = get_object_or_404(Estudiante, persona__dni=dni)
-    
+
     # Verificar si el usuario tiene permisos para esta carrera
     allowed_ids = allowed_profesorados(request.user)
     if allowed_ids is not None:
         from core.models import EstudianteCarrera
-        est_carreras_ids = set(EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True))
+
+        est_carreras_ids = set(
+            EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True)
+        )
         if not allowed_ids.intersection(est_carreras_ids):
-            from apps.common.errors import raise_app_error
             from apps.common.constants import AppErrorCode
+            from apps.common.errors import raise_app_error
+
             raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar este legajo.")
 
     new_password = EstudianteService.reset_password(est)
     if not new_password:
         return ApiResponse(ok=False, message="No se pudo resetear la contraseña (usuario no vinculado)")
 
-    return ApiResponse(ok=True, message=f"Contraseña reseteada correctamente para {dni}: {new_password}. Copia esta contraseña y compártela de forma segura con el estudiante, ya que deberá cambiarla al primer ingreso.")
+    return ApiResponse(
+        ok=True,
+        message=f"Contraseña reseteada correctamente para {dni}: {new_password}. Copia esta contraseña y compártela de forma segura con el estudiante, ya que deberá cambiarla al primer ingreso.",
+    )
 
 
 @router.patch(
@@ -287,7 +292,7 @@ def admin_autorizar_rendir(request, dni: str, payload: AutorizarRendirIn):
 
     est.autorizado_rendir = payload.autorizado
     est.autorizado_rendir_observacion = payload.observacion or None
-    
+
     # Procesamiento de materias autorizadas (Many-to-Many)
     if payload.autorizado:
         est.materias_autorizadas.set(payload.materias_autorizadas)
@@ -337,12 +342,15 @@ def admin_create_prorroga_titulo(request, dni: str, payload: ProrrogaTituloIn):
     ensure_roles(request.user, {"admin", "secretaria"})
     est = get_object_or_404(Estudiante, persona__dni=dni)
     from django.utils.dateparse import parse_date
+
     fecha_otorgada = parse_date(payload.fecha_otorgada)
     fecha_vencimiento = parse_date(payload.fecha_vencimiento)
     if not fecha_otorgada or not fecha_vencimiento:
         return 400, ApiResponse(ok=False, message="Fechas inválidas.")
     if fecha_vencimiento <= fecha_otorgada:
-        return 400, ApiResponse(ok=False, message="La fecha de vencimiento debe ser posterior a la fecha de otorgamiento.")
+        return 400, ApiResponse(
+            ok=False, message="La fecha de vencimiento debe ser posterior a la fecha de otorgamiento."
+        )
     p = ProrrogaTituloSecundario.objects.create(
         estudiante=est,
         fecha_otorgada=fecha_otorgada,
@@ -362,12 +370,15 @@ def admin_update_prorroga_titulo(request, prorroga_id: int, payload: ProrrogaTit
     ensure_roles(request.user, {"admin", "secretaria"})
     p = get_object_or_404(ProrrogaTituloSecundario, id=prorroga_id)
     from django.utils.dateparse import parse_date
+
     fecha_otorgada = parse_date(payload.fecha_otorgada)
     fecha_vencimiento = parse_date(payload.fecha_vencimiento)
     if not fecha_otorgada or not fecha_vencimiento:
         return 400, ApiResponse(ok=False, message="Fechas inválidas.")
     if fecha_vencimiento <= fecha_otorgada:
-        return 400, ApiResponse(ok=False, message="La fecha de vencimiento debe ser posterior a la fecha de otorgamiento.")
+        return 400, ApiResponse(
+            ok=False, message="La fecha de vencimiento debe ser posterior a la fecha de otorgamiento."
+        )
     p.fecha_otorgada = fecha_otorgada
     p.fecha_vencimiento = fecha_vencimiento
     p.observaciones = payload.observaciones
@@ -389,6 +400,7 @@ def admin_delete_prorroga_titulo(request, prorroga_id: int):
 
 from ninja import Schema as _Schema
 
+
 class AgregarCarreraIn(_Schema):
     profesorado_id: int
     anio_ingreso: int | None = None
@@ -401,8 +413,9 @@ class AgregarCarreraIn(_Schema):
 def admin_agregar_carrera(request, dni: str, payload: AgregarCarreraIn):
     """Vincula a un estudiante existente con una nueva carrera (sin requerir preinscripción)."""
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
-    from core.models import Profesorado
     from django.utils import timezone
+
+    from core.models import Profesorado
 
     est = Estudiante.objects.filter(persona__dni=dni).first()
     if not est:
@@ -428,5 +441,3 @@ def admin_agregar_carrera(request, dni: str, payload: AgregarCarreraIn):
     )
 
     return 200, _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
-
-

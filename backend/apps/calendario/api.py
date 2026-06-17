@@ -1,58 +1,64 @@
-from django.shortcuts import get_object_or_404
 from django.db.models import F, Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from ninja import Router, Schema
-from ninja.errors import HttpError
-from datetime import time
+from ninja import Router
 
+from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
-from core.models import (
-    Turno, 
-    Bloque, 
-    HorarioCatedra, 
-    HorarioCatedraDetalle, 
-    Materia,
-    Comision
-)
+from core.models import Bloque, Comision, HorarioCatedra, HorarioCatedraDetalle, Materia, Turno
 from core.permissions import (
-    ensure_roles, 
-    ensure_profesorado_access,
-    STRUCTURE_VIEW_ROLES,
     CALENDARIO_EDIT_ROLES as STRUCTURE_EDIT_ROLES,
 )
-from apps.common.api_schemas import ApiResponse
+from core.permissions import (
+    STRUCTURE_VIEW_ROLES,
+    ensure_profesorado_access,
+    ensure_roles,
+)
 
 from .schemas import (
-    TurnoIn, TurnoOut, 
-    BloqueIn, BloqueOut, 
-    HorarioCatedraIn, HorarioCatedraOut, 
-    HorarioCatedraDetalleIn, HorarioCatedraDetalleOut
+    BloqueIn,
+    BloqueOut,
+    HorarioCatedraDetalleIn,
+    HorarioCatedraDetalleOut,
+    HorarioCatedraIn,
+    HorarioCatedraOut,
+    TurnoIn,
+    TurnoOut,
 )
+
 
 def _ensure_structure_view(user, profesorado_id: int | None = None) -> None:
     ensure_roles(user, STRUCTURE_VIEW_ROLES)
     if profesorado_id is not None:
         ensure_profesorado_access(user, profesorado_id)
 
+
 def _ensure_structure_edit(user, profesorado_id: int | None = None) -> None:
     ensure_roles(user, STRUCTURE_EDIT_ROLES)
     if profesorado_id is not None:
         ensure_profesorado_access(user, profesorado_id)
 
+
 def _compatible_cuatrimestres(valor: str | None):
     v = (valor or "ANU").upper()
-    if v == "ANU": return ["ANU", "PCU", "SCU", None]
-    if v == "PCU" or v == "1C": return ["ANU", "PCU", "1C", None]
-    if v == "SCU" or v == "2C": return ["ANU", "SCU", "2C", None]
+    if v == "ANU":
+        return ["ANU", "PCU", "SCU", None]
+    if v == "PCU" or v == "1C":
+        return ["ANU", "PCU", "1C", None]
+    if v == "SCU" or v == "2C":
+        return ["ANU", "SCU", "2C", None]
     return ["ANU", v, None]
+
 
 def _es_taller_residencia(materia: Materia) -> bool:
     nombre = (materia.nombre or "").lower()
     return "taller" in nombre and "residencia" in nombre
 
+
 router = Router(tags=["Calendario"])
 
 # --- TURNOS ---
+
 
 @router.get("/turnos", response=list[TurnoOut])
 def list_turnos(request):
@@ -61,23 +67,31 @@ def list_turnos(request):
         _ensure_structure_view(user)
     return Turno.objects.all()
 
+
 @router.post("/turnos", response=TurnoOut, auth=JWTAuth())
 def create_turno(request, payload: TurnoIn):
     _ensure_structure_edit(request.user)
     return Turno.objects.create(**payload.dict())
 
+
 # --- BLOQUES ---
+
 
 @router.get("/turnos/{turno_id}/bloques", response=list[BloqueOut])
 def list_bloques_for_turno(request, turno_id: int):
     user = getattr(request, "user", None)
     if getattr(user, "is_authenticated", False):
         _ensure_structure_view(user)
-    
-    return Bloque.objects.filter(turno_id=turno_id).annotate(
-        turno_nombre=F("turno__nombre"),
-        # dia_display se maneja en el modelo o via annotation si es necesario
-    ).order_by("dia", "hora_desde")
+
+    return (
+        Bloque.objects.filter(turno_id=turno_id)
+        .annotate(
+            turno_nombre=F("turno__nombre"),
+            # dia_display se maneja en el modelo o via annotation si es necesario
+        )
+        .order_by("dia", "hora_desde")
+    )
+
 
 @router.post("/turnos/{turno_id}/bloques", response=BloqueOut, auth=JWTAuth())
 def create_bloque(request, turno_id: int, payload: BloqueIn):
@@ -86,21 +100,31 @@ def create_bloque(request, turno_id: int, payload: BloqueIn):
     bloque = Bloque.objects.create(turno=turno, **payload.dict())
     return bloque
 
+
 # --- HORARIOS CATEDRA ---
 
+
 @router.get("/horarios_catedra", response=list[HorarioCatedraOut], auth=JWTAuth())
-def list_horarios_catedra(request, espacio_id: int | None = None, turno_id: int | None = None, cuatrimestre: str | None = None, anio_cursada: int | None = None):
+def list_horarios_catedra(
+    request,
+    espacio_id: int | None = None,
+    turno_id: int | None = None,
+    cuatrimestre: str | None = None,
+    anio_cursada: int | None = None,
+):
     _ensure_structure_view(request.user)
     qs = HorarioCatedra.objects.all().select_related("espacio", "turno")
-    if espacio_id: qs = qs.filter(espacio_id=espacio_id)
-    if turno_id: qs = qs.filter(turno_id=turno_id)
-    if cuatrimestre: qs = qs.filter(cuatrimestre=cuatrimestre)
-    if anio_cursada: qs = qs.filter(anio_academico=anio_cursada)
-    
-    return qs.annotate(
-        espacio_nombre=F("espacio__nombre"),
-        turno_nombre=F("turno__nombre")
-    )
+    if espacio_id:
+        qs = qs.filter(espacio_id=espacio_id)
+    if turno_id:
+        qs = qs.filter(turno_id=turno_id)
+    if cuatrimestre:
+        qs = qs.filter(cuatrimestre=cuatrimestre)
+    if anio_cursada:
+        qs = qs.filter(anio_academico=anio_cursada)
+
+    return qs.annotate(espacio_nombre=F("espacio__nombre"), turno_nombre=F("turno__nombre"))
+
 
 @router.post("/horarios_catedra", response=HorarioCatedraOut, auth=JWTAuth())
 def create_horario_catedra(request, payload: HorarioCatedraIn):
@@ -110,15 +134,17 @@ def create_horario_catedra(request, payload: HorarioCatedraIn):
         espacio=materia,
         turno_id=payload.turno_id,
         anio_academico=payload.anio_academico,
-        cuatrimestre=payload.cuatrimestre
+        cuatrimestre=payload.cuatrimestre,
     )
     return hc
+
 
 @router.get("/horarios_catedra/{horario_id}", response=HorarioCatedraOut, auth=JWTAuth())
 def get_horario_catedra(request, horario_id: int):
     hc = get_object_or_404(HorarioCatedra.objects.select_related("espacio", "turno"), id=horario_id)
     _ensure_structure_view(request.user, hc.espacio.plan_de_estudio.profesorado_id)
     return hc
+
 
 @router.put("/horarios_catedra/{horario_id}", response=HorarioCatedraOut, auth=JWTAuth())
 def update_horario_catedra(request, horario_id: int, payload: HorarioCatedraIn):
@@ -129,6 +155,7 @@ def update_horario_catedra(request, horario_id: int, payload: HorarioCatedraIn):
     hc.save()
     return hc
 
+
 @router.delete("/horarios_catedra/{horario_id}", response={204: None}, auth=JWTAuth())
 def delete_horario_catedra(request, horario_id: int):
     hc = get_object_or_404(HorarioCatedra, id=horario_id)
@@ -136,7 +163,9 @@ def delete_horario_catedra(request, horario_id: int):
     hc.delete()
     return 204, None
 
+
 # --- DETALLES DE HORARIO ---
+
 
 @router.get("/horarios_catedra/{horario_id}/detalles", response=list[HorarioCatedraDetalleOut], auth=JWTAuth())
 def list_horario_detalles(request, horario_id: int):
@@ -145,10 +174,15 @@ def list_horario_detalles(request, horario_id: int):
     return hc.detalles.select_related("bloque").annotate(
         bloque_dia=F("bloque__dia"),
         bloque_hora_desde=F("bloque__hora_desde"),
-        bloque_hora_hasta=F("bloque__hora_hasta")
+        bloque_hora_hasta=F("bloque__hora_hasta"),
     )
 
-@router.post("/horarios_catedra/{horario_id}/detalles", response={200: HorarioCatedraDetalleOut, 409: ApiResponse}, auth=JWTAuth())
+
+@router.post(
+    "/horarios_catedra/{horario_id}/detalles",
+    response={200: HorarioCatedraDetalleOut, 409: ApiResponse},
+    auth=JWTAuth(),
+)
 def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDetalleIn):
     hc = get_object_or_404(HorarioCatedra, id=horario_id)
     _ensure_structure_edit(request.user, hc.espacio.plan_de_estudio.profesorado_id)
@@ -157,7 +191,7 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     # Lógica de detección de conflictos (simplificada o migrada tal cual)
     # ... (Omitida por brevedad en este script inicial, pero debe incluirse)
     # [Para seguir el plan, incluiré la lógica completa]
-    
+
     # 1. Conflicto por Alumnos (Mismo Plan + Mismo Año de Carrera + Mismo Turno + Mismo Cuatrimestre)
     # Esto permite que 1er año y 2do año del mismo profesorado tengan clases al mismo tiempo.
     conflictos_alumnos = HorarioCatedraDetalle.objects.filter(
@@ -166,22 +200,23 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
         horario_catedra__turno=hc.turno,
         horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
         horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
-        horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre)
+        horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
     ).exclude(horario_catedra=hc)
 
     if conflictos_alumnos.exists():
-        conf = conflictos_alumnos.select_related('horario_catedra__espacio').first()
+        conf = conflictos_alumnos.select_related("horario_catedra__espacio").first()
         return 409, ApiResponse(
             ok=False,
-            message=f"Espacio ocupado por {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.anio_cursada}º año)"
+            message=f"Espacio ocupado por {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.anio_cursada}º año)",
         )
 
     # 2. Conflicto por Docente (Mismo docente en cualquier año/profesorado en este bloque)
     # Buscamos qué docentes están asignados a esta materia en este año lectivo
-    docentes_ids = Comision.objects.filter(
-        materia=hc.espacio,
-        anio_lectivo=hc.anio_academico
-    ).values_list('docente_id', flat=True).distinct()
+    docentes_ids = (
+        Comision.objects.filter(materia=hc.espacio, anio_lectivo=hc.anio_academico)
+        .values_list("docente_id", flat=True)
+        .distinct()
+    )
     docentes_ids = [d for d in docentes_ids if d]
 
     if docentes_ids:
@@ -189,18 +224,19 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
             bloque=bloque,
             horario_catedra__anio_academico=hc.anio_academico,
             horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
-            horario_catedra__comisiones__docente_id__in=docentes_ids
+            horario_catedra__comisiones__docente_id__in=docentes_ids,
         ).exclude(horario_catedra=hc)
-        
+
         if conflictos_docente.exists():
-            conf = conflictos_docente.select_related('horario_catedra__espacio').first()
+            conf = conflictos_docente.select_related("horario_catedra__espacio").first()
             return 409, ApiResponse(
-                ok=False, 
-                message=f"Conflicto de docente: El docente asignado ya tiene clase en {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.plan_de_estudio.profesorado.nombre})"
+                ok=False,
+                message=f"Conflicto de docente: El docente asignado ya tiene clase en {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.plan_de_estudio.profesorado.nombre})",
             )
 
     detalle, _ = HorarioCatedraDetalle.objects.get_or_create(horario_catedra=hc, bloque=bloque)
     return detalle
+
 
 @router.delete("/horarios_catedra_detalles/{detalle_id}", response={204: None}, auth=JWTAuth())
 def delete_horario_detalle(request, detalle_id: int):
@@ -212,32 +248,24 @@ def delete_horario_detalle(request, detalle_id: int):
 
 @router.get("/horarios/ocupacion", response=list[BloqueOut], auth=JWTAuth())
 def get_occupied_blocks(
-    request, 
-    anio_cursada: int, 
-    turno_id: int, 
-    anio_academico: int | None = None,
-    cuatrimestre: str | None = None
+    request, anio_cursada: int, turno_id: int, anio_academico: int | None = None, cuatrimestre: str | None = None
 ):
     _ensure_structure_view(request.user)
-    
+
     # Resolver año académico por defecto si no viene
     if not anio_academico:
         anio_academico = timezone.now().year
-        
+
     schedules = HorarioCatedra.objects.filter(
-        anio_academico=anio_academico, 
-        turno_id=turno_id,
-        espacio__anio_cursada=anio_cursada
+        anio_academico=anio_academico, turno_id=turno_id, espacio__anio_cursada=anio_cursada
     )
     if cuatrimestre:
         schedules = schedules.filter(Q(cuatrimestre=Materia.TipoCursada.ANUAL) | Q(cuatrimestre=cuatrimestre))
-    
+
     occupied_bloque_ids = (
         HorarioCatedraDetalle.objects.filter(horario_catedra__in=schedules)
         .values_list("bloque_id", flat=True)
         .distinct()
     )
-    occupied_bloques = Bloque.objects.filter(id__in=occupied_bloque_ids).annotate(
-        turno_nombre=F("turno__nombre")
-    )
+    occupied_bloques = Bloque.objects.filter(id__in=occupied_bloque_ids).annotate(turno_nombre=F("turno__nombre"))
     return occupied_bloques

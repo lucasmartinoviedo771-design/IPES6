@@ -5,14 +5,6 @@ from __future__ import annotations
 from collections import defaultdict
 
 from django.db.models import Max
-from core.models import (
-    Bloque,
-    HorarioCatedra,
-    HorarioCatedraDetalle,
-    Materia,
-    PlanDeEstudio,
-    Profesorado,
-)
 
 from apps.estudiantes.schemas import (
     Horario,
@@ -21,6 +13,14 @@ from apps.estudiantes.schemas import (
     HorarioFranja,
     HorarioMateriaCelda,
     HorarioTabla,
+)
+from core.models import (
+    Bloque,
+    HorarioCatedra,
+    HorarioCatedraDetalle,
+    Materia,
+    PlanDeEstudio,
+    Profesorado,
 )
 
 ORDINALES = {
@@ -53,20 +53,15 @@ def _format_time(value) -> str:
 
 def obtener_horarios_materia(m: Materia) -> list[Horario]:
     """Extrae los horarios base del plan para una materia (último año académico)."""
-    hcs = (
-        HorarioCatedra.objects.filter(espacio=m)
-        .annotate(max_anio=Max("anio_academico"))
-        .order_by("-anio_academico")
-    )
+    hcs = HorarioCatedra.objects.filter(espacio=m).annotate(max_anio=Max("anio_academico")).order_by("-anio_academico")
     if not hcs:
         return []
 
     # Tomamos el último HorarioCatedra (el más reciente)
-    detalles = (
-        HorarioCatedraDetalle.objects.filter(horario_catedra__in=hcs[:1])
-        .select_related("bloque", "horario_catedra")
+    detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__in=hcs[:1]).select_related(
+        "bloque", "horario_catedra"
     )
-    
+
     hs: list[Horario] = []
     for d in detalles:
         b = d.bloque
@@ -120,16 +115,15 @@ def _construir_tablas_horario(
         # 1. Recolectar y normalizar todos los bloques del turno
         bloques_raw_all = list(Bloque.objects.filter(turno_id=turno_id).order_by("dia", "hora_desde"))
 
-        def _n(t): return t.replace(second=0, microsecond=0) if t else None
+        def _n(t):
+            return t.replace(second=0, microsecond=0) if t else None
 
         # 2. Skeletons independientes (Alineación pedagógica por módulo)
         tiempos_lv = sorted(
-            {_n(b.hora_desde) for b in bloques_raw_all if 1 <= b.dia <= 5},
-            key=lambda t: (t.hour, t.minute)
+            {_n(b.hora_desde) for b in bloques_raw_all if 1 <= b.dia <= 5}, key=lambda t: (t.hour, t.minute)
         )
         tiempos_sab = sorted(
-            {_n(b.hora_desde) for b in bloques_raw_all if b.dia == 6},
-            key=lambda t: (t.hour, t.minute)
+            {_n(b.hora_desde) for b in bloques_raw_all if b.dia == 6}, key=lambda t: (t.hour, t.minute)
         )
 
         hora_a_pos_lv = {h: i for i, h in enumerate(tiempos_lv)}
@@ -155,8 +149,16 @@ def _construir_tablas_horario(
             h_sab = tiempos_sab[i] if i < len(tiempos_sab) else None
 
             # Fin de bloque para labels
-            h_lv_fin = next((_n(b.hora_hasta) for b in bloques_raw_all if 1 <= b.dia <= 5 and _n(b.hora_desde) == h_lv), None) if h_lv else None
-            h_sab_fin = next((_n(b.hora_hasta) for b in bloques_raw_all if b.dia == 6 and _n(b.hora_desde) == h_sab), None) if h_sab else None
+            h_lv_fin = (
+                next((_n(b.hora_hasta) for b in bloques_raw_all if 1 <= b.dia <= 5 and _n(b.hora_desde) == h_lv), None)
+                if h_lv
+                else None
+            )
+            h_sab_fin = (
+                next((_n(b.hora_hasta) for b in bloques_raw_all if b.dia == 6 and _n(b.hora_desde) == h_sab), None)
+                if h_sab
+                else None
+            )
 
             # Es recreo si cualquiera de los dos carriles en esta posición lo es
             is_recreo = (h_lv in recreos_set) or (h_sab in recreos_set)
@@ -175,7 +177,7 @@ def _construir_tablas_horario(
                     hasta=_format_time(h_lv_fin) if h_lv_fin else (_format_time(h_sab_fin) if h_sab_fin else "-"),
                     es_recreo=is_recreo,
                     desde_sec=_format_time(h_sab) if h_sab else None,
-                    hasta_sec=_format_time(h_sab_fin) if h_sab_fin else None
+                    hasta_sec=_format_time(h_sab_fin) if h_sab_fin else None,
                 )
             )
 
@@ -186,7 +188,7 @@ def _construir_tablas_horario(
             # Respetar la segmentación: si HorarioCatedra.cuatrimestre tiene valor, usarlo
             # Si es NULL/vacío, entonces usa espacio.regimen
             materia_regimen = _normalizar_regimen(horario.espacio.regimen)
-            
+
             # Si la MATERIA es anual, no importa si el horario dice cuatrimestre (puede ser segmentado)
             if materia_regimen == "ANUAL":
                 regimen_label = "ANUAL"
@@ -201,15 +203,31 @@ def _construir_tablas_horario(
             comisiones = list(horario.comisiones.select_related("docente"))
             if not comisiones:
                 # Intentar primero con el año del horario
-                comisiones = list(horario.espacio.comisiones.filter(anio_lectivo=horario.anio_academico).select_related("docente"))
-                
+                comisiones = list(
+                    horario.espacio.comisiones.filter(anio_lectivo=horario.anio_academico).select_related("docente")
+                )
+
                 # Si no hay resultados, intentar con años recientes (2025, 2026) para asegurar que aparezcan
                 if not comisiones:
-                    comisiones = list(horario.espacio.comisiones.filter(
-                        anio_lectivo__in=[2025, 2026]
-                    ).select_related("docente"))
+                    comisiones = list(
+                        horario.espacio.comisiones.filter(anio_lectivo__in=[2025, 2026]).select_related("docente")
+                    )
 
-            docentes = sorted({(f"{c.docente.apellido}, {c.docente.nombre[0]}." if c.docente and c.docente.apellido and c.docente.nombre else (c.docente.apellido if c.docente and c.docente.apellido else (c.docente.nombre if c.docente else ""))) for c in comisiones if c.docente_id})
+            docentes = sorted(
+                {
+                    (
+                        f"{c.docente.apellido}, {c.docente.nombre[0]}."
+                        if c.docente and c.docente.apellido and c.docente.nombre
+                        else (
+                            c.docente.apellido
+                            if c.docente and c.docente.apellido
+                            else (c.docente.nombre if c.docente else "")
+                        )
+                    )
+                    for c in comisiones
+                    if c.docente_id
+                }
+            )
             docentes = [doc.upper() for doc in docentes if doc]
             comision_codigos = sorted({c.codigo for c in comisiones if c.codigo})
             observaciones_text = "; ".join(sorted({c.observaciones for c in comisiones if c.observaciones})) or None
@@ -218,7 +236,8 @@ def _construir_tablas_horario(
             for detalle in detalles:
                 bloque = detalle.bloque
                 pos = bloque_id_a_pos.get(bloque.id)
-                if pos is None: continue
+                if pos is None:
+                    continue
 
                 materia_obj = horario.espacio
                 materia_entry = HorarioMateriaCelda(

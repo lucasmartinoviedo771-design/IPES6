@@ -5,20 +5,23 @@ incluyendo la asignación de docentes, turnos y cupos por ciclo lectivo.
 """
 
 import string
-from django.shortcuts import get_object_or_404
+
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
+
 from core.auth_ninja import JWTAuth
+from core.models import Comision, Materia, PlanDeEstudio, Turno
 from core.permissions import (
-    ensure_profesorado_access, 
-    ensure_roles, 
-    allowed_profesorados,
     ACADEMIC_MANAGE_ROLES,
     ACADEMIC_VIEW_ROLES,
+    allowed_profesorados,
+    ensure_profesorado_access,
+    ensure_roles,
 )
-from core.models import Comision, Materia, Turno, PlanDeEstudio
-from .schemas import ComisionIn, ComisionOut, ComisionBulkGenerateIn
+
+from .schemas import ComisionBulkGenerateIn, ComisionIn, ComisionOut
 
 router = Router(tags=["Comisiones"])
 
@@ -48,7 +51,7 @@ def _serialize_comision(comision: Comision) -> ComisionOut:
         observaciones=comision.observaciones,
         estado=comision.estado,
         rol=comision.rol,
-        orden=comision.orden
+        orden=comision.orden,
     )
 
 
@@ -107,7 +110,7 @@ def list_comisiones(
         qs = qs.filter(anio_lectivo=anio_lectivo)
     if turno_id:
         qs = qs.filter(turno_id=turno_id)
-        
+
     if estado:
         qs = qs.filter(estado=estado.upper())
     if rol:
@@ -123,7 +126,7 @@ def create_comision(request, payload: ComisionIn):
     _require_manage(request.user)
     materia = get_object_or_404(Materia, id=payload.materia_id)
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
-    
+
     estado = (payload.estado or Comision.Estado.ABIERTA).upper()
     comision = Comision.objects.create(
         materia=materia,
@@ -147,7 +150,7 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
     _require_manage(request.user)
     comision = get_object_or_404(Comision, id=comision_id)
     ensure_profesorado_access(request.user, comision.materia.plan_de_estudio.profesorado_id)
-    
+
     for attr, value in payload.dict().items():
         if value is not None:
             setattr(comision, attr, value)
@@ -159,7 +162,7 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
 def bulk_generate_comisiones(request, payload: ComisionBulkGenerateIn):
     """
     Generación automática y masiva de comisiones para todo un plan de estudios.
-    
+
     Flujo:
     1. Identifica todas las materias del plan.
     2. Crea N comisiones para cada materia (si no existen aún).
@@ -217,7 +220,7 @@ def bulk_generate_comisiones(request, payload: ComisionBulkGenerateIn):
                 existing_codes.add(codigo)
                 # Rotación de turnos basada en la cantidad de comisiones
                 turno = turnos[(existentes + nuevos_creados) % len(turnos)]
-                
+
                 comision = Comision.objects.create(
                     materia=materia,
                     anio_lectivo=payload.anio_lectivo,

@@ -87,6 +87,7 @@ def estudiante_update_foto(request, file: UploadedFile = File(...)):  # noqa: B0
         return 400, ApiResponse(ok=False, message=str(exc))
 
     from django.core.files.base import ContentFile
+
     if persona.foto:
         persona.foto.delete(save=False)
     persona.foto.save(

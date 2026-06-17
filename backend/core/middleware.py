@@ -23,13 +23,13 @@ class AuditRequestMiddleware:
         """
         # Identificador único hexadecimal para esta petición específica
         request.request_id = uuid.uuid4().hex
-        
+
         # Recupera la clave de sesión si existe (para trazas de usuario persistentes)
         request.audit_session_id = getattr(getattr(request, "session", None), "session_key", None)
-        
+
         # Captura la IP de origen, considerando proxies (Nginx/Cloudflare)
         request.audit_ip = self._get_client_ip(request)
-        
+
         response = self.get_response(request)
         return response
 

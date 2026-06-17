@@ -1,5 +1,5 @@
 from ninja import Schema
-from datetime import datetime
+
 
 class ConversationParticipantOut(Schema):
     id: int
@@ -9,6 +9,7 @@ class ConversationParticipantOut(Schema):
     can_reply: bool
     last_read_at: str | None
 
+
 class MessageOut(Schema):
     id: int
     author_id: int | None
@@ -17,6 +18,7 @@ class MessageOut(Schema):
     created_at: str
     attachment_url: str | None
     attachment_name: str | None
+
 
 class ConversationSummaryOut(Schema):
     id: int
@@ -33,8 +35,10 @@ class ConversationSummaryOut(Schema):
     closed_by_name: str | None = None
     closed_at: str | None = None
 
+
 class ConversationDetailOut(ConversationSummaryOut):
     messages: list[MessageOut]
+
 
 class ConversationCreateIn(Schema):
     subject: str | None = None
@@ -47,9 +51,11 @@ class ConversationCreateIn(Schema):
     context_type: str | None = None
     context_id: str | None = None
 
+
 class ConversationCreateOut(Schema):
     created_ids: list[int]
     total_recipients: int
+
 
 class ConversationListQuery(Schema):
     status: str | None = None
@@ -57,16 +63,19 @@ class ConversationListQuery(Schema):
     unread: bool | None = False
     q: str | None = None
 
+
 class ConversationCountsOut(Schema):
     unread: int
     sla_warning: int
     sla_danger: int
+
 
 class MessageTopicOut(Schema):
     id: int
     slug: str
     name: str
     description: str | None
+
 
 class SimpleUserOut(Schema):
     id: int

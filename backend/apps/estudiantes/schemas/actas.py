@@ -1,17 +1,18 @@
 from datetime import date
-from typing import Literal
 
-from ninja import Schema, Field
+from ninja import Field, Schema
 
 # ==========================================
 # 3. GESTIÓN DE ACTAS (DOCENTES/ADMIN)
 # ==========================================
+
 
 class ActaDocenteIn(Schema):
     rol: str
     docente_id: int | None = None
     nombre: str
     dni: str | None = None
+
 
 class ActaEstudianteIn(Schema):
     numero_orden: int
@@ -22,6 +23,7 @@ class ActaEstudianteIn(Schema):
     examen_oral: str | None = None
     calificacion_definitiva: str
     observaciones: str | None = None
+
 
 class ActaCreateIn(Schema):
     tipo: str
@@ -37,12 +39,14 @@ class ActaCreateIn(Schema):
     total_desaprobados: int | None = None
     total_ausentes: int | None = None
 
+
 ActaCreateIn.model_rebuild()
 
 
 class ActaCreateOut(Schema):
     id: int
     codigo: str
+
 
 # --- Metadata de Actas ---
 class ActaMetadataMateria(Schema):
@@ -52,25 +56,30 @@ class ActaMetadataMateria(Schema):
     plan_id: int
     plan_resolucion: str
 
+
 class ActaMetadataPlan(Schema):
     id: int
     resolucion: str
     materias: list[ActaMetadataMateria] = Field(default_factory=list)
+
 
 class ActaMetadataProfesorado(Schema):
     id: int
     nombre: str
     planes: list[ActaMetadataPlan] = Field(default_factory=list)
 
+
 class ActaMetadataDocente(Schema):
     id: int
     nombre: str
     dni: str | None = None
 
+
 class ActaMetadataOut(Schema):
     profesorados: list[ActaMetadataProfesorado] = Field(default_factory=list)
     docentes: list[ActaMetadataDocente] = Field(default_factory=list)
     nota_opciones: list[dict[str, str]] = Field(default_factory=list)
+
 
 ActaMetadataOut.model_rebuild()
 
@@ -79,6 +88,7 @@ ActaMetadataOut.model_rebuild()
 class OralTopicSchema(Schema):
     tema: str
     score: str | None = None
+
 
 class ActaOralSchema(Schema):
     acta_numero: str | None = None
@@ -89,6 +99,7 @@ class ActaOralSchema(Schema):
     observaciones: str | None = None
     temas_estudiante: list[OralTopicSchema] = Field(default_factory=list)
     temas_docente: list[OralTopicSchema] = Field(default_factory=list)
+
 
 class ActaOralListItemSchema(ActaOralSchema):
     inscripcion_id: int

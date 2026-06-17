@@ -9,17 +9,16 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from weasyprint import HTML
 
-from apps.common.date_utils import format_date, format_datetime
-
 from apps.common.api_schemas import ApiResponse
+from apps.common.date_utils import format_date, format_datetime
 from core.auth_ninja import JWTAuth
 from core.models import InscripcionMesa, MesaExamen
 
 from ..schemas import (
     ConstanciaExamenItem,
+    MesaPlanillaCierreIn,
     MesaPlanillaOut,
     MesaPlanillaUpdateIn,
-    MesaPlanillaCierreIn,
 )
 from .helpers import (
     _docente_full_name,
@@ -109,7 +108,9 @@ def obtener_mesa_planilla(request, mesa_id: int):
                 "nota": float(insc.nota) if insc.nota is not None else None,
                 "folio": insc.folio,
                 "libro": insc.libro,
-                "fecha_resultado": (insc.fecha_resultado or mesa.fecha).isoformat() if (insc.fecha_resultado or mesa.fecha) else None,
+                "fecha_resultado": (insc.fecha_resultado or mesa.fecha).isoformat()
+                if (insc.fecha_resultado or mesa.fecha)
+                else None,
                 "cuenta_para_intentos": insc.cuenta_para_intentos,
                 "observaciones": insc.observaciones,
             }
@@ -193,7 +194,7 @@ def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateI
         )
         if not insc:
             continue
-            
+
         if insc.estudiante.dni == user_dni:
             return 403, ApiResponse(ok=False, message="No tienes permitido cargar o modificar tus propias notas.")
 
@@ -266,19 +267,18 @@ def listar_constancias_examen(request, dni: str | None = None):
     if not est:
         return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
 
-    inscripciones = (
-        InscripcionMesa.objects.select_related(
-            "mesa__materia__plan_de_estudio__profesorado",
-            "mesa",
-            "mesa__materia",
-        )
-        .filter(estudiante=est, estado=InscripcionMesa.Estado.INSCRIPTO)
-    )
+    inscripciones = InscripcionMesa.objects.select_related(
+        "mesa__materia__plan_de_estudio__profesorado",
+        "mesa",
+        "mesa__materia",
+    ).filter(estudiante=est, estado=InscripcionMesa.Estado.INSCRIPTO)
 
     # Si es un estudiante (y no staff), restringir a mesas de ventanas recientes
-    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
-    from core.models import VentanaHabilitacion
     from django.utils import timezone
+
+    from core.models import VentanaHabilitacion
+
+    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
 
     es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
     if not es_staff:
@@ -295,9 +295,7 @@ def listar_constancias_examen(request, dni: str | None = None):
         if latest_window:
             # Permitimos la última ventana (haya cerrado o no) y cualquier otra activa actualmente
             active_ids = list(
-                exam_windows.filter(activo=True, desde__lte=today, hasta__gte=today).values_list(
-                    "id", flat=True
-                )
+                exam_windows.filter(activo=True, desde__lte=today, hasta__gte=today).values_list("id", flat=True)
             )
             relevant_ids = set(active_ids + [latest_window.id])
             inscripciones = inscripciones.filter(mesa__ventana_id__in=relevant_ids)
@@ -324,16 +322,10 @@ def listar_constancias_examen(request, dni: str | None = None):
         materia_anio = getattr(materia, "anio_cursada", None) if materia else None
 
         presidente = (
-            f"{mesa.docente_presidente.apellido}, {mesa.docente_presidente.nombre}"
-            if mesa.docente_presidente
-            else None
+            f"{mesa.docente_presidente.apellido}, {mesa.docente_presidente.nombre}" if mesa.docente_presidente else None
         )
-        vocal1 = (
-            f"{mesa.docente_vocal1.apellido}, {mesa.docente_vocal1.nombre}" if mesa.docente_vocal1 else None
-        )
-        vocal2 = (
-            f"{mesa.docente_vocal2.apellido}, {mesa.docente_vocal2.nombre}" if mesa.docente_vocal2 else None
-        )
+        vocal1 = f"{mesa.docente_vocal1.apellido}, {mesa.docente_vocal1.nombre}" if mesa.docente_vocal1 else None
+        vocal2 = f"{mesa.docente_vocal2.apellido}, {mesa.docente_vocal2.nombre}" if mesa.docente_vocal2 else None
 
         items.append(
             ConstanciaExamenItem(
@@ -366,8 +358,18 @@ def listar_constancias_examen(request, dni: str | None = None):
 
 
 MESES_ES = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
 ]
 
 
@@ -375,15 +377,16 @@ MESES_ES = [
     "/constancias-examen/{inscripcion_id}/pdf",
     auth=JWTAuth(),
 )
-def descargar_constancia_examen_pdf(request, inscripcion_id: int, destinatario: str = "A quien corresponda", dni: str | None = None):
+def descargar_constancia_examen_pdf(
+    request, inscripcion_id: int, destinatario: str = "A quien corresponda", dni: str | None = None
+):
     """Genera el PDF de la constancia de examen usando WeasyPrint."""
     est = _resolve_estudiante(request, dni)
     if not est:
         return HttpResponse(status=404)
 
     insc = (
-        InscripcionMesa.objects
-        .select_related(
+        InscripcionMesa.objects.select_related(
             "mesa__materia__plan_de_estudio__profesorado",
             "mesa__docente_presidente",
             "mesa__docente_vocal1",
@@ -432,9 +435,15 @@ def descargar_constancia_examen_pdf(request, inscripcion_id: int, destinatario: 
         "mesa_modalidad": mesa.get_modalidad_display() if mesa else "",
         "condicion_display": insc.get_condicion_display() or "",
         "nota": str(insc.nota) if insc.nota is not None else None,
-        "tribunal_presidente": f"{mesa.docente_presidente.apellido}, {mesa.docente_presidente.nombre}" if mesa and mesa.docente_presidente else None,
-        "tribunal_vocal1": f"{mesa.docente_vocal1.apellido}, {mesa.docente_vocal1.nombre}" if mesa and mesa.docente_vocal1 else None,
-        "tribunal_vocal2": f"{mesa.docente_vocal2.apellido}, {mesa.docente_vocal2.nombre}" if mesa and mesa.docente_vocal2 else None,
+        "tribunal_presidente": f"{mesa.docente_presidente.apellido}, {mesa.docente_presidente.nombre}"
+        if mesa and mesa.docente_presidente
+        else None,
+        "tribunal_vocal1": f"{mesa.docente_vocal1.apellido}, {mesa.docente_vocal1.nombre}"
+        if mesa and mesa.docente_vocal1
+        else None,
+        "tribunal_vocal2": f"{mesa.docente_vocal2.apellido}, {mesa.docente_vocal2.nombre}"
+        if mesa and mesa.docente_vocal2
+        else None,
         "destinatario": destinatario or "A quien corresponda",
         "hoy_dia": hoy.day,
         "hoy_mes": MESES_ES[hoy.month - 1],
@@ -453,13 +462,13 @@ def descargar_constancia_examen_pdf(request, inscripcion_id: int, destinatario: 
 
 
 def _calc_hora_hasta(insc, mesa) -> str | None:
-    from datetime import datetime, timedelta, date
+    from datetime import date, datetime, timedelta
 
     # 1. Si la mesa estÃ¡ cerrada, usar esa hora
     if mesa.planilla_cerrada_en:
         return mesa.planilla_cerrada_en.strftime("%H:%M")
 
-    # 2. Si es primera carga (proxy: sin ventana o sin acta digital cerrada) 
+    # 2. Si es primera carga (proxy: sin ventana o sin acta digital cerrada)
     # y tiene hora_desde pero no hora_hasta definida
     if not mesa.ventana_id and not mesa.hora_hasta:
         if mesa.hora_desde:

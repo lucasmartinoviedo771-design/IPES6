@@ -1,3 +1,6 @@
+from . import signals  # noqa: F401 — conecta las señales
+from .actas import ActaExamen, ActaExamenDocente, ActaExamenEstudiante
+from .auditoria import AuditLog, SystemLog
 from .base import Docente, Persona, UserProfile
 from .carreras import (
     Correlatividad,
@@ -9,6 +12,7 @@ from .carreras import (
     PlanDeEstudio,
     Profesorado,
 )
+from .curso_intro import CursoIntroductorioCohorte, CursoIntroductorioRegistro
 from .estudiantes import Estudiante, EstudianteCarrera, ProrrogaTituloSecundario, ResidenciaCondicional
 from .horarios import (
     Bloque,
@@ -19,14 +23,16 @@ from .horarios import (
     Turno,
     VentanaHabilitacion,
 )
-from .preinscripciones import (
-    PreinscripcionChecklist,
-    Preinscripcion,
-    ProfesoradoRequisitoDocumentacion,
-    RequisitoDocumentacionTemplate,
-)
 from .inscripciones import EquivalenciaCurricular, InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
-from .curso_intro import CursoIntroductorioCohorte, CursoIntroductorioRegistro
+from .mensajeria import (
+    Conversation,
+    ConversationAudit,
+    ConversationParticipant,
+    Message,
+    MessageTopic,
+    validate_pdf_attachment,
+)
+from .mesas import InscripcionMesa, MesaActaOral, MesaExamen, SolicitudMesa
 from .pedidos import (
     EquivalenciaDisposicion,
     EquivalenciaDisposicionDetalle,
@@ -34,10 +40,15 @@ from .pedidos import (
     PedidoEquivalencia,
     PedidoEquivalenciaMateria,
 )
-from .mesas import InscripcionMesa, MesaActaOral, MesaExamen, SolicitudMesa
+from .preinscripciones import (
+    Preinscripcion,
+    PreinscripcionChecklist,
+    ProfesoradoRequisitoDocumentacion,
+    RequisitoDocumentacionTemplate,
+)
 from .regularidades import (
-    PlanillaCursada,
-    PlanillaCursadaFila,
+    PlanillaCursada,  # noqa: F401
+    PlanillaCursadaFila,  # noqa: F401
     PlanillaRegularidad,
     PlanillaRegularidadDocente,
     PlanillaRegularidadFila,
@@ -47,17 +58,6 @@ from .regularidades import (
     RegularidadPlanillaLock,
     RegularidadPlantilla,
 )
-from .actas import ActaExamen, ActaExamenDocente, ActaExamenEstudiante
-from .mensajeria import (
-    Conversation,
-    ConversationAudit,
-    ConversationParticipant,
-    Message,
-    MessageTopic,
-    validate_pdf_attachment,
-)
-from .auditoria import AuditLog, SystemLog
-from . import signals  # noqa: F401 — conecta las señales
 
 __all__ = [
     # base

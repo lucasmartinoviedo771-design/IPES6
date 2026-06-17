@@ -5,43 +5,48 @@ y define la política de seguridad por defecto del sistema.
 """
 
 import logging
+
 from ninja import NinjaAPI
 from ninja.errors import ConfigError
 
 logger = logging.getLogger(__name__)
 
 # Importación selectiva de routers de aplicaciones
-from apps.estudiantes.api import estudiantes_router as estudiantes_api_router
-from apps.estudiantes.carga_notas_api import carga_notas_router
-from apps.carreras.api import profesorados_router, planes_router, materias_router
-from apps.carreras.comisiones_api import router as comisiones_router
-from apps.carreras.correlatividades_api import router as correlatividades_router
-from apps.calendario.api import router as calendario_router
-from apps.mensajeria.api import router as mensajeria_router
-from apps.docentes.api import router as docentes_router
-from apps.guias.api import router as guias_router
-from apps.health_api import router as health_router
 from apps.asistencia.api import (
-    estudiantes_router as asistencia_estudiantes_router,
-    docentes_router as asistencia_docentes_router,
     calendario_router as asistencia_calendario_router,
 )
+from apps.asistencia.api import (
+    docentes_router as asistencia_docentes_router,
+)
+from apps.asistencia.api import (
+    estudiantes_router as asistencia_estudiantes_router,
+)
+from apps.calendario.api import router as calendario_router
+from apps.carreras.api import materias_router, planes_router, profesorados_router
+from apps.carreras.comisiones_api import router as comisiones_router
+from apps.carreras.correlatividades_api import router as correlatividades_router
 from apps.common.audit_api import router as audit_router
 from apps.common.errors import register_error_handlers
+from apps.common.system_log_api import router as system_log_router
+from apps.docentes.api import router as docentes_router
+from apps.estudiantes.api import estudiantes_router as estudiantes_api_router
+from apps.estudiantes.api.planillas_cursada_api import router as planillas_cursada_router
+from apps.estudiantes.carga_notas_api import carga_notas_router
+from apps.guias.api import router as guias_router
+from apps.health_api import router as health_router
+from apps.management import management_router
+from apps.management.auth_api import router as auth_router
+from apps.mensajeria.api import router as mensajeria_router
 from apps.metrics.api import router as metrics_router
 from apps.metrics.dashboard_api import router as dashboard_router
-from apps.primera_carga.api import primera_carga_router
-from apps.estudiantes.api.planillas_cursada_api import router as planillas_cursada_router
-from apps.common.system_log_api import router as system_log_router
-from apps.management.auth_api import router as auth_router
-from apps.management import management_router
-from apps.preinscriptions.router import preins_router, preins_admin_router
 from apps.preinscriptions.api_uploads import router as preins_uploads_router
+from apps.preinscriptions.router import preins_admin_router, preins_router
+from apps.primera_carga.api import primera_carga_router
 
 # Singleton de la API
-if 'api' not in locals():
+if "api" not in locals():
     from core.auth_ninja import JWTAuth
-    
+
     api = NinjaAPI(
         title="IPES6 API",
         version="1.0.0",
@@ -81,6 +86,7 @@ if 'api' not in locals():
     safe_add_router("/estudiantes/carga-notas", carga_notas_router)
     safe_add_router("/estudiantes/planillas-cursada", planillas_cursada_router)
     from apps.estudiantes.gestion_comisiones_api import router as gestion_comisiones_router
+
     safe_add_router("/estudiantes/comisiones", gestion_comisiones_router)
     safe_add_router("/docentes", docentes_router)
 

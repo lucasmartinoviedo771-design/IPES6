@@ -17,7 +17,9 @@ class CursoIntroductorioCohorte(models.Model):
         null=True,
         blank=True,
     )
-    turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_cohortes")
+    turno = models.ForeignKey(
+        Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_cohortes"
+    )
     ventana_inscripcion = models.ForeignKey(
         VentanaHabilitacion,
         on_delete=models.SET_NULL,
@@ -89,7 +91,9 @@ class CursoIntroductorioRegistro(models.Model):
         blank=True,
         related_name="curso_introductorio_registros",
     )
-    turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_registros")
+    turno = models.ForeignKey(
+        Turno, on_delete=models.SET_NULL, null=True, blank=True, related_name="curso_introductorio_registros"
+    )
     inscripto_en = models.DateTimeField(auto_now_add=True)
     asistencias_totales = models.PositiveIntegerField(null=True, blank=True)
     nota_final = models.PositiveSmallIntegerField(
@@ -123,9 +127,8 @@ class CursoIntroductorioRegistro(models.Model):
                 fields=["estudiante"],
                 condition=models.Q(cohorte__isnull=True),
                 name="unique_registro_student_orphan",
-            )
+            ),
         ]
-
 
     def __str__(self):
         return f"{self.estudiante.dni} - {self.get_resultado_display()}"

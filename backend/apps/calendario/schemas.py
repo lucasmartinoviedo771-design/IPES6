@@ -1,12 +1,16 @@
-from ninja import Schema
 from datetime import time
+
+from ninja import Schema
+
 
 class TurnoIn(Schema):
     nombre: str
 
+
 class TurnoOut(Schema):
     id: int
     nombre: str
+
 
 class BloqueIn(Schema):
     turno_id: int
@@ -14,6 +18,7 @@ class BloqueIn(Schema):
     hora_desde: time
     hora_hasta: time
     es_recreo: bool = False
+
 
 class BloqueOut(Schema):
     id: int
@@ -29,11 +34,13 @@ class BloqueOut(Schema):
     def resolve_dia_display(obj):
         return obj.get_dia_display()
 
+
 class HorarioCatedraIn(Schema):
     espacio_id: int
     turno_id: int
     anio_academico: int
     cuatrimestre: str | None = None
+
 
 class HorarioCatedraOut(Schema):
     id: int
@@ -46,14 +53,16 @@ class HorarioCatedraOut(Schema):
 
     @staticmethod
     def resolve_espacio_nombre(obj):
-        return obj.espacio.nombre if hasattr(obj, 'espacio') else ""
+        return obj.espacio.nombre if hasattr(obj, "espacio") else ""
 
     @staticmethod
     def resolve_turno_nombre(obj):
-        return obj.turno.nombre if hasattr(obj, 'turno') else ""
+        return obj.turno.nombre if hasattr(obj, "turno") else ""
+
 
 class HorarioCatedraDetalleIn(Schema):
     bloque_id: int
+
 
 class HorarioCatedraDetalleOut(Schema):
     id: int

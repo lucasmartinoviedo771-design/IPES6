@@ -5,12 +5,11 @@ from __future__ import annotations
 from datetime import date, datetime, time
 
 from apps.common.date_utils import format_date, format_datetime, parse_date
-
 from core.models import (
     Correlatividad,
     CorrelatividadVersion,
-    Estudiante,
     EquivalenciaDisposicionDetalle,
+    Estudiante,
     InscripcionMesa,
     Materia,
     MesaExamen,
@@ -50,12 +49,14 @@ def _calcular_vigencia_regularidad(estudiante: Estudiante, regularidad: Regulari
       de este período solo cuentan hasta la fecha de esa nueva regularidad (no se mezclan).
     """
     from datetime import timedelta
-    from core.models import MesaExamen, ActaExamenEstudiante
+
+    from core.models import ActaExamenEstudiante
 
     INTENTOS_MAX = 3
 
     if not regularidad.fecha_cierre:
         from django.utils import timezone
+
         limite = _add_years(timezone.now().date(), 2)
         return limite, 0, INTENTOS_MAX
 
@@ -171,7 +172,6 @@ def _tiene_aprobacion_valida(
     El parámetro `autorizadas_ids` contiene materias con autorización excepcional
     otorgada por secretaría (ignoran el resguardo).
     """
-    from core.models import ActaExamenEstudiante
 
     if autorizadas_ids is None:
         autorizadas_ids = set(estudiante.materias_autorizadas.values_list("id", flat=True))
@@ -226,8 +226,9 @@ def _evaluar_aprobacion(
 
     if reg:
         req_ids = list(
-            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
-            .values_list("materia_correlativa_id", flat=True)
+            _correlatividades_qs(
+                materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante
+            ).values_list("materia_correlativa_id", flat=True)
         )
         correlativas_ok = True
         for req_id in req_ids:
@@ -254,8 +255,9 @@ def _evaluar_aprobacion(
 
     if eq:
         req_ids = list(
-            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
-            .values_list("materia_correlativa_id", flat=True)
+            _correlatividades_qs(
+                materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante
+            ).values_list("materia_correlativa_id", flat=True)
         )
         correlativas_ok = True
         for req_id in req_ids:
@@ -272,7 +274,6 @@ def _evaluar_aprobacion(
         EquivalenciaDisposicionDetalle.objects.filter(pk=eq.pk).update(en_resguardo=True)
 
     # 2b. Mesa pandemia aprobada (InscripcionMesa con folio/libro PANDEMIA y condicion APR)
-    from core.models import InscripcionMesa
     if InscripcionMesa.objects.filter(
         estudiante=estudiante,
         mesa__materia=materia,
@@ -285,16 +286,22 @@ def _evaluar_aprobacion(
     # Incluye notas numéricas >= 6 y las etiquetas textuales APR/EQUI usadas
     # para equivalencias externas y aprobaciones no numéricas.
     _CALIFS_APROBADAS = [str(n) for n in range(6, 11)] + ["APR", "EQUI", "APROBADO", "EQUIVALENCIA"]
-    acta_aprobada = ActaExamenEstudiante.objects.filter(
-        dni=estudiante.dni,
-        acta__materia=materia,
-        calificacion_definitiva__in=_CALIFS_APROBADAS,
-    ).select_related("acta").order_by("acta__fecha").first()
+    acta_aprobada = (
+        ActaExamenEstudiante.objects.filter(
+            dni=estudiante.dni,
+            acta__materia=materia,
+            calificacion_definitiva__in=_CALIFS_APROBADAS,
+        )
+        .select_related("acta")
+        .order_by("acta__fecha")
+        .first()
+    )
 
     if acta_aprobada:
         req_ids = list(
-            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
-            .values_list("materia_correlativa_id", flat=True)
+            _correlatividades_qs(
+                materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante
+            ).values_list("materia_correlativa_id", flat=True)
         )
         if not req_ids:
             return True
@@ -332,12 +339,14 @@ def _calcular_resguardo_equivalencia(
         return False
 
     req_apr = list(
-        _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, estudiante)
-        .values_list("materia_correlativa_id", flat=True)
+        _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, estudiante).values_list(
+            "materia_correlativa_id", flat=True
+        )
     )
     req_reg = list(
-        _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, estudiante)
-        .values_list("materia_correlativa_id", flat=True)
+        _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, estudiante).values_list(
+            "materia_correlativa_id", flat=True
+        )
     )
 
     for req_id in req_apr:
@@ -378,8 +387,9 @@ def _calcular_resguardo_equivalencia(
     )
     if es_aprobada:
         req_rendir = list(
-            _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante)
-            .values_list("materia_correlativa_id", flat=True)
+            _correlatividades_qs(
+                materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante
+            ).values_list("materia_correlativa_id", flat=True)
         )
         for req_id in req_rendir:
             req_mat = Materia.objects.filter(id=req_id).first()
