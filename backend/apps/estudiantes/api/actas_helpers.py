@@ -4,13 +4,6 @@ from decimal import Decimal
 
 from django.utils.text import slugify
 
-from apps.estudiantes.api.actas_schemas import (
-    ActaMetadataDocente,
-    ActaMetadataMateria,
-    ActaMetadataOut,
-    ActaMetadataPlan,
-    ActaMetadataProfesorado,
-)
 from core.models import (
     ActaExamen,
     ActaExamenEstudiante,
@@ -20,6 +13,15 @@ from core.models import (
     Profesorado,
 )
 from core.permissions import allowed_profesorados
+
+from apps.estudiantes.api.actas_schemas import (
+    ActaDocenteLocal,
+    ActaMetadataDocente,
+    ActaMetadataMateria,
+    ActaMetadataOut,
+    ActaMetadataPlan,
+    ActaMetadataProfesorado,
+)
 
 
 def _nota_label(value: str) -> str:
@@ -31,17 +33,14 @@ def _nota_label(value: str) -> str:
         return "Aus. Injus."
     return f"{value}"
 
-
 def _compute_acta_codigo(profesorado: Profesorado, anio: int, numero: int) -> str:
     prefix = (
         getattr(profesorado, "acronimo", None) or slugify(profesorado.nombre or "") or f"P{profesorado.id}"
     ).upper()
     return f"ACTA-{prefix}-{anio}-{numero:03d}"
 
-
 def _next_acta_numero(profesorado_id: int, anio: int) -> int:
     from django.db.models import Max
-
     ultimo = (
         ActaExamen.objects.filter(profesorado_id=profesorado_id, anio_academico=anio)
         .aggregate(Max("numero"))
@@ -49,7 +48,6 @@ def _next_acta_numero(profesorado_id: int, anio: int) -> int:
         or 0
     )
     return ultimo + 1
-
 
 def _clasificar_resultado(nota: str) -> str:
     if nota in (
@@ -62,7 +60,6 @@ def _clasificar_resultado(nota: str) -> str:
     except Exception:
         return "desaprobado"
     return "aprobado" if valor >= 6 else "desaprobado"
-
 
 def _acta_metadata(user=None) -> ActaMetadataOut:
     profesorados_data: list[ActaMetadataProfesorado] = []
@@ -125,9 +122,7 @@ def _acta_metadata(user=None) -> ActaMetadataOut:
             "dni": est.dni,
             "apellido_nombre": f"{est.apellido}, {est.nombre}".strip(", "),
         }
-        for est in Estudiante.objects.all()
-        .select_related("persona", "user")
-        .order_by("persona__apellido", "persona__nombre")
+        for est in Estudiante.objects.all().select_related("persona", "user").order_by("persona__apellido", "persona__nombre")
     ]
 
     return ActaMetadataOut(

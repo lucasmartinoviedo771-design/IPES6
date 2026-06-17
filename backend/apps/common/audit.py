@@ -1,24 +1,21 @@
 """
 Motor de auditoría y registro de actividad (Audit Logs).
-Provee herramientas para capturar el estado de modelos (snapshots),
+Provee herramientas para capturar el estado de modelos (snapshots), 
 detectar cambios entre estados y persistir la actividad de los usuarios
 de forma segura y trazable.
 """
 
 from __future__ import annotations
-
 import logging
-from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import datetime, date
 from decimal import Decimal
-from typing import Any
-
+from typing import Any, Mapping
 from django.contrib.auth.models import AnonymousUser, User
 from django.db import transaction
 from django.forms.models import model_to_dict
 
-from apps.common.date_utils import format_date, format_datetime
 from core.models import AuditLog
+from apps.common.date_utils import format_date, format_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -51,20 +48,20 @@ def log_action(
 ) -> None:
     """
     Registra una acción de auditoría en la base de datos.
-
-    Implementa un patrón de protección: el registro se realiza en 'on_commit' de la
+    
+    Implementa un patrón de protección: el registro se realiza en 'on_commit' de la 
     transacción actual. Esto asegura que si la operación principal falla y se hace rollback,
     el log de auditoría solo refleje lo que realmente persistió, o que el log mismo
     no bloquee la operación principal en caso de error de escritura.
     """
     if isinstance(user, AnonymousUser):
         user = None
-
+    
     payload = _build_payload(before, after, metadata)
     nombre_usuario = ""
     if user:
         nombre_usuario = user.get_full_name() or getattr(user, "username", "") or user.email or ""
-
+    
     roles = roles if roles is not None else _resolve_roles(user)
     entidad_id_str = str(entidad_id) if entidad_id is not None else ""
 
@@ -74,7 +71,7 @@ def log_action(
             # Asegurar que los campos de texto no excedan los límites del modelo
             detalle_truncado = (detalle_accion or "")[:100]
             entidad_truncada = (entidad or "")[:50]
-
+            
             AuditLog.objects.create(
                 usuario=user,
                 nombre_usuario=nombre_usuario,
@@ -101,7 +98,7 @@ def log_action(
 
 def log_action_from_request(request, **kwargs):
     """
-    Helper que extrae metadatos de usuario, IP y Session del objeto request
+    Helper que extrae metadatos de usuario, IP y Session del objeto request 
     inyectado por el middleware.
     """
     user = getattr(request, "user", None)
@@ -121,7 +118,7 @@ def _build_payload(before, after, metadata):
     """Construye el cuerpo del log con comparativa de cambios."""
     before_dict = snapshot(before) if before is not None else None
     after_dict = snapshot(after) if after is not None else None
-
+    
     return {
         "before": before_dict,
         "after": after_dict,
@@ -140,7 +137,11 @@ def _compute_changes(before, after):
     changes = []
     for key in sorted(keys):
         if before.get(key) != after.get(key):
-            changes.append({"field": key, "old": before.get(key), "new": after.get(key)})
+            changes.append({
+                "field": key, 
+                "old": before.get(key), 
+                "new": after.get(key)
+            })
     return changes
 
 

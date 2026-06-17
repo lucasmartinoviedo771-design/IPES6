@@ -253,11 +253,11 @@ class JustificacionDetalle(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
-                    models.Q(estudiante__isnull=False, docente__isnull=True)
-                    | models.Q(estudiante__isnull=True, docente__isnull=False)
+                    models.Q(estudiante__isnull=False, docente__isnull=True) |
+                    models.Q(estudiante__isnull=True, docente__isnull=False)
                 ),
-                name="justificacion_estudiante_xor_docente",
-            ),
+                name="justificacion_estudiante_xor_docente"
+            )
         ]
 
     def clean(self):
@@ -265,6 +265,7 @@ class JustificacionDetalle(models.Model):
             raise ValidationError("Una justificación no puede ser para un estudiante y un docente al mismo tiempo.")
         if not self.estudiante and not self.docente:
             raise ValidationError("Debe especificar un estudiante o un docente.")
+
 
     def __str__(self) -> str:
         target = self.estudiante or self.docente
@@ -448,8 +449,6 @@ class DocenteMarcacionLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.dni} - {self.resultado} ({self.registrado_en:%Y-%m-%d %H:%M:%S})"
-
-
 class CalendarioAsistenciaEvento(models.Model):
     class Tipo(models.TextChoices):
         FERIADO = "feriado", "Feriado"

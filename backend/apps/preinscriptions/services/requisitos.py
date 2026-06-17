@@ -41,7 +41,10 @@ def sync_profesorado_requisitos(
         templates_qs = templates_qs.filter(activo=True)
     templates = {tmpl.codigo: tmpl for tmpl in templates_qs}
 
-    requisitos = {req.codigo: req for req in ProfesoradoRequisitoDocumentacion.objects.filter(profesorado=profesorado)}
+    requisitos = {
+        req.codigo: req
+        for req in ProfesoradoRequisitoDocumentacion.objects.filter(profesorado=profesorado)
+    }
 
     for codigo, template in templates.items():
         req = requisitos.get(codigo)
@@ -81,8 +84,8 @@ def sync_profesorado_requisitos(
 
     codigos_activos = set(templates.keys())
     if codigos_activos:
-        ProfesoradoRequisitoDocumentacion.objects.filter(profesorado=profesorado, activo=True).exclude(
-            codigo__in=codigos_activos
-        ).update(activo=False)
+        ProfesoradoRequisitoDocumentacion.objects.filter(
+            profesorado=profesorado, activo=True
+        ).exclude(codigo__in=codigos_activos).update(activo=False)
 
     return ProfesoradoRequisitoDocumentacion.objects.filter(profesorado=profesorado)

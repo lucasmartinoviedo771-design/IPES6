@@ -1,38 +1,74 @@
 from __future__ import annotations
 
-from django.db.models import Q
+from datetime import date, datetime, timedelta
+from typing import List
+
+from django.conf import settings
 from django.http import HttpRequest
+from django.utils import timezone
+from django.db.models import Count, Q, Case, When, Value, CharField, F
+from ninja import Router
 from ninja.errors import HttpError
 
-from apps.common.date_utils import format_date, format_datetime
 from core.models import (
     Comision,
     Docente,
     Estudiante,
     PlanDeEstudio,
     Profesorado,
-    StaffAsignacion,
     Turno,
+    StaffAsignacion,
 )
 from core.permissions import (
+    allowed_profesorados,
+    ensure_profesorado_access,
+    ensure_roles,
     get_user_roles,
 )
+from apps.docentes.services.docente_service import DocenteService
+from core.auth_ninja import JWTAuth
 
 from .models import (
-    CalendarioAsistenciaEvento,
+    AsistenciaEstudiante,
+    AsistenciaDocente,
     ClaseProgramada,
+    CalendarioAsistenciaEvento,
+    CursoEstudianteSnapshot,
+    DocenteMarcacionLog,
     Justificacion,
 )
+from apps.common.date_utils import format_date, format_datetime
 from .schemas import (
+    EstudianteResumenOut,
+    EstudianteClasesResponse,
+    EstudianteClaseListadoOut,
     AsistenciaCalendarioEventoIn,
     AsistenciaCalendarioEventoOut,
+    ClaseEstudianteDetalleOut,
+    DocenteClasesResponse,
+    DocenteHistorialOut,
+    DocenteInfoOut,
+    DocenteClaseOut,
+    DocenteMarcarPresenteIn,
+    DocenteMarcarPresenteOut,
+    DocenteDniLogIn,
+    RegistrarAsistenciaEstudiantesIn,
+    JustificacionCreateIn,
     JustificacionDetailOut,
     JustificacionListItemOut,
+    JustificacionOut,
+    JustificacionRechazarIn,
+    EstudianteAsistenciaItemOut,
 )
 from .services import (
+    apply_justification,
+    attach_classes_to_justification,
     calcular_ventanas_turno,
+    generate_classes_for_date,
+    generate_classes_for_range,
+    registrar_log_docente,
+    sync_course_snapshots,
 )
-
 
 def _staff_profesorados(user, roles: set[str]) -> set[int]:
     if not user or not user.is_authenticated:
@@ -45,7 +81,6 @@ def _staff_profesorados(user, roles: set[str]) -> set[int]:
     )
     return set(asignaciones.values_list("profesorado_id", flat=True))
 
-
 def _get_profesorado_id_from_comision(comision: Comision) -> int | None:
     materia = getattr(comision, "materia", None)
     if not materia:
@@ -55,22 +90,17 @@ def _get_profesorado_id_from_comision(comision: Comision) -> int | None:
         return None
     return plan.profesorado_id
 
-
 def _resolve_scope(request: HttpRequest) -> tuple[set[str], set[int], Docente | None]:
     user = getattr(request, "user", None)
     roles = get_user_roles(user)
     staff_profesorados = _staff_profesorados(user, roles)
     # Buscar perfil de docente ligado al usuario actual (vía Persona -> UserProfile)
-    docente_profile = (
-        Docente.objects.filter(persona__user_profile__user=user).first() if user and user.is_authenticated else None
-    )
+    docente_profile = Docente.objects.filter(persona__user_profile__user=user).first() if user and user.is_authenticated else None
     return roles, staff_profesorados, docente_profile
-
 
 def _ensure_authenticated_scope(roles: set[str], docente_profile: Docente | None):
     if not roles and not docente_profile:
         raise HttpError(401, "Autenticación requerida.")
-
 
 def _scope_profesorado_ids(scope: dict[str, object | None]) -> set[int]:
     ids: set[int] = set()
@@ -86,7 +116,6 @@ def _scope_profesorado_ids(scope: dict[str, object | None]) -> set[int]:
         if materia and getattr(materia, "plan_de_estudio", None):
             ids.add(materia.plan_de_estudio.profesorado_id)
     return ids
-
 
 def _calendario_queryset_with_scope(
     queryset,
@@ -108,7 +137,6 @@ def _calendario_queryset_with_scope(
         raise HttpError(403, "No tenes permisos suficientes para consultar el calendario.")
     return queryset.filter(filters).distinct()
 
-
 def _ensure_calendar_manage_scope(
     roles: set[str],
     staff_profesorados: set[int],
@@ -121,20 +149,16 @@ def _ensure_calendar_manage_scope(
             raise HttpError(403, "No tenes profesorados asignados.")
         target_ids = _scope_profesorado_ids(scope)
         if not target_ids:
-            raise HttpError(
-                403, "Los bedeles solo pueden gestionar eventos asociados a un profesorado, plan o comision."
-            )
+            raise HttpError(403, "Los bedeles solo pueden gestionar eventos asociados a un profesorado, plan o comision.")
         if not target_ids.issubset(staff_profesorados):
             raise HttpError(403, "No tenes permisos sobre el profesorado indicado.")
         return
     raise HttpError(403, "No tenes permisos para gestionar eventos de asistencia.")
 
-
 def _turno_to_dict(turno: Turno | None) -> tuple[int | None, str | None]:
     if not turno:
         return None, None
     return turno.id, turno.nombre
-
 
 def _docente_to_dict(docente: Docente | None) -> tuple[int | None, str | None]:
     if not docente:
@@ -142,7 +166,6 @@ def _docente_to_dict(docente: Docente | None) -> tuple[int | None, str | None]:
     partes = [docente.apellido or "", docente.nombre or ""]
     nombre = " ".join(part.strip() for part in partes if part).strip() or docente.dni
     return docente.id, nombre
-
 
 def _resolver_event_scope(payload: AsistenciaCalendarioEventoIn):
     comision = None
@@ -161,7 +184,9 @@ def _resolver_event_scope(payload: AsistenciaCalendarioEventoIn):
             plan = materia.plan_de_estudio
             profesorado = plan.profesorado
     if getattr(payload, "plan_id", None):
-        plan_lookup = PlanDeEstudio.objects.select_related("profesorado").filter(id=payload.plan_id).first()
+        plan_lookup = (
+            PlanDeEstudio.objects.select_related("profesorado").filter(id=payload.plan_id).first()
+        )
         if not plan_lookup:
             raise HttpError(404, "El plan de estudio indicado no existe.")
         if plan and plan.id != plan_lookup.id:
@@ -181,7 +206,6 @@ def _resolver_event_scope(payload: AsistenciaCalendarioEventoIn):
         if not docente:
             raise HttpError(404, "El docente indicado no existe.")
     return {"comision": comision, "plan": plan, "profesorado": profesorado, "docente": docente}
-
 
 def _evento_to_schema(evento: CalendarioAsistenciaEvento) -> AsistenciaCalendarioEventoOut:
     profesorado_nombre = evento.profesorado.nombre if evento.profesorado_id else None
@@ -211,7 +235,6 @@ def _evento_to_schema(evento: CalendarioAsistenciaEvento) -> AsistenciaCalendari
         creado_en=format_datetime(evento.creado_en),
     )
 
-
 def _build_horario(hora_inicio, hora_fin) -> str | None:
     if hora_inicio and hora_fin:
         return f"{hora_inicio.strftime('%H:%M')} a {hora_fin.strftime('%H:%M')}"
@@ -219,19 +242,16 @@ def _build_horario(hora_inicio, hora_fin) -> str | None:
         return f"{hora_inicio.strftime('%H:%M')}"
     return None
 
-
 def _calcular_ventanas(clase: ClaseProgramada):
     data = calcular_ventanas_turno(clase)
     if not data:
         return None, None, None, ""
     return data
 
-
 def _docente_nombre(docente: Docente) -> str:
     partes = [docente.apellido or "", docente.nombre or ""]
     nombre = " ".join(part.strip() for part in partes if part).strip()
     return nombre or docente.dni
-
 
 def _justificacion_queryset_with_scope(
     queryset,
@@ -265,7 +285,6 @@ def _justificacion_queryset_with_scope(
         ).distinct()
     raise HttpError(403, "No tenés permisos para operar sobre justificaciones.")
 
-
 def _estudiante_display(estudiante: Estudiante | None) -> str | None:
     if not estudiante:
         return None
@@ -278,7 +297,6 @@ def _estudiante_display(estudiante: Estudiante | None) -> str | None:
             return user.username
     return getattr(estudiante.persona, "dni", None) if estudiante.persona else None
 
-
 def _docente_display(docente: Docente | None) -> str | None:
     if not docente:
         return None
@@ -286,13 +304,11 @@ def _docente_display(docente: Docente | None) -> str | None:
     nombre = " ".join(part.strip() for part in partes if part.strip()).strip()
     return nombre or docente.dni
 
-
 def _user_display(user) -> str | None:
     if not user:
         return None
     full_name = user.get_full_name().strip()
     return full_name or user.username
-
 
 def _serialize_justificacion_summary(justificacion: Justificacion) -> JustificacionListItemOut:
     detalles = list(justificacion.detalles.all())
@@ -322,7 +338,6 @@ def _serialize_justificacion_summary(justificacion: Justificacion) -> Justificac
         aprobado_en=format_datetime(justificacion.aprobado_en),
     )
 
-
 def _serialize_justificacion_detail(justificacion: Justificacion) -> JustificacionDetailOut:
     detalles = list(justificacion.detalles.all())
     detalles_out = []
@@ -344,7 +359,7 @@ def _serialize_justificacion_detail(justificacion: Justificacion) -> Justificaci
     profesorado = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio_id else None
     estudiante_ref = next((d.estudiante for d in detalles if d.estudiante_id), None)
     docente_ref = next((d.docente for d in detalles if d.docente_id), None)
-
+    
     return JustificacionDetailOut(
         id=justificacion.id,
         tipo=justificacion.tipo,

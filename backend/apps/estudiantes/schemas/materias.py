@@ -1,20 +1,17 @@
 from typing import Literal
 
-from ninja import Field, Schema
+from ninja import Schema, Field
 
 # ==========================================
 # 6. MATERIAS, PLANES Y HORARIOS
 # ==========================================
-
 
 class Horario(Schema):
     dia: str
     desde: str
     hasta: str
 
-
 Cuatrimestre = Literal["ANUAL", "1C", "2C"]
-
 
 class MateriaPlan(Schema):
     id: int
@@ -31,7 +28,6 @@ class MateriaPlan(Schema):
     formato: str | None = None
     horas_semana: int | None = None
     vigente: bool = True
-
 
 class HistorialEstudiante(Schema):
     aprobadas: list[int] = Field(default_factory=list)

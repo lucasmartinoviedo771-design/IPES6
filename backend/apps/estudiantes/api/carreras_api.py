@@ -15,10 +15,10 @@ def carreras_activas(request, dni: str | None = None):
     est = _resolve_estudiante(request, dni)
     if not est:
         return 404, ApiResponse(ok=False, message="No se encontró el estudiante.")
-
+    
     carreras_est = list(est.carreras.all())
     detalle = _listar_carreras_detalle(est, carreras_est)
-
+    
     carreras_out = [
         CarreraDetalleResumen(
             profesorado_id=item["profesorado_id"],
@@ -38,5 +38,5 @@ def carreras_activas(request, dni: str | None = None):
     return CarrerasActivasOut(
         estudiante_nombre=est.user.get_full_name() if est.user_id else est.apellido + ", " + est.nombre,
         estudiante_dni=est.dni,
-        carreras=carreras_out,
+        carreras=carreras_out
     )

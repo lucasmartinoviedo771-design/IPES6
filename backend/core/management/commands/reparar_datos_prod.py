@@ -1,50 +1,47 @@
-from django.contrib.auth.models import User
+import os
 from django.core.management.base import BaseCommand
 from django.db import transaction
-
-from core.models import Docente, PlanillaRegularidadDocente, PlanillaRegularidadFila
+from django.contrib.auth.models import User
 from core.models.base import Persona
-from core.models.carreras import Profesorado
 from core.models.estudiantes import Estudiante, EstudianteCarrera
-
+from core.models.carreras import Profesorado
+from core.models import Docente, PlanillaRegularidadDocente, PlanillaRegularidadFila
 
 class Command(BaseCommand):
     help = "Aplica de golpe las 4 reparaciones pedidas en DEV hacia PRODUCCIÓN."
 
     def handle(self, *args, **options):
         self.stdout.write("--- INICIANDO BARRIDO DE REPARACIONES ---")
-
+        
         # 1. Ajustes específicos de Estudiantes
         self.stdout.write(">> 1. Arreglando 41737709, 40990008 y Antonela Garay")
-        p1 = Persona.objects.filter(dni="41737709").first()
+        p1 = Persona.objects.filter(dni='41737709').first()
         if p1:
-            p1.nombre = "Brenda Natalia"
-            p1.apellido = "SÁNCHEZ"
+            p1.nombre = 'Brenda Natalia'
+            p1.apellido = 'SÁNCHEZ'
             p1.save()
-            if hasattr(p1, "user") and p1.user:
+            if hasattr(p1, 'user') and p1.user:
                 p1.user.first_name = p1.nombre
                 p1.user.last_name = p1.apellido
                 p1.user.save()
 
-        p2 = Persona.objects.filter(dni="40990008").first()
+        p2 = Persona.objects.filter(dni='40990008').first()
         if p2:
-            p2.nombre = "Matías Sebastián"
-            p2.apellido = "PAULETTI"
+            p2.nombre = 'Matías Sebastián'
+            p2.apellido = 'PAULETTI'
             p2.save()
-            if hasattr(p2, "user") and p2.user:
+            if hasattr(p2, 'user') and p2.user:
                 p2.user.first_name = p2.nombre
                 p2.user.last_name = p2.apellido
                 p2.user.save()
 
-        p_32 = Persona.objects.filter(dni="32696384").first()
+        p_32 = Persona.objects.filter(dni='32696384').first()
         if p_32:
             try:
                 with transaction.atomic():
-                    e_32 = getattr(p_32, "estudiante_perfil", None)
-                    if e_32:
-                        e_32.delete()
-                    if hasattr(p_32, "user") and p_32.user:
-                        p_32.user.delete()
+                    e_32 = getattr(p_32, 'estudiante_perfil', None)
+                    if e_32: e_32.delete()
+                    if hasattr(p_32, 'user') and p_32.user: p_32.user.delete()
                     p_32.delete()
             except Exception as e:
                 self.stdout.write(f"Error eliminando duplicado 32696384: {e}")
@@ -55,7 +52,7 @@ class Command(BaseCommand):
             if p.apellido and not p.apellido.isupper():
                 p.apellido = p.apellido.upper()
                 p.save()
-                if hasattr(p, "user") and p.user:
+                if hasattr(p, 'user') and p.user:
                     p.user.last_name = p.apellido
                     p.user.save()
 
@@ -63,8 +60,7 @@ class Command(BaseCommand):
         self.stdout.write(">> 3. Arreglando docentes y estudiantes fantasmas de planillas")
         for d in PlanillaRegularidadDocente.objects.filter(docente__isnull=True):
             nombre_completo = d.nombre.strip() if d.nombre else ""
-            if not nombre_completo:
-                continue
+            if not nombre_completo: continue
             dni = d.dni
             if not dni:
                 prefix = "DOC-HIS-"
@@ -76,21 +72,16 @@ class Command(BaseCommand):
                     new_dni = f"{prefix}{seq:04d}"
                 dni = new_dni
                 d.dni = dni
-
-            last_name, first_name = (
-                [p.strip() for p in nombre_completo.split(",", 1)] if "," in nombre_completo else (nombre_completo, "-")
-            )
-            persona_obj, _ = Persona.objects.update_or_create(
-                dni=dni, defaults={"nombre": first_name, "apellido": last_name}
-            )
+            
+            last_name, first_name = [p.strip() for p in nombre_completo.split(",", 1)] if "," in nombre_completo else (nombre_completo, "-")
+            persona_obj, _ = Persona.objects.update_or_create(dni=dni, defaults={"nombre": first_name, "apellido": last_name})
             docente_obj, _ = Docente.objects.get_or_create(persona=persona_obj)
             d.docente = docente_obj
             d.save()
 
         for f in PlanillaRegularidadFila.objects.filter(estudiante__isnull=True):
             nombre_completo = f.apellido_nombre.strip() if f.apellido_nombre else ""
-            if not nombre_completo:
-                continue
+            if not nombre_completo: continue
             dni = f.dni
             if not dni:
                 prefix = f"HIS-{f.planilla.profesorado.id:02d}-"
@@ -103,18 +94,10 @@ class Command(BaseCommand):
                 dni = new_dni
                 f.dni = dni
 
-            last_name, first_name = (
-                [p.strip() for p in nombre_completo.split(",", 1)] if "," in nombre_completo else (nombre_completo, "-")
-            )
-            user_obj = User.objects.filter(username=dni).first() or User.objects.create_user(
-                username=dni, password=dni, first_name=first_name, last_name=last_name
-            )
-            persona_obj, _ = Persona.objects.update_or_create(
-                dni=dni, defaults={"nombre": first_name, "apellido": last_name}
-            )
-            est_obj, _ = Estudiante.objects.get_or_create(
-                persona=persona_obj, defaults={"user": user_obj, "estado_legajo": Estudiante.EstadoLegajo.PENDIENTE}
-            )
+            last_name, first_name = [p.strip() for p in nombre_completo.split(",", 1)] if "," in nombre_completo else (nombre_completo, "-")
+            user_obj = User.objects.filter(username=dni).first() or User.objects.create_user(username=dni, password=dni, first_name=first_name, last_name=last_name)
+            persona_obj, _ = Persona.objects.update_or_create(dni=dni, defaults={"nombre": first_name, "apellido": last_name})
+            est_obj, _ = Estudiante.objects.get_or_create(persona=persona_obj, defaults={"user": user_obj, "estado_legajo": Estudiante.EstadoLegajo.PENDIENTE})
             f.estudiante = est_obj
             f.save()
 
@@ -234,20 +217,16 @@ class Command(BaseCommand):
 48354843
         """
         dnis_list = [d.replace(".", "").strip() for d in dnis_raw.splitlines() if d.strip()]
-
+        
         # Enrolar Roxana Millapel (38785968) si es necesario a Primaria
         p_millapel = Persona.objects.filter(dni="38785968").first()
         primaria = Profesorado.objects.filter(nombre__icontains="primaria").first()
-        if p_millapel and hasattr(p_millapel, "estudiante_perfil") and primaria:
-            EstudianteCarrera.objects.get_or_create(
-                estudiante=p_millapel.estudiante_perfil,
-                profesorado=primaria,
-                defaults={"estado_academico": "ACT", "anio_ingreso": 2024},
-            )
-
+        if p_millapel and hasattr(p_millapel, 'estudiante_perfil') and primaria:
+            EstudianteCarrera.objects.get_or_create(estudiante=p_millapel.estudiante_perfil, profesorado=primaria, defaults={"estado_academico": "ACT", "anio_ingreso": 2024})
+        
         # Actualizamos todos a ACT, luego aplicamos bajas a primaria
         EstudianteCarrera.objects.all().update(estado_academico="ACT")
-
+        
         if primaria:
             q_primaria = EstudianteCarrera.objects.filter(profesorado=primaria)
             q_primaria.exclude(estudiante__persona__dni__in=dnis_list).update(estado_academico="BAJ")

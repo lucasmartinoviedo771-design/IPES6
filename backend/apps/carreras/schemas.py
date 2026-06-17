@@ -5,15 +5,13 @@ asignaturas, planes de estudio, comisiones y reglas de correlatividad.
 """
 
 from datetime import date
-
 from ninja import Schema
+
 
 # --- PROFESORADOS (CARRERAS) ---
 
-
 class ProfesoradoIn(Schema):
     """Payload para la creación o actualización de un Profesorado."""
-
     nombre: str
     duracion_anios: int
     activo: bool = True
@@ -23,7 +21,6 @@ class ProfesoradoIn(Schema):
 
 class ProfesoradoOut(Schema):
     """Información pública/administrativa de un Profesorado."""
-
     id: int
     nombre: str
     duracion_anios: int
@@ -34,10 +31,8 @@ class ProfesoradoOut(Schema):
 
 # --- PLANES DE ESTUDIO ---
 
-
 class PlanDeEstudioIn(Schema):
     """Datos de una resolución ministerial que define un Plan de Estudio."""
-
     resolucion: str
     anio_inicio: int
     anio_fin: int | None = None
@@ -46,7 +41,6 @@ class PlanDeEstudioIn(Schema):
 
 class PlanDeEstudioOut(Schema):
     """Detalle de un Plan de Estudio registrado."""
-
     id: int
     profesorado_id: int
     resolucion: str
@@ -57,7 +51,6 @@ class PlanDeEstudioOut(Schema):
 
 class PlanDeEstudioOverview(Schema):
     """Resumen estadístico de un plan (utilizado en dashboards)."""
-
     id: int
     resolucion: str
     vigente: bool
@@ -66,10 +59,8 @@ class PlanDeEstudioOverview(Schema):
 
 # --- MATERIAS (ASIGNATURAS) ---
 
-
 class MateriaIn(Schema):
     """Definición técnica de una materia dentro de un plan."""
-
     plan_de_estudio_id: int
     nombre: str
     anio_cursada: int
@@ -84,7 +75,6 @@ class MateriaIn(Schema):
 
 class MateriaOut(Schema):
     """Información completa de una asignatura."""
-
     id: int
     plan_de_estudio_id: int
     nombre: str
@@ -104,10 +94,8 @@ class MateriaOut(Schema):
     def resolve_esta_cerrada(obj) -> bool:
         return obj.fecha_fin is not None and obj.fecha_fin < date.today()
 
-
 class CerrarEDIIn(Schema):
     """Payload para cerrar un EDI y crear uno nuevo en su lugar."""
-
     fecha_fin: str  # YYYY-MM-DD
     nuevo_nombre: str
     nuevo_anio_cursada: int
@@ -116,10 +104,8 @@ class CerrarEDIIn(Schema):
 
 # --- DOCUMENTACIÓN DE INGRESO ---
 
-
 class RequisitoDocumentacionOut(Schema):
     """Requisito administrativo obligatorio para el legajo del alumno."""
-
     id: int
     codigo: str
     titulo: str
@@ -132,10 +118,8 @@ class RequisitoDocumentacionOut(Schema):
 
 # --- COMISIONES Y CURSADAS ---
 
-
 class ComisionIn(Schema):
     """Payload para la gestión manual de una comisión."""
-
     materia_id: int
     anio_lectivo: int
     codigo: str
@@ -151,7 +135,6 @@ class ComisionIn(Schema):
 
 class ComisionOut(Schema):
     """Detalle de una comisión con información de docente y turno."""
-
     id: int
     materia_id: int
     anio_lectivo: int
@@ -169,7 +152,6 @@ class ComisionOut(Schema):
 
 class ComisionBulkGenerateIn(Schema):
     """Parámetros para la generación automatizada de comisiones por plan."""
-
     plan_id: int
     anio_lectivo: int
     turnos: list[int] | None = None
@@ -179,10 +161,8 @@ class ComisionBulkGenerateIn(Schema):
 
 # --- CORRELATIVIDADES ---
 
-
 class CorrelatividadSetIn(Schema):
     """Set de IDs de materias correlativas para actualización masiva."""
-
     regular_para_cursar: list[int] = []
     aprobada_para_cursar: list[int] = []
     aprobada_para_rendir: list[int] = []
@@ -190,7 +170,6 @@ class CorrelatividadSetIn(Schema):
 
 class CorrelatividadSetOut(Schema):
     """Representación de las reglas de correlatividad vigentes."""
-
     regular_para_cursar: list[int]
     aprobada_para_cursar: list[int]
     aprobada_para_rendir: list[int]
@@ -198,7 +177,6 @@ class CorrelatividadSetOut(Schema):
 
 class CorrelatividadVersionBase(Schema):
     """Estructura base para el versionado por cohortes."""
-
     nombre: str
     descripcion: str | None = None
     cohorte_desde: int
@@ -210,19 +188,16 @@ class CorrelatividadVersionBase(Schema):
 
 class CorrelatividadVersionCreateIn(CorrelatividadVersionBase):
     """Payload de creación con opción de clonado desde versión previa."""
-
     duplicar_version_id: int | None = None
 
 
 class CorrelatividadVersionUpdateIn(CorrelatividadVersionBase):
     """Actualización de metadatos de una versión."""
-
     pass
 
 
 class CorrelatividadVersionOut(Schema):
     """Metadatos de una versión registrados en el sistema."""
-
     id: int
     nombre: str
     descripcion: str | None
@@ -238,7 +213,6 @@ class CorrelatividadVersionOut(Schema):
 
 class MateriaCorrelatividadRow(Schema):
     """Fila de la matriz curricular para visualización tabular."""
-
     id: int
     nombre: str
     anio_cursada: int

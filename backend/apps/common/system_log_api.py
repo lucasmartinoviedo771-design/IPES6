@@ -1,18 +1,17 @@
 """
 Endpoints de administración del sistema y diagnóstico.
-Permite la visualización de errores críticos del servidor (System Logs)
-y provee herramientas de mantenimiento operacional como sincronización de esquemas
+Permite la visualización de errores críticos del servidor (System Logs) 
+y provee herramientas de mantenimiento operacional como sincronización de esquemas 
 y recolección de archivos estáticos.
 """
 
 from datetime import datetime
-
-from django.core.management import call_command
+from typing import List
 from ninja import Router, Schema
-
+from django.core.management import call_command
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth, ensure_roles
 from core.models import SystemLog
+from core.auth_ninja import JWTAuth, ensure_roles
 
 # Acceso restringido únicamente a Superusuarios/Administradores globales.
 router = Router(tags=["system_logs"], auth=JWTAuth())
@@ -20,7 +19,6 @@ router = Router(tags=["system_logs"], auth=JWTAuth())
 
 class SystemLogOut(Schema):
     """Esquema de salida para logs de error del sistema."""
-
     id: int
     tipo: str
     mensaje: str
@@ -30,7 +28,7 @@ class SystemLogOut(Schema):
     updated_at: datetime
 
 
-@router.get("/", response=list[SystemLogOut])
+@router.get("/", response=List[SystemLogOut])
 @ensure_roles(["admin"])
 def list_system_logs(request, resuelto: bool = False):
     """Lista las alertas del sistema, filtrando por estado de resolución."""
@@ -61,17 +59,22 @@ def sync_repair_system(request):
     """
     try:
         # 1. Aplicación de migraciones pendientes
-        call_command("migrate", interactive=False)
-
+        call_command('migrate', interactive=False)
+        
         # 2. Re-compilación de archivos estáticos (Frontend/Admin)
-        call_command("collectstatic", interactive=False)
-
+        call_command('collectstatic', interactive=False)
+        
         # 3. Limpieza total de la memoria caché
         from django.core.cache import cache
-
         cache.clear()
-
-        return ApiResponse(ok=True, message="Sincronización completada exitosamente (Migraciones, Estáticos y Caché).")
+        
+        return ApiResponse(
+            ok=True, 
+            message="Sincronización completada exitosamente (Migraciones, Estáticos y Caché)."
+        )
     except Exception as e:
         error_msg = str(e)
-        return ApiResponse(ok=False, message=f"Error crítico durante la sincronización: {error_msg}")
+        return ApiResponse(
+            ok=False, 
+            message=f"Error crítico durante la sincronización: {error_msg}"
+        )

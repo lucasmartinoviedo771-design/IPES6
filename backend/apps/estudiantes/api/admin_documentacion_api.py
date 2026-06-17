@@ -1,36 +1,41 @@
 """
 API de Administración Centralizada de Estudiantes y Legajos.
-Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de
-documentación física (DNI, Títulos) hasta la auditoría de legajos y
+Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de 
+documentación física (DNI, Títulos) hasta la auditoría de legajos y 
 la baja administrativa bajo estrictas reglas de integridad académica.
 """
 
 from __future__ import annotations
-
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-
 from apps.common.api_schemas import ApiResponse
-from apps.common.audit import log_action_from_request, snapshot
+from core.models import Estudiante, EstudianteCarrera, ProrrogaTituloSecundario, ResidenciaCondicional, Regularidad, EquivalenciaDisposicionDetalle
+from core.permissions import allowed_profesorados, ensure_roles, ensure_profesorado_access
 from apps.common.date_utils import format_datetime
-from core.models import (
-    Estudiante,
-    EstudianteCarrera,
-)
-from core.permissions import allowed_profesorados
 
 from ..schemas import (
-    EstudianteDocumentacionBulkUpdateIn,
+    AutorizarRendirIn,
+    EstudianteAdminDetail,
+    EstudianteAdminListItem,
+    EstudianteAdminListResponse,
+    EstudianteAdminUpdateIn,
     EstudianteDocumentacionListItem,
     EstudianteDocumentacionListResponse,
     EstudianteDocumentacionUpdateIn,
+    EstudianteDocumentacionBulkUpdateIn,
+    ProrrogaTituloIn,
+    ProrrogaTituloOut,
 )
+from .router import estudiantes_router as router
+from ..services.estudiante_service import EstudianteService
 from .helpers import (
     _ensure_admin,
     _ensure_staff_view,
+    _apply_estudiante_updates,
+    _build_admin_detail,
     _recalcular_estado_legajo,
 )
-from .router import estudiantes_router as router
+from apps.common.audit import log_action_from_request, snapshot
 
 
 @router.get(
@@ -50,9 +55,7 @@ def admin_list_estudiantes_documentacion(
     Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
     """
     _ensure_staff_view(request)
-    total, items = _get_estudiantes_documentacion_raw(
-        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico, limit=limit, offset=offset
-    )
+    total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico, limit=limit, offset=offset)
     return EstudianteDocumentacionListResponse(total=total, items=items)
 
 
@@ -74,7 +77,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
         .prefetch_related("carreras")
         .order_by("persona__apellido", "persona__nombre", "persona__dni")
     )
-
+    
     if q:
         q_clean = q.strip()
         if q_clean:
@@ -83,7 +86,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
                 | Q(persona__nombre__icontains=q_clean)
                 | Q(persona__apellido__icontains=q_clean)
             )
-
+    
     if carrera_id:
         if allowed_ids is not None and int(carrera_id) not in allowed_ids:
             qs = qs.none()
@@ -108,22 +111,20 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 
     qs = qs.distinct()
     total = qs.count()
-
+    
     if limit is not None:
         qs_paged = qs[offset : offset + limit]
     else:
         qs_paged = qs[offset:]
-
+        
     estudiantes_list = list(qs_paged)
     estudiante_ids = [e.id for e in estudiantes_list]
 
     # Mapeo de checklists de preinscripción
-    checklists = (
-        PreinscripcionChecklist.objects.filter(preinscripcion__alumno_id__in=estudiante_ids)
-        .select_related("preinscripcion__alumno")
-        .order_by("-updated_at")
-    )
-
+    checklists = PreinscripcionChecklist.objects.filter(
+        preinscripcion__alumno_id__in=estudiante_ids
+    ).select_related("preinscripcion__alumno").order_by("-updated_at")
+    
     checklist_map = {}
     for cl in checklists:
         if cl.preinscripcion.alumno_id not in checklist_map:
@@ -131,24 +132,16 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 
     # Pre-cachear EstudianteCarrera por estudiante para evitar N+1
     from core.models import EstudianteCarrera as _EC
-
     ec_qs = _EC.objects.filter(estudiante_id__in=estudiante_ids)
     ec_map: dict[int, list] = {}
     for ec in ec_qs:
         ec_map.setdefault(ec.estudiante_id, []).append(ec)
 
     EC_DOC_FIELDS = [
-        "dni_legalizado",
-        "fotos_4x4",
-        "certificado_salud",
-        "folios_oficio",
-        "titulo_secundario_legalizado",
-        "certificado_titulo_en_tramite",
-        "analitico_legalizado",
-        "articulo_7",
-        "certificado_alumno_regular_sec",
-        "adeuda_materias",
-        "es_certificacion_docente",
+        "dni_legalizado", "fotos_4x4", "certificado_salud", "folios_oficio",
+        "titulo_secundario_legalizado", "certificado_titulo_en_tramite",
+        "analitico_legalizado", "articulo_7", "certificado_alumno_regular_sec",
+        "adeuda_materias", "es_certificacion_docente",
     ]
 
     items = []
@@ -180,15 +173,13 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
             for k, v in cl_fields.items():
                 if doc_data.get(k) in (None, False, 0, ""):
                     doc_data[k] = v
-
+        
         condicion = _determine_condicion(doc_data)
-        titulo_sec_ok = any(
-            [
-                doc_data.get("titulo_secundario_legalizado"),
-                doc_data.get("certificado_titulo_en_tramite"),
-                doc_data.get("analitico_legalizado"),
-            ]
-        )
+        titulo_sec_ok = any([
+            doc_data.get("titulo_secundario_legalizado"),
+            doc_data.get("certificado_titulo_en_tramite"),
+            doc_data.get("analitico_legalizado")
+        ])
 
         items.append(
             EstudianteDocumentacionListItem(
@@ -211,39 +202,23 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 
 
 @router.get("/admin/estudiantes-documentacion/export/excel")
-def admin_export_estudiantes_documentacion_excel(
-    request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None
-):
+def admin_export_estudiantes_documentacion_excel(request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None):
     """Genera exportación Excel de la nómina de documentación para auditoría interna."""
     _ensure_staff_view(request)
-    _total, items = _get_estudiantes_documentacion_raw(
-        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico
-    )
-
-    from io import BytesIO
-
+    _total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico)
+    
     import openpyxl
+    from openpyxl.styles import Font, Alignment
     from django.http import HttpResponse
-    from openpyxl.styles import Alignment, Font
+    from io import BytesIO
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Documentación"
 
     headers = [
-        "DNI",
-        "Apellido",
-        "Nombre",
-        "Correo",
-        "Condición",
-        "CI",
-        "Libreta",
-        "DNI (F.)",
-        "Fotos",
-        "Cert. Salud",
-        "Folios",
-        "Título Sec.",
-        "Art. 7mo",
+        "DNI", "Apellido", "Nombre", "Correo", "Condición", "CI", "Libreta",
+        "DNI (F.)", "Fotos", "Cert. Salud", "Folios", "Título Sec.", "Art. 7mo"
     ]
 
     for col, header in enumerate(headers, 1):
@@ -274,30 +249,26 @@ def admin_export_estudiantes_documentacion_excel(
     output.seek(0)
 
     response = HttpResponse(
-        output.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = 'attachment; filename="estudiantes_documentacion.xlsx"'
     return response
 
 
 @router.get("/admin/estudiantes-documentacion/export/pdf")
-def admin_export_estudiantes_documentacion_pdf(
-    request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None
-):
+def admin_export_estudiantes_documentacion_pdf(request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None):
     """Genera exportación PDF de la nómina de documentación (formato imprimible)."""
     _ensure_staff_view(request)
-    _total, items = _get_estudiantes_documentacion_raw(
-        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico
-    )
-
-    import datetime
-    import os
-
-    from django.conf import settings
-    from django.http import HttpResponse
+    _total, items = _get_estudiantes_documentacion_raw(request, q=q, carrera_id=carrera_id, estado_academico=estado_academico)
+    
     from django.template.loader import render_to_string
+    from django.http import HttpResponse
     from weasyprint import HTML
+    import datetime
 
+    import os
+    from django.conf import settings
     logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
     logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
     if not os.path.exists(logo_left_path):
@@ -311,7 +282,7 @@ def admin_export_estudiantes_documentacion_pdf(
         "logo_left_path": logo_left_path,
         "logo_right_path": logo_right_path,
     }
-
+    
     html_string = render_to_string("estudiantes/export_documentacion_pdf.html", context)
     pdf = HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf()
 
@@ -323,14 +294,14 @@ def admin_export_estudiantes_documentacion_pdf(
 def _perform_documentacion_update(est, payload):
     """Lógica unificada para persistir cambios en la documentación física del alumno."""
     from core.models import PreinscripcionChecklist
-
+    
     checklist = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=est).order_by("-updated_at").first()
-
+    
     upd_fields = []
     if payload.libreta_entregada is not None:
         est.libreta_entregada = payload.libreta_entregada
         upd_fields.append("libreta_entregada")
-
+    
     if payload.curso_introductorio_aprobado is not None:
         est.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
         upd_fields.append("curso_introductorio_aprobado")
@@ -342,7 +313,7 @@ def _perform_documentacion_update(est, payload):
         "certificado_salud": payload.certificado_salud,
         "folios_oficio": payload.folios_oficio,
         "articulo_7": payload.articulo_7,
-        "titulo_secundario_legalizado": payload.titulo_secundario_ok,
+        "titulo_secundario_legalizado": payload.titulo_secundario_ok
     }
 
     for field, val in mapping.items():
@@ -364,17 +335,11 @@ def _perform_documentacion_update(est, payload):
                     if getattr(ec, field, None) != val:
                         setattr(ec, field, val)
                         ec_changed = True
-                if (
-                    payload.curso_introductorio_aprobado is not None
-                    and ec.curso_introductorio_aprobado != payload.curso_introductorio_aprobado
-                ):
+                if payload.curso_introductorio_aprobado is not None and ec.curso_introductorio_aprobado != payload.curso_introductorio_aprobado:
                     ec.curso_introductorio_aprobado = payload.curso_introductorio_aprobado
                     ec_changed = True
                 if ec_changed:
-                    ec.save(
-                        update_fields=ec_doc_fields
-                        + (["curso_introductorio_aprobado"] if payload.curso_introductorio_aprobado is not None else [])
-                    )
+                    ec.save(update_fields=ec_doc_fields + (["curso_introductorio_aprobado"] if payload.curso_introductorio_aprobado is not None else []))
 
         # Sincronizamos con el checklist si existe
         if checklist:
@@ -404,17 +369,14 @@ def admin_update_estudiante_documentacion(
     """
     _ensure_admin(request)
     est = get_object_or_404(Estudiante, persona__dni=dni)
-
+    
     # Auditoría de permisos por carrera
     allowed_ids = allowed_profesorados(request.user)
     if allowed_ids is not None:
-        est_carreras_ids = set(
-            EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True)
-        )
+        est_carreras_ids = set(EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True))
         if not allowed_ids.intersection(est_carreras_ids):
-            from apps.common.constants import AppErrorCode
             from apps.common.errors import raise_app_error
-
+            from apps.common.constants import AppErrorCode
             raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para modificar este legajo.")
 
     # Capturar estado previo para auditoría
@@ -447,21 +409,21 @@ def admin_bulk_update_estudiante_documentacion(
 ):
     _ensure_admin(request)
     allowed_ids = allowed_profesorados(request.user)
-
+    
     updated_count = 0
     for update_item in payload.updates:
         est = Estudiante.objects.filter(persona__dni=update_item.dni).first()
         if not est:
             continue
-
+            
         if allowed_ids is not None:
-            est_carreras_ids = set(
-                EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True)
-            )
+            est_carreras_ids = set(EstudianteCarrera.objects.filter(estudiante=est).values_list("profesorado_id", flat=True))
             if not allowed_ids.intersection(est_carreras_ids):
                 continue
-
+        
         _perform_documentacion_update(est, update_item.changes)
         updated_count += 1
-
+        
     return ApiResponse(ok=True, message=f"Se actualizaron {updated_count} legajos.")
+
+

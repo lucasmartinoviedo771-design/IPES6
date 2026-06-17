@@ -4,6 +4,7 @@ from django.core.management.base import BaseCommand
 
 from core.models import Bloque, Turno
 
+
 SABADO_BLOCKS = [
     (time(9, 0), time(9, 40), False),
     (time(9, 40), time(10, 20), False),

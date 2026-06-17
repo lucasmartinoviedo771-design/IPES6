@@ -5,24 +5,22 @@ from django.utils import timezone
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
+from core.auth_ninja import JWTAuth
+from core.models import (
+    PedidoEquivalencia,
+    PlanDeEstudio,
+    Profesorado,
+)
+from core.permissions import ensure_roles
+
 from apps.estudiantes.api.common import (
     EQUIVALENCIAS_REVIEW_ROLES,
-    TITULOS_ROLES,
     TUTORIA_ROLES,
+    TITULOS_ROLES,
     can_manage_equivalencias,
     ensure_estudiante_access,
     get_equivalencia_window,
     resolve_estudiante,
-)
-from apps.estudiantes.api.equivalencias.helpers import (
-    _calcular_resultado_final,
-    _get_pedido_or_404,
-    _is_estudiante_ipes,
-    _parse_date,
-    _pedido_queryset,
-    _puede_editar_pedido_equivalencia,
-    _serialize_pedido_equivalencia,
-    _sync_pedido_equivalencia_materias,
 )
 from apps.estudiantes.api.router import estudiantes_router
 from apps.estudiantes.schemas import (
@@ -33,13 +31,17 @@ from apps.estudiantes.schemas import (
     PedidoEquivalenciaSaveIn,
     PedidoEquivalenciaTitulosIn,
 )
-from core.auth_ninja import JWTAuth
-from core.models import (
-    PedidoEquivalencia,
-    PlanDeEstudio,
-    Profesorado,
+
+from apps.estudiantes.api.equivalencias.helpers import (
+    _calcular_resultado_final,
+    _get_pedido_or_404,
+    _is_estudiante_ipes,
+    _parse_date,
+    _pedido_queryset,
+    _puede_editar_pedido_equivalencia,
+    _serialize_pedido_equivalencia,
+    _sync_pedido_equivalencia_materias,
 )
-from core.permissions import ensure_roles
 
 
 @estudiantes_router.get("/equivalencias/pedidos", response=list[PedidoEquivalenciaOut])
@@ -386,7 +388,6 @@ def registrar_documentos_titulos(
     # Notificación automática si ya tiene los datos mínimos
     if pedido.titulos_disposicion_numero or pedido.titulos_nota_numero:
         from apps.estudiantes.services.notificaciones_service import NotificacionesService
-
         try:
             NotificacionesService.notificar_equivalencia_finalizada(pedido)
         except Exception as e:

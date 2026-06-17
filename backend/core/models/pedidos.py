@@ -24,7 +24,7 @@ class PedidoAnalitico(models.Model):
     profesorado = models.ForeignKey(Profesorado, on_delete=models.SET_NULL, null=True, blank=True)
     cohorte = models.IntegerField(null=True, blank=True, help_text="Año de ingreso (cohorte)")
     estado = models.CharField(max_length=4, choices=Estado.choices, default=Estado.PENDIENTE)
-
+    
     preparado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

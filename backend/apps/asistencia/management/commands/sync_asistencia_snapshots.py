@@ -1,7 +1,8 @@
 from django.core.management.base import BaseCommand, CommandParser
 
-from apps.asistencia.services import sync_course_snapshots
 from core.models import Comision
+
+from apps.asistencia.services import sync_course_snapshots
 
 
 class Command(BaseCommand):

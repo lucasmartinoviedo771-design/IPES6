@@ -14,6 +14,5 @@ urlpatterns = [
 
 # Panel de profiling
 from django.conf import settings
-
-if getattr(settings, "ENABLE_PROFILING", False):
+if getattr(settings, 'ENABLE_PROFILING', False):
     urlpatterns.append(path("silk/", include("silk.urls", namespace="silk")))

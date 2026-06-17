@@ -1,7 +1,9 @@
 from apps.common.date_utils import format_date
+from apps.common.api_schemas import ApiResponse
 from core.models import Materia, Regularidad
 
-from .helpers import _calcular_vigencia_regularidad, _ensure_estudiante_access, _resolve_estudiante
+from ..schemas import RegularidadVigenciaOut
+from .helpers import _calcular_vigencia_regularidad, _resolve_estudiante, _ensure_estudiante_access
 from .router import estudiantes_router
 
 

@@ -1,17 +1,11 @@
 from __future__ import annotations
-
 import math
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-
-from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from django.db import transaction
+from django.core.files.base import ContentFile
+from django.contrib.auth.models import User
 
-from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
-from apps.estudiantes.api.notas_utils import alias_desde_situacion
-from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
-from apps.primera_carga.audit_utils import verify_regularidad_consistency
 from core.models import (
     Docente,
     Estudiante,
@@ -25,23 +19,25 @@ from core.models import (
     Regularidad,
     RegularidadPlantilla,
 )
+from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
+from apps.estudiantes.api.notas_utils import alias_desde_situacion
+from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+from apps.primera_carga.audit_utils import verify_regularidad_consistency
 from core.permissions import ensure_profesorado_access
 
-from .pdf import _render_planilla_regularidad_pdf
 from .utils import (
-    _atomic_rollback,
-    _limpiar_datos_fila,
-    _next_planilla_numero,
-    _normalize_value,
-    _planilla_codigo,
-    _resolve_situacion,
     _to_bool,
+    _normalize_value,
+    _resolve_situacion,
+    _next_planilla_numero,
+    _planilla_codigo,
+    _limpiar_datos_fila,
+    _atomic_rollback,
 )
-
+from .pdf import _render_planilla_regularidad_pdf
 
 def _extraer_nota_practicos(columnas: list[dict], datos: dict) -> Decimal | None:
     from .utils import _decimal_from_string
-
     if not datos:
         return None
     for col in columnas:
@@ -54,7 +50,6 @@ def _extraer_nota_practicos(columnas: list[dict], datos: dict) -> Decimal | None
             return nota
     return None
 
-
 def _ensure_required_row_fields(row: dict) -> None:
     missing = []
     for field in ("orden", "apellido_nombre", "situacion"):
@@ -65,7 +60,6 @@ def _ensure_required_row_fields(row: dict) -> None:
             missing.append(field)
     if missing:
         raise ValueError(f"Faltan campos obligatorios en la fila: {', '.join(missing)}")
-
 
 def crear_planilla_regularidad(
     *,
@@ -174,14 +168,12 @@ def crear_planilla_regularidad(
 
         for idx, docente_data in enumerate(docentes, start=1):
             nombre = docente_data.get("nombre", "").strip()
-            if not nombre:
-                continue
+            if not nombre: continue
             dni_docente = _normalize_value(docente_data.get("dni"))
-
+            
             if not dni_docente and nombre:
-                prefix = "DOC-HIS-"
+                prefix = f"DOC-HIS-"
                 from core.models.base import Persona
-
                 count = Persona.objects.filter(dni__startswith=prefix).count()
                 seq = count + 1
                 new_dni = f"{prefix}{seq:04d}"
@@ -203,18 +195,15 @@ def crear_planilla_regularidad(
                 else:
                     last_name, first_name = nombre, "-"
                 from core.models.base import Persona
-
                 persona_obj, _ = Persona.objects.update_or_create(
-                    dni=dni_docente, defaults={"nombre": first_name, "apellido": last_name}
+                    dni=dni_docente,
+                    defaults={"nombre": first_name, "apellido": last_name}
                 )
                 docente_obj, _ = Docente.objects.get_or_create(persona=persona_obj)
                 warnings.append(f"[Docentes] Se creó el docente {dni_docente} automáticamente.")
 
             PlanillaRegularidadDocente.objects.create(
-                planilla=planilla,
-                docente=docente_obj,
-                nombre=nombre,
-                dni=dni_docente,
+                planilla=planilla, docente=docente_obj, nombre=nombre, dni=dni_docente,
                 rol=docente_data.get("rol") or PlanillaRegularidadDocente.Rol.PROFESOR,
                 orden=docente_data.get("orden") or idx,
             )
@@ -259,28 +248,18 @@ def crear_planilla_regularidad(
                         first_name = "-"
                     user_obj = User.objects.filter(username=dni).first()
                     if not user_obj:
-                        user_obj = User.objects.create_user(
-                            username=dni, password=dni, first_name=first_name, last_name=last_name
-                        )
+                        user_obj = User.objects.create_user(username=dni, password=dni, first_name=first_name, last_name=last_name)
                     from core.models import Persona
-
-                    persona_obj, _ = Persona.objects.update_or_create(
-                        dni=dni, defaults={"nombre": first_name, "apellido": last_name}
-                    )
-                    estudiante = Estudiante.objects.create(
-                        user=user_obj, persona=persona_obj, estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
-                    )
+                    persona_obj, _ = Persona.objects.update_or_create(dni=dni, defaults={"nombre": first_name, "apellido": last_name})
+                    estudiante = Estudiante.objects.create(user=user_obj, persona=persona_obj, estado_legajo=Estudiante.EstadoLegajo.PENDIENTE)
                     try:
                         estudiante.asignar_profesorado(profesorado)
-                    except:
-                        pass
+                    except: pass
                     warnings.append(f"[Fila {orden}] Se creó el estudiante {dni} automáticamente.")
 
             if estudiante:
-                try:
-                    estudiante.asignar_profesorado(profesorado)
-                except:
-                    pass
+                try: estudiante.asignar_profesorado(profesorado)
+                except: pass
 
             situacion = _resolve_situacion(fila_data.get("situacion", ""), formato_para_situaciones)
             nota_final_raw = fila_data.get("nota_final")
@@ -290,7 +269,7 @@ def crear_planilla_regularidad(
                     nota_final_decimal = Decimal(str(nota_final_raw)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
                 except (InvalidOperation, ValueError):
                     raise ValueError(f"La nota final de la fila {orden} debe ser un número válido o '---'.")
-
+            
             nota_final_entera = None
             if nota_final_decimal is not None:
                 nota_final_entera = int(nota_final_decimal.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
@@ -311,72 +290,42 @@ def crear_planilla_regularidad(
             datos_extra = _limpiar_datos_fila(fila_data.get("datos"), columnas)
 
             fila_obj = PlanillaRegularidadFila.objects.create(
-                planilla=planilla,
-                orden=orden,
-                estudiante=estudiante,
-                dni=dni,
+                planilla=planilla, orden=orden, estudiante=estudiante, dni=dni,
                 apellido_nombre=_normalize_value(fila_data.get("apellido_nombre")),
-                nota_final=nota_final_decimal,
-                asistencia_porcentaje=asistencia,
-                situacion=situacion,
-                excepcion=excepcion_bool,
-                datos=datos_extra,
+                nota_final=nota_final_decimal, asistencia_porcentaje=asistencia,
+                situacion=situacion, excepcion=excepcion_bool, datos=datos_extra,
             )
 
             if not estudiante:
-                warnings.append(
-                    f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitió el registro de regularidad."
-                )
+                warnings.append(f"[Fila {orden}] Estudiante con DNI {dni} no encontrado. Se omitió el registro de regularidad.")
                 continue
 
             has_aprobada = estudiante_tiene_materia_aprobada(estudiante, materia)
 
             # BLOQUEO: No dejar cargar promoción/aprobación si ya tiene final aprobado
-            if (
-                not force_upgrade
-                and has_aprobada
-                and situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO)
-            ):
-                raise ValueError(
-                    f"[Fila {orden}] {estudiante.dni}: Ya tiene la materia aprobada definitivamente. No se puede cargar promoción/aprobación."
-                )
+            if not force_upgrade and has_aprobada and situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                raise ValueError(f"[Fila {orden}] {estudiante.dni}: Ya tiene la materia aprobada definitivamente. No se puede cargar promoción/aprobación.")
 
             # ADVERTENCIA: Regularidad sobre regularidad vigente
             if situacion == Regularidad.Situacion.REGULAR:
-                last_reg = (
-                    Regularidad.objects.filter(estudiante=estudiante, materia=materia)
-                    .exclude(fecha_cierre=fecha)
-                    .order_by("-fecha_cierre")
-                    .first()
-                )
+                last_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia).exclude(fecha_cierre=fecha).order_by("-fecha_cierre").first()
                 if last_reg and last_reg.situacion == Regularidad.Situacion.REGULAR:
                     limite, intentos, _ = _calcular_vigencia_regularidad(estudiante, last_reg)
                     if limite >= fecha and intentos < 3:
-                        warnings.append(
-                            f"[Fila {orden}] {estudiante.dni}: Posee regularidad vigente hasta {limite} (Intentos: {intentos})."
-                        )
+                        warnings.append(f"[Fila {orden}] {estudiante.dni}: Posee regularidad vigente hasta {limite} (Intentos: {intentos}).")
 
             if not force_upgrade and has_aprobada:
-                warnings.append(
-                    f"[Fila {orden}] {estudiante.dni}: Ya tiene aprobada la materia {materia.nombre} (Carga retroactiva)."
-                )
-
+                warnings.append(f"[Fila {orden}] {estudiante.dni}: Ya tiene aprobada la materia {materia.nombre} (Carga retroactiva).")
+            
             nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra)
-            inscripcion = (
-                InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia)
-                .order_by("-anio")
-                .first()
-            )
-
+            inscripcion = InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia).order_by("-anio").first()
+            
             # Buscar regularidad existente del mismo año académico (carga histórica sin inscripción)
             # para evitar duplicados cuando se reenvía la planilla con fecha corregida
-            reg_existente = (
-                Regularidad.objects.filter(
-                    estudiante=estudiante, materia=materia, inscripcion__isnull=True, fecha_cierre__year=fecha.year
-                )
-                .order_by("-created_at")
-                .first()
-            )
+            reg_existente = Regularidad.objects.filter(
+                estudiante=estudiante, materia=materia,
+                inscripcion__isnull=True, fecha_cierre__year=fecha.year
+            ).order_by("-created_at").first()
 
             reg_defaults = {
                 "inscripcion": inscripcion,
@@ -394,25 +343,15 @@ def crear_planilla_regularidad(
                 reg_existente.save()
             else:
                 Regularidad.objects.update_or_create(
-                    estudiante=estudiante,
-                    materia=materia,
-                    fecha_cierre=fecha,
+                    estudiante=estudiante, materia=materia, fecha_cierre=fecha,
                     defaults=reg_defaults,
                 )
             verify_regularidad_consistency(fila_obj)
             regularidades_registradas += 1
 
         PlanillaRegularidadHistorial.objects.create(
-            planilla=planilla,
-            accion=PlanillaRegularidadHistorial.Accion.CREACION,
-            usuario=user,
-            payload={
-                "numero": numero,
-                "filas": len(filas),
-                "docentes": len(docentes),
-                "regularidades": regularidades_registradas,
-                "warnings": warnings,
-            },
+            planilla=planilla, accion=PlanillaRegularidadHistorial.Accion.CREACION, usuario=user,
+            payload={"numero": numero, "filas": len(filas), "docentes": len(docentes), "regularidades": regularidades_registradas, "warnings": warnings}
         )
 
         if not dry_run:
@@ -422,73 +361,45 @@ def crear_planilla_regularidad(
     return {
         "planilla": obtener_planilla_regularidad_detalle(planilla.id),
         "warnings": warnings,
-        "registrados": regularidades_registradas,
+        "registrados": regularidades_registradas
     }
-
 
 def obtener_planilla_regularidad_detalle(planilla_id: int) -> dict:
     try:
-        planilla = PlanillaRegularidad.objects.select_related("profesorado", "materia", "plantilla", "formato").get(
-            pk=planilla_id
-        )
+        planilla = PlanillaRegularidad.objects.select_related("profesorado", "materia", "plantilla", "formato").get(pk=planilla_id)
     except PlanillaRegularidad.DoesNotExist:
         raise ValueError("La planilla no existe.")
-
+    
     docentes = []
     for d in planilla.docentes.all().order_by("orden", "id"):
         docentes.append({"docente_id": d.docente_id, "nombre": d.nombre, "dni": d.dni, "rol": d.rol, "orden": d.orden})
     filas = []
     for f in planilla.filas.all().order_by("orden", "id"):
-        filas.append(
-            {
-                "orden": f.orden,
-                "dni": f.dni,
-                "apellido_nombre": f.apellido_nombre,
-                "nota_final": str(int(f.nota_final)) if f.nota_final is not None else "---",
-                "asistencia": str(int(f.asistencia_porcentaje)) if f.asistencia_porcentaje is not None else "---",
-                "situacion": alias_desde_situacion(f.situacion) or f.situacion,
-                "excepcion": f.excepcion,
-                "datos": f.datos,
-            }
-        )
+        filas.append({
+            "orden": f.orden, "dni": f.dni, "apellido_nombre": f.apellido_nombre,
+            "nota_final": str(int(f.nota_final)) if f.nota_final is not None else "---",
+            "asistencia": str(int(f.asistencia_porcentaje)) if f.asistencia_porcentaje is not None else "---",
+            "situacion": alias_desde_situacion(f.situacion) or f.situacion,
+            "excepcion": f.excepcion, "datos": f.datos,
+        })
     return {
-        "id": planilla.id,
-        "codigo": planilla.codigo,
-        "anio_academico": planilla.anio_academico,
-        "profesorado_id": planilla.profesorado_id,
-        "profesorado_nombre": planilla.profesorado.nombre,
-        "materia_id": planilla.materia_id,
-        "materia_nombre": planilla.materia.nombre,
-        "plantilla_id": planilla.plantilla_id,
-        "dictado": planilla.dictado,
-        "fecha": planilla.fecha.isoformat(),
-        "folio": planilla.folio,
-        "plan_resolucion": planilla.plan_resolucion,
-        "observaciones": planilla.observaciones,
-        "datos_adicionales": planilla.datos_adicionales,
-        "docentes": docentes,
-        "filas": filas,
-        "estado": planilla.estado,
-        "pdf_url": planilla.pdf.url if planilla.pdf else None,
+        "id": planilla.id, "codigo": planilla.codigo, "anio_academico": planilla.anio_academico,
+        "profesorado_id": planilla.profesorado_id, "profesorado_nombre": planilla.profesorado.nombre,
+        "materia_id": planilla.materia_id, "materia_nombre": planilla.materia.nombre,
+        "plantilla_id": planilla.plantilla_id, "dictado": planilla.dictado,
+        "fecha": planilla.fecha.isoformat(), "folio": planilla.folio, "plan_resolucion": planilla.plan_resolucion,
+        "observaciones": planilla.observaciones, "datos_adicionales": planilla.datos_adicionales,
+        "docentes": docentes, "filas": filas, "estado": planilla.estado, "pdf_url": planilla.pdf.url if planilla.pdf else None,
     }
 
-
 def actualizar_planilla_regularidad(
-    planilla_id: int,
-    user: User,
-    profesorado_id: int | None = None,
-    materia_id: int | None = None,
-    plantilla_id: int | None = None,
-    dictado: str | None = None,
-    fecha: date | None = None,
-    folio: str | None = None,
-    plan_resolucion: str | None = None,
-    observaciones: str | None = None,
-    datos_adicionales: dict | None = None,
-    docentes: list[dict] | None = None,
-    filas: list[dict] | None = None,
-    estado: str | None = None,
-    dry_run: bool = False,
+    planilla_id: int, user: User, profesorado_id: int | None = None,
+    materia_id: int | None = None, plantilla_id: int | None = None,
+    dictado: str | None = None, fecha: date | None = None,
+    folio: str | None = None, plan_resolucion: str | None = None,
+    observaciones: str | None = None, datos_adicionales: dict | None = None,
+    docentes: list[dict] | None = None, filas: list[dict] | None = None,
+    estado: str | None = None, dry_run: bool = False,
     force_upgrade: bool = False,
 ) -> dict:
     try:
@@ -506,32 +417,23 @@ def actualizar_planilla_regularidad(
     # Capturar estado ANTERIOR antes de modificar (para limpiar regularidades viejas)
     old_fecha = planilla.fecha
     old_materia_id = planilla.materia_id
-    old_estudiante_ids = list(planilla.filas.filter(estudiante__isnull=False).values_list("estudiante_id", flat=True))
+    old_estudiante_ids = list(planilla.filas.filter(estudiante__isnull=False).values_list('estudiante_id', flat=True))
 
-    if profesorado_id:
-        planilla.profesorado_id = profesorado_id
-    if materia_id:
-        planilla.materia_id = materia_id
+    if profesorado_id: planilla.profesorado_id = profesorado_id
+    if materia_id: planilla.materia_id = materia_id
     if plantilla_id:
         planilla.plantilla_id = plantilla_id
         p = RegularidadPlantilla.objects.filter(pk=plantilla_id).first()
-        if p:
-            planilla.formato = p.formato
-    if dictado:
-        planilla.dictado = dictado
+        if p: planilla.formato = p.formato
+    if dictado: planilla.dictado = dictado
     if fecha:
         planilla.fecha = fecha
         planilla.anio_academico = fecha.year
-    if folio is not None:
-        planilla.folio = folio
-    if plan_resolucion is not None:
-        planilla.plan_resolucion = plan_resolucion
-    if observaciones is not None:
-        planilla.observaciones = observaciones
-    if estado:
-        planilla.estado = estado
-    if datos_adicionales is not None:
-        planilla.datos_adicionales = datos_adicionales
+    if folio is not None: planilla.folio = folio
+    if plan_resolucion is not None: planilla.plan_resolucion = plan_resolucion
+    if observaciones is not None: planilla.observaciones = observaciones
+    if estado: planilla.estado = estado
+    if datos_adicionales is not None: planilla.datos_adicionales = datos_adicionales
 
     planilla.updated_by = user
 
@@ -543,14 +445,12 @@ def actualizar_planilla_regularidad(
             planilla.docentes.all().delete()
             for idx, d_data in enumerate(docentes, start=1):
                 nombre = d_data.get("nombre", "").strip()
-                if not nombre:
-                    continue
+                if not nombre: continue
                 dni = _normalize_value(d_data.get("dni"))
-
+                
                 if not dni and nombre:
-                    prefix = "DOC-HIS-"
+                    prefix = f"DOC-HIS-"
                     from core.models.base import Persona
-
                     count = Persona.objects.filter(dni__startswith=prefix).count()
                     seq = count + 1
                     new_dni = f"{prefix}{seq:04d}"
@@ -559,37 +459,28 @@ def actualizar_planilla_regularidad(
                         new_dni = f"{prefix}{seq:04d}"
                     dni = new_dni
 
-                d_obj = (
-                    Docente.objects.filter(pk=d_data.get("docente_id")).first()
-                    if d_data.get("docente_id")
-                    else (Docente.objects.filter(persona__dni=dni).first() if dni else None)
-                )
-
+                d_obj = Docente.objects.filter(pk=d_data.get("docente_id")).first() if d_data.get("docente_id") else (Docente.objects.filter(persona__dni=dni).first() if dni else None)
+                
                 if not d_obj and dni:
                     if "," in nombre:
                         last_name, first_name = [p.strip() for p in nombre.split(",", 1)]
                     else:
                         last_name, first_name = nombre, "-"
                     from core.models.base import Persona
-
                     persona_obj, _ = Persona.objects.update_or_create(
-                        dni=dni, defaults={"nombre": first_name, "apellido": last_name}
+                        dni=dni,
+                        defaults={"nombre": first_name, "apellido": last_name}
                     )
                     d_obj, _ = Docente.objects.get_or_create(persona=persona_obj)
-
-                PlanillaRegularidadDocente.objects.create(
-                    planilla=planilla,
-                    docente=d_obj,
-                    nombre=nombre,
-                    dni=dni,
-                    rol=d_data.get("rol") or "profesor",
-                    orden=d_data.get("orden") or idx,
-                )
-
+                
+                PlanillaRegularidadDocente.objects.create(planilla=planilla, docente=d_obj, nombre=nombre, dni=dni, rol=d_data.get("rol") or "profesor", orden=d_data.get("orden") or idx)
+        
         if filas is not None:
             # Limpiar regularidades anteriores asociadas a esta planilla para evitar duplicados si cambia la fecha o materia
             Regularidad.objects.filter(
-                estudiante_id__in=old_estudiante_ids, materia_id=old_materia_id, fecha_cierre=old_fecha
+                estudiante_id__in=old_estudiante_ids,
+                materia_id=old_materia_id,
+                fecha_cierre=old_fecha
             ).delete()
 
             planilla.filas.all().delete()
@@ -598,7 +489,7 @@ def actualizar_planilla_regularidad(
             for idx, f_data in enumerate(filas, start=1):
                 orden = f_data.get("orden") or idx
                 dni = _normalize_value(f_data.get("dni"))
-
+                
                 if not dni and f_data.get("apellido_nombre"):
                     prefix = f"HIS-{planilla.profesorado.id:02d}-"
                     count = Estudiante.objects.filter(persona__dni__startswith=prefix).count()
@@ -608,9 +499,9 @@ def actualizar_planilla_regularidad(
                         seq += 1
                         new_dni = f"{prefix}{seq:04d}"
                     dni = new_dni
-
+                
                 estudiante = Estudiante.objects.filter(persona__dni=dni).first() if dni else None
-
+                
                 if not estudiante and dni:
                     apellido_nombre = _normalize_value(f_data.get("apellido_nombre"))
                     if apellido_nombre:
@@ -620,74 +511,45 @@ def actualizar_planilla_regularidad(
                             last_name, first_name = apellido_nombre, "-"
                         user_obj = User.objects.filter(username=dni).first()
                         if not user_obj:
-                            user_obj = User.objects.create_user(
-                                username=dni, password=dni, first_name=first_name, last_name=last_name
-                            )
+                            user_obj = User.objects.create_user(username=dni, password=dni, first_name=first_name, last_name=last_name)
                         from core.models.base import Persona
-
-                        persona_obj, _ = Persona.objects.update_or_create(
-                            dni=dni, defaults={"nombre": first_name, "apellido": last_name}
-                        )
-                        estudiante = Estudiante.objects.create(
-                            user=user_obj, persona=persona_obj, estado_legajo=Estudiante.EstadoLegajo.PENDIENTE
-                        )
+                        persona_obj, _ = Persona.objects.update_or_create(dni=dni, defaults={"nombre": first_name, "apellido": last_name})
+                        estudiante = Estudiante.objects.create(user=user_obj, persona=persona_obj, estado_legajo=Estudiante.EstadoLegajo.PENDIENTE)
                         try:
                             estudiante.asignar_profesorado(planilla.profesorado)
-                        except:
-                            pass
-
+                        except: pass
+                
                 situacion = _resolve_situacion(f_data.get("situacion", ""), planilla.materia.formato)
                 nota_dec = None
                 if f_data.get("nota_final") not in (None, "", "---"):
                     nota_dec = Decimal(str(f_data.get("nota_final"))).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
                 asist = None
-                try:
-                    asist = int(math.ceil(float(str(f_data.get("asistencia") or "").replace(",", "."))))
-                except:
-                    pass
-
+                try: asist = int(math.ceil(float(str(f_data.get("asistencia") or "").replace(",", "."))))
+                except: pass
+                
                 datos_extra_limpios = _limpiar_datos_fila(f_data.get("datos"), columnas)
                 fila_obj = PlanillaRegularidadFila.objects.create(
-                    planilla=planilla,
-                    orden=orden,
-                    estudiante=estudiante,
-                    dni=dni or "",
+                    planilla=planilla, orden=orden, estudiante=estudiante, dni=dni or "",
                     apellido_nombre=_normalize_value(f_data.get("apellido_nombre") or ""),
-                    nota_final=nota_dec,
-                    asistencia_porcentaje=asist,
-                    situacion=situacion,
-                    excepcion=bool(f_data.get("excepcion")),
-                    datos=datos_extra_limpios,
+                    nota_final=nota_dec, asistencia_porcentaje=asist, situacion=situacion,
+                    excepcion=bool(f_data.get("excepcion")), datos=datos_extra_limpios,
                 )
                 if estudiante:
                     # Buscamos la inscripción para vincular la regularidad
-                    inscripcion = (
-                        InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia=materia_actual)
-                        .order_by("-anio")
-                        .first()
-                    )
-
+                    inscripcion = InscripcionMateriaEstudiante.objects.filter(
+                        estudiante=estudiante, materia=materia_actual
+                    ).order_by("-anio").first()
+                    
                     # Extraer nota de prácticos si está en los datos extra
                     nota_tp_decimal = _extraer_nota_practicos(columnas, datos_extra_limpios)
 
                     # Lógica de validación igualada a creación
                     has_aprobada = estudiante_tiene_materia_aprobada(estudiante, materia_actual)
-                    if (
-                        not force_upgrade
-                        and has_aprobada
-                        and situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO)
-                    ):
-                        raise ValueError(
-                            f"[Fila {orden}] {estudiante.dni}: Ya tiene la materia aprobada definitivamente. No se puede cargar promoción/aprobación."
-                        )
+                    if not force_upgrade and has_aprobada and situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
+                        raise ValueError(f"[Fila {orden}] {estudiante.dni}: Ya tiene la materia aprobada definitivamente. No se puede cargar promoción/aprobación.")
 
                     if situacion == Regularidad.Situacion.REGULAR:
-                        last_reg = (
-                            Regularidad.objects.filter(estudiante=estudiante, materia=materia_actual)
-                            .exclude(fecha_cierre=planilla.fecha)
-                            .order_by("-fecha_cierre")
-                            .first()
-                        )
+                        last_reg = Regularidad.objects.filter(estudiante=estudiante, materia=materia_actual).exclude(fecha_cierre=planilla.fecha).order_by("-fecha_cierre").first()
                         if last_reg and last_reg.situacion == Regularidad.Situacion.REGULAR:
                             v_limite, v_intentos, _ = _calcular_vigencia_regularidad(estudiante, last_reg)
                             if v_limite >= planilla.fecha and v_intentos < 3:
@@ -695,31 +557,27 @@ def actualizar_planilla_regularidad(
                                 pass
 
                     Regularidad.objects.update_or_create(
-                        estudiante=estudiante,
-                        materia=materia_actual,
-                        fecha_cierre=planilla.fecha,
+                        estudiante=estudiante, materia=materia_actual, fecha_cierre=planilla.fecha,
                         defaults={
                             "inscripcion": inscripcion,
                             "nota_trabajos_practicos": nota_tp_decimal,
-                            "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                            if nota_dec is not None
-                            else None,
-                            "asistencia_porcentaje": asist,
-                            "situacion": situacion,
+                            "nota_final_cursada": int(nota_dec.quantize(Decimal("1"), rounding=ROUND_HALF_UP)) if nota_dec is not None else None,
+                            "asistencia_porcentaje": asist, 
+                            "situacion": situacion, 
                             "excepcion": bool(f_data.get("excepcion")),
                             "observaciones": (f_data.get("observaciones") or "").strip(),
-                        },
+                        }
                     )
                     verify_regularidad_consistency(fila_obj)
-
+        
         PlanillaRegularidadHistorial.objects.create(
-            planilla=planilla,
-            accion=PlanillaRegularidadHistorial.Accion.EDICION,
+            planilla=planilla, 
+            accion=PlanillaRegularidadHistorial.Accion.EDICION, 
             usuario=user,
             payload={
                 "filas": len(filas) if filas is not None else None,
                 "docentes": len(docentes) if docentes is not None else None,
-            },
+            }
         )
 
         if not dry_run:
@@ -728,6 +586,6 @@ def actualizar_planilla_regularidad(
 
     return {
         "planilla": obtener_planilla_regularidad_detalle(planilla.id),
-        "warnings": [],  # Re-evaluación de warnings no implementada en edición aún
-        "registrados": 0,
+        "warnings": [], # Re-evaluación de warnings no implementada en edición aún
+        "registrados": 0
     }

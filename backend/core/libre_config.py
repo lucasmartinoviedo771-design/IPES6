@@ -1,12 +1,11 @@
 """
 Configuración de política académica para exámenes en condición de 'Libre'.
-Contiene el mapeo de materias por profesorado que están autorizadas para
+Contiene el mapeo de materias por profesorado que están autorizadas para 
 abrir mesas de examen libre, junto con utilidades de normalización de texto
 para comparaciones difusas.
 """
 
 from __future__ import annotations
-
 import unicodedata
 from collections.abc import Mapping, Sequence
 
@@ -198,14 +197,14 @@ def materia_permite_mesa_libre(materia) -> bool:
     """
     if materia is None or getattr(materia, "plan_de_estudio", None) is None:
         return False
-
+        
     plan = materia.plan_de_estudio
     profesorado = getattr(plan, "profesorado", None)
     entry = _find_profesorado_entry(getattr(profesorado, "nombre", None))
-
+    
     if not entry:
         return False
-
+        
     materia_nombre = _normalize(getattr(materia, "nombre", ""))
     return materia_nombre in entry["materias"]
 

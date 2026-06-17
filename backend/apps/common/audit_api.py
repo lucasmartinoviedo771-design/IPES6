@@ -1,6 +1,6 @@
 """
 API de consulta para registros de auditoría.
-Provee endpoints para que el personal administrativo pueda supervisar
+Provee endpoints para que el personal administrativo pueda supervisar 
 la actividad del sistema con filtros avanzados por fecha, usuario, entidad y acción.
 """
 
@@ -21,7 +21,7 @@ router = Router(tags=["auditoria"], auth=JWTAuth())
 
 def _parse_datetime(value: str | None):
     """
-    Normaliza cadenas de fecha ISO a objetos datetime conscientes de la zona horaria
+    Normaliza cadenas de fecha ISO a objetos datetime conscientes de la zona horaria 
     configurada en Django (TIME_ZONE).
     """
     if not value:
@@ -84,14 +84,14 @@ def listar_logs(
     """
     # Seguridad: solo personal de gestión tiene acceso a la auditoría
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
-
+    
     # Normalización de paginación
-    limit = max(1, min(limit, 200))  # Tope de 200 registros por página
+    limit = max(1, min(limit, 200)) # Tope de 200 registros por página
     offset = max(0, offset)
-
+    
     # Queryset base ordenado por fecha descendente (más recientes primero)
     qs = AuditLog.objects.all().order_by("-timestamp")
-
+    
     # Aplicación de filtros dinámicos
     if usuario_id:
         qs = qs.filter(usuario_id=usuario_id)
@@ -107,7 +107,7 @@ def listar_logs(
         qs = qs.filter(id_entidad=str(entidad_id))
     if request_id:
         qs = qs.filter(request_id=request_id)
-
+        
     # Filtrado por rango temporal
     desde_dt = _parse_datetime(desde)
     hasta_dt = _parse_datetime(hasta)
@@ -115,10 +115,13 @@ def listar_logs(
         qs = qs.filter(timestamp__gte=desde_dt)
     if hasta_dt:
         qs = qs.filter(timestamp__lte=hasta_dt)
-
+        
     total = qs.count()
-    items = [_serialize_log(log, include_payload=incluir_payload) for log in qs[offset : offset + limit]]
-
+    items = [
+        _serialize_log(log, include_payload=incluir_payload) 
+        for log in qs[offset : offset + limit]
+    ]
+    
     return AuditLogList(total=total, items=items)
 
 

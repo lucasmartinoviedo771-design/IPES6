@@ -9,9 +9,7 @@ Uso:
 Configuración sugerida en cron (ejecutar cada noche a las 2am):
     0 2 * * * cd /ruta/al/proyecto && python manage.py cleanup_mesas_desiertas
 """
-
 from django.core.management.base import BaseCommand
-
 from core.models import MesaExamen
 
 
@@ -33,19 +31,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from datetime import date, timedelta
-
         from django.db.models import Count, Q
 
         dias_gracia = options["dias_gracia"]
         dry_run = options["dry_run"]
         hoy = date.today()
 
-        mesas_candidatas = (
-            MesaExamen.objects.select_related("ventana", "materia")
-            .filter(fecha__lt=hoy)
-            .annotate(count_inscriptos=Count("inscripciones", filter=Q(inscripciones__estado="INS")))
-            .filter(count_inscriptos=0)
-        )
+        mesas_candidatas = MesaExamen.objects.select_related(
+            "ventana", "materia"
+        ).filter(
+            fecha__lt=hoy
+        ).annotate(
+            count_inscriptos=Count("inscripciones", filter=Q(inscripciones__estado="INS"))
+        ).filter(count_inscriptos=0)
 
         a_eliminar = []
         for mesa in mesas_candidatas:
@@ -71,4 +69,6 @@ class Command(BaseCommand):
         for mesa in a_eliminar:
             mesa.delete()
 
-        self.stdout.write(self.style.SUCCESS(f"Se eliminaron {len(a_eliminar)} mesa(s) desierta(s) correctamente."))
+        self.stdout.write(
+            self.style.SUCCESS(f"Se eliminaron {len(a_eliminar)} mesa(s) desierta(s) correctamente.")
+        )

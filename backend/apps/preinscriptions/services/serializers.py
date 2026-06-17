@@ -1,15 +1,10 @@
 import copy
-
 from apps.common.date_utils import format_date, format_datetime
 
 _GENERO_TO_DISPLAY = {"M": "Masculino", "F": "Femenino", "X": "No binarie"}
 _ESTADO_CIVIL_TO_DISPLAY = {
-    "SOL": "Soltero/a",
-    "CAS": "Casado/a",
-    "DIV": "Divorciado/a",
-    "VIU": "Viudo/a",
-    "CON": "Conviviente",
-    "OTR": "Otro",
+    "SOL": "Soltero/a", "CAS": "Casado/a", "DIV": "Divorciado/a",
+    "VIU": "Viudo/a", "CON": "Conviviente", "OTR": "Otro",
 }
 
 
@@ -31,7 +26,7 @@ def serialize_pre(pre) -> dict:
             "emergencia_parentesco": "parentesco_emergencia",
         }
         model_field = field_map.get(field, field)
-
+        
         for obj in (a, p):
             if obj and hasattr(obj, model_field):
                 val = getattr(obj, model_field)
@@ -53,34 +48,12 @@ def serialize_pre(pre) -> dict:
                 extra[field] = value
 
     campos_a_bubbling = [
-        "nacionalidad",
-        "estado_civil",
-        "genero",
-        "localidad_nac",
-        "provincia_nac",
-        "pais_nac",
-        "tel_fijo",
-        "emergencia_telefono",
-        "emergencia_parentesco",
-        "sec_titulo",
-        "sec_establecimiento",
-        "sec_fecha_egreso",
-        "sec_localidad",
-        "sec_provincia",
-        "sec_pais",
-        "sup1_titulo",
-        "sup1_establecimiento",
-        "sup1_fecha_egreso",
-        "sup1_localidad",
-        "sup1_provincia",
-        "sup1_pais",
-        "trabaja",
-        "empleador",
-        "horario_trabajo",
-        "domicilio_trabajo",
-        "cud_informado",
-        "condicion_salud_informada",
-        "condicion_salud_detalle",
+        "nacionalidad", "estado_civil", "genero", "localidad_nac", "provincia_nac", "pais_nac",
+        "tel_fijo", "emergencia_telefono", "emergencia_parentesco",
+        "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+        "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+        "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo",
+        "cud_informado", "condicion_salud_informada", "condicion_salud_detalle",
     ]
     for campo in campos_a_bubbling:
         ensure_extra(campo)

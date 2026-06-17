@@ -1,7 +1,6 @@
 from django.contrib.auth.models import User
 from django.utils import timezone
-
-from core.models import Conversation, ConversationParticipant, Estudiante, Message, MessageTopic, StaffAsignacion
+from core.models import Conversation, ConversationParticipant, Message, MessageTopic, Estudiante, StaffAsignacion
 from core.permissions import get_user_roles
 
 
@@ -21,23 +20,18 @@ def _get_tutores_estudiante(estudiante: Estudiante, turno_nombre: str | None = N
         "tarde": StaffAsignacion.Turno.TARDE,
         "vespertino": StaffAsignacion.Turno.VESPERTINO,
     }
-    turno_val = TURNO_MAP.get(turno_nombre.lower().strip()) if turno_nombre else None
+    turno_val = TURNO_MAP.get(turno_nombre.lower().strip(), None) if turno_nombre else None
     profes_ids = list(estudiante.carreras.values_list("id", flat=True))
 
     from django.db.models import Q
-
     # Tutores con profesorado asignado al estudiante
     q_con_prof = Q(profesorado_id__in=profes_ids)
     # Tutores sin profesorado (cubren todos los profesorados de su turno)
     q_sin_prof = Q(profesorado__isnull=True)
 
-    asignaciones = (
-        StaffAsignacion.objects.filter(
-            rol=StaffAsignacion.Rol.TUTOR,
-        )
-        .filter(q_con_prof | q_sin_prof)
-        .select_related("user")
-    )
+    asignaciones = StaffAsignacion.objects.filter(
+        rol=StaffAsignacion.Rol.TUTOR,
+    ).filter(q_con_prof | q_sin_prof).select_related("user")
 
     tutores = []
     for asig in asignaciones:
@@ -70,16 +64,13 @@ class NotificacionesService:
         return topic
 
     @staticmethod
-    def enviar_notificacion(
-        receptor: User, asunto: str, cuerpo: str, topic_name="Trámites", context_type=None, context_id=None, sender=None
-    ):
+    def enviar_notificacion(receptor: User, asunto: str, cuerpo: str, topic_name="Trámites", context_type=None, context_id=None, sender=None):
         """
         Envía un mensaje interno. Si ya existe una conversación abierta para el mismo
         pedido (context_type + context_id) y receptor, agrega el mensaje al hilo existente
         en vez de crear uno nuevo.
         """
-        if not receptor:
-            return
+        if not receptor: return
 
         sender = sender or NotificacionesService._get_sistema_user()
         now = timezone.now()
@@ -113,12 +104,16 @@ class NotificacionesService:
             context_type=context_type,
             context_id=context_id,
             status=Conversation.Status.OPEN,
-            allow_student_reply=True,
+            allow_student_reply=True
         )
 
         # Participante: Remitente
         ConversationParticipant.objects.create(
-            conversation=conversation, user=sender, role_snapshot="SISTEMA", can_reply=True, last_read_at=now
+            conversation=conversation,
+            user=sender,
+            role_snapshot="SISTEMA",
+            can_reply=True,
+            last_read_at=now
         )
 
         # Participante: Receptor
@@ -126,7 +121,10 @@ class NotificacionesService:
         role_pref = "estudiante" if "estudiante" in roles else (list(roles)[0] if roles else "")
 
         ConversationParticipant.objects.create(
-            conversation=conversation, user=receptor, role_snapshot=role_pref, can_reply=True
+            conversation=conversation,
+            user=receptor,
+            role_snapshot=role_pref,
+            can_reply=True
         )
 
         # Mensaje inicial
@@ -194,20 +192,10 @@ class NotificacionesService:
         estado_desc = inscripcion.get_cambio_comision_estado_display()
         asunto = f"Resultado de tu Solicitud de Cambio de Comisión: {estado_desc}"
 
-        espacio = (
-            inscripcion.comision.materia.nombre
-            if inscripcion.comision and inscripcion.comision.materia
-            else "el espacio curricular"
-        )
+        espacio = inscripcion.comision.materia.nombre if inscripcion.comision and inscripcion.comision.materia else "el espacio curricular"
         comision_nueva = inscripcion.comision.codigo if inscripcion.comision else "-"
-        anio = (
-            inscripcion.comision.materia.anio_cursada if inscripcion.comision and inscripcion.comision.materia else "-"
-        )
-        prof_nombre = (
-            inscripcion.comision.materia.plan_de_estudio.profesorado.nombre
-            if inscripcion.comision and inscripcion.comision.materia
-            else "-"
-        )
+        anio = inscripcion.comision.materia.anio_cursada if inscripcion.comision and inscripcion.comision.materia else "-"
+        prof_nombre = inscripcion.comision.materia.plan_de_estudio.profesorado.nombre if inscripcion.comision and inscripcion.comision.materia else "-"
         disp = inscripcion.disposicion_numero or "S/N"
 
         if inscripcion.cambio_comision_estado == "APRO":
@@ -265,34 +253,32 @@ class NotificacionesService:
         est_nombre = pedido.estudiante.nombre
         est_full = f"{pedido.estudiante.apellido}, {pedido.estudiante.nombre}".strip(", ")
         asunto = f"Resultado de tu Trámite de Equivalencias: {pedido.resultado_final.upper()}"
-
+        
         materias = pedido.materias.all()
         otorgadas = [m.nombre for m in materias if m.resultado == "otorgada"]
         rechazadas = [m.nombre for m in materias if m.resultado == "rechazada"]
-
+        
         cuerpo = (
             f"Hola {est_nombre},\n\n"
             f"Te informamos que ha finalizado el trámite de equivalencias para el profesorado '{pedido.profesorado_destino_nombre}'.\n\n"
         )
-
+        
         if otorgadas:
             cuerpo += "MATERIAS OTORGADAS:\n" + "\n".join([f"- {m}" for m in otorgadas]) + "\n\n"
-
+        
         if rechazadas:
             cuerpo += "MATERIAS NO OTORGADAS:\n" + "\n".join([f"- {m}" for m in rechazadas]) + "\n\n"
-
+            
         cuerpo += (
             f"Documento de referencia: {pedido.get_titulos_documento_tipo_display()} "
             f"Nº {pedido.titulos_disposicion_numero or pedido.titulos_nota_numero or 'S/D'}.\n\n"
             f"Ya podés consultar tu trayectoria académica actualizada.\n\n"
             f"Saludos,\nDepartamento de Títulos"
         )
-
+        
         # Notificar al estudiante
-        NotificacionesService.enviar_notificacion(
-            student_user, asunto, cuerpo, context_type="equivalencia", context_id=pedido.id
-        )
-
+        NotificacionesService.enviar_notificacion(student_user, asunto, cuerpo, context_type="equivalencia", context_id=pedido.id)
+        
         # Notificar a tutores del profesorado
         asunto_staff = f"Equivalencia Finalizada: {est_full} ({pedido.estudiante.dni})"
         tutores = _get_tutores_estudiante(pedido.estudiante)

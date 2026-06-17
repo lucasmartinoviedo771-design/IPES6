@@ -1,18 +1,14 @@
 """
 Lógica centralizada de autorización y permisos (RBAC).
-Define las matrices de acceso, la normalización de roles y las funciones para
+Define las matrices de acceso, la normalización de roles y las funciones para 
 validar el acceso a recursos específicos como Profesorados.
 """
 
 from __future__ import annotations
-
 from collections.abc import Iterable
-
 from django.contrib.auth.models import User
-
 from apps.common.constants import AppErrorCode
 from apps.common.errors import AppError
-
 from .models import StaffAsignacion
 
 # Roles que tienen impacto limitado a sus asignaciones específicas
@@ -33,17 +29,8 @@ _UNRESTRICTED_ROLES = {
 # --- MATRICES DE DEFINICIÓN DE ACCESO ---
 
 STRUCTURE_VIEW_ROLES = {
-    "admin",
-    "secretaria",
-    "bedel",
-    "coordinador",
-    "tutor",
-    "jefes",
-    "jefa_aaee",
-    "consulta",
-    "estudiante",
-    "rectorado",
-    "attp",
+    "admin", "secretaria", "bedel", "coordinador", "tutor",
+    "jefes", "jefa_aaee", "consulta", "estudiante", "rectorado", "attp"
 }
 STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
 ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
@@ -51,30 +38,12 @@ ACADEMIC_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
 VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "estudiante"}
 PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel"}
 GLOBAL_OVERVIEW_ROLES = {
-    "admin",
-    "secretaria",
-    "bedel",
-    "jefa_aaee",
-    "jefes",
-    "tutor",
-    "coordinador",
-    "consulta",
-    "rectorado",
-    "attp",
+    "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
+    "tutor", "coordinador", "consulta", "rectorado", "attp"
 }
 ALL_ROLES: set[str] = {
-    "admin",
-    "secretaria",
-    "bedel",
-    "jefa_aaee",
-    "jefes",
-    "tutor",
-    "coordinador",
-    "consulta",
-    "estudiante",
-    "docente",
-    "rectorado",
-    "attp",
+    "admin", "secretaria", "bedel", "jefa_aaee", "jefes",
+    "tutor", "coordinador", "consulta", "estudiante", "docente", "rectorado", "attp"
 }
 
 # --- DEFINICIONES ADICIONALES CONSOLIDADAS ---
@@ -146,17 +115,21 @@ def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
     user = _ensure_authenticated(user)
     if user.is_superuser:
         return
-
+    
     allowed = {role.lower() for role in allowed_roles}
     groups = get_user_roles(user)
     if not groups.intersection(allowed):
-        raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos suficientes para realizar esta acción.")
+        raise AppError(
+            403, 
+            AppErrorCode.PERMISSION_DENIED, 
+            "No tiene permisos suficientes para realizar esta acción."
+        )
 
 
 def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = None) -> set[int] | None:
     """
     Determina la lista de IDs de Profesorado a los que el usuario tiene acceso.
-
+    
     Returns:
         set[int]: Lista de IDs autorizados.
         None: Si el usuario tiene acceso global (ej: admin/secretaría).
@@ -164,33 +137,33 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
     user = _ensure_authenticated(user)
     if user.is_superuser:
         return None
-
+        
     groups = get_user_roles(user)
     if groups.intersection(_UNRESTRICTED_ROLES):
         return None
-
+        
     relevant_roles = _LIMITED_ROLES
     if role_filter:
         relevant_roles = {role.lower() for role in role_filter}
-
+    
     if not groups.intersection(relevant_roles):
         return None
-
+    
     ids = set()
-
+    
     # Caso Estudiante: Acceso solo a sus propias carreras
     if "estudiante" in groups:
         est = getattr(user, "estudiante", None)
         if est:
             ids.update(est.carreras.values_list("id", flat=True))
-
+            
     # Caso Staff (Bedeles/Coordinadores): Acceso por asignación explícita
     staff_qs = StaffAsignacion.objects.filter(user=user)
     if role_filter:
         staff_qs = staff_qs.filter(rol__in=[role.lower() for role in role_filter])
-
+    
     ids.update(staff_qs.values_list("profesorado_id", flat=True))
-
+    
     return ids
 
 
@@ -205,9 +178,13 @@ def ensure_profesorado_access(
     """
     allowed = allowed_profesorados(user, role_filter=role_filter)
     if allowed is None:
-        return  # Acceso global concedido
-
+        return # Acceso global concedido
+        
     if profesorado_id in allowed:
         return
-
-    raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos sobre este profesorado.")
+        
+    raise AppError(
+        403, 
+        AppErrorCode.PERMISSION_DENIED, 
+        "No tiene permisos sobre este profesorado."
+    )

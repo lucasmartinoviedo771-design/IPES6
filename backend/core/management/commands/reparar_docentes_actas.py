@@ -32,11 +32,14 @@ class Command(BaseCommand):
         commit = options["commit"]
 
         if not commit:
-            self.stdout.write(self.style.WARNING("=== DRY-RUN: no se escribirá nada. Usá --commit para aplicar. ==="))
+            self.stdout.write(self.style.WARNING(
+                "=== DRY-RUN: no se escribirá nada. Usá --commit para aplicar. ==="
+            ))
 
         # Actas sin ningún ActaExamenDocente asociado
         actas_sin_docentes = (
-            ActaExamen.objects.prefetch_related("docentes")
+            ActaExamen.objects
+            .prefetch_related("docentes")
             .filter(docentes__isnull=True)
             .select_related("materia", "profesorado")
             .order_by("id")
@@ -55,10 +58,13 @@ class Command(BaseCommand):
 
         for acta in actas_sin_docentes:
             modalidad = (
-                MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
+                MesaExamen.Modalidad.LIBRE
+                if acta.tipo == ActaExamen.Tipo.LIBRE
+                else MesaExamen.Modalidad.REGULAR
             )
             mesa = (
-                MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=modalidad)
+                MesaExamen.objects
+                .filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=modalidad)
                 .select_related(
                     "docente_presidente__persona",
                     "docente_vocal1__persona",
@@ -69,16 +75,22 @@ class Command(BaseCommand):
 
             if not mesa:
                 sin_mesa += 1
-                self.stdout.write(f"  [SIN MESA] Acta {acta.id} ({acta.codigo}) - {acta.materia} / {acta.fecha}")
+                self.stdout.write(
+                    f"  [SIN MESA] Acta {acta.id} ({acta.codigo}) - {acta.materia} / {acta.fecha}"
+                )
                 continue
 
             tribunal = [
                 (mesa.docente_presidente, ActaExamenDocente.Rol.PRESIDENTE, 0),
-                (mesa.docente_vocal1, ActaExamenDocente.Rol.VOCAL1, 1),
-                (mesa.docente_vocal2, ActaExamenDocente.Rol.VOCAL2, 2),
+                (mesa.docente_vocal1,     ActaExamenDocente.Rol.VOCAL1,     1),
+                (mesa.docente_vocal2,     ActaExamenDocente.Rol.VOCAL2,     2),
             ]
 
-            docentes_a_crear = [(doc, rol, orden) for doc, rol, orden in tribunal if doc is not None]
+            docentes_a_crear = [
+                (doc, rol, orden)
+                for doc, rol, orden in tribunal
+                if doc is not None
+            ]
 
             if not docentes_a_crear:
                 sin_docentes_en_mesa += 1
@@ -87,8 +99,10 @@ class Command(BaseCommand):
                 )
                 continue
 
-            self.stdout.write(f"  [OK] Acta {acta.id} ({acta.codigo}) - {acta.materia} / {acta.fecha}")
-            for doc, rol, _orden in docentes_a_crear:
+            self.stdout.write(
+                f"  [OK] Acta {acta.id} ({acta.codigo}) - {acta.materia} / {acta.fecha}"
+            )
+            for doc, rol, orden in docentes_a_crear:
                 nombre_completo = f"{doc.apellido}, {doc.nombre}".strip(", ")
                 self.stdout.write(
                     f"       → {ActaExamenDocente.Rol(rol).label}: {nombre_completo} (DNI: {doc.dni or '-'})"
@@ -110,7 +124,7 @@ class Command(BaseCommand):
             reparadas += 1
 
         self.stdout.write("")
-        self.stdout.write("Resumen:")
+        self.stdout.write(f"Resumen:")
         self.stdout.write(f"  Actas procesadas para reparar : {reparadas}")
         self.stdout.write(f"  Sin mesa vinculada            : {sin_mesa}")
         self.stdout.write(f"  Mesa sin docentes asignados   : {sin_docentes_en_mesa}")
@@ -118,8 +132,6 @@ class Command(BaseCommand):
         if commit:
             self.stdout.write(self.style.SUCCESS(f"\n✓ {reparadas} actas reparadas exitosamente."))
         else:
-            self.stdout.write(
-                self.style.WARNING(
-                    "\nDRY-RUN completado. Para aplicar: python manage.py reparar_docentes_actas --commit"
-                )
-            )
+            self.stdout.write(self.style.WARNING(
+                f"\nDRY-RUN completado. Para aplicar: python manage.py reparar_docentes_actas --commit"
+            ))

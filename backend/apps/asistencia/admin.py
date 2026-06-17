@@ -1,15 +1,15 @@
 from django.contrib import admin
 
 from .models import (
-    AsistenciaDocente,
     AsistenciaEstudiante,
-    CalendarioAsistenciaEvento,
+    AsistenciaDocente,
     ClaseProgramada,
     CursoEstudianteSnapshot,
     CursoHorarioSnapshot,
     DocenteMarcacionLog,
     Justificacion,
     JustificacionDetalle,
+    CalendarioAsistenciaEvento,
 )
 
 

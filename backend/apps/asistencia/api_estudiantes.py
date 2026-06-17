@@ -1,50 +1,38 @@
 from __future__ import annotations
-
 from datetime import date, timedelta
-
-from django.db.models import Count, Q
+from typing import List
 from django.http import HttpRequest
 from django.utils import timezone
+from django.db.models import Count, Q
 from ninja import Router
 from ninja.errors import HttpError
 
-from apps.common.audit import log_action_from_request
-from apps.common.date_utils import format_date
-from core.auth_ninja import JWTAuth
-from core.models import Comision, Docente, Estudiante
+from core.models import Comision, Estudiante, Docente
 from core.permissions import get_user_roles
+from core.auth_ninja import JWTAuth
+from apps.docentes.services.docente_service import DocenteService
 
-from .api_helpers import (
-    _build_horario,
-    _docente_nombre,
-    _ensure_authenticated_scope,
-    _get_profesorado_id_from_comision,
-    _justificacion_queryset_with_scope,
-    _resolve_scope,
-    _serialize_justificacion_detail,
-    _serialize_justificacion_summary,
-    _staff_profesorados,
-)
 from .models import (
-    AsistenciaDocente,
     AsistenciaEstudiante,
+    AsistenciaDocente,
     ClaseProgramada,
     CursoEstudianteSnapshot,
     Justificacion,
 )
 from .schemas import (
-    ClaseEstudianteDetalleOut,
-    ClaseNavegacionOut,
-    EstudianteAsistenciaItemOut,
-    EstudianteClaseListadoOut,
-    EstudianteClasesResponse,
     EstudianteResumenOut,
+    EstudianteClasesResponse,
+    EstudianteClaseListadoOut,
+    ClaseEstudianteDetalleOut,
+    RegistrarAsistenciaEstudiantesIn,
     JustificacionCreateIn,
     JustificacionDetailOut,
     JustificacionListItemOut,
     JustificacionOut,
     JustificacionRechazarIn,
-    RegistrarAsistenciaEstudiantesIn,
+    EstudianteAsistenciaItemOut,
+    JustificacionDetalleOut,
+    ClaseNavegacionOut,
 )
 from .services import (
     apply_justification,
@@ -52,9 +40,21 @@ from .services import (
     generate_classes_for_range,
     sync_course_snapshots,
 )
+from apps.common.date_utils import format_date, format_datetime
+from apps.common.audit import log_action_from_request
+from .api_helpers import (
+    _resolve_scope,
+    _ensure_authenticated_scope,
+    _staff_profesorados,
+    _build_horario,
+    _docente_nombre,
+    _justificacion_queryset_with_scope,
+    _serialize_justificacion_summary,
+    _serialize_justificacion_detail,
+    _get_profesorado_id_from_comision,
+)
 
 router = Router(tags=["asistencia-estudiantes"], auth=JWTAuth())
-
 
 @router.get("/clases/{clase_id}", response=ClaseEstudianteDetalleOut)
 def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstudianteDetalleOut:
@@ -74,22 +74,18 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
     # Verificación de membresía/acceso
     roles = get_user_roles(request.user)
     es_admin_staff = bool(roles & {"admin", "secretaria", "bedel"})
-
+    
     if not es_admin_staff:
         # ¿Es el docente de la clase?
         es_docente_clase = clase.docente and (clase.docente.persona.dni == request.user.username)
         # ¿Es un alumno de la comisión?
         # Consultamos el snapshot para verificar si el alumno está inscripto en esta comisión
-        es_alumno_clase = CursoEstudianteSnapshot.objects.filter(
-            comision_id=clase.comision_id, dni=request.user.username
-        ).exists()
-
+        es_alumno_clase = CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id, dni=request.user.username).exists()
+        
         if not es_docente_clase and not es_alumno_clase:
             raise HttpError(403, "No tenés permiso para ver el listado de esta clase.")
 
-    last_snapshot = (
-        CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id).order_by("-sincronizado_en").first()
-    )
+    last_snapshot = CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id).order_by("-sincronizado_en").first()
     should_sync = False
     if not last_snapshot:
         should_sync = True
@@ -102,7 +98,6 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
     if should_sync:
         sync_course_snapshots(comisiones=[clase.comision])
         from .services import _ensure_asistencias_estudiantes
-
         _ensure_asistencias_estudiantes(clase)
 
     asistencias = list(
@@ -117,7 +112,8 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         .annotate(
             total=Count("id"),
             presentes=Count(
-                "id", filter=Q(estado__in=[AsistenciaEstudiante.Estado.PRESENTE, AsistenciaEstudiante.Estado.TARDE])
+                "id",
+                filter=Q(estado__in=[AsistenciaEstudiante.Estado.PRESENTE, AsistenciaEstudiante.Estado.TARDE])
             ),
         )
     )
@@ -129,7 +125,7 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         total = stat["total"]
         presentes = stat["presentes"]
         porcentaje = (presentes / total * 100) if total > 0 else 0.0
-
+        
         estudiantes.append(
             EstudianteResumenOut(
                 estudiante_id=asistencia.estudiante_id,
@@ -145,27 +141,33 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
     docentes = []
     docente_presente = False
     docente_categoria = None
-
+    
     if clase.docente:
         docentes.append(_docente_nombre(clase.docente))
         asistencia_doc = AsistenciaDocente.objects.filter(
-            clase=clase, docente=clase.docente, estado=AsistenciaDocente.Estado.PRESENTE
+            clase=clase,
+            docente=clase.docente,
+            estado=AsistenciaDocente.Estado.PRESENTE
         ).first()
-
+        
         if asistencia_doc:
             docente_presente = True
             docente_categoria = asistencia_doc.marcacion_categoria
 
-    otras_clases_qs = ClaseProgramada.objects.filter(
-        comision_id=clase.comision_id, fecha__lte=timezone.now().date()
-    ).order_by("-fecha")[:20]
-
+    otras_clases_qs = (
+        ClaseProgramada.objects.filter(
+            comision_id=clase.comision_id,
+            fecha__lte=timezone.now().date()
+        )
+        .order_by("-fecha")[:20]
+    )
+    
     otras_clases = [
         ClaseNavegacionOut(
             id=c.id,
             fecha=format_date(c.fecha),
             descripcion=f"Clase del {format_date(c.fecha)}",
-            actual=(c.id == clase.id),
+            actual=(c.id == clase.id)
         )
         for c in otras_clases_qs
     ]
@@ -174,9 +176,7 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         clase_id=clase.id,
         comision=str(clase.comision),
         fecha=format_date(clase.fecha),
-        horario=f"{clase.hora_inicio.strftime('%H:%M')} - {clase.hora_fin.strftime('%H:%M')}"
-        if clase.hora_inicio and clase.hora_fin
-        else None,
+        horario=f"{clase.hora_inicio.strftime('%H:%M')} - {clase.hora_fin.strftime('%H:%M')}" if clase.hora_inicio and clase.hora_fin else None,
         materia=str(clase.comision.materia) if clase.comision.materia else str(clase.comision),
         docentes=docentes,
         docente_presente=docente_presente,
@@ -184,7 +184,6 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         estudiantes=estudiantes,
         otras_clases=otras_clases,
     )
-
 
 @router.get("/clases", response=EstudianteClasesResponse)
 def listar_clases_estudiantes(
@@ -229,7 +228,7 @@ def listar_clases_estudiantes(
         last_snap = CursoEstudianteSnapshot.objects.filter(comision_id=cid).order_by("-sincronizado_en").first()
         if not last_snap or (now - last_snap.sincronizado_en) > timedelta(hours=24):
             comisiones_a_sincronizar.append(cid)
-
+    
     if comisiones_a_sincronizar:
         objs = Comision.objects.filter(id__in=comisiones_a_sincronizar)
         sync_course_snapshots(comisiones=objs)
@@ -276,7 +275,6 @@ def listar_clases_estudiantes(
 
     return EstudianteClasesResponse(clases=clases_out)
 
-
 @router.post("/clases/{clase_id}/registrar", response=None)
 def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payload: RegistrarAsistenciaEstudiantesIn):
     clase = ClaseProgramada.objects.filter(id=clase_id).first()
@@ -285,20 +283,20 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
 
     presentes = set(payload.presentes)
     tardes = set(payload.tardes)
-
+    
     roles = get_user_roles(getattr(request, "user", None))
     es_staff = bool(roles & {"admin", "secretaria", "bedel"})
-
+    
     if not es_staff:
         docente_profile = Docente.objects.filter(persona__user_profile__user=request.user).first()
         if docente_profile and clase.docente_id == docente_profile.id:
             docente_presente = AsistenciaDocente.objects.filter(
-                clase=clase, docente=docente_profile, estado=AsistenciaDocente.Estado.PRESENTE
+                clase=clase,
+                docente=docente_profile,
+                estado=AsistenciaDocente.Estado.PRESENTE
             ).exists()
             if not docente_presente:
-                raise HttpError(
-                    400, "Debés registrar tu propia asistencia (Presente) antes de cargar la de los estudiantes."
-                )
+                raise HttpError(400, "Debés registrar tu propia asistencia (Presente) antes de cargar la de los estudiantes.")
 
     registros = AsistenciaEstudiante.objects.filter(clase=clase).select_related("estudiante")
 
@@ -308,10 +306,10 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
             estado_nuevo = AsistenciaEstudiante.Estado.PRESENTE
         elif registro.estudiante_id in tardes:
             estado_nuevo = AsistenciaEstudiante.Estado.TARDE
-
+            
         if registro.justificacion_id:
             estado_nuevo = AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA
-
+            
         if registro.estado != estado_nuevo:
             registro.estado = estado_nuevo
             registro.registrado_via = AsistenciaEstudiante.RegistradoVia.STAFF
@@ -329,12 +327,11 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
         metadata={
             "presentes_count": len(payload.presentes),
             "tardes_count": len(payload.tardes),
-            "clase_fecha": str(clase.fecha),
-        },
+            "clase_fecha": str(clase.fecha)
+        }
     )
 
-
-@router.get("/mis-asistencias", response=list[EstudianteAsistenciaItemOut])
+@router.get("/mis-asistencias", response=List[EstudianteAsistenciaItemOut])
 def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
     if not request.user.is_authenticated:
         raise HttpError(401, "Autenticación requerida.")
@@ -345,9 +342,7 @@ def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
     if dni:
         if not is_staff:
             raise HttpError(403, "No tenés permisos para ver la asistencia de otros estudiantes.")
-        estudiante = (
-            Estudiante.objects.select_related("persona", "user").filter(Q(persona__dni=dni) | Q(legajo=dni)).first()
-        )
+        estudiante = Estudiante.objects.select_related("persona", "user").filter(Q(persona__dni=dni) | Q(legajo=dni)).first()
         if not estudiante:
             raise HttpError(404, f"No se encontró un estudiante con DNI/Legajo {dni}.")
     else:
@@ -356,7 +351,7 @@ def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
         if not estudiante:
             # Fallback por DNI si la relación 'user' no está seteada pero coinciden datos
             estudiante = Estudiante.objects.filter(persona__dni=request.user.username).first()
-
+            
         if not estudiante:
             raise HttpError(404, "No se encontró un perfil de estudiante asociado a tu usuario.")
 
@@ -376,11 +371,10 @@ def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
                 comision=asist.clase.comision.codigo,
                 estado=asist.estado,
                 justificada=asist.justificacion_id is not None,
-                observacion=None,
+                observacion=None
             )
         )
     return data
-
 
 @router.post("/justificaciones", response=JustificacionOut, auth=JWTAuth())
 def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) -> JustificacionOut:
@@ -427,7 +421,11 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
         docente = Docente.objects.filter(id=docente_id).first()
         if not docente:
             raise HttpError(404, "Docente inexistente.")
-        if docente_profile and docente.id != docente_profile.id and not roles & {"admin", "secretaria", "bedel"}:
+        if (
+            docente_profile
+            and docente.id != docente_profile.id
+            and not roles & {"admin", "secretaria", "bedel"}
+        ):
             raise HttpError(403, "No podés crear justificativos para otro docente.")
 
     justificacion = Justificacion.objects.create(
@@ -457,11 +455,14 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
         detalle_accion=f"Nueva justificación {justificacion.id} ({payload.tipo})",
         entidad="Justificacion",
         entidad_id=justificacion.id,
-        metadata={"motivo": payload.motivo, "desde": str(payload.vigencia_desde), "hasta": str(payload.vigencia_hasta)},
+        metadata={
+            "motivo": payload.motivo,
+            "desde": str(payload.vigencia_desde),
+            "hasta": str(payload.vigencia_hasta)
+        }
     )
 
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)
-
 
 @router.get("/justificaciones", response=list[JustificacionListItemOut], auth=JWTAuth())
 def listar_justificaciones(
@@ -497,9 +498,13 @@ def listar_justificaciones(
     if comision_id:
         queryset = queryset.filter(detalles__clase__comision_id=comision_id)
     if profesorado_id:
-        queryset = queryset.filter(detalles__clase__comision__materia__plan_de_estudio__profesorado_id=profesorado_id)
+        queryset = queryset.filter(
+            detalles__clase__comision__materia__plan_de_estudio__profesorado_id=profesorado_id
+        )
 
-    queryset = _justificacion_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _justificacion_queryset_with_scope(
+        queryset, roles, staff_profesorados, docente_profile
+    )
     queryset = (
         queryset.select_related("creado_por", "aprobado_por")
         .prefetch_related(
@@ -512,7 +517,6 @@ def listar_justificaciones(
     )
     return [_serialize_justificacion_summary(j) for j in queryset]
 
-
 @router.get(
     "/justificaciones/{justificacion_id}",
     response=JustificacionDetailOut,
@@ -522,7 +526,9 @@ def obtener_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
     _ensure_authenticated_scope(roles, docente_profile)
     queryset = Justificacion.objects.filter(id=justificacion_id)
-    queryset = _justificacion_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _justificacion_queryset_with_scope(
+        queryset, roles, staff_profesorados, docente_profile
+    )
     justificacion = (
         queryset.select_related("creado_por", "aprobado_por")
         .prefetch_related(
@@ -535,7 +541,6 @@ def obtener_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     if not justificacion:
         raise HttpError(404, "La justificación no existe.")
     return _serialize_justificacion_detail(justificacion)
-
 
 @router.post(
     "/justificaciones/{justificacion_id}/aprobar",
@@ -570,11 +575,10 @@ def aprobar_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
         tipo_accion="SYSTEM",
         detalle_accion=f"Aprobación de justificación {justificacion_id}",
         entidad="Justificacion",
-        entidad_id=justificacion_id,
+        entidad_id=justificacion_id
     )
 
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)
-
 
 @router.post(
     "/justificaciones/{justificacion_id}/rechazar",
@@ -613,7 +617,7 @@ def rechazar_justificacion(
         detalle_accion=f"Rechazo de justificación {justificacion_id}",
         entidad="Justificacion",
         entidad_id=justificacion_id,
-        metadata={"motivo_rechazo": payload.observaciones},
+        metadata={"motivo_rechazo": payload.observaciones}
     )
 
     return JustificacionOut(id=justificacion.id, estado=justificacion.estado)

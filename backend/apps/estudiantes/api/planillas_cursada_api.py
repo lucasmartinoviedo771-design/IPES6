@@ -11,7 +11,6 @@ Flujo principal:
 """
 
 from datetime import date
-
 from django.db import transaction
 from django.db.models import Count, Max, Q
 from django.utils import timezone
@@ -19,11 +18,12 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth
+from core.auth_ninja import JWTAuth, ensure_roles
 from core.models import (
     Comision,
     Estudiante,
     InscripcionMateriaEstudiante,
+    Materia,
     PlanillaCursada,
     PlanillaCursadaFila,
     Profesorado,
@@ -32,7 +32,6 @@ from core.models import (
     VentanaHabilitacion,
 )
 from core.permissions import allowed_profesorados
-
 from .notas_utils import docente_from_user, normalized_user_roles
 
 router = Router(tags=["planillas_cursada"], auth=JWTAuth())
@@ -42,11 +41,10 @@ router = Router(tags=["planillas_cursada"], auth=JWTAuth())
 # SCHEMAS
 # ==============================================================================
 
-
 class GenerarPlanillasIn(Schema):
     comision_id: int
     anio_lectivo: int
-    cuatrimestre: str  # "1C" / "2C" / "ANUAL"
+    cuatrimestre: str          # "1C" / "2C" / "ANUAL"
     plantilla_id: int | None = None
 
 
@@ -99,7 +97,6 @@ class SincronizarPlanillaIn(Schema):
 # HELPERS
 # ==============================================================================
 
-
 def _profesorado_destino(inscripcion: InscripcionMateriaEstudiante) -> Profesorado:
     """Devuelve el profesorado al que pertenece la nota del estudiante.
 
@@ -117,16 +114,18 @@ def _porcentaje_asistencia(estudiante_id: int, comision_id: int) -> int | None:
     """
     try:
         from apps.asistencia.models import AsistenciaEstudiante
-
-        stats = AsistenciaEstudiante.objects.filter(
-            clase__comision_id=comision_id,
-            estudiante_id=estudiante_id,
-        ).aggregate(
-            total=Count("id"),
-            presentes=Count(
-                "id",
-                filter=Q(estado__in=["PRESENTE", "TARDE"]),
-            ),
+        stats = (
+            AsistenciaEstudiante.objects.filter(
+                clase__comision_id=comision_id,
+                estudiante_id=estudiante_id,
+            )
+            .aggregate(
+                total=Count("id"),
+                presentes=Count(
+                    "id",
+                    filter=Q(estado__in=["PRESENTE", "TARDE"]),
+                ),
+            )
         )
         total = stats["total"] or 0
         if total == 0:
@@ -139,8 +138,11 @@ def _porcentaje_asistencia(estudiante_id: int, comision_id: int) -> int | None:
 def _next_numero_cursada(anio_lectivo: int) -> str:
     """Genera el próximo número de planilla cursada: PRP-YYYY-NNN."""
     from django.db.models import Max
-
-    ultimo = (PlanillaCursada.objects.filter(anio_lectivo=anio_lectivo).aggregate(Max("id")).get("id__max")) or 0
+    ultimo = (
+        PlanillaCursada.objects.filter(anio_lectivo=anio_lectivo)
+        .aggregate(Max("id"))
+        .get("id__max")
+    ) or 0
     return f"PRP-{anio_lectivo}-{ultimo + 1:03d}"
 
 
@@ -154,21 +156,19 @@ def _serializar_planilla(planilla: PlanillaCursada) -> PlanillaCursadaOut:
         else:
             apellido_nombre = "—"
             dni = "—"
-        filas.append(
-            FilaOut(
-                fila_id=fila.id,
-                inscripcion_id=fila.inscripcion_id if hasattr(fila, "inscripcion_id") else 0,
-                estudiante_id=est.id if est else 0,
-                orden=fila.orden,
-                apellido_nombre=apellido_nombre,
-                dni=dni,
-                asistencia_porcentaje=fila.asistencia_porcentaje,
-                excepcion=fila.excepcion,
-                columnas_datos=fila.columnas_datos,
-                situacion=fila.situacion,
-                en_resguardo=fila.en_resguardo,
-            )
-        )
+        filas.append(FilaOut(
+            fila_id=fila.id,
+            inscripcion_id=fila.inscripcion_id if hasattr(fila, "inscripcion_id") else 0,
+            estudiante_id=est.id if est else 0,
+            orden=fila.orden,
+            apellido_nombre=apellido_nombre,
+            dni=dni,
+            asistencia_porcentaje=fila.asistencia_porcentaje,
+            excepcion=fila.excepcion,
+            columnas_datos=fila.columnas_datos,
+            situacion=fila.situacion,
+            en_resguardo=fila.en_resguardo,
+        ))
     return PlanillaCursadaOut(
         id=planilla.id,
         numero=planilla.numero,
@@ -189,7 +189,6 @@ def _serializar_planilla(planilla: PlanillaCursada) -> PlanillaCursadaOut:
 # ==============================================================================
 # ENDPOINTS
 # ==============================================================================
-
 
 @router.post(
     "/generar",
@@ -275,12 +274,10 @@ def generar_planillas_cursada(request, payload: GenerarPlanillasIn):
 
     planillas_generadas = []
     with transaction.atomic():
-        for _prof_dest_id, inscripciones_grupo in grupos.items():
-            prof_dest = (
-                inscripciones_grupo[0].materia_origen.plan_de_estudio.profesorado
-                if inscripciones_grupo[0].materia_origen_id
+        for prof_dest_id, inscripciones_grupo in grupos.items():
+            prof_dest = inscripciones_grupo[0].materia_origen.plan_de_estudio.profesorado \
+                if inscripciones_grupo[0].materia_origen_id \
                 else prof_comision
-            )
 
             numero = _next_numero_cursada(payload.anio_lectivo)
 
@@ -299,25 +296,23 @@ def generar_planillas_cursada(request, payload: GenerarPlanillasIn):
             filas = []
             for orden, insc in enumerate(inscripciones_grupo, start=1):
                 asistencia = _porcentaje_asistencia(insc.estudiante_id, comision.id)
-                filas.append(
-                    PlanillaCursadaFila(
-                        planilla=planilla_obj,
-                        estudiante=insc.estudiante,
-                        inscripcion=insc,
-                        orden=orden,
-                        asistencia_porcentaje=asistencia,
-                        excepcion=False,
-                        columnas_datos={},
-                        situacion="",
-                        en_resguardo=False,
-                    )
-                )
+                filas.append(PlanillaCursadaFila(
+                    planilla=planilla_obj,
+                    estudiante=insc.estudiante,
+                    inscripcion=insc,
+                    orden=orden,
+                    asistencia_porcentaje=asistencia,
+                    excepcion=False,
+                    columnas_datos={},
+                    situacion="",
+                    en_resguardo=False,
+                ))
             PlanillaCursadaFila.objects.bulk_create(filas)
             planillas_generadas.append(planilla_obj)
 
-    resultado = PlanillaCursada.objects.filter(id__in=[p.id for p in planillas_generadas]).prefetch_related(
-        "filas__estudiante__persona"
-    )
+    resultado = PlanillaCursada.objects.filter(
+        id__in=[p.id for p in planillas_generadas]
+    ).prefetch_related("filas__estudiante__persona")
     return 200, [_serializar_planilla(p) for p in resultado]
 
 
@@ -331,7 +326,9 @@ def obtener_planilla_cursada(request, planilla_id: int):
     es_privilegiado = bool(roles & {"admin", "secretaria", "bedel"})
 
     planilla = (
-        PlanillaCursada.objects.select_related("materia", "profesorado", "profesorado_destino", "docente")
+        PlanillaCursada.objects.select_related(
+            "materia", "profesorado", "profesorado_destino", "docente"
+        )
         .filter(id=planilla_id)
         .first()
     )
@@ -343,7 +340,9 @@ def obtener_planilla_cursada(request, planilla_id: int):
         if not docente or planilla.docente_id != docente.id:
             raise HttpError(403, "No tenés acceso a esta planilla.")
 
-    planilla_con_filas = PlanillaCursada.objects.prefetch_related("filas__estudiante__persona").get(id=planilla_id)
+    planilla_con_filas = PlanillaCursada.objects.prefetch_related(
+        "filas__estudiante__persona"
+    ).get(id=planilla_id)
     return 200, _serializar_planilla(planilla_con_filas)
 
 
@@ -429,7 +428,9 @@ def cerrar_planilla_cursada(request, planilla_id: int):
     es_privilegiado = bool(roles & {"admin", "secretaria", "bedel"})
 
     planilla = (
-        PlanillaCursada.objects.select_related("materia", "profesorado", "docente").filter(id=planilla_id).first()
+        PlanillaCursada.objects.select_related("materia", "profesorado", "docente")
+        .filter(id=planilla_id)
+        .first()
     )
     if not planilla:
         return 404, ApiResponse(ok=False, message="Planilla no encontrada.")
@@ -445,7 +446,8 @@ def cerrar_planilla_cursada(request, planilla_id: int):
         if not _ventana_activa(planilla.cuatrimestre):
             return 400, ApiResponse(
                 ok=False,
-                message="La ventana de entrega de planillas no está habilitada. Consultá a Secretaría.",
+                message="La ventana de entrega de planillas no está habilitada. "
+                        "Consultá a Secretaría.",
             )
 
     filas = (
@@ -471,7 +473,9 @@ def cerrar_planilla_cursada(request, planilla_id: int):
             # en NULL por on_delete=SET_NULL. No generar regularidad oficial sin inscripción.
             if fila.inscripcion_id is not None and fila.inscripcion is None:
                 nombre = fila.estudiante.persona.apellido_nombre if fila.estudiante.persona else str(fila.estudiante_id)
-                warnings.append(f"{nombre}: fila ignorada — inscripción original fue anulada (sin inscripción activa).")
+                warnings.append(
+                    f"{nombre}: fila ignorada — inscripción original fue anulada (sin inscripción activa)."
+                )
                 continue
 
             situacion = fila.situacion
@@ -518,15 +522,17 @@ def cerrar_planilla_cursada(request, planilla_id: int):
             if en_resguardo:
                 en_resguardo_count += 1
                 warnings.append(
-                    f"{est.persona.apellido if est.persona else est.id}: nota en resguardo (legajo incompleto)."
+                    f"{est.persona.apellido if est.persona else est.id}: "
+                    f"nota en resguardo (legajo incompleto)."
                 )
 
         planilla.estado = PlanillaCursada.Estado.CERRADA
         planilla.fecha_entrega = timezone.localdate()
         planilla.save(update_fields=["estado", "fecha_entrega"])
 
-    msg = f"Planilla cerrada. {regularidades_creadas} regularidades generadas" + (
-        f", {en_resguardo_count} en resguardo." if en_resguardo_count else "."
+    msg = (
+        f"Planilla cerrada. {regularidades_creadas} regularidades generadas"
+        + (f", {en_resguardo_count} en resguardo." if en_resguardo_count else ".")
     )
     return ApiResponse(ok=True, message=msg)
 
@@ -545,7 +551,11 @@ def sincronizar_planilla(request, planilla_id: int, payload: SincronizarPlanilla
     if not bool(roles & {"admin", "secretaria", "bedel"}):
         return 403, ApiResponse(ok=False, message="Solo Secretaría o Bedel pueden sincronizar planillas.")
 
-    planilla = PlanillaCursada.objects.select_related("materia", "profesorado").filter(id=planilla_id).first()
+    planilla = (
+        PlanillaCursada.objects.select_related("materia", "profesorado")
+        .filter(id=planilla_id)
+        .first()
+    )
     if not planilla:
         return 404, ApiResponse(ok=False, message="Planilla no encontrada.")
 
@@ -556,7 +566,9 @@ def sincronizar_planilla(request, planilla_id: int, payload: SincronizarPlanilla
         )
 
     comision = (
-        Comision.objects.select_related("materia__plan_de_estudio__profesorado").filter(id=payload.comision_id).first()
+        Comision.objects.select_related("materia__plan_de_estudio__profesorado")
+        .filter(id=payload.comision_id)
+        .first()
     )
     if not comision:
         return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
@@ -567,7 +579,8 @@ def sincronizar_planilla(request, planilla_id: int, payload: SincronizarPlanilla
         raise HttpError(403, "No tenés acceso a esta comisión.")
 
     estudiantes_en_planilla = set(
-        PlanillaCursadaFila.objects.filter(planilla=planilla).values_list("estudiante_id", flat=True)
+        PlanillaCursadaFila.objects.filter(planilla=planilla)
+        .values_list("estudiante_id", flat=True)
     )
 
     inscripciones_nuevas = (
@@ -591,28 +604,32 @@ def sincronizar_planilla(request, planilla_id: int, payload: SincronizarPlanilla
     if not inscripciones_nuevas.exists():
         return 400, ApiResponse(ok=False, message="No hay estudiantes inscriptos activos para agregar.")
 
-    ultimo_orden = PlanillaCursadaFila.objects.filter(planilla=planilla).aggregate(Max("orden")).get("orden__max") or 0
+    ultimo_orden = (
+        PlanillaCursadaFila.objects.filter(planilla=planilla)
+        .aggregate(Max("orden"))
+        .get("orden__max") or 0
+    )
 
     with transaction.atomic():
         filas = []
         for i, insc in enumerate(inscripciones_nuevas, start=ultimo_orden + 1):
             asistencia = _porcentaje_asistencia(insc.estudiante_id, comision.id)
-            filas.append(
-                PlanillaCursadaFila(
-                    planilla=planilla,
-                    estudiante=insc.estudiante,
-                    inscripcion=insc,
-                    orden=i,
-                    asistencia_porcentaje=asistencia,
-                    excepcion=False,
-                    columnas_datos={},
-                    situacion="",
-                    en_resguardo=False,
-                )
-            )
+            filas.append(PlanillaCursadaFila(
+                planilla=planilla,
+                estudiante=insc.estudiante,
+                inscripcion=insc,
+                orden=i,
+                asistencia_porcentaje=asistencia,
+                excepcion=False,
+                columnas_datos={},
+                situacion="",
+                en_resguardo=False,
+            ))
         PlanillaCursadaFila.objects.bulk_create(filas)
 
-    planilla_actualizada = PlanillaCursada.objects.prefetch_related("filas__estudiante__persona").get(id=planilla_id)
+    planilla_actualizada = PlanillaCursada.objects.prefetch_related(
+        "filas__estudiante__persona"
+    ).get(id=planilla_id)
     return 200, _serializar_planilla(planilla_actualizada)
 
 
@@ -627,7 +644,9 @@ def reabrir_planilla_cursada(request, planilla_id: int):
     """
     roles = normalized_user_roles(request.user)
     if not bool(roles & {"admin", "secretaria"}):
-        return 403, ApiResponse(ok=False, message="Solo Secretaría puede reabrir planillas cerradas.")
+        return 403, ApiResponse(
+            ok=False, message="Solo Secretaría puede reabrir planillas cerradas."
+        )
 
     planilla = PlanillaCursada.objects.filter(id=planilla_id).first()
     if not planilla:

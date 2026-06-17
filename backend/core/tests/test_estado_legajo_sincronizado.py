@@ -7,12 +7,10 @@ Si algún camino de escritura deja de llamar a _recalcular_estado_legajo_ec,
 el filtro devuelve resultados incorrectos silenciosamente.
 Este test convierte esa dependencia implícita en una garantía verificable.
 """
-
 import pytest
 from django.contrib.auth.models import User
-
+from core.models import Persona, Estudiante, EstudianteCarrera
 from apps.estudiantes.api.helpers.estudiante_admin import _recalcular_estado_legajo_ec
-from core.models import Estudiante, EstudianteCarrera, Persona
 
 pytestmark = pytest.mark.django_db
 
@@ -20,7 +18,6 @@ pytestmark = pytest.mark.django_db
 def _crear_setup(dni="50111222"):
     """Crea estudiante + carrera + EstudianteCarrera con legajo vacío (PEN)."""
     from core.models import Profesorado
-
     persona = Persona.objects.create(dni=dni, nombre="Test", apellido="Drift")
     user = User.objects.create_user(username=dni)
     est = Estudiante.objects.create(user=user, persona=persona)
@@ -49,15 +46,10 @@ class TestEstadoLegajoSincronizado:
         ec.certificado_salud = True
         ec.folios_oficio = 1
         ec.titulo_secundario_legalizado = True
-        ec.save(
-            update_fields=[
-                "dni_legalizado",
-                "fotos_4x4",
-                "certificado_salud",
-                "folios_oficio",
-                "titulo_secundario_legalizado",
-            ]
-        )
+        ec.save(update_fields=[
+            "dni_legalizado", "fotos_4x4", "certificado_salud",
+            "folios_oficio", "titulo_secundario_legalizado",
+        ])
         _recalcular_estado_legajo_ec(ec)
         ec.refresh_from_db()
         assert ec.estado_legajo == EstudianteCarrera.EstadoLegajo.COMPLETO
@@ -81,15 +73,10 @@ class TestEstadoLegajoSincronizado:
         ec.certificado_salud = True
         ec.folios_oficio = 1
         ec.titulo_secundario_legalizado = True
-        ec.save(
-            update_fields=[
-                "dni_legalizado",
-                "fotos_4x4",
-                "certificado_salud",
-                "folios_oficio",
-                "titulo_secundario_legalizado",
-            ]
-        )
+        ec.save(update_fields=[
+            "dni_legalizado", "fotos_4x4", "certificado_salud",
+            "folios_oficio", "titulo_secundario_legalizado",
+        ])
         _recalcular_estado_legajo_ec(ec)
 
         # Leer desde BD con una instancia fresca

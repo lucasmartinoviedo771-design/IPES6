@@ -15,13 +15,11 @@ Uso:
     python manage.py resguardo_ingresantes --liberar
     python manage.py resguardo_ingresantes --anio-ingreso 2024
 """
-
 from datetime import date
-
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-
 from core.models import Estudiante, ProrrogaTituloSecundario, Regularidad
+
 
 SITUACIONES_POSITIVAS = (
     Regularidad.Situacion.REGULAR,
@@ -65,11 +63,10 @@ class Command(BaseCommand):
 
         plazo_31_marzo = date(hoy.year, 3, 31)
         if not liberar and not forzar and hoy < plazo_31_marzo:
-            self.stdout.write(
-                self.style.WARNING(
-                    f"El plazo del 31/3/{hoy.year} aún no venció. Usá --forzar para ejecutar de todas formas."
-                )
-            )
+            self.stdout.write(self.style.WARNING(
+                f"El plazo del 31/3/{hoy.year} aún no venció. "
+                f"Usá --forzar para ejecutar de todas formas."
+            ))
             return
 
         prefijo = "[DRY-RUN] " if dry_run else ""
@@ -81,15 +78,11 @@ class Command(BaseCommand):
 
     def _aplicar_resguardo(self, hoy, anio_ingreso, dry_run, prefijo):
         """Pone en resguardo las regularidades de ingresantes con legajo incompleto."""
-        estudiantes_qs = (
-            Estudiante.objects.filter(
-                anio_ingreso=anio_ingreso,
-            )
-            .exclude(
-                estado_legajo=Estudiante.EstadoLegajo.COMPLETO,
-            )
-            .select_related("persona")
-        )
+        estudiantes_qs = Estudiante.objects.filter(
+            anio_ingreso=anio_ingreso,
+        ).exclude(
+            estado_legajo=Estudiante.EstadoLegajo.COMPLETO,
+        ).select_related("persona")
 
         total_est = 0
         total_regs = 0
@@ -101,7 +94,9 @@ class Command(BaseCommand):
                 fecha_vencimiento__gte=hoy,
             ).exists()
             if tiene_prorroga:
-                self.stdout.write(f"  SKIP {est.persona.dni if est.persona else est.id} — tiene prórroga vigente.")
+                self.stdout.write(
+                    f"  SKIP {est.persona.dni if est.persona else est.id} — tiene prórroga vigente."
+                )
                 continue
 
             regs_qs = Regularidad.objects.filter(
@@ -123,11 +118,9 @@ class Command(BaseCommand):
             if not dry_run:
                 regs_qs.update(en_resguardo=True)
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"\n{prefijo}Total: {total_regs} regularidades en resguardo sobre {total_est} estudiantes."
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(
+            f"\n{prefijo}Total: {total_regs} regularidades en resguardo sobre {total_est} estudiantes."
+        ))
 
     def _liberar(self, hoy, anio_ingreso, dry_run, prefijo):
         """Libera resguardos de ingresantes que completaron su legajo."""
@@ -158,6 +151,6 @@ class Command(BaseCommand):
             if not dry_run:
                 regs_qs.update(en_resguardo=False)
 
-        self.stdout.write(
-            self.style.SUCCESS(f"\n{prefijo}Total: {total_regs} regularidades liberadas sobre {total_est} estudiantes.")
-        )
+        self.stdout.write(self.style.SUCCESS(
+            f"\n{prefijo}Total: {total_regs} regularidades liberadas sobre {total_est} estudiantes."
+        ))

@@ -7,11 +7,11 @@ from collections.abc import Iterable
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q
 
+from core.permissions import ensure_roles, ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES
 from core.models import (
     Docente,
     Estudiante,
 )
-from core.permissions import ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES, ensure_roles
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from ninja import Field, Schema
+from ninja import Schema, Field
 
 from apps.estudiantes.schemas.materias import Horario
 
@@ -8,44 +8,36 @@ from apps.estudiantes.schemas.materias import Horario
 # 1. INSCRIPCIONES A CARRERA Y MATERIAS
 # ==========================================
 
-
 class InscripcionCarreraIn(Schema):
     carrera_id: int
 
-
 class InscripcionCarreraOut(Schema):
     message: str
-
 
 class InscripcionMateriaIn(Schema):
     materia_id: int
     comision_id: int | None = None
     dni: str | None = None
 
-
 class CancelarInscripcionIn(Schema):
     dni: str | None = None
-
 
 class BajaInscripcionIn(Schema):
     motivo: str
     dni: str | None = None
 
-
 class CambioComisionIn(Schema):
-    inscripcion_id: int | None = None  # Opcional si es por laboral (nueva inscripcion)
-    materia_id: int | None = None  # Requerido si inscripcion_id es None
+    inscripcion_id: int | None = None # Opcional si es por laboral (nueva inscripcion)
+    materia_id: int | None = None      # Requerido si inscripcion_id es None
     comision_id: int
     dni: str | None = None
     motivo_cambio: Literal["OVERLAP", "WORK"] = "OVERLAP"
     horario_laboral: list[dict] | None = Field(default_factory=list)
 
-
 class AutorizarCambioComisionIn(Schema):
     aprobado: bool
     disposicion_numero: str | None = None
     observaciones: str | None = None
-
 
 class SolicitudCambioComisionItem(Schema):
     id: int
@@ -59,17 +51,14 @@ class SolicitudCambioComisionItem(Schema):
     motivo: str
     created_at: str
 
-
 class InscripcionEstado(Schema):
-    pass  # Placeholder si se necesita tipado estricto, o usar Literal abajo
-
+    pass # Placeholder si se necesita tipado estricto, o usar Literal abajo
 
 InscripcionEstadoType = Literal["CONF", "PEND", "RECH", "ANUL", "BAJA", "COND"]
 
 # ==========================================
 # 7. COMISIONES Y LOOKUP
 # ==========================================
-
 
 class MateriaOption(Schema):
     id: int
@@ -78,7 +67,6 @@ class MateriaOption(Schema):
     anio: int | None = None
     cuatrimestre: str | None = None
     formato: str | None = None
-
 
 class ComisionOption(Schema):
     id: int
@@ -93,11 +81,9 @@ class ComisionOption(Schema):
     turno: str
     codigo: str
 
-
 class CargaNotasLookup(Schema):
     materias: list[MateriaOption] = Field(default_factory=list)
     comisiones: list[ComisionOption] = Field(default_factory=list)
-
 
 CargaNotasLookup.model_rebuild()
 
@@ -105,7 +91,6 @@ CargaNotasLookup.model_rebuild()
 # ==========================================
 # 9. INSCRIPCIONES DETALLE / RESUMEN
 # ==========================================
-
 
 class ComisionResumen(Schema):
     id: int
@@ -123,7 +108,6 @@ class ComisionResumen(Schema):
     estado: str
     horarios: list[Horario] = Field(default_factory=list)
 
-
 class MateriaInscriptaItem(Schema):
     inscripcion_id: int
     materia_id: int
@@ -133,7 +117,7 @@ class MateriaInscriptaItem(Schema):
     profesorado_nombre: str | None = None
     anio_plan: int
     anio_academico: int
-    status: InscripcionEstadoType | None = None  # alias for estado if needed
+    status: InscripcionEstadoType | None = None # alias for estado if needed
     estado: InscripcionEstadoType
     estado_display: str
     horarios: list[Horario] = Field(default_factory=list)
@@ -141,7 +125,6 @@ class MateriaInscriptaItem(Schema):
     comision_solicitada: ComisionResumen | None = None
     fecha_creacion: str
     fecha_actualizacion: str
-
 
 class InscripcionMateriaOut(Schema):
     message: str
@@ -151,7 +134,6 @@ class InscripcionMateriaOut(Schema):
     comision_solicitada: ComisionResumen | None = None
     conflictos: list[dict] = Field(default_factory=list)
     alternativas: list[ComisionResumen] = Field(default_factory=list)
-
 
 InscripcionMateriaOut.model_rebuild()
 
@@ -165,7 +147,6 @@ class ResidenciaCondicionalPropuestaOut(Schema):
     con exactamente 1 materia pendiente. El frontend debe mostrar un modal
     pidiendo confirmación de la condición.
     """
-
     code: str = "RESIDENCIA_CONDICIONAL"
     materia_residencia_id: int
     materia_residencia_nombre: str

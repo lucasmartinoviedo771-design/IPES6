@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from apps.common.api_schemas import ApiResponse
+from ninja.errors import HttpError
+
 from apps.estudiantes.schemas import (
     EquivalenciaDisposicionCreateIn,
     EquivalenciaDisposicionOut,
@@ -12,7 +13,8 @@ from apps.estudiantes.services.equivalencias_disposicion import (
     resolver_contexto_equivalencia,
     serialize_disposicion,
 )
-from core.permissions import EQUIVALENCIAS_ALLOWED_ROLES, ensure_roles
+from apps.common.api_schemas import ApiResponse
+from core.permissions import ensure_roles, EQUIVALENCIAS_ALLOWED_ROLES
 
 from .router import estudiantes_router
 

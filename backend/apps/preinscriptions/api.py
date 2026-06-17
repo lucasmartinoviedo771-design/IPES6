@@ -1,23 +1,22 @@
 """
 API principal del módulo de Preinscripciones.
-Gestiona el ciclo de vida completo de un aspirante: desde la postulación pública
-(protegida por reCAPTCHA y Honeypot) hasta la validación administrativa
+Gestiona el ciclo de vida completo de un aspirante: desde la postulación pública 
+(protegida por reCAPTCHA y Honeypot) hasta la validación administrativa 
 de documentación y confirmación final de vacante.
 """
 
-import copy
 import logging
+import copy
+from typing import Optional
 from datetime import datetime
-
-from django.db import DatabaseError, IntegrityError, transaction
+from django.db import transaction, DatabaseError, IntegrityError
 from django.db.models import Q
 from ninja.errors import HttpError
 
+from .router import preins_router as router
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
-from core.permissions import DOC_ALLOWED_ROLES, PREINS_ALLOWED_ROLES, ensure_profesorado_access, ensure_roles
-
-from .router import preins_router as router
+from core.permissions import ensure_profesorado_access, ensure_roles, PREINS_ALLOWED_ROLES, DOC_ALLOWED_ROLES
 from .schemas import (
     ChecklistIn,
     ChecklistOut,
@@ -26,15 +25,16 @@ from .schemas import (
     PreinscripcionOut,
     PreinscripcionPaginatedOut,
     PreinscripcionUpdateIn,
-    RecuperarPreinscripcionIn,
     RequisitoDocumentacionOut,
     RequisitoDocumentacionUpdateIn,
+    RecuperarPreinscripcionIn,
+    RecuperarPreinscripcionOut,
 )
-from .services.preinscripcion_service import PreinscripcionService
-from .services.rate_limiting import check_rate_limit, client_ip, verify_recaptcha
 from .services.requisitos import sync_profesorado_requisitos
-from .services.serializers import serialize_pre
+from .services.rate_limiting import check_rate_limit, client_ip, verify_recaptcha
 from .services.ventanas import ventana_preinscripcion_activa
+from .services.serializers import serialize_pre
+from .services.preinscripcion_service import PreinscripcionService
 from .views_pdf import preinscripcion_pdf
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,6 @@ def _fmt_date(value) -> str:
 
 class AllowPublic:
     """Soporte para endpoints Ninja con acceso anónimo explícito."""
-
     def __call__(self, request):
         return True
 
@@ -66,14 +65,13 @@ def check_roles(request, roles, profesorado_id=None):
 
 
 @router.get("/carreras", response=ApiResponse, auth=AllowPublic())
-def listar_carreras(request, vigentes: bool = True, profesorado_id: int | None = None):
+def listar_carreras(request, vigentes: bool = True, profesorado_id: Optional[int] = None):
     """
     Lista las carreras disponibles para ingreso.
     Endpoint público consumido por el formulario de inscripción inicial.
     """
     try:
         from core.models import Profesorado
-
         qs = Profesorado.objects.all().order_by("nombre")
         if vigentes:
             qs = qs.filter(activo=True, inscripcion_abierta=True)
@@ -93,17 +91,13 @@ def get_ventana_activa_publica(request):
     ventana = ventana_preinscripcion_activa()
     if not ventana:
         return ApiResponse(ok=False, message="No hay ventana activa.", data=None)
-    return ApiResponse(
-        ok=True,
-        message="Ventana activa.",
-        data={
-            "id": ventana.id,
-            "tipo": ventana.tipo,
-            "desde": str(ventana.desde),
-            "hasta": str(ventana.hasta),
-            "activo": ventana.activo,
-        },
-    )
+    return ApiResponse(ok=True, message="Ventana activa.", data={
+        "id": ventana.id,
+        "tipo": ventana.tipo,
+        "desde": str(ventana.desde),
+        "hasta": str(ventana.hasta),
+        "activo": ventana.activo,
+    })
 
 
 @router.post("/recuperar", response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse}, auth=AllowPublic())
@@ -113,24 +107,25 @@ def recuperar_preinscripcion(request, payload: RecuperarPreinscripcionIn):
     Permite obtener el ID y código de preinscripción para su posterior reimpresión.
     """
     from core.models import Preinscripcion
-
+    
     # 1. Buscar preinscripción activa para el DNI y la Carrera
-    pre = (
-        Preinscripcion.objects.filter(alumno__persona__dni=payload.dni, carrera_id=payload.carrera_id, activa=True)
-        .order_by("-anio", "-created_at")
-        .first()
-    )
-
+    pre = Preinscripcion.objects.filter(
+        alumno__persona__dni=payload.dni,
+        carrera_id=payload.carrera_id,
+        activa=True
+    ).order_by("-anio", "-created_at").first()
+    
     if not pre:
         return 404, ApiResponse(
-            ok=False, message="No se encontró ninguna preinscripción activa para el DNI y la carrera seleccionados."
+            ok=False, 
+            message="No se encontró ninguna preinscripción activa para el DNI y la carrera seleccionados."
         )
-
+        
     # 2. Validar fecha de nacimiento contra la base de datos o datos_extra
     nac_persona = pre.alumno.persona.fecha_nacimiento
     extra = pre.datos_extra or {}
     nac_extra_str = extra.get("estudiante", {}).get("fecha_nacimiento")
-
+    
     match = False
     if nac_persona and nac_persona == payload.fecha_nacimiento:
         match = True
@@ -145,20 +140,23 @@ def recuperar_preinscripcion(request, payload: RecuperarPreinscripcionIn):
                     match = True
         except Exception:
             pass
-
+            
     if not match:
-        return 400, ApiResponse(ok=False, message="La fecha de nacimiento ingresada es incorrecta.")
-
+        return 400, ApiResponse(
+            ok=False, 
+            message="La fecha de nacimiento ingresada es incorrecta."
+        )
+        
     pdf_url = f"/preinscripciones/{pre.id}/pdf/"
     return 200, ApiResponse(
-        ok=True,
-        message="Validación exitosa.",
+        ok=True, 
+        message="Validación exitosa.", 
         data={
             "id": pre.id,
             "codigo": pre.codigo,
             "estado": pre.estado,
             "pdf_url": pdf_url,
-        },
+        }
     )
 
 
@@ -169,8 +167,8 @@ def listar_preinscripciones(
     limit: int = 100,
     offset: int = 0,
     include_inactivas: bool = False,
-    profesorado_id: int | None = None,
-    anio: int | None = None,
+    profesorado_id: Optional[int] = None,
+    anio: Optional[int] = None,
     exclude_confirmed: bool = False,
 ):
     """
@@ -178,13 +176,14 @@ def listar_preinscripciones(
     Permite buscar por DNI, nombre o código de preinscripción.
     """
     from core.models import Preinscripcion
-
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
 
     limit = max(1, min(limit, 500))
     offset = max(0, offset)
-
-    qs = Preinscripcion.objects.select_related("alumno__persona", "carrera").all().order_by("-created_at")
+    
+    qs = Preinscripcion.objects.select_related(
+        "alumno__persona", "carrera"
+    ).all().order_by("-created_at")
 
     if not include_inactivas:
         qs = qs.filter(activa=True)
@@ -194,7 +193,7 @@ def listar_preinscripciones(
         qs = qs.filter(carrera_id=profesorado_id)
     if anio:
         qs = qs.filter(anio=anio)
-
+        
     if search:
         search = search[:100]
         qs = qs.filter(
@@ -205,15 +204,14 @@ def listar_preinscripciones(
         )
 
     total = qs.count()
-    qs = qs[offset : offset + limit]
+    qs = qs[offset: offset + limit]
     return {"count": total, "results": list(qs)}
 
 
 @router.get("/{pre_id}", response=PreinscripcionOut, auth=JWTAuth())
-def obtener_preinscripcion(request, pre_id: int, profesorado_id: int | None = None):
+def obtener_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] = None):
     """Detalle completo de una solicitud específica."""
     from core.models import Preinscripcion
-
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = Preinscripcion.objects.select_related("alumno__persona", "carrera").filter(id=pre_id).first()
     if not pre:
@@ -222,10 +220,9 @@ def obtener_preinscripcion(request, pre_id: int, profesorado_id: int | None = No
 
 
 @router.get("/{pre_id}/checklist", response=ChecklistOut, auth=JWTAuth())
-def obtener_checklist(request, pre_id: int, profesorado_id: int | None = None):
+def obtener_checklist(request, pre_id: int, profesorado_id: Optional[int] = None):
     """Recupera la lista de verificación de requisitos documentales del aspirante."""
     from core.models import Preinscripcion, PreinscripcionChecklist
-
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
@@ -238,10 +235,9 @@ def obtener_checklist(request, pre_id: int, profesorado_id: int | None = None):
 
 @router.delete("/{pre_id}", response={204: None, 404: ApiResponse}, auth=JWTAuth())
 @transaction.atomic
-def eliminar_preinscripcion(request, pre_id: int, profesorado_id: int | None = None):
+def eliminar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] = None):
     """Inactivación lógica de una solicitud (Soft Delete)."""
     from core.models import Preinscripcion
-
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
@@ -254,10 +250,9 @@ def eliminar_preinscripcion(request, pre_id: int, profesorado_id: int | None = N
 
 @router.post("/{pre_id}/activar", response=PreinscripcionOut, auth=JWTAuth())
 @transaction.atomic
-def activar_preinscripcion(request, pre_id: int, profesorado_id: int | None = None):
+def activar_preinscripcion(request, pre_id: int, profesorado_id: Optional[int] = None):
     """Re-activa una solicitud que fue previamente marcada como inactiva."""
     from core.models import Preinscripcion
-
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
@@ -267,9 +262,8 @@ def activar_preinscripcion(request, pre_id: int, profesorado_id: int | None = No
     pre.save(update_fields=["activa", "estado"])
     return pre
 
-
 @router.post("", response=ApiResponse)
-def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: int | None = None):
+def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: Optional[int] = None):
     """
     Alta de preinscripción (Flujo Público).
     Implementa: Rate Limit, Honeypot, Ventana Temporal y reCAPTCHA.
@@ -285,15 +279,11 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: int |
         raise HttpError(400, "Error en validación de seguridad (CAPTCHA).")
 
     preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload)
-    return ApiResponse(
-        ok=True,
-        message="Solicitud enviada correctamente.",
-        data={
-            "id": preinscripcion.id,
-            "codigo": preinscripcion.codigo,
-            "estado": preinscripcion.estado,
-        },
-    )
+    return ApiResponse(ok=True, message="Solicitud enviada correctamente.", data={
+        "id": preinscripcion.id,
+        "codigo": preinscripcion.codigo,
+        "estado": preinscripcion.estado,
+    })
 
 
 @router.post("/preview-pdf/", auth=AllowPublic())
@@ -302,15 +292,12 @@ def preview_pdf(request, payload: PreinscripcionIn):
     Genera una vista previa del PDF con datos no guardados.
     Permite al aspirante revisar el diseño antes de confirmar datos sensibles.
     """
-    import os
-
-    from django.conf import settings
-    from django.http import HttpResponse
-    from weasyprint import HTML
-
-    from core.models import Persona, Profesorado
-
     from .views_pdf import render_to_string
+    from weasyprint import HTML
+    from django.http import HttpResponse
+    from core.models import Profesorado, Persona
+    import os
+    from django.conf import settings
 
     carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
     carrera_nombre = carrera.nombre if carrera else "Carrera no especificada"
@@ -376,7 +363,7 @@ def preview_pdf(request, payload: PreinscripcionIn):
         "condicion_salud_detalle": raw.get("condicion_salud_detalle"),
         "consentimiento_datos": raw.get("consentimiento_datos", True),
     }
-
+    
     if carrera and carrera.es_certificacion_docente:
         checklist_items = [
             {"label": "Fotocopia legalizada DNI", "checked": False},
@@ -401,7 +388,7 @@ def preview_pdf(request, payload: PreinscripcionIn):
     # Rutas para recursos estáticos (Encabezado Universal)
     logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
     logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
-
+    
     if not os.path.exists(logo_left_path):
         logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
         logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
@@ -424,7 +411,7 @@ def preview_pdf(request, payload: PreinscripcionIn):
 
 
 @router.post("/by-code/{codigo}/confirmar", response=ApiResponse, auth=JWTAuth())
-def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = None, profesorado_id: int | None = None):
+def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = None, profesorado_id: Optional[int] = None):
     """Confirma la vacante y sincroniza el checklist de documentación."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
@@ -453,17 +440,16 @@ def _serialize_requisito(req) -> RequisitoDocumentacionOut:
     response=list[RequisitoDocumentacionOut],
     auth=JWTAuth(),
 )
-def listar_requisitos_documentacion(request, prof_id: int, profesorado_id: int | None = None):
+def listar_requisitos_documentacion(request, prof_id: int, profesorado_id: Optional[int] = None):
     """Obtiene los requisitos de ingreso para una carrera, sincronizando con la base global."""
     from core.models import Profesorado
-
     ensure_roles(request.user, DOC_ALLOWED_ROLES)
     ensure_profesorado_access(request.user, prof_id, role_filter=DOC_ALLOWED_ROLES)
-
+    
     profesorado = Profesorado.objects.filter(id=prof_id).first()
     if not profesorado:
         raise HttpError(404, "Carrera no encontrada.")
-
+        
     qs = sync_profesorado_requisitos(profesorado).order_by("categoria", "orden", "codigo")
     return [_serialize_requisito(req) for req in qs]
 
@@ -474,17 +460,14 @@ def listar_requisitos_documentacion(request, prof_id: int, profesorado_id: int |
     auth=JWTAuth(),
 )
 def actualizar_requisitos_documentacion(
-    request,
-    prof_id: int,
-    payload: list[RequisitoDocumentacionUpdateIn],
-    profesorado_id: int | None = None,
+    request, prof_id: int,
+    payload: list[RequisitoDocumentacionUpdateIn], profesorado_id: Optional[int] = None,
 ):
     """Permite personalizar manualmenten los requisitos de documentación de una carrera."""
     from core.models import Profesorado, ProfesoradoRequisitoDocumentacion
-
     ensure_roles(request.user, DOC_ALLOWED_ROLES)
     ensure_profesorado_access(request.user, prof_id, role_filter=DOC_ALLOWED_ROLES)
-
+    
     profesorado = Profesorado.objects.filter(id=prof_id).first()
     if not profesorado:
         raise HttpError(404, "Profesorado no encontrado.")
@@ -537,7 +520,7 @@ def actualizar_requisitos_documentacion(
 
 
 @router.get("/by-code/{codigo}", auth=JWTAuth())
-def obtener_por_codigo(request, codigo: str, profesorado_id: int | None = None):
+def obtener_por_codigo(request, codigo: str, profesorado_id: Optional[int] = None):
     """Busca una solicitud específica por su código de seguridad."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
@@ -545,10 +528,9 @@ def obtener_por_codigo(request, codigo: str, profesorado_id: int | None = None):
 
 
 @router.get("/estudiante/{dni}", auth=JWTAuth())
-def listar_por_estudiante(request, dni: str, profesorado_id: int | None = None):
+def listar_por_estudiante(request, dni: str, profesorado_id: Optional[int] = None):
     """Busca todas las preinscripciones asociadas a un DNI."""
     from core.models import Preinscripcion
-
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     preins = (
         Preinscripcion.objects.select_related("alumno__persona", "carrera")
@@ -564,13 +546,18 @@ def descargar_pdf_por_dni(request, dni: str):
     Busca la preinscripción activa más reciente para el DNI y retorna el PDF de forma directa.
     """
     from core.models import Preinscripcion
-
+    from .views_pdf import preinscripcion_pdf
+    
     check_roles(request, PREINS_ALLOWED_ROLES)
-
-    pre = Preinscripcion.objects.filter(alumno__persona__dni=dni, activa=True).order_by("-anio", "-created_at").first()
+    
+    pre = (
+        Preinscripcion.objects.filter(alumno__persona__dni=dni, activa=True)
+        .order_by("-anio", "-created_at")
+        .first()
+    )
     if not pre:
         raise HttpError(404, "No se encontró ninguna preinscripción activa para este DNI.")
-
+        
     return preinscripcion_pdf(request, preinscripcion_id=pre.id)
 
 
@@ -580,10 +567,9 @@ def descargar_pdf_por_dni(request, dni: str):
     auth=JWTAuth(),
 )
 @transaction.atomic
-def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_id: int | None = None):
+def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_id: Optional[int] = None):
     """Permite inscribir a un aspirante existente en una carrera adicional."""
-    from core.models import Preinscripcion, PreinscripcionChecklist, Profesorado
-
+    from core.models import Profesorado, Preinscripcion, PreinscripcionChecklist
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
     carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
@@ -637,11 +623,11 @@ def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_i
 
 @router.put("/by-code/{codigo}", auth=JWTAuth())
 @transaction.atomic
-def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn, profesorado_id: int | None = None):
+def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn, profesorado_id: Optional[int] = None):
     """Actualización integral de datos de identidad, contacto, académicos y checklist."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
-
+    
     if payload.estudiante:
         est = payload.estudiante
         p = pre.alumno.persona
@@ -658,16 +644,15 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
                 p.domicilio = est.domicilio
             if est.fecha_nacimiento:
                 p.fecha_nacimiento = est.fecha_nacimiento
-
+            
             if est.genero is not None:
                 from .services.preinscripcion_service import map_genero
-
                 p.genero = map_genero(est.genero)
-
+                
             if est.cuil is not None:
                 p.cuil = est.cuil
                 pre.cuil = est.cuil
-
+                
             p.save()
 
     if payload.carrera_id:
@@ -679,7 +664,6 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
 
     if payload.checklist:
         from core.models import PreinscripcionChecklist
-
         cl, _ = PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
         for k, v in payload.checklist.dict().items():
             setattr(cl, k, v)
@@ -695,7 +679,7 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
 
 
 @router.post("/by-code/{codigo}/observar", auth=JWTAuth())
-def observar(request, codigo: str, motivo: str | None = None, profesorado_id: int | None = None):
+def observar(request, codigo: str, motivo: str | None = None, profesorado_id: Optional[int] = None):
     """Cambia el estado a 'Observada'."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
@@ -705,7 +689,7 @@ def observar(request, codigo: str, motivo: str | None = None, profesorado_id: in
 
 
 @router.post("/by-code/{codigo}/rechazar", auth=JWTAuth())
-def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: int | None = None):
+def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: Optional[int] = None):
     """Cambia el estado a 'Rechazada'."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
@@ -715,13 +699,12 @@ def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: in
 
 
 @router.post("/by-code/{codigo}/cambiar-carrera", auth=JWTAuth())
-def cambiar_carrera(request, codigo: str, carrera_id: int, profesorado_id: int | None = None):
+def cambiar_carrera(request, codigo: str, carrera_id: int, profesorado_id: Optional[int] = None):
     """Mueve la preinscripción a una carrera diferente preservando el expediente."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
     updated_pre, error_msg = PreinscripcionService.cambiar_carrera(pre, carrera_id)
     if error_msg:
         from apps.common.api_schemas import ApiResponse as _ApiResponse
-
         return 400, _ApiResponse(ok=False, message=error_msg)
     return serialize_pre(updated_pre)

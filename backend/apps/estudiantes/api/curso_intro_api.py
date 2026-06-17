@@ -6,7 +6,6 @@ from django.utils import timezone
 from ninja.errors import HttpError
 
 from apps.common.audit import log_action_from_request
-from apps.common.date_utils import format_date, format_datetime
 from core.auth_ninja import JWTAuth
 from core.models import (
     AuditLog,
@@ -18,8 +17,7 @@ from core.models import (
     Turno,
     VentanaHabilitacion,
 )
-from core.permissions import CI_ALLOWED_ROLES, CI_FULL_ACCESS_ROLES, ensure_roles
-
+from core.permissions import ensure_roles, CI_ALLOWED_ROLES, CI_FULL_ACCESS_ROLES
 from ..schemas import (
     CursoIntroAsistenciaIn,
     CursoIntroAutoInscripcionIn,
@@ -33,6 +31,7 @@ from ..schemas import (
     CursoIntroVentanaOut,
 )
 from .router import estudiantes_router
+from apps.common.date_utils import format_date, format_datetime
 
 
 def _user_group_names(user: User | None) -> set[str]:
@@ -56,7 +55,9 @@ def _ci_allowed_profesorados(user: User | None) -> set[int] | None:
         roles.append(StaffAsignacion.Rol.CURSO_INTRO)
     if not roles:
         return None
-    ids = set(StaffAsignacion.objects.filter(user=user, rol__in=roles).values_list("profesorado_id", flat=True))
+    ids = set(
+        StaffAsignacion.objects.filter(user=user, rol__in=roles).values_list("profesorado_id", flat=True)
+    )
     return ids
 
 
@@ -129,9 +130,7 @@ def _ci_active_windows_queryset():
     )
 
 
-def _ci_select_profesorado(
-    estudiante: Estudiante, profesorado_id: int | None, cohorte: CursoIntroductorioCohorte | None
-):
+def _ci_select_profesorado(estudiante: Estudiante, profesorado_id: int | None, cohorte: CursoIntroductorioCohorte | None):
     if profesorado_id:
         profesorado = Profesorado.objects.filter(id=profesorado_id).first()
         if not profesorado:
@@ -139,7 +138,11 @@ def _ci_select_profesorado(
         return profesorado
     if cohorte and cohorte.profesorado:
         return cohorte.profesorado
-    detalle = estudiante.carreras_detalle.select_related("profesorado").order_by("-updated_at").first()
+    detalle = (
+        estudiante.carreras_detalle.select_related("profesorado")
+        .order_by("-updated_at")
+        .first()
+    )
     return detalle.profesorado if detalle else None
 
 
@@ -402,36 +405,37 @@ def curso_intro_listar_registros(
 
 @estudiantes_router.get("/curso-intro/pendientes", response=list[CursoIntroPendienteOut], auth=JWTAuth())
 def curso_intro_listar_pendientes(
-    request,
+    request, 
     profesorado_id: int | None = None,
     solo_activos: bool = False,
     anio_ingreso: int | None = None,
 ):
     ensure_roles(request.user, CI_ALLOWED_ROLES)
-
+    
     from django.core.cache import cache
-
     allowed = _ci_allowed_profesorados(request.user)
-
+    
     # Generar clave de caché basada en permisos y filtro
-    cache_key = (
-        f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_anio{anio_ingreso or 'all'}"
-    )
+    cache_key = f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_anio{anio_ingreso or 'all'}"
     if allowed is not None:
         cache_key += f"_a{'-'.join(map(str, sorted(list(allowed))))}"
-
+    
     cached_data = cache.get(cache_key)
     if cached_data:
         return cached_data
 
     # Optimización: Usar Exists para filtrar eficientemente en DB
     from django.db.models import Exists, OuterRef
-
     tiene_registro = CursoIntroductorioRegistro.objects.filter(estudiante=OuterRef("pk"))
 
     qs = (
-        Estudiante.objects.annotate(tiene_ci_registro=Exists(tiene_registro))
-        .filter(tiene_ci_registro=False, curso_introductorio_aprobado=False, carreras__isnull=False)
+        Estudiante.objects
+        .annotate(tiene_ci_registro=Exists(tiene_registro))
+        .filter(
+            tiene_ci_registro=False, 
+            curso_introductorio_aprobado=False, 
+            carreras__isnull=False
+        )
         .select_related("persona", "user")
         .prefetch_related("carreras_detalle__profesorado")
         .distinct()
@@ -475,10 +479,10 @@ def curso_intro_listar_pendientes(
                 anio_ingreso=profesorados[0].get("anio_ingreso") if profesorados else None,
             )
         )
-
+    
     # Guardar en caché por 15 minutos (900 segundos)
     cache.set(cache_key, pendientes, 900)
-
+    
     return pendientes
 
 
@@ -492,11 +496,7 @@ def curso_intro_inscribir(request, payload: CursoIntroRegistroIn):
         raise HttpError(400, "El estudiante ya tiene aprobado el Curso Introductorio.")
     cohorte = None
     if payload.cohorte_id:
-        cohorte = (
-            CursoIntroductorioCohorte.objects.filter(id=payload.cohorte_id)
-            .select_related("profesorado", "turno")
-            .first()
-        )
+        cohorte = CursoIntroductorioCohorte.objects.filter(id=payload.cohorte_id).select_related("profesorado", "turno").first()
         if not cohorte:
             raise HttpError(404, "Cohorte no encontrada.")
     profesorado = _ci_select_profesorado(estudiante, payload.profesorado_id, cohorte)
@@ -598,9 +598,7 @@ def curso_intro_registrar_asistencia(request, registro_id: int, payload: CursoIn
 def curso_intro_cerrar_registro(request, registro_id: int, payload: CursoIntroCierreIn):
     ensure_roles(request.user, CI_ALLOWED_ROLES)
     registro = (
-        CursoIntroductorioRegistro.objects.select_related(
-            "estudiante", "estudiante__user", "profesorado", "cohorte", "turno"
-        )
+        CursoIntroductorioRegistro.objects.select_related("estudiante", "estudiante__user", "profesorado", "cohorte", "turno")
         .filter(id=registro_id)
         .first()
     )

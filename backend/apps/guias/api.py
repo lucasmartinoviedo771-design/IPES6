@@ -20,7 +20,8 @@ class ErrorSchema(Schema):
 
 @router.get("/guia-usuario", response={200: GuiaUsuarioSchema, 404: ErrorSchema}, auth=JWTAuth())
 def guia_usuario(request: HttpRequest):
-    """Devuelve la guía de usuario correspondiente al rol de la persona logueada."""
+    """Devuelve la guía de usuario correspondiente al rol de la persona logueada.
+    """
     user = request.auth
     roles = [g.name for g in user.groups.all()]
 

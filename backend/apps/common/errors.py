@@ -1,19 +1,16 @@
 """
 Sistema centralizado de gestión de errores y excepciones.
 Provee la clase AppError para excepciones de negocio y los manejadores
-globales (exception handlers) para NinjaAPI, asegurando que todas las
+globales (exception handlers) para NinjaAPI, asegurando que todas las 
 respuestas de error tengan una estructura consistente.
 """
 
 from __future__ import annotations
-
 import logging
 from typing import Any
-
 from django.core.exceptions import ValidationError
 from ninja import NinjaAPI
 from ninja.errors import HttpError
-
 from .constants import AppErrorCode
 
 logger = logging.getLogger(__name__)
@@ -42,7 +39,7 @@ class AppError(Exception):
         """
         super().__init__(message)
         self.status_code = status_code
-
+        
         # Validación del código de error contra el Enum central
         if isinstance(error_code, AppErrorCode):
             self.error_code = error_code
@@ -51,7 +48,7 @@ class AppError(Exception):
                 self.error_code = AppErrorCode(str(error_code))
             except ValueError:
                 self.error_code = AppErrorCode.UNKNOWN
-
+                
         self.message = message
         self.details = details
 
@@ -104,12 +101,12 @@ def build_error_payload(
     }
     if details is not None:
         payload["details"] = details
-
+        
     # Agrega el request_id generado por el middleware de auditoría
     request_id = getattr(request, "request_id", None)
     if request_id:
         payload["request_id"] = request_id
-
+        
     return payload
 
 

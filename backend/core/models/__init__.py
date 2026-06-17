@@ -1,6 +1,3 @@
-from . import signals  # noqa: F401 — conecta las señales
-from .actas import ActaExamen, ActaExamenDocente, ActaExamenEstudiante
-from .auditoria import AuditLog, SystemLog
 from .base import Docente, Persona, UserProfile
 from .carreras import (
     Correlatividad,
@@ -12,7 +9,6 @@ from .carreras import (
     PlanDeEstudio,
     Profesorado,
 )
-from .curso_intro import CursoIntroductorioCohorte, CursoIntroductorioRegistro
 from .estudiantes import Estudiante, EstudianteCarrera, ProrrogaTituloSecundario, ResidenciaCondicional
 from .horarios import (
     Bloque,
@@ -23,16 +19,14 @@ from .horarios import (
     Turno,
     VentanaHabilitacion,
 )
-from .inscripciones import EquivalenciaCurricular, InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
-from .mensajeria import (
-    Conversation,
-    ConversationAudit,
-    ConversationParticipant,
-    Message,
-    MessageTopic,
-    validate_pdf_attachment,
+from .preinscripciones import (
+    PreinscripcionChecklist,
+    Preinscripcion,
+    ProfesoradoRequisitoDocumentacion,
+    RequisitoDocumentacionTemplate,
 )
-from .mesas import InscripcionMesa, MesaActaOral, MesaExamen, SolicitudMesa
+from .inscripciones import EquivalenciaCurricular, InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
+from .curso_intro import CursoIntroductorioCohorte, CursoIntroductorioRegistro
 from .pedidos import (
     EquivalenciaDisposicion,
     EquivalenciaDisposicionDetalle,
@@ -40,15 +34,10 @@ from .pedidos import (
     PedidoEquivalencia,
     PedidoEquivalenciaMateria,
 )
-from .preinscripciones import (
-    Preinscripcion,
-    PreinscripcionChecklist,
-    ProfesoradoRequisitoDocumentacion,
-    RequisitoDocumentacionTemplate,
-)
+from .mesas import InscripcionMesa, MesaActaOral, MesaExamen, SolicitudMesa
 from .regularidades import (
-    PlanillaCursada,  # noqa: F401
-    PlanillaCursadaFila,  # noqa: F401
+    PlanillaCursada,
+    PlanillaCursadaFila,
     PlanillaRegularidad,
     PlanillaRegularidadDocente,
     PlanillaRegularidadFila,
@@ -58,6 +47,17 @@ from .regularidades import (
     RegularidadPlanillaLock,
     RegularidadPlantilla,
 )
+from .actas import ActaExamen, ActaExamenDocente, ActaExamenEstudiante
+from .mensajeria import (
+    Conversation,
+    ConversationAudit,
+    ConversationParticipant,
+    Message,
+    MessageTopic,
+    validate_pdf_attachment,
+)
+from .auditoria import AuditLog, SystemLog
+from . import signals  # noqa: F401 — conecta las señales
 
 __all__ = [
     # base

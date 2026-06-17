@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import base64
+from datetime import datetime
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 
-from core.models import Persona, Preinscripcion
+from core.models import Preinscripcion, Persona
 
 from .models_uploads import PreinscripcionArchivo
 
@@ -53,16 +54,14 @@ def _build_foto_dataurl(pre: Preinscripcion) -> str | None:
 
 
 import os
-
 from django.conf import settings
 from weasyprint import HTML
-
 
 def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | None = None, **kwargs):
     """Genera el PDF de la preinscripción usando WeasyPrint y la plantilla premium."""
     pid = preinscripcion_id or pk or kwargs.get("preinscripcion_id") or kwargs.get("pk")
     pre = get_object_or_404(Preinscripcion, pk=pid)
-
+    
     # Mapeo de datos para la plantilla (usando el mismo esquema que el frontend)
     # Intentamos obtener datos del estudiante vinculado o de los datos_extra del formulario
     extra = getattr(pre, "datos_extra", {}) or {}
@@ -88,9 +87,7 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
         "nombres": persona.nombre if persona else extra.get("nombres"),
         "dni": persona.dni if persona else extra.get("dni"),
         "cuil": formatted_cuil,
-        "fecha_nacimiento": persona.fecha_nacimiento.strftime("%d/%m/%Y")
-        if (persona and persona.fecha_nacimiento)
-        else extra.get("fecha_nacimiento"),
+        "fecha_nacimiento": persona.fecha_nacimiento.strftime("%d/%m/%Y") if (persona and persona.fecha_nacimiento) else extra.get("fecha_nacimiento"),
         "nacionalidad": (persona.nacionalidad if persona else None) or extra.get("nacionalidad"),
         "estado_civil": display_ec,
         "localidad_nac": (persona.localidad_nac if persona else None) or extra.get("localidad_nac"),
@@ -100,8 +97,7 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
         "email": (persona.email if persona else None) or extra.get("email"),
         "tel_movil": persona.telefono if persona else extra.get("tel_movil"),
         "emergencia_telefono": (persona.telefono_emergencia if persona else None) or extra.get("emergencia_telefono"),
-        "emergencia_parentesco": (persona.parentesco_emergencia if persona else None)
-        or extra.get("emergencia_parentesco"),
+        "emergencia_parentesco": (persona.parentesco_emergencia if persona else None) or extra.get("emergencia_parentesco"),
         "trabaja": extra.get("trabaja"),
         "horario_trabajo": extra.get("horario_trabajo"),
         "empleador": extra.get("empleador"),
@@ -150,8 +146,8 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
 
     # Rutas para recursos estáticos (Encabezado Universal)
     logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
-    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")  # O logo_ipes11.png si se prefiere
-
+    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg") # O logo_ipes11.png si se prefiere
+    
     # Si la ruta base no funciona (Docker etc), intentamos alternativa
     if not os.path.exists(logo_left_path):
         logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
@@ -167,7 +163,7 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
     }
 
     html = render_to_string("core/preinscripcion_premium.html", context)
-
+    
     # Generación del PDF con WeasyPrint
     pdf_content = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
 

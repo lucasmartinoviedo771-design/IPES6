@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+from typing import List, Optional
 
 from ninja import Schema
 
@@ -16,37 +17,37 @@ class DocenteClaseOut(Schema):
     materia_id: int
     comision: str
     turno: str
-    horario: str | None
-    aula: str | None
+    horario: Optional[str]
+    aula: Optional[str]
     puede_marcar: bool
     editable_staff: bool
     ya_registrada: bool
-    registrada_en: str | None
-    ventana_inicio: str | None
-    ventana_fin: str | None
-    umbral_tarde: str | None
-    plan_id: int | None
-    plan_resolucion: str | None
-    profesorado_id: int | None
-    profesorado_nombre: str | None
+    registrada_en: Optional[str]
+    ventana_inicio: Optional[str]
+    ventana_fin: Optional[str]
+    umbral_tarde: Optional[str]
+    plan_id: Optional[int]
+    plan_resolucion: Optional[str]
+    profesorado_id: Optional[int]
+    profesorado_nombre: Optional[str]
 
 
 class DocenteHistorialOut(Schema):
     fecha: str
     turno: str
     estado: str
-    observacion: str | None
+    observacion: Optional[str]
 
 
 class DocenteClasesResponse(Schema):
     docente: DocenteInfoOut
-    clases: list[DocenteClaseOut]
-    historial: list[DocenteHistorialOut]
+    clases: List[DocenteClaseOut]
+    historial: List[DocenteHistorialOut]
 
 
 class DocenteMarcarPresenteIn(Schema):
     dni: str
-    observaciones: str | None = None
+    observaciones: Optional[str] = None
     via: str = "docente"  # docente | staff
     propagar_turno: bool = False
 
@@ -57,10 +58,10 @@ class DocenteMarcarPresenteOut(Schema):
     registrada_en: str
     categoria: str
     alerta: bool
-    alerta_tipo: str | None
-    alerta_motivo: str | None
-    mensaje: str | None
-    turno: str | None
+    alerta_tipo: Optional[str]
+    alerta_motivo: Optional[str]
+    mensaje: Optional[str]
+    turno: Optional[str]
 
 
 class EstudianteResumenOut(Schema):
@@ -84,19 +85,19 @@ class ClaseEstudianteDetalleOut(Schema):
     clase_id: int
     comision: str
     fecha: str
-    horario: str | None
+    horario: Optional[str]
     materia: str
-    docentes: list[str]
+    docentes: List[str]
     docente_presente: bool
-    docente_categoria_asistencia: str | None = None
-    estudiantes: list[EstudianteResumenOut]
-    otras_clases: list[ClaseNavegacionOut] = []
+    docente_categoria_asistencia: Optional[str] = None
+    estudiantes: List[EstudianteResumenOut]
+    otras_clases: List[ClaseNavegacionOut] = []
 
 
 class RegistrarAsistenciaEstudiantesIn(Schema):
-    presentes: list[int]
-    tardes: list[int] = []  # IDs de estudiantes
-    observaciones: str | None = None
+    presentes: List[int]
+    tardes: List[int] = []  # IDs de estudiantes
+    observaciones: Optional[str] = None
 
 
 class JustificacionCreateIn(Schema):
@@ -106,10 +107,10 @@ class JustificacionCreateIn(Schema):
     vigencia_hasta: str
     origen: str = "posterior"
     comision_id: int
-    estudiante_id: int | None = None
-    docente_id: int | None = None
-    observaciones: str | None = None
-    archivo_url: str | None = None
+    estudiante_id: Optional[int] = None
+    docente_id: Optional[int] = None
+    observaciones: Optional[str] = None
+    archivo_url: Optional[str] = None
 
 
 class JustificacionOut(Schema):
@@ -121,13 +122,13 @@ class JustificacionDetalleOut(Schema):
     id: int
     clase_id: int
     fecha: str
-    comision_id: int | None
-    comision: str | None
-    materia: str | None
-    estudiante_id: int | None = None
-    estudiante: str | None = None
-    docente_id: int | None = None
-    docente: str | None = None
+    comision_id: Optional[int]
+    comision: Optional[str]
+    materia: Optional[str]
+    estudiante_id: Optional[int] = None
+    estudiante: Optional[str] = None
+    docente_id: Optional[int] = None
+    docente: Optional[str] = None
     aplica_automaticamente: bool
 
 
@@ -139,17 +140,17 @@ class JustificacionListItemOut(Schema):
     motivo: str
     vigencia_desde: str
     vigencia_hasta: str
-    comision_id: int | None
-    comision: str | None
-    materia: str | None
-    profesorado_id: int | None
-    profesorado: str | None
-    estudiante_id: int | None = None
-    estudiante: str | None = None
-    docente_id: int | None = None
-    docente: str | None = None
+    comision_id: Optional[int]
+    comision: Optional[str]
+    materia: Optional[str]
+    profesorado_id: Optional[int]
+    profesorado: Optional[str]
+    estudiante_id: Optional[int] = None
+    estudiante: Optional[str] = None
+    docente_id: Optional[int] = None
+    docente: Optional[str] = None
     creado_en: str
-    aprobado_en: str | None
+    aprobado_en: Optional[str]
 
 
 class JustificacionDetailOut(Schema):
@@ -158,34 +159,34 @@ class JustificacionDetailOut(Schema):
     estado: str
     origen: str
     motivo: str
-    observaciones: str | None
-    archivo_url: str | None
+    observaciones: Optional[str]
+    archivo_url: Optional[str]
     vigencia_desde: str
     vigencia_hasta: str
-    comision_id: int | None
-    comision: str | None
-    materia: str | None
-    profesorado_id: int | None
-    profesorado: str | None
-    estudiante_id: int | None
-    estudiante: str | None
-    docente_id: int | None
-    docente: str | None
+    comision_id: Optional[int]
+    comision: Optional[str]
+    materia: Optional[str]
+    profesorado_id: Optional[int]
+    profesorado: Optional[str]
+    estudiante_id: Optional[int]
+    estudiante: Optional[str]
+    docente_id: Optional[int]
+    docente: Optional[str]
     creado_en: str
-    creado_por: str | None
-    aprobado_en: str | None
-    aprobado_por: str | None
-    detalles: list[JustificacionDetalleOut]
+    creado_por: Optional[str]
+    aprobado_en: Optional[str]
+    aprobado_por: Optional[str]
+    detalles: List[JustificacionDetalleOut]
 
 
 class JustificacionRechazarIn(Schema):
-    observaciones: str | None = None
+    observaciones: Optional[str] = None
 
 
 class DocenteDniLogIn(Schema):
     dni: str
-    origen: str | None = "kiosk"
-    app_version: str | None = None
+    origen: Optional[str] = "kiosk"
+    app_version: Optional[str] = None
 
 
 class EstudianteClaseListadoOut(Schema):
@@ -193,8 +194,8 @@ class EstudianteClaseListadoOut(Schema):
     fecha: str
     materia: str
     comision: str
-    turno: str | None
-    horario: str | None
+    turno: Optional[str]
+    horario: Optional[str]
     estado_clase: str
     total_estudiantes: int
     presentes: int
@@ -203,23 +204,23 @@ class EstudianteClaseListadoOut(Schema):
 
 
 class EstudianteClasesResponse(Schema):
-    clases: list[EstudianteClaseListadoOut]
+    clases: List[EstudianteClaseListadoOut]
 
 
 class AsistenciaCalendarioEventoIn(Schema):
     nombre: str
     tipo: str
-    subtipo: str | None = None
+    subtipo: Optional[str] = None
     fecha_desde: date
     fecha_hasta: date
-    turno_id: int | None = None
-    profesorado_id: int | None = None
-    plan_id: int | None = None
-    comision_id: int | None = None
-    docente_id: int | None = None
+    turno_id: Optional[int] = None
+    profesorado_id: Optional[int] = None
+    plan_id: Optional[int] = None
+    comision_id: Optional[int] = None
+    docente_id: Optional[int] = None
     aplica_docentes: bool = True
     aplica_estudiantes: bool = True
-    motivo: str | None = None
+    motivo: Optional[str] = None
     activo: bool = True
 
 
@@ -230,19 +231,19 @@ class AsistenciaCalendarioEventoOut(Schema):
     subtipo: str
     fecha_desde: str
     fecha_hasta: str
-    turno_id: int | None
-    turno_nombre: str | None
-    profesorado_id: int | None
-    profesorado_nombre: str | None
-    plan_id: int | None
-    plan_resolucion: str | None
-    comision_id: int | None
-    comision_nombre: str | None
-    docente_id: int | None
-    docente_nombre: str | None
+    turno_id: Optional[int]
+    turno_nombre: Optional[str]
+    profesorado_id: Optional[int]
+    profesorado_nombre: Optional[str]
+    plan_id: Optional[int]
+    plan_resolucion: Optional[str]
+    comision_id: Optional[int]
+    comision_nombre: Optional[str]
+    docente_id: Optional[int]
+    docente_nombre: Optional[str]
     aplica_docentes: bool
     aplica_estudiantes: bool
-    motivo: str | None
+    motivo: Optional[str]
     activo: bool
     creado_en: str
 
@@ -254,4 +255,4 @@ class EstudianteAsistenciaItemOut(Schema):
     comision: str
     estado: str
     justificada: bool
-    observacion: str | None
+    observacion: Optional[str]

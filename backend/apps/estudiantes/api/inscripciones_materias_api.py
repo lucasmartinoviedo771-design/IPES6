@@ -9,31 +9,31 @@ Incluye un motor de validación riguroso que verifica:
 """
 
 from __future__ import annotations
-
 from datetime import datetime
-
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
-from apps.common.api_schemas import ApiResponse
+from django.shortcuts import get_object_or_404
 from apps.common.date_utils import format_datetime
+from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
+from core.permissions import ensure_roles
 from core.models import (
+    ActaExamenEstudiante,
     Comision,
     Correlatividad,
+    EquivalenciaDisposicionDetalle,
     HorarioCatedraDetalle,
     InscripcionMateriaEstudiante,
+    InscripcionMesa,
     Materia,
     Regularidad,
     Turno,
     VentanaHabilitacion,
 )
 from core.models.inscripciones import InscripcionMateriaMovimiento
-from core.permissions import ensure_roles
 
 from ..schemas import (
-    AceptarResidenciaCondicionalIn,
     AutorizarCambioComisionIn,
+    AceptarResidenciaCondicionalIn,
     BajaInscripcionIn,
     CambioComisionIn,
     CambioComisionOut,
@@ -46,9 +46,9 @@ from ..schemas import (
 )
 from .helpers import (
     _correlatividades_qs,
+    _tiene_aprobacion_valida,
     _ensure_estudiante_access,
     _resolve_estudiante,
-    _tiene_aprobacion_valida,
 )
 from .router import estudiantes_router
 
@@ -71,7 +71,7 @@ def _comision_to_resumen(comision):
     horario = comision.horario
     turno = comision.turno
     docente = comision.docente
-
+    
     detalles: list[dict] = []
     if horario:
         detalles = [
@@ -83,7 +83,7 @@ def _comision_to_resumen(comision):
             }
             for det in horario.detalles.select_related("bloque").all()
         ]
-
+        
     return {
         "id": comision.id,
         "codigo": comision.codigo,
@@ -120,36 +120,32 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     """
     # Bloqueo temporal para estudiantes (solo habilitado para bedeles, secretaría y administradores)
     from core.permissions import get_user_roles
-
     if not (get_user_roles(request.user) & {"admin", "secretaria", "bedel"}):
         return 400, ApiResponse(
-            ok=False,
-            message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría.",
+            ok=False, 
+            message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría."
         )
 
     _ensure_estudiante_access(request, getattr(payload, "dni", None))
     est = _resolve_estudiante(request, getattr(payload, "dni", None))
     if not est:
         return 400, ApiResponse(ok=False, message="Estudiante no identificado.")
-
+        
     mat = Materia.objects.filter(id=payload.materia_id).select_related("plan_de_estudio__profesorado").first()
     if not mat:
         return 404, ApiResponse(ok=False, message="Materia no encontrada.")
 
     # --- 0. VALIDACIÓN DE ESTADO ACTIVO ---
     from core.models.estudiantes import EstudianteCarrera
-
     profesorado_id = mat.plan_de_estudio.profesorado_id if mat.plan_de_estudio else None
     if profesorado_id:
-        carrera_estado = (
-            EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=profesorado_id)
-            .values_list("estado_academico", flat=True)
-            .first()
-        )
-        if carrera_estado != "ACT":
+        carrera_estado = EstudianteCarrera.objects.filter(
+            estudiante=est, profesorado_id=profesorado_id
+        ).values_list('estado_academico', flat=True).first()
+        if carrera_estado != 'ACT':
             return 400, ApiResponse(
-                ok=False,
-                message="El alumno debe encontrarse en estado 'Activo' en el profesorado correspondiente para poder inscribirse a materias.",
+                ok=False, 
+                message="El alumno debe encontrarse en estado 'Activo' en el profesorado correspondiente para poder inscribirse a materias."
             )
 
     anio_actual = datetime.now().year
@@ -157,7 +153,10 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     # --- 1. VALIDACIÓN DE VENTANA TEMPORAL ---
     hoy = timezone.now().date()
     ventana = VentanaHabilitacion.objects.filter(
-        tipo=VentanaHabilitacion.Tipo.MATERIAS, activo=True, desde__lte=hoy, hasta__gte=hoy
+        tipo=VentanaHabilitacion.Tipo.MATERIAS,
+        activo=True,
+        desde__lte=hoy,
+        hasta__gte=hoy
     ).first()
 
     if not ventana:
@@ -167,43 +166,32 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if mat.fecha_fin and mat.fecha_fin < hoy:
         return 400, ApiResponse(
             ok=False,
-            message=f"La materia '{mat.nombre}' finalizó su vigencia el {mat.fecha_fin} y no admite inscripciones en el ciclo {anio_actual}.",
+            message=f"La materia '{mat.nombre}' finalizó su vigencia el {mat.fecha_fin} y no admite inscripciones en el ciclo {anio_actual}."
         )
+
 
     # Validación de régimen (Cuatrimestres)
     if ventana.periodo:
         allowed_regimens = []
-        if ventana.periodo == "1C_ANUALES":
+        if ventana.periodo == '1C_ANUALES':
             allowed_regimens = [Materia.TipoCursada.ANUAL, Materia.TipoCursada.PRIMER_CUATRIMESTRE]
-        elif ventana.periodo == "1C":
+        elif ventana.periodo == '1C':
             allowed_regimens = [Materia.TipoCursada.PRIMER_CUATRIMESTRE]
-        elif ventana.periodo == "2C":
+        elif ventana.periodo == '2C':
             allowed_regimens = [Materia.TipoCursada.SEGUNDO_CUATRIMESTRE]
-
+        
         if mat.regimen not in allowed_regimens:
-            return 400, ApiResponse(
-                ok=False, message=f"La materia {mat.nombre} no corresponde a este turno de inscripción."
-            )
+             return 400, ApiResponse(ok=False, message=f"La materia {mat.nombre} no corresponde a este turno de inscripción.")
 
     # --- 2. VALIDACIÓN: MATERIA YA APROBADA ---
     # Usa _tiene_aprobacion_valida para cubrir Regularidad, Equivalencia y Acta,
     # respetando en_resguardo en todas las fuentes.
     if _tiene_aprobacion_valida(est, mat):
-        return 400, ApiResponse(
-            ok=False, message=f"La materia '{mat.nombre}' ya se encuentra aprobada en su historial académico."
-        )
+        return 400, ApiResponse(ok=False, message=f"La materia '{mat.nombre}' ya se encuentra aprobada en su historial académico.")
 
     # --- 3. VALIDACIÓN DE CORRELATIVIDADES ---
-    req_reg = list(
-        _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list(
-            "materia_correlativa_id", flat=True
-        )
-    )
-    req_apr = list(
-        _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list(
-            "materia_correlativa_id", flat=True
-        )
-    )
+    req_reg = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
+    req_apr = list(_correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
 
     autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
     faltan = []
@@ -215,14 +203,11 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         m_corr = Materia.objects.filter(id=mid).first()
         nombre = m_corr.nombre if m_corr else str(mid)
         tiene_regular = Regularidad.objects.filter(
-            estudiante=est,
-            materia_id=mid,
+            estudiante=est, materia_id=mid,
             situacion=Regularidad.Situacion.REGULAR,
             en_resguardo=False,
         ).exists()
-        if not tiene_regular and not (
-            m_corr and _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids)
-        ):
+        if not tiene_regular and not (m_corr and _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids)):
             faltan.append(f"Regular en {nombre}")
             faltan_ids.append(mid)
 
@@ -240,7 +225,6 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         # Caso especial: Residencia con exactamente 1 materia faltante → inscripción condicional
         if _es_materia_residencia(mat) and len(faltan_ids) == 1:
             from datetime import date
-
             anio = date.today().year
             fecha_limite = date(anio, 6, 1)
             mat_pend_id = faltan_ids[0]
@@ -266,13 +250,16 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     cand_qs = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mat)
     if cand_qs.exists():
         cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in cand_qs]
-
+        
         # Solo chocamos contra inscripciones que no estén anuladas, rechazadas o de baja
-        actuales = InscripcionMateriaEstudiante.objects.filter(estudiante=est, anio=anio_actual).exclude(
+        actuales = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est, 
+            anio=anio_actual
+        ).exclude(
             estado__in=[
                 InscripcionMateriaEstudiante.Estado.ANULADA,
                 InscripcionMateriaEstudiante.Estado.RECHAZADA,
-                InscripcionMateriaEstudiante.Estado.BAJA,
+                InscripcionMateriaEstudiante.Estado.BAJA
             ]
         )
         if actuales.exists():
@@ -282,15 +269,12 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             for d in det_act:
                 for t, dia, desde, hasta in cand:
                     # Si coinciden en Turno y Día, verificamos solapamiento de horas
-                    if (
-                        t == d.horario_catedra.turno_id
-                        and dia == d.bloque.dia
-                        and not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)
-                    ):
+                    if (t == d.horario_catedra.turno_id and dia == d.bloque.dia and 
+                        not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)):
                         colision_nombre = d.horario_catedra.espacio.nombre
                         return 400, ApiResponse(
-                            ok=False,
-                            message=f"Existe una superposición horaria con la materia '{colision_nombre}' del ciclo actual.",
+                            ok=False, 
+                            message=f"Existe una superposición horaria con la materia '{colision_nombre}' del ciclo actual."
                         )
 
     # --- 4. ASIGNACIÓN DE COMISIÓN (AUTO-ASSIGNMENT) ---
@@ -299,40 +283,43 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
 
     if comision_id:
         comision_obj = Comision.objects.filter(id=comision_id).first()
-
+    
     if not comision_obj:
         # Intentar buscar comisiones activas para la materia en el año lectivo actual
-        comisiones_qs = Comision.objects.filter(materia=mat, anio_lectivo=anio_actual).order_by("orden", "id")
-
+        comisiones_qs = Comision.objects.filter(
+            materia=mat, 
+            anio_lectivo=anio_actual
+        ).order_by("orden", "id")
+        
         comision_obj = comisiones_qs.first()
 
         # Si no existe NINGUNA comisión para el año actual, crear una por defecto (Placeholder)
         if not comision_obj:
             # Buscamos datos del plan para heredar (Turno por defecto)
-            turno_def = Turno.objects.first()
+            turno_def = Turno.objects.first() 
             if not turno_def:
                 turno_def = Turno.objects.create(nombre="No definido")
-
+                
             comision_obj = Comision.objects.create(
                 materia=mat,
                 anio_lectivo=anio_actual,
-                codigo="A",  # Código por defecto histórico
+                codigo="A", # Código por defecto histórico
                 turno=turno_def,
                 estado=Comision.Estado.ABIERTA,
-                observaciones="Asignada automáticamente por el sistema de inscripciones.",
+                observaciones="Asignada automáticamente por el sistema de inscripciones."
             )
 
     # Registro de la inscripción
     inscripcion, created = InscripcionMateriaEstudiante.objects.update_or_create(
-        estudiante=est,
-        materia=mat,
+        estudiante=est, 
+        materia=mat, 
         anio=anio_actual,
         defaults={
             "comision": comision_obj,
             "estado": InscripcionMateriaEstudiante.Estado.CONFIRMADA,
             "baja_fecha": None,
-            "baja_motivo": None,
-        },
+            "baja_motivo": None
+        }
     )
 
     # Registro de auditoría
@@ -340,14 +327,13 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         inscripcion=inscripcion,
         tipo=InscripcionMateriaMovimiento.Tipo.INSCRIPCION,
         operador=request.user.username if request.user.is_authenticated else "Anon",
-        motivo_detalle="Inscripción registrada por el sistema.",
+        motivo_detalle="Inscripción registrada por el sistema."
     )
-
+    
     return {"message": "Inscripción registrada correctamente."}
 
 
 from .helpers.horarios_utils import obtener_horarios_materia
-
 
 @estudiantes_router.get(
     "/materias-inscriptas",
@@ -420,7 +406,6 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
     ).exists()
 
     from core.permissions import get_user_roles
-
     es_gestion = bool(get_user_roles(request.user) & {"admin", "secretaria", "bedel", "attp"})
 
     est = _resolve_estudiante(request, dni)
@@ -439,16 +424,14 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
         InscripcionMateriaEstudiante.Estado.CONFIRMADA,
         InscripcionMateriaEstudiante.Estado.PENDIENTE,
     ):
-        return 400, ApiResponse(
-            ok=False, message="Solo se pueden cancelar inscripciones activas (Confirmadas o Pendientes)."
-        )
+        return 400, ApiResponse(ok=False, message="Solo se pueden cancelar inscripciones activas (Confirmadas o Pendientes).")
 
     # Si no es gestión, verificar que la ventana esté abierta para que el alumno pueda cancelar
     if not es_gestion:
         if not ventana_abierta:
             return 400, ApiResponse(
-                ok=False,
-                message="El período de inscripción ha finalizado. Si ya iniciaste la cursada y deseas salir, debes solicitar la 'Baja Voluntaria' del espacio curricular.",
+                ok=False, 
+                message="El período de inscripción ha finalizado. Si ya iniciaste la cursada y deseas salir, debes solicitar la 'Baja Voluntaria' del espacio curricular."
             )
 
     inscripcion.estado = InscripcionMateriaEstudiante.Estado.ANULADA
@@ -461,7 +444,7 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
         inscripcion=inscripcion,
         tipo=InscripcionMateriaMovimiento.Tipo.CANCELACION,
         operador=request.user.username if request.user.is_authenticated else "Anon",
-        motivo_detalle="Cancelación manual de inscripción.",
+        motivo_detalle="Cancelación manual de inscripción."
     )
 
     return 200, ApiResponse(ok=True, message="Inscripción anulada correctamente.")
@@ -485,6 +468,7 @@ def cancelar_inscripcion_materia_rest(request, inscripcion_id: int, payload: Can
     return _ejecutar_cancelacion(request, inscripcion_id, payload.dni)
 
 
+from core.models.horarios import Comision
 from core.models.estudiantes import EstudianteCarrera
 
 
@@ -511,22 +495,18 @@ def listar_cambios_comision_pendientes(request, dni: str | None = None, profesor
     result = []
     for ins in qs:
         prof = getattr(getattr(getattr(ins.materia, "plan_de_estudio", None), "profesorado", None), "nombre", None)
-        result.append(
-            SolicitudCambioComisionItem(
-                id=ins.id,
-                estudiante_dni=ins.estudiante.persona.dni if ins.estudiante.persona_id else "",
-                estudiante_nombre=ins.estudiante.user.get_full_name()
-                if ins.estudiante.user_id
-                else str(ins.estudiante),
-                materia_nombre=ins.materia.nombre if ins.materia_id else "",
-                anio=ins.anio,
-                profesorado_nombre=prof,
-                comision_actual=ins.comision.codigo if ins.comision_id else None,
-                comision_solicitada=ins.comision_solicitada.codigo if ins.comision_solicitada_id else "",
-                motivo=ins.get_motivo_cambio_display() if ins.motivo_cambio else "",
-                created_at=format_datetime(ins.created_at),
-            )
-        )
+        result.append(SolicitudCambioComisionItem(
+            id=ins.id,
+            estudiante_dni=ins.estudiante.persona.dni if ins.estudiante.persona_id else "",
+            estudiante_nombre=ins.estudiante.user.get_full_name() if ins.estudiante.user_id else str(ins.estudiante),
+            materia_nombre=ins.materia.nombre if ins.materia_id else "",
+            anio=ins.anio,
+            profesorado_nombre=prof,
+            comision_actual=ins.comision.codigo if ins.comision_id else None,
+            comision_solicitada=ins.comision_solicitada.codigo if ins.comision_solicitada_id else "",
+            motivo=ins.get_motivo_cambio_display() if ins.motivo_cambio else "",
+            created_at=format_datetime(ins.created_at),
+        ))
     return result
 
 
@@ -534,7 +514,7 @@ def listar_cambios_comision_pendientes(request, dni: str | None = None, profesor
 def cambio_comision(request, payload: CambioComisionIn):
     """
     Registra una solicitud de cambio de comisión por parte del alumno.
-
+    
     Reglas de Negocio:
     1. El alumno debe ser Graduado/Regular (ACTIVO).
     2. Solo materias de Formación General (FGN).
@@ -549,13 +529,12 @@ def cambio_comision(request, payload: CambioComisionIn):
     # 1. VALIDAR ESTUDIANTE REGULAR / ACTIVO
     # Verificamos si tiene al menos una carrera activa
     es_regular = EstudianteCarrera.objects.filter(
-        estudiante=est, estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
+        estudiante=est, 
+        estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
     ).exists()
-
+    
     if not es_regular:
-        return 400, ApiResponse(
-            ok=False, message="El alumno debe ser estudiante regular para solicitar cambios de comisión."
-        )
+        return 400, ApiResponse(ok=False, message="El alumno debe ser estudiante regular para solicitar cambios de comisión.")
 
     # 2. VALIDAR COMISIÓN DESTINO Y MATERIA
     com_dest = Comision.objects.select_related("materia").filter(id=payload.comision_id).first()
@@ -567,9 +546,7 @@ def cambio_comision(request, payload: CambioComisionIn):
 
     # 3. REGLA: Solo Formación General
     if mat.tipo_formacion != Materia.TipoFormacion.FORMACION_GENERAL:
-        return 400, ApiResponse(
-            ok=False, message="Solo se permiten cambios de comisión para materias de Formación General."
-        )
+        return 400, ApiResponse(ok=False, message="Solo se permiten cambios de comisión para materias de Formación General.")
 
     # 4. RESOLVER INSCRIPCIÓN PREVIA O NUEVA (CASO LABORAL)
     ins = None
@@ -577,11 +554,9 @@ def cambio_comision(request, payload: CambioComisionIn):
         ins = InscripcionMateriaEstudiante.objects.filter(id=payload.inscripcion_id, estudiante=est).first()
     else:
         # Caso Trabajo: si no está inscripto, buscamos si existe una para la materia en el año
-        ins = (
-            InscripcionMateriaEstudiante.objects.filter(estudiante=est, materia=mat, anio=anio_actual)
-            .exclude(estado__in=[InscripcionMateriaEstudiante.Estado.ANULADA, InscripcionMateriaEstudiante.Estado.BAJA])
-            .first()
-        )
+        ins = InscripcionMateriaEstudiante.objects.filter(estudiante=est, materia=mat, anio=anio_actual).exclude(
+            estado__in=[InscripcionMateriaEstudiante.Estado.ANULADA, InscripcionMateriaEstudiante.Estado.BAJA]
+        ).first()
 
     # Si es inscripción nueva (Laboral), verificamos compatibilidades de la materia base (si la hubiera)
     # o simplemente validamos que sea FGN (ya validado arriba).
@@ -589,21 +564,25 @@ def cambio_comision(request, payload: CambioComisionIn):
     if ins:
         # Si ya estaba inscripto, validar que sea la misma materia (por las dudas)
         if ins.materia_id != mat.id:
-            # En cambio de comisión riguroso, solo permitimos cambiar si mm.id == ins.materia_id
+            # En cambio de comisión riguroso, solo permitimos cambiar si mm.id == ins.materia_id 
             # (o si son equivalentes y tienen mismo formato/carga)
             m_orig = ins.materia
             if m_orig.horas_semana != mat.horas_semana or m_orig.formato != mat.formato:
                 return 400, ApiResponse(
-                    ok=False,
-                    message="La materia de destino no tiene la misma carga horaria o formato que su inscripción actual.",
+                    ok=False, 
+                    message="La materia de destino no tiene la misma carga horaria o formato que su inscripción actual."
                 )
     else:
         # Es una solicitud de inscripción "de cero" por motivos laborales
         if payload.motivo_cambio != "WORK":
             return 400, ApiResponse(ok=False, message="No se encontró una inscripción previa para realizar el cambio.")
-
+        
         # Creamos la inscripción como CONDICIONAL (Solicitud)
-        ins = InscripcionMateriaEstudiante(estudiante=est, materia=mat, anio=anio_actual)
+        ins = InscripcionMateriaEstudiante(
+            estudiante=est,
+            materia=mat,
+            anio=anio_actual
+        )
 
     # 5. ACTUALIZAR A ESTADO CONDICIONAL Y GUARDAR METADATOS
     ins.estado = InscripcionMateriaEstudiante.Estado.CONDICIONAL
@@ -617,7 +596,7 @@ def cambio_comision(request, payload: CambioComisionIn):
         inscripcion=ins,
         tipo=InscripcionMateriaMovimiento.Tipo.SOLICITUD_CAMBIO,
         operador=request.user.username if request.user.is_authenticated else "Anon",
-        motivo_detalle=f"Solicitud de cambio a comisión {com_dest.codigo} ({payload.motivo_cambio}).",
+        motivo_detalle=f"Solicitud de cambio a comisión {com_dest.codigo} ({payload.motivo_cambio})."
     )
 
     return {"message": "Solicitud registrada en carácter CONDICIONAL. Será revisada por un tutor o bedel."}
@@ -639,9 +618,8 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
     La baja es definitiva para el ciclo lectivo actual. El estudiante no podrá
     volver a inscribirse hasta la próxima ventana de inscripción.
     """
+    from core.permissions import get_user_roles, allowed_profesorados
     from django.utils.timezone import now
-
-    from core.permissions import allowed_profesorados, get_user_roles
 
     roles = get_user_roles(request.user)
     es_gestion = bool(roles & {"admin", "secretaria", "attp"})
@@ -666,8 +644,8 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
     # Se aplica a todos para mantener la consistencia del dato: en ventana se CANCELA, fuera de ventana se da de BAJA.
     if ventana_abierta:
         return 400, ApiResponse(
-            ok=False,
-            message="Mientras el periodo de inscripción esté abierto, el sistema solo permite 'Cancelar Inscripción' para mantener la integridad de los datos de cursada. La 'Baja Voluntaria' se habilita al cerrar la inscripción.",
+            ok=False, 
+            message="Mientras el periodo de inscripción esté abierto, el sistema solo permite 'Cancelar Inscripción' para mantener la integridad de los datos de cursada. La 'Baja Voluntaria' se habilita al cerrar la inscripción."
         )
 
     # Si no es gestión ni bedel, solo puede actuar sobre sí mismo y debe validar acceso
@@ -686,13 +664,11 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
     if es_bedel and not es_gestion:
         profesorados_permitidos = allowed_profesorados(request.user)
         if profesorados_permitidos is not None:
-            profesorado_materia = (
-                inscripcion.materia.plan_de_estudio.profesorado_id if (inscripcion.materia.plan_de_estudio_id) else None
-            )
+            profesorado_materia = inscripcion.materia.plan_de_estudio.profesorado_id if (
+                inscripcion.materia.plan_de_estudio_id
+            ) else None
             if profesorado_materia not in profesorados_permitidos:
-                return 403, ApiResponse(
-                    ok=False, message="No tiene permiso para dar de baja estudiantes de este profesorado."
-                )
+                return 403, ApiResponse(ok=False, message="No tiene permiso para dar de baja estudiantes de este profesorado.")
 
     # Solo se puede dar de baja si la inscripción está activa
     if inscripcion.estado not in (
@@ -701,7 +677,7 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
     ):
         return 400, ApiResponse(
             ok=False,
-            message=f"No se puede dar de baja: la inscripción está en estado '{inscripcion.get_estado_display()}'.",
+            message=f"No se puede dar de baja: la inscripción está en estado '{inscripcion.get_estado_display()}'."
         )
 
     if not payload.motivo or not payload.motivo.strip():
@@ -717,17 +693,19 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
         inscripcion=inscripcion,
         tipo=InscripcionMateriaMovimiento.Tipo.BAJA,
         operador=request.user.username if request.user.is_authenticated else "Anon",
-        motivo_detalle=f"Baja voluntaria. Motivo: {payload.motivo.strip()}",
+        motivo_detalle=f"Baja voluntaria. Motivo: {payload.motivo.strip()}"
     )
 
     return 200, ApiResponse(
         ok=True,
-        message=f"Baja de '{inscripcion.materia.nombre}' registrada correctamente para el ciclo {inscripcion.anio}.",
+        message=f"Baja de '{inscripcion.materia.nombre}' registrada correctamente para el ciclo {inscripcion.anio}."
     )
 
 
 @estudiantes_router.patch(
-    "/inscripcion-materia/{inscripcion_id}/autorizar-cambio-comision", response=ApiResponse, auth=JWTAuth()
+    "/inscripcion-materia/{inscripcion_id}/autorizar-cambio-comision",
+    response=ApiResponse,
+    auth=JWTAuth()
 )
 def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCambioComisionIn):
     """
@@ -735,15 +713,13 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
     Solo accesible para admin, secretaria, bedel o tutor.
     """
     from apps.estudiantes.services.notificaciones_service import NotificacionesService
-
+    
     ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor", "attp"})
-
+    
     ins = get_object_or_404(InscripcionMateriaEstudiante, id=inscripcion_id)
-
+    
     if ins.estado != InscripcionMateriaEstudiante.Estado.CONDICIONAL:
-        return 400, ApiResponse(
-            ok=False, message="La inscripción no tiene una solicitud de cambio pendiente (estado CONDICIONAL)."
-        )
+        return 400, ApiResponse(ok=False, message="La inscripción no tiene una solicitud de cambio pendiente (estado CONDICIONAL).")
 
     if payload.aprobado:
         if not ins.comision_solicitada:
@@ -772,7 +748,7 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
             ins.estado = InscripcionMateriaEstudiante.Estado.RECHAZADA
         else:
             ins.estado = InscripcionMateriaEstudiante.Estado.CONFIRMADA
-
+            
         ins.cambio_comision_estado = InscripcionMateriaEstudiante.CambioComisionEstado.RECHAZADO
         msg_auditoria = f"Cambio de comisión rechazado. Motivo: {payload.observaciones or 'S/D'}."
 
@@ -783,7 +759,7 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
         inscripcion=ins,
         tipo=InscripcionMateriaMovimiento.Tipo.OTRO,
         operador=request.user.username,
-        motivo_detalle=msg_auditoria,
+        motivo_detalle=msg_auditoria
     )
 
     # Notificación automática
@@ -806,16 +782,14 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
     Crea la InscripcionMateriaEstudiante y registra el ResidenciaCondicional.
     """
     from datetime import date
-
     from core.models import ResidenciaCondicional
 
     # Bloqueo temporal para estudiantes (solo habilitado para bedeles, secretaría y administradores)
     from core.permissions import get_user_roles
-
     if not (get_user_roles(request.user) & {"admin", "secretaria", "bedel"}):
         return 400, ApiResponse(
-            ok=False,
-            message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría.",
+            ok=False, 
+            message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría."
         )
 
     _ensure_estudiante_access(request, payload.dni)
@@ -840,15 +814,11 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
     ).first()
     if rc_existente:
         insc_activa = InscripcionMateriaEstudiante.objects.filter(
-            estudiante=est,
-            materia=mat,
-            anio=anio_actual,
+            estudiante=est, materia=mat, anio=anio_actual,
             estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA,
         ).exists()
         if insc_activa:
-            return 400, ApiResponse(
-                ok=False, message="Ya existe una inscripción condicional activa a esta Residencia para el ciclo actual."
-            )
+            return 400, ApiResponse(ok=False, message="Ya existe una inscripción condicional activa a esta Residencia para el ciclo actual.")
         # La inscripción fue cancelada — resetear el registro condicional para permitir re-inscripción
         rc_existente.resuelta = False
         rc_existente.caida = False

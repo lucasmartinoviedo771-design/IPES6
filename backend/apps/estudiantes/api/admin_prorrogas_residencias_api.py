@@ -1,22 +1,41 @@
 """
 API de Administración Centralizada de Estudiantes y Legajos.
-Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de
-documentación física (DNI, Títulos) hasta la auditoría de legajos y
+Gestiona el ciclo de vida administrativo del alumno: desde la supervisión de 
+documentación física (DNI, Títulos) hasta la auditoría de legajos y 
 la baja administrativa bajo estrictas reglas de integridad académica.
 """
 
 from __future__ import annotations
-
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from apps.common.api_schemas import ApiResponse
-from core.models import (
-    EquivalenciaDisposicionDetalle,
-    ProrrogaTituloSecundario,
-    Regularidad,
-    ResidenciaCondicional,
-)
-from core.permissions import ensure_roles
+from core.models import Estudiante, EstudianteCarrera, ProrrogaTituloSecundario, ResidenciaCondicional, Regularidad, EquivalenciaDisposicionDetalle
+from core.permissions import allowed_profesorados, ensure_roles, ensure_profesorado_access
+from apps.common.date_utils import format_datetime
 
+from ..schemas import (
+    AutorizarRendirIn,
+    EstudianteAdminDetail,
+    EstudianteAdminListItem,
+    EstudianteAdminListResponse,
+    EstudianteAdminUpdateIn,
+    EstudianteDocumentacionListItem,
+    EstudianteDocumentacionListResponse,
+    EstudianteDocumentacionUpdateIn,
+    EstudianteDocumentacionBulkUpdateIn,
+    ProrrogaTituloIn,
+    ProrrogaTituloOut,
+)
 from .router import estudiantes_router as router
+from ..services.estudiante_service import EstudianteService
+from .helpers import (
+    _ensure_admin,
+    _ensure_staff_view,
+    _apply_estudiante_updates,
+    _build_admin_detail,
+    _recalcular_estado_legajo,
+)
+from apps.common.audit import log_action_from_request, snapshot
 
 
 @router.get(
@@ -33,10 +52,8 @@ def admin_alertas_prorrogas_titulo(
     Usar desde el dashboard de secretaría para anticipar cierres masivos erróneos.
     """
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
-    from datetime import timedelta
-
     from django.utils import timezone as tz
-
+    from datetime import timedelta
     hoy = tz.localdate()
     limite = hoy + timedelta(days=dias_aviso)
 
@@ -50,17 +67,15 @@ def admin_alertas_prorrogas_titulo(
     resultado = []
     for p in qs.order_by("fecha_vencimiento"):
         dias = (p.fecha_vencimiento - hoy).days
-        resultado.append(
-            {
-                "prorroga_id": p.id,
-                "dni": p.estudiante.persona.dni if p.estudiante.persona else None,
-                "nombre": p.estudiante.persona.apellido_nombre if p.estudiante.persona else str(p.estudiante),
-                "fecha_vencimiento": str(p.fecha_vencimiento),
-                "dias_restantes": dias,
-                "vencida": dias < 0,
-                "autorizado_por": p.autorizado_por.get_full_name() if p.autorizado_por else None,
-            }
-        )
+        resultado.append({
+            "prorroga_id": p.id,
+            "dni": p.estudiante.persona.dni if p.estudiante.persona else None,
+            "nombre": p.estudiante.persona.apellido_nombre if p.estudiante.persona else str(p.estudiante),
+            "fecha_vencimiento": str(p.fecha_vencimiento),
+            "dias_restantes": dias,
+            "vencida": dias < 0,
+            "autorizado_por": p.autorizado_por.get_full_name() if p.autorizado_por else None,
+        })
     return 200, resultado
 
 
@@ -106,16 +121,14 @@ def admin_resguardo_correlativas(
                 "estado_legajo": est.estado_legajo,
                 "materias_en_resguardo": [],
             }
-        resultado_map[est_id]["materias_en_resguardo"].append(
-            {
-                "materia_id": reg.materia_id,
-                "materia_nombre": reg.materia.nombre,
-                "situacion": reg.situacion,
-                "situacion_display": reg.get_situacion_display(),
-                "fuente": "cursada",
-                "fecha": str(reg.fecha_cierre) if reg.fecha_cierre else None,
-            }
-        )
+        resultado_map[est_id]["materias_en_resguardo"].append({
+            "materia_id": reg.materia_id,
+            "materia_nombre": reg.materia.nombre,
+            "situacion": reg.situacion,
+            "situacion_display": reg.get_situacion_display(),
+            "fuente": "cursada",
+            "fecha": str(reg.fecha_cierre) if reg.fecha_cierre else None,
+        })
 
     # --- Equivalencias en resguardo ---
     equis_qs = EquivalenciaDisposicionDetalle.objects.filter(
@@ -136,16 +149,14 @@ def admin_resguardo_correlativas(
                 "estado_legajo": est.estado_legajo,
                 "materias_en_resguardo": [],
             }
-        resultado_map[est_id]["materias_en_resguardo"].append(
-            {
-                "materia_id": eq.materia_id,
-                "materia_nombre": eq.materia.nombre,
-                "situacion": "EQUIV",
-                "situacion_display": "Equivalencia",
-                "fuente": "equivalencia",
-                "fecha": str(eq.disposicion.fecha_disposicion),
-            }
-        )
+        resultado_map[est_id]["materias_en_resguardo"].append({
+            "materia_id": eq.materia_id,
+            "materia_nombre": eq.materia.nombre,
+            "situacion": "EQUIV",
+            "situacion_display": "Equivalencia",
+            "fuente": "equivalencia",
+            "fecha": str(eq.disposicion.fecha_disposicion),
+        })
 
     resultado = sorted(resultado_map.values(), key=lambda x: x["nombre"])
     return 200, resultado
@@ -168,21 +179,16 @@ def admin_residencias_condicionales(
     - solo_pendientes: True = solo las no resueltas ni caídas (default)
     """
     from datetime import date
-
     ensure_roles(request.user, {"admin", "secretaria", "bedel"})
 
     ciclo = ciclo or date.today().year
-    qs = (
-        ResidenciaCondicional.objects.filter(
-            ciclo_lectivo=ciclo,
-        )
-        .select_related(
-            "estudiante__persona",
-            "materia_residencia__plan_de_estudio__profesorado",
-            "materia_pendiente",
-        )
-        .order_by("estudiante__persona__apellido")
-    )
+    qs = ResidenciaCondicional.objects.filter(
+        ciclo_lectivo=ciclo,
+    ).select_related(
+        "estudiante__persona",
+        "materia_residencia__plan_de_estudio__profesorado",
+        "materia_pendiente",
+    ).order_by("estudiante__persona__apellido")
 
     if solo_pendientes:
         qs = qs.filter(resuelta=False, caida=False)
@@ -193,11 +199,7 @@ def admin_residencias_condicionales(
     resultado = []
     for rc in qs:
         est = rc.estudiante
-        profesorado = (
-            getattr(getattr(rc.materia_residencia.plan_de_estudio, "profesorado", None), "nombre", None)
-            if rc.materia_residencia.plan_de_estudio_id
-            else None
-        )
+        profesorado = getattr(getattr(rc.materia_residencia.plan_de_estudio, "profesorado", None), "nombre", None) if rc.materia_residencia.plan_de_estudio_id else None
 
         if rc.resuelta:
             estado = "RESUELTA"
@@ -206,19 +208,19 @@ def admin_residencias_condicionales(
         else:
             estado = "PENDIENTE"
 
-        resultado.append(
-            {
-                "id": rc.id,
-                "ciclo_lectivo": rc.ciclo_lectivo,
-                "dni": est.persona.dni if est.persona_id else None,
-                "nombre": f"{est.persona.apellido}, {est.persona.nombre}" if est.persona_id else str(est),
-                "profesorado": profesorado,
-                "materia_residencia": rc.materia_residencia.nombre,
-                "materia_pendiente": rc.materia_pendiente.nombre,
-                "fecha_limite": str(rc.fecha_limite),
-                "aceptada_en": rc.aceptada_en.strftime("%d/%m/%Y %H:%M"),
-                "estado": estado,
-            }
-        )
+        resultado.append({
+            "id": rc.id,
+            "ciclo_lectivo": rc.ciclo_lectivo,
+            "dni": est.persona.dni if est.persona_id else None,
+            "nombre": f"{est.persona.apellido}, {est.persona.nombre}" if est.persona_id else str(est),
+            "profesorado": profesorado,
+            "materia_residencia": rc.materia_residencia.nombre,
+            "materia_pendiente": rc.materia_pendiente.nombre,
+            "fecha_limite": str(rc.fecha_limite),
+            "aceptada_en": rc.aceptada_en.strftime("%d/%m/%Y %H:%M"),
+            "estado": estado,
+        })
 
     return 200, resultado
+
+

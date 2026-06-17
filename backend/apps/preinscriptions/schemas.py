@@ -1,17 +1,15 @@
 """
 Esquemas de validación (Pydantic/Ninja) para el módulo de Preinscripciones.
-Define las estructuras de datos de entrada y salida para la API, asegurando
+Define las estructuras de datos de entrada y salida para la API, asegurando 
 la integridad de los datos de aspirantes y requisitos de documentación.
 """
 
 from datetime import date, datetime
-
 from ninja import Field, Schema
 
 
 class EstudianteIn(Schema):
     """Datos básicos de identidad del aspirante para el alta inicial."""
-
     dni: str
     nombres: str
     apellido: str
@@ -24,7 +22,6 @@ class EstudianteIn(Schema):
 
 class EstudianteOut(Schema):
     """Estructura de salida para datos del estudiante en listados."""
-
     dni: str
     nombres: str = Field(alias="nombre")
     apellido: str
@@ -36,7 +33,6 @@ class EstudianteOut(Schema):
 
 class CarreraOut(Schema):
     """Información simplificada de la carrera solicitada."""
-
     id: int
     nombre: str
     es_certificacion_docente: bool | None = None
@@ -47,7 +43,6 @@ class PreinscripcionIn(Schema):
     Payload principal para el formulario público de preinscripción.
     Contiene datos personales, de contacto, académicos y laborales.
     """
-
     carrera_id: int
     foto_4x4_dataurl: str | None = None
     estudiante: EstudianteIn
@@ -99,7 +94,6 @@ class PreinscripcionIn(Schema):
 
 class EstudianteUpdateIn(Schema):
     """Campos permitidos para la actualización parcial del perfil del estudiante."""
-
     dni: str | None = None
     nombres: str | None = None
     apellido: str | None = None
@@ -116,7 +110,6 @@ class ChecklistIn(Schema):
     Lista de validación documental utilizada por Bedeles (Backoffice).
     Indica si el aspirante ha presentado la documentación física obligatoria.
     """
-
     # Requisitos físicos estándar
     dni_legalizado: bool = False
     fotos_4x4: bool = False
@@ -144,7 +137,6 @@ class ChecklistIn(Schema):
 
 class ChecklistOut(ChecklistIn):
     """Estado administrativo del legajo derivado del checklist."""
-
     estado_legajo: str = "PEN"
 
 
@@ -155,7 +147,6 @@ ChecklistOut.model_rebuild()
 
 class PreinscripcionUpdateIn(Schema):
     """Payload para la edición administrativa de una solicitud existente."""
-
     carrera_id: int | None = None
     estudiante: EstudianteUpdateIn | None = None
     datos_extra: dict | None = None
@@ -165,7 +156,6 @@ class PreinscripcionUpdateIn(Schema):
 
 class PreinscripcionOut(Schema):
     """Detalle completo de una preinscripción para consumo del frontend gestor."""
-
     id: int
     codigo: str
     estado: str
@@ -183,21 +173,18 @@ class PreinscripcionOut(Schema):
 
 class PreinscripcionPaginatedOut(Schema):
     """Esquema de respuesta paginada estándar."""
-
     count: int
     results: list[PreinscripcionOut]
 
 
 class NuevaCarreraIn(Schema):
     """Datos para inscribir a un aspirante en una oferta académica adicional."""
-
     carrera_id: int
     anio: int | None = None
 
 
 class RequisitoDocumentacionOut(Schema):
     """Detalle de un requisito documental (ej: 'Título Secundario')."""
-
     id: int
     codigo: str
     titulo: str
@@ -212,7 +199,6 @@ class RequisitoDocumentacionOut(Schema):
 
 class RequisitoDocumentacionUpdateIn(Schema):
     """Datos para la personalización de un requisito por carrera."""
-
     id: int
     titulo: str | None = None
     descripcion: str | None = None
@@ -224,7 +210,6 @@ class RequisitoDocumentacionUpdateIn(Schema):
 
 class RecuperarPreinscripcionIn(Schema):
     """Payload para solicitar la reimpresión de una preinscripción pública."""
-
     dni: str
     carrera_id: int
     fecha_nacimiento: date
@@ -232,7 +217,6 @@ class RecuperarPreinscripcionIn(Schema):
 
 class RecuperarPreinscripcionOut(Schema):
     """Detalles retornados para descargar el PDF de la preinscripción recuperada."""
-
     id: int
     codigo: str
     estado: str

@@ -4,17 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from apps.common.date_utils import format_date, parse_date
+
 from django.contrib.auth.models import User
 
 from apps.common.api_schemas import ApiResponse
-from apps.common.date_utils import format_date, parse_date
-from apps.estudiantes.schemas import (
-    EstudianteAdminDetail,
-    EstudianteAdminDocumentacion,
-    EstudianteAdminUpdateIn,
-    RegularidadResumen,
-)
-from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 from core.models import (
     Estudiante,
     EstudianteCarrera,
@@ -23,6 +17,16 @@ from core.models import (
     Profesorado,
     Regularidad,
 )
+
+from apps.estudiantes.schemas import (
+    EstudianteAdminDetail,
+    EstudianteAdminDocumentacion,
+    EstudianteAdminUpdateIn,
+    RegularidadResumen,
+)
+from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
+
+from apps.estudiantes.api.helpers.user_utils import ADMIN_ALLOWED_ROLES
 
 DOCUMENTACION_FIELDS = {
     "dni_legalizado",
@@ -41,7 +45,6 @@ DOCUMENTACION_FIELDS = {
     "incumbencia",
     "articulo_7",
 }
-
 
 def _extract_documentacion_from_ec(ec: EstudianteCarrera) -> dict:
     """Extrae los campos de documentación de un EstudianteCarrera."""
@@ -103,7 +106,7 @@ def _apply_estudiante_updates(
 
             if user:
                 if User.objects.filter(username=new_dni).exclude(id=user.id).exists():
-                    return False, (400, ApiResponse(ok=False, message=f"El usuario {new_dni} ya existe."))
+                     return False, (400, ApiResponse(ok=False, message=f"El usuario {new_dni} ya existe."))
                 user.username = new_dni
                 user.save(update_fields=["username"])
 
@@ -175,19 +178,9 @@ def _apply_estudiante_updates(
 
     # Fields to store directly in models (Persona or Estudiante)
     PERSONA_KEYS = (
-        "genero",
-        "cuil",
-        "lugar_nacimiento",
-        "nacionalidad",
-        "localidad_nac",
-        "provincia_nac",
-        "pais_nac",
-        "estado_civil",
-        "nombre",
-        "apellido",
-        "email",
-        "telefono",
-        "domicilio",
+        "genero", "cuil", "lugar_nacimiento", "nacionalidad",
+        "localidad_nac", "provincia_nac", "pais_nac",
+        "estado_civil", "nombre", "apellido", "email", "telefono", "domicilio"
     )
 
     if est.persona:
@@ -220,28 +213,11 @@ def _apply_estudiante_updates(
             est.persona.save(update_fields=persona_updates)
 
     ESTUDIANTE_KEYS = (
-        "anio_ingreso",
-        "cohorte",
-        "observaciones",
-        "sec_titulo",
-        "sec_establecimiento",
-        "sec_fecha_egreso",
-        "sec_localidad",
-        "sec_provincia",
-        "sec_pais",
-        "sup1_titulo",
-        "sup1_establecimiento",
-        "sup1_fecha_egreso",
-        "sup1_localidad",
-        "sup1_provincia",
-        "sup1_pais",
-        "condicion_salud_detalle",
-        "empleador",
-        "horario_trabajo",
-        "domicilio_trabajo",
-        "cud_informado",
-        "condicion_salud_informada",
-        "trabaja",
+        "anio_ingreso", "cohorte", "observaciones",
+        "sec_titulo", "sec_establecimiento", "sec_fecha_egreso", "sec_localidad", "sec_provincia", "sec_pais",
+        "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso", "sup1_localidad", "sup1_provincia", "sup1_pais",
+        "condicion_salud_detalle", "empleador", "horario_trabajo", "domicilio_trabajo",
+        "cud_informado", "condicion_salud_informada", "trabaja"
     )
 
     for key in ESTUDIANTE_KEYS:
@@ -260,9 +236,8 @@ def _apply_estudiante_updates(
         est.save(update_fields=list(fields_to_update))
 
     if payload.carreras_update is not None:
-        from django.utils import timezone
-
         from core.models.inscripciones import InscripcionMateriaEstudiante, InscripcionMateriaMovimiento
+        from django.utils import timezone
 
         anio_actual = timezone.now().year
 
@@ -275,15 +250,11 @@ def _apply_estudiante_updates(
             ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=profesorado_id).first()
             if ec:
                 ec_updates = []
-                estado_academico = (
-                    cu.get("estado_academico") if isinstance(cu, dict) else getattr(cu, "estado_academico", None)
-                )
-                force_baja = (
-                    cu.get("force_baja_materias") if isinstance(cu, dict) else getattr(cu, "force_baja_materias", False)
-                )
+                estado_academico = cu.get("estado_academico") if isinstance(cu, dict) else getattr(cu, "estado_academico", None)
+                force_baja = cu.get("force_baja_materias") if isinstance(cu, dict) else getattr(cu, "force_baja_materias", False)
 
                 if estado_academico is not None:
-                    if estado_academico == "BAJ" and ec.estado_academico != "BAJ":
+                    if estado_academico == 'BAJ' and ec.estado_academico != 'BAJ':
                         inscripciones_activas = InscripcionMateriaEstudiante.objects.filter(
                             estudiante=est,
                             anio=anio_actual,
@@ -291,23 +262,18 @@ def _apply_estudiante_updates(
                             estado__in=[
                                 InscripcionMateriaEstudiante.Estado.CONFIRMADA,
                                 InscripcionMateriaEstudiante.Estado.PENDIENTE,
-                                InscripcionMateriaEstudiante.Estado.CONDICIONAL,
-                            ],
-                        ).select_related("materia")
+                                InscripcionMateriaEstudiante.Estado.CONDICIONAL
+                            ]
+                        ).select_related('materia')
 
                         if inscripciones_activas.exists():
                             if not force_baja:
-                                materias_inscriptas = [
-                                    {"id": i.id, "materia": i.materia.nombre} for i in inscripciones_activas
-                                ]
-                                return False, (
-                                    409,
-                                    ApiResponse(
-                                        ok=False,
-                                        message="El estudiante tiene inscripciones activas.",
-                                        data={"code": "ACTIVE_ENROLLMENTS", "inscripciones": materias_inscriptas},
-                                    ),
-                                )
+                                materias_inscriptas = [{"id": i.id, "materia": i.materia.nombre} for i in inscripciones_activas]
+                                return False, (409, ApiResponse(
+                                    ok=False,
+                                    message="El estudiante tiene inscripciones activas.",
+                                    data={"code": "ACTIVE_ENROLLMENTS", "inscripciones": materias_inscriptas}
+                                ))
                             else:
                                 for ins in inscripciones_activas:
                                     ins.estado = InscripcionMateriaEstudiante.Estado.BAJA
@@ -318,7 +284,7 @@ def _apply_estudiante_updates(
                                         inscripcion=ins,
                                         tipo=InscripcionMateriaMovimiento.Tipo.BAJA,
                                         operador="Sistema (Admin)",
-                                        motivo_detalle="Baja automática en cascada.",
+                                        motivo_detalle="Baja automática en cascada."
                                     )
 
                     ec.estado_academico = estado_academico
@@ -335,20 +301,16 @@ def _recalcular_estado_legajo_ec(ec: EstudianteCarrera) -> None:
     doc_data = _extract_documentacion_from_ec(ec)
 
     # Merge con PreinscripcionChecklist si existe uno para esta carrera
-    checklist = (
-        PreinscripcionChecklist.objects.filter(
-            preinscripcion__alumno=ec.estudiante,
-            preinscripcion__carrera_id=ec.profesorado_id,
-        )
-        .order_by("-updated_at")
-        .first()
-    )
+    checklist = PreinscripcionChecklist.objects.filter(
+        preinscripcion__alumno=ec.estudiante,
+        preinscripcion__carrera_id=ec.profesorado_id,
+    ).order_by("-updated_at").first()
 
     # Si no hay checklist por carrera, intentar el más reciente del estudiante
     if not checklist:
-        checklist = (
-            PreinscripcionChecklist.objects.filter(preinscripcion__alumno=ec.estudiante).order_by("-updated_at").first()
-        )
+        checklist = PreinscripcionChecklist.objects.filter(
+            preinscripcion__alumno=ec.estudiante
+        ).order_by("-updated_at").first()
 
     if checklist:
         checklist_map = {
@@ -432,9 +394,7 @@ def _determine_condicion(documentacion: dict | None) -> str:
     return "Pendiente"
 
 
-def _build_admin_detail(
-    estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None, request=None
-) -> EstudianteAdminDetail:
+def _build_admin_detail(estudiante: Estudiante, allowed_carrera_ids: set[int] | None = None, request=None) -> EstudianteAdminDetail:
     user = estudiante.user if estudiante.user_id else None
     persona = estudiante.persona
 
@@ -442,9 +402,9 @@ def _build_admin_detail(
     ecs_by_prof: dict[int, EstudianteCarrera] = {ec.profesorado_id: ec for ec in ecs_list}
 
     # Pre-cachear el checklist global (fallback cuando no hay uno específico por carrera)
-    global_checklist = (
-        PreinscripcionChecklist.objects.filter(preinscripcion__alumno=estudiante).order_by("-updated_at").first()
-    )
+    global_checklist = PreinscripcionChecklist.objects.filter(
+        preinscripcion__alumno=estudiante
+    ).order_by("-updated_at").first()
 
     carreras_det = []
     carreras_nombres = []
@@ -456,15 +416,10 @@ def _build_admin_detail(
         ec = ecs_by_prof.get(cd.profesorado_id)
         ec_doc_data = _extract_documentacion_from_ec(ec) if ec else {}
 
-        checklist = (
-            PreinscripcionChecklist.objects.filter(
-                preinscripcion__alumno=estudiante,
-                preinscripcion__carrera_id=cd.profesorado_id,
-            )
-            .order_by("-updated_at")
-            .first()
-            or global_checklist
-        )
+        checklist = PreinscripcionChecklist.objects.filter(
+            preinscripcion__alumno=estudiante,
+            preinscripcion__carrera_id=cd.profesorado_id,
+        ).order_by("-updated_at").first() or global_checklist
 
         if checklist:
             checklist_map = {
@@ -495,19 +450,17 @@ def _build_admin_detail(
             ec_curso_intro = bool(checklist.curso_introductorio_aprobado)
         ec_libreta = ec.libreta_entregada if ec else False
 
-        carreras_det.append(
-            {
-                "profesorado_id": cd.profesorado_id,
-                "nombre": cd.profesorado.nombre,
-                "estado_academico": cd.estado_academico,
-                "estado_academico_display": cd.get_estado_academico_display(),
-                "condicion": condicion,
-                "estado_legajo": ec_estado_legajo,
-                "documentacion": EstudianteAdminDocumentacion(**ec_doc_data) if ec_doc_data else None,
-                "curso_introductorio_aprobado": ec_curso_intro,
-                "libreta_entregada": ec_libreta,
-            }
-        )
+        carreras_det.append({
+            "profesorado_id": cd.profesorado_id,
+            "nombre": cd.profesorado.nombre,
+            "estado_academico": cd.estado_academico,
+            "estado_academico_display": cd.get_estado_academico_display(),
+            "condicion": condicion,
+            "estado_legajo": ec_estado_legajo,
+            "documentacion": EstudianteAdminDocumentacion(**ec_doc_data) if ec_doc_data else None,
+            "curso_introductorio_aprobado": ec_curso_intro,
+            "libreta_entregada": ec_libreta,
+        })
         carreras_nombres.append(cd.profesorado.nombre)
 
     # Para los campos de nivel superior, usamos la primera carrera como referencia
@@ -546,7 +499,6 @@ def _build_admin_detail(
     # Fallback: si los campos están vacíos, usar datos_extra de preinscripción pendiente
     pre_extra = {}
     from core.models import Preinscripcion as _Preinscripcion
-
     pre_pendiente = (
         _Preinscripcion.objects.filter(alumno=estudiante, estado__in=["Enviada", "Observada"])
         .order_by("-updated_at")
@@ -654,6 +606,7 @@ def _build_admin_detail(
         sup1_localidad=_fb(estudiante.sup1_localidad, "sup1_localidad"),
         sup1_provincia=_fb(estudiante.sup1_provincia, "sup1_provincia"),
         sup1_pais=_fb(estudiante.sup1_pais, "sup1_pais"),
+
         # Situación laboral
         trabaja=bool(_fb(estudiante.trabaja, "trabaja", False)),
         empleador=_fb(estudiante.empleador, "empleador"),

@@ -1,22 +1,21 @@
 # backend/core/auth_api.py
-import secrets
-from urllib.parse import urlencode
-
-import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from ninja import Router
 from pydantic import BaseModel
+from core.authentication.jwt_service import JWTService
+import requests
+import secrets
+from urllib.parse import urlencode
 
 from apps.common.constants import AppErrorCode
 from apps.common.error_schemas import ErrorResponse
 from apps.common.errors import AppError
 from core.auth_ninja import JWTAuth
-from core.authentication.jwt_service import JWTService
 
 router = Router(auth=None)  # <- Permitimos acceso público a login, etc.
 
@@ -79,22 +78,13 @@ def _must_complete_profile(user) -> bool:
     estudiante = getattr(user, "estudiante", None)
     if not estudiante:
         return False
-
+        
     # Si es docente o parte del equipo de gestión, no bloqueamos el login
     # exigiendo que complete el perfil de estudiante primero.
     management_roles = {
-        "admin",
-        "secretaria",
-        "bedel",
-        "docente",
-        "coordinador",
-        "tutor",
-        "jefes",
-        "jefa_aaee",
-        "equivalencias",
-        "titulos",
-        "rectorado",
-        "attp",
+        "admin", "secretaria", "bedel", "docente", 
+        "coordinador", "tutor", "jefes", "jefa_aaee", 
+        "equivalencias", "titulos", "rectorado", "attp"
     }
     user_roles = {g.name.lower().strip() for g in user.groups.all()}
     if user.is_staff or user.is_superuser or user_roles.intersection(management_roles):
@@ -109,7 +99,6 @@ def _serialize_user(user):
     must_change = getattr(estudiante, "must_change_password", False) or getattr(profile, "must_change_password", False)
     must_complete_profile = _must_complete_profile(user)
     from core.permissions import allowed_profesorados
-
     allowed = allowed_profesorados(user)
     prof_ids = list(allowed) if allowed is not None else None
 
@@ -120,11 +109,7 @@ def _serialize_user(user):
             roles.append("admin")
 
     persona = getattr(estudiante, "persona", None) or getattr(profile, "persona", None)
-    name = (
-        f"{persona.nombre} {persona.apellido}".strip()
-        if persona
-        else (user.get_full_name() or user.first_name or user.username)
-    )
+    name = f"{persona.nombre} {persona.apellido}".strip() if persona else (user.get_full_name() or user.first_name or user.username)
 
     return {
         "id": user.id,
@@ -188,7 +173,7 @@ def _client_identifier(request, login: str) -> str:
         ip = ips[-1]
     else:
         ip = request.META.get("REMOTE_ADDR") or "unknown"
-
+    
     login_id = (login or "").strip().lower() or "anonymous"
     return f"auth:login:{ip}:{login_id}"
 
@@ -215,13 +200,11 @@ def login(request, payload: LoginIn):
         attempts = cache.get(cache_key, 0) + 1
         cache.set(cache_key, attempts, timeout=window)
         if attempts >= limit:
-            raise AppError(
-                429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente más tarde."
-            )
+            raise AppError(429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente más tarde.")
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Credenciales inválidas.")
 
     cache.delete(cache_key)
-
+    
     access_token = JWTService.create_access_token(user.id)
     refresh_token = JWTService.create_refresh_token(user.id)
 
@@ -243,7 +226,6 @@ def profile(request):
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
     u = request.user
     from core.permissions import allowed_profesorados
-
     allowed = allowed_profesorados(u)
     prof_ids = list(allowed) if allowed is not None else None
 
@@ -264,9 +246,7 @@ def profile(request):
         "roles": roles,
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
-        "must_change_password": bool(
-            getattr(estudiante, "must_change_password", False) or getattr(profile, "must_change_password", False)
-        ),
+        "must_change_password": bool(getattr(estudiante, "must_change_password", False) or getattr(profile, "must_change_password", False)),
         "must_complete_profile": _must_complete_profile(u),
         "profesorado_ids": prof_ids,
     }
@@ -339,7 +319,7 @@ def refresh_token(request, payload: RefreshIn | None = None):
 
     new_access = JWTService.create_access_token(user.id)
     new_refresh = JWTService.create_refresh_token(user.id)
-
+    
     response_body = {
         "access": new_access,
         "refresh": new_refresh,
@@ -380,7 +360,7 @@ def google_login(request):
 def google_callback(request, code: str | None = None, error: str | None = None, state: str | None = None):
     if error:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, f"Google OAuth error: {error}")
-
+    
     # Validación de CSRF vía State
     saved_state = request.session.pop("oauth_state", None)
     if not state or state != saved_state:
@@ -442,10 +422,10 @@ def google_callback(request, code: str | None = None, error: str | None = None, 
 
     access_token = JWTService.create_access_token(user.id)
     refresh_token = JWTService.create_refresh_token(user.id)
-
+    
     # Redireccionar al frontend
     response = HttpResponseRedirect(settings.FRONTEND_URL + "/auth/callback")
-
+    
     _set_access_cookie(response, access_token)
     _set_refresh_cookie(response, refresh_token)
     return response

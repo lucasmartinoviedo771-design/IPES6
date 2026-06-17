@@ -1,12 +1,11 @@
 from datetime import date
 from typing import Literal
 
-from ninja import Field, Schema
+from ninja import Schema, Field
 
 # ==========================================
 # 5. REGULARIDAD (PLANILLA Y CARGA)
 # ==========================================
-
 
 # -- Schemas para la API de Carga de Regularidad (Docentes/Admin) --
 class RegularidadEstudianteOut(Schema):
@@ -25,7 +24,6 @@ class RegularidadEstudianteOut(Schema):
     is_baja: bool = False
     baja_fecha: date | None = None
     baja_motivo: str | None = None
-
 
 class RegularidadPlanillaOut(Schema):
     materia_id: int
@@ -52,7 +50,6 @@ class RegularidadPlanillaOut(Schema):
     situaciones: list[dict] = Field(default_factory=list)
     estudiantes: list[RegularidadEstudianteOut] = Field(default_factory=list)
 
-
 RegularidadPlanillaOut.model_rebuild()
 
 
@@ -65,18 +62,15 @@ class RegularidadEstudianteIn(Schema):
     situacion: str
     observaciones: str | None = None
 
-
 class RegularidadCargaIn(Schema):
     comision_id: int
     fecha_cierre: date | None = None
     estudiantes: list[RegularidadEstudianteIn] = Field(default_factory=list)
     observaciones_generales: str | None = None
 
-
 class RegularidadCierreIn(Schema):
     comision_id: int
     accion: Literal["cerrar", "reabrir"]
-
 
 # -- Schemas para Importación por Planilla (Legacy/Admin) --
 class RegularidadRowIn(Schema):
@@ -85,13 +79,11 @@ class RegularidadRowIn(Schema):
     nota_final: int | None = None
     situacion: str
 
-
 class RegularidadImportIn(Schema):
     materia_id: int
     fecha: str
     formato: Literal["ASIG", "MOD", "TAL"]
     filas: list[RegularidadRowIn] = Field(default_factory=list)
-
 
 class RegularidadItemOut(Schema):
     dni: str

@@ -1,6 +1,6 @@
 """Schemas locales para el módulo de actas (distintos de los schemas globales en schemas/)."""
 
-from ninja import Field, Schema
+from ninja import Schema, Field
 
 
 class ActaDocenteLocal(Schema):
@@ -8,7 +8,6 @@ class ActaDocenteLocal(Schema):
     docente_id: int | None = None
     nombre: str
     dni: str | None = None
-
 
 class ActaEstudianteLocal(Schema):
     numero_orden: int
@@ -19,7 +18,6 @@ class ActaEstudianteLocal(Schema):
     examen_oral: str | None = None
     calificacion_definitiva: str
     observaciones: str | None = None
-
 
 class ActaCreateLocal(Schema):
     tipo: str
@@ -36,11 +34,9 @@ class ActaCreateLocal(Schema):
     total_ausentes: int | None = None
     strict: bool = True
 
-
 class ActaCreateOutLocal(Schema):
     id: int
     codigo: str
-
 
 class ActaListItem(Schema):
     id: int
@@ -54,7 +50,6 @@ class ActaListItem(Schema):
     mesa_id: int | None = None
     esta_cerrada: bool = False
     tiene_vocales: bool = True
-
 
 class ActaDetailLocal(Schema):
     id: int
@@ -83,7 +78,6 @@ class ActaDetailLocal(Schema):
     estudiantes: list[ActaEstudianteLocal] = Field(default_factory=list)
     docentes: list[ActaDocenteLocal] = Field(default_factory=list)
 
-
 # Metadata schemas
 class ActaMetadataMateria(Schema):
     id: int
@@ -92,31 +86,26 @@ class ActaMetadataMateria(Schema):
     plan_id: int
     plan_resolucion: str
 
-
 class ActaMetadataPlan(Schema):
     id: int
     resolucion: str
     materias: list[ActaMetadataMateria]
-
 
 class ActaMetadataProfesorado(Schema):
     id: int
     nombre: str
     planes: list[ActaMetadataPlan]
 
-
 class ActaMetadataDocente(Schema):
     id: int
     nombre: str
     dni: str | None = None
-
 
 class ActaMetadataOut(Schema):
     profesorados: list[ActaMetadataProfesorado]
     docentes: list[ActaMetadataDocente]
     estudiantes: list[dict] = []
     nota_opciones: list[dict]
-
 
 # Rebuild
 ActaDocenteLocal.model_rebuild()

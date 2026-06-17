@@ -1,16 +1,15 @@
 import logging
-from datetime import date
-from typing import Any
+from datetime import date, datetime
+from apps.common.date_utils import format_date, format_datetime
+from apps.primera_carga.services.historial import get_historial_regularidades, get_historico_mesas_pandemia
 
+from typing import Any
 from django.http import HttpResponse
 from ninja import File, Form, Router, Schema
 from ninja.files import UploadedFile
 
-from apps.primera_carga.services.historial import get_historial_regularidades, get_historico_mesas_pandemia
-
 logger = logging.getLogger(__name__)
 
-from apps.common.api_schemas import ApiResponse
 from apps.estudiantes.schemas import (
     EquivalenciaDisposicionCreateIn,
     EquivalenciaDisposicionOut,
@@ -20,18 +19,20 @@ from apps.estudiantes.services.equivalencias_disposicion import (
     resolver_contexto_equivalencia,
     serialize_disposicion,
 )
+from apps.common.api_schemas import ApiResponse
 from apps.primera_carga.services import (
-    actualizar_planilla_regularidad,
     crear_estudiante_manual,
     crear_planilla_regularidad,
-    obtener_planilla_regularidad_detalle,
     obtener_regularidad_metadata,
+    obtener_planilla_regularidad_detalle,
+    actualizar_planilla_regularidad,
     process_equivalencias_csv,
     process_estudiantes_csv,
     process_folios_finales_csv,
 )
 from apps.primera_carga.services.mesas_pandemia import registrar_mesa_pandemia
 from core.auth_ninja import JWTAuth, ensure_roles
+from core.permissions import allowed_profesorados
 from core.models import PlanillaRegularidad
 
 primera_carga_router = Router(tags=["primera_carga"], auth=JWTAuth())
@@ -258,7 +259,7 @@ def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
             force_upgrade=payload.force_upgrade,
         )
         if result.get("warnings") and not result.get("planilla"):
-            return 400, ApiResponse(ok=False, message=result["warnings"][0], data=result)
+             return 400, ApiResponse(ok=False, message=result["warnings"][0], data=result)
 
         message = "Planilla generada (dry-run)." if payload.dry_run else "Planilla generada correctamente."
         return ApiResponse(ok=True, message=message, data=result)
@@ -296,9 +297,8 @@ class RegularidadIndividualIn(Schema):
 def registrar_regularidad_individual(request, payload: RegularidadIndividualIn):
     try:
         from apps.primera_carga.services import registrar_regularidad_individual_historica
-
         result = registrar_regularidad_individual_historica(request.user, payload.dict())
-
+        
         # Si hay warnings y no se registró nada para este individuo, devolver error con el detalle
         if result.get("warnings") and result.get("registrados", 0) == 0:
             return 400, ApiResponse(ok=False, message=result["warnings"][0], data=result)
@@ -323,20 +323,16 @@ class PlanillaRegularidadListOut(Schema):
     anio_academico: int
     created_at: str | None
 
-
 @primera_carga_router.get(
     "/regularidades/historial",
     response={200: list[PlanillaRegularidadListOut], 403: ApiResponse},
 )
 @ensure_roles(["admin", "secretaria", "bedel"])
-def listar_historial_regularidades(
-    request, anio: int | None = None, profesorado_id: int | None = None, ordering: str = "-created_at"
-):
+def listar_historial_regularidades(request, anio: int | None = None, profesorado_id: int | None = None, ordering: str = "-created_at"):
     data, error = get_historial_regularidades(request.user, anio=anio, profesorado_id=profesorado_id, ordering=ordering)
     if error:
         return 403, ApiResponse(ok=False, message=error)
     return data
-
 
 @primera_carga_router.get(
     "/regularidades/planillas/{planilla_id}/pdf",
@@ -347,12 +343,11 @@ def descargar_planilla_pdf(request, planilla_id: int):
     planilla = PlanillaRegularidad.objects.filter(id=planilla_id).first()
     if not planilla:
         return 404, ApiResponse(ok=False, message="Planilla no encontrada.")
-
+    
     # Renderizar PDF al vuelo
     from apps.primera_carga.services import _render_planilla_regularidad_pdf
-
     pdf_bytes = _render_planilla_regularidad_pdf(planilla)
-
+    
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="planilla_{planilla.codigo}.pdf"'
     return response
@@ -398,12 +393,11 @@ def actualizar_planilla_endpoint(request, planilla_id: int, payload: PlanillaReg
 # Mesas Pandemia / Notas Históricas
 # ---------------------------------------------------------------------------
 
-
 class MesaPandemiaFilaIn(Schema):
     apellido_nombre: str
     dni: str | None = None
-    nota_raw: str | None = None  # "7", "AUSENTE", "LIBRE", etc.
-    comision_obs: str | None = None  # texto libre: comisión / otro prof.
+    nota_raw: str | None = None          # "7", "AUSENTE", "LIBRE", etc.
+    comision_obs: str | None = None      # texto libre: comisión / otro prof.
     observaciones: str | None = None
 
 
@@ -411,7 +405,7 @@ class MesaPandemiaIn(Schema):
     profesorado_id: int
     materia_id: int
     fecha: date
-    tipo: str = "EXT"  # FIN, EXT, ESP
+    tipo: str = "EXT"                    # FIN, EXT, ESP
     docente_nombre: str | None = None
     folio: str | None = None
     libro: str | None = None
@@ -467,12 +461,10 @@ def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
 @ensure_roles(["admin", "secretaria", "bedel"])
 def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | None = None):
     from datetime import date
-
     from core.models import InscripcionMateriaEstudiante
-
     if not anio:
         anio = date.today().year
-
+    
     inscripciones = (
         InscripcionMateriaEstudiante.objects.filter(
             materia_id=materia_id,
@@ -485,7 +477,7 @@ def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | No
         .select_related("estudiante__persona")
         .order_by("estudiante__persona__apellido", "estudiante__persona__nombre")
     )
-
+    
     return [
         {
             "dni": insc.estudiante.dni,
@@ -502,9 +494,7 @@ def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | No
 @ensure_roles(["admin", "secretaria", "bedel"])
 def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: int, anio: int | None = None):
     from datetime import date
-
     from core.models import Comision, StaffAsignacion
-
     if not anio:
         anio = date.today().year
 
@@ -514,21 +504,17 @@ def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: 
     comisiones = Comision.objects.filter(materia_id=materia_id, anio_lectivo=anio).select_related("docente__persona")
     for com in comisiones:
         if com.docente and com.docente.persona:
-            docentes_res.append(
-                {
-                    "docente_id": com.docente.id,
-                    "nombre": f"{com.docente.persona.apellido}, {com.docente.persona.nombre}".strip(", "),
-                    "dni": com.docente.persona.dni,
-                    "rol": "profesor",
-                    "orden": 1,
-                }
-            )
+            docentes_res.append({
+                "docente_id": com.docente.id,
+                "nombre": f"{com.docente.persona.apellido}, {com.docente.persona.nombre}".strip(", "),
+                "dni": com.docente.persona.dni,
+                "rol": "profesor",
+                "orden": 1
+            })
             break  # Tomamos el primero de la comisión
 
     # 2. Buscar el bedel asignado a ese profesorado
-    bedeles = StaffAsignacion.objects.filter(
-        profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL
-    ).select_related("user__profile__persona")
+    bedeles = StaffAsignacion.objects.filter(profesorado_id=profesorado_id, rol=StaffAsignacion.Rol.BEDEL).select_related("user__profile__persona")
     orden_bedel = len(docentes_res) + 1
     for bedel in bedeles:
         persona = getattr(getattr(bedel.user, "profile", None), "persona", None)
@@ -538,10 +524,17 @@ def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: 
             nombre = f"{bedel.user.last_name}, {bedel.user.first_name}".strip(", ")
         if not nombre:
             nombre = bedel.user.username
-
-        docentes_res.append(
-            {"docente_id": None, "nombre": nombre, "dni": bedel.user.username, "rol": "bedel", "orden": orden_bedel}
-        )
+        
+        docentes_res.append({
+            "docente_id": None,
+            "nombre": nombre,
+            "dni": bedel.user.username,
+            "rol": "bedel",
+            "orden": orden_bedel
+        })
         break  # Tomamos el primer bedel
 
     return docentes_res
+
+
+

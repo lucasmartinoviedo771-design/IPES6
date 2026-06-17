@@ -48,7 +48,7 @@ class InscripcionMateriaEstudiante(models.Model):
     )
     anio = models.IntegerField()
     estado = models.CharField(max_length=4, choices=Estado.choices, default=Estado.CONFIRMADA)
-
+    
     # Datos específicos para Cambio de Comisión
     class MotivoCambio(models.TextChoices):
         SUPERPOSICION = "OVERLAP", "Superposición de materias"
@@ -60,11 +60,11 @@ class InscripcionMateriaEstudiante(models.Model):
         RECHAZADO = "RECH", "Rechazado"
 
     motivo_cambio = models.CharField(
-        max_length=10,
-        choices=MotivoCambio.choices,
-        null=True,
+        max_length=10, 
+        choices=MotivoCambio.choices, 
+        null=True, 
         blank=True,
-        help_text="Motivo por el cual se solicita el cambio de comisión.",
+        help_text="Motivo por el cual se solicita el cambio de comisión."
     )
     cambio_comision_estado = models.CharField(
         max_length=4,
@@ -74,13 +74,15 @@ class InscripcionMateriaEstudiante(models.Model):
         blank=True,
     )
     horario_laboral_metadata = models.JSONField(
-        null=True, blank=True, help_text="En caso de motivo laboral, guarda el horario declarado por el alumno."
+        null=True, 
+        blank=True,
+        help_text="En caso de motivo laboral, guarda el horario declarado por el alumno."
     )
     disposicion_numero = models.CharField(
         max_length=128,
         null=True,
         blank=True,
-        help_text="Número de disposición que autoriza el cambio (cargado por tutor).",
+        help_text="Número de disposición que autoriza el cambio (cargado por tutor)."
     )
 
     materia_origen = models.ForeignKey(
@@ -97,13 +99,11 @@ class InscripcionMateriaEstudiante(models.Model):
     )
 
     baja_fecha = models.DateField(
-        null=True,
-        blank=True,
+        null=True, blank=True,
         help_text="Fecha en que se registró la baja voluntaria.",
     )
     baja_motivo = models.TextField(
-        null=True,
-        blank=True,
+        null=True, blank=True,
         help_text="Motivo declarado por el estudiante al darse de baja.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -141,7 +141,11 @@ class InscripcionMateriaMovimiento(models.Model):
     tipo = models.CharField(max_length=3, choices=Tipo.choices)
     fecha_hora = models.DateTimeField(auto_now_add=True)
     motivo_detalle = models.TextField(null=True, blank=True)
-    operador = models.CharField(max_length=255, null=True, blank=True, help_text="Usuario o DNI que ejecutó la acción.")
+    operador = models.CharField(
+        max_length=255, 
+        null=True, blank=True, 
+        help_text="Usuario o DNI que ejecutó la acción."
+    )
 
     class Meta:
         ordering = ["-fecha_hora"]
