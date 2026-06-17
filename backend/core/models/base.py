@@ -69,6 +69,7 @@ class Docente(models.Model):
         null=True,
         blank=True,
     )
+
     @property
     def nombre(self):
         return self.persona.nombre if self.persona else ""
@@ -108,6 +109,7 @@ class UserProfile(models.Model):
     Perfil extendido para usuarios del sistema (docentes, staff, etc.)
     Proporciona funcionalidad adicional como cambio de contraseña obligatorio.
     """
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     persona = models.OneToOneField(
         "Persona",
@@ -121,9 +123,7 @@ class UserProfile(models.Model):
         help_text="Si está activo, el usuario debe cambiar la contraseña al iniciar sesión.",
     )
     credentials_sent_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        help_text="Fecha y hora en que se enviaron las credenciales por email"
+        blank=True, null=True, help_text="Fecha y hora en que se enviaron las credenciales por email"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

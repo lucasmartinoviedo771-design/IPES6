@@ -12,12 +12,12 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate
 
 from core.models import Estudiante, StaffAsignacion, VentanaHabilitacion
 from core.permissions import (
-    ensure_roles,
     ADMIN_ALLOWED_ROLES,
-    TUTORIA_ROLES,
     EQUIVALENCIAS_REVIEW_ROLES,
-    TITULOS_ROLES,
     EQUIVALENCIAS_STAFF_ROLES,
+    TITULOS_ROLES,
+    TUTORIA_ROLES,
+    ensure_roles,
 )
 
 

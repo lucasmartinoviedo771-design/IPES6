@@ -32,4 +32,6 @@ class Command(BaseCommand):
         group, _ = Group.objects.get_or_create(name="kiosk")
         user.groups.set([group])
 
-        self.stdout.write(self.style.SUCCESS(f"Usuario '{username}' {'creado' if created else 'actualizado'} correctamente."))
+        self.stdout.write(
+            self.style.SUCCESS(f"Usuario '{username}' {'creado' if created else 'actualizado'} correctamente.")
+        )

@@ -85,7 +85,6 @@ class Materia(models.Model):
         help_text="Fecha en que este EDI dejó de estar vigente. Null = activo.",
     )
 
-
     class Meta:
         verbose_name = "Materia"
         verbose_name_plural = "Materias"
@@ -94,19 +93,19 @@ class Materia(models.Model):
             models.UniqueConstraint(
                 fields=["plan_de_estudio", "anio_cursada", "nombre", "regimen"],
                 condition=models.Q(is_edi=False),
-                name="unique_materia_normal"
+                name="unique_materia_normal",
             ),
             # Restricción para EDIs (donde la fecha_inicio es parte de la identidad)
             models.UniqueConstraint(
                 fields=["plan_de_estudio", "anio_cursada", "nombre", "regimen", "fecha_inicio"],
                 condition=models.Q(is_edi=True),
-                name="unique_materia_edi"
+                name="unique_materia_edi",
             ),
             # Validación de rango de fechas
             models.CheckConstraint(
                 condition=models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=models.F("fecha_inicio")),
-                name="materia_fecha_range_valid"
-            )
+                name="materia_fecha_range_valid",
+            ),
         ]
         ordering = ["anio_cursada", "nombre"]
 
@@ -121,9 +120,7 @@ class Materia(models.Model):
         if self.is_edi:
             # Validar que no haya solapamiento de fechas para el mismo nombre de EDI en el mismo plan
             overlap = Materia.objects.filter(
-                plan_de_estudio=self.plan_de_estudio,
-                nombre=self.nombre,
-                is_edi=True
+                plan_de_estudio=self.plan_de_estudio, nombre=self.nombre, is_edi=True
             ).exclude(pk=self.pk)
 
             # Lógica de solapamiento mejorada para manejar NULLs (solapamiento infinito)
@@ -144,7 +141,7 @@ class Materia(models.Model):
                     is_overlap = False
                 if end_a and start_b and end_a < start_b:
                     is_overlap = False
-                
+
                 if is_overlap:
                     msg = f"El EDI '{self.nombre}' se solapa con otro registro."
                     if start_b or end_b:
@@ -242,12 +239,10 @@ class CorrelatividadVersion(models.Model):
         super().clean()
         if self.cohorte_desde and self.cohorte_hasta and self.cohorte_hasta < self.cohorte_desde:
             raise ValidationError("La cohorte final no puede ser anterior a la cohorte inicial.")
-        
+
         # Validar solapamiento de cohortes para el mismo plan y profesorado
         overlap = CorrelatividadVersion.objects.filter(
-            plan_de_estudio=self.plan_de_estudio,
-            profesorado=self.profesorado,
-            activo=True
+            plan_de_estudio=self.plan_de_estudio, profesorado=self.profesorado, activo=True
         ).exclude(pk=self.pk)
 
         for other in overlap:
@@ -262,9 +257,11 @@ class CorrelatividadVersion(models.Model):
                 is_overlap = False
             if end_a and start_b > end_a:
                 is_overlap = False
-            
+
             if is_overlap:
-                raise ValidationError(f"Esta versión se solapa con '{other.nombre}' (Cohortes {start_b} a {end_b or '...'}).")
+                raise ValidationError(
+                    f"Esta versión se solapa con '{other.nombre}' (Cohortes {start_b} a {end_b or '...'})."
+                )
 
     def __str__(self) -> str:
         rango = f"{self.cohorte_desde}+" if self.cohorte_hasta is None else f"{self.cohorte_desde}-{self.cohorte_hasta}"

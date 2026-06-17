@@ -10,15 +10,20 @@ Reglas Generales de Examen:
 """
 
 from __future__ import annotations
+
 from datetime import date, datetime
-from django.shortcuts import get_object_or_404
+
 from django.contrib.auth.models import AnonymousUser
+from django.shortcuts import get_object_or_404
+
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth
+from apps.common.date_utils import calcular_limite_baja_mesa, format_date, format_datetime
 from apps.estudiantes.api.helpers import _acta_condicion
+from core.auth_ninja import JWTAuth
 from core.models import (
     Correlatividad,
     Estudiante,
+    InscripcionMateriaEstudiante,
     InscripcionMesa,
     Materia,
     MesaExamen,
@@ -26,44 +31,57 @@ from core.models import (
     Preinscripcion,
     Profesorado,
     Regularidad,
-    InscripcionMateriaEstudiante,
     SolicitudMesa,
     VentanaHabilitacion,
 )
-from apps.common.date_utils import format_date, format_datetime, calcular_limite_baja_mesa
+
 from ..schemas import (
+    BajaMesaIn,
+    BajaMesaOut,
     InscripcionMesaIn,
     InscripcionMesaOut,
     MesaExamenIn,
     MesaExamenOut,
-    BajaMesaIn,
-    BajaMesaOut,
     SolicitudMesaIn,
     SolicitudMesaOut,
 )
 from .helpers import (
     _add_years,
     _correlatividades_qs,
-    _tiene_aprobacion_valida,
     _ensure_estudiante_access,
     _listar_carreras_detalle,
     _resolve_estudiante,
+    _tiene_aprobacion_valida,
 )
 from .router import estudiantes_router
 
 MESA_TIPOS_ORDINARIOS = (MesaExamen.Tipo.FINAL, MesaExamen.Tipo.ESPECIAL, MesaExamen.Tipo.EXTRAORDINARIA)
 
 
-def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_examen: date | None = None, mesa_tipo: str | None = None, mesa: MesaExamen | None = None, bypass_legajo: bool = False, bypass_correlativas: bool = False, bypass_regularidad: bool = False, bypass_historial: bool = False):
+def _check_academic_eligibility(
+    est,
+    materia: Materia,
+    modalidad: str,
+    fecha_examen: date | None = None,
+    mesa_tipo: str | None = None,
+    mesa: MesaExamen | None = None,
+    bypass_legajo: bool = False,
+    bypass_correlativas: bool = False,
+    bypass_regularidad: bool = False,
+    bypass_historial: bool = False,
+):
     """
     Unified academic validation for exam enrollment or request.
     Returns (is_eligible, error_message, extra_data)
     """
     from datetime import date, timedelta
+
     from core.models import (
-        ActaExamenEstudiante, Regularidad, Preinscripcion, 
-        InscripcionMesa, InscripcionMateriaEstudiante,
-        Correlatividad, Materia
+        ActaExamenEstudiante,
+        Correlatividad,
+        InscripcionMesa,
+        Materia,
+        Regularidad,
     )
 
     if mesa:
@@ -81,7 +99,8 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
             break
     if not aprobado_historial:
         aprobado_historial = InscripcionMesa.objects.filter(
-            estudiante=est, mesa__materia=materia,
+            estudiante=est,
+            mesa__materia=materia,
             condicion=InscripcionMesa.Condicion.APROBADO,
         ).exists()
     if aprobado_historial and not bypass_historial:
@@ -101,6 +120,7 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                 legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
                 if not legajo_ok:
                     from core.models import ProrrogaTituloSecundario
+
                     prorroga_vigente = ProrrogaTituloSecundario.objects.filter(
                         estudiante=est,
                         fecha_vencimiento__gte=date.today(),
@@ -110,7 +130,11 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                         pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first()
                         cl = getattr(pre, "checklist", None) if pre else None
                         if not (cl and cl.certificado_titulo_en_tramite):
-                            return False, "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.", {}
+                            return (
+                                False,
+                                "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.",
+                                {},
+                            )
 
             # 2. Verificación de Regularidad
             if not bypass_regularidad:
@@ -120,40 +144,58 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                     if _tiene_aprobacion_valida(est, materia):
                         return False, "Materia ya aprobada/promocionada en cursada.", {}
                     return False, "No posee regularidad vigente en la materia.", {}
-    
+
                 if not reg.fecha_cierre:
                     return False, "Regularidad sin fecha de cierre válida.", {}
-    
+
                 fecha_base = _add_years(reg.fecha_cierre, 2)
                 allowed_until = (fecha_base + timedelta(days=60)) if fecha_base else None
                 if fecha_examen and allowed_until and fecha_examen > allowed_until:
-                    return False, f"La vigencia de su regularidad ha expirado. Venció el {format_date(allowed_until)}.", {}
+                    return (
+                        False,
+                        f"La vigencia de su regularidad ha expirado. Venció el {format_date(allowed_until)}.",
+                        {},
+                    )
             else:
                 reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
-                allowed_until = None # no aplica si bypass
+                allowed_until = None  # no aplica si bypass
 
             # 3. Conteo de Intentos (excluye la mesa actual para no contarse a sí mismo)
             if not bypass_regularidad and reg:
                 intentos_qs = InscripcionMesa.objects.filter(
-                    estudiante=est, cuenta_para_intentos=True,
-                    mesa__materia=materia, mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
+                    estudiante=est,
+                    cuenta_para_intentos=True,
+                    mesa__materia=materia,
+                    mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
                     mesa__fecha__gte=reg.fecha_cierre,
                 )
                 if allowed_until:
                     intentos_qs = intentos_qs.filter(mesa__fecha__lte=allowed_until)
-                
+
                 if mesa:
                     intentos_qs = intentos_qs.exclude(mesa=mesa)
-                    
+
                 if intentos_qs.count() >= 3:
-                    return False, "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.", {}
+                    return (
+                        False,
+                        "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.",
+                        {},
+                    )
 
             # 4a. Correlativas de cursada caídas (resguardo dinámico)
             # Verifica que las correlativas que habilitaban cursar esta materia
             # siguen siendo válidas (cubre Regularidad, Equivalencia y Acta).
             if not bypass_correlativas and reg:
-                req_cursar_reg = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
-                req_cursar_apr = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est).values_list("materia_correlativa_id", flat=True))
+                req_cursar_reg = list(
+                    _correlatividades_qs(
+                        materia, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est
+                    ).values_list("materia_correlativa_id", flat=True)
+                )
+                req_cursar_apr = list(
+                    _correlatividades_qs(
+                        materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est
+                    ).values_list("materia_correlativa_id", flat=True)
+                )
                 autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
                 caidas = []
 
@@ -164,43 +206,63 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
                     if not m_obj:
                         continue
                     # REGULAR_PARA_CURSAR: alcanza con regularidad vigente O aprobación válida
-                    reg_corr_reciente = Regularidad.objects.filter(
-                        estudiante=est, materia_id=mid,
-                        situacion=Regularidad.Situacion.REGULAR,
-                        en_resguardo=False,
-                    ).order_by("-fecha_cierre").first()
-                    
+                    reg_corr_reciente = (
+                        Regularidad.objects.filter(
+                            estudiante=est,
+                            materia_id=mid,
+                            situacion=Regularidad.Situacion.REGULAR,
+                            en_resguardo=False,
+                        )
+                        .order_by("-fecha_cierre")
+                        .first()
+                    )
+
                     tiene_regular_vigente = False
                     if reg_corr_reciente:
                         from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+
                         limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg_corr_reciente)
                         fecha_comparacion = fecha_examen if fecha_examen else date.today()
                         if fecha_comparacion <= limite and intentos < max_intentos:
                             tiene_regular_vigente = True
-                    if not tiene_regular_vigente and not _tiene_aprobacion_valida(est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                    if not tiene_regular_vigente and not _tiene_aprobacion_valida(
+                        est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids
+                    ):
                         caidas.append(f"{m_obj.nombre} (correlativa caída o en resguardo)")
 
                 for mid in req_cursar_apr:
                     if mid in autorizadas_ids:
                         continue
                     m_obj = Materia.objects.filter(id=mid).first()
-                    if not m_obj or not _tiene_aprobacion_valida(est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                    if not m_obj or not _tiene_aprobacion_valida(
+                        est, m_obj, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids
+                    ):
                         nombre = m_obj.nombre if m_obj else f"Materia {mid}"
                         caidas.append(f"{nombre} (aprobación requerida caída o en resguardo)")
 
                 if caidas:
-                    return False, "Correlativas de cursada en resguardo o caídas. No se puede rendir.", {"caidas": caidas}
+                    return (
+                        False,
+                        "Correlativas de cursada en resguardo o caídas. No se puede rendir.",
+                        {"caidas": caidas},
+                    )
 
             # 4. Correlatividades (omitido si el staff gestiona el pedido)
             if not bypass_correlativas:
-                req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
+                req_ids = list(
+                    _correlatividades_qs(
+                        materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est
+                    ).values_list("materia_correlativa_id", flat=True)
+                )
                 if req_ids:
                     faltan = []
                     autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
                     for mid in req_ids:
                         m = Materia.objects.filter(id=mid).first()
                         nombre = m.nombre if m else f"Materia {mid}"
-                        if not m or not _tiene_aprobacion_valida(est, m, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                        if not m or not _tiene_aprobacion_valida(
+                            est, m, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids
+                        ):
                             faltan.append(nombre)
                     if faltan:
                         return False, "Faltan correlativas aprobadas para rendir final.", {"faltantes": faltan}
@@ -212,35 +274,54 @@ def _check_academic_eligibility(est, materia: Materia, modalidad: str, fecha_exa
 
         current_year = date.today().year
         is_enrolled = InscripcionMateriaEstudiante.objects.filter(
-            estudiante=est, materia=materia, anio=current_year,
-            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE]
+            estudiante=est,
+            materia=materia,
+            anio=current_year,
+            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
         ).exists()
         if is_enrolled:
-             return False, "No puede rendir LIBRE mientras cursa la materia actualmente.", {}
+            return False, "No puede rendir LIBRE mientras cursa la materia actualmente.", {}
 
         reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
         if reg and reg.situacion == Regularidad.Situacion.REGULAR:
             if not reg.fecha_cierre:
-                 return False, "Regularidad sin fecha de cierre válida.", {}
+                return False, "Regularidad sin fecha de cierre válida.", {}
             two_years = _add_years(reg.fecha_cierre, 2)
-            next_call = MesaExamen.objects.filter(materia=materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years).order_by("fecha").values_list("fecha", flat=True).first() if two_years else None
+            next_call = (
+                MesaExamen.objects.filter(materia=materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
+                .order_by("fecha")
+                .values_list("fecha", flat=True)
+                .first()
+                if two_years
+                else None
+            )
             allowed_until = next_call or two_years
             if fecha_examen and allowed_until and fecha_examen <= allowed_until:
                 return False, "Posee regularidad vigente. Debe inscribirse en modalidad REGULAR.", {}
 
         # Correlatividades para LIBRE (omitido si el staff gestiona el pedido)
         if not bypass_correlativas:
-            req_ids = list(_correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list("materia_correlativa_id", flat=True))
+            req_ids = list(
+                _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est).values_list(
+                    "materia_correlativa_id", flat=True
+                )
+            )
             if req_ids:
                 faltan = []
                 autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
                 for mid in req_ids:
                     m = Materia.objects.filter(id=mid).first()
                     nombre = m.nombre if m else f"Materia {mid}"
-                    if not m or not _tiene_aprobacion_valida(est, m, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids):
+                    if not m or not _tiene_aprobacion_valida(
+                        est, m, fecha_ref=fecha_examen, autorizadas_ids=autorizadas_ids
+                    ):
                         faltan.append(nombre)
                 if faltan:
-                    return False, "Faltan correlativas (aprobadas o promocionadas) para rendir LIBRE.", {"faltantes": faltan}
+                    return (
+                        False,
+                        "Faltan correlativas (aprobadas o promocionadas) para rendir LIBRE.",
+                        {"faltantes": faltan},
+                    )
 
     return True, "", {}
 
@@ -261,11 +342,11 @@ def listar_mesas_estudiante(
 ):
     """
     Lista las mesas de examen disponibles según los criterios de búsqueda y perfil del alumno.
-    
+
     Lógica de visualización:
     - Personal (Bedeles/Admin): Ven todas las mesas (pasadas y futuras).
     - Alumnos: Solo ven mesas futuras dentro de una 'VentanaHabilitacion' activa de tipo MESAS.
-    - Filtro 'solo_rendibles': Realiza una pre-validación académica pesada para mostrar solo las mesas 
+    - Filtro 'solo_rendibles': Realiza una pre-validación académica pesada para mostrar solo las mesas
       en las que el alumno realmente cumple con las condiciones administrativas (vigencia y correlatividad).
     """
     _ensure_estudiante_access(request, dni)
@@ -302,14 +383,12 @@ def listar_mesas_estudiante(
             plan_profesorado = carreras_est[0]
 
     qs = MesaExamen.objects.select_related(
-        "materia__plan_de_estudio__profesorado",
-        "docente_presidente",
-        "docente_vocal1",
-        "docente_vocal2"
+        "materia__plan_de_estudio__profesorado", "docente_presidente", "docente_vocal1", "docente_vocal2"
     ).all()
 
     # Restricciones para Alumnos
-    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+
     es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
 
     # Barrido automático antes de listar para Alumnos (Removido por R2)
@@ -325,11 +404,16 @@ def listar_mesas_estudiante(
         # Alumnos: Solo ven mesas dentro de una ventana de habilitación activa.
         if not ventana_id:
             from core.models import VentanaHabilitacion
+
             ventanas_activas = VentanaHabilitacion.objects.filter(
-                tipo__in=[VentanaHabilitacion.Tipo.MESAS_FINALES, VentanaHabilitacion.Tipo.MESAS_EXTRA, VentanaHabilitacion.Tipo.INSCRIPCION],
+                tipo__in=[
+                    VentanaHabilitacion.Tipo.MESAS_FINALES,
+                    VentanaHabilitacion.Tipo.MESAS_EXTRA,
+                    VentanaHabilitacion.Tipo.INSCRIPCION,
+                ],
                 activo=True,
                 desde__lte=date.today(),
-                hasta__gte=date.today()
+                hasta__gte=date.today(),
             )
             qs = qs.filter(ventana__in=ventanas_activas)
         else:
@@ -357,6 +441,7 @@ def listar_mesas_estudiante(
     mesas_ext_permitidas: set[int] = set()
     if est:
         from core.models import SolicitudMesa
+
         mesas_ext_permitidas = set(
             SolicitudMesa.objects.filter(
                 estudiante=est,
@@ -369,21 +454,26 @@ def listar_mesas_estudiante(
     aprobadas_rendir_set = set()
     if estudiante_para_rendir:
         from core.models import ActaExamenEstudiante
+
         actas = ActaExamenEstudiante.objects.filter(dni=estudiante_para_rendir.dni)
         for a in actas:
             if a.calificacion_definitiva or a.permiso_examen == "EQUIV":
                 aprobadas_rendir_set.add(a.acta.materia_id)
         regs_aprob = Regularidad.objects.filter(
-            estudiante=estudiante_para_rendir, 
-            situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO]
+            estudiante=estudiante_para_rendir,
+            situacion__in=[Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO],
         )
         for r in regs_aprob:
             aprobadas_rendir_set.add(r.materia_id)
 
     # Procesamiento y validación fila a fila
     for m in qs.order_by("fecha", "hora_desde"):
-        req_aprob = list(_correlatividades_qs(m.materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante_para_rendir).values_list("materia_correlativa_id", flat=True))
-        
+        req_aprob = list(
+            _correlatividades_qs(
+                m.materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, estudiante_para_rendir
+            ).values_list("materia_correlativa_id", flat=True)
+        )
+
         row = {
             "id": m.id,
             "materia": {"id": m.materia_id, "nombre": m.materia.nombre, "anio": m.materia.anio_cursada},
@@ -397,14 +487,18 @@ def listar_mesas_estudiante(
             "cupo": m.cupo,
             "correlativas_aprob": req_aprob,
             "plan_id": m.materia.plan_de_estudio_id if m.materia_id else None,
-            "profesorado_id": (m.materia.plan_de_estudio.profesorado_id if m.materia_id and m.materia.plan_de_estudio_id else None),
+            "profesorado_id": (
+                m.materia.plan_de_estudio.profesorado_id if m.materia_id and m.materia.plan_de_estudio_id else None
+            ),
             "tribunal": {
-                "presidente": f"{m.docente_presidente.apellido}, {m.docente_presidente.nombre}" if m.docente_presidente else None,
+                "presidente": f"{m.docente_presidente.apellido}, {m.docente_presidente.nombre}"
+                if m.docente_presidente
+                else None,
                 "vocal1": f"{m.docente_vocal1.apellido}, {m.docente_vocal1.nombre}" if m.docente_vocal1 else None,
                 "vocal2": f"{m.docente_vocal2.apellido}, {m.docente_vocal2.nombre}" if m.docente_vocal2 else None,
-            }
+            },
         }
-        
+
         # Mesas EXT: el alumno queda inscripto automáticamente al crearse — no deben aparecer para inscripción manual
         if est and m.tipo == MesaExamen.Tipo.EXTRAORDINARIA:
             continue
@@ -414,7 +508,9 @@ def listar_mesas_estudiante(
                 continue
 
         if solo_rendibles and estudiante_para_rendir:
-            is_ok, _, _ = _check_academic_eligibility(estudiante_para_rendir, materia=m.materia, modalidad=m.modalidad, mesa=m)
+            is_ok, _, _ = _check_academic_eligibility(
+                estudiante_para_rendir, materia=m.materia, modalidad=m.modalidad, mesa=m
+            )
             if not is_ok:
                 continue
 
@@ -441,25 +537,32 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
         return 404, {"message": "Mesa no encontrada"}
 
     # --- VALIDACIÓN UNIFICADA ---
-    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+
     es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
 
     # Validar que la ventana esté activa y dentro de fecha (solo para alumnos)
     if not es_staff:
         from datetime import date as _date
+
         hoy = _date.today()
         ventana = mesa.ventana
         if not ventana or not ventana.activo:
             return 400, {"message": "La inscripción no está habilitada para esta mesa."}
         if hoy < ventana.desde or hoy > ventana.hasta:
-            return 400, {"message": f"La inscripción solo está habilitada entre el {ventana.desde.strftime('%d/%m/%Y')} y el {ventana.hasta.strftime('%d/%m/%Y')}."}
+            return 400, {
+                "message": f"La inscripción solo está habilitada entre el {ventana.desde.strftime('%d/%m/%Y')} y el {ventana.hasta.strftime('%d/%m/%Y')}."
+            }
 
     is_ok, msg, extra = _check_academic_eligibility(
-        est, materia=mesa.materia, modalidad=mesa.modalidad, mesa=mesa,
+        est,
+        materia=mesa.materia,
+        modalidad=mesa.modalidad,
+        mesa=mesa,
         bypass_legajo=bool(es_staff),
         bypass_correlativas=bool(es_staff),
         bypass_regularidad=bool(es_staff),
-        bypass_historial=bool(es_staff)
+        bypass_historial=bool(es_staff),
     )
     if not is_ok:
         return 400, {"message": msg, **extra}
@@ -494,11 +597,7 @@ def baja_mesa(request, payload: BajaMesaIn):
         return 404, {"message": "Mesa no encontrada"}
 
     # 3. Buscar la inscripción activa
-    ins = InscripcionMesa.objects.filter(
-        mesa=mesa,
-        estudiante=est,
-        estado=InscripcionMesa.Estado.INSCRIPTO
-    ).first()
+    ins = InscripcionMesa.objects.filter(mesa=mesa, estudiante=est, estado=InscripcionMesa.Estado.INSCRIPTO).first()
 
     if not ins:
         return 400, {"message": "No tiene inscripción activa en esta mesa"}
@@ -527,7 +626,7 @@ def baja_mesa(request, payload: BajaMesaIn):
     return {
         "message": "Inscripción cancelada exitosamente.",
         "mesa_id": mesa.id,
-        "limite_baja": format_datetime(limite_baja)
+        "limite_baja": format_datetime(limite_baja),
     }
 
 
@@ -544,13 +643,13 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
     est = _resolve_estudiante(request, payload.dni)
     if not est:
         return 400, {"message": "No se encontró el estudiante"}
-    
+
     materia = get_object_or_404(Materia, id=payload.materia_id)
     ventana = get_object_or_404(VentanaHabilitacion, id=payload.ventana_id)
-    
+
     if ventana.tipo != VentanaHabilitacion.Tipo.MESAS_EXTRA:
         return 400, {"message": "Solo se pueden enviar solicitudes para mesas extraordinarias."}
-    
+
     if not ventana.activo:
         return 400, {"message": "El período de solicitudes no está activo."}
 
@@ -558,18 +657,25 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
     modalidad = payload.modalidad
     if not modalidad:
         reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
-        modalidad = MesaExamen.Modalidad.REGULAR if (reg and reg.situacion == Regularidad.Situacion.REGULAR) else MesaExamen.Modalidad.LIBRE
+        modalidad = (
+            MesaExamen.Modalidad.REGULAR
+            if (reg and reg.situacion == Regularidad.Situacion.REGULAR)
+            else MesaExamen.Modalidad.LIBRE
+        )
 
     # --- VALIDACIÓN ACADÉMICA ---
-    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+
     es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
     is_ok, msg, extra = _check_academic_eligibility(
-        est, materia=materia, modalidad=modalidad,
+        est,
+        materia=materia,
+        modalidad=modalidad,
         mesa_tipo=MesaExamen.Tipo.EXTRAORDINARIA,
         bypass_legajo=bool(es_staff),
         bypass_correlativas=bool(es_staff),
         bypass_regularidad=bool(es_staff),
-        bypass_historial=bool(es_staff)
+        bypass_historial=bool(es_staff),
     )
     if not is_ok:
         return 400, {"message": f"No cumple las condiciones: {msg}", **extra}
@@ -578,15 +684,12 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
         estudiante=est,
         materia=materia,
         ventana=ventana,
-        defaults={
-            "observaciones": payload.observaciones,
-            "modalidad": modalidad
-        }
+        defaults={"observaciones": payload.observaciones, "modalidad": modalidad},
     )
-    
+
     if not created:
         return 400, {"message": "Ya envió una solicitud para esta materia en este período."}
-        
+
     return {"message": "Solicitud enviada exitosamente. Se le notificará cuando la mesa sea armada."}
 
 
@@ -600,9 +703,13 @@ def listar_solicitudes_estudiante(request, dni: str | None = None):
     est = _resolve_estudiante(request, dni)
     if not est:
         return []
-        
-    qs = SolicitudMesa.objects.filter(estudiante=est).select_related("materia", "mesa_asignada").order_by("-fecha_solicitud")
-    
+
+    qs = (
+        SolicitudMesa.objects.filter(estudiante=est)
+        .select_related("materia", "mesa_asignada")
+        .order_by("-fecha_solicitud")
+    )
+
     return [
         {
             "id": s.id,
@@ -614,7 +721,7 @@ def listar_solicitudes_estudiante(request, dni: str | None = None):
             "modalidad": s.modalidad,
             "modalidad_display": s.get_modalidad_display(),
             "observaciones": s.observaciones,
-            "mesa_asignada_id": s.mesa_asignada_id
+            "mesa_asignada_id": s.mesa_asignada_id,
         }
         for s in qs
     ]
@@ -629,14 +736,15 @@ def cancelar_solicitud(request, solicitud_id: int):
     Permite al estudiante cancelar su propia solicitud si aún no ha sido procesada (Pendiente).
     """
     from django.shortcuts import get_object_or_404
+
     solicitud = get_object_or_404(SolicitudMesa, id=solicitud_id)
-    
+
     # Seguridad: solo el dueño de la solicitud (o un administrativo) puede borrarla
     _ensure_estudiante_access(request, solicitud.estudiante.dni)
-    
+
     if solicitud.estado != SolicitudMesa.Estado.PENDIENTE:
         return 400, {"message": "Solo se pueden cancelar solicitudes en estado Pendiente."}
-        
+
     solicitud.delete()
     return {"message": "Solicitud cancelada correctamente."}
 
@@ -646,7 +754,9 @@ def cancelar_solicitud(request, solicitud_id: int):
     response=list[dict],
     auth=JWTAuth(),
 )
-def listar_materias_solicitables(request, dni: str | None = None, modalidad: str | None = None, plan_id: int | None = None):
+def listar_materias_solicitables(
+    request, dni: str | None = None, modalidad: str | None = None, plan_id: int | None = None
+):
     """
     Lista las materias del plan del alumno que están en condiciones de ser solicitadas
     para un llamado extraordinario.
@@ -660,10 +770,8 @@ def listar_materias_solicitables(request, dni: str | None = None, modalidad: str
     if plan_id:
         materias_qs = Materia.objects.filter(plan_de_estudio_id=plan_id)
     else:
-        materias_qs = Materia.objects.filter(
-            plan_de_estudio__profesorado__in=est.carreras.all()
-        )
-    
+        materias_qs = Materia.objects.filter(plan_de_estudio__profesorado__in=est.carreras.all())
+
     materias_qs = materias_qs.select_related("plan_de_estudio")
 
     # 2. Filtro de Formato (Excluir lo que no tiene final tradicional)
@@ -671,11 +779,12 @@ def listar_materias_solicitables(request, dni: str | None = None, modalidad: str
         Materia.FormatoMateria.PRACTICA,
         Materia.FormatoMateria.TALLER,
         Materia.FormatoMateria.LABORATORIO,
-        Materia.FormatoMateria.SEMINARIO
+        Materia.FormatoMateria.SEMINARIO,
     ]
     materias_qs = materias_qs.exclude(formato__in=formatos_excluidos)
 
-    from .helpers import _user_has_roles, ADMIN_ALLOWED_ROLES
+    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+
     es_staff = bool(dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES))
 
     solicitables = []
@@ -699,13 +808,15 @@ def listar_materias_solicitables(request, dni: str | None = None, modalidad: str
             )
 
             if is_ok:
-                solicitables.append({
-                    "materia_id": m.id,
-                    "materia_nombre": m.nombre,
-                    "anio": m.anio_cursada,
-                    "plan_resolucion": m.plan_de_estudio.resolucion,
-                    "modalidad": mod,
-                })
+                solicitables.append(
+                    {
+                        "materia_id": m.id,
+                        "materia_nombre": m.nombre,
+                        "anio": m.anio_cursada,
+                        "plan_resolucion": m.plan_de_estudio.resolucion,
+                        "modalidad": mod,
+                    }
+                )
 
     return solicitables
 

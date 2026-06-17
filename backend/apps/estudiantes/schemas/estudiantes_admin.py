@@ -1,12 +1,13 @@
 from typing import Any
 
-from ninja import Schema, Field
+from ninja import Field, Schema
 
 from apps.estudiantes.schemas.regularidad import RegularidadEstudianteOut
 
 # ==========================================
 # 11. ESTUDIANTES (ADMINISTRACIÓN)
 # ==========================================
+
 
 class RegularidadResumen(Schema):
     id: int
@@ -26,6 +27,7 @@ class RegularidadResumen(Schema):
     vigente: bool | None = None
     dias_restantes: int | None = None
 
+
 class EstudianteAdminDocumentacion(Schema):
     dni_legalizado: Any | None = None
     fotos_4x4: Any | None = None
@@ -43,6 +45,7 @@ class EstudianteAdminDocumentacion(Schema):
     incumbencia: Any | None = None
     articulo_7: Any | None = None
 
+
 class CarreraStatus(Schema):
     profesorado_id: int
     nombre: str
@@ -53,6 +56,7 @@ class CarreraStatus(Schema):
     documentacion: EstudianteAdminDocumentacion | None = None
     curso_introductorio_aprobado: bool = False
     libreta_entregada: bool = False
+
 
 class EstudianteAdminListItem(Schema):
     dni: str
@@ -68,9 +72,11 @@ class EstudianteAdminListItem(Schema):
     anio_ingreso: int | None = None
     activo: bool = True
 
+
 class EstudianteAdminListResponse(Schema):
     total: int
     items: list[EstudianteAdminListItem] = Field(default_factory=list)
+
 
 class EstudianteDocumentacionListItem(Schema):
     dni: str
@@ -87,9 +93,11 @@ class EstudianteDocumentacionListItem(Schema):
     titulo_secundario_ok: bool
     articulo_7: bool
 
+
 class EstudianteDocumentacionListResponse(Schema):
     total: int
     items: list[EstudianteDocumentacionListItem] = Field(default_factory=list)
+
 
 class EstudianteDocumentacionUpdateIn(Schema):
     curso_introductorio_aprobado: bool | None = None
@@ -101,12 +109,15 @@ class EstudianteDocumentacionUpdateIn(Schema):
     titulo_secundario_ok: bool | None = None
     articulo_7: bool | None = None
 
+
 class EstudianteDocumentacionBulkUpdateItem(Schema):
     dni: str
     changes: EstudianteDocumentacionUpdateIn
 
+
 class EstudianteDocumentacionBulkUpdateIn(Schema):
     updates: list[EstudianteDocumentacionBulkUpdateItem]
+
 
 class EstudianteAdminDetail(Schema):
     dni: str
@@ -169,6 +180,7 @@ class EstudianteAdminDetail(Schema):
     horario_trabajo: str | None = None
     domicilio_trabajo: str | None = None
 
+
 EstudianteAdminDetail.model_rebuild()
 
 
@@ -178,6 +190,7 @@ class CarreraUpdateIn(Schema):
     force_baja_materias: bool = False
     nombre: str | None = None
     condicion: str | None = None
+
 
 class EstudianteAdminUpdateIn(Schema):
     dni: str | None = None
@@ -234,7 +247,6 @@ class EstudianteAdminUpdateIn(Schema):
     domicilio_trabajo: str | None = None
     # Updates for specific careers
     carreras_update: list[CarreraUpdateIn] | None = None
-
 
 
 class AutorizarRendirIn(Schema):

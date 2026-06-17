@@ -1,17 +1,17 @@
 from datetime import date
+
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from ninja import Router, Schema, Body
+from ninja import Body, Router, Schema
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
+from apps.estudiantes.schemas import (
+    ActaOralListItemSchema,
+    ActaOralSchema,
+)
 from core.auth_ninja import JWTAuth
 from core.models import InscripcionMesa, MesaActaOral, MesaExamen
-
-from apps.estudiantes.schemas import (
-    ActaOralSchema,
-    ActaOralListItemSchema,
-)
 
 # ==============================================================================
 # LOGIC & ENDPOINTS
@@ -19,11 +19,10 @@ from apps.estudiantes.schemas import (
 
 router = Router(tags=["carga_notas"])
 
+
 def _get_inscripcion_mesa_or_404(mesa_id: int, inscripcion_id: int) -> InscripcionMesa:
     inscripcion = (
-        InscripcionMesa.objects.select_related("mesa", "estudiante")
-        .filter(id=inscripcion_id, mesa_id=mesa_id)
-        .first()
+        InscripcionMesa.objects.select_related("mesa", "estudiante").filter(id=inscripcion_id, mesa_id=mesa_id).first()
     )
     if not inscripcion:
         raise HttpError(404, "La inscripcion indicada no pertenece a la mesa seleccionada.")
@@ -67,20 +66,14 @@ def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaO
         inscripcion = _get_inscripcion_mesa_or_404(mesa_id, inscripcion_id)
     except HttpError as exc:
         return exc.status_code, ApiResponse(ok=False, message=str(exc))
-        
+
     if inscripcion.estudiante.dni == getattr(request.user, "username", ""):
         return 403, ApiResponse(ok=False, message="No tienes permitido cargar o modificar tus propias actas orales.")
 
     temas_estudiante = [
-        {"tema": item.tema, "score": item.score}
-        for item in (payload.temas_estudiante or [])
-        if item.tema
+        {"tema": item.tema, "score": item.score} for item in (payload.temas_estudiante or []) if item.tema
     ]
-    temas_docente = [
-        {"tema": item.tema, "score": item.score}
-        for item in (payload.temas_docente or [])
-        if item.tema
-    ]
+    temas_docente = [{"tema": item.tema, "score": item.score} for item in (payload.temas_docente or []) if item.tema]
 
     MesaActaOral.objects.update_or_create(
         inscripcion=inscripcion,
@@ -144,8 +137,9 @@ def listar_actas_orales(request, mesa_id: int):
     auth=JWTAuth(),
 )
 def descargar_acta_oral_pdf(request, mesa_id: int, inscripcion_id: int):
-    from django.conf import settings
     import os
+
+    from django.conf import settings
     from weasyprint import HTML
 
     try:
@@ -172,30 +166,30 @@ def descargar_acta_oral_pdf(request, mesa_id: int, inscripcion_id: int):
             return ""
         return f"{d.persona.apellido.upper()}, {d.persona.nombre}" if d.persona else ""
 
-    logo_left  = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
+    logo_left = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
     logo_right = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
 
     fecha_str = acta.fecha.strftime("%d/%m/%Y") if acta.fecha else ""
 
     context = {
-        "logo_left_path":  logo_left,
+        "logo_left_path": logo_left,
         "logo_right_path": logo_right,
-        "acta_numero":     acta.acta_numero or "",
-        "folio_numero":    acta.folio_numero or "",
-        "fecha":           fecha_str,
-        "carrera":         profesorado.nombre if profesorado else "",
+        "acta_numero": acta.acta_numero or "",
+        "folio_numero": acta.folio_numero or "",
+        "fecha": fecha_str,
+        "carrera": profesorado.nombre if profesorado else "",
         "unidad_curricular": materia.nombre if materia else "",
-        "curso":           mesa.codigo or acta.curso or "",
-        "estudiante":      f"{est_nombre} - DNI {estudiante.dni}",
+        "curso": mesa.codigo or acta.curso or "",
+        "estudiante": f"{est_nombre} - DNI {estudiante.dni}",
         "tribunal": {
             "presidente": docente_nombre(pres),
-            "vocal1":     docente_nombre(voc1),
-            "vocal2":     docente_nombre(voc2),
+            "vocal1": docente_nombre(voc1),
+            "vocal2": docente_nombre(voc2),
         },
         "temas_estudiante": acta.temas_alumno or [],
-        "temas_docente":    acta.temas_docente or [],
-        "nota_final":       acta.nota_final or "",
-        "observaciones":    acta.observaciones or "",
+        "temas_docente": acta.temas_docente or [],
+        "nota_final": acta.nota_final or "",
+        "observaciones": acta.observaciones or "",
     }
 
     html_string = render_to_string("core/acta_oral_pdf.html", context)

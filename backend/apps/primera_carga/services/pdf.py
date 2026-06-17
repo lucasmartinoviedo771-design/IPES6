@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import io
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape
 
@@ -24,6 +25,7 @@ from core.models import (
     PlanillaRegularidad,
     Regularidad,
 )
+
 
 def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     buffer = io.BytesIO()
@@ -105,11 +107,11 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         try:
             if "Ã" in s:
                 try:
-                    s = s.encode('latin1').decode('utf-8')
+                    s = s.encode("latin1").decode("utf-8")
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     pass
                 try:
-                    s = s.encode('utf-8').decode('utf-8')
+                    s = s.encode("utf-8").decode("utf-8")
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     pass
         except:
@@ -238,12 +240,10 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         fontSize=12,
         alignment=TA_CENTER,
         spaceAfter=10,
-        fontName="Helvetica-Bold"
+        fontName="Helvetica-Bold",
     )
 
-    header_value_style = ParagraphStyle(
-        "HeaderValue", parent=styles["Normal"], fontSize=8
-    )
+    header_value_style = ParagraphStyle("HeaderValue", parent=styles["Normal"], fontSize=8)
 
     color_header = colors.HexColor("#d9e2f3")
     color_promocion = colors.HexColor("#c6e0b4")
@@ -254,12 +254,18 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
 
     def get_situacion_color(codigo):
         c = (codigo or "").upper()
-        if "PRO" in c: return color_promocion
-        if "REGULAR" in c or c == "REG": return color_regular
-        if "APR" in c: return color_aprobado
-        if "LBI" in c or "LIBRE-I" in c: return color_libre_i
-        if "LAT" in c or "LIBRE-AT" in c: return color_libre_i
-        if "DPA" in c or "DTP" in c or "DESAPROBADO" in c: return color_desaprobado
+        if "PRO" in c:
+            return color_promocion
+        if "REGULAR" in c or c == "REG":
+            return color_regular
+        if "APR" in c:
+            return color_aprobado
+        if "LBI" in c or "LIBRE-I" in c:
+            return color_libre_i
+        if "LAT" in c or "LIBRE-AT" in c:
+            return color_libre_i
+        if "DPA" in c or "DTP" in c or "DESAPROBADO" in c:
+            return color_desaprobado
         return None
 
     elements.append(Paragraph("PLANILLA DE REGULARIDAD Y PROMOCIÓN", doc_title_style))
@@ -267,7 +273,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     docentes_qs = planilla.docentes.all().order_by("orden", "id")
     profesores_qs = docentes_qs.filter(rol="profesor")
     bedel_docente = docentes_qs.filter(rol="bedel").first()
-    
+
     if profesores_qs.exists():
         docente_nombre = " / ".join([p.nombre for p in profesores_qs])
     else:
@@ -277,38 +283,48 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         [Paragraph(f"<b>PROFESORADO DE:</b> {escape(planilla.profesorado.nombre)}", header_value_style), ""],
         [
             Paragraph(f"<b>UNIDAD CURRICULAR:</b> {escape(planilla.materia.nombre)}", header_value_style),
-            Paragraph(f"<b>AÑO:</b> {planilla.materia.anio_cursada or '-'}°", header_value_style)
+            Paragraph(f"<b>AÑO:</b> {planilla.materia.anio_cursada or '-'}°", header_value_style),
         ],
         [
             Paragraph(f"<b>FORMATO:</b> {escape(planilla.formato.nombre)}", header_value_style),
-            Paragraph(f"<b>RESOLUCIÓN Nº:</b> {escape(planilla.plan_resolucion or planilla.materia.plan_de_estudio.resolucion)}", header_value_style)
+            Paragraph(
+                f"<b>RESOLUCIÓN Nº:</b> {escape(planilla.plan_resolucion or planilla.materia.plan_de_estudio.resolucion)}",
+                header_value_style,
+            ),
         ],
         [
             Paragraph(f"<b>FOLIO Nº:</b> {planilla.folio or '-'}", header_value_style),
-            Paragraph(f"<b>DICTADO:</b> {planilla.plantilla.get_dictado_display() if planilla.plantilla else planilla.dictado}", header_value_style)
+            Paragraph(
+                f"<b>DICTADO:</b> {planilla.plantilla.get_dictado_display() if planilla.plantilla else planilla.dictado}",
+                header_value_style,
+            ),
         ],
         [
             Paragraph(f"<b>PROFESOR/A:</b> {escape(docente_nombre)}", header_value_style),
-            Paragraph(f"<b>FECHA:</b> {planilla.fecha.strftime('%d/%m/%Y')}", header_value_style)
-        ]
+            Paragraph(f"<b>FECHA:</b> {planilla.fecha.strftime('%d/%m/%Y')}", header_value_style),
+        ],
     ]
 
     table_gen = Table(data_gen, colWidths=[380, 160])
-    table_gen.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('SPAN', (0, 0), (1, 0)),
-        ('BACKGROUND', (0, 0), (0, 0), color_header),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-    ]))
-    
+    table_gen.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ("SPAN", (0, 0), (1, 0)),
+                ("BACKGROUND", (0, 0), (0, 0), color_header),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+
     elements.append(table_gen)
     elements.append(Spacer(1, 15))
 
     columnas_raw = planilla.plantilla.columnas or []
-    columnas_tp = [col for col in columnas_raw]
+    columnas_tp = list(columnas_raw)
 
     base_cols = 3
     tp_count = len(columnas_tp)
@@ -448,7 +464,7 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         situacion_color = get_situacion_color(fila.situacion)
         if situacion_color:
             table_style.add("BACKGROUND", (situacion_idx, i), (situacion_idx, i), situacion_color)
-            
+
     table_style.add("ALIGN", (1, 2), (1, -1), "LEFT")
     table_style.add("ALIGN", (situacion_idx, 2), (situacion_idx, -1), "LEFT")
     table_style.add("SPAN", (0, 0), (0, 1))
@@ -471,43 +487,71 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
     elements.append(table)
     elements.append(Spacer(1, 14))
 
-    obs_data = [[Paragraph("<b>OBSERVACIONES:</b>", header_value_style)], [Paragraph(escape(planilla.observaciones or ""), body_left_style)]]
+    obs_data = [
+        [Paragraph("<b>OBSERVACIONES:</b>", header_value_style)],
+        [Paragraph(escape(planilla.observaciones or ""), body_left_style)],
+    ]
     obs_table = Table(obs_data, colWidths=[doc.width])
-    obs_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BACKGROUND', (0, 0), (0, 0), colors.white),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 20),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
+    obs_table.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
+                ("BACKGROUND", (0, 0), (0, 0), colors.white),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 20),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
     elements.append(obs_table)
     elements.append(Spacer(1, 20))
 
     firmas_table_rows = []
     if profesores_qs.exists():
         for p in profesores_qs:
-            firmas_table_rows.append([
-                Paragraph(f"<b>Profesor/a: {escape(p.nombre)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
-                Paragraph(f"<b>DNI: {escape(p.dni or '_______________________')}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
-            ])
+            firmas_table_rows.append(
+                [
+                    Paragraph(
+                        f"<b>Profesor/a: {escape(p.nombre)}</b>",
+                        ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8),
+                    ),
+                    Paragraph(
+                        f"<b>DNI: {escape(p.dni or '_______________________')}</b>",
+                        ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8),
+                    ),
+                ]
+            )
     else:
-        firmas_table_rows.append([
-            Paragraph("<b>Profesor/a: _______________________</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
-            Paragraph("<b>DNI: _______________________</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
-        ])
-    
+        firmas_table_rows.append(
+            [
+                Paragraph(
+                    "<b>Profesor/a: _______________________</b>",
+                    ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8),
+                ),
+                Paragraph(
+                    "<b>DNI: _______________________</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)
+                ),
+            ]
+        )
+
     b_nom = bedel_docente.nombre if bedel_docente else "_______________________"
     b_dni = bedel_docente.dni if bedel_docente else "_______________________"
-    firmas_table_rows.append([
-        Paragraph(f"<b>Bedel: {escape(b_nom)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
-        Paragraph(f"<b>DNI: {escape(b_dni)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
-    ])
-    
+    firmas_table_rows.append(
+        [
+            Paragraph(f"<b>Bedel: {escape(b_nom)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
+            Paragraph(f"<b>DNI: {escape(b_dni)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
+        ]
+    )
+
     firmas_table = Table(firmas_table_rows, colWidths=[350, 150])
-    firmas_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-    ]))
+    firmas_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
     elements.append(firmas_table)
     elements.append(Spacer(1, 25))
 
@@ -519,18 +563,22 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         for ref in referencias:
             cod = ref.get("codigo") or ref.get("label") or "-"
             desc = ref.get("descripcion") or ""
-            ref_data.append([Paragraph(f"<b>{escape(str(cod))}</b>", header_style), Paragraph(escape(str(desc)), body_left_style)])
-            
+            ref_data.append(
+                [Paragraph(f"<b>{escape(str(cod))}</b>", header_style), Paragraph(escape(str(desc)), body_left_style)]
+            )
+
         ref_table = Table(ref_data, colWidths=[80, 460])
-        ref_style = TableStyle([
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('BACKGROUND', (0, 0), (-1, 0), color_header),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ])
+        ref_style = TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ("BACKGROUND", (0, 0), (-1, 0), color_header),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
         for idx, ref in enumerate(referencias, start=1):
             color = get_situacion_color(ref.get("codigo"))
             if color:
-                ref_style.add('BACKGROUND', (0, idx), (0, idx), color)
+                ref_style.add("BACKGROUND", (0, idx), (0, idx), color)
         ref_table.setStyle(ref_style)
         elements.append(ref_table)
 

@@ -1,33 +1,44 @@
 from __future__ import annotations
-from typing import List, Dict, Set, Any
-from ninja import Router, Schema
+
+from collections import defaultdict
+from typing import Any, Dict, List, Set
+
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
+from ninja import Router, Schema
+
 from apps.common.api_schemas import ApiResponse
-from core.models import (
-    Estudiante, Materia, Correlatividad, Regularidad,
-    ActaExamenEstudiante, InscripcionMateriaEstudiante,
-    InscripcionMesa
-)
-from core.auth_ninja import JWTAuth, ensure_roles
 from apps.estudiantes.api.helpers import _acta_condicion, _correlatividades_qs
-from .router import estudiantes_router
+from core.auth_ninja import JWTAuth, ensure_roles
+from core.models import (
+    ActaExamenEstudiante,
+    Correlatividad,
+    Estudiante,
+    InscripcionMateriaEstudiante,
+    InscripcionMesa,
+    Materia,
+    Regularidad,
+)
 from core.permissions import allowed_profesorados
-from collections import defaultdict
+
+from .router import estudiantes_router
+
 
 class StudentEligibilityDetail(Schema):
     dni: str
     nombre: str
     apellido: str
     habilitado: bool
-    motivos: List[str]
+    motivos: list[str]
     situacion: str  # "APROBADA", "REGULAR", "EN_CURSO", "PENDIENTE"
     cohorte: int | None = None
+
 
 class AnalisisMateriaOut(Schema):
     materia_id: int
     materia_nombre: str
-    estudiantes: List[StudentEligibilityDetail]
+    estudiantes: list[StudentEligibilityDetail]
+
 
 @estudiantes_router.get("/analisis-correlatividades/{materia_id}", response={200: AnalisisMateriaOut, 403: ApiResponse})
 @ensure_roles(["admin", "secretaria", "bedel"])
@@ -43,7 +54,7 @@ def analizar_habilitados_materia(request, materia_id: int):
     # Estudiantes del profesorado
     estudiantes_qs = Estudiante.objects.filter(carreras_detalle__profesorado=profesorado).select_related("persona")
     estudiantes_list = list(estudiantes_qs)
-    
+
     # Optimizamos carga de datos academicos
     estudiantes_dnis = [est.persona.dni for est in estudiantes_list]
     estudiantes_ids = [est.id for est in estudiantes_list]
@@ -52,44 +63,42 @@ def analizar_habilitados_materia(request, materia_id: int):
     # Mejor traer solo lo que necesitamos. Pero necesitamos las aprobadas para las correlativas.
     # Como no sabemos qué correlativas tienen sin mirar al estudiante, traemos TODO el historial de estos estudiantes
     # de materias del mismo profesorado/plan.
-    
-    plan_materias_ids = list(Materia.objects.filter(plan_de_estudio__profesorado=profesorado).exclude(nombre__startswith="CI:").values_list("id", flat=True))
 
-    regularidades = Regularidad.objects.filter(
-        materia_id__in=plan_materias_ids,
-        estudiante_id__in=estudiantes_ids
+    plan_materias_ids = list(
+        Materia.objects.filter(plan_de_estudio__profesorado=profesorado)
+        .exclude(nombre__startswith="CI:")
+        .values_list("id", flat=True)
     )
+
+    regularidades = Regularidad.objects.filter(materia_id__in=plan_materias_ids, estudiante_id__in=estudiantes_ids)
     actas = ActaExamenEstudiante.objects.filter(
-        acta__materia_id__in=plan_materias_ids,
-        dni__in=estudiantes_dnis
+        acta__materia_id__in=plan_materias_ids, dni__in=estudiantes_dnis
     ).select_related("acta")
-    
+
     inscripciones = InscripcionMateriaEstudiante.objects.filter(
         materia_id__in=plan_materias_ids,
         estudiante_id__in=estudiantes_ids,
-        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE]
+        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
     )
 
     # Estado académico por DNI
     student_id_to_dni = {est.id: est.persona.dni for est in estudiantes_list}
-    student_academic_state: Dict[str, Dict[str, Set[int]]] = {}
+    student_academic_state: dict[str, dict[str, set[int]]] = {}
     for est in estudiantes_list:
-        student_academic_state[est.persona.dni] = {
-            "aprobadas": set(),
-            "regulares": set(),
-            "en_curso": set()
-        }
+        student_academic_state[est.persona.dni] = {"aprobadas": set(), "regulares": set(), "en_curso": set()}
 
     from django.utils import timezone
+
     from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
 
     hoy = timezone.now().date()
     dni_to_student = {est.persona.dni: est for est in estudiantes_list}
 
-    latest_regs: Dict[tuple[str, int], Regularidad] = {}
+    latest_regs: dict[tuple[str, int], Regularidad] = {}
     for r in regularidades:
         dni = student_id_to_dni.get(r.estudiante_id)
-        if not dni: continue
+        if not dni:
+            continue
         key = (dni, r.materia_id)
         if key not in latest_regs:
             latest_regs[key] = r
@@ -101,7 +110,7 @@ def analizar_habilitados_materia(request, materia_id: int):
     for (dni, materia_id), r in latest_regs.items():
         if r.en_resguardo:
             continue
-        
+
         if r.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
             student_academic_state[dni]["aprobadas"].add(materia_id)
         elif r.situacion == Regularidad.Situacion.REGULAR:
@@ -112,12 +121,13 @@ def analizar_habilitados_materia(request, materia_id: int):
                     student_academic_state[dni]["regulares"].add(materia_id)
 
     for a in actas:
-        if a.dni not in student_academic_state: continue
+        if a.dni not in student_academic_state:
+            continue
         cond_val, _ = _acta_condicion(a.calificacion_definitiva)
         is_equiv = (
-            (a.permiso_examen == "EQUIV") or 
-            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
-            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
+            (a.permiso_examen == "EQUIV")
+            or (a.acta.codigo and a.acta.codigo.startswith("EQUIV-"))
+            or (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
         )
         if cond_val == "APR" or is_equiv:
             student_academic_state[a.dni]["aprobadas"].add(a.acta.materia_id)
@@ -127,9 +137,9 @@ def analizar_habilitados_materia(request, materia_id: int):
         mesa__materia_id__in=plan_materias_ids,
         estudiante_id__in=estudiantes_ids,
         condicion=InscripcionMesa.Condicion.APROBADO,
-        estado=InscripcionMesa.Estado.INSCRIPTO
+        estado=InscripcionMesa.Estado.INSCRIPTO,
     ).select_related("mesa")
-    
+
     for m in mesas_aprobadas:
         dni = student_id_to_dni.get(m.estudiante_id)
         if dni:
@@ -137,19 +147,20 @@ def analizar_habilitados_materia(request, materia_id: int):
 
     for i in inscripciones:
         dni = student_id_to_dni.get(i.estudiante_id)
-        if not dni: continue
+        if not dni:
+            continue
         student_academic_state[dni]["en_curso"].add(i.materia_id)
 
     results = []
-    
+
     # Pre-cache de correlativas por materia (sin filtrar por version aun)
     # correlativas_all = Correlatividad.objects.filter(materia_origen=materia).select_related("materia_correlativa")
     # Pero usamos el helper que es más seguro.
-    
+
     for est in estudiantes_list:
         sdni = est.persona.dni
         state = student_academic_state[sdni]
-        
+
         # Situacion de la materia actual
         situacion = "PENDIENTE"
         if materia.id in state["aprobadas"]:
@@ -158,17 +169,18 @@ def analizar_habilitados_materia(request, materia_id: int):
             situacion = "EN_CURSO"
         elif materia.id in state["regulares"]:
             situacion = "REGULAR"
-            
+
         # Chequeo de correlativas (específicas para este estudiante)
         habilitado = True
         motivos = []
-        
+
         if situacion == "APROBADA":
             habilitado = False
             motivos.append("Ya aprobó esta materia.")
         else:
             # Consultamos la versión de correlatividades vigente para este estudiante
             from core.models import CorrelatividadVersion
+
             prof_id = materia.plan_de_estudio.profesorado_id
             cohorte = est.obtener_anio_ingreso(prof_id)
             version = CorrelatividadVersion.vigente_para(
@@ -176,11 +188,13 @@ def analizar_habilitados_materia(request, materia_id: int):
                 profesorado_id=prof_id,
                 cohorte=cohorte,
             )
-            
-            correlativas_qs = Correlatividad.objects.filter(materia_origen=materia).select_related("materia_correlativa")
+
+            correlativas_qs = Correlatividad.objects.filter(materia_origen=materia).select_related(
+                "materia_correlativa"
+            )
             if version:
                 correlativas_qs = correlativas_qs.filter(versiones__version=version)
-            
+
             for corr in correlativas_qs:
                 if corr.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR:
                     if corr.materia_correlativa_id not in state["aprobadas"]:
@@ -196,18 +210,16 @@ def analizar_habilitados_materia(request, materia_id: int):
                     if corr.materia_correlativa_id not in state["aprobadas"]:
                         motivos.append(f"Falta aprobar {corr.materia_correlativa.nombre} (requerida para rendir final)")
 
-        results.append({
-            "dni": sdni,
-            "nombre": est.persona.nombre,
-            "apellido": est.persona.apellido,
-            "habilitado": habilitado,
-            "motivos": motivos,
-            "situacion": situacion,
-            "cohorte": cohorte
-        })
+        results.append(
+            {
+                "dni": sdni,
+                "nombre": est.persona.nombre,
+                "apellido": est.persona.apellido,
+                "habilitado": habilitado,
+                "motivos": motivos,
+                "situacion": situacion,
+                "cohorte": cohorte,
+            }
+        )
 
-    return {
-        "materia_id": materia.id,
-        "materia_nombre": materia.nombre,
-        "estudiantes": results
-    }
+    return {"materia_id": materia.id, "materia_nombre": materia.nombre, "estudiantes": results}

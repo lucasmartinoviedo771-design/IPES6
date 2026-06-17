@@ -1,22 +1,38 @@
 import os
+
 import pytest
 from django.conf import settings
-from django.contrib.auth.models import User, Group
-from core.models import (
-    Persona, Estudiante, UserProfile, Preinscripcion, PlanillaRegularidad,
-    PlanillaRegularidadDocente, Message, Conversation, ConversationParticipant,
-    PlanDeEstudio, Profesorado, Materia, RegularidadPlantilla, RegularidadFormato,
-    StaffAsignacion, Docente
-)
+from django.contrib.auth.models import Group, User
+
 from apps.preinscriptions.models_uploads import PreinscripcionArchivo
+from core.models import (
+    Conversation,
+    ConversationParticipant,
+    Docente,
+    Estudiante,
+    Materia,
+    Message,
+    Persona,
+    PlanDeEstudio,
+    PlanillaRegularidad,
+    PlanillaRegularidadDocente,
+    Preinscripcion,
+    Profesorado,
+    RegularidadFormato,
+    RegularidadPlantilla,
+    StaffAsignacion,
+    UserProfile,
+)
 
 pytestmark = pytest.mark.django_db
+
 
 @pytest.fixture
 def media_setup(tmp_path, settings):
     # Override MEDIA_ROOT using pytest tmp_path
     settings.MEDIA_ROOT = str(tmp_path)
     return tmp_path
+
 
 class TestServeMedia:
     def test_unauthenticated_blocked(self, client, media_setup):
@@ -78,7 +94,7 @@ class TestServeMedia:
             archivo=rel_path,
             nombre_original="dni.pdf",
             tamano=len("student1_dni_content"),
-            content_type="application/pdf"
+            content_type="application/pdf",
         )
 
         # Student 1 requesting their own file -> 200
@@ -134,7 +150,7 @@ class TestServeMedia:
             formato=formato,
             dictado="1C",
             fecha="2026-06-14",
-            pdf=rel_path
+            pdf=rel_path,
         )
 
         # Docente assigned to this planilla
@@ -144,7 +160,9 @@ class TestServeMedia:
         persona_doc = Persona.objects.create(dni="99999999", nombre="Docente", apellido="Asignado")
         UserProfile.objects.create(user=doc_user, persona=persona_doc)
         docente = Docente.objects.create(persona=persona_doc)
-        PlanillaRegularidadDocente.objects.create(planilla=planilla, docente=docente, nombre="Docente Asignado", rol="profesor")
+        PlanillaRegularidadDocente.objects.create(
+            planilla=planilla, docente=docente, nombre="Docente Asignado", rol="profesor"
+        )
 
         # Docente not assigned
         doc_user_2 = User.objects.create_user(username="docenteuser2")
@@ -188,12 +206,7 @@ class TestServeMedia:
         with open(file_path, "wb") as f:
             f.write(b"message_attachment")
 
-        Message.objects.create(
-            conversation=conv,
-            author=u_sender,
-            body="Hola",
-            attachment=rel_path
-        )
+        Message.objects.create(conversation=conv, author=u_sender, body="Hola", attachment=rel_path)
 
         # Participant -> 200
         client.force_login(u_recipient)

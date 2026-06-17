@@ -1,14 +1,16 @@
 from decimal import Decimal
+
 from core.models import (
-    Regularidad, 
-    PlanillaRegularidadFila, 
-    SystemLog, 
-    ActaExamenEstudiante, 
-    InscripcionMesa, 
-    MesaExamen, 
+    ActaExamen,
+    ActaExamenEstudiante,
     EquivalenciaDisposicionDetalle,
-    ActaExamen
+    InscripcionMesa,
+    MesaExamen,
+    PlanillaRegularidadFila,
+    Regularidad,
+    SystemLog,
 )
+
 
 def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> None:
     """
@@ -18,20 +20,20 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
     est = planilla_fila.estudiante
     if not est:
         return
-        
+
     materia = planilla_fila.planilla.materia
     fecha = planilla_fila.planilla.fecha
-    
+
     # We expect a regularidad record matching this student/subject AND date
     regs = Regularidad.objects.filter(estudiante=est, materia=materia, fecha_cierre=fecha)
-    
+
     # Resolver logs previos para este estudiante y materia en esta planilla
     SystemLog.objects.filter(
         tipo="REGULARIDAD_MISMATCH",
         metadata__dni=est.dni,
         metadata__materia_id=materia.id,
         metadata__planilla_id=planilla_fila.planilla.id,
-        resuelto=False
+        resuelto=False,
     ).update(resuelto=True)
 
     if not regs.exists():
@@ -46,19 +48,19 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
                 "codigo": planilla_fila.planilla.codigo,
                 "folio": planilla_fila.planilla.folio,
                 "planilla_fila_id": planilla_fila.id,
-            }
+            },
         )
         return
 
     target_reg = regs.first()
     mismatches = []
-    
+
     if target_reg.situacion != planilla_fila.situacion:
         mismatches.append(f"Situacion: Planilla='{planilla_fila.situacion}' vs Historial='{target_reg.situacion}'")
-        
+
     nota_f = planilla_fila.nota_final
     nota_r = target_reg.nota_final_cursada
-    
+
     nota_match = False
     if nota_f is None and nota_r is None:
         nota_match = True
@@ -66,10 +68,10 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
         # Comparación robusta entre Decimal e Int
         if int(nota_f) == int(nota_r):
             nota_match = True
-    
+
     if not nota_match:
         mismatches.append(f"Nota: Planilla={nota_f} vs Historial={nota_r}")
-        
+
     if mismatches:
         SystemLog.objects.create(
             tipo="REGULARIDAD_MISMATCH",
@@ -82,9 +84,10 @@ def verify_regularidad_consistency(planilla_fila: PlanillaRegularidadFila) -> No
                 "codigo": planilla_fila.planilla.codigo,
                 "folio": planilla_fila.planilla.folio,
                 "planilla_fila_id": planilla_fila.id,
-                "discrepancies": mismatches
-            }
+                "discrepancies": mismatches,
+            },
         )
+
 
 def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
     """
@@ -95,19 +98,19 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
     fecha = acta_est.acta.fecha
     libro = acta_est.acta.libro
     folio = acta_est.acta.folio
-    
+
     # Matching modality
     modMap = {ActaExamen.Tipo.REGULAR: MesaExamen.Modalidad.REGULAR, ActaExamen.Tipo.LIBRE: MesaExamen.Modalidad.LIBRE}
     modality = modMap.get(acta_est.acta.tipo)
-    
+
     # Find the corresponding Mesa
     mesa = MesaExamen.objects.filter(materia=materia, fecha=fecha, modalidad=modality).first()
     if not mesa:
-        return # Cannot verify if mesa doesn't exist (though it should have been created)
+        return  # Cannot verify if mesa doesn't exist (though it should have been created)
 
     # Find InscripcionMesa
     insc = InscripcionMesa.objects.filter(mesa=mesa, estudiante__persona__dni=dni).first()
-    
+
     if not insc:
         already_logged = SystemLog.objects.filter(
             tipo="ACTA_MISMATCH",
@@ -127,17 +130,17 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
                     "codigo": acta_est.acta.codigo,
                     "fecha": str(fecha),
                     "libro": libro,
-                    "folio": folio
-                }
+                    "folio": folio,
+                },
             )
         return
 
     mismatches = []
-    
+
     # Precise mapping for absence types and grades
     nota_visual = acta_est.calificacion_definitiva.strip().upper()
     actual_cond = insc.condicion
-    
+
     expected_cond = None
     cond_label = ""
     if nota_visual == "AJ":
@@ -162,10 +165,11 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
     nota_acta = None
     try:
         nota_acta = Decimal(nota_visual.replace(",", "."))
-    except: pass
-    
+    except:
+        pass
+
     nota_hist = insc.nota
-    
+
     if nota_acta is not None and nota_acta != nota_hist:
         mismatches.append(f"Nota: Acta={nota_acta} vs Historial={nota_hist}")
 
@@ -190,9 +194,10 @@ def verify_acta_consistency(acta_est: ActaExamenEstudiante) -> None:
                     "acta_est_id": acta_est.id,
                     "libro": libro,
                     "folio": folio,
-                    "discrepancies": mismatches
-                }
+                    "discrepancies": mismatches,
+                },
             )
+
 
 def verify_equivalencia_consistency(eq_detalle: EquivalenciaDisposicionDetalle) -> None:
     """
@@ -201,15 +206,12 @@ def verify_equivalencia_consistency(eq_detalle: EquivalenciaDisposicionDetalle) 
     est = eq_detalle.disposicion.estudiante
     materia = eq_detalle.materia
     num_dispo = eq_detalle.disposicion.numero_disposicion
-    
+
     # Equivalencies create an acta with code: EQUIV-{materia.id}-{estudiante.dni}-{numero_disposicion}
     codigo = f"EQUIV-{materia.id}-{est.dni}-{num_dispo}"
-    
-    acta_est = ActaExamenEstudiante.objects.filter(
-        acta__codigo=codigo,
-        dni=est.dni
-    ).first()
-    
+
+    acta_est = ActaExamenEstudiante.objects.filter(acta__codigo=codigo, dni=est.dni).first()
+
     if not acta_est:
         SystemLog.objects.create(
             tipo="EQUIVALENCIA_MISMATCH",
@@ -218,15 +220,15 @@ def verify_equivalencia_consistency(eq_detalle: EquivalenciaDisposicionDetalle) 
                 "dni": est.dni,
                 "materia_id": materia.id,
                 "eq_detalle_id": eq_detalle.id,
-                "codigo_esperado": codigo
-            }
+                "codigo_esperado": codigo,
+            },
         )
         return
 
     mismatches = []
     if acta_est.calificacion_definitiva != str(eq_detalle.nota):
         mismatches.append(f"Nota: Disposicion='{eq_detalle.nota}' vs Acta='{acta_est.calificacion_definitiva}'")
-        
+
     if mismatches:
         SystemLog.objects.create(
             tipo="EQUIVALENCIA_MISMATCH",
@@ -235,7 +237,6 @@ def verify_equivalencia_consistency(eq_detalle: EquivalenciaDisposicionDetalle) 
                 "dni": est.dni,
                 "materia_id": materia.id,
                 "eq_detalle_id": eq_detalle.id,
-                "discrepancies": mismatches
-            }
+                "discrepancies": mismatches,
+            },
         )
-

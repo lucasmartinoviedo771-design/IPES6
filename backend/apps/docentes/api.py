@@ -1,34 +1,48 @@
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import User, Group
-from django.db.models import Q
+from django.contrib.auth.models import Group, User
 from django.db import IntegrityError
-from core.models import Persona
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
 from core.auth_ninja import JWTAuth
-from core.models import Docente, StaffAsignacion, Profesorado
-from core.permissions import ensure_roles, ensure_profesorado_access, allowed_profesorados, STRUCTURE_VIEW_ROLES, STRUCTURE_EDIT_ROLES
+from core.models import Docente, Persona, Profesorado, StaffAsignacion
+from core.permissions import (
+    STRUCTURE_EDIT_ROLES,
+    STRUCTURE_VIEW_ROLES,
+    allowed_profesorados,
+    ensure_profesorado_access,
+    ensure_roles,
+)
+
 from .schemas import DocenteIn, DocenteOut, DocenteRoleAssignIn, DocenteRoleAssignOut
 from .services.docente_service import DocenteService
 
 router = Router(tags=["Docentes"])
 
+
 def _ensure_structure_view(user):
     ensure_roles(user, STRUCTURE_VIEW_ROLES)
+
 
 def _ensure_structure_edit(user):
     ensure_roles(user, STRUCTURE_EDIT_ROLES)
 
+
 @router.get("/", response=list[DocenteOut], auth=JWTAuth())
 def list_docentes(request):
     _ensure_structure_view(request.user)
-    docentes = Docente.objects.select_related("persona").exclude(
-        Q(persona__dni__startswith="DOC-HIS-") |
-        Q(persona__apellido__icontains="CARGA HISTÓRICA") |
-        Q(persona__apellido__icontains="SISTEMA")
-    ).order_by("persona__apellido", "persona__nombre")
+    docentes = (
+        Docente.objects.select_related("persona")
+        .exclude(
+            Q(persona__dni__startswith="DOC-HIS-")
+            | Q(persona__apellido__icontains="CARGA HISTÓRICA")
+            | Q(persona__apellido__icontains="SISTEMA")
+        )
+        .order_by("persona__apellido", "persona__nombre")
+    )
     return [DocenteService.serialize_docente(d) for d in docentes]
+
 
 @router.post("/", response=DocenteOut, auth=JWTAuth())
 def create_docente(request, payload: DocenteIn):
@@ -44,10 +58,13 @@ def create_docente(request, payload: DocenteIn):
                 has_docente = True
             except Exception:
                 pass
-            
+
             if has_docente:
-                raise HttpError(409, f"El DNI '{payload.dni}' ya está registrado como docente: {existing.apellido}, {existing.nombre}.")
-            
+                raise HttpError(
+                    409,
+                    f"El DNI '{payload.dni}' ya está registrado como docente: {existing.apellido}, {existing.nombre}.",
+                )
+
             # Es estudiante (u otro), pero no docente. Actualizamos y creamos el perfil.
             for attr, value in payload.dict().items():
                 if hasattr(existing, attr):
@@ -59,11 +76,13 @@ def create_docente(request, payload: DocenteIn):
     docente = Docente.objects.create(persona=persona)
     return DocenteService.serialize_docente(docente)
 
+
 @router.get("/{docente_id}", response=DocenteOut, auth=JWTAuth())
 def get_docente(request, docente_id: int):
     _ensure_structure_view(request.user)
     docente = get_object_or_404(Docente, id=docente_id)
     return DocenteService.serialize_docente(docente)
+
 
 @router.put("/{docente_id}", response=DocenteOut, auth=JWTAuth())
 def update_docente(request, docente_id: int, payload: DocenteIn):
@@ -90,9 +109,12 @@ def update_docente(request, docente_id: int, payload: DocenteIn):
             except Exception:
                 pass
             quien = " y ".join(parts) if parts else "otra persona"
-            raise HttpError(409, f"El DNI '{payload.dni}' ya está registrado como {quien}: {existing.apellido}, {existing.nombre}.")
+            raise HttpError(
+                409, f"El DNI '{payload.dni}' ya está registrado como {quien}: {existing.apellido}, {existing.nombre}."
+            )
         raise HttpError(409, f"El DNI '{payload.dni}' ya está en uso.")
     return DocenteService.serialize_docente(docente)
+
 
 @router.delete("/{docente_id}", response={204: None}, auth=JWTAuth())
 def delete_docente(request, docente_id: int):

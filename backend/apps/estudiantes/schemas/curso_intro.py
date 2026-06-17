@@ -1,10 +1,11 @@
 from datetime import date
 
-from ninja import Schema, Field
+from ninja import Field, Schema
 
 # ==========================================
 # 8. CURSO INTRODUCTORIO
 # ==========================================
+
 
 class CursoIntroCohorteIn(Schema):
     nombre: str | None = None
@@ -16,6 +17,7 @@ class CursoIntroCohorteIn(Schema):
     fecha_fin: date | None = None
     cupo: int | None = None
     observaciones: str | None = None
+
 
 class CursoIntroCohorteOut(Schema):
     id: int
@@ -31,6 +33,7 @@ class CursoIntroCohorteOut(Schema):
     fecha_fin: str | None = None
     cupo: int | None = None
     observaciones: str | None = None
+
 
 class CursoIntroRegistroOut(Schema):
     id: int
@@ -52,20 +55,24 @@ class CursoIntroRegistroOut(Schema):
     es_historico: bool
     resultado_at: str | None = None
 
+
 class CursoIntroRegistroIn(Schema):
     cohorte_id: int | None = None
     estudiante_id: int
     profesorado_id: int | None = None
     turno_id: int | None = None
 
+
 class CursoIntroAsistenciaIn(Schema):
     asistencias_totales: int = Field(ge=0, le=100)
+
 
 class CursoIntroCierreIn(Schema):
     nota_final: float | None = Field(default=None, ge=1, le=10)
     asistencias_totales: int | None = Field(default=None, ge=0, le=100)
     resultado: str
     observaciones: str | None = None
+
 
 class CursoIntroPendienteOut(Schema):
     estudiante_id: int
@@ -75,6 +82,7 @@ class CursoIntroPendienteOut(Schema):
     profesorados: list[dict] = Field(default_factory=list)
     anio_ingreso: int | None = None
 
+
 class CursoIntroVentanaOut(Schema):
     id: int
     desde: str
@@ -82,11 +90,13 @@ class CursoIntroVentanaOut(Schema):
     activo: bool
     periodo: str | None = None
 
+
 class CursoIntroEstadoOut(Schema):
     aprobado: bool
     registro_actual: CursoIntroRegistroOut | None = None
     cohortes_disponibles: list[CursoIntroCohorteOut] = Field(default_factory=list)
     ventanas: list[CursoIntroVentanaOut] = Field(default_factory=list)
+
 
 CursoIntroEstadoOut.model_rebuild()
 

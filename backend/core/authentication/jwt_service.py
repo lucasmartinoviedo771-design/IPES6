@@ -4,8 +4,9 @@ Maneja la generación y validación de tokens de Acceso y Refresh
 utilizando el estándar HS256 y el SECRET_KEY de la aplicación.
 """
 
+from datetime import UTC, datetime, timedelta, timezone
+
 import jwt
-from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
@@ -25,9 +26,9 @@ class JWTService:
         """
         payload = {
             "user_id": user_id,
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=60),
-            "iat": datetime.now(timezone.utc),
-            "type": "access"
+            "exp": datetime.now(UTC) + timedelta(minutes=60),
+            "iat": datetime.now(UTC),
+            "type": "access",
         }
         return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
@@ -39,9 +40,9 @@ class JWTService:
         """
         payload = {
             "user_id": user_id,
-            "exp": datetime.now(timezone.utc) + timedelta(days=7),
-            "iat": datetime.now(timezone.utc),
-            "type": "refresh"
+            "exp": datetime.now(UTC) + timedelta(days=7),
+            "iat": datetime.now(UTC),
+            "type": "refresh",
         }
         return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
@@ -65,11 +66,11 @@ class JWTService:
         payload = JWTService.decode_token(token)
         if not payload or payload.get("type") != "access":
             return None
-        
+
         user_id = payload.get("user_id")
         if not user_id:
             return None
-            
+
         try:
             return User.objects.get(pk=user_id, is_active=True)
         except User.DoesNotExist:

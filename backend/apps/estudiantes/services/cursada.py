@@ -1,13 +1,16 @@
 from decimal import Decimal, InvalidOperation
+
 from django.db.models import Q
+
 from core.models import (
     ActaExamenEstudiante,
-    InscripcionMesa,
-    Regularidad,
-    Estudiante,
-    Materia,
     EquivalenciaDisposicionDetalle,
+    Estudiante,
+    InscripcionMesa,
+    Materia,
+    Regularidad,
 )
+
 
 def estudiante_tiene_materia_aprobada(estudiante: Estudiante, materia: Materia) -> bool:
     """
@@ -40,10 +43,7 @@ def estudiante_tiene_materia_aprobada(estudiante: Estudiante, materia: Materia) 
     # 3. Actas de Examen (Documento final)
     # Buscamos en actas donde el estudiante tenga nota numérica >= 6.
     # Las notas no numéricas (AJ, AI) no son aprobados.
-    actas_qs = ActaExamenEstudiante.objects.filter(
-        dni=estudiante.dni,
-        acta__materia=materia
-    )
+    actas_qs = ActaExamenEstudiante.objects.filter(dni=estudiante.dni, acta__materia=materia)
     for acta_estudiante in actas_qs:
         nota_str = acta_estudiante.calificacion_definitiva
         try:
@@ -55,10 +55,7 @@ def estudiante_tiene_materia_aprobada(estudiante: Estudiante, materia: Materia) 
 
     # 4. Equivalencias (Disposiciones)
     # Aunque las equivalencias generan Actas, verificamos la disposición por si acaso.
-    if EquivalenciaDisposicionDetalle.objects.filter(
-        disposicion__estudiante=estudiante,
-        materia=materia
-    ).exists():
+    if EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=estudiante, materia=materia).exists():
         return True
 
     return False

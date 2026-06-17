@@ -60,8 +60,12 @@ class ActaExamen(models.Model):
         unique_together = ("profesorado", "anio_academico", "numero")
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(total_alumnos=models.F("total_aprobados") + models.F("total_desaprobados") + models.F("total_ausentes")),
-                name="acta_examen_totals_parity"
+                condition=models.Q(
+                    total_alumnos=models.F("total_aprobados")
+                    + models.F("total_desaprobados")
+                    + models.F("total_ausentes")
+                ),
+                name="acta_examen_totals_parity",
             )
         ]
 
@@ -72,7 +76,7 @@ class ActaExamen(models.Model):
         self.total_aprobados = regs.filter(calificacion_numerica__gte=4).count()
         self.total_desaprobados = regs.filter(calificacion_numerica__lt=4).count()
         self.total_ausentes = regs.filter(calificacion_numerica__isnull=True).count()
-        self.save(update_fields=['total_alumnos', 'total_aprobados', 'total_desaprobados', 'total_ausentes'])
+        self.save(update_fields=["total_alumnos", "total_aprobados", "total_desaprobados", "total_ausentes"])
 
     def __str__(self) -> str:
         return f"{self.codigo} - {self.materia.nombre}"
@@ -151,10 +155,10 @@ class ActaExamenEstudiante(models.Model):
 
         if self.examen_escrito.isdigit():
             self.escrito_numerico = int(self.examen_escrito)
-        
+
         if self.examen_oral.isdigit():
             self.oral_numerico = int(self.examen_oral)
-        
+
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

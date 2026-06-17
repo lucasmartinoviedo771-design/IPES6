@@ -1,5 +1,7 @@
-from core.models import Estudiante
 from django.db import connection
+
+from core.models import Estudiante
+
 
 def fix_folios():
     with connection.cursor() as cursor:
@@ -8,7 +10,9 @@ def fix_folios():
         cursor.execute("UPDATE core_estudiante SET folios_oficio = 0 WHERE folios_oficio IS NULL")
         print("Done.")
 
+
 if __name__ == "__main__":
     import django
+
     django.setup()
     fix_folios()

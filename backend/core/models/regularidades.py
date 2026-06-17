@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from .base import Docente
@@ -165,7 +165,9 @@ class PlanillaRegularidad(models.Model):
     def clean(self):
         super().clean()
         if self.plantilla and self.formato and self.formato != self.plantilla.formato:
-            raise ValidationError(f"El formato de la planilla ({self.formato}) debe coincidir con el formato de la plantilla '{self.plantilla.nombre}' ({self.plantilla.formato}).")
+            raise ValidationError(
+                f"El formato de la planilla ({self.formato}) debe coincidir con el formato de la plantilla '{self.plantilla.nombre}' ({self.plantilla.formato})."
+            )
 
     def __str__(self) -> str:
         return f"{self.codigo} - {self.materia.nombre}"
@@ -241,6 +243,7 @@ class PlanillaRegularidadFila(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+
         qs = PlanillaRegularidadFila.objects.filter(planilla=self.planilla, dni=self.dni)
         if self.pk:
             qs = qs.exclude(pk=self.pk)
@@ -316,7 +319,8 @@ class RegularidadPlanillaLock(models.Model):
             models.CheckConstraint(
                 condition=(
                     # Caso 1: Solo comisión
-                    models.Q(comision__isnull=False, materia__isnull=True, anio_virtual__isnull=True) |
+                    models.Q(comision__isnull=False, materia__isnull=True, anio_virtual__isnull=True)
+                    |
                     # Caso 2: Solo materia + año
                     models.Q(comision__isnull=True, materia__isnull=False, anio_virtual__isnull=False)
                 ),

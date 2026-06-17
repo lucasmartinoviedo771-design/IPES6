@@ -1,1 +1,1 @@
-from . import mesas, dashboard, ventanas, staff
+from . import dashboard, mesas, staff, ventanas

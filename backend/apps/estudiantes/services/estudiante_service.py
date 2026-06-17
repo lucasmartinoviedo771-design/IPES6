@@ -1,8 +1,14 @@
 import secrets
-from django.db.models import Q, Prefetch
-from core.models import Estudiante, EstudianteCarrera, PreinscripcionChecklist
+
+from django.db.models import Prefetch, Q
+
+from apps.estudiantes.api.helpers.estudiante_admin import (
+    _determine_condicion,
+    _extract_documentacion,
+    _extract_documentacion_from_ec,
+)
 from apps.estudiantes.schemas import EstudianteAdminListItem, EstudianteAdminListResponse
-from apps.estudiantes.api.helpers.estudiante_admin import _extract_documentacion, _extract_documentacion_from_ec, _determine_condicion
+from core.models import Estudiante, EstudianteCarrera, PreinscripcionChecklist
 
 CHECKLIST_DOC_FIELDS = [
     "dni_legalizado",
@@ -33,8 +39,7 @@ def _build_checklist_map(est_ids: list[int]) -> dict[int, PreinscripcionChecklis
     if not est_ids:
         return {}
     checklists = (
-        PreinscripcionChecklist.objects
-        .filter(preinscripcion__alumno_id__in=est_ids)
+        PreinscripcionChecklist.objects.filter(preinscripcion__alumno_id__in=est_ids)
         .order_by("-updated_at")
         .select_related("preinscripcion")
     )
@@ -48,13 +53,15 @@ def _build_checklist_map(est_ids: list[int]) -> dict[int, PreinscripcionChecklis
 
 class EstudianteService:
     @staticmethod
-    def list_estudiantes_admin(filters: dict, limit: int = 50, offset: int = 0, allowed_carrera_ids: set[int] | None = None) -> EstudianteAdminListResponse:
+    def list_estudiantes_admin(
+        filters: dict, limit: int = 50, offset: int = 0, allowed_carrera_ids: set[int] | None = None
+    ) -> EstudianteAdminListResponse:
         q = filters.get("q")
         carrera_id = filters.get("carrera_id")
         condicion_filter = filters.get("estado_legajo")  # UI sigue enviando "estado_legajo" como key
         estado_academico = filters.get("estado_academico")
         anio_ingreso = filters.get("anio_ingreso")
-        
+
         qs = (
             Estudiante.objects.select_related("persona", "user")
             .prefetch_related(
@@ -79,21 +86,28 @@ class EstudianteService:
                     return EstudianteAdminListResponse(total=0, items=[])
                 # Filtrar específicamente por esa carrera y opcionalmente por estado
                 if estado_academico:
-                    qs = qs.filter(carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico)
+                    qs = qs.filter(
+                        carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico
+                    )
                 else:
                     qs = qs.filter(carreras__id=carrera_id)
             else:
                 # "Todas": Pero solo dentro de sus permitidas
                 if estado_academico:
                     # Debe tener al menos una de SUS carreras en el estado buscado
-                    qs = qs.filter(carreras_detalle__profesorado_id__in=allowed_carrera_ids, carreras_detalle__estado_academico=estado_academico)
+                    qs = qs.filter(
+                        carreras_detalle__profesorado_id__in=allowed_carrera_ids,
+                        carreras_detalle__estado_academico=estado_academico,
+                    )
                 else:
                     qs = qs.filter(carreras__id__in=allowed_carrera_ids)
         else:
             # 2. Lógica para Admins sin restricciones (ven todo)
             if carrera_id:
                 if estado_academico:
-                    qs = qs.filter(carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico)
+                    qs = qs.filter(
+                        carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico
+                    )
                 else:
                     qs = qs.filter(carreras__id=carrera_id)
             elif estado_academico:
@@ -108,7 +122,7 @@ class EstudianteService:
                 | Q(persona__apellido__icontains=q_clean)
                 | Q(legajo__icontains=q_clean)
             )
-        
+
         if anio_ingreso:
             if carrera_id:
                 # Si filtran por carrera + año, chequeamos el año específico de ingreso en esa carrera
@@ -126,7 +140,7 @@ class EstudianteService:
             qs = qs.filter(carreras_detalle__estado_legajo=condicion_filter.upper())
 
         total = qs.count()
-        paginated = list(qs[offset: offset + limit] if limit else qs[offset:])
+        paginated = list(qs[offset : offset + limit] if limit else qs[offset:])
         checklist_map = _build_checklist_map([e.pk for e in paginated])
 
         items = []
@@ -147,13 +161,15 @@ class EstudianteService:
                 if carrera_id and cd.profesorado_id != int(carrera_id):
                     continue
 
-                carreras_det.append({
-                    "profesorado_id": cd.profesorado_id,
-                    "nombre": cd.profesorado.nombre,
-                    "estado_academico": cd.estado_academico,
-                    "estado_academico_display": cd.get_estado_academico_display(),
-                    "condicion": condicion,
-                })
+                carreras_det.append(
+                    {
+                        "profesorado_id": cd.profesorado_id,
+                        "nombre": cd.profesorado.nombre,
+                        "estado_academico": cd.estado_academico,
+                        "estado_academico_display": cd.get_estado_academico_display(),
+                        "condicion": condicion,
+                    }
+                )
                 carreras_nombres.append(cd.profesorado.nombre)
 
             items.append(
@@ -173,17 +189,18 @@ class EstudianteService:
                 )
             )
         return EstudianteAdminListResponse(total=total, items=items)
+
     @staticmethod
     def reset_password(estudiante: Estudiante) -> str | None:
         """Resetea la contraseña del estudiante a una clave segura aleatoria."""
         user = estudiante.user
         if not user:
             return None
-        
+
         new_password = secrets.token_urlsafe(12)
         user.set_password(new_password)
         user.save(update_fields=["password"])
-        
+
         estudiante.must_change_password = True
         estudiante.save(update_fields=["must_change_password"])
         return new_password
@@ -196,13 +213,13 @@ class EstudianteService:
         if allowed_carrera_ids is not None:
             qs_est = qs_est.filter(carreras__id__in=allowed_carrera_ids)
         years_est = set(qs_est.values_list("anio_ingreso", flat=True))
-        
+
         # Años de ingreso específicos por carrera
         qs_carrera = EstudianteCarrera.objects.exclude(anio_ingreso__isnull=True)
         if allowed_carrera_ids is not None:
             qs_carrera = qs_carrera.filter(profesorado_id__in=allowed_carrera_ids)
         years_carrera = set(qs_carrera.values_list("anio_ingreso", flat=True))
-        
+
         all_years = sorted(list(years_est.union(years_carrera)), reverse=True)
         # Asegurar que son ints y filtrar posibles nulos que se hayan colado
         return [int(y) for y in all_years if y is not None]

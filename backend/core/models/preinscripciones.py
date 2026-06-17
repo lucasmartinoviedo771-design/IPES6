@@ -118,15 +118,12 @@ class PreinscripcionChecklist(models.Model):
         super().save(*args, **kwargs)
         try:
             from .estudiantes import EstudianteCarrera
-            
+
             pre = self.preinscripcion
             # Buscamos la inscripción correspondiente a esta preinscripción
             # (Misno alumno + misma carrera)
-            inscripcion = EstudianteCarrera.objects.filter(
-                estudiante=pre.alumno,
-                profesorado=pre.carrera
-            ).first()
-            
+            inscripcion = EstudianteCarrera.objects.filter(estudiante=pre.alumno, profesorado=pre.carrera).first()
+
             if inscripcion and inscripcion.estado_legajo != self.estado_legajo:
                 inscripcion.estado_legajo = self.estado_legajo
                 inscripcion.save(update_fields=["estado_legajo"])

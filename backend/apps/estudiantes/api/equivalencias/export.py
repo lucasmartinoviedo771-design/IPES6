@@ -4,41 +4,38 @@ import csv
 
 from django.http import HttpResponse
 from django.utils import timezone
+from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib import colors
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth
-from core.models import PedidoEquivalencia
-from core.permissions import ensure_roles
-
 from apps.estudiantes.api.common import (
     EQUIVALENCIAS_STAFF_ROLES,
     MONTH_NAMES,
     build_certificate_header,
     can_manage_equivalencias,
 )
-from apps.estudiantes.api.router import estudiantes_router
-from apps.estudiantes.schemas import EquivalenciaItem, Horario
-
 from apps.estudiantes.api.equivalencias.helpers import (
     _serialize_pedido_equivalencia,
 )
 from apps.estudiantes.api.equivalencias.pdf_helpers import (
     _build_equivalencia_paragraphs_externas,
     _build_equivalencia_paragraphs_internas,
-    _build_equivalencias_table,
     _build_equivalencia_signature,
+    _build_equivalencias_table,
 )
-
+from apps.estudiantes.api.router import estudiantes_router
+from apps.estudiantes.schemas import EquivalenciaItem, Horario
+from core.auth_ninja import JWTAuth
 from core.models import (
     EquivalenciaCurricular,
     HorarioCatedraDetalle,
     Materia,
+    PedidoEquivalencia,
 )
+from core.permissions import ensure_roles
 
 
 @estudiantes_router.get("/equivalencias", response=list[EquivalenciaItem], auth=JWTAuth())
@@ -55,26 +52,34 @@ def equivalencias_para_materia(request, materia_id: int):
 
     # Buscamos en grupos de equivalencia formales
     grupos = EquivalenciaCurricular.objects.filter(materias=m)
-    
+
     materias_equivalentes = []
     if grupos.exists():
         for g in grupos:
             # Filtramos candidatos por Reglas: FGN, misma carga horaria y mismo formato
-            candidates = g.materias.select_related("plan_de_estudio__profesorado").filter(
-                tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
-                horas_semana=m.horas_semana,
-                formato=m.formato
-            ).exclude(id=m.id)
+            candidates = (
+                g.materias.select_related("plan_de_estudio__profesorado")
+                .filter(
+                    tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
+                    horas_semana=m.horas_semana,
+                    formato=m.formato,
+                )
+                .exclude(id=m.id)
+            )
             for mm in candidates:
                 materias_equivalentes.append(mm)
     else:
         # Fallback: buscar materias con el mismo nombre, FGN, misma carga horaria y mismo formato
-        candidates = Materia.objects.select_related("plan_de_estudio__profesorado").filter(
-            nombre__iexact=m.nombre,
-            tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
-            horas_semana=m.horas_semana,
-            formato=m.formato
-        ).exclude(id=m.id)
+        candidates = (
+            Materia.objects.select_related("plan_de_estudio__profesorado")
+            .filter(
+                nombre__iexact=m.nombre,
+                tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
+                horas_semana=m.horas_semana,
+                formato=m.formato,
+            )
+            .exclude(id=m.id)
+        )
         materias_equivalentes = list(candidates)
 
     def map_cuat(regimen: str) -> str:
@@ -95,7 +100,7 @@ def equivalencias_para_materia(request, materia_id: int):
             if mm.plan_de_estudio.profesorado:
                 profesorado_nombre = mm.plan_de_estudio.profesorado.nombre
                 profesorado_id = mm.plan_de_estudio.profesorado.id
-            
+
         detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mm).select_related(
             "bloque", "horario_catedra"
         )
@@ -122,8 +127,6 @@ def equivalencias_para_materia(request, materia_id: int):
 
 
 @estudiantes_router.post("/equivalencias/pedidos/{pedido_id}/nota", auth=JWTAuth())
-
-
 @estudiantes_router.post("/equivalencias/pedidos/{pedido_id}/nota", auth=JWTAuth())
 def generar_nota_equivalencias(request, pedido_id: int):
     pedido = (
@@ -149,9 +152,8 @@ def generar_nota_equivalencias(request, pedido_id: int):
 
     today = timezone.now()
     est = pedido.estudiante
-    destino_nombre = (
-        pedido.profesorado_destino_nombre
-        or (pedido.profesorado_destino.nombre if pedido.profesorado_destino_id else "")
+    destino_nombre = pedido.profesorado_destino_nombre or (
+        pedido.profesorado_destino.nombre if pedido.profesorado_destino_id else ""
     )
     ciclo_lectivo = pedido.ciclo_lectivo or str(today.year)
     tipo = pedido.tipo
@@ -338,7 +340,7 @@ def exportar_pedidos_equivalencia(
                         m.nombre,
                         f"({m.formato})" if m.formato else None,
                         f"Año {m.anio_cursada}" if m.anio_cursada else None,
-                        f"Nota: {m.nota}" if getattr(m, 'nota', "") else None,
+                        f"Nota: {m.nota}" if getattr(m, "nota", "") else None,
                     ],
                 )
             )

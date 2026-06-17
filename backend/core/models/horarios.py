@@ -60,7 +60,9 @@ class HorarioCatedra(models.Model):
     def clean(self):
         super().clean()
         if self.cuatrimestre and self.espacio.regimen == "ANU":
-            raise ValidationError(f"La materia '{self.espacio.nombre}' es ANUAL y no puede tener un horario asignado a un cuatrimestre específico ({self.get_cuatrimestre_display()}).")
+            raise ValidationError(
+                f"La materia '{self.espacio.nombre}' es ANUAL y no puede tener un horario asignado a un cuatrimestre específico ({self.get_cuatrimestre_display()})."
+            )
 
     def __str__(self):
         return f"Horario de {self.espacio.nombre} - {self.anio_academico} ({self.turno.nombre})"

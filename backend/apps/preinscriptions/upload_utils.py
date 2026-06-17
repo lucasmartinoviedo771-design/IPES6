@@ -31,8 +31,8 @@ ALLOWED_MIMES = {
 }
 
 # Límites
-MAX_BYTES = 10 * 1024 * 1024          # 10 MB en disco
-MAX_IMAGE_PIXELS = 4000 * 4000        # 16 Mpx — mayor bloquea image bombs
+MAX_BYTES = 10 * 1024 * 1024  # 10 MB en disco
+MAX_IMAGE_PIXELS = 4000 * 4000  # 16 Mpx — mayor bloquea image bombs
 MAX_PDF_PAGES = 200
 
 # Pillow tiene su propia protección anti-decompression-bomb; la configuramos explícitamente
@@ -92,11 +92,11 @@ def sanitize_image(file_obj) -> io.BytesIO:
     try:
         file_obj.seek(0)
         with Image.open(file_obj) as img:
-            img.verify()          # Detecta truncados / datos corruptos al final
+            img.verify()  # Detecta truncados / datos corruptos al final
 
         file_obj.seek(0)
         with Image.open(file_obj) as img:
-            img.load()            # Decodifica todos los píxeles
+            img.load()  # Decodifica todos los píxeles
             # Convertir a RGB (descarta canal alpha, EXIF y perfiles ICC)
             rgb = img.convert("RGB")
 
@@ -109,6 +109,7 @@ def sanitize_image(file_obj) -> io.BytesIO:
 
 
 # ── helpers internos ──────────────────────────────────────────────────────────
+
 
 def _validate_image(file_obj) -> tuple[bool, str | None]:
     """Intenta decodificar la imagen con Pillow para detectar polyglots y truncados."""

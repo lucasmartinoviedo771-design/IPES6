@@ -1,9 +1,13 @@
 import secrets
-from django.contrib.auth.models import User, Group
+
+from django.contrib.auth.models import Group, User
 from django.db.models import Q
 from ninja.errors import HttpError
+
 from core.models import Docente, StaffAsignacion
+
 from ..schemas import DocenteOut
+
 
 class DocenteService:
     @staticmethod

@@ -5,18 +5,22 @@ Permite la subida, listado, descarga y eliminación de documentos adjuntos
 """
 
 import logging
+import os
+
 from django.db.models import Q
 from django.http import FileResponse
 from django.utils.text import get_valid_filename
 from ninja import File, Router
 from ninja.errors import HttpError
 from ninja.files import UploadedFile
+
+from apps.common.date_utils import format_datetime
 from core.auth_ninja import JWTAuth
-from core.permissions import allowed_profesorados
 from core.models.preinscripciones import Preinscripcion
+from core.permissions import allowed_profesorados
+
 from .models_uploads import PreinscripcionArchivo
 from .upload_utils import is_allowed, sanitize_image
-from apps.common.date_utils import format_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +49,7 @@ def check_preins_access(request, pid: int):
     allowed = allowed_profesorados(request.user)
     if allowed is None or preins.carrera_id in allowed:
         return preins
-    
+
     raise HttpError(403, "No tiene permiso sobre la carrera de esta preinscripción.")
 
 
@@ -57,10 +61,10 @@ def listar_documentos(request, pid: int, q: str | None = None):
     """
     check_preins_access(request, pid)
     qs = PreinscripcionArchivo.objects.filter(preinscripcion_id=pid).order_by("-creado_en")
-    
+
     if q:
         qs = qs.filter(Q(tipo__icontains=q) | Q(nombre_original__icontains=q))
-        
+
     items = [
         {
             "id": x.id,
@@ -84,9 +88,7 @@ def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str
     """
     check_preins_access(request, pid)
 
-    logger.info(
-        f"Iniciando subida para preinscripción {pid}: {file.name} ({file.size} bytes), tipo: {tipo}"
-    )
+    logger.info(f"Iniciando subida para preinscripción {pid}: {file.name} ({file.size} bytes), tipo: {tipo}")
 
     # Validación de seguridad: extensión y límites de tamaño configurados
     ok, err = is_allowed(file, file.size)
@@ -104,10 +106,14 @@ def subir_documento(request, pid: int, file: UploadedFile = File(...), tipo: str
         try:
             clean_io = sanitize_image(file)
             from django.core.files.uploadedfile import InMemoryUploadedFile
+
             file = InMemoryUploadedFile(
-                clean_io, "archivo",
+                clean_io,
+                "archivo",
                 os.path.splitext(safe_name)[0] + ".jpg",
-                "image/jpeg", clean_io.getbuffer().nbytes, None,
+                "image/jpeg",
+                clean_io.getbuffer().nbytes,
+                None,
             )
             safe_name = os.path.splitext(safe_name)[0] + ".jpg"
             actual_content_type = "image/jpeg"
@@ -165,9 +171,5 @@ def descargar_documento(request, pid: int, doc_id: int):
 
     if not obj.archivo:
         raise HttpError(404, "El archivo físico no se encuentra disponible.")
-        
-    return FileResponse(
-        obj.archivo.open("rb"), 
-        as_attachment=True, 
-        filename=obj.nombre_original
-    )
+
+    return FileResponse(obj.archivo.open("rb"), as_attachment=True, filename=obj.nombre_original)

@@ -4,12 +4,20 @@ from django.db.models import Max, Q
 from django.utils import timezone
 
 from apps.common.api_schemas import ApiResponse
-from core.models import Correlatividad, Estudiante, HorarioCatedra, HorarioCatedraDetalle, Materia, PlanDeEstudio, Profesorado
+from core.models import (
+    Correlatividad,
+    Estudiante,
+    HorarioCatedra,
+    HorarioCatedraDetalle,
+    Materia,
+    PlanDeEstudio,
+    Profesorado,
+)
 
 from ..schemas import Horario, HorarioTabla, MateriaPlan
 from .helpers import (
-    _correlatividades_qs,
     _construir_tablas_horario,
+    _correlatividades_qs,
     _ensure_estudiante_access,
     _listar_carreras_detalle,
     _resolve_estudiante,
@@ -91,7 +99,11 @@ def materias_plan(
         )
 
     def horarios_para(m: Materia) -> list[Horario]:
-        hcs = HorarioCatedra.objects.filter(espacio=m).annotate(max_anio=Max("anio_academico")).order_by("-anio_academico")
+        hcs = (
+            HorarioCatedra.objects.filter(espacio=m)
+            .annotate(max_anio=Max("anio_academico"))
+            .order_by("-anio_academico")
+        )
         if not hcs:
             return []
         detalles = HorarioCatedraDetalle.objects.filter(horario_catedra__in=hcs[:1]).select_related(
@@ -110,9 +122,7 @@ def materias_plan(
         return sorted(hs, key=lambda x: (x.dia, x.desde))
 
     def correlativas_ids(m: Materia, tipo: str, estudiante: Estudiante | None = None) -> list[int]:
-        return list(
-            _correlatividades_qs(m, tipo, estudiante).values_list("materia_correlativa_id", flat=True)
-        )
+        return list(_correlatividades_qs(m, tipo, estudiante).values_list("materia_correlativa_id", flat=True))
 
     materias = []
     if not plan:
@@ -233,7 +243,7 @@ def horarios_profesorado(
         max_year = horarios_qs.aggregate(max_year=Max("anio_academico"))["max_year"]
         if max_year:
             current_year = max_year
-            
+
     horarios_qs = horarios_qs.filter(anio_academico=current_year)
 
     if turno_id is not None:
@@ -247,28 +257,36 @@ def horarios_profesorado(
         if valor == "ANUAL":
             # Mostrar solo anuales sin segmentar (sin cuatrimestre específico en HorarioCatedra)
             horarios_qs = horarios_qs.filter(
-                Q(cuatrimestre__isnull=True) |
-                Q(cuatrimestre="") |
-                Q(cuatrimestre="ANU") |
-                Q(cuatrimestre=Materia.TipoCursada.ANUAL)
+                Q(cuatrimestre__isnull=True)
+                | Q(cuatrimestre="")
+                | Q(cuatrimestre="ANU")
+                | Q(cuatrimestre=Materia.TipoCursada.ANUAL)
             )
         elif valor == "1C":
             # Incluir: 1C explícito O anuales sin segmentar (cuatrimestre NULL/vacío)
             horarios_qs = horarios_qs.filter(
-                Q(cuatrimestre=Materia.TipoCursada.PRIMER_CUATRIMESTRE) |
-                Q(cuatrimestre="PCU") |
+                Q(cuatrimestre=Materia.TipoCursada.PRIMER_CUATRIMESTRE)
+                | Q(cuatrimestre="PCU")
+                |
                 # Anuales sin segmentar (cuatrimestre NULL/vacío y espacio.regimen es anual)
-                (Q(cuatrimestre__isnull=True) & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU"))) |
-                (Q(cuatrimestre="") & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU")))
+                (
+                    Q(cuatrimestre__isnull=True)
+                    & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU"))
+                )
+                | (Q(cuatrimestre="") & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU")))
             )
         elif valor == "2C":
             # Incluir: 2C explícito O anuales sin segmentar (cuatrimestre NULL/vacío)
             horarios_qs = horarios_qs.filter(
-                Q(cuatrimestre=Materia.TipoCursada.SEGUNDO_CUATRIMESTRE) |
-                Q(cuatrimestre="SCU") |
+                Q(cuatrimestre=Materia.TipoCursada.SEGUNDO_CUATRIMESTRE)
+                | Q(cuatrimestre="SCU")
+                |
                 # Anuales sin segmentar (cuatrimestre NULL/vacío y espacio.regimen es anual)
-                (Q(cuatrimestre__isnull=True) & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU"))) |
-                (Q(cuatrimestre="") & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU")))
+                (
+                    Q(cuatrimestre__isnull=True)
+                    & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU"))
+                )
+                | (Q(cuatrimestre="") & (Q(espacio__regimen=Materia.TipoCursada.ANUAL) | Q(espacio__regimen="ANU")))
             )
     # Si cuatrimestre es None/vacío: no filtrar, devolver todo
 

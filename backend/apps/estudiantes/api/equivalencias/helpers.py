@@ -1,22 +1,20 @@
 """Helpers de serialización y queryset para equivalencias."""
 
-from apps.common.date_utils import format_date, format_datetime, parse_date
-
 from ninja.errors import HttpError
 
+from apps.common.date_utils import format_date, format_datetime, parse_date
+from apps.estudiantes.api.common import can_manage_equivalencias
+from apps.estudiantes.schemas import (
+    PedidoEquivalenciaMateriaIn,
+    PedidoEquivalenciaMateriaOut,
+    PedidoEquivalenciaOut,
+)
 from core.models import (
     Estudiante,
     PedidoEquivalencia,
     PedidoEquivalenciaMateria,
     PlanDeEstudio,
     Profesorado,
-)
-
-from apps.estudiantes.api.common import can_manage_equivalencias
-from apps.estudiantes.schemas import (
-    PedidoEquivalenciaMateriaIn,
-    PedidoEquivalenciaMateriaOut,
-    PedidoEquivalenciaOut,
 )
 
 
@@ -140,9 +138,7 @@ def _calcular_resultado_final(pedido: PedidoEquivalencia) -> str:
     return PedidoEquivalencia.ResultadoFinal.MIXTA
 
 
-def _sync_pedido_equivalencia_materias(
-    pedido: PedidoEquivalencia, materias: list[PedidoEquivalenciaMateriaIn]
-) -> None:
+def _sync_pedido_equivalencia_materias(pedido: PedidoEquivalencia, materias: list[PedidoEquivalenciaMateriaIn]) -> None:
     PedidoEquivalenciaMateria.objects.filter(pedido=pedido).delete()
     bulk: list[PedidoEquivalenciaMateria] = []
     for item in materias:

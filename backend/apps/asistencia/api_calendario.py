@@ -1,26 +1,28 @@
 from datetime import date
+
 from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from core.models import Turno
-from .models import CalendarioAsistenciaEvento
 from core.auth_ninja import JWTAuth
+from core.models import Turno
 
+from .api_helpers import (
+    _calendario_queryset_with_scope,
+    _ensure_authenticated_scope,
+    _ensure_calendar_manage_scope,
+    _evento_to_schema,
+    _resolve_scope,
+    _resolver_event_scope,
+)
+from .models import CalendarioAsistenciaEvento
 from .schemas import (
     AsistenciaCalendarioEventoIn,
     AsistenciaCalendarioEventoOut,
 )
-from .api_helpers import (
-    _resolve_scope,
-    _ensure_authenticated_scope,
-    _calendario_queryset_with_scope,
-    _evento_to_schema,
-    _ensure_calendar_manage_scope,
-    _resolver_event_scope,
-)
 
 router = Router(tags=["asistencia-calendario"], auth=JWTAuth())
+
 
 @router.get("/", response=list[AsistenciaCalendarioEventoOut], auth=JWTAuth())
 def listar_eventos_calendario(
@@ -55,7 +57,9 @@ def listar_eventos_calendario(
 
 
 @router.post("/", response=AsistenciaCalendarioEventoOut, auth=JWTAuth())
-def crear_evento_calendario(request: HttpRequest, payload: AsistenciaCalendarioEventoIn) -> AsistenciaCalendarioEventoOut:
+def crear_evento_calendario(
+    request: HttpRequest, payload: AsistenciaCalendarioEventoIn
+) -> AsistenciaCalendarioEventoOut:
     roles, staff_profesorados, _docente_profile = _resolve_scope(request)
     if not roles & {"admin", "secretaria", "bedel"}:
         raise HttpError(403, "No tenes permisos para crear eventos de asistencia.")

@@ -1,6 +1,6 @@
 """
 Utilidades para el manejo y formateo de fechas.
-Centraliza las reglas de representación de fechas (DD/MM/YYYY) para 
+Centraliza las reglas de representación de fechas (DD/MM/YYYY) para
 asegurar una experiencia de usuario consistente en reportes y formularios.
 """
 
@@ -23,7 +23,6 @@ def calcular_limite_baja_mesa(fecha_examen: date) -> datetime:
     return dt
 
 
-
 def format_date(d: date | datetime | str | None) -> str | None:
     """
     Formatea una fecha u objeto datetime al estándar regional 'DD/MM/YYYY'.
@@ -36,11 +35,11 @@ def format_date(d: date | datetime | str | None) -> str | None:
     if isinstance(d, str):
         # Intento de re-formateo si viene en formato ISO desde la BD
         if len(d) == 10 and "-" in d:
-             try:
-                 dt = datetime.strptime(d, "%Y-%m-%d")
-                 return dt.strftime("%d/%m/%Y")
-             except ValueError:
-                 pass
+            try:
+                dt = datetime.strptime(d, "%Y-%m-%d")
+                return dt.strftime("%d/%m/%Y")
+            except ValueError:
+                pass
         return d
     return str(d)
 

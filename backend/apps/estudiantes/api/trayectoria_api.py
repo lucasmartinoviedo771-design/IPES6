@@ -1,6 +1,6 @@
 """
 Motor de Trayectoria Académica y Seguimiento de Alumnos (Cartón del Alumno).
-Esta API es el núcleo de la inteligencia académica del sistema. Consolida múltiples fuentes 
+Esta API es el núcleo de la inteligencia académica del sistema. Consolida múltiples fuentes
 de datos para reconstruir la 'Sábana Académica' completa del estudiante.
 
 Fuentes de Datos Consolidadas:
@@ -16,21 +16,24 @@ Lógicas de Negocio Implementadas:
 """
 
 from __future__ import annotations
+
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
+
 from apps.common.api_schemas import ApiResponse
+from apps.common.date_utils import format_date, format_datetime
 from core.auth_ninja import JWTAuth
 from core.models import (
     ActaExamenEstudiante,
     Correlatividad,
+    EquivalenciaDisposicion,
+    EquivalenciaDisposicionDetalle,
     InscripcionMateriaEstudiante,
     InscripcionMesa,
     Materia,
     PlanDeEstudio,
     Preinscripcion,
     Regularidad,
-    EquivalenciaDisposicion,
-    EquivalenciaDisposicionDetalle,
 )
 
 from ..schemas import (
@@ -40,9 +43,9 @@ from ..schemas import (
     FinalHabilitado,
     HistorialEstudiante,
     MateriaSugerida,
+    RecomendacionesOut,
     RegularidadResumen,
     RegularidadVigenciaOut,
-    RecomendacionesOut,
     TrayectoriaEvento,
     TrayectoriaMesa,
     TrayectoriaOut,
@@ -50,15 +53,14 @@ from ..schemas import (
 from .helpers import (
     _acta_condicion,
     _calcular_vigencia_regularidad,
+    _ensure_estudiante_access,
     _format_acta_calificacion,
     _format_nota,
     _listar_carreras_detalle,
     _metadata_str,
     _resolve_estudiante,
     _to_iso,
-    _ensure_estudiante_access,
 )
-from apps.common.date_utils import format_date, format_datetime
 from .router import estudiantes_router
 
 
@@ -66,7 +68,7 @@ from .router import estudiantes_router
 def historial_estudiante(request, dni: str | None = None):
     """
     Retorna un resumen simplificado de IDs de materias por estado académico.
-    Se utiliza principalmente para lógica de visualización rápida en el frontend 
+    Se utiliza principalmente para lógica de visualización rápida en el frontend
     (ej. habilitar botones de inscripción si tiene la materia aprobada).
     """
     _ensure_estudiante_access(request, dni)
@@ -80,7 +82,9 @@ def historial_estudiante(request, dni: str | None = None):
 
     # 1. Análisis de cursadas (Tomamos la situación más reciente de cada materia)
     situacion_por_materia: dict[int, Regularidad] = {}
-    for reg in Regularidad.objects.filter(estudiante=est).exclude(materia__nombre__startswith="CI:").order_by("fecha_cierre"):
+    for reg in (
+        Regularidad.objects.filter(estudiante=est).exclude(materia__nombre__startswith="CI:").order_by("fecha_cierre")
+    ):
         situacion_por_materia[reg.materia_id] = reg
 
     hoy = timezone.now().date()
@@ -95,32 +99,44 @@ def historial_estudiante(request, dni: str | None = None):
                 regularizadas_set.add(mid)
 
     # 2. Análisis de Actas y Equivalencias
-    actas_estudiante_qs = ActaExamenEstudiante.objects.filter(dni=est.dni).exclude(acta__materia__nombre__startswith="CI:").select_related("acta")
+    actas_estudiante_qs = (
+        ActaExamenEstudiante.objects.filter(dni=est.dni)
+        .exclude(acta__materia__nombre__startswith="CI:")
+        .select_related("acta")
+    )
     for a in actas_estudiante_qs:
         cond_val, _ = _acta_condicion(a.calificacion_definitiva)
         is_equiv = (
-            (a.permiso_examen == "EQUIV") or 
-            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
-            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
+            (a.permiso_examen == "EQUIV")
+            or (a.acta.codigo and a.acta.codigo.startswith("EQUIV-"))
+            or (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
         )
         if cond_val == "APR" or is_equiv:
             aprobadas_set.add(a.acta.materia_id)
 
     # 3. Análisis de Disposiciones de Equivalencia (NUEVAS)
-    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).exclude(materia__nombre__startswith="CI:"):
+    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).exclude(
+        materia__nombre__startswith="CI:"
+    ):
         aprobadas_set.add(equis.materia_id)
 
     # 4. Finales Recientes
-    insc_mesa_qs = InscripcionMesa.objects.filter(estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO, estado=InscripcionMesa.Estado.INSCRIPTO).exclude(mesa__materia__nombre__startswith="CI:")
+    insc_mesa_qs = InscripcionMesa.objects.filter(
+        estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO, estado=InscripcionMesa.Estado.INSCRIPTO
+    ).exclude(mesa__materia__nombre__startswith="CI:")
     for insc in insc_mesa_qs:
         if insc.mesa and insc.mesa.materia_id:
             aprobadas_set.add(insc.mesa.materia_id)
 
     # 4. Inscripciones Activas (A cursar)
-    inscriptas_actuales = InscripcionMateriaEstudiante.objects.filter(
-        estudiante=est,
-        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
-    ).exclude(materia__nombre__startswith="CI:").values_list("materia_id", flat=True)
+    inscriptas_actuales = (
+        InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est,
+            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
+        )
+        .exclude(materia__nombre__startswith="CI:")
+        .values_list("materia_id", flat=True)
+    )
     inscriptas_actuales_set.update(inscriptas_actuales)
 
     return HistorialEstudiante(
@@ -135,7 +151,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     """
     Construye la trayectoria académica integral ('Cartón del Alumno').
     Este es el proceso más complejo del sistema, consolidando múltiples fuentes de datos.
-    
+
     Flujo de Trabajo:
     1. Consolidación de aprobaciones (Actas + Equivalencias + Finales).
     2. Identificación de regularidades vigentes y detección de bloqueos por recursado.
@@ -160,7 +176,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
     finales_habilitados_data: list[dict] = []
     alertas: list[str] = []
     carton_planes: list[dict] = []
-    
+
     # Acumuladores de estado para lógica de recomendaciones
     aprobadas_set: set[int] = set()
     aprobadas_notas: dict[int, str] = {}
@@ -168,9 +184,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
     inscriptas_actuales_set: set[int] = set()
 
     hoy = timezone.now().date()
-    
+
     # --- 1. PRE-CÁLCULO DE ESTADOS ---
-    
+
     # Análisis de cursadas cerradas
     regularidades_qs = (
         Regularidad.objects.filter(estudiante=est)
@@ -188,29 +204,30 @@ def trayectoria_estudiante(request, dni: str | None = None):
         Regularidad.Situacion.DESAPROBADO_PA,
         Regularidad.Situacion.DESAPROBADO_TP,
     }
-    
+
     # 1. PRE-CÁLCULO DE ESTADOS
     ultima_situacion_por_materia: dict[int, str] = {}
     for reg in reversed(regularidades_list):
         if reg.materia_id not in ultima_situacion_por_materia:
             ultima_situacion_por_materia[reg.materia_id] = reg.situacion
-            
+
             if reg.en_resguardo:
                 continue
-                
+
             # Si lo último es APROBADO o PROMOCIONADO
             if reg.situacion in (Regularidad.Situacion.APROBADO, Regularidad.Situacion.PROMOCIONADO):
                 aprobadas_set.add(reg.materia_id)
-                aprobadas_notas[reg.materia_id] = _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
-            
+                aprobadas_notas[reg.materia_id] = (
+                    _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else "-"
+                )
+
             elif reg.situacion == Regularidad.Situacion.REGULAR:
                 limite, intentos, intentos_max = _calcular_vigencia_regularidad(est, reg)
                 if limite >= hoy and intentos < intentos_max:
                     regularizadas_set.add(reg.materia_id)
 
     materias_bloqueadas_final: set[int] = {
-        mid for mid, sit in ultima_situacion_por_materia.items()
-        if sit in SITUACIONES_BLOQUEANTES
+        mid for mid, sit in ultima_situacion_por_materia.items() if sit in SITUACIONES_BLOQUEANTES
     }
 
     # Análisis de Actas / Equivalencias (Prioridad diagnóstica alta)
@@ -223,16 +240,20 @@ def trayectoria_estudiante(request, dni: str | None = None):
     for a in actas_estudiante_qs:
         cond_val, _ = _acta_condicion(a.calificacion_definitiva)
         is_equiv = (
-            (a.permiso_examen == "EQUIV") or 
-            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
-            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
+            (a.permiso_examen == "EQUIV")
+            or (a.acta.codigo and a.acta.codigo.startswith("EQUIV-"))
+            or (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
         )
         if cond_val in ("APR", "EQUI") or is_equiv:
             aprobadas_set.add(a.acta.materia_id)
             aprobadas_notas[a.acta.materia_id] = _format_acta_calificacion(a.calificacion_definitiva)
 
     # Análisis de Disposiciones de Equivalencia (NUEVAS)
-    for equis in EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).exclude(materia__nombre__startswith="CI:").select_related("disposicion"):
+    for equis in (
+        EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est)
+        .exclude(materia__nombre__startswith="CI:")
+        .select_related("disposicion")
+    ):
         aprobadas_set.add(equis.materia_id)
         aprobadas_notas[equis.materia_id] = _format_nota(equis.nota) if equis.nota else "-"
 
@@ -240,7 +261,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
     inscripciones_mesa_qs = (
         InscripcionMesa.objects.filter(estudiante=est, estado=InscripcionMesa.Estado.INSCRIPTO)
         .exclude(mesa__materia__nombre__startswith="CI:")
-        .select_related("mesa__materia", "mesa__materia__plan_de_estudio", "mesa__materia__plan_de_estudio__profesorado")
+        .select_related(
+            "mesa__materia", "mesa__materia__plan_de_estudio", "mesa__materia__plan_de_estudio__profesorado"
+        )
         .order_by("-mesa__fecha")
     )
     for insc in inscripciones_mesa_qs:
@@ -250,100 +273,116 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 aprobadas_notas[insc.mesa.materia_id] = _format_nota(insc.nota) if insc.nota else "-"
 
     # --- 2. CONSTRUCCIÓN DE LÍNEA DE TIEMPO DE EXÁMENES ---
-    
+
     inscripciones_mesa_all = (
         InscripcionMesa.objects.filter(estudiante=est)
         .exclude(mesa__materia__nombre__startswith="CI:")
         .select_related("mesa", "mesa__materia")
         .order_by("-mesa__fecha")
     )
-    
-    mesas_added_keys = set() 
+
+    mesas_added_keys = set()
 
     for insc in inscripciones_mesa_all:
         fecha_str = format_date(insc.mesa.fecha)
         key = (insc.mesa.materia_id, fecha_str)
         mesas_added_keys.add(key)
-        
+
         estado_val = insc.estado
         estado_lbl = insc.get_estado_display()
         nota_str = None
-        
+
         if insc.condicion:
             estado_val = insc.condicion
             estado_lbl = insc.get_condicion_display()
             nota_str = _format_nota(insc.nota)
-            
-        mesas_raw.append({
-            "id": insc.id,
-            "mesa_id": insc.mesa_id,
-            "materia_id": insc.mesa.materia_id,
-            "materia_nombre": insc.mesa.materia.nombre,
-            "tipo": insc.mesa.tipo,
-            "tipo_display": insc.mesa.get_tipo_display(),
-            "fecha": fecha_str,
-            "estado": estado_val,
-            "estado_display": estado_lbl,
-            "aula": insc.mesa.aula,
-            "nota": nota_str,
-            "hora_desde": _to_iso(insc.mesa.hora_desde) if insc.mesa.hora_desde else None,
-            "hora_hasta": _to_iso(insc.mesa.hora_hasta) if insc.mesa.hora_hasta else None,
-            "tribunal": {
-                "presidente": str(insc.mesa.docente_presidente) if insc.mesa.docente_presidente else None,
-                "vocal1": str(insc.mesa.docente_vocal1) if insc.mesa.docente_vocal1 else None,
-                "vocal2": str(insc.mesa.docente_vocal2) if insc.mesa.docente_vocal2 else None,
-            },
-            "puede_baja": (
-                insc.estado == InscripcionMesa.Estado.INSCRIPTO and (
-                    (insc.mesa.ventana.desde <= hoy <= insc.mesa.ventana.hasta and insc.mesa.ventana.activo) 
-                    if insc.mesa.ventana else (insc.mesa.fecha > hoy)
-                )
-            )
-        })
-        
+
+        mesas_raw.append(
+            {
+                "id": insc.id,
+                "mesa_id": insc.mesa_id,
+                "materia_id": insc.mesa.materia_id,
+                "materia_nombre": insc.mesa.materia.nombre,
+                "tipo": insc.mesa.tipo,
+                "tipo_display": insc.mesa.get_tipo_display(),
+                "fecha": fecha_str,
+                "estado": estado_val,
+                "estado_display": estado_lbl,
+                "aula": insc.mesa.aula,
+                "nota": nota_str,
+                "hora_desde": _to_iso(insc.mesa.hora_desde) if insc.mesa.hora_desde else None,
+                "hora_hasta": _to_iso(insc.mesa.hora_hasta) if insc.mesa.hora_hasta else None,
+                "tribunal": {
+                    "presidente": str(insc.mesa.docente_presidente) if insc.mesa.docente_presidente else None,
+                    "vocal1": str(insc.mesa.docente_vocal1) if insc.mesa.docente_vocal1 else None,
+                    "vocal2": str(insc.mesa.docente_vocal2) if insc.mesa.docente_vocal2 else None,
+                },
+                "puede_baja": (
+                    insc.estado == InscripcionMesa.Estado.INSCRIPTO
+                    and (
+                        (insc.mesa.ventana.desde <= hoy <= insc.mesa.ventana.hasta and insc.mesa.ventana.activo)
+                        if insc.mesa.ventana
+                        else (insc.mesa.fecha > hoy)
+                    )
+                ),
+            }
+        )
+
     # Integración de actas históricas que no tienen 'inscripción previa' registrada
     for a in actas_estudiante_qs:
         fecha_str = format_date(a.acta.fecha)
         key = (a.acta.materia_id, fecha_str)
-        
+
         if key in mesas_added_keys:
             continue
-            
+
         cond_val, cond_lbl = _acta_condicion(a.calificacion_definitiva)
-        
-        mesas_raw.append({
-            "id": -a.id, 
-            "mesa_id": a.acta.id,
-            "materia_id": a.acta.materia_id,
-            "materia_nombre": a.acta.materia.nombre,
-            "tipo": a.acta.tipo,
-            "tipo_display": a.acta.get_tipo_display(),
-            "fecha": fecha_str,
-            "estado": cond_val,
-            "estado_display": cond_lbl,
-            "aula": None,
-            "nota": a.calificacion_definitiva,
-            "hora_desde": _to_iso(a.acta.hora_desde) if hasattr(a.acta, "hora_desde") and a.acta.hora_desde else None,
-            "hora_hasta": _to_iso(a.acta.hora_hasta) if hasattr(a.acta, "hora_hasta") and a.acta.hora_hasta else None,
-            "tribunal": {
-                "presidente": str(a.acta.docente_presidente) if hasattr(a.acta, "docente_presidente") and a.acta.docente_presidente else None,
-                "vocal1": str(a.acta.docente_vocal1) if hasattr(a.acta, "docente_vocal1") and a.acta.docente_vocal1 else None,
-                "vocal2": str(a.acta.docente_vocal2) if hasattr(a.acta, "docente_vocal2") and a.acta.docente_vocal2 else None,
-            },
-            "puede_baja": False
-        })
+
+        mesas_raw.append(
+            {
+                "id": -a.id,
+                "mesa_id": a.acta.id,
+                "materia_id": a.acta.materia_id,
+                "materia_nombre": a.acta.materia.nombre,
+                "tipo": a.acta.tipo,
+                "tipo_display": a.acta.get_tipo_display(),
+                "fecha": fecha_str,
+                "estado": cond_val,
+                "estado_display": cond_lbl,
+                "aula": None,
+                "nota": a.calificacion_definitiva,
+                "hora_desde": _to_iso(a.acta.hora_desde)
+                if hasattr(a.acta, "hora_desde") and a.acta.hora_desde
+                else None,
+                "hora_hasta": _to_iso(a.acta.hora_hasta)
+                if hasattr(a.acta, "hora_hasta") and a.acta.hora_hasta
+                else None,
+                "tribunal": {
+                    "presidente": str(a.acta.docente_presidente)
+                    if hasattr(a.acta, "docente_presidente") and a.acta.docente_presidente
+                    else None,
+                    "vocal1": str(a.acta.docente_vocal1)
+                    if hasattr(a.acta, "docente_vocal1") and a.acta.docente_vocal1
+                    else None,
+                    "vocal2": str(a.acta.docente_vocal2)
+                    if hasattr(a.acta, "docente_vocal2") and a.acta.docente_vocal2
+                    else None,
+                },
+                "puede_baja": False,
+            }
+        )
 
     # --- 3. AUDITORÍA DE VENCIMIENTOS Y ALERTAS ---
-    
+
     materias_procesadas_vigencia = set()
     for reg in reversed(regularidades_list):
         vigencia_iso = None
         vigencia_str = None
         vigente = None
         dias_restantes: int | None = None
-        
+
         materia_ya_aprobada = reg.materia_id in aprobadas_set
-        
+
         # Procesamos solo la regularidad más reciente para cada materia
         if reg.materia_id not in materias_procesadas_vigencia:
             es_bloqueada = reg.materia_id in materias_bloqueadas_final
@@ -373,7 +412,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     comentarios: list[str] = []
                     if dias_restantes <= 30:
                         comentarios.append("Vencimiento inminente de la regularidad.")
-                    
+
                     # Chequeo de correlativas para habilitar el examen final
                     correlativas_encontradas = []
                     for correlativa_req in reg.materia.correlativas_requeridas.all():
@@ -395,47 +434,49 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     )
                 else:
                     alertas.append(f"Tu regularidad en {reg.materia.nombre} venció el {vigencia_str}.")
-            
+
             materias_procesadas_vigencia.add(reg.materia_id)
 
     # --- 4. CONSTRUCCIÓN DEL CARTÓN (SÁBANA ACADÉMICA) ---
     # Se agrupan todas las instancias por materia para mostrar historial dentro del cartón
-    
+
     actas_map: dict[int, list[dict]] = {}
     for a in actas_estudiante_qs:
         mid = a.acta.materia_id
         if mid not in actas_map:
             actas_map[mid] = []
-        
+
         cond_val, cond_label = _acta_condicion(a.calificacion_definitiva)
         is_equiv = (
-            (a.permiso_examen == "EQUIV") or 
-            (a.acta.codigo and a.acta.codigo.startswith("EQUIV-")) or
-            (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
+            (a.permiso_examen == "EQUIV")
+            or (a.acta.codigo and a.acta.codigo.startswith("EQUIV-"))
+            or (a.acta.observaciones and "Equivalencia" in a.acta.observaciones)
         )
-        
+
         folio_val = a.acta.folio
         if is_equiv:
             cond_val = "EQUI"
             cond_label = "Equivalencia"
-        
-        actas_map[mid].append({
-            "fecha": format_date(a.acta.fecha),
-            "fecha_iso": a.acta.fecha.isoformat(),
-            "condicion": cond_val,
-            "condicion_display": cond_label,
-            "nota": a.calificacion_definitiva,
-            "folio": folio_val,
-            "libro": a.acta.libro,
-            "es_acta": True
-        })
-    
+
+        actas_map[mid].append(
+            {
+                "fecha": format_date(a.acta.fecha),
+                "fecha_iso": a.acta.fecha.isoformat(),
+                "condicion": cond_val,
+                "condicion_display": cond_label,
+                "nota": a.calificacion_definitiva,
+                "folio": folio_val,
+                "libro": a.acta.libro,
+                "es_acta": True,
+            }
+        )
+
     regularidades_map: dict[int, list[Regularidad]] = {}
     for reg in regularidades_list:
         if reg.materia_id not in regularidades_map:
             regularidades_map[reg.materia_id] = []
         regularidades_map[reg.materia_id].append(reg)
-        
+
     finales_map = {}
     for insc in inscripciones_mesa_qs:
         mid = insc.mesa.materia_id
@@ -443,47 +484,52 @@ def trayectoria_estudiante(request, dni: str | None = None):
             finales_map[mid] = []
         finales_map[mid].append(insc)
 
-    equis_all = list(EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).select_related("disposicion"))
+    equis_all = list(
+        EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).select_related("disposicion")
+    )
     equis_map: dict[int, list[EquivalenciaDisposicionDetalle]] = {}
     for eq in equis_all:
         equis_map.setdefault(eq.materia_id, []).append(eq)
 
     # Precalculamos nombres normalizados de EDIs en los que el estudiante ya tiene actividad
     ids_con_actividad = (
-        aprobadas_set | 
-        regularizadas_set | 
-        inscriptas_actuales_set | 
-        set(regularidades_map.keys()) | 
-        set(actas_map.keys()) | 
-        set(finales_map.keys()) | 
-        set(equis_map.keys())
+        aprobadas_set
+        | regularizadas_set
+        | inscriptas_actuales_set
+        | set(regularidades_map.keys())
+        | set(actas_map.keys())
+        | set(finales_map.keys())
+        | set(equis_map.keys())
     )
-    materias_con_actividad_nombres = Materia.objects.filter(
-        id__in=ids_con_actividad, 
-        is_edi=True
-    ).values_list("nombre", flat=True)
+    materias_con_actividad_nombres = Materia.objects.filter(id__in=ids_con_actividad, is_edi=True).values_list(
+        "nombre", flat=True
+    )
     edi_nombres_con_actividad_normalizados = {n.strip().lower() for n in materias_con_actividad_nombres}
 
     for carrera in carreras_est:
         planes = PlanDeEstudio.objects.filter(profesorado=carrera, vigente=True)
         if not planes:
-             planes = PlanDeEstudio.objects.filter(profesorado=carrera)
-        
+            planes = PlanDeEstudio.objects.filter(profesorado=carrera)
+
         for plan in planes:
-            materias_plan_qs = Materia.objects.filter(plan_de_estudio=plan).exclude(nombre__startswith="CI:").order_by("anio_cursada", "nombre")
-            
+            materias_plan_qs = (
+                Materia.objects.filter(plan_de_estudio=plan)
+                .exclude(nombre__startswith="CI:")
+                .order_by("anio_cursada", "nombre")
+            )
+
             carton_materias = []
             for mat in materias_plan_qs:
                 # Lógica de filtrado de EDIs por vigencia
                 if mat.is_edi:
                     # Si tiene actividad previa, se muestra siempre (es su historial)
                     tiene_actividad = (
-                        mat.id in aprobadas_set or 
-                        mat.id in regularizadas_set or 
-                        mat.id in inscriptas_actuales_set or
-                        mat.id in regularidades_map # incluye regularidades viejas
+                        mat.id in aprobadas_set
+                        or mat.id in regularizadas_set
+                        or mat.id in inscriptas_actuales_set
+                        or mat.id in regularidades_map  # incluye regularidades viejas
                     )
-                    
+
                     if not tiene_actividad:
                         # Si ya tiene actividad en un EDI con el mismo nombre normalizado, salteamos el duplicado nuevo
                         if mat.nombre.strip().lower() in edi_nombres_con_actividad_normalizados:
@@ -497,25 +543,28 @@ def trayectoria_estudiante(request, dni: str | None = None):
                             es_vigente = hoy >= mat.fecha_inicio
                         elif mat.fecha_fin:
                             es_vigente = hoy <= mat.fecha_fin
-                        
+
                         if not es_vigente:
-                            continue # Se saltea este EDI (está cerrado o no empezó)
+                            continue  # Se saltea este EDI (está cerrado o no empezó)
 
                 regularidades_item_list = regularidades_map.get(mat.id, [])
                 # Agregamos fecha_iso para sorting interno
-                regularidades_data = [{
-                    "fecha": format_date(reg.fecha_cierre),
-                    "fecha_iso": reg.fecha_cierre.isoformat() if reg.fecha_cierre else None,
-                    "condicion": reg.situacion,
-                    "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
-                    "en_resguardo": reg.en_resguardo,
-                } for reg in regularidades_item_list]
-                
+                regularidades_data = [
+                    {
+                        "fecha": format_date(reg.fecha_cierre),
+                        "fecha_iso": reg.fecha_cierre.isoformat() if reg.fecha_cierre else None,
+                        "condicion": reg.situacion,
+                        "nota": _format_nota(reg.nota_final_cursada) if reg.nota_final_cursada else None,
+                        "en_resguardo": reg.en_resguardo,
+                    }
+                    for reg in regularidades_item_list
+                ]
+
                 # Seleccionamos la regularidad más reciente (o la mejor si hubiera lógica de éxito)
                 # Dado que ya vienen ordenadas por fecha_cierre ASC en regularidades_list, la última es la más reciente.
                 reg_data_legacy = regularidades_data[-1] if regularidades_data else None
 
-                # Unificación de resultados de finales por fecha 
+                # Unificación de resultados de finales por fecha
                 merged_finales = {}
                 for f in finales_map.get(mat.id, []):
                     fecha_str_f = format_date(f.mesa.fecha)
@@ -540,54 +589,58 @@ def trayectoria_estudiante(request, dni: str | None = None):
                         "nota": eq.nota,
                         "folio": eq.disposicion.numero_disposicion,
                         "libro": "Disp.",
-                        "es_acta": True
+                        "es_acta": True,
                     }
-                
+
                 # Ordenar finales por fecha ASC
                 carton_finales = sorted(merged_finales.values(), key=lambda x: x["fecha_iso"])
-                
+
                 # Para el 'resumen' del cartón, mostrar el RESULTADO MÁS RECIENTE del final
                 # (o el más exitoso, pero lo más común es el último intento)
                 final_data = carton_finales[-1] if carton_finales else None
 
-                carton_materias.append({
-                    "materia_id": mat.id,
-                    "materia_nombre": mat.nombre,
-                    "anio": mat.anio_cursada,
-                    "regimen": mat.regimen,
-                    "regimen_display": mat.get_regimen_display(),
-                    "formato": mat.formato,
-                    "formato_display": mat.get_formato_display(),
-                    "regularidad": reg_data_legacy,
-                    "regularidades": regularidades_data,
-                    "final": final_data,
-                    "finales": carton_finales,
-                    # Atributo auxiliar para identificar EDIs
-                    "is_edi": mat.is_edi,
-                    # Atributo auxiliar para ordenar materias por fecha de última actividad (o 0 si no hay)
-                    "_last_date": max(
-                        [reg.fecha_cierre.isoformat() for reg in regularidades_item_list] + 
-                        [f["fecha_iso"] for f in carton_finales] + 
-                        ["0000-00-00"]
-                    )
-                })
-            
-            # ORDENAR EL CARTÓN: 
+                carton_materias.append(
+                    {
+                        "materia_id": mat.id,
+                        "materia_nombre": mat.nombre,
+                        "anio": mat.anio_cursada,
+                        "regimen": mat.regimen,
+                        "regimen_display": mat.get_regimen_display(),
+                        "formato": mat.formato,
+                        "formato_display": mat.get_formato_display(),
+                        "regularidad": reg_data_legacy,
+                        "regularidades": regularidades_data,
+                        "final": final_data,
+                        "finales": carton_finales,
+                        # Atributo auxiliar para identificar EDIs
+                        "is_edi": mat.is_edi,
+                        # Atributo auxiliar para ordenar materias por fecha de última actividad (o 0 si no hay)
+                        "_last_date": max(
+                            [reg.fecha_cierre.isoformat() for reg in regularidades_item_list]
+                            + [f["fecha_iso"] for f in carton_finales]
+                            + ["0000-00-00"]
+                        ),
+                    }
+                )
+
+            # ORDENAR EL CARTÓN:
             # 1. Los EDIs siempre al final (is_edi=0 arriba, is_edi=1 abajo)
             # 2. Por año de cursada (primero 1ero, luego 2do...)
             # 3. Dentro de cada año, por fecha de actividad (cronológico)
             carton_materias.sort(key=lambda x: (x["is_edi"], x["anio"], x["_last_date"], x["materia_nombre"]))
 
-            carton_planes.append({
-                "profesorado_id": carrera.id,
-                "profesorado_nombre": carrera.nombre,
-                "plan_id": plan.id,
-                "plan_resolucion": plan.resolucion,
-                "materias": carton_materias
-            })
+            carton_planes.append(
+                {
+                    "profesorado_id": carrera.id,
+                    "profesorado_nombre": carrera.nombre,
+                    "plan_id": plan.id,
+                    "plan_resolucion": plan.resolucion,
+                    "materias": carton_materias,
+                }
+            )
 
     # --- 5. MOTOR DE RECOMENDACIONES DE INSCRIPCIÓN ---
-    
+
     materias_sugeridas_data = []
     todas_las_materias_plan = set()
     for plan_data in carton_planes:
@@ -602,11 +655,11 @@ def trayectoria_estudiante(request, dni: str | None = None):
         # Excluimos si ya está aprobada o si el alumno ya está cursándola
         if mat.id in aprobadas_set or mat.id in inscriptas_actuales_set:
             continue
-            
+
         habilitada = True
         motivos = []
         correlativas = mat.correlativas_requeridas.all()
-        
+
         for corr in correlativas:
             # Requisito: Aprobada para Cursar (APC)
             if corr.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR:
@@ -624,10 +677,15 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 motivos.append(f"{corr.materia_correlativa.nombre} ({'Aprobada' if es_aprob else 'Regular'})")
 
         if habilitada:
-            materias_sugeridas_data.append({
-                "materia_id": mat.id, "materia_nombre": mat.nombre, "anio": mat.anio_cursada,
-                "cuatrimestre": mat.get_regimen_display(), "motivos": motivos
-            })
+            materias_sugeridas_data.append(
+                {
+                    "materia_id": mat.id,
+                    "materia_nombre": mat.nombre,
+                    "anio": mat.anio_cursada,
+                    "cuatrimestre": mat.get_regimen_display(),
+                    "motivos": motivos,
+                }
+            )
 
     # Consolidación final del objeto de Trayectoria
     recomendaciones = RecomendacionesOut(
@@ -638,9 +696,11 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
     return TrayectoriaOut(
         estudiante=EstudianteResumen(
-            dni=est.dni, legajo=est.legajo,
+            dni=est.dni,
+            legajo=est.legajo,
             apellido_nombre=est.user.get_full_name() if est.user_id else "",
-            carreras=carreras, carreras_detalle=carreras_detalle_data,
+            carreras=carreras,
+            carreras_detalle=carreras_detalle_data,
             materias_aprobadas=len(aprobadas_set),
             materias_regularizadas=len(regularizadas_set - aprobadas_set),
             materias_en_curso=len(inscriptas_actuales_set - regularizadas_set - aprobadas_set),
@@ -651,7 +711,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
             lugar_nacimiento=est.persona.lugar_nacimiento if est.persona_id else None,
             fotoUrl=request.build_absolute_uri(est.persona.foto.url) if (est.persona_id and est.persona.foto) else None,
         ),
-        historial=[], # Reservado para eventos cronológicos futuros
+        historial=[],  # Reservado para eventos cronológicos futuros
         mesas=[TrayectoriaMesa(**m) for m in mesas_raw],
         regularidades=[RegularidadResumen(**r) for r in regularidades_resumen_data],
         recomendaciones=recomendaciones,

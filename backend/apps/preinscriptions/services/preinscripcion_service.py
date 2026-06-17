@@ -1,18 +1,22 @@
-from datetime import datetime
 import logging
 import secrets
 import string
+from datetime import datetime
+
+from django.contrib.auth.models import Group, User
 from django.db import transaction
-from django.contrib.auth.models import User, Group
-from core.models import Persona, Estudiante, Preinscripcion, PreinscripcionChecklist
-from apps.preinscriptions.models_uploads import PreinscripcionArchivo
+
 from apps.common.date_utils import format_date
+from apps.preinscriptions.models_uploads import PreinscripcionArchivo
 from apps.preinscriptions.schemas import PreinscripcionIn
+from core.models import Estudiante, Persona, Preinscripcion, PreinscripcionChecklist
 
 logger = logging.getLogger(__name__)
 
+
 def convert_dates_to_iso(data_dict):
     from datetime import date
+
     for key, value in data_dict.items():
         if isinstance(value, date):
             data_dict[key] = format_date(value)
@@ -20,41 +24,64 @@ def convert_dates_to_iso(data_dict):
             data_dict[key] = convert_dates_to_iso(value)
     return data_dict
 
+
 def _generar_codigo(pk: int) -> str:
     return f"PRE-{datetime.now().year}-{pk:04d}"
+
 
 def _generar_password_segura() -> str:
     """Genera una contraseña aleatoria de 12 caracteres (letras + dígitos)."""
     alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(12))
+    return "".join(secrets.choice(alphabet) for _ in range(12))
 
 
 _ESTADO_CIVIL_MAP = {
-    "soltero/a": "SOL", "soltero": "SOL", "soltera": "SOL", "sol": "SOL",
-    "casado/a": "CAS", "casado": "CAS", "casada": "CAS", "cas": "CAS",
-    "divorciado/a": "DIV", "divorciado": "DIV", "divorciada": "DIV", "div": "DIV",
-    "viudo/a": "VIU", "viudo": "VIU", "viuda": "VIU", "viu": "VIU",
-    "conviviente": "CON", "con": "CON",
-    "otro": "OTR", "otr": "OTR",
+    "soltero/a": "SOL",
+    "soltero": "SOL",
+    "soltera": "SOL",
+    "sol": "SOL",
+    "casado/a": "CAS",
+    "casado": "CAS",
+    "casada": "CAS",
+    "cas": "CAS",
+    "divorciado/a": "DIV",
+    "divorciado": "DIV",
+    "divorciada": "DIV",
+    "div": "DIV",
+    "viudo/a": "VIU",
+    "viudo": "VIU",
+    "viuda": "VIU",
+    "viu": "VIU",
+    "conviviente": "CON",
+    "con": "CON",
+    "otro": "OTR",
+    "otr": "OTR",
 }
 
 _GENERO_MAP = {
-    "masculino": "M", "m": "M",
-    "femenino": "F", "f": "F",
-    "no binario / otro": "X", "no binario": "X", "no binarie": "X", "otro": "X", "x": "X",
+    "masculino": "M",
+    "m": "M",
+    "femenino": "F",
+    "f": "F",
+    "no binario / otro": "X",
+    "no binario": "X",
+    "no binarie": "X",
+    "otro": "X",
+    "x": "X",
 }
 
 
 def map_estado_civil(value: str | None) -> str | None:
     if not value:
         return None
-    return _ESTADO_CIVIL_MAP.get(value.strip().lower(), None)
+    return _ESTADO_CIVIL_MAP.get(value.strip().lower())
 
 
 def map_genero(value: str | None) -> str | None:
     if not value:
         return None
-    return _GENERO_MAP.get(value.strip().lower(), None)
+    return _GENERO_MAP.get(value.strip().lower())
+
 
 class PreinscripcionService:
     @staticmethod
@@ -78,7 +105,7 @@ class PreinscripcionService:
                 "domicilio": estudiante_data.domicilio,
                 "fecha_nacimiento": estudiante_data.fecha_nacimiento,
                 "cuil": getattr(estudiante_data, "cuil", None),
-            }
+            },
         )
 
         # 2. Estudiante
@@ -94,17 +121,20 @@ class PreinscripcionService:
 
         # 3. Preinscripción
         current_year = datetime.now().year
-        
+
         if getattr(payload, "codigo", None):
             preinscripcion = Preinscripcion.objects.filter(codigo__iexact=payload.codigo).first()
             if not preinscripcion:
                 from ninja.errors import HttpError
+
                 raise HttpError(404, "Preinscripción no encontrada para el código provisto.")
             if preinscripcion.estado == "Confirmada":
                 from ninja.errors import HttpError
+
                 raise HttpError(400, "La preinscripción ya ha sido confirmada y no puede ser modificada.")
             if preinscripcion.alumno.persona.dni != estudiante_data.dni:
                 from ninja.errors import HttpError
+
                 raise HttpError(400, "El DNI no coincide con el código de preinscripción.")
             created = False
         else:
@@ -116,7 +146,10 @@ class PreinscripcionService:
             if existing:
                 if existing.activa:
                     from ninja.errors import HttpError
-                    raise HttpError(400, "Ya existe una preinscripción activa para esta carrera en el ciclo lectivo actual.")
+
+                    raise HttpError(
+                        400, "Ya existe una preinscripción activa para esta carrera en el ciclo lectivo actual."
+                    )
                 else:
                     preinscripcion = existing
                     preinscripcion.activa = True
@@ -133,11 +166,11 @@ class PreinscripcionService:
         preinscripcion.foto_4x4_dataurl = payload.foto_4x4_dataurl
         preinscripcion.datos_extra = convert_dates_to_iso(data_dict.copy())
         preinscripcion.cuil = estudiante_data.cuil
-        
+
         if created or not preinscripcion.codigo:
             preinscripcion.save()
             preinscripcion.codigo = _generar_codigo(preinscripcion.id)
-            
+
         preinscripcion.save()
         return preinscripcion
 
@@ -180,24 +213,37 @@ class PreinscripcionService:
             # Migrar foto de preinscripción a Persona (si aún no tiene una)
             if not persona.foto:
                 archivo_foto = (
-                    PreinscripcionArchivo.objects
-                    .filter(preinscripcion_id=pre.id, tipo__iexact="foto4x4")
+                    PreinscripcionArchivo.objects.filter(preinscripcion_id=pre.id, tipo__iexact="foto4x4")
                     .order_by("-creado_en")
                     .first()
                 )
                 if archivo_foto and archivo_foto.archivo:
                     import os
+
                     ext = os.path.splitext(archivo_foto.nombre_original)[1] or ".jpg"
                     with archivo_foto.archivo.open("rb") as f:
                         persona.foto.save(f"foto_{persona.dni}{ext}", f, save=True)
 
         estudiante = pre.alumno
         est_updates = {}
-        for field in ("sec_titulo", "sec_establecimiento", "sec_fecha_egreso",
-                      "sec_localidad", "sec_provincia", "sec_pais",
-                      "sup1_titulo", "sup1_establecimiento", "sup1_fecha_egreso",
-                      "sup1_localidad", "sup1_provincia", "sup1_pais",
-                      "trabaja", "empleador", "horario_trabajo", "domicilio_trabajo"):
+        for field in (
+            "sec_titulo",
+            "sec_establecimiento",
+            "sec_fecha_egreso",
+            "sec_localidad",
+            "sec_provincia",
+            "sec_pais",
+            "sup1_titulo",
+            "sup1_establecimiento",
+            "sup1_fecha_egreso",
+            "sup1_localidad",
+            "sup1_provincia",
+            "sup1_pais",
+            "trabaja",
+            "empleador",
+            "horario_trabajo",
+            "domicilio_trabajo",
+        ):
             if extra.get(field) is not None:
                 est_updates[field] = extra[field]
         for field in ("cud_informado", "condicion_salud_informada", "condicion_salud_detalle"):
@@ -214,12 +260,12 @@ class PreinscripcionService:
             anio_ingreso=pre.anio,
             cohorte=str(pre.anio) if pre.anio else None,
         )
-        
+
         # Sync legajo status from checklist to student
         if hasattr(pre, "checklist") and pre.checklist and hasattr(pre.checklist, "estado_legajo"):
             pre.alumno.estado_legajo = pre.checklist.estado_legajo
             pre.alumno.save(update_fields=["estado_legajo"])
-        
+
         pre.estado = "Confirmada"
         pre.save(update_fields=["estado"])
 
@@ -245,8 +291,10 @@ class PreinscripcionService:
 
     @staticmethod
     def get_by_codigo(codigo: str):
-        from core.models import Preinscripcion
         from ninja.errors import HttpError
+
+        from core.models import Preinscripcion
+
         pre = Preinscripcion.objects.filter(codigo__iexact=codigo).select_related("alumno", "carrera").first()
         if not pre:
             raise HttpError(404, "Preinscripción no encontrada")
@@ -264,8 +312,10 @@ class PreinscripcionService:
     @staticmethod
     @transaction.atomic
     def cambiar_carrera(pre, carrera_id: int) -> dict | tuple:
-        from core.models import InscripcionMateriaEstudiante, Regularidad, InscripcionMesa
         from ninja.errors import HttpError
+
+        from core.models import InscripcionMateriaEstudiante, InscripcionMesa, Regularidad
+
         carrera_actual = pre.carrera
         estudiante = pre.alumno
 

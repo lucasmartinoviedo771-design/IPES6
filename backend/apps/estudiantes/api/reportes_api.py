@@ -1,26 +1,30 @@
-from typing import List
 from datetime import date
+from typing import List
+
 from ninja import Schema
+
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
 from core.models import (
-    InscripcionMateriaEstudiante,
+    ActaExamenEstudiante,
     Correlatividad,
-    Regularidad,
+    Estudiante,
+    InscripcionMateriaEstudiante,
     Materia,
     MesaExamen,
-    Estudiante
+    Regularidad,
+)
+
+from .helpers import (
+    _acta_condicion,
+    _calcular_vigencia_regularidad,
+    _correlatividades_qs,
+    _ensure_admin,
+    _ensure_staff_view,
+    _resolve_estudiante,
 )
 from .router import estudiantes_router
-from .helpers import (
-    _ensure_admin, 
-    _ensure_staff_view,
-    _correlatividades_qs, 
-    _resolve_estudiante,
-    _acta_condicion,
-    _calcular_vigencia_regularidad
-)
-from core.models import ActaExamenEstudiante
+
 
 class CorrelativaCaidaItem(Schema):
     estudiante_id: int
@@ -29,6 +33,7 @@ class CorrelativaCaidaItem(Schema):
     materia_actual: str
     materia_correlativa: str
     motivo: str
+
 
 class AuditoriaInconsistenciaItem(Schema):
     estudiante: str
@@ -40,16 +45,17 @@ class AuditoriaInconsistenciaItem(Schema):
     tipo_corr: str
     motivo: str
 
-def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, materia_id: int | None = None) -> List[dict]:
-    from core.models import InscripcionMesa, EquivalenciaDisposicionDetalle
-    
-    qs = InscripcionMateriaEstudiante.objects.select_related(
-        "estudiante__persona", "materia__plan_de_estudio"
-    ).filter(
+
+def _check_correlativas_caidas(
+    anio: int, estudiante: Estudiante | None = None, materia_id: int | None = None
+) -> list[dict]:
+    from core.models import EquivalenciaDisposicionDetalle, InscripcionMesa
+
+    qs = InscripcionMateriaEstudiante.objects.select_related("estudiante__persona", "materia__plan_de_estudio").filter(
         anio=anio,
-        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE]
+        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
     )
-    
+
     if estudiante:
         qs = qs.filter(estudiante=estudiante)
     if materia_id:
@@ -66,36 +72,38 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     # --- BULK FETCHING ---
     # 1. Aprobaciones por Actas
     aprobadas_actas_qs = ActaExamenEstudiante.objects.filter(
-        dni__in=dnis, calificacion_definitiva__in=['6','7','8','9','10','APR','EQUI']
-    ).values('dni', 'acta__materia_id')
-    
+        dni__in=dnis, calificacion_definitiva__in=["6", "7", "8", "9", "10", "APR", "EQUI"]
+    ).values("dni", "acta__materia_id")
+
     aprobadas_by_dni = {}
     for item in aprobadas_actas_qs:
-        aprobadas_by_dni.setdefault(item['dni'], set()).add(item['acta__materia_id'])
+        aprobadas_by_dni.setdefault(item["dni"], set()).add(item["acta__materia_id"])
 
     # 2. Aprobaciones por Mesa (Pandemia)
     aprobadas_mesas_qs = InscripcionMesa.objects.filter(
         estudiante_id__in=est_ids, condicion=InscripcionMesa.Condicion.APROBADO
-    ).values('estudiante_id', 'mesa__materia_id')
-    
+    ).values("estudiante_id", "mesa__materia_id")
+
     aprobadas_by_est_id = {}
     for item in aprobadas_mesas_qs:
-        aprobadas_by_est_id.setdefault(item['estudiante_id'], set()).add(item['mesa__materia_id'])
+        aprobadas_by_est_id.setdefault(item["estudiante_id"], set()).add(item["mesa__materia_id"])
 
     # 3. Aprobaciones por Equivalencias
-    aprobadas_equis_qs = EquivalenciaDisposicionDetalle.objects.filter(
-        disposicion__estudiante_id__in=est_ids
-    ).values('disposicion__estudiante_id', 'materia_id')
-    
+    aprobadas_equis_qs = EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante_id__in=est_ids).values(
+        "disposicion__estudiante_id", "materia_id"
+    )
+
     equis_by_est_id = {}
     for item in aprobadas_equis_qs:
-        equis_by_est_id.setdefault(item['disposicion__estudiante_id'], set()).add(item['materia_id'])
+        equis_by_est_id.setdefault(item["disposicion__estudiante_id"], set()).add(item["materia_id"])
 
     # 4. Regularidades (latest for each student/materia)
-    regs_qs = Regularidad.objects.filter(
-        estudiante_id__in=est_ids
-    ).only('estudiante_id', 'materia_id', 'situacion', 'fecha_cierre', 'en_resguardo').order_by('estudiante_id', 'materia_id', '-fecha_cierre')
-    
+    regs_qs = (
+        Regularidad.objects.filter(estudiante_id__in=est_ids)
+        .only("estudiante_id", "materia_id", "situacion", "fecha_cierre", "en_resguardo")
+        .order_by("estudiante_id", "materia_id", "-fecha_cierre")
+    )
+
     # Cache manual de las últimas regularidades por [est_id][materia_id]
     latest_regs_map = {}
     for r in regs_qs:
@@ -110,17 +118,13 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
     for insc in inscripciones:
         est = insc.estudiante
         materia = insc.materia
-        
-        correlativas_qs = _correlatividades_qs(
-            materia,
-            Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR,
-            est
-        )
+
+        correlativas_qs = _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est)
         required_materia_ids = list(correlativas_qs.values_list("materia_correlativa_id", flat=True))
-        
+
         if not required_materia_ids:
             continue
-            
+
         # Consolidar todas las aprobadas del estudiante
         mis_aprobadas = set()
         mis_aprobadas.update(aprobadas_by_dni.get(est.dni, set()))
@@ -130,11 +134,11 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
         for req_id in required_materia_ids:
             if req_id in mis_aprobadas:
                 continue
-                
+
             reg = latest_regs_map.get(est.id, {}).get(req_id)
             is_ok = False
             motivo = ""
-            
+
             if reg:
                 if reg.en_resguardo:
                     motivo = "Regularidad en resguardo"
@@ -150,25 +154,28 @@ def _check_correlativas_caidas(anio: int, estudiante: Estudiante | None = None, 
                     motivo = f"Situación no regular: {reg.get_situacion_display()}"
             else:
                 motivo = "Sin regularidad registrada"
-            
+
             if not is_ok:
                 if req_id not in materia_names_cache:
-                    m_obj = Materia.objects.filter(id=req_id).only('nombre').first()
+                    m_obj = Materia.objects.filter(id=req_id).only("nombre").first()
                     materia_names_cache[req_id] = m_obj.nombre if m_obj else f"Materia {req_id}"
-                
-                reporte.append({
-                    "estudiante_id": est.id,
-                    "dni": est.dni,
-                    "apellido_nombre": f"{est.apellido}, {est.nombre}".strip(", ") or est.dni,
-                    "materia_actual": materia.nombre,
-                    "materia_correlativa": materia_names_cache[req_id],
-                    "motivo": motivo
-                })
+
+                reporte.append(
+                    {
+                        "estudiante_id": est.id,
+                        "dni": est.dni,
+                        "apellido_nombre": f"{est.apellido}, {est.nombre}".strip(", ") or est.dni,
+                        "materia_actual": materia.nombre,
+                        "materia_correlativa": materia_names_cache[req_id],
+                        "motivo": motivo,
+                    }
+                )
     return reporte
+
 
 @estudiantes_router.get(
     "/reportes/correlativas-caidas/",
-    response={200: List[CorrelativaCaidaItem], 403: ApiResponse},
+    response={200: list[CorrelativaCaidaItem], 403: ApiResponse},
     auth=JWTAuth(),
 )
 def reporte_correlativas_caidas(request, anio: int | None = None):
@@ -177,9 +184,10 @@ def reporte_correlativas_caidas(request, anio: int | None = None):
         anio = date.today().year
     return _check_correlativas_caidas(anio)
 
+
 @estudiantes_router.get(
     "/me/alertas/",
-    response={200: List[CorrelativaCaidaItem]},
+    response={200: list[CorrelativaCaidaItem]},
     auth=JWTAuth(),
 )
 def mis_alertas_academicas(request):
@@ -189,57 +197,62 @@ def mis_alertas_academicas(request):
     anio = date.today().year
     return _check_correlativas_caidas(anio, estudiante=est)
 
+
 def _generar_auditoria_academica(
     profesorado_id: int | None = None,
     search: str | None = None,
     materia_id: int | None = None,
-    solo_activos: bool = False
-) -> List[dict]:
+    solo_activos: bool = False,
+) -> list[dict]:
     """
     Genera un reporte de inconsistencias académicas (correlatividades no cumplidas).
     Analiza aprobaciones y regularidades históricas.
     """
-    estudiantes = Estudiante.objects.select_related('persona', 'user')
-    
+    estudiantes = Estudiante.objects.select_related("persona", "user")
+
     if profesorado_id:
         estudiantes = estudiantes.filter(carreras__id=profesorado_id)
-    
+
     if search:
         from django.db.models import Q
+
         estudiantes = estudiantes.filter(
-            Q(persona__dni__icontains=search) |
-            Q(persona__apellido__icontains=search) |
-            Q(persona__nombre__icontains=search)
+            Q(persona__dni__icontains=search)
+            | Q(persona__apellido__icontains=search)
+            | Q(persona__nombre__icontains=search)
         )
-    
+
     if solo_activos:
-        estudiantes = estudiantes.filter(carreras_detalle__estado_academico='ACT')
-    
+        estudiantes = estudiantes.filter(carreras_detalle__estado_academico="ACT")
+
     estudiantes = estudiantes.distinct().all()
-    
+
     inconsistencies = []
 
     # Pre-fetch para optimizar
-    # (En un futuro se podría optimizar aún más con queries dirigidas, 
+    # (En un futuro se podría optimizar aún más con queries dirigidas,
     # pero dado el volumen actual de ~3k alumnos es manejable)
 
     for est in estudiantes:
         # 1. Recopilar estado académico del alumno
-        aprobadas = {} # materia_id -> fecha_aprobacion
-        
+        aprobadas = {}  # materia_id -> fecha_aprobacion
+
         # Aprobaciones desde Actas
-        actas = ActaExamenEstudiante.objects.filter(dni=est.dni).select_related('acta')
+        actas = ActaExamenEstudiante.objects.filter(dni=est.dni).select_related("acta")
         for a in actas:
             cond, _ = _acta_condicion(a.calificacion_definitiva)
-            if cond in ('APR', 'EQUI'):
+            if cond in ("APR", "EQUI"):
                 mid = a.acta.materia_id
                 fecha = a.acta.fecha
                 if mid not in aprobadas or (fecha and (mid not in aprobadas or fecha < aprobadas[mid])):
                     aprobadas[mid] = fecha
-        
+
         # Aprobaciones desde Inscripciones a Mesa (incluye registros de Pandemia)
         from core.models import InscripcionMesa
-        inscs_mesa = InscripcionMesa.objects.filter(estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO).select_related('mesa')
+
+        inscs_mesa = InscripcionMesa.objects.filter(
+            estudiante=est, condicion=InscripcionMesa.Condicion.APROBADO
+        ).select_related("mesa")
         for i in inscs_mesa:
             mid = i.mesa.materia_id
             fecha = i.mesa.fecha
@@ -248,17 +261,18 @@ def _generar_auditoria_academica(
 
         # Equivalencias (Disposiciones)
         from core.models import EquivalenciaDisposicionDetalle
-        equis = EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).select_related('disposicion')
+
+        equis = EquivalenciaDisposicionDetalle.objects.filter(disposicion__estudiante=est).select_related("disposicion")
         for eq in equis:
             mid = eq.materia_id
             fecha = eq.disposicion.fecha_disposicion
             if mid not in aprobadas or (fecha and (mid not in aprobadas or fecha < aprobadas[mid])):
                 aprobadas[mid] = fecha
-        
+
         # Regularidades (incluyendo aprobaciones/promociones en cursada)
-        regs_raw = Regularidad.objects.filter(estudiante=est).select_related('materia')
-        regularizadas = {} # materia_id -> [fecha_cierre, limite_vigencia, intentos]
-        
+        regs_raw = Regularidad.objects.filter(estudiante=est).select_related("materia")
+        regularizadas = {}  # materia_id -> [fecha_cierre, limite_vigencia, intentos]
+
         for r in regs_raw:
             if r.en_resguardo:
                 continue
@@ -276,43 +290,46 @@ def _generar_auditoria_academica(
 
         # 2. Auditar Aprobaciones (Finales / Equivalencias)
         for mid, fecha_aprob in aprobadas.items():
-            materia = Materia.objects.select_related('plan_de_estudio__profesorado').filter(id=mid).first()
-            if not materia: continue
-            
+            materia = Materia.objects.select_related("plan_de_estudio__profesorado").filter(id=mid).first()
+            if not materia:
+                continue
+
             # Filtro por profesorado específico
             if profesorado_id and materia.plan_de_estudio.profesorado_id != profesorado_id:
                 continue
-                
+
             # Obtener correlativas APR para este alumno (considerando su cohorte)
             correlativas = _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, est)
-            
+
             for corr in correlativas:
                 req_id = corr.materia_correlativa_id
                 # Inconsistencia si no está aprobada actualmente
                 if req_id not in aprobadas:
-                    inconsistencies.append({
-                        'estudiante': f"{est.apellido}, {est.nombre}",
-                        'dni': est.dni,
-                        'carrera': materia.plan_de_estudio.profesorado.nombre,
-                        'materia': materia.nombre,
-                        'evento': 'Aprobación Final',
-                        'fecha': str(fecha_aprob),
-                        'prerrequisito': corr.materia_correlativa.nombre,
-                        'tipo_corr': 'Aprobada para Rendir',
-                        'motivo': 'Prerrequisito no aprobado'
-                    })
+                    inconsistencies.append(
+                        {
+                            "estudiante": f"{est.apellido}, {est.nombre}",
+                            "dni": est.dni,
+                            "carrera": materia.plan_de_estudio.profesorado.nombre,
+                            "materia": materia.nombre,
+                            "evento": "Aprobación Final",
+                            "fecha": str(fecha_aprob),
+                            "prerrequisito": corr.materia_correlativa.nombre,
+                            "tipo_corr": "Aprobada para Rendir",
+                            "motivo": "Prerrequisito no aprobado",
+                        }
+                    )
 
         for r in regs_raw:
             if r.situacion != Regularidad.Situacion.REGULAR:
                 continue
             if r.en_resguardo:
                 continue
-                
+
             materia = r.materia
             # Filtro por profesorado específico
             if profesorado_id and materia.plan_de_estudio.profesorado_id != profesorado_id:
                 continue
-            
+
             # Filtro por materia_id específico
             if materia_id and materia.id != materia_id:
                 continue
@@ -323,33 +340,36 @@ def _generar_auditoria_academica(
                 has_req = False
                 if req_id in aprobadas or req_id in regularizadas:
                     has_req = True
-                
+
                 if not has_req:
-                    inconsistencies.append({
-                        'estudiante': f"{est.apellido}, {est.nombre}",
-                        'dni': est.dni,
-                        'carrera': materia.plan_de_estudio.profesorado.nombre,
-                        'materia': materia.nombre,
-                        'evento': 'Regularización',
-                        'fecha': str(r.fecha_cierre),
-                        'prerrequisito': corr.materia_correlativa.nombre,
-                        'tipo_corr': 'Regular para Cursar',
-                        'motivo': 'Prerrequisito no regularizado ni aprobado al cierre'
-                    })
+                    inconsistencies.append(
+                        {
+                            "estudiante": f"{est.apellido}, {est.nombre}",
+                            "dni": est.dni,
+                            "carrera": materia.plan_de_estudio.profesorado.nombre,
+                            "materia": materia.nombre,
+                            "evento": "Regularización",
+                            "fecha": str(r.fecha_cierre),
+                            "prerrequisito": corr.materia_correlativa.nombre,
+                            "tipo_corr": "Regular para Cursar",
+                            "motivo": "Prerrequisito no regularizado ni aprobado al cierre",
+                        }
+                    )
 
     return inconsistencies
 
+
 @estudiantes_router.get(
     "/reportes/auditoria-inconsistencias/",
-    response={200: List[AuditoriaInconsistenciaItem], 403: ApiResponse},
+    response={200: list[AuditoriaInconsistenciaItem], 403: ApiResponse},
     auth=JWTAuth(),
 )
 def reporte_auditoria_inconsistencias(
-    request, 
+    request,
     profesorado_id: int | None = None,
     search: str | None = None,
     materia_id: int | None = None,
-    solo_activos: bool = False
+    solo_activos: bool = False,
 ):
     """
     Reporte completo de inconsistencias de correlatividades en la base de datos.
@@ -357,45 +377,41 @@ def reporte_auditoria_inconsistencias(
     """
     _ensure_staff_view(request)
     return _generar_auditoria_academica(
-        profesorado_id=profesorado_id,
-        search=search,
-        materia_id=materia_id,
-        solo_activos=solo_activos
+        profesorado_id=profesorado_id, search=search, materia_id=materia_id, solo_activos=solo_activos
     )
+
 
 @estudiantes_router.get(
     "/reportes/auditoria-inconsistencias/download",
     auth=JWTAuth(),
 )
 def download_auditoria_inconsistencias(
-    request, 
+    request,
     profesorado_id: int | None = None,
     search: str | None = None,
     materia_id: int | None = None,
-    solo_activos: bool = False
+    solo_activos: bool = False,
 ):
     """
     Descarga el reporte de inconsistencias en formato CSV.
     """
     _ensure_staff_view(request)
     import csv
+
     from django.http import HttpResponse
-    
+
     data = _generar_auditoria_academica(
-        profesorado_id=profesorado_id,
-        search=search,
-        materia_id=materia_id,
-        solo_activos=solo_activos
+        profesorado_id=profesorado_id, search=search, materia_id=materia_id, solo_activos=solo_activos
     )
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="auditoria_inconsistencias.csv"'
-    
-    writer = csv.DictWriter(response, fieldnames=[
-        'estudiante', 'dni', 'materia', 'evento', 'fecha', 'prerrequisito', 'tipo_corr', 'motivo'
-    ])
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="auditoria_inconsistencias.csv"'
+
+    writer = csv.DictWriter(
+        response, fieldnames=["estudiante", "dni", "materia", "evento", "fecha", "prerrequisito", "tipo_corr", "motivo"]
+    )
     writer.writeheader()
     for row in data:
         writer.writerow(row)
-        
+
     return response

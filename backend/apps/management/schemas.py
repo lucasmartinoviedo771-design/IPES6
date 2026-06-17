@@ -1,11 +1,14 @@
 from datetime import date, datetime
-from ninja import Schema, Field
+
+from ninja import Field, Schema
+
 
 class MesaDocenteOut(Schema):
     rol: str
     docente_id: int | None = None
     nombre: str | None = None
     dni: str | None = None
+
 
 class MesaIn(Schema):
     materia_id: int
@@ -23,6 +26,7 @@ class MesaIn(Schema):
     numero_mesa: int | None = None
     estudiante_exclusivo_dni: str | None = None
 
+
 class CrearMesaDesdeSolicitudIn(Schema):
     solicitud_id: int
     fecha: date
@@ -34,6 +38,7 @@ class CrearMesaDesdeSolicitudIn(Schema):
     docente_vocal1_id: int | None = None
     docente_vocal2_id: int | None = None
     numero_mesa: int | None = None
+
 
 class MesaOut(Schema):
     id: int
@@ -60,6 +65,7 @@ class MesaOut(Schema):
     estudiante_exclusivo_dni: str | None = None
     estudiante_exclusivo_nombre: str | None = None
 
+
 class SolicitudMesaOut(Schema):
     id: int
     estudiante_id: int
@@ -85,6 +91,7 @@ class VentanaIn(Schema):
     activo: bool = True
     periodo: str | None = None
 
+
 class VentanaOut(Schema):
     id: int
     tipo: str
@@ -93,12 +100,14 @@ class VentanaOut(Schema):
     activo: bool
     periodo: str | None = None
 
+
 class DashboardCatedra(Schema):
     id: int
     materia: str
     profesorado: str
     anio_lectivo: int
     turno: str | None
+
 
 class DashboardDocente(Schema):
     id: int
@@ -107,6 +116,7 @@ class DashboardDocente(Schema):
     total_catedras: int
     catedras: list[DashboardCatedra]
 
+
 class DashboardProfesorado(Schema):
     id: int
     nombre: str
@@ -114,9 +124,11 @@ class DashboardProfesorado(Schema):
     materias: int
     correlativas: int
 
+
 class DashboardPreinsEstado(Schema):
     estado: str
     total: int
+
 
 class DashboardPreinsDetalle(Schema):
     id: int
@@ -125,18 +137,22 @@ class DashboardPreinsDetalle(Schema):
     carrera: str | None
     fecha: datetime | None
 
+
 class DashboardPreinscripciones(Schema):
     total: int
     por_estado: list[DashboardPreinsEstado]
     recientes: list[DashboardPreinsDetalle]
 
+
 class DashboardMesaTipo(Schema):
     tipo: str
     total: int
 
+
 class DashboardMesas(Schema):
     total: int
     por_tipo: list[DashboardMesaTipo]
+
 
 class DashboardRegularidad(Schema):
     id: int
@@ -148,6 +164,7 @@ class DashboardRegularidad(Schema):
     nota: str | None
     fecha: date | datetime | str
 
+
 class DashboardVentana(Schema):
     id: int
     tipo: str
@@ -156,6 +173,7 @@ class DashboardVentana(Schema):
     activo: bool
     estado: str
 
+
 class DashboardPedidoAnalitico(Schema):
     id: int
     estudiante: str
@@ -163,6 +181,7 @@ class DashboardPedidoAnalitico(Schema):
     fecha: date | datetime | str
     motivo: str
     profesorado: str | None
+
 
 class DashboardCambioComision(Schema):
     id: int
@@ -175,11 +194,13 @@ class DashboardCambioComision(Schema):
     estado: str
     actualizado: date | datetime | str
 
+
 class DashboardHorario(Schema):
     profesorado_id: int
     profesorado: str
     anio_cursada: int
     cantidad: int
+
 
 class GlobalOverviewOut(Schema):
     docentes: list[DashboardDocente]
