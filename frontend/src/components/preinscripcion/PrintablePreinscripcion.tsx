@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import { QRCodeCanvas } from "qrcode.react";
 
 type Props = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   values: any;
   id?: number;
 };

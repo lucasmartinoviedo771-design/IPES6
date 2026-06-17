@@ -86,6 +86,7 @@ export function useFormReset(
     sanitized.fotoW = Number.isFinite(parsedW) ? parsedW : undefined;
     sanitized.fotoH = Number.isFinite(parsedH) ? parsedH : undefined;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     reset(sanitized as any);
   }, [data, reset]);
 }

@@ -13,6 +13,7 @@ interface IconProps {
 const P = "#B7694E"; // terracotta
 const S = "#7D7F6E"; // verde institucional
 const W = "#fff";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const L = "#f3e8e0"; // terracotta claro
 
 export const IconTramites = ({ size = 48, primary = P, secondary = S }: IconProps) => (

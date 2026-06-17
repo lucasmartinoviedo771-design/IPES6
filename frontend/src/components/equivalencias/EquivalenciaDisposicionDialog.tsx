@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
@@ -27,7 +27,7 @@ import {
   TrayectoriaCarreraDetalleDTO,
 } from "@/api/estudiantes";
 import { listarPlanes, PlanDetalle } from "@/api/carreras";
-import { fetchMateriasPendientesEquivalencia, fetchEstudianteAdminDetail } from "@/api/estudiantes";
+import { fetchMateriasPendientesEquivalencia } from "@/api/estudiantes";
 import { fetchRegularidadMetadata } from "@/api/primeraCarga";
 import { getErrorMessage } from "@/utils/errors";
 
@@ -376,7 +376,7 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
                   }
                 }}
                 renderOption={(props, option) => {
-                  const { key, ...restProps } = props as any;
+                  const { key, ...restProps } = props as React.HTMLAttributes<HTMLLIElement> & { key: React.Key };
                   return (
                     <li key={key} {...restProps}>
                       <Box>

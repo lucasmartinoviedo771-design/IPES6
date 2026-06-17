@@ -87,7 +87,7 @@ export function useMesasState() {
       const mesasObtenidas = data || [];
       const mesasFiltradas = modalidadFiltro ? mesasObtenidas.filter((m) => m.modalidad === modalidadFiltro) : mesasObtenidas;
       setMesas(mesasFiltradas);
-    } catch (error) {
+    } catch (_error) {
       void 0;
       setMesas([]);
     }
@@ -294,7 +294,7 @@ export function useMesasState() {
     }
   }, [materiaFiltro, materiasFiltroFiltradas]);
 
-  useEffect(() => { loadMesas(); }, [ventanaId, tipo, modalidadFiltro, materiaFiltro, profesoradoFiltro, planFiltro, anioFiltro, cuatrimestreFiltro, codigoFiltro]);
+  useEffect(() => { loadMesas(); }, [ventanaId, tipo, modalidadFiltro, materiaFiltro, profesoradoFiltro, planFiltro, anioFiltro, cuatrimestreFiltro, codigoFiltro]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const resetTribunalDocentes = () => {
     setTribunalDocentes({ presidente: null, vocal1: null, vocal2: null });

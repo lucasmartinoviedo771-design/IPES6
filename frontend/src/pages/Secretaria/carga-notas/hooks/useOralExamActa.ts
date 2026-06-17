@@ -171,7 +171,7 @@ export function useOralExamActa(
         await descargarActaOralPdf(finalSelectedMesaId, acta.inscripcion_id, `acta_oral_${safeName}.pdf`);
       }
       enqueueSnackbar("Actas orales descargadas.", { variant: "success" });
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("No se pudieron descargar las actas orales.", { variant: "error" });
     } finally {
       setDownloadingOralBatch(false);

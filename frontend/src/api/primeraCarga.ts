@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, AppAxiosRequestConfig } from './client';
 import { EquivalenciaDisposicionDTO, EquivalenciaDisposicionPayload } from "@/api/estudiantes";
 
 interface UploadResult {
@@ -75,7 +75,7 @@ export const registrarDisposicionEquivalenciaPrimeraCarga = async (
   const { data } = await api.post<EquivalenciaDisposicionDTO>(
     "/admin/primera-carga/equivalencias/disposiciones",
     payload,
-    { suppressErrorToast: true } as any
+    { suppressErrorToast: true } as AppAxiosRequestConfig
   );
   return data;
 };

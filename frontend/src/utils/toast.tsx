@@ -18,6 +18,7 @@ function deduped(message: string, variant: VariantType, fn: (t: ToastMsg) => voi
 }
 
 /** API global para disparar toasts desde cualquier parte (servicios, interceptores, etc.) */
+// eslint-disable-next-line react-refresh/only-export-components
 export const toast = {
   success: (message: string) => listeners.forEach(l => l({ message, variant: "success" })),
   error:   (message: string) => listeners.forEach(l => deduped(message, "error", l)),

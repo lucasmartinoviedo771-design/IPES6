@@ -24,6 +24,7 @@ type Props = {
 
 const CarreraDocumentacion: React.FC<Props> = ({
   onFileChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   maxBytes = 1.5 * 1024 * 1024,
   carreras,
   isLoading,

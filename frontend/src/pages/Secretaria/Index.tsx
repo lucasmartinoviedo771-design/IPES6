@@ -10,6 +10,7 @@ import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import DateRangeIcon from "@mui/icons-material/DateRange";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import SectionCard, {
   SectionCardProps,

@@ -34,6 +34,7 @@ const CertificadoRegularPage: React.FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useAuth();
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const roles = user?.roles ?? [];
   const isOnlyStudent = hasAnyRole(user, ["estudiante"]) && !hasAnyRole(user, ["admin", "secretaria", "bedel"]);
   const canGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
@@ -52,7 +53,7 @@ const CertificadoRegularPage: React.FC = () => {
     enabled: (isOnlyStudent || Boolean(dniObjetivo)) && (canGestionar || isOnlyStudent),
   });
 
-  const carreras = carrerasQuery.data?.carreras ?? [];
+  const carreras = carrerasQuery.data?.carreras ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!carreras.length) {
@@ -123,7 +124,7 @@ const CertificadoRegularPage: React.FC = () => {
         try {
           const parsed = JSON.parse(text);
           throw new Error(parsed?.message || parsed?.detail || "No se pudo generar la constancia.");
-        } catch (err) {
+        } catch (_err) {
           throw new Error("No se pudo generar la constancia.");
         }
       }
@@ -149,7 +150,9 @@ const CertificadoRegularPage: React.FC = () => {
           }
         } else {
           mensaje =
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (error.response?.data as any)?.message ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (error.response?.data as any)?.detail ||
             error.message ||
             mensaje;

@@ -158,7 +158,7 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
               onChange={(e) => setConfirmNombre(e.target.value)}
               size="small"
               fullWidth
-              autoFocus
+              autoFocus // eslint-disable-line jsx-a11y/no-autofocus
               error={confirmNombre.length > 0 && !nombreCoincide}
               helperText={confirmNombre.length > 0 && !nombreCoincide ? "El nombre no coincide" : ""}
             />

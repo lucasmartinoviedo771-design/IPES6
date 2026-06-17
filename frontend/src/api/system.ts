@@ -4,7 +4,7 @@ export interface SystemLog {
     id: number;
     tipo: string;
     mensaje: string;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
     resuelto: boolean;
     created_at: string;
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Typography from "@mui/material/Typography";
 import { VentanaDto } from '@/api/ventanas';
 import { PlanDTO } from '@/api/cargaNotas';

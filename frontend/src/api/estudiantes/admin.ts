@@ -28,6 +28,7 @@ export async function fetchEstudiantesDocumentacion(params: { q?: string; carrer
 }
 
 export async function fetchEstudianteAdminDetail(dni: string, config?: AppAxiosRequestConfig): Promise<EstudianteAdminDetailDTO> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await client.get<EstudianteAdminDetailDTO>(`/estudiantes/admin/estudiantes/${dni}`, config as any);
   return data;
 }
@@ -77,13 +78,13 @@ export async function updateEstudianteDocumentacion(dni: string, payload: Estudi
 
 export function getExportDocumentacionExcelUrl(params: { q?: string; carrera_id?: number; estado_academico?: string; limit?: number } = {}): string {
   const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
-  const query = new URLSearchParams(clean as any).toString();
+  const query = new URLSearchParams(clean as Record<string, string>).toString();
   return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/excel?${query}`;
 }
 
 export function getExportDocumentacionPdfUrl(params: { q?: string; carrera_id?: number; estado_academico?: string; limit?: number } = {}): string {
   const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
-  const query = new URLSearchParams(clean as any).toString();
+  const query = new URLSearchParams(clean as Record<string, string>).toString();
   return `${client.defaults.baseURL}/estudiantes/admin/estudiantes-documentacion/export/pdf?${query}`;
 }
 export async function resetPasswordEstudiante(dni: string): Promise<ApiResponseDTO> {

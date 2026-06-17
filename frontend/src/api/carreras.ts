@@ -71,7 +71,7 @@ export interface MateriaSimplificada {
 }
 
 export async function fetchMaterias(search?: string, profesorado_id?: number): Promise<MateriaSimplificada[]> {
-  const params: any = {};
+  const params: Record<string, unknown> = {};
   if (search) params.search = search;
   if (profesorado_id) params.profesorado_id = profesorado_id;
   const { data } = await client.get("/materias/", { params });

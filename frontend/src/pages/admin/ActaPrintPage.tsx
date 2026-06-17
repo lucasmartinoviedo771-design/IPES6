@@ -80,6 +80,7 @@ export default function ActaPrintPage() {
                     </TableRow>
                 </TableHead>
                 <TableBody>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {acta.estudiantes?.map((estudiante: any) => (
                         <TableRow key={estudiante.dni}>
                             <TableCell sx={{ border: "1px solid black", textAlign: "center" }}>{estudiante.numero_orden}</TableCell>

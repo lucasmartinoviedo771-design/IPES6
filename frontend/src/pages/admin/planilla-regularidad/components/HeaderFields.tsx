@@ -33,7 +33,9 @@ interface HeaderFieldsProps {
   materiaAnioLabel: string | null;
   dictadoLabel: string | null;
   previewCodigo: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   situacionesDisponibles: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filaFields: any[];
   calculateSituacionForRow: (index: number) => void;
   mode: 'create' | 'edit' | 'view';

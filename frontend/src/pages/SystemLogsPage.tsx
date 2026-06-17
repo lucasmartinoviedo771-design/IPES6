@@ -23,13 +23,7 @@ export default function SystemLogsPage() {
     const queryClient = useQueryClient();
     const [filter, setFilter] = useState<string | null>(null);
 
-    if (!hasAnyRole(user, ["admin", "secretaria"])) {
-        return (
-            <Box p={3}>
-                <Alert severity="error">No tiene permisos para acceder a esta sección institucional.</Alert>
-            </Box>
-        );
-    }
+    const noAcceso = !hasAnyRole(user, ["admin", "secretaria"]);
 
     const { data: logs, isLoading } = useQuery({
         queryKey: ["systemLogs"],
@@ -71,6 +65,14 @@ export default function SystemLogsPage() {
         if (!filter) return logs;
         return logs.filter(l => l.tipo === filter);
     }, [logs, filter]);
+
+    if (noAcceso) {
+        return (
+            <Box p={3}>
+                <Alert severity="error">No tiene permisos para acceder a esta sección institucional.</Alert>
+            </Box>
+        );
+    }
 
     if (isLoading) return <Typography p={3}>Cargando alertas...</Typography>;
 

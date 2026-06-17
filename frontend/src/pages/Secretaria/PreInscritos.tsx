@@ -26,6 +26,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SearchIcon from "@mui/icons-material/Search";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FilterIcon from "@mui/icons-material/FilterList";
 import { client as axios } from '@/api/client';
 
@@ -72,6 +73,7 @@ const PreInscritos: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const params: any = {};
       if (search) params.search = search;
       if (filterAnio) params.anio = filterAnio;
@@ -80,7 +82,7 @@ const PreInscritos: React.FC = () => {
       const response = await axios.get('preinscripciones/admin/list', { params });
       setData(response.data);
       setError(null);
-    } catch (err) {
+    } catch (_err) {
       void 0;
       setError('Error al cargar los datos');
     } finally {
@@ -93,7 +95,7 @@ const PreInscritos: React.FC = () => {
       // Asumiendo que existe un endpoint de carreras
       const response = await axios.get('profesorados');
       setCarreras(response.data);
-    } catch (err) {
+    } catch (_err) {
       void 0;
     }
   };
@@ -101,7 +103,7 @@ const PreInscritos: React.FC = () => {
   useEffect(() => {
     fetchData();
     fetchCarreras();
-  }, []);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = () => {
     fetchData();
@@ -130,7 +132,7 @@ const PreInscritos: React.FC = () => {
       try {
         await axios.delete(`preinscripciones/admin/${id}`);
         fetchData();
-      } catch (err) {
+      } catch (_err) {
         alert('Error al eliminar');
       }
     }
@@ -142,7 +144,7 @@ const PreInscritos: React.FC = () => {
       await axios.patch(`preinscripciones/admin/${selectedPre.id}`, editForm);
       setEditModalOpen(false);
       fetchData();
-    } catch (err) {
+    } catch (_err) {
       alert('Error al guardar cambios');
     }
   };
@@ -153,7 +155,7 @@ const PreInscritos: React.FC = () => {
       await axios.post(`preinscripciones/admin/${selectedPre.id}/confirmar`);
       setConfirmModalOpen(false);
       fetchData();
-    } catch (err) {
+    } catch (_err) {
       alert('Error al confirmar alta');
     }
   };

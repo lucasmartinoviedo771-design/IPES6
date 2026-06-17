@@ -91,6 +91,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
   const [persistStudents, setPersistStudents] = React.useState(false);
   const [rowsToAdd, setRowsToAdd] = React.useState<string>('5');
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchMateriaId = watch('materiaId');
   const watchProfesoradoId = watch('profesoradoId');
   const watchFecha = watch('fecha');
@@ -289,8 +290,8 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 
   const handleInsertRow = (index: number) => {
     const newRow = buildDefaultRow(0);
-    // @ts-ignore
-    replaceFilas([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (replaceFilas as any)([
       ...getValues('filas').slice(0, index + 1),
       newRow,
       ...getValues('filas').slice(index + 1)
@@ -384,7 +385,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
     try {
       sessionStorage.setItem('ipes_students_export_buffer', JSON.stringify(validos));
       enqueueSnackbar(`${validos.length} estudiantes copiados al buffer para exportar/reutilizar.`, { variant: 'info' });
-    } catch (err) {
+    } catch (_err) {
       enqueueSnackbar('Error al acceder al almacenamiento local.', { variant: 'error' });
     }
   };
@@ -412,7 +413,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 
       replaceFilas(nuevasFilas);
       enqueueSnackbar(`Se pegaron ${nuevasFilas.length} estudiantes desde el buffer.`, { variant: 'success' });
-    } catch (err) {
+    } catch (_err) {
       enqueueSnackbar('Error al recuperar la lista de estudiantes.', { variant: 'error' });
     }
   };

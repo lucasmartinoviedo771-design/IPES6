@@ -72,7 +72,7 @@ export function usePlanillaQueries({
           if (profId && matId) {
             defDocentes = await obtenerDocentesDefectoStandard(Number(matId), Number(profId), year);
           }
-        } catch (err) {
+        } catch (_err) {
           void 0;
         }
 
@@ -216,7 +216,8 @@ export function usePlanillaQueries({
         if (!/^https?:\/\//i.test(targetUrl)) {
           try {
             targetUrl = new URL(targetUrl, mediaBase).toString();
-          } catch (error) {
+          } catch {
+            // intentionally empty — URL parsing failure keeps original targetUrl
           }
         }
         window.open(targetUrl, '_blank', 'noopener,noreferrer');

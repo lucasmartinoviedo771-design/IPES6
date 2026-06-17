@@ -67,6 +67,7 @@ export default function EstudiantesAdminPage() {
   const [pendingDetailValues, setPendingDetailValues] = useState<DetailFormValues | null>(null);
 
   // Nuevo estado para el modal de advertencia de materias
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [activeEnrollmentsWarning, setActiveEnrollmentsWarning] = useState<any[] | null>(null);
 
   const anioIngresoOptions = useAnioIngresoOptions(carreraId);
@@ -104,6 +105,9 @@ export default function EstudiantesAdminPage() {
     enabled: Boolean(selectedDni),
   });
 
+  const form = useEstudianteDetailForm();
+  const { reset, control, handleSubmit, watch, setValue, getValues } = form;
+
   const handleCloseDetail = () => {
     setDetailOpen(false);
     setSelectedDni(null);
@@ -121,9 +125,6 @@ export default function EstudiantesAdminPage() {
   const resetPassMutation = useResetPasswordMutation();
   const autorizarRendirMutation = useAutorizarRendirMutation(selectedDni);
   const agregarCarreraMutation = useAgregarCarreraMutation(selectedDni);
-
-  const form = useEstudianteDetailForm();
-  const { reset, control, handleSubmit, watch, setValue, getValues } = form;
 
   const docValues = watch("documentacion");
 
@@ -153,6 +154,7 @@ export default function EstudiantesAdminPage() {
         onSuccess: () => {
           setPendingDetailValues(null);
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (error: any) => {
           const apiResponse = error?.response?.data?.data;
           if (apiResponse?.code === "ACTIVE_ENROLLMENTS") {

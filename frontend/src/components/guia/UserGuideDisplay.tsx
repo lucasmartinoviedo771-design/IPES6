@@ -81,7 +81,8 @@ const UserGuideDisplay = () => {
   }
 
   if (isError) {
-    const errorMessage = (error as any)?.response?.data?.message || error.message;
+    const axiosLike = error as { response?: { data?: { message?: string } } };
+    const errorMessage = axiosLike?.response?.data?.message || error.message;
     return <Alert severity="error">No se pudo cargar la guía: {errorMessage}</Alert>;
   }
 

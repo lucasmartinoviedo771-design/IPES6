@@ -267,7 +267,7 @@ export const EstudiantesPanel: React.FC<EstudiantesPanelProps> = ({
         <Divider />
 
         {estudianteResultados.length === 0 ? (
-          <Alert severity="info">Configura los filtros y presiona "Consultar" para ver clases.</Alert>
+          <Alert severity="info">Configura los filtros y presiona &ldquo;Consultar&rdquo; para ver clases.</Alert>
         ) : (
           <Stack spacing={1.5} sx={{ maxHeight: 260, overflowY: "auto" }}>
             {estudianteResultados.map((item) => (

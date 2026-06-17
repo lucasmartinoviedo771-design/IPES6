@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
@@ -85,6 +86,7 @@ export default function PlanillaCursadaFormPage() {
       });
       setFilasEditables(editable);
     },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   const buildFilasPayload = (filas: FilaEditable[]) =>
@@ -104,6 +106,7 @@ export default function PlanillaCursadaFormPage() {
       enqueueSnackbar("Borrador guardado correctamente.", { variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["planillas-cursada", comisionId] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? "Error al guardar el borrador.";
       enqueueSnackbar(msg, { variant: "error" });
@@ -123,6 +126,7 @@ export default function PlanillaCursadaFormPage() {
       }));
       enqueueSnackbar("Estudiantes agregados correctamente.", { variant: "success" });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? "Error al sincronizar la planilla.";
       enqueueSnackbar(msg, { variant: "error" });
@@ -139,6 +143,7 @@ export default function PlanillaCursadaFormPage() {
       enqueueSnackbar(data.message, { variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["planillas-cursada", comisionId] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? "Error al cerrar la planilla.";
       enqueueSnackbar(msg, { variant: "error" });
@@ -204,6 +209,7 @@ export default function PlanillaCursadaFormPage() {
 
         {isError && (
           <Alert severity="error">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {(error as any)?.response?.data?.message ??
               "No se pudo cargar la planilla. Verificá tus permisos."}
           </Alert>

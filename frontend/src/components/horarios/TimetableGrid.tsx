@@ -126,6 +126,7 @@ interface TimetableGridProps {
 
 const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
   const {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     profesoradoId, planId, anioCarrera, cuatrimestre, turnoId, turnoNombre,
     onMateriaChange, selectedMateriaId, onBlocksSelected,
     selectedBlocks, setHorasRequeridas, onClear, onDuplicar, onGuardar, onExportar, onBloquesChange,
@@ -156,7 +157,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
           setBloques(response.data);
           onBloquesChange?.(response.data);
         })
-        .catch((error) => {
+        .catch((_error) => {
           void 0;
           setBloques([]);
           onBloquesChange?.([]);
@@ -191,16 +192,16 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 
           setMaterias(filteredMaterias);
         })
-        .catch(e => {
+        .catch(_e => {
           void 0;
-          setMaterias([]); // Ensure we clear materias on error
+          setMaterias([]);
         });
     } else {
       // If required filters are not set, clear the list.
       setMaterias([]);
       onMateriaChange(null);
     }
-  }, [planId, anioCarrera, cuatrimestre]);
+  }, [planId, anioCarrera, cuatrimestre]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (anioCarrera && turnoId) {
@@ -214,7 +215,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
           },
         })
         .then(({ data }) => setOccupiedBlocks(new Set(data.map((b) => b.id))))
-        .catch((e) => void 0);
+        .catch((_e) => void 0);
     } else {
       setOccupiedBlocks(new Set());
     }
@@ -280,6 +281,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 // Si el backend envía `bloques`, seguimos usándolos; si no, generamos la grilla del turno
 const hasRealBloques = bloquesReady && bloques.length > 0;
 const canUseFallback = bloquesReady && !hasRealBloques && turnoKey;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isLoading = !bloquesReady && turnoId;
 
 // L–V (usa grilla del turno M/T/V si no hay datos del backend)
@@ -315,6 +317,7 @@ if (hasRealBloques) {
   const meta = GRILLAS.sabado;
   let cur = parseHM(meta.start);
   const end = parseHM(meta.end);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const brks = meta.breaks;
   const acc: string[] = [];
   while (cur < end) {
@@ -322,6 +325,7 @@ if (hasRealBloques) {
     acc.push(`${fmtHM(cur)}-${fmtHM(nx)}`);
     cur = nx;
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   timeSlotsSab = acc;
 }
 

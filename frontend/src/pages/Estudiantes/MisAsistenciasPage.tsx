@@ -27,6 +27,7 @@ import EventNote from "@mui/icons-material/EventNote";
 import Search from "@mui/icons-material/Search";
 import dayjs from "dayjs";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { fetchMisAsistencias, EstudianteAsistenciaItem } from "@/api/asistencia";
 import { PageHero } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";

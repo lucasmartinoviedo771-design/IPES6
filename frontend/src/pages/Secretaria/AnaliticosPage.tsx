@@ -172,7 +172,7 @@ export default function AnaliticosPage() {
       setPedidos(data || []);
     } catch { setPedidos([]); }
   };
-  React.useEffect(() => { if (ventanaId) loadPedidos(Number(ventanaId)); }, [ventanaId, dniFilter]);
+  React.useEffect(() => { if (ventanaId) loadPedidos(Number(ventanaId)); }, [ventanaId, dniFilter]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const [descargando, setDescargando] = React.useState(false);
 
@@ -215,6 +215,7 @@ export default function AnaliticosPage() {
       setCreating(false);
       resetModalState();
       if (ventanaId) await loadPedidos(Number(ventanaId));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || 'No se pudo crear el pedido');
     }
@@ -226,6 +227,7 @@ export default function AnaliticosPage() {
     try {
       await marcarAnaliticoConfeccionado(pedidoId);
       if (ventanaId) await loadPedidos(Number(ventanaId));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || 'No se pudo marcar como confeccionado.');
     } finally { setLoadingAction(null); }
@@ -237,6 +239,7 @@ export default function AnaliticosPage() {
     try {
       await marcarAnaliticoEntregado(pedidoId);
       if (ventanaId) await loadPedidos(Number(ventanaId));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || 'No se pudo marcar como entregado.');
     } finally { setLoadingAction(null); }
@@ -373,6 +376,7 @@ export default function AnaliticosPage() {
                 </Select>
               </FormControl>
             )}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <TextField select label="Motivo" size="small" value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value as any }))}>
               <MenuItem value="equivalencia">Pedido de equivalencia</MenuItem>
               <MenuItem value="beca">Becas</MenuItem>

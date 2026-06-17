@@ -34,8 +34,9 @@ export const ForcedResetWidget: React.FC = () => {
             setSuccess(res.data.message);
             setDni('');
             setPassword('');
-        } catch (err: any) {
-            setError(err?.response?.data?.message || err?.message || 'Error al resetear');
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } }; message?: string };
+            setError(e?.response?.data?.message || e?.message || 'Error al resetear');
         } finally {
             setLoading(false);
         }

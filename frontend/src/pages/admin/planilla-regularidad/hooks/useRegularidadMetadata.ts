@@ -33,7 +33,7 @@ export function useRegularidadMetadata({
     retry: false,
   });
 
-  const profesorados: RegularidadMetadataProfesorado[] = metadataQuery.data?.profesorados ?? [];
+  const profesorados: RegularidadMetadataProfesorado[] = metadataQuery.data?.profesorados ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedProfesorado = useMemo(
     () => profesorados.find((p) => p.id === Number(profesoradoId)),

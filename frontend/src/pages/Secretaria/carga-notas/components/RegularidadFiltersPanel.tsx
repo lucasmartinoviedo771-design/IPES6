@@ -1,5 +1,6 @@
 import React from "react";
 import Autocomplete from "@mui/material/Autocomplete";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -42,6 +43,7 @@ const RegularidadFiltersPanel: React.FC<Props> = ({
   setFilters,
   profesorados,
   planes,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   materias,
   loadingProfesorados,
   loadingPlanes,

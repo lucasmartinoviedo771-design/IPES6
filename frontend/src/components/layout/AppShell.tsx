@@ -130,7 +130,7 @@ export default function AppShell({ children }: PropsWithChildren) {
   useEffect(() => {
     try {
       localStorage.setItem("sidebarOpen", open ? "1" : "0");
-    } catch (error) {
+    } catch (_error) {
       void 0;
     }
   }, [open]);

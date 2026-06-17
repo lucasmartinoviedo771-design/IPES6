@@ -27,6 +27,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
     pedidos, loadingPedidos, selectedId, selectedPedido, puedeEditar,
     handleSelectPedido, handleNuevoPedido, handleEliminar,
     form, setForm, materias,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     tipoSeleccionado, esAnexoA, esAnexoB, datosDeshabilitados,
     puedeGuardar, puedeDescargar, saving, descargando, eliminandoId,
     carrerasDestino, carrerasEstudiante, carrerasLoading, planesOrigenDisponibles,
@@ -50,6 +51,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
   };
 
   const otorgadas = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const list: any[] = [];
     pedidos.forEach(p => {
         p.materias.forEach(m => {

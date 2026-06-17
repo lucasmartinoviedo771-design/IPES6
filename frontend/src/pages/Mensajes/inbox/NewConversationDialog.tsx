@@ -170,10 +170,12 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({ op
     const err = mutation.error;
     if (!err) return null;
     if (isAxiosError(err)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = err.response?.data as any;
       if (data?.detail) {
         if (Array.isArray(data.detail)) {
           return data.detail
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map((item: any) => {
               const path = Array.isArray(item.loc)
                 ? item.loc.filter(Boolean).join(" \u203A ")

@@ -141,8 +141,11 @@ export default function CompletarPerfilPage() {
   ];
 
   const redirectTo =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (location.state as any)?.from?.pathname &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (location.state as any)?.from?.pathname !== "/estudiantes/completar-perfil"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? (location.state as any)?.from?.pathname
       : "/estudiantes";
 
@@ -187,6 +190,7 @@ export default function CompletarPerfilPage() {
   });
 
   const { control, handleSubmit, reset, watch } = form;
+  // eslint-disable-next-line react-hooks/incompatible-library
   const trabaja = watch("trabaja");
   const condicionSalud = watch("condicion_salud_informada");
 

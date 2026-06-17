@@ -37,6 +37,7 @@ import { drawerWidth, navButtonSx } from "./constants";
 interface AppSidebarProps {
   open: boolean;
   current: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any;
   canUseMessages: boolean;
   unreadMessages: number;

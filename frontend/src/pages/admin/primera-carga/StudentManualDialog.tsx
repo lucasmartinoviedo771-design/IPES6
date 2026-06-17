@@ -103,6 +103,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
       enqueueSnackbar(response.message, { variant: 'success' });
       reset(defaultStudentValues);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       enqueueSnackbar(error?.response?.data?.message || 'No se pudo registrar al estudiante.', {
         variant: 'error',
@@ -133,6 +134,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
     try {
       await fetchEstudianteAdminDetail(dni, { suppressErrorToast: true });
       dniExiste = true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const status = error.status || error?.response?.status;
       if (status === 404) {
@@ -427,6 +429,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
 
           {mutation.isError && (
             <Alert severity="error">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {(mutation.error as any)?.response?.data?.message ||
                 'No se pudo guardar el estudiante.'}
             </Alert>

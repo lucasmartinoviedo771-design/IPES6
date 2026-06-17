@@ -9,6 +9,7 @@ import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 
 type MockMateriaHabilitada = {

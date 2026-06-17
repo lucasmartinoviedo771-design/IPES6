@@ -12,6 +12,7 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import BackButton from "@/components/ui/BackButton";
 import { TrayectoriaCarreraDetalleDTO, VentanaInscripcion } from "@/api/estudiantes";
 import { fetchEstudiantesAdmin, fetchEstudianteAdminDetail } from "@/api/estudiantes/admin";

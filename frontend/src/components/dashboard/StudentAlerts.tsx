@@ -15,7 +15,7 @@ export default function StudentAlerts() {
       try {
         const data = await getMisAlertas();
         setAlerts(data);
-      } catch (err) {
+      } catch (_err) {
         void 0;
       } finally {
         setLoading(false);

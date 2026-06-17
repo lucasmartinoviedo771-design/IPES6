@@ -141,10 +141,11 @@ const CalendarioEventosPanel = ({ canManage }: Props) => {
       }
       invalidateEventos();
       handleDialogClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { response?: { data?: { detail?: string; message?: string } } };
       const message =
-        error?.response?.data?.detail ||
-        error?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        e?.response?.data?.message ||
         "No se pudo guardar el evento.";
       enqueueSnackbar(message, { variant: "error" });
     }
@@ -160,10 +161,11 @@ const CalendarioEventosPanel = ({ canManage }: Props) => {
       await deactivateMutation.mutateAsync(evento.id);
       enqueueSnackbar("Evento desactivado.", { variant: "info" });
       invalidateEventos();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { response?: { data?: { detail?: string; message?: string } } };
       const message =
-        error?.response?.data?.detail ||
-        error?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        e?.response?.data?.message ||
         "No se pudo desactivar el evento.";
       enqueueSnackbar(message, { variant: "error" });
     }

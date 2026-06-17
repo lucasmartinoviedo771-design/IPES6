@@ -35,7 +35,7 @@ export default function DocsBlock({ pid }: Props) {
 
   useEffect(() => {
     fetchDocs();
-  }, [pid]);
+  }, [pid]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpload = async () => {
     if (!pid || !file) return;

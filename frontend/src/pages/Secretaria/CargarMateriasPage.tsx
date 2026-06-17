@@ -141,7 +141,7 @@ export default function CargarMateriasPage() {
     try {
       const key = `cm_filters_${currentPlanId ?? 'any'}`;
       localStorage.removeItem(key);
-    } catch (e) { /* Ignored, localStorage operations can fail in some environments */ }
+    } catch (_e) { /* Ignored, localStorage operations can fail in some environments */ }
   };
 
   // Persist/restore filters in localStorage (per plan)
@@ -157,7 +157,7 @@ export default function CargarMateriasPage() {
         setFilterRegimen(typeof f.regimen === 'string' ? f.regimen : '');
         setFilterTipoFormacion(typeof f.tipo_formacion === 'string' ? f.tipo_formacion : '');
       }
-    } catch (e) { /* Ignored, localStorage operations can fail in some environments */ }
+    } catch (_e) { /* Ignored, localStorage operations can fail in some environments */ }
   }, [currentPlanId]);
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function CargarMateriasPage() {
         tipo_formacion: filterTipoFormacion,
       };
       localStorage.setItem(key, JSON.stringify(payload));
-    } catch (e) { /* Ignored, localStorage operations can fail in some environments */ }
+    } catch (_e) { /* Ignored, localStorage operations can fail in some environments */ }
   }, [currentPlanId, filterNombre, filterAnio, filterFormato, filterRegimen, filterTipoFormacion]);
 
   const {
@@ -223,6 +223,7 @@ export default function CargarMateriasPage() {
   });
 
   // Watch for changes in the 'nombre' field to auto-detect EDI
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchNombre = watch("nombre");
   useEffect(() => {
     if (watchNombre?.toUpperCase().startsWith("EDI:")) {
@@ -251,6 +252,7 @@ export default function CargarMateriasPage() {
       reset();
       toast.success("Materia creada exitosamente");
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onError: (error: Error) => {
       void 0;
       toast.error("Error al crear la materia");
@@ -271,6 +273,7 @@ export default function CargarMateriasPage() {
       reset();
       toast.success("Materia actualizada exitosamente");
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onError: (error: Error) => {
       void 0;
       toast.error("Error al actualizar la materia");
@@ -289,6 +292,7 @@ export default function CargarMateriasPage() {
       queryClient.invalidateQueries({ queryKey: ["materias", currentPlanId] });
       toast.success("Materia eliminada exitosamente");
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onError: (error: Error) => {
       void 0;
       toast.error("Error al eliminar la materia");
@@ -338,82 +342,6 @@ export default function CargarMateriasPage() {
       <BackButton fallbackPath={backPath} />
       <PageHero title={heroTitle} subtitle={heroSubtitle} />
 
-      {false && (
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <SectionTitlePill title="Filtros" />
-        <Stack direction="row" spacing={2} mb={2} alignItems="center">
-          <TextField
-            size="small"
-            label="Nombre de Materia"
-            value={filterNombre}
-            onChange={(e) => setFilterNombre(e.target.value)}
-            sx={{ width: 200 }}
-          />
-          <FormControl size="small" sx={{ width: 120 }} disabled={isLoadingProfesorado}>
-            <InputLabel>Año</InputLabel>
-            <Select
-              value={filterAnio}
-              label="Año"
-              onChange={(e) => setFilterAnio(e.target.value as number | '')}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {Array.from({ length: profesorado?.duracion_anios ?? 0 }, (_, i) => i + 1).map(year => (
-                <MenuItem key={year} value={year}>{year}° Año</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ width: 150 }}>
-            <InputLabel>Formato</InputLabel>
-            <Select
-              value={filterFormato}
-              label="Formato"
-              onChange={(e) => setFilterFormato(e.target.value)}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {FORMATO_CHOICES.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ width: 150 }}>
-            <InputLabel>Cursada</InputLabel>
-            <Select
-              value={filterRegimen}
-              label="Cursada"
-              onChange={(e) => setFilterRegimen(e.target.value)}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {TIPO_CURSADA_CHOICES.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ width: 200 }}>
-            <InputLabel>Tipo de formación</InputLabel>
-            <Select
-              value={filterTipoFormacion}
-              label="Tipo de formación"
-              onChange={(e) => setFilterTipoFormacion(e.target.value)}
-            >
-              <MenuItem value="">Todos</MenuItem>
-              {TIPO_FORMACION_CHOICES.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Button variant="outlined" onClick={handleClearFilters}>Limpiar filtros</Button>
-        </Stack>
-          </Paper>
-          )}
-
-      {/* Filtros debajo del formulario */}
-      {/* moved filters block below create form */}
 
       <Paper sx={{ p: 2 }}>
         <SectionTitlePill title={editingMateria ? "Editar materia" : "Crear nueva materia"} />

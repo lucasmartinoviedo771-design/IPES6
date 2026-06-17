@@ -32,6 +32,7 @@ interface RoleOption {
 
 interface AppTopBarProps {
   open: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any;
   roleOverride: string | null;
   roleOptions: RoleOption[];

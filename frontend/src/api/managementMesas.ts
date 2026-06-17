@@ -13,17 +13,17 @@ export async function procesarSolicitudMesa(solId: number, estado: string, mesaI
   return data;
 }
 
-export async function listarMesas(params?: any): Promise<any[]> {
-  const { data } = await api.get<any[]>("/mesas", { params });
+export async function listarMesas(params?: Record<string, unknown>): Promise<unknown[]> {
+  const { data } = await api.get<unknown[]>("/mesas", { params });
   return data;
 }
 
-export async function crearMesaDesdeSolicitud(payload: any): Promise<any> {
+export async function crearMesaDesdeSolicitud(payload: Record<string, unknown>): Promise<unknown> {
   const { data } = await api.post("/crear_mesa_desde_solicitud", payload);
   return data;
 }
 
-export async function actualizarMesa(mesaId: number, payload: any): Promise<any> {
+export async function actualizarMesa(mesaId: number, payload: Record<string, unknown>): Promise<unknown> {
   const { data } = await api.put(`/mesas/${mesaId}`, payload);
   return data;
 }

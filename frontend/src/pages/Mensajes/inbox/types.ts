@@ -1,4 +1,5 @@
 import { ConversationStatus } from "@/api/mensajes";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { SimpleUserDTO } from "@/api/mensajes";
 
 export interface ConversationFilters {

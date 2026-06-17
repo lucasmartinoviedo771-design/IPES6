@@ -18,6 +18,7 @@ const MisAsistenciasPage = lazyPage(() => import("@/pages/Estudiantes/MisAsisten
 const CursoIntroductorioEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/CursoIntroductorioPage"));
 
 const baseRoles: string[] = ["estudiante", "admin", "secretaria", "bedel", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "attp", "rectorado"];
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const estudianteSecretariaRoles: string[] = ["estudiante", "admin", "secretaria", "bedel"];
 const trayectoriaRoles: string[] = ["estudiante", "admin", "bedel", "secretaria", "coordinador", "tutor", "attp", "rectorado", "jefes", "jefa_aaee", "consulta"];
 const cursoIntroRoles: string[] = ["estudiante", "admin", "secretaria", "bedel", "curso_intro", "coordinador"];

@@ -141,6 +141,7 @@ export function generarActaExamenOralPDF(payload: OralActaPdfPayload) {
 
   const tribPad = 3;
   const tribLineH = 5;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const tribBoxH = tribPad * 2 + 5 + tribLines.length * tribLineH + 2;
 
   setFont("bold", 9);

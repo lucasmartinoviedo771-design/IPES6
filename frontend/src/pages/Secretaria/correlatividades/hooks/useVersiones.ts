@@ -43,7 +43,7 @@ export function useVersiones(planId: number | '') {
 
         return data[data.length - 1].id;
       });
-    } catch (error) {
+    } catch (_error) {
       void 0;
       setVersiones([]);
       setVersionId('');

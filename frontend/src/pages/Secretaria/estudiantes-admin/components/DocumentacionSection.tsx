@@ -11,6 +11,7 @@ type Props = {
   docValues: DetailDocumentacionForm;
   anyMainSelected: boolean;
   control: Control<DetailFormValues>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setValue: (name: any, value: any, options?: any) => void;
   handleMainDocChange: (target: keyof DetailDocumentacionForm) => (_: unknown, checked: boolean) => void;
   handleAdeudaChange: (_: unknown, checked: boolean) => void;

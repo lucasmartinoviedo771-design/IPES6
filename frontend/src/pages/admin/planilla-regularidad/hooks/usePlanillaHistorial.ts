@@ -47,7 +47,7 @@ export function usePlanillaHistorial({ open, replaceFilas }: UsePlanillaHistoria
         replaceFilas(nuevasFilas);
         enqueueSnackbar(`Se importaron ${nuevasFilas.length} estudiantes de la planilla ${resp.data.codigo}`, { variant: 'success' });
       }
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar('Error al importar estudiantes', { variant: 'error' });
     }
   };

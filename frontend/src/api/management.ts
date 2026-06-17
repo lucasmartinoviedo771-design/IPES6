@@ -25,7 +25,7 @@ export interface GlobalOverviewOut {
 }
 
 export const getGlobalOverview = async (profesoradoId?: number, anio?: number): Promise<GlobalOverviewOut> => {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (profesoradoId) params.profesorado_id = profesoradoId;
     if (anio) params.anio = anio;
     const { data } = await api.get<GlobalOverviewOut>("/overview", { params });

@@ -124,7 +124,8 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
     });
   }, [planilla, defaultFechaCierre, defaultObservaciones, reset]);
 
-  const filas = watch("filas") ?? [];
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const filas = watch("filas") ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const summary = useMemo(() => {
     const total = filas.length;

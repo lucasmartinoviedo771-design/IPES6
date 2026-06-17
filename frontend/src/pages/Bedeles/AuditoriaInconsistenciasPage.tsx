@@ -65,11 +65,12 @@ export default function AuditoriaInconsistenciasPage() {
     const handleDownload = async () => {
         try {
             await downloadAuditoriaInconsistencias(filters);
-        } catch (err) {
+        } catch (_err) {
             void 0;
         }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleFilterChange = (field: keyof AuditoriaFilters, value: any) => {
         setFilters(prev => ({ ...prev, [field]: value }));
     };
@@ -203,7 +204,7 @@ export default function AuditoriaInconsistenciasPage() {
                             Lista de Auditoría Vacía
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400 }}>
-                            Por favor, aplica los filtros necesarios y presiona el botón <b>"Generar Reporte"</b> para iniciar el análisis del sistema académico.
+                            Por favor, aplica los filtros necesarios y presiona el botón <b>&ldquo;Generar Reporte&rdquo;</b> para iniciar el análisis del sistema académico.
                         </Typography>
                     </Box>
                 ) : (
@@ -243,6 +244,7 @@ export default function AuditoriaInconsistenciasPage() {
 
                         {isError && (
                             <Alert severity="error" sx={{ mb: 2 }}>
+                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                 Error al cargar la auditoría: {(error as any)?.message || "Error desconocido"}
                             </Alert>
                         )}

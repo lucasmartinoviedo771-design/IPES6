@@ -40,6 +40,7 @@ const TAB_SX = {
 
 // ── Tab 0: Mi Analítico ─────────────────────────────────────────────────────
 const MiAnaliticoTab: React.FC = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { user } = (useAuth?.() ?? { user: null }) as any;
   const canGestionar = !!user && (user.is_superuser || (user.roles || []).some((r: string) => ["admin", "secretaria", "bedel", "tutor"].includes((r || "").toLowerCase())));
 
@@ -113,6 +114,7 @@ const MiAnaliticoTab: React.FC = () => {
       });
       setMessage(res.message);
       setError(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.response?.data?.message || "Error al solicitar pedido de analítico.");
       setMessage(null);
@@ -153,6 +155,7 @@ const MiAnaliticoTab: React.FC = () => {
             </Select>
           </FormControl>
         )}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <TextField select label="Motivo" size="small" value={motivo} onChange={(e) => setMotivo(e.target.value as any)}>
           <MenuItem value="equivalencia">Pedido de equivalencia</MenuItem>
           <MenuItem value="beca">Becas</MenuItem>
@@ -177,10 +180,13 @@ const MiAnaliticoTab: React.FC = () => {
 };
 
 // ── Tab 2: Equivalencias otorgadas ──────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EquivalenciasOtorgadasTab: React.FC<{ pedidos: any[] }> = ({ pedidos }) => {
   const otorgadas = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const list: any[] = [];
     pedidos.forEach((p) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       p.materias.forEach((m: any) => {
         if (m.resultado === "otorgada") {
           list.push({ ...m, profesorado: p.profesorado_destino_nombre, resolucion: p.plan_destino_resolucion, disposicion: p.titulos_disposicion_numero || p.titulos_nota_numero });
@@ -230,6 +236,7 @@ const TramitesEstudiantePage: React.FC = () => {
     pedidos, loadingPedidos, selectedId, selectedPedido, puedeEditar,
     handleSelectPedido, handleNuevoPedido, handleEliminar,
     form, setForm, materias,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     tipoSeleccionado, esAnexoA, esAnexoB, datosDeshabilitados,
     puedeGuardar, puedeDescargar, saving, descargando, eliminandoId,
     carrerasDestino, carrerasEstudiante, carrerasLoading, planesOrigenDisponibles,

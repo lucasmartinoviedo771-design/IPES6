@@ -198,7 +198,7 @@ export const useDocentesAsistencia = ({
         if (data.clases.length === 0) {
           enqueueSnackbar("No hay clases programadas en el rango seleccionado.", { variant: "info" });
         }
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudo obtener la asistencia de docentes.", { variant: "error" });
       } finally {
         setCargandoDocente(false);

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { FallbackProps } from "react-error-boundary";
 
 function ErrorBoundaryFallback({ error, resetErrorBoundary }: FallbackProps) {
@@ -6,7 +6,8 @@ function ErrorBoundaryFallback({ error, resetErrorBoundary }: FallbackProps) {
   const isChunkLoadError = /Failed to fetch dynamically imported module|Importing a module script failed/i.test(errorMessage);
 
   const key = "chunk_load_retries";
-  const now = Date.now();
+  // eslint-disable-next-line react-hooks/purity
+  const now = useMemo(() => Date.now(), []);
   const retryLimit = 2;
   const timeFrame = 60000; // 1 minuto
 
@@ -33,7 +34,7 @@ function ErrorBoundaryFallback({ error, resetErrorBoundary }: FallbackProps) {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isChunkLoadError, tooManyRetries]);
+  }, [isChunkLoadError, tooManyRetries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isChunkLoadError) {
     if (tooManyRetries) {

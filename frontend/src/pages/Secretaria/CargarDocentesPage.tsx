@@ -96,6 +96,7 @@ export default function CargarDocentesPage() {
   const createDocenteMutation = useMutation<Docente, Error, DocenteFormInput>({
     mutationFn: async (newDocente) => {
       const payload = { ...newDocente, email: newDocente.email || null, telefono: newDocente.telefono || null, cuil: newDocente.cuil || null, fecha_nacimiento: newDocente.fecha_nacimiento || null };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await api.post("/docentes/", payload, { suppressErrorToast: true } as any);
       return response.data;
     },
@@ -107,6 +108,7 @@ export default function CargarDocentesPage() {
         toast.info(`Usuario generado: ${docenteCreado.usuario} / ${docenteCreado.temp_password}`);
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error.message || "No se pudo crear el docente.";
       toast.error(msg);
@@ -115,6 +117,7 @@ export default function CargarDocentesPage() {
 
   const updateDocenteMutation = useMutation<Docente, Error, Docente>({
     mutationFn: async (updatedDocente) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await api.put(`/docentes/${updatedDocente.id}`, updatedDocente, { suppressErrorToast: true } as any);
       return response.data;
     },
@@ -126,6 +129,7 @@ export default function CargarDocentesPage() {
         toast.info(`Usuario generado: ${docenteActualizado.usuario} / ${docenteActualizado.temp_password}`);
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error.message || "No se pudo actualizar el docente.";
       toast.error(msg);
@@ -140,6 +144,7 @@ export default function CargarDocentesPage() {
       queryClient.invalidateQueries({ queryKey: ["docentes"] });
       toast.success("Docente eliminado exitosamente");
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     onError: (error: any) => {
       void 0;
       toast.error("Error al eliminar el docente");
@@ -202,7 +207,9 @@ export default function CargarDocentesPage() {
   };
 
   const docenteFormFields = (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     control: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     errors: any,
     dniReadOnly = false
   ) => (
@@ -365,7 +372,7 @@ export default function CargarDocentesPage() {
                   {filteredDocentes.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={10} align="center" sx={{ py: 3, color: "text.secondary" }}>
-                        Sin resultados para "{search}"
+                        Sin resultados para &ldquo;{search}&rdquo;
                       </TableCell>
                     </TableRow>
                   )}

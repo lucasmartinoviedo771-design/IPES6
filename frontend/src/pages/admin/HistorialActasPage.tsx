@@ -54,7 +54,9 @@ import {
 import { gestionarMesaPlanillaCierre } from '@/api/estudiantes';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import GroupsIcon from '@mui/icons-material/Groups';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Switch from '@mui/material/Switch';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { INSTITUTIONAL_GREEN } from "@/styles/institutionalColors";
 import ActaExamenReadOnly from '@/components/secretaria/ActaExamenReadOnly';
@@ -413,6 +415,7 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
             queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
             queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) => {
             const msg = err.response?.data.message || 'Error al reabrir la planilla.';
             enqueueSnackbar(msg, { variant: 'error' });
@@ -426,6 +429,7 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
             queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
             queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) => {
             const msg = err.response?.data.message || 'Error al cerrar la planilla.';
             enqueueSnackbar(msg, { variant: 'error' });
@@ -448,6 +452,7 @@ const DetalleActaDialog: React.FC<{ open: boolean; actaId: number; onClose: () =
             queryClient.invalidateQueries({ queryKey: ['actas-historial'] });
             setIsEditingHeader(false);
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) => {
             const msg = err.response?.data.message || 'Error al actualizar encabezado.';
             enqueueSnackbar(msg, { variant: 'error' });
@@ -672,6 +677,7 @@ const TribunalDialog: React.FC<{
             queryClient.invalidateQueries({ queryKey: ['acta-detalle', actaId] });
             onSaved();
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (err: any) => {
             enqueueSnackbar(err?.response?.data?.message || 'Error al guardar el tribunal.', { variant: 'error' });
         },

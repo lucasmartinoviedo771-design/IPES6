@@ -168,7 +168,7 @@ export default function ResguardoMateriasPage() {
       </tr>`).join("")}
     </tbody>
   </table>
-  <script>window.addEventListener("load", function(){ setTimeout(function(){ window.print(); }, 400); });<\/script>
+  <script>window.addEventListener("load", function(){ setTimeout(function(){ window.print(); }, 400); });</script>
 </body>
 </html>`;
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });

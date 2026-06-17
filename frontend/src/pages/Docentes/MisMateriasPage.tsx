@@ -126,7 +126,7 @@ export default function DocentesMisMateriasPage() {
                             } else {
                               alert("No tenés clases programadas para hoy en esta comisión.");
                             }
-                          } catch (e) {
+                          } catch (_e) {
                             void 0;
                             alert("Error al buscar la clase de hoy.");
                           }

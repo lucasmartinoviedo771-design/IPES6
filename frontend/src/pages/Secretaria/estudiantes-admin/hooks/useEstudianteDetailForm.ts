@@ -146,7 +146,7 @@ export function useDocumentacionSideEffects(
     if (String(nextEstado) !== String(currentEstado)) {
       setValue("estado_legajo", nextEstado, { shouldDirty: true, shouldValidate: true });
     }
-  }, [JSON.stringify(docValues), setValue, getValues]);
+  }, [JSON.stringify(docValues), setValue, getValues]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMainDocChange = (target: typeof mainDocKeys[number]) => (_: unknown, checked: boolean) => {
     mainDocKeys.forEach((key) => {
@@ -241,9 +241,12 @@ export function usePopulateFormFromDetail(
         domicilio_trabajo: toStringOrEmpty(detail.domicilio_trabajo ?? extra.domicilio_trabajo),
         email: toStringOrEmpty(detail.email),
         carreras_situacion: detail.carreras_detalle?.map((c) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           profesorado_id: (c as any).profesorado_id || 0,
           nombre: c.nombre,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           estado_academico: c.estado_academico as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           condicion: (c as any).condicion ?? "",
         })),
       };

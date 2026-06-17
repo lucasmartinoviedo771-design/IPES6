@@ -180,6 +180,7 @@ export function ResultadosTable({
                       }}
                       forcePopupIcon={false}
                       renderOption={(props, option) => {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const { key, ...restProps } = props as any;
                         return (
                           <li key={key} {...restProps}>

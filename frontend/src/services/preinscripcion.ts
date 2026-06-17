@@ -14,7 +14,7 @@ async function tryGet(path: string): Promise<Carrera[] | null> {
       return [];
     }
     return null; // permite que probemos la siguiente ruta
-  } catch (e) {
+  } catch (_e) {
     void 0;
     return null;
   }

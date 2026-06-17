@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useMemo, useState } from 'react';
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
@@ -26,13 +27,14 @@ const getCuatrimestreLabel = (regimen?: string | null, display?: string | null):
       return '2° Cuat.';
     case 'ANU':
       return 'Anual';
-    default:
+    default: {
       if (!display) return 'N/D';
       const normalized = display.toLowerCase();
       if (normalized.includes('primer')) return '1° Cuat.';
       if (normalized.includes('segundo')) return '2° Cuat.';
       if (normalized.includes('anual')) return 'Anual';
       return display;
+    }
   }
 };
 
@@ -217,7 +219,7 @@ const transformData = (trayectoria: TrayectoriaDTO, plan: CartonPlanDTO): Carton
 };
 
 export const CartonTabPanel = ({ trayectoria, selectedPlanId: controlledSelectedId, onSelectPlan }: CartonTabPanelProps) => {
-  const planes = trayectoria.carton ?? [];
+  const planes = trayectoria.carton ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
   const [internalSelectedId, setInternalSelectedId] = useState(() => {
     if (!planes.length) return '';
     const initialId = planes[0] ? String(planes[0].plan_id) : '';

@@ -19,8 +19,10 @@ import { UseQueryResult } from '@tanstack/react-query';
 
 interface HistorialPanelProps {
   isReadOnly: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectedMateria?: any;
   profesoradoId: number | '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   historyQuery: UseQueryResult<any[], Error>;
   historyMenuAnchor: HTMLElement | null;
   isHistoryOpen: boolean;

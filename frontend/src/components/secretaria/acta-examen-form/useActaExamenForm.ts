@@ -17,6 +17,7 @@ import {
 import { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
 import { fetchEstudianteAdminDetail } from "@/api/estudiantes";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DocenteState, EstudianteState, ActaExamenFormProps, EstudiantePreseleccionado } from './types';
 import {
   createEmptyDocentes,
@@ -104,7 +105,7 @@ export function useActaExamenForm({
     return uniqueList;
   }, [metadata, actaParaEditar, editId]);
 
-  const docentesDisponibles = metadata?.docentes ?? [];
+  const docentesDisponibles = metadata?.docentes ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const docenteOptions = useMemo(
     () => docentesDisponibles.map((doc) => {
@@ -182,6 +183,7 @@ export function useActaExamenForm({
       setObservaciones(actaParaEditar.observaciones || "");
       if (metadata) {
         if (actaParaEditar.docentes && actaParaEditar.docentes.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const loadedDocentes = actaParaEditar.docentes.map((d: any) => ({
             rol: d.rol, docente_id: Number(d.docente_id) || null,
             nombre: d.nombre || "", dni: d.dni || "", inputValue: d.nombre || "",
@@ -193,6 +195,7 @@ export function useActaExamenForm({
         }
         if (actaParaEditar.estudiantes && actaParaEditar.estudiantes.length > 0) {
           setEstudiantes(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             actaParaEditar.estudiantes.map((e: any, index: number) => ({
               internoId: `${index}-${Date.now()}`,
               numero_orden: e.numero_orden || index + 1,
@@ -295,6 +298,7 @@ export function useActaExamenForm({
       setFolio(""); setLibro(""); setObservaciones("");
       setPendingActaPayload(null); setConfirmActaOpen(false);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       enqueueSnackbar(error?.response?.data?.message || "No se pudo generar el acta.", { variant: "error" });
     },
@@ -307,6 +311,7 @@ export function useActaExamenForm({
       enqueueSnackbar(successMessage || "Acta actualizada correctamente.", { variant: "success" });
       setConfirmActaOpen(false);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       enqueueSnackbar(error?.response?.data?.message || "No se pudo actualizar el acta.", { variant: "error" });
     },
@@ -360,7 +365,7 @@ export function useActaExamenForm({
       if (!encontrada) { setMesaSeleccionada(null); setMesaBusquedaError("No se encontró una mesa con ese código."); return; }
       setMesaSeleccionada(encontrada);
       applyMesaSeleccionada(encontrada);
-    } catch (error) {
+    } catch (_error) {
       void 0;
       setMesaBusquedaError("No se pudo buscar la mesa. Intenta nuevamente.");
     } finally {
@@ -391,6 +396,7 @@ export function useActaExamenForm({
           ? { ...item, apellido_nombre: `${data.apellido}, ${data.nombre}` }
           : item,
       ));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (strict) {
         enqueueSnackbar(error?.response?.data?.message || "No se encontró un estudiante con ese DNI.", { variant: "error" });

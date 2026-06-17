@@ -52,7 +52,7 @@ export default function HabilitarFechasPage() {
         map[key].sort((a, b) => dayjs(b.desde).diff(dayjs(a.desde)));
       });
       setVentanas(map);
-    } catch (error) {
+    } catch (_error) {
       setVentanas({});
       enqueueSnackbar("No se pudieron cargar las ventanas.", { variant: "error" });
     }
@@ -60,7 +60,7 @@ export default function HabilitarFechasPage() {
 
   useEffect(() => {
     loadVentanas();
-  }, []);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const upsertVentana = async (ventana: Ventana) => {
     setSaving((state) => ({ ...state, [ventana.tipo]: true }));
@@ -72,7 +72,7 @@ export default function HabilitarFechasPage() {
         await axios.post(`/ventanas`, payload);
       }
       enqueueSnackbar("Ventana guardada correctamente.", { variant: "success" });
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("No se pudo guardar la ventana.", { variant: "error" });
     } finally {
       setSaving((state) => ({ ...state, [ventana.tipo]: false }));
@@ -97,7 +97,7 @@ export default function HabilitarFechasPage() {
       enqueueSnackbar("Ventana actualizada.", { variant: "success" });
       closeEditDialog();
       loadVentanas();
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("No se pudo actualizar la ventana.", { variant: "error" });
     }
   };
@@ -109,7 +109,7 @@ export default function HabilitarFechasPage() {
       enqueueSnackbar("Ventana eliminada.", { variant: "success" });
       closeEditDialog();
       loadVentanas();
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("No se pudo eliminar la ventana.", { variant: "error" });
     }
   };

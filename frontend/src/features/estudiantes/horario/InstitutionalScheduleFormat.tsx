@@ -16,6 +16,7 @@ const cleanProfesoradoName = (name: string) => {
     .trim();
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_COLOR = "#F2F2F2";
 
 type InstitutionalScheduleFormatProps = {
@@ -37,6 +38,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
   const franjas = useMemo(() => [...tabla.franjas].sort((a, b) => a.posicion - b.posicion), [tabla.franjas]);
 
   const celdas = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const map = new Map<string, any>();
     tabla.celdas.forEach((celda) => {
       map.set(cellKey(celda.dia_numero, celda.franja_posicion), celda);
@@ -296,7 +298,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
       {/* Leyenda Malvinas (Institucional) */}
       <Box sx={{ mt: 1.5, textAlign: "center" }}>
         <Typography sx={{ fontSize: "0.65rem", fontStyle: "italic", color: "#666" }}>
-          "Las Islas Malvinas, Georgias, Sándwich del Sur y los Hielos Continentales, son y serán Argentinas"
+          &ldquo;Las Islas Malvinas, Georgias, Sándwich del Sur y los Hielos Continentales, son y serán Argentinas&rdquo;
         </Typography>
       </Box>
     </Box>

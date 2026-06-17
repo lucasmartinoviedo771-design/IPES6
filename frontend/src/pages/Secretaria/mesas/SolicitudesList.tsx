@@ -47,6 +47,7 @@ export const SolicitudesList: React.FC = () => {
   const [solicitudes, setSolicitudes] = useState<SolicitudMesaAdminDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSolicitud, setSelectedSolicitud] = useState<SolicitudMesaAdminDTO | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [mesasCompatibles, setMesasCompatibles] = useState<any[]>([]);
   const [loadingMesas, setLoadingMesas] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -87,6 +88,7 @@ export const SolicitudesList: React.FC = () => {
       setOpenEditMesaDialog(false);
       setSelectedSolicitud(null);
       await load();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       alert(e.response?.data?.message || "Error al actualizar la mesa");
     }
@@ -108,7 +110,7 @@ export const SolicitudesList: React.FC = () => {
     try {
       const data = await listarSolicitudesMesas();
       setSolicitudes(data);
-    } catch (e) {
+    } catch (_e) {
       void 0;
     } finally {
       setLoading(false);
@@ -128,8 +130,9 @@ export const SolicitudesList: React.FC = () => {
       // Buscamos mesas extraordinarias de la misma materia
       const data = await listarMesas({ materia_id: s.materia_id });
       // Filtramos solo las EXT o las que correspondan al período
-      setMesasCompatibles(data.filter(m => m.tipo === 'EXT'));
-    } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setMesasCompatibles((data as any[]).filter(m => m.tipo === 'EXT'));
+    } catch (_e) {
       void 0;
     } finally {
       setLoadingMesas(false);
@@ -165,6 +168,7 @@ export const SolicitudesList: React.FC = () => {
       setSelectedSolicitud(null);
       await load();
       alert("Mesa creada y alumnos vinculados correctamente.");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       void 0;
       alert(e.response?.data?.message || "Error al crear la mesa");
@@ -178,7 +182,7 @@ export const SolicitudesList: React.FC = () => {
       setOpenDialog(false);
       setSelectedSolicitud(null);
       await load();
-    } catch (e) {
+    } catch (_e) {
       void 0;
       alert("Error al vincular la mesa");
     }
@@ -189,7 +193,7 @@ export const SolicitudesList: React.FC = () => {
     try {
       const planilla = await obtenerMesaPlanilla(s.mesa_asignada_id);
       imprimirPlanilla(planilla);
-    } catch (e) {
+    } catch (_e) {
       alert("No se pudo obtener la planilla de la mesa.");
     }
   };
@@ -199,7 +203,7 @@ export const SolicitudesList: React.FC = () => {
     try {
       await procesarSolicitudMesa(id, 'REC');
       await load();
-    } catch (e) {
+    } catch (_e) {
       void 0;
       alert("Error al rechazar la solicitud");
     }
@@ -234,6 +238,7 @@ export const SolicitudesList: React.FC = () => {
     const total = sorted.length;
     const ausentes = sorted.filter(e => e.condicion === 'AUS').length;
     const aprobados = sorted.filter(e => e.condicion === 'APR' || (e.nota !== null && e.nota !== undefined && Number(e.nota) >= 4)).length;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const desaprobados = total - ausentes - aprobados;
 
     // Solo filas reales — sin relleno
@@ -247,6 +252,7 @@ export const SolicitudesList: React.FC = () => {
         <td class="tc">${e.nota !== null && e.nota !== undefined ? e.nota : ''}</td>
       </tr>`).join('');
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const vocales = [planilla.tribunal_vocal1, planilla.tribunal_vocal2].filter(Boolean).map(v => v!.toUpperCase()).join(' / ');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Acta de Examen</title><style>

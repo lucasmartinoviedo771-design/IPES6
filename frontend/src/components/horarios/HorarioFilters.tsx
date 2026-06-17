@@ -66,7 +66,7 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
         ]);
         setProfesorados(profesoradosRes.data);
         setTurnos(turnosRes.data);
-      } catch (error) {
+      } catch (_error) {
         void 0;
       }
     };
@@ -76,7 +76,7 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
 
   useEffect(() => {
     if (profesoradoId) {
-      axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data)).catch(error => {
+      axios.get<Plan[]>(`/profesorados/${profesoradoId}/planes`).then(response => setPlanes(response.data)).catch(_error => {
         void 0;
         setPlanes([]);
       });
@@ -108,17 +108,23 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
     }
   }, [planId, anioCarrera, cuatrimestre, onMateriaChange]);
 
-  const handleChange = (field: string, value: any) => {
-    const base = {
+  const handleChange = (field: string, value: number | null) => {
+    const next = {
       profesoradoId,
       planId,
       anioLectivo,
       anioCarrera,
       cuatrimestre,
       turnoId,
-    } as const;
-
-    const next: any = { ...base, [field]: value };
+      [field]: value,
+    } as {
+      profesoradoId: number | null;
+      planId: number | null;
+      anioLectivo: number | null;
+      anioCarrera: number | null;
+      cuatrimestre: 1 | 2 | null;
+      turnoId: number | null;
+    };
 
     if (field === 'profesoradoId') {
       next.planId = null;

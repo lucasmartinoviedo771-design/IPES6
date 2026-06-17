@@ -1,4 +1,5 @@
 import React, { forwardRef } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Box from "@mui/material/Box"; // o divs + CSS, como prefieras
 import dayjs from "dayjs";
 
@@ -159,5 +160,7 @@ const PlanillaPreinscripcion = forwardRef<HTMLDivElement, { values: Values }>(
     );
   }
 );
+
+PlanillaPreinscripcion.displayName = "PlanillaPreinscripcion";
 
 export default PlanillaPreinscripcion;

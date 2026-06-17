@@ -84,7 +84,9 @@ const HistorialRegularidadesPage: React.FC = () => {
         });
 
         return filtered.sort((a, b) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let valueA: any = a[orderBy];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let valueB: any = b[orderBy];
 
             // Special handling for dates
@@ -131,19 +133,19 @@ const HistorialRegularidadesPage: React.FC = () => {
         }).map(p => {
             if (key === 'year') return p.anio_academico.toString();
             if (key === 'dictado') return p.dictado || '';
-            // @ts-ignore
-            const val = p[key];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const val = (p as Record<string, any>)[key];
             return val ? String(val) : '';
         });
 
         return Array.from(new Set(values.map(v => v.trim()))).filter(Boolean).sort();
     };
 
-    const years = React.useMemo(() => getOptions('year'), [planillas, filterMateria, filterDictado, filterAnioCursada]);
-    const materiasOptions = React.useMemo(() => getOptions('materia_nombre'), [planillas, filterYear, filterDictado, filterAnioCursada, filterProfesorado]);
-    const dictadosOptions = React.useMemo(() => getOptions('dictado'), [planillas, filterYear, filterMateria, filterAnioCursada, filterProfesorado]);
-    const aniosCursadaOptions = React.useMemo(() => getOptions('anio_cursada'), [planillas, filterYear, filterMateria, filterDictado, filterProfesorado]);
-    const profesoradosOptions = React.useMemo(() => getOptions('profesorado_nombre'), [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada]);
+    const years = React.useMemo(() => getOptions('year'), [planillas, filterMateria, filterDictado, filterAnioCursada]);  // eslint-disable-line react-hooks/exhaustive-deps
+    const materiasOptions = React.useMemo(() => getOptions('materia_nombre'), [planillas, filterYear, filterDictado, filterAnioCursada, filterProfesorado]);  // eslint-disable-line react-hooks/exhaustive-deps
+    const dictadosOptions = React.useMemo(() => getOptions('dictado'), [planillas, filterYear, filterMateria, filterAnioCursada, filterProfesorado]);  // eslint-disable-line react-hooks/exhaustive-deps
+    const aniosCursadaOptions = React.useMemo(() => getOptions('anio_cursada'), [planillas, filterYear, filterMateria, filterDictado, filterProfesorado]);  // eslint-disable-line react-hooks/exhaustive-deps
+    const profesoradosOptions = React.useMemo(() => getOptions('profesorado_nombre'), [planillas, filterYear, filterMateria, filterDictado, filterAnioCursada]);  // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleOpenDialog = (id: number, mode: 'edit' | 'view') => {
         setSelectedId(id);

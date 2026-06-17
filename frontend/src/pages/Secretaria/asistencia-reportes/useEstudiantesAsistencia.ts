@@ -19,6 +19,7 @@ interface UseEstudiantesAsistenciaParams {
 }
 
 export const useEstudiantesAsistencia = ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   profesoradoOptions,
   puedeVerEstudiantes,
 }: UseEstudiantesAsistenciaParams) => {
@@ -128,7 +129,7 @@ export const useEstudiantesAsistencia = ({
       if (data.clases.length === 0) {
         enqueueSnackbar("No encontramos clases para ese rango.", { variant: "info" });
       }
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("No se pudo obtener la asistencia de estudiantes.", { variant: "error" });
     } finally {
       setCargandoEstudiantes(false);

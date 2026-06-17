@@ -44,6 +44,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const from = (location.state as any)?.from?.pathname ?? null;
 
   const [loginId, setLoginId] = useState("");
@@ -54,6 +55,7 @@ export default function LoginPage() {
   // URL absoluta apuntando al backend en su subdominio (via Cloudflare Tunnel)
   const googleLoginUrl = import.meta.env.VITE_GOOGLE_LOGIN_URL ?? "https://ipesrg.com/api/auth/google/login";
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const hasGoogleEndpoint = true;
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
@@ -93,6 +95,7 @@ export default function LoginPage() {
         }
         navigate(target, { replace: true });
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const msg = err?.message || err?.response?.data?.detail || "Credenciales inválidas.";
       setError(msg);

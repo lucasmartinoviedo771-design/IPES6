@@ -7,6 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 
 export default function AuthCallbackPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
 

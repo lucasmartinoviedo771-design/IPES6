@@ -66,6 +66,7 @@ export default function MesasPage() {
       return;
     }
     const modalidadesAcrear = state.modalidadesSeleccionadas.length ? state.modalidadesSeleccionadas : ['REG'];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payloadBase: any = {
       materia_id: state.form.materia_id,
       fecha: state.form.fecha,
@@ -104,7 +105,7 @@ export default function MesasPage() {
       state.resetTribunalDocentes();
       await state.loadMesas();
       setActiveTab(1); // Mover a la pestaña de activas tras crear
-    } catch (error) {
+    } catch (_error) {
       void 0;
       setErrorMsg('No se pudieron crear las mesas.');
     } finally {
@@ -123,7 +124,7 @@ export default function MesasPage() {
       await api.delete(`/mesas/${id}`);
       await state.loadMesas();
       setSuccessMsg("Mesa eliminada correctamente.");
-    } catch (error) {
+    } catch (_error) {
        void 0;
        setErrorMsg("No se pudo eliminar la mesa.");
     }
@@ -136,7 +137,7 @@ export default function MesasPage() {
       const data = await obtenerMesaPlanilla(mesaId);
       state.setPlanillaCondiciones(data.condiciones);
       state.setPlanillaEstudiantes(data.estudiantes);
-    } catch (error) {
+    } catch (_error) {
       void 0;
       state.setPlanillaCondiciones([]);
       state.setPlanillaEstudiantes([]);
@@ -167,6 +168,7 @@ export default function MesasPage() {
 
   const updatePlanillaEstudiante = (
     inscripcionId: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updater: (prev: any) => any,
   ) => {
     state.setPlanillaEstudiantes((prev) =>
@@ -245,7 +247,7 @@ export default function MesasPage() {
       await actualizarMesaPlanilla(state.planillaMesa.id, payload);
       state.setPlanillaSuccess('Planilla guardada correctamente.');
       await fetchPlanilla(state.planillaMesa.id);
-    } catch (error) {
+    } catch (_error) {
       void 0;
       state.setPlanillaError('No se pudieron guardar los cambios.');
     } finally {

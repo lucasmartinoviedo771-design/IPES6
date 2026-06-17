@@ -32,6 +32,7 @@ type CalendarPanelProps = {
   saving: Record<string, boolean>;
   onSave: (ventana: Ventana) => void;
   onEdit: (ventana: Ventana) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notify: (message: string, options?: any) => void;
   setExpandedPanel: (panel: string | null) => void;
 };

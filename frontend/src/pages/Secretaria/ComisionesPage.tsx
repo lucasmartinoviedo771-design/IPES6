@@ -23,8 +23,10 @@ import Typography from "@mui/material/Typography";
 import { enqueueSnackbar } from "notistack";
 import {
   listarPlanes,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   listarProfesorados,
   PlanDTO,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ProfesoradoDTO,
 } from "@/api/cargaNotas";
 import {
@@ -36,8 +38,10 @@ import {
 } from "@/api/comisiones";
 import { useCarreras } from "@/hooks/useCarreras";
 import { useTurnos } from "@/hooks/useTurnos";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import BackButton from "@/components/ui/BackButton";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
 
 type FiltersState = {
@@ -98,7 +102,7 @@ const ComisionesPage: React.FC = () => {
       try {
         const data = await listarPlanes(filters.profesoradoId!);
         setPlanes(data);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener los planes.", {
           variant: "error",
         });
@@ -121,7 +125,7 @@ const ComisionesPage: React.FC = () => {
       try {
         const data = await listarMaterias(filters.planId!);
         setMaterias(data);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener las materias.", {
           variant: "error",
         });
@@ -153,7 +157,7 @@ const ComisionesPage: React.FC = () => {
           estado: filters.estado || null,
         });
         setComisiones(data);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener las comisiones.", {
           variant: "error",
         });
@@ -227,6 +231,7 @@ const ComisionesPage: React.FC = () => {
         estado: filters.estado || null,
       });
       setComisiones(data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||

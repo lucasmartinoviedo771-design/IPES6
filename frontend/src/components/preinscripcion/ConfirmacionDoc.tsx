@@ -51,6 +51,7 @@ const Row = ({ label, value }: { label: string; value?: React.ReactNode }) => (
 );
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   <Box sx={{ mb: 2, breakInside: 'avoid' as any }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{title}</Typography>

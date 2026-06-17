@@ -4,17 +4,20 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { jsPDF } from "jspdf";
 import PrintablePreinscripcion from "./PrintablePreinscripcion";
 import { obtenerPreinscripcion } from "@/api/preinscripciones";
 
 export default function ComprobanteScreen() {
   const navigate = useNavigate();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { state } = useLocation() as any;
   const params = useParams<{ id: string }>();
   const id = state?.id ?? (params.id ? Number(params.id) : undefined);
 
   // Valores provenientes del wizard o cargados desde API
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [values, setValues] = useState<any>(state?.values);
 
   const ref = useRef<HTMLDivElement>(null);
@@ -36,9 +39,10 @@ export default function ComprobanteScreen() {
             email: pre?.estudiante?.email,
             tel_movil: pre?.estudiante?.telefono,
             carrera_desc: pre?.carrera?.nombre,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any;
           setValues(v);
-        } catch (e) {
+        } catch (_e) {
           navigate("/", { replace: true });
           return;
         }

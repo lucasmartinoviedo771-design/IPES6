@@ -29,7 +29,7 @@ export function useRegularidadFilters(
       try {
         const data = await listarProfesorados();
         setProfesorados(data);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener los profesorados.", { variant: "error" });
       } finally {
         setLoadingProfesorados(false);
@@ -50,14 +50,14 @@ export function useRegularidadFilters(
       try {
         const data = await listarPlanes(profesoradoId);
         setPlanes(data);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener los planes de estudio.", { variant: "error" });
       } finally {
         setLoadingPlanes(false);
       }
     };
     loadPlanes();
-  }, [filters.profesoradoId]);
+  }, [filters.profesoradoId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const planId = filters.planId;
@@ -75,14 +75,14 @@ export function useRegularidadFilters(
         });
         setMaterias(data.materias);
         setAllComisiones(data.comisiones);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener los datos de comisiones.", { variant: "error" });
       } finally {
         setLoadingComisiones(false);
       }
     };
     loadDatos();
-  }, [filters.planId]);
+  }, [filters.planId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const uniqueAnios = useMemo(() => {
     const set = new Set<number>();
@@ -121,7 +121,7 @@ export function useRegularidadFilters(
         anio: uniqueAnios[0],
       }));
     }
-  }, [filters.planId, filters.anio, uniqueAnios]);
+  }, [filters.planId, filters.anio, uniqueAnios]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!filters.planId) return;
@@ -131,7 +131,7 @@ export function useRegularidadFilters(
         cuatrimestre: uniqueCuatrimestres[0],
       }));
     }
-  }, [filters.planId, filters.cuatrimestre, uniqueCuatrimestres]);
+  }, [filters.planId, filters.cuatrimestre, uniqueCuatrimestres]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const materiaOptions = useMemo(() => {
     let base = materias;
@@ -209,7 +209,7 @@ export function useRegularidadFilters(
     if (!exists) {
       setFilters((prev) => ({ ...prev, materiaId: null, comisionId: null }));
     }
-  }, [materiaOptions, filters.materiaId, filters.comisionId]);
+  }, [materiaOptions, filters.materiaId, filters.comisionId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!filters.materiaId) {
@@ -236,7 +236,7 @@ export function useRegularidadFilters(
         setFilters((prev) => ({ ...prev, comisionId: null }));
       }
     }
-  }, [filteredComisiones, filters.materiaId, filters.comisionId]);
+  }, [filteredComisiones, filters.materiaId, filters.comisionId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     profesorados,

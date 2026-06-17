@@ -155,6 +155,7 @@ export function useVersionForm(
       setVersionModalOpen(false);
     } catch (error: unknown) {
       const message =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (error as any)?.response?.data?.message || (error as any)?.response?.data?.detail || 'No se pudo guardar la versión.';
 
       alert(message);

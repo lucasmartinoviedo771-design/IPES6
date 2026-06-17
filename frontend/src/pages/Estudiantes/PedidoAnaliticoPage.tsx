@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 const PedidoAnaliticoPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { user } = (useAuth?.() ?? { user:null }) as any;
   const canGestionar = !!user && (user.is_superuser || (user.roles||[]).some((r:string)=> ['admin','secretaria','bedel','tutor'].includes((r||'').toLowerCase())));
 
@@ -121,6 +122,7 @@ const PedidoAnaliticoPage: React.FC = () => {
   const requiereSeleccionPlan = !carrerasLoading && planesDisponibles.length > 1 && !selectedPlanId;
   const puedeEnviar = Boolean(ventanaActiva) && !requiereSeleccionCarrera && !requiereSeleccionPlan && !(canGestionar && !dni.trim());
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCarreraChange = (event: any) => {
     const value = String(event.target.value ?? "");
     setSelectedCarreraId(value);
@@ -129,6 +131,7 @@ const PedidoAnaliticoPage: React.FC = () => {
     setMessage(null);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePlanChange = (event: any) => {
     setSelectedPlanId(String(event.target.value ?? ""));
     setError(null);
@@ -151,6 +154,7 @@ const PedidoAnaliticoPage: React.FC = () => {
       });
       setMessage(response.message);
       setError(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al solicitar pedido de analítico.');
       setMessage(null);
@@ -196,6 +200,7 @@ const PedidoAnaliticoPage: React.FC = () => {
             </Select>
           </FormControl>
         )}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         <TextField select label="Motivo" size="small" value={motivo} onChange={(e)=>setMotivo(e.target.value as any)}>
           <MenuItem value="equivalencia">Pedido de equivalencia</MenuItem>
           <MenuItem value="beca">Becas</MenuItem>

@@ -3,7 +3,7 @@ import React from "react";
 type State = { error: Error | null };
 
 export default class ErrorBoundary extends React.Component<
-  React.PropsWithChildren<{}>,
+  React.PropsWithChildren,
   State
 > {
   state: State = { error: null };
@@ -12,6 +12,7 @@ export default class ErrorBoundary extends React.Component<
     return { error };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.group("%c[ErrorBoundary] UI crash", "color:#d32f2f;font-weight:bold;");
     void 0;

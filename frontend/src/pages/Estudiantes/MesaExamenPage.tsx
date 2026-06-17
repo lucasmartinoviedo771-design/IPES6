@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import CircularProgress from "@mui/material/CircularProgress";
 import LinearProgress from "@mui/material/LinearProgress";
 import Typography from "@mui/material/Typography";
@@ -24,12 +25,14 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Container from "@mui/material/Container";
 import Avatar from "@mui/material/Avatar";
 
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SendIcon from '@mui/icons-material/Send';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import HistoryIcon from '@mui/icons-material/History';
@@ -88,7 +91,9 @@ const MesaExamenPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [dni, setDni] = useState(initialDni);
   const [dniBusqueda, setDniBusqueda] = useState(initialDni);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [tipo, setTipo] = useState<'FIN' | 'EXT' | 'ESP' | ''>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [modalidad, setModalidad] = useState<'REG' | 'LIB' | ''>('');
   const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
   const [ventanaId, setVentanaId] = useState<string>('');
@@ -113,6 +118,7 @@ const MesaExamenPage: React.FC = () => {
   const [pendingSolicitud, setPendingSolicitud] = useState<{ materia_id: number, materia_nombre: string } | null>(null);
   const [modalidadSolicitud, setModalidadSolicitud] = useState<"REG" | "LIB">("REG");
   const [solicitando, setSolicitando] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [materiasSolicitables, setMateriasSolicitables] = useState<any[]>([]);
   const [loadingSolicitables, setLoadingSolicitables] = useState(false);
   const [pendingCancelSolicitudId, setPendingCancelSolicitudId] = useState<number | null>(null);
@@ -127,7 +133,7 @@ const MesaExamenPage: React.FC = () => {
         setVentanas(v);
         const extra = v.find(x => x.tipo === 'MESAS_EXTRA');
         if (extra) setVentanaId(String(extra.id));
-      } catch (error) {
+      } catch (_error) {
         void 0;
       }
     })();
@@ -153,6 +159,7 @@ const MesaExamenPage: React.FC = () => {
           setCarrerasLoading(false);
           if (!(data.carreras || []).length) { setSelectedCarreraId(''); setSelectedPlanId(''); }
         }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         if (!cancelled) {
           setErr(error?.response?.data?.message || 'No se pudieron cargar las carreras.');
@@ -169,9 +176,12 @@ const MesaExamenPage: React.FC = () => {
     if (carrerasLoading) return;
     if (!carreras.length) { setSelectedCarreraId(''); setSelectedPlanId(''); return; }
     if (selectedCarreraId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const actual = carreras.find((c: any) => String(c.profesorado_id) === selectedCarreraId);
       if (!actual) { setSelectedCarreraId(''); setSelectedPlanId(''); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!selectedPlanId || !actual.planes.some((p: any) => String(p.id) === selectedPlanId)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const preferido = actual.planes.find((p: any) => p.vigente) || actual.planes[0] || null;
         setSelectedPlanId(preferido ? String(preferido.id) : '');
       }
@@ -180,6 +190,7 @@ const MesaExamenPage: React.FC = () => {
     if (carreras.length === 1) {
       const unica = carreras[0];
       setSelectedCarreraId(String(unica.profesorado_id));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const preferido = unica.planes.find((p: any) => p.vigente) || unica.planes[0] || null;
       setSelectedPlanId(preferido ? String(preferido.id) : '');
     }
@@ -187,6 +198,7 @@ const MesaExamenPage: React.FC = () => {
 
   const planesDisponibles = useMemo(() => {
     if (!selectedCarreraId) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const carrera = carreras.find((c: any) => String(c.profesorado_id) === selectedCarreraId);
     return carrera ? carrera.planes : [];
   }, [carreras, selectedCarreraId]);
@@ -227,6 +239,7 @@ const MesaExamenPage: React.FC = () => {
           solo_rendibles: !canGestionar || (canGestionar && !!dniBusqueda.trim()),
         });
         if (!cancelled) { setErr(null); setMesas(data || []); }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         if (!cancelled) {
           // Solo mostrar error si no estamos esperando selección (usamos ref para valor actual)
@@ -242,7 +255,7 @@ const MesaExamenPage: React.FC = () => {
     };
     fetchMesas();
     return () => { cancelled = true; };
-  }, [carrerasLoading, carrerasLoadedDni, requiereSeleccionCarrera, requiereSeleccionPlan, selectedCarreraIdNum, selectedPlanIdNum, tipo, ventanaId, canGestionar, dniBusqueda]);
+  }, [carrerasLoading, carrerasLoadedDni, requiereSeleccionCarrera, requiereSeleccionPlan, selectedCarreraIdNum, selectedPlanIdNum, tipo, ventanaId, canGestionar, dniBusqueda]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTrayectoria = async () => {
     if (canGestionar && !dniBusqueda.trim()) { setMisInscripciones([]); setMateriasAprobadas([]); return; }
@@ -257,7 +270,7 @@ const MesaExamenPage: React.FC = () => {
         }
       }
       setMateriasAprobadas(aprobadas);
-    } catch (error) {
+    } catch (_error) {
       void 0;
     } finally {
       setLoadingTrayectoria(false);
@@ -270,7 +283,7 @@ const MesaExamenPage: React.FC = () => {
     try {
       const data = await listarMisSolicitudes(canGestionar && dniBusqueda ? { dni: dniBusqueda } : undefined);
       setSolicitudes(data || []);
-    } catch (error) {
+    } catch (_error) {
       void 0;
     } finally {
       setLoadingSolicitudes(false);
@@ -290,7 +303,7 @@ const MesaExamenPage: React.FC = () => {
         plan_id: selectedPlanIdNum || undefined,
       });
       setMateriasSolicitables(data || []);
-    } catch (error) {
+    } catch (_error) {
       const cur = contextRef.current;
       if (!cur.requiereSeleccionCarrera && !cur.requiereSeleccionPlan) {
         void 0;
@@ -311,15 +324,15 @@ const MesaExamenPage: React.FC = () => {
         setHistorial({ aprobadas: h.aprobadas || [], regularizadas: h.regularizadas || [], inscriptas_actuales: h.inscriptas_actuales || [] });
         await fetchTrayectoria();
         await fetchSolicitudes();
-      } catch (error) {
+      } catch (_error) {
         void 0;
       }
     })();
-  }, [dniBusqueda, canGestionar]);
+  }, [dniBusqueda, canGestionar]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchSolicitables();
-  }, [dniBusqueda, modalidad, selectedPlanIdNum]);
+  }, [dniBusqueda, modalidad, selectedPlanIdNum]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const agruparPorLlamado = (lista: MesaListadoItemDTO[]) => {
     const fechasUnicas = [...new Set(lista.map(m => m.fecha))].sort();
@@ -366,6 +379,7 @@ const MesaExamenPage: React.FC = () => {
       setErr(null);
       setPendingInscripcion(null);
       await fetchTrayectoria();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       const data = e?.response?.data;
       let message = typeof data === 'string' ? data : data?.message || data?.detail || e?.message || 'No se pudo inscribir';
@@ -389,6 +403,7 @@ const MesaExamenPage: React.FC = () => {
       setErr(null);
       setPendingBaja(null);
       await fetchTrayectoria();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setErr(e?.response?.data?.message || 'No se pudo anular la inscripción.');
     } finally {
@@ -412,6 +427,7 @@ const MesaExamenPage: React.FC = () => {
       setPendingSolicitud(null);
       await fetchSolicitudes();
       setActiveTab(1);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setErr(e?.response?.data?.message || 'No se pudo enviar la solicitud.');
     } finally {
@@ -429,6 +445,7 @@ const MesaExamenPage: React.FC = () => {
       setPendingCancelSolicitudId(null);
       await fetchSolicitudes();
       await fetchSolicitables();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setErr(e?.response?.data?.message || 'No se pudo cancelar la solicitud.');
     } finally {

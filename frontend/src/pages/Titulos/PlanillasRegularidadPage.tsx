@@ -98,7 +98,7 @@ export default function PlanillasRegularidadPage() {
       }
       return true;
     });
-  }, [comisiones, materiaId, profesoradoId, planId, anioCursada, cuatrimestre, materiaLookup]);
+  }, [comisiones, materiaId, profesoradoId, planId, anioCursada, cuatrimestre, materiaLookup]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredMateriasOptions = useMemo(() => {
     return materias.filter((m) => {

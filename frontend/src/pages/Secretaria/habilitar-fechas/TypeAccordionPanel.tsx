@@ -44,6 +44,7 @@ type TypeAccordionPanelProps = {
   panelRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
   onUpsert: (ventana: Ventana) => void;
   onEdit: (ventana: Ventana) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notify: (message: string, options?: any) => void;
 };
 
@@ -100,6 +101,7 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
       <Accordion
         key={typeKey}
         ref={(node) => {
+          // eslint-disable-next-line react-hooks/immutability
           panelRefs.current[typeKey] = node;
         }}
         tabIndex={-1}
@@ -174,6 +176,7 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
     <Accordion
       key={typeKey}
       ref={(node) => {
+        // eslint-disable-next-line react-hooks/immutability
         panelRefs.current[typeKey] = node;
       }}
       tabIndex={-1}

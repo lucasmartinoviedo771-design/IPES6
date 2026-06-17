@@ -75,6 +75,7 @@ export default function CargarPlanPage() {
     },
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: profesorados, isLoading: isLoadingProfesorados } = useQuery<Profesorado[]>({
     queryKey: ["profesorados-list"],
     queryFn: async () => {
@@ -111,6 +112,7 @@ export default function CargarPlanPage() {
       queryClient.invalidateQueries({ queryKey: ["planes", currentProfesoradoId] });
       reset();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     onError: (error: any) => {
       void 0;
       toast.error("Error al guardar el plan");
@@ -134,6 +136,7 @@ export default function CargarPlanPage() {
       setEditingPlan(null);
       reset();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     onError: (error: any) => {
       void 0;
       toast.error("Error al actualizar el plan");

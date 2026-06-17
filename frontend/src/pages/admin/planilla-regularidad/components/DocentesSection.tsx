@@ -119,8 +119,10 @@ export const DocentesSection: React.FC<DocentesSectionProps> = ({
                           return option.nombre === value;
                         }
                         if (typeof option === 'string') {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           return option === (value as any).nombre;
                         }
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         return option.id === (value as any).id;
                       }}
                       getOptionLabel={(option) => {

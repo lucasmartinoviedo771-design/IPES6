@@ -259,6 +259,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
         );
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       enqueueSnackbar(
         err?.response?.data?.message || 'Error al registrar las notas.',
@@ -523,7 +524,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
         <Alert severity="info" sx={{ mb: 1.5 }} icon={<WarningAmberIcon />}>
           <Typography variant="caption">
             <strong>Nota:</strong> ingresá el valor tal como figura en el acta: número (ej.{' '}
-            <code>7</code>), <code>AUSENTE</code> o <code>LIBRE</code>. El campo "Comisión" es
+            <code>7</code>), <code>AUSENTE</code> o <code>LIBRE</code>. El campo &ldquo;Comisión&rdquo; es
             informativo para casos donde el estudiante pertenece a otro profesorado.
           </Typography>
         </Alert>
@@ -554,6 +555,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
                       <Autocomplete
                         options={estudiantes}
                         getOptionLabel={(e) => `${e.apellido_nombre} (DNI ${e.dni})`}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         value={estudiantes.find((e) => e.dni === fila.dni) || null as any}
                         onChange={(_, newVal) => {
                           actualizarFila(fila.id, 'dni', newVal ? newVal.dni : '');

@@ -36,12 +36,12 @@ export function useFinalExamFilters(
           }
           return { ...prev, ventanaId: String(filtered[0].id) };
         });
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener las ventanas de mesas.", { variant: "error" });
       }
     };
     loadVentanasFinales();
-  }, []);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isFinalsMode) {
@@ -64,7 +64,7 @@ export function useFinalExamFilters(
       try {
         const data = await listarPlanes(profesoradoId);
         setFinalPlanes(data);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener los planes para el profesorado seleccionado.", { variant: "error" });
         setFinalPlanes([]);
       } finally {
@@ -72,7 +72,7 @@ export function useFinalExamFilters(
       }
     };
     loadFinalPlanes();
-  }, [isFinalsMode, finalFilters.profesoradoId]);
+  }, [isFinalsMode, finalFilters.profesoradoId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isFinalsMode) {
@@ -96,7 +96,7 @@ export function useFinalExamFilters(
           plan_id: planId,
         });
         setFinalMaterias(data.materias);
-      } catch (error) {
+      } catch (_error) {
         enqueueSnackbar("No se pudieron obtener las materias del plan seleccionado.", { variant: "error" });
         setFinalMaterias([]);
       } finally {
@@ -104,7 +104,7 @@ export function useFinalExamFilters(
       }
     };
     loadFinalMaterias();
-  }, [isFinalsMode, finalFilters.planId]);
+  }, [isFinalsMode, finalFilters.planId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const finalAvailableAnios = useMemo(() => {
     const set = new Set<number>();
@@ -151,7 +151,7 @@ export function useFinalExamFilters(
         anio: finalAvailableAnios[0],
       }));
     }
-  }, [isFinalsMode, finalAvailableAnios, finalFilters.anio, finalFilters.planId]);
+  }, [isFinalsMode, finalAvailableAnios, finalFilters.anio, finalFilters.planId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isFinalsMode) return;
@@ -162,7 +162,7 @@ export function useFinalExamFilters(
         cuatrimestre: finalCuatrimestreOptions[0]?.value ?? null,
       }));
     }
-  }, [isFinalsMode, finalCuatrimestreOptions, finalFilters.cuatrimestre, finalFilters.planId]);
+  }, [isFinalsMode, finalCuatrimestreOptions, finalFilters.cuatrimestre, finalFilters.planId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     ventanasFinales,

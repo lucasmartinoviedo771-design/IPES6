@@ -29,11 +29,15 @@ interface ConversationDetailProps {
   replyBody: string;
   replyAttachment: File | null;
   userId: number | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sendMutation: UseMutationResult<any, any, void, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   closeConversationMutation: UseMutationResult<any, any, void, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   requestCloseMutation: UseMutationResult<any, any, void, any>;
   onReplyBodyChange: (value: string) => void;
   onReplyAttachmentChange: (file: File | null) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   reopenMutation: UseMutationResult<any, any, void, any>;
 }
 

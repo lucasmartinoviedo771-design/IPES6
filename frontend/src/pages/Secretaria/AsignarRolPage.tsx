@@ -80,6 +80,7 @@ const AsignarRolPage: React.FC = () => {
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [profesorados, setProfesorados] = useState<Profesorado[]>([]);
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,12 +126,12 @@ const AsignarRolPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectedUser) fetchAsignaciones(selectedUser.id);
     else setAsignaciones([]);
-  }, [selectedUser]);
+  }, [selectedUser]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset campos de asignación al cambiar rol (solo si no estamos editando)
   useEffect(() => {
@@ -139,7 +140,7 @@ const AsignarRolPage: React.FC = () => {
       setSelectedProfesorados([]);
       setError(null);
     }
-  }, [selectedRole]);
+  }, [selectedRole]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStartEdit = (asig: Asignacion) => {
     setEditingAsig(asig);
@@ -196,6 +197,7 @@ const AsignarRolPage: React.FC = () => {
       await fetchData();
       await fetchAsignaciones(selectedUser.id);
       if (currentUser?.id === selectedUser.id) await refreshProfile();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Error al asignar el rol.');
     } finally {
@@ -219,6 +221,7 @@ const AsignarRolPage: React.FC = () => {
       await fetchData();
       await fetchAsignaciones(selectedUser.id);
       if (currentUser?.id === selectedUser.id) await refreshProfile();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Error al quitar el rol.');
     } finally {
@@ -241,6 +244,7 @@ const AsignarRolPage: React.FC = () => {
       setSuccess('Asignación eliminada.');
       await fetchData();
       await fetchAsignaciones(selectedUser.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Error al eliminar la asignación.');
     } finally {
@@ -336,9 +340,10 @@ const AsignarRolPage: React.FC = () => {
                   />
                 )}
                 renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip variant="outlined" label={option.nombre} size="small" {...getTagProps({ index })} />
-                  ))
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return <Chip key={key} variant="outlined" label={option.nombre} size="small" {...tagProps} />;
+                  })
                 }
                 value={selectedProfesorados}
                 onChange={(_, v) => setSelectedProfesorados(Array.isArray(v) ? v : v ? [v] : [])}

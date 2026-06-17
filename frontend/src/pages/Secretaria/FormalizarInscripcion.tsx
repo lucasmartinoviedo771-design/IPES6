@@ -69,7 +69,7 @@ const FormalizarInscripcion: React.FC = () => {
     try {
       const response = await axios.get('profesorados');
       setProfesorados(response.data);
-    } catch (err) {
+    } catch (_err) {
       void 0;
     }
   };
@@ -87,7 +87,7 @@ const FormalizarInscripcion: React.FC = () => {
       });
       setPreinscripciones(response.data);
       setError(null);
-    } catch (err) {
+    } catch (_err) {
       void 0;
       setError('No se pudieron cargar las preinscripciones. Por favor, intente de nuevo más tarde.');
     } finally {
@@ -104,7 +104,7 @@ const FormalizarInscripcion: React.FC = () => {
       fetchPreinscripciones();
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, includeInactive, selectedProfesorado, selectedAnio]);
+  }, [searchQuery, includeInactive, selectedProfesorado, selectedAnio]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -294,6 +294,7 @@ const FormalizarInscripcion: React.FC = () => {
                       <Chip
                         label={pre.estado}
                         size="small"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         color={getEstadoColor(pre.estado) as any}
                         variant="outlined"
                         sx={{ fontWeight: 700, borderRadius: 1.5 }}

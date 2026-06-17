@@ -59,6 +59,7 @@ export function AgregarEstudianteExternoPanel() {
       queryClient.invalidateQueries({ queryKey: ["admin-estudiante", vars.dni] });
       setBusqueda("");
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo agregar el estudiante";
       enqueueSnackbar(msg, { variant: "error" });
@@ -106,7 +107,7 @@ export function AgregarEstudianteExternoPanel() {
                 label="Buscar por DNI o Apellido y nombre"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                autoFocus
+                autoFocus // eslint-disable-line jsx-a11y/no-autofocus
                 sx={{ minWidth: 280 }}
                 InputProps={{
                   endAdornment: isFetching ? <CircularProgress size={16} /> : null,
@@ -130,7 +131,7 @@ export function AgregarEstudianteExternoPanel() {
 
             {debouncedBusqueda.length >= 2 && !isFetching && resultados.length === 0 && (
               <Typography variant="body2" color="text.secondary">
-                Sin resultados para "{debouncedBusqueda}".
+                Sin resultados para &ldquo;{debouncedBusqueda}&rdquo;.
               </Typography>
             )}
 

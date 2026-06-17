@@ -3,6 +3,7 @@ import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import Grid from "@mui/material/Grid";
@@ -305,6 +306,12 @@ export default function CarrerasPage() {
     return carrerasQuery.data.find((carrera) => carrera.id === profesoradoId);
   }, [carrerasQuery.data, profesoradoId]);
 
+  const planesData = planesQuery.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const planSeleccionado: PlanDTO | undefined = useMemo(() => {
+    if (typeof planId !== "number") return undefined;
+    return planesData.find((plan) => plan.id === planId);
+  }, [planesData, planId]);
+
   if (soloEstudiante) {
     return (
       <Box sx={{ p: 4, maxWidth: 640, margin: "0 auto" }}>
@@ -337,12 +344,8 @@ export default function CarrerasPage() {
     );
   }
 
-  const planes = planesQuery.data ?? [];
+  const planes = planesData;
   const materias = materiasQuery.data ?? [];
-  const planSeleccionado: PlanDTO | undefined = useMemo(() => {
-    if (typeof planId !== "number") return undefined;
-    return planes.find((plan) => plan.id === planId);
-  }, [planes, planId]);
 
   const handleVerInscriptos = (materia: MateriaDTO) => {
     if (typeof planId !== "number" || typeof profesoradoId !== "number") {

@@ -70,7 +70,7 @@ export function useFinalExamPlanilla(
         setFinalLoadingPlanilla(false);
       }
     },
-    [enqueueSnackbar]
+    [enqueueSnackbar]  // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export function useFinalExamPlanilla(
         setFinalPlanilla(null);
         setFinalCondiciones([]);
         setFinalRows([]);
-      } catch (error) {
+      } catch (_error) {
         setFinalMesas([]);
         enqueueSnackbar("No se pudieron obtener las mesas de examen.", { variant: "error" });
       } finally {

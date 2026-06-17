@@ -85,6 +85,7 @@ export default function TomarAsistenciaPage() {
       enqueueSnackbar("Tu asistencia ha sido registrada.", { variant: "success" });
       queryClient.invalidateQueries({ queryKey: ["clase-estudiantes", claseId] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       const msg = err.response?.data?.message || "Error al registrar tu asistencia.";
       enqueueSnackbar(msg, { variant: "error" });
@@ -102,6 +103,7 @@ export default function TomarAsistenciaPage() {
       setHasChanges(false);
       queryClient.invalidateQueries({ queryKey: ["clase-estudiantes", claseId] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (err: any) => {
       const msg = err.response?.data?.message || "Error al guardar asistencia.";
       enqueueSnackbar(msg, { variant: "error" });

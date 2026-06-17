@@ -72,6 +72,7 @@ export function useFinalExamPersist(
     return { mesaId: finalSelectedMesaId, payload };
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const finalPermissionDenied = false; // passed in via closure; kept here for type-check reference only
 
   const handleFinalSaveClick = (permissionDenied: boolean) => {
@@ -143,6 +144,7 @@ export function useFinalExamPersist(
         { variant: "success" }
       );
       await refetchPlanilla(finalSelectedMesaId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "No se pudo actualizar el estado de cierre de la planilla.";

@@ -5,7 +5,9 @@ import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Checkbox from "@mui/material/Checkbox";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { PreinscripcionForm } from "../schema";
 import React, { useState } from "react";
@@ -18,6 +20,7 @@ const fmtDate = (iso?: string) => {
   return `${d}/${m}/${y}`;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function Row({ label, value }: { label: string; value?: any }) {
   return (
     <Grid container sx={{ mb: 0.5 }}>
@@ -27,6 +30,7 @@ function Row({ label, value }: { label: string; value?: any }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function imageUrlToDataUrl(url: string): Promise<string> {
   const response = await fetch(url);
   const blob = await response.blob();
@@ -55,9 +59,8 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
       document.body.appendChild(link);
       link.click();
       link.remove();
-      onDownloaded && onDownloaded();
-    } catch (error) {
-      void 0;
+      onDownloaded?.();
+    } catch (_error) {
       alert("Hubo un error al generar el PDF. Por favor, reintente en unos instantes.");
     } finally {
       setIsDownloading(false);

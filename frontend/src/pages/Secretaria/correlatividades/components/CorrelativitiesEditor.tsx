@@ -63,7 +63,7 @@ export function CorrelativitiesEditor({
           />
 
           <Typography variant="body2" color="text.secondary">
-            Sugerencia: si no hay restricciones para una columna, dejala vacía (equivale a "Ninguna").
+            Sugerencia: si no hay restricciones para una columna, dejala vacía (equivale a &ldquo;Ninguna&rdquo;).
           </Typography>
         </Stack>
       </DialogContent>

@@ -40,6 +40,7 @@ import TabRecomendaciones from './trayectoria/TabRecomendaciones';
 import TabVigencias from './trayectoria/TabVigencias';
 
 const TrayectoriaPage: React.FC = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { user } = (useAuth?.() ?? { user: null }) as any;
   const canGestionar = hasAnyRole(user, ['admin', 'secretaria', 'bedel', 'tutor', 'coordinador', 'jefes', 'jefa_aaee', 'consulta', 'attp', 'rectorado']);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,7 +73,7 @@ const TrayectoriaPage: React.FC = () => {
   const trayectoria = trayectoriaQ.data;
   const eventos = trayectoria?.historial ?? [];
   const regularidades = trayectoria?.regularidades ?? [];
-  const planesCarton = trayectoria?.carton ?? [];
+  const planesCarton = trayectoria?.carton ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
   const mesas = trayectoria?.mesas ?? [];
 
   const vigencias = useMemo<RegularidadVigenciaDTO[]>(() => {
@@ -88,6 +89,7 @@ const TrayectoriaPage: React.FC = () => {
       return;
     }
     setSelectedPlanId((prev) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (prev && planesCarton.some((plan: any) => String(plan.plan_id) === prev)) {
         return prev;
       }
@@ -99,6 +101,7 @@ const TrayectoriaPage: React.FC = () => {
     const chips: Array<{ id: string; label: string; detalle: string | null; disabled?: boolean }> = [];
     const usedNombres = new Set<string>();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     planesCarton.forEach((plan: any) => {
       chips.push({
         id: String(plan.plan_id),

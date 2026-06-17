@@ -76,7 +76,7 @@ export const obtenerPorCodigo = (codigo: string) =>
 export const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
   client.patch(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`, mapFormToPayload(values)).then(r => r.data);
 
-export const confirmarPreinscripcionById = (id: number, data: any) =>
+export const confirmarPreinscripcionById = (id: number, data: Record<string, unknown>) =>
   client.post(`/preinscripciones/${id}/confirmar`, data).then(r => r.data);
 
 export const crearInscripcion = (preId: number, carreraId: number, periodo = "2025") =>
@@ -95,6 +95,7 @@ export const listarPreinscripciones = (params: {
   exclude_confirmed?: boolean;
 }): Promise<{ count: number; results: PreinscripcionDTO[] }> =>
   client
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .get<any>("/preinscripciones/", { params })
     .then((r) => {
       if (Array.isArray(r.data)) {
@@ -183,7 +184,7 @@ export async function apiUpdatePreinscripcion(codigo: string, payload: Preinscri
   return data;
 }
 
-export async function apiConfirmarPreinscripcion(codigo: string, payload?: any) {
+export async function apiConfirmarPreinscripcion(codigo: string, payload?: Record<string, unknown>) {
   const { data } = await client.post(`/preinscripciones/by-code/${encodeURIComponent(codigo)}/confirmar`, payload ?? {});
   return data;
 }

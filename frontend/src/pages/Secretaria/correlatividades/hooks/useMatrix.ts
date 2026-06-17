@@ -47,7 +47,7 @@ export function useMatrix(planId: number | '', versionId: number | '') {
       const params = `?version_id=${versionId}`;
       const { data } = await axios.get<MatrixRow[]>(`/planes/${planId}/correlatividades_matrix${params}`);
       setAllRows(data);
-    } catch (error) {
+    } catch (_error) {
       void 0;
       setAllRows(null);
     }

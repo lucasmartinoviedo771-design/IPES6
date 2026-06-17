@@ -67,6 +67,7 @@ const TURNO_INICIO: Record<Turno, string> = {
   noche: "18:00",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TURNOS_LABEL: Record<Turno, string> = {
   manana: "turno mañana",
   tarde: "turno tarde",

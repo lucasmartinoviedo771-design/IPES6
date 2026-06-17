@@ -36,10 +36,12 @@ const TabMesasYRegularidades = ({ regularidades, mesas }: Props) => (
           </TableHead>
           <TableBody>
             {regularidades.map((reg) => (
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               <TableRow key={`reg-${reg.id}`} sx={(reg as any).en_resguardo ? { bgcolor: "#fff7ed" } : {}}>
                 <TableCell>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <span>{reg.materia_nombre}</span>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {(reg as any).en_resguardo && (
                       <Chip label="En resguardo" size="small" sx={{ bgcolor: "#f97316", color: "#fff", fontWeight: 700, fontSize: "0.7rem" }} />
                     )}

@@ -36,6 +36,7 @@ export function usePedidoEquivalencias() {
   const [saving, setSaving] = useState(false);
   const [descargando, setDescargando] = useState(false);
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [planesDestino, setPlanesDestino] = useState<any[]>([]);
   const [carrerasEstudiante, setCarrerasEstudiante] = useState<TrayectoriaCarreraDetalleDTO[]>([]);
   const [carrerasLoading, setCarrerasLoading] = useState(false);
@@ -66,7 +67,7 @@ export function usePedidoEquivalencias() {
     () => carrerasEstudiante.find((c) => String(c.profesorado_id) === form.profesoradoOrigenId),
     [carrerasEstudiante, form.profesoradoOrigenId],
   );
-  const planesOrigenDisponibles = carreraOrigenSeleccionada?.planes ?? [];
+  const planesOrigenDisponibles = carreraOrigenSeleccionada?.planes ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchVentanas({ tipo: "EQUIVALENCIAS" })
@@ -202,7 +203,7 @@ export function usePedidoEquivalencias() {
         }
       });
     return () => { cancelado = true; };
-  }, [form.profesoradoDestinoId]);
+  }, [form.profesoradoDestinoId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!esAnexoA) {

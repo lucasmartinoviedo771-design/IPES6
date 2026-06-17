@@ -25,6 +25,7 @@ const CUATRIMESTRE_ACTUAL = (): string => {
   return "2C";
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "default"> = {
   BORRADOR: "warning",
   CERRADA: "default",

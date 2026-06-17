@@ -17,8 +17,7 @@ import { getCorrelativasCaidas, CorrelativaCaidaItem } from "@/api/reportes";
 import { useQuery } from "@tanstack/react-query";
 
 export default function AdminCorrelativasWidget() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, isLoading, isError, error } = useQuery({
+    const { data, isLoading, isError } = useQuery({
         queryKey: ["correlativas-caidas"],
         queryFn: () => getCorrelativasCaidas(), // Arrow function para evitar inyección de argumentos incorrectos
         staleTime: 1000 * 60 * 5, // 5 minutos de caché (comparte con DashboardPage)

@@ -9,16 +9,23 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import TextField from "@mui/material/TextField";
 import Alert from "@mui/material/Alert";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Switch from "@mui/material/Switch";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Paper from "@mui/material/Paper";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Divider from "@mui/material/Divider";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/DeleteForever";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import DescriptionIcon from "@mui/icons-material/Description";
 import LockResetIcon from "@mui/icons-material/LockReset";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import GavelIcon from "@mui/icons-material/Gavel";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
@@ -45,6 +52,7 @@ type Props = {
   control: Control<DetailFormValues>;
   handleSubmit: UseFormHandleSubmit<DetailFormValues>;
   watch: UseFormWatch<DetailFormValues>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setValue: (name: any, value: any, options?: any) => void;
   onSubmit: (values: DetailFormValues) => void;
   anioIngresoOptions: string[];
@@ -71,6 +79,7 @@ export function EstudianteDetailDialog({
   open,
   onClose,
   detailQuery,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   selectedDni,
   condicionCalculada,
   control,

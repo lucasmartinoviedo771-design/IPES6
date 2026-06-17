@@ -54,7 +54,7 @@ export default function GestionComisionesDialog({ open, onClose, materiaId, anio
       } else {
           setNewCodigo("A");
       }
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("Error al cargar comisiones", { variant: "error" });
     } finally {
       setLoading(false);
@@ -65,7 +65,7 @@ export default function GestionComisionesDialog({ open, onClose, materiaId, anio
     if (open) {
       loadComisiones();
     }
-  }, [open, materiaId, anioLectivo]);
+  }, [open, materiaId, anioLectivo]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {
     if (!confirm(`¿Estás seguro de crear la comisión "${newCodigo}" para TODAS las materias de ${anioCursada}º Año?`)) return;
@@ -74,7 +74,7 @@ export default function GestionComisionesDialog({ open, onClose, materiaId, anio
       const res = await crearComisionMasiva(planId, anioCursada, anioLectivo, newCodigo);
       enqueueSnackbar(res.message, { variant: "success" });
       await loadComisiones();
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("Error al crear comisiones", { variant: "error" });
     } finally {
       setCreating(false);
@@ -87,7 +87,7 @@ export default function GestionComisionesDialog({ open, onClose, materiaId, anio
       await distribuirEstudiantes(origenId, destinoId, 50);
       enqueueSnackbar("Estudiantes distribuidos", { variant: "success" });
       loadComisiones();
-    } catch (error) {
+    } catch (_error) {
       enqueueSnackbar("Error al distribuir estudiantes", { variant: "error" });
     }
   };

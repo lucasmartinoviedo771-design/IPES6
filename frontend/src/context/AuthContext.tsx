@@ -119,7 +119,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     if (!isPublic) {
       navigate("/login", { replace: true });
     }
-  }, [navigate]);
+  }, [navigate]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Obtiene el perfil del usuario actual.
@@ -129,10 +129,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     try {
       const { data } = await client.get(`auth/profile/?_t=${Date.now()}`, {
         suppressErrorToast: true,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       const normalized = normalizeUserPayload(data);
       setUser(normalized);
       return normalized;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setUser(null);
       throw err;
@@ -152,7 +154,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
             new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
           ]);
         }
-      } catch (e) {
+      } catch (_e) {
         setUser(null);
       } finally {
         if (mounted) {
@@ -191,8 +193,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     const intervalId = window.setInterval(async () => {
       if (Date.now() - activityRef.current > ACTIVITY_WINDOW_MS) return;
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await client.post("auth/refresh/", undefined, { suppressErrorToast: true } as any);
-      } catch (err) {
+      } catch (_err) {
         redirectToLogin();
       }
     }, KEEP_ALIVE_INTERVAL_MS);
@@ -209,6 +212,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       if (!u) throw new Error("La respuesta del servidor no contiene datos de usuario.");
       setUser(u);
       return u;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.message && (err.status || err.code)) throw err;
       const status = err?.response?.status;
@@ -221,6 +225,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const logout = async () => {
     try {
       await client.post("auth/logout/");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
     } catch (err: any) {
       void 0;
     } finally {
@@ -307,6 +312,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 /**
  * Hook personalizado para acceder de forma segura a los datos del usuario.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");

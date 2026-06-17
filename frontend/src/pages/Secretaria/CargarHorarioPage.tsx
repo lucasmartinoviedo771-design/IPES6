@@ -37,8 +37,10 @@ const CargarHorarioPage: React.FC = () => {
   const [horasRequeridas, setHorasRequeridas] = useState<number>(0);
   const [horasAsignadas, setHorasAsignadas] = useState<number>(0);
   const [selectedBlocks, setSelectedBlocks] = useState<Set<number>>(new Set());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [horarioCatedra, setHorarioCatedra] = useState<HorarioCatedraDTO | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFilterChange = useCallback((newFilters: any) => {
     setFilters(newFilters);
     setSelectedMateriaId(null);
@@ -71,6 +73,7 @@ const CargarHorarioPage: React.FC = () => {
         const materiaResponse = await api.get<MateriaDTO>(`/materias/${selectedMateriaId}`);
         const materiaRegimen = (materiaResponse.data.regimen || '').toUpperCase();
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const params: any = {
           espacio_id: selectedMateriaId,
           turno_id: filters.turnoId,
@@ -100,7 +103,7 @@ const CargarHorarioPage: React.FC = () => {
           setSelectedBlocks(new Set());
           setHorasAsignadas(0);
         }
-      } catch (error) {
+      } catch (_error) {
         void 0;
         setHorarioCatedra(null);
         setSelectedBlocks(new Set());
@@ -234,6 +237,7 @@ const CargarHorarioPage: React.FC = () => {
 
       alert('Horario guardado exitosamente!');
       fetchHorario(); // Recargar el horario
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       void 0;
       const data = error.response?.data;

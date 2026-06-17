@@ -362,6 +362,7 @@ function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, mat
                   </TableRow>
                 </TableHead>
                 <TableBody>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {planilla.estudiantes.map((estudiante: any) => (
                     <TableRow key={estudiante.inscripcion_id}>
                       <TableCell>{estudiante.orden ?? "-"}</TableCell>

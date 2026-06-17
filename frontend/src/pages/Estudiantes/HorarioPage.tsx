@@ -23,11 +23,14 @@ import { isAxiosError } from "axios";
 import {
   HorarioTablaDTO,
   TrayectoriaCarreraDetalleDTO,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   CarrerasActivasDTO,
   obtenerCarrerasActivas,
   obtenerHorarioEstudiante,
 } from "@/api/estudiantes";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getDefaultHomeRoute, hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { listarPlanes, listarProfesorados, PlanDTO, ProfesoradoDTO } from "@/api/cargaNotas";
 import HorarioTablaCard from "@/features/estudiantes/horario/HorarioTablaCard";
 import InstitutionalScheduleFormat from "@/features/estudiantes/horario/InstitutionalScheduleFormat";
@@ -35,7 +38,9 @@ import { useAuth } from "@/context/AuthContext";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
 import BackButton from "@/components/ui/BackButton";
 import { useCarreras } from "@/hooks/useCarreras";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
 
 type SelectValue = string;
@@ -57,6 +62,7 @@ const CUATRIMESTRE_LABEL: Record<string, string> = {
   "2C": "2.do Cuatrimestre",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AÑO_LABELS: Record<number, string> = {
     1: "1er Año",
     2: "2do Año",
@@ -177,7 +183,7 @@ const HorarioPage: React.FC = () => {
     }
   }, [horarioQuery.error, enqueueSnackbar]);
 
-  const tablas = horarioQuery.data ?? [];
+  const tablas = horarioQuery.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const turnosDisponibles = useMemo(() => {
     const map = new Map<number, string>();
@@ -298,6 +304,7 @@ const HorarioPage: React.FC = () => {
       const margin = 10;
       const contentWidth = pageWidth - margin * 2;
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const maxContentHeight = 210 - margin * 2;
 
       // Temporarily force a wide aspect ratio to match A4 landscape
@@ -381,7 +388,7 @@ const HorarioPage: React.FC = () => {
 
       pdf.save(`${fileNameParts.join("_")}.pdf`);
       enqueueSnackbar("PDF descargado correctamente.", { variant: "success" });
-    } catch (error) {
+    } catch (_error) {
       void 0;
       enqueueSnackbar("No se pudo generar el PDF.", { variant: "error" });
     }

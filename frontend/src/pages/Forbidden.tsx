@@ -21,7 +21,7 @@ export default function Forbidden() {
       if (user) {
         await logout();
       }
-    } catch (error) {
+    } catch (_error) {
       void 0;
     } finally {
       setLoggingOut(false);

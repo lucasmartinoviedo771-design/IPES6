@@ -40,7 +40,7 @@ const ConstanciaExamenPage: React.FC = () => {
     enabled: isEstudiante || (dniObjetivo?.length ?? 0) === 8,
   });
 
-  const constancias = constanciasQuery.data ?? [];
+  const constancias = constanciasQuery.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const carrerasDisponibles = useMemo(() => {
     const map = new Map<number, string>();

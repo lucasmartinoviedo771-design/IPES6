@@ -341,7 +341,7 @@ const DocenteAsistenciaPage = () => {
                   value={credentials.username}
                   onChange={(event) => setCredentials((prev) => ({ ...prev, username: event.target.value }))}
                   required
-                  autoFocus
+                  autoFocus // eslint-disable-line jsx-a11y/no-autofocus
                 />
                 <TextField
                   label="Contraseña"

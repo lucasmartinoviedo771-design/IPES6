@@ -32,6 +32,7 @@ type Props = {
   control: Control<DetailFormValues>;
   handleSubmit: UseFormHandleSubmit<DetailFormValues>;
   watch: UseFormWatch<DetailFormValues>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setValue: (name: any, value: any, options?: any) => void;
   onSubmit: (values: DetailFormValues) => void;
   anioIngresoOptions: string[];
@@ -49,6 +50,7 @@ type Props = {
   autorizarRendirIsPending?: boolean;
   onAgregarCarrera?: (profesorado_id: number, anio_ingreso?: number) => void;
   agregarCarreraIsPending?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detailData?: any;
   isAdmin?: boolean;
   isAttp?: boolean;
@@ -96,6 +98,7 @@ export function EstudianteDetailForm({
     enabled: agregarCarreraOpen,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const carrerasActualesIds = new Set((watch("carreras_situacion") || []).map((c: any) => c.profesorado_id));
   const profesoradosDisponibles = profesorados.filter((p) => {
     if (carrerasActualesIds.has(p.id)) return false;
@@ -660,6 +663,7 @@ export function EstudianteDetailForm({
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>Materias a autorizar (Debe seleccionar al menos una):</Typography>
                         <Paper variant="outlined" sx={{ maxHeight: 300, overflow: 'auto', p: 1, bgcolor: 'background.paper' }}>
                           <Stack spacing={0.5}>
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                             {detailData?.regularidades?.filter((r: any) => !r.aprobada).map((reg: any) => (
                               <FormControlLabel
                                 key={reg.materia_id}
@@ -673,6 +677,7 @@ export function EstudianteDetailForm({
                                 label={<Typography variant="body2">{reg.materia_nombre} <span style={{ opacity: 0.6 }}>({reg.situacion_display})</span></Typography>}
                               />
                             ))}
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                             {(!detailData?.regularidades || detailData.regularidades.filter((r: any) => !r.nota_final).length === 0) && (
                               <Typography variant="caption" p={2} textAlign="center">No hay materias pendientes de examen final registradas.</Typography>
                             )}

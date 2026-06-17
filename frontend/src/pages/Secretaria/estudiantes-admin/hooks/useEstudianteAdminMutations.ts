@@ -12,6 +12,7 @@ import { DetailFormValues, DetailDocumentacionForm } from "../types";
 
 export function useUpdateEstudianteMutation(
   selectedDni: string | null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onSettled?: () => void,
 ) {
   const queryClient = useQueryClient();
@@ -40,6 +41,7 @@ export function useUpdateEstudianteMutation(
           const key = name as keyof DetailDocumentacionForm;
           if (typeof doc[key] === "boolean") {
             // Cast explícito para asignar al DTO
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (documentacionPayload as any)[name] = doc[key];
           }
         });
@@ -141,6 +143,7 @@ export function useDeleteEstudianteMutation(
       queryClient.invalidateQueries({ queryKey: ["admin-estudiantes"] });
       onSuccess();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error?.response?.data?.message || error.message || "No se pudo eliminar";
       enqueueSnackbar(msg, { variant: "error" });
@@ -153,12 +156,14 @@ export function useResetPasswordMutation() {
 
   return useMutation({
     mutationFn: (dni: string) => resetPasswordEstudiante(dni),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSuccess: (res: any) => {
       enqueueSnackbar(res.message || "Contraseña reseteada correctamente", {
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["admin-estudiante"] });
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo resetear la contraseña";
       enqueueSnackbar(msg, { variant: "error" });
@@ -172,12 +177,14 @@ export function useAutorizarRendirMutation(selectedDni: string | null) {
   return useMutation({
     mutationFn: ({ autorizado, observacion, materias_autorizadas }: { autorizado: boolean; observacion: string; materias_autorizadas: number[] }) =>
       autorizarRendirEstudiante(selectedDni!, { autorizado, observacion: observacion || null, materias_autorizadas }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSuccess: (res: any) => {
       enqueueSnackbar(res.message || "Autorización actualizada", { variant: "success" });
       if (selectedDni) {
         queryClient.invalidateQueries({ queryKey: ["admin-estudiante", selectedDni] });
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo actualizar la autorización";
       enqueueSnackbar(msg, { variant: "error" });
@@ -199,6 +206,7 @@ export function useAgregarCarreraMutation(selectedDni: string | null, onSuccess?
       }
       onSuccess?.();
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (error: any) => {
       const msg = error?.response?.data?.message || "No se pudo agregar la carrera";
       enqueueSnackbar(msg, { variant: "error" });
