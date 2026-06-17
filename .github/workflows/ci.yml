@@ -8,21 +8,21 @@ on:
 
 jobs:
   frontend:
-    name: Frontend (Node 20 + PNPM)
+    name: Frontend (Node 22 + PNPM)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -43,15 +43,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           version: "latest"
 
@@ -72,3 +72,4 @@ jobs:
         working-directory: backend
         env:
           DB_ENGINE: sqlite
+          SECRET_KEY: ci-test-secret-key-not-for-production
