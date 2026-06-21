@@ -201,6 +201,7 @@ const CargarHorarioPage: React.FC = () => {
         cuatrimestreValue = filters.cuatrimestre === 1 ? 'PCU' : 'SCU';
       }
 
+      let forceAll = false;
       const saveToCuatri = async (cuatri: string | null) => {
         const payload = {
           espacio_id: selectedMateriaId,
@@ -219,7 +220,29 @@ const CargarHorarioPage: React.FC = () => {
         const toDel = [...extIds].filter(x => !selectedBlocks.has(x));
 
         for (const bId of toAdd) {
-          await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId });
+          try {
+            await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: forceAll });
+          } catch (error: any) {
+            const responseData = error.original?.response?.data || error.response?.data;
+            const dataVal = responseData?.data;
+            if (dataVal?.superposicion_residencia) {
+              if (forceAll) {
+                await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: true });
+                continue;
+              }
+              const confirmForzar = window.confirm(
+                responseData.message || 'Existe una superposición horaria. ¿Desea guardarla de todas formas?'
+              );
+              if (confirmForzar) {
+                forceAll = true;
+                await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: true });
+              } else {
+                throw { isCancel: true };
+              }
+            } else {
+              throw error;
+            }
+          }
         }
         for (const bId of toDel) {
           const detId = extMap.get(bId);
@@ -239,8 +262,14 @@ const CargarHorarioPage: React.FC = () => {
       fetchHorario(); // Recargar el horario
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
+      if (error?.isCancel) {
+        alert('Guardado cancelado por el usuario. Se restablecerán los horarios previos.');
+        fetchHorario();
+        return;
+      }
       void 0;
-      const data = error.response?.data;
+      const responseData = error.original?.response?.data || error.response?.data;
+      const data = responseData;
       const conflictData = data?.conflict || data?.data?.conflict;
       let message = data?.message || data?.detail || error.message;
       if (conflictData) {

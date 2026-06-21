@@ -62,6 +62,7 @@ class HorarioCatedraOut(Schema):
 
 class HorarioCatedraDetalleIn(Schema):
     bloque_id: int
+    forzar: bool = False
 
 
 class HorarioCatedraDetalleOut(Schema):

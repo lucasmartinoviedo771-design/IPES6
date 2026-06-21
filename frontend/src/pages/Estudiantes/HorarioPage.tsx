@@ -95,7 +95,6 @@ const HorarioPage: React.FC = () => {
     return month <= 7 ? "1C" : "2C";
   };
   const [cuatrFilter, setCuatrFilter] = useState<string>(getCuatrDefault);
-  const [isPrintMode, setIsPrintMode] = useState(false);
 
   const carrerasQuery = useQuery({
     queryKey: ["estudiantes", "carreras-activas", targetDni],
@@ -301,7 +300,7 @@ const HorarioPage: React.FC = () => {
     try {
       const pdf = new jsPDF("l", "mm", "a4");
       const pageWidth = 297;
-      const margin = 10;
+      const margin = 5;
       const contentWidth = pageWidth - margin * 2;
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -311,9 +310,18 @@ const HorarioPage: React.FC = () => {
       const originalWidth = exportRef.current.style.width;
       const originalPosition = exportRef.current.style.position;
       const originalLeft = exportRef.current.style.left;
-      exportRef.current.style.width = "1500px";
+      const originalTop = exportRef.current.style.top;
+      const originalZIndex = exportRef.current.style.zIndex;
+
+      exportRef.current.style.width = "1900px";
       exportRef.current.style.position = "absolute";
-      exportRef.current.style.left = "-9999px";
+      exportRef.current.style.left = "0px";
+      exportRef.current.style.top = "0px";
+      exportRef.current.style.zIndex = "-1000";
+
+      // Force layout recalculation and give the browser time to paint the layout change
+      exportRef.current.offsetHeight;
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Buscamos todos los contenedores de página (cada uno tiene 2 años)
       const pageElements = Array.from(exportRef.current.querySelectorAll('.pdf-page-chunk'));
@@ -353,6 +361,8 @@ const HorarioPage: React.FC = () => {
       exportRef.current.style.width = originalWidth;
       exportRef.current.style.position = originalPosition;
       exportRef.current.style.left = originalLeft;
+      exportRef.current.style.top = originalTop;
+      exportRef.current.style.zIndex = originalZIndex;
 
       const fileNameParts = ["Horario"];
       if (isEstudiante) {
@@ -500,17 +510,7 @@ const HorarioPage: React.FC = () => {
             >
               Descargar PDF
             </Button>
-            <Button
-              variant="contained"
-              size="small"
-              color="secondary"
-              startIcon={isPrintMode ? <VisibilityIcon /> : <DownloadIcon />}
-              onClick={() => setIsPrintMode(!isPrintMode)}
-              disabled={!tablasFiltradas.length}
-              sx={{ bgcolor: "#2e7d32", "&:hover": { bgcolor: "#1b5e20" }, minWidth: "180px" }}
-            >
-              {isPrintMode ? "Vista Estándar" : "Modo Impresión (4 años)"}
-            </Button>
+
           </Stack>
         </Grid>
       </Grid>
@@ -582,7 +582,7 @@ const HorarioPage: React.FC = () => {
         <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
           <CircularProgress />
         </Box>
-      ) : isPrintMode ? (
+      ) : (
         <Box ref={exportRef} sx={{ p: 1, bgcolor: "white" }}>
             {!cuatrFilter ? (
                 <Box sx={{ p: 4, textAlign: "center", border: "2px dashed #ccc", borderRadius: 4, mt: 4 }}>
@@ -594,52 +594,30 @@ const HorarioPage: React.FC = () => {
                         <b> 1.er Cuatrimestre</b> o <b>2.do Cuatrimestre</b> en los filtros de arriba.
                     </Typography>
                 </Box>
+            ) : sinCarreras ? (
+                <Typography variant="body1" color="text.secondary" sx={{ mt: 4 }}>
+                  No se encontraron profesorados asociados a tu usuario. Consulta con Secretaría para verificar tu inscripción.
+                </Typography>
+            ) : tablasFiltradas.length === 0 ? (
+                <Typography variant="body1" color="text.secondary" sx={{ mt: 4 }}>
+                  No se encontraron horarios para los filtros seleccionados.
+                </Typography>
             ) : (
                 <Stack spacing={4}>
-                    {(() => {
-                        return tablasFiltradas.map((tabla, idx) => {
-                            const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
-                            return (
-                                <Box key={idx} className="pdf-page-chunk" sx={{ p: 1, bgcolor: "white", width: "100%" }}>
-                                    <InstitutionalScheduleFormat 
-                                        tabla={tabla} 
-                                        salon={shorthand} 
-                                        cuatrimestre={cuatrFilter || undefined} 
-                                    />
-                                </Box>
-                            );
-                        });
-                    })()}
+                    {tablasFiltradas.map((tabla, idx) => {
+                        const shorthand = cuatrFilter === "1C" ? "1º C" : (cuatrFilter === "2C" ? "2º C" : "");
+                        return (
+                            <Box key={idx} className="pdf-page-chunk" sx={{ p: 1, bgcolor: "white", width: "100%" }}>
+                                <InstitutionalScheduleFormat 
+                                    tabla={tabla} 
+                                    salon={shorthand} 
+                                    cuatrimestre={cuatrFilter || undefined} 
+                                />
+                            </Box>
+                        );
+                    })}
                 </Stack>
             )}
-        </Box>
-      ) : (
-        <Box ref={exportRef}>
-          {sinCarreras ? (
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 4 }}>
-              No se encontraron profesorados asociados a tu usuario. Consulta con Secretaría para verificar tu inscripción.
-            </Typography>
-          ) : tablasFiltradas.length === 0 ? (
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 4 }}>
-              No se encontraron horarios para los filtros seleccionados.
-            </Typography>
-          ) : (
-            <Stack spacing={2}>
-              {tablasAgrupadas.map(([anio, items]) => (
-                <Stack key={anio} spacing={2}>
-                  {items
-                    .sort((a, b) => a.turno_nombre.localeCompare(b.turno_nombre))
-                    .map((tabla) => (
-                      <HorarioTablaCard 
-                        key={tabla.key} 
-                        tabla={tabla} 
-                        cuatrimestre={cuatrFilter || undefined} 
-                      />
-                    ))}
-                </Stack>
-              ))}
-            </Stack>
-          )}
         </Box>
       )}
     </Box>

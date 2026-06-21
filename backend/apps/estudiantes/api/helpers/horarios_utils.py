@@ -213,6 +213,11 @@ def _construir_tablas_horario(
                         horario.espacio.comisiones.filter(anio_lectivo__in=[2025, 2026]).select_related("docente")
                     )
 
+            comisiones_validas = [
+                c for c in comisiones
+                if c.estado != "LIC"
+            ]
+
             docentes = sorted(
                 {
                     (
@@ -224,7 +229,7 @@ def _construir_tablas_horario(
                             else (c.docente.nombre if c.docente else "")
                         )
                     )
-                    for c in comisiones
+                    for c in comisiones_validas
                     if c.docente_id
                 }
             )

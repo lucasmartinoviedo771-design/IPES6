@@ -15,10 +15,8 @@ Uso:
 
 import sys
 import os
-import time
 import argparse
 from pathlib import Path
-from datetime import datetime
 
 # Agregar el backend al path
 backend_path = Path(__file__).parent.parent / "backend"
@@ -29,11 +27,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django
 django.setup()
 
-from django.core.mail import send_mail
 from django.conf import settings
-from django.contrib.auth.models import User
-from core.models import Docente, Estudiante, UserProfile
-from django.template.loader import render_to_string
+from core.models import Docente, UserProfile
 
 
 def generar_email_docente(docente_nombre, docente_apellido, username, password):
@@ -101,7 +96,7 @@ def enviar_correos_docentes(limite=50, delay=5, dry_run=False):
         delay: Segundos de espera entre cada envío
         dry_run: Si es True, solo simula el envío sin enviar realmente
     """
-    print(f"🔍 Buscando docentes que necesitan recibir credenciales...")
+    print("🔍 Buscando docentes que necesitan recibir credenciales...")
     print(f"Configuración: límite={limite}, delay={delay}s, dry_run={dry_run}")
     print("-" * 60)
     
@@ -145,7 +140,7 @@ def enviar_correos_docentes(limite=50, delay=5, dry_run=False):
         # Este script NO puede recuperar la contraseña original.
         # Necesitaríamos guardarla temporalmente o generar una nueva.
         print(f"  ⚠️  {i}/{total} - {docente.apellido}, {docente.nombre} - No se puede recuperar la contraseña original")
-        print(f"       Sugerencia: Use el sistema de reset de contraseña o re-genere credenciales")
+        print("       Sugerencia: Use el sistema de reset de contraseña o re-genere credenciales")
         continue
         
     print()

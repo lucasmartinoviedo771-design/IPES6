@@ -102,6 +102,72 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
     );
   };
 
+  const renderMateriasGrupo = (materiasList: HorarioMateriaCeldaDTO[]) => {
+    if (materiasList.length === 0) return null;
+
+    if (materiasList.length === 1) {
+      return renderMateria(materiasList[0], false);
+    }
+
+    // Combinar nombres de materias
+    const nombres = materiasList.map(m => m.materia_nombre).join(" / ");
+
+    // Combinar docentes únicos
+    const todosDocentes = Array.from(
+      new Set(materiasList.flatMap(m => m.docentes))
+    ).filter(Boolean);
+
+    // Combinar regímenes únicos
+    const todosRegimenes = Array.from(
+      new Set(materiasList.map(m => m.cuatrimestre === "ANUAL" ? "ANUAL" : m.cuatrimestre || "---"))
+    ).filter(Boolean);
+
+    const hasCuatrimestral = materiasList.some(m => m.es_cuatrimestral);
+
+    return (
+      <Box
+        key={materiasList[0].materia_id}
+        sx={{
+          position: "relative",
+          width: "100%",
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 0.5,
+          minHeight: "60px",
+          ...(hasCuatrimestral && {
+             background: `repeating-linear-gradient(45deg, #f0f0f0, #f0f0f0 10px, #ffffff 10px, #ffffff 20px)`,
+             border: "1.5px solid #666"
+          })
+        }}
+      >
+        <Box sx={{ width: "100%", textAlign: "center", display: "block" }}>
+          <Typography component="div" sx={{ fontWeight: "500", fontSize: "0.95rem", lineHeight: "1.3em", color: "black", mb: 0.5, display: "block", width: "100%" }}>
+            {nombres}
+          </Typography>
+          <Typography component="div" sx={{ fontSize: "0.7rem", fontStyle: "italic", color: "#333", mb: 0.5, display: "block", width: "100%" }}>
+            {todosDocentes.length ? todosDocentes.join("; ") : "Sin Docente"}
+          </Typography>
+          <Typography 
+            component="div"
+            sx={{ 
+              fontSize: "0.65rem", 
+              fontWeight: "700", 
+              color: "#444",
+              textTransform: "uppercase",
+              letterSpacing: "0.02em",
+              display: "block",
+              width: "100%"
+            }}
+          >
+            {todosRegimenes.length ? todosRegimenes.join(" / ") : "---"}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{
       width: "100%",
@@ -235,7 +301,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                 return (
                   <Box key={dia.numero} sx={{
                     border: "1px solid black",
-                    minHeight: "100px",
+                    minHeight: "125px",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "stretch",
@@ -243,15 +309,15 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
                     bgcolor: materias.length > 0 ? "white" : "transparent",
                     overflow: "hidden"
                   }}>
-                    {materias
-                      .filter((m: HorarioMateriaCeldaDTO) =>
+                    {(() => {
+                      const filtered = materias.filter((m: HorarioMateriaCeldaDTO) =>
                         !cuatrimestre ||
                         m.cuatrimestre === cuatrimestre ||
                         m.cuatrimestre === "ANUAL" ||
                         m.regimen === "ANUAL"
-                      )
-                      .map((m: HorarioMateriaCeldaDTO) => renderMateria(m, false))
-                    }
+                      );
+                      return renderMateriasGrupo(filtered);
+                    })()}
                   </Box>
                 );
               })}

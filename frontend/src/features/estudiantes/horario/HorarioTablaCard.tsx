@@ -61,11 +61,24 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
   const textColor = isLightColor ? "rgba(0,0,0,0.87)" : "#fff";
   const subTextColor = isLightColor ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)";
 
-  const renderMateria = (materia: HorarioMateriaCeldaDTO, index: number) => {
-    const key = `${materia.materia_id}-${index}`;
+  const renderMaterias = (materiasList: HorarioMateriaCeldaDTO[]) => {
+    if (materiasList.length === 0) return null;
+
+    // Combinar nombres de materias
+    const nombres = materiasList.map(m => m.materia_nombre).join(" / ");
+
+    // Combinar docentes únicos
+    const todosDocentes = Array.from(
+      new Set(materiasList.flatMap(m => m.docentes))
+    ).filter(Boolean);
+
+    // Combinar regímenes únicos
+    const todosRegimenes = Array.from(
+      new Set(materiasList.map(m => formatRegimen(m.regimen, m.cuatrimestre)))
+    ).filter(Boolean);
+
     return (
       <Box
-        key={key}
         sx={{
           borderRadius: 1,
           border: "1px solid",
@@ -74,20 +87,20 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
           bgcolor: "background.paper",
         }}
       >
-        <Typography variant="subtitle2" fontWeight={600}>
-          {materia.materia_nombre}
+        <Typography variant="subtitle2" fontWeight={600} sx={{ lineHeight: 1.25 }}>
+          {nombres}
         </Typography>
-        <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+        <Stack spacing={0.25} sx={{ mt: 0.75 }}>
           {/* Se eliminan las etiquetas de comisiones por pedido del usuario */}
           <Typography variant="caption" color="text.secondary">
-            Docentes: {materia.docentes.length ? materia.docentes.join("; ") : "Vacante"}
+            Docentes: {todosDocentes.length ? todosDocentes.join("; ") : "Vacante"}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Regimen: {formatRegimen(materia.regimen, materia.cuatrimestre)}
+            Regimen: {todosRegimenes.length ? todosRegimenes.join(" / ") : "Sin dato"}
           </Typography>
-          {materia.observaciones && (
-            <Typography variant="caption" color="text.secondary">
-              Observaciones: {materia.observaciones}
+          {materiasList.some(m => m.observaciones) && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              Obs: {materiasList.map(m => m.observaciones).filter(Boolean).join(" | ")}
             </Typography>
           )}
         </Stack>
@@ -267,7 +280,7 @@ const HorarioTablaCard: React.FC<HorarioTablaCardProps> = ({ tabla, cuatrimestre
                         }}
                       >
                         {materias.length
-                          ? materias.map(renderMateria)
+                          ? renderMaterias(materias)
                           : (
                             <Typography variant="caption" color="text.secondary">
                               -

@@ -58,6 +58,40 @@ def _es_taller_residencia(materia: Materia) -> bool:
     return "taller" in nombre and "residencia" in nombre
 
 
+def _es_taller_o_practica_4_residencia(materia: Materia) -> bool:
+    """
+    Retorna True si la materia es un taller de residencia, residencia o práctica 4 (de 4° año)
+    con base en los 5 nombres exactos provistos.
+    """
+    if getattr(materia, "anio_cursada", None) != 4:
+        return False
+    nombre = getattr(materia, "nombre", "") or ""
+    nombre_norm = (
+        nombre.upper()
+        .replace("Á", "A")
+        .replace("É", "E")
+        .replace("Í", "I")
+        .replace("Ó", "O")
+        .replace("Ú", "U")
+        .strip()
+    )
+    nombres_validos = {
+        "PRACTICA IV: RESIDENCIA PEDAGOGICA",
+        "TALLER DE RESIDENCIA DE CIENCIAS NATURALES",
+        "TALLER DE RESIDENCIA DE CIENCIAS SOCIALES",
+        "TALLER DE RESIDENCIA DE MATEMATICA",
+        "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE"
+    }
+    return any(nombre_norm.startswith(nv) for nv in nombres_validos)
+
+
+def _permite_superposicion_residencia(m1: Materia, m2: Materia) -> bool:
+    """
+    Permite superponer talleres de residencia y práctica 4 del 4° año entre sí.
+    """
+    return _es_taller_o_practica_4_residencia(m1) and _es_taller_o_practica_4_residencia(m2)
+
+
 router = Router(tags=["Calendario"])
 
 # --- TURNOS ---
@@ -207,16 +241,33 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     ).exclude(horario_catedra=hc)
 
     if conflictos_alumnos.exists():
-        conf = conflictos_alumnos.select_related("horario_catedra__espacio").first()
-        return 409, ApiResponse(
-            ok=False,
-            message=f"Espacio ocupado por {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.anio_cursada}º año)",
-        )
+        real_conflict = None
+        for conf in conflictos_alumnos.select_related("horario_catedra__espacio"):
+            if _permite_superposicion_residencia(hc.espacio, conf.horario_catedra.espacio):
+                if payload.forzar:
+                    continue
+                return 409, ApiResponse(
+                    ok=False,
+                    message=f"Existe una superposición horaria con '{conf.horario_catedra.espacio.nombre}'. ¿Desea guardarla de todas formas?",
+                    data={
+                        "superposicion_residencia": True,
+                        "materia_nombre": conf.horario_catedra.espacio.nombre
+                    }
+                )
+            real_conflict = conf
+            break
+
+        if real_conflict:
+            return 409, ApiResponse(
+                ok=False,
+                message=f"Espacio ocupado por {real_conflict.horario_catedra.espacio.nombre} ({real_conflict.horario_catedra.espacio.anio_cursada}º año)",
+            )
 
     # 2. Conflicto por Docente (Mismo docente en cualquier año/profesorado en este bloque)
-    # Buscamos qué docentes están asignados a esta materia en este año lectivo
+    # Buscamos qué docentes activos están asignados a esta materia en este año lectivo (excluyendo licencias)
     docentes_ids = (
         Comision.objects.filter(materia=hc.espacio, anio_lectivo=hc.anio_academico)
+        .exclude(estado="LIC")
         .values_list("docente_id", flat=True)
         .distinct()
     )
@@ -228,7 +279,12 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
             horario_catedra__anio_academico=hc.anio_academico,
             horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
             horario_catedra__comisiones__docente_id__in=docentes_ids,
-        ).exclude(horario_catedra=hc)
+        ).exclude(
+            horario_catedra=hc
+        ).exclude(
+            horario_catedra__comisiones__docente_id__in=docentes_ids,
+            horario_catedra__comisiones__estado="LIC"
+        )
 
         if conflictos_docente.exists():
             conf = conflictos_docente.select_related("horario_catedra__espacio").first()

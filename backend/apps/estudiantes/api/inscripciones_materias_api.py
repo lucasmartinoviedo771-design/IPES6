@@ -64,6 +64,40 @@ def _es_materia_residencia(materia) -> bool:
     return "RESIDENCIA" in nombre or nombre.startswith("PRÁCTICA IV") or nombre.startswith("PRACTICA IV")
 
 
+def _es_taller_o_practica_4_residencia(materia) -> bool:
+    """
+    Retorna True si la materia es un taller de residencia, residencia o práctica 4 (de 4° año)
+    con base en los 5 nombres exactos provistos.
+    """
+    if getattr(materia, "anio_cursada", None) != 4:
+        return False
+    nombre = getattr(materia, "nombre", "") or ""
+    nombre_norm = (
+        nombre.upper()
+        .replace("Á", "A")
+        .replace("É", "E")
+        .replace("Í", "I")
+        .replace("Ó", "O")
+        .replace("Ú", "U")
+        .strip()
+    )
+    nombres_validos = {
+        "PRACTICA IV: RESIDENCIA PEDAGOGICA",
+        "TALLER DE RESIDENCIA DE CIENCIAS NATURALES",
+        "TALLER DE RESIDENCIA DE CIENCIAS SOCIALES",
+        "TALLER DE RESIDENCIA DE MATEMATICA",
+        "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE"
+    }
+    return any(nombre_norm.startswith(nv) for nv in nombres_validos)
+
+
+def _permite_superposicion_residencia(m1, m2) -> bool:
+    """
+    Permite superponer talleres de residencia y práctica 4 del 4° año entre sí.
+    """
+    return _es_taller_o_practica_4_residencia(m1) and _es_taller_o_practica_4_residencia(m2)
+
+
 def _comision_to_resumen(comision):
     """Auxiliar: Convierte una instancia de Comisión en un resumen para el frontend."""
     if not comision:
@@ -279,7 +313,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             ]
         )
         if actuales.exists():
-            det_act = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "bloque").filter(
+            det_act = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "horario_catedra__espacio", "bloque").filter(
                 horario_catedra__espacio_id__in=list(actuales.values_list("materia_id", flat=True))
             )
             for d in det_act:
@@ -290,6 +324,9 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                         and dia == d.bloque.dia
                         and not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)
                     ):
+                        # Omitir si ambas materias permiten superposición (talleres/práctica 4 del 2C)
+                        if _permite_superposicion_residencia(mat, d.horario_catedra.espacio):
+                            continue
                         colision_nombre = d.horario_catedra.espacio.nombre
                         return 400, ApiResponse(
                             ok=False,
