@@ -66,6 +66,8 @@ export default function PreinscripcionesPage() {
   const [inclInactivas, setInclInactivas] = React.useState(false);
   const [profesoradoId, setProfesoradoId] = React.useState<number | "">("");
   const [anio, setAnio] = React.useState<number | "">("");
+  const [fechaDesde, setFechaDesde] = React.useState<string>("");
+  const [fechaHasta, setFechaHasta] = React.useState<string>("");
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
@@ -75,12 +77,14 @@ export default function PreinscripcionesPage() {
   });
 
   const { data, isLoading, isError, refetch } = useQuery<{ count: number, results: PreinscripcionDTO[] }>({
-    queryKey: ["preinscripciones", search, inclInactivas, profesoradoId, anio, page, rowsPerPage],
+    queryKey: ["preinscripciones", search, inclInactivas, profesoradoId, anio, fechaDesde, fechaHasta, page, rowsPerPage],
     queryFn: () => listarPreinscripciones({
       search: search || undefined,
       include_inactivas: inclInactivas,
       profesorado_id: profesoradoId || undefined,
       anio: anio || undefined,
+      fecha_desde: fechaDesde || undefined,
+      fecha_hasta: fechaHasta || undefined,
       limit: rowsPerPage,
       offset: page * rowsPerPage
     }),
@@ -205,6 +209,53 @@ export default function PreinscripcionesPage() {
               </Button>
             </Stack>
           </Grid>
+          
+          {/* Fila 2: Filtros por fecha (Desde / Hasta) */}
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="Desde fecha"
+              type="date"
+              size="small"
+              fullWidth
+              value={fechaDesde}
+              onChange={(e) => { setFechaDesde(e.target.value); setPage(0); }}
+              InputLabelProps={{ shrink: true }}
+              InputProps={{
+                sx: { borderRadius: 3 },
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              label="Hasta fecha"
+              type="date"
+              size="small"
+              fullWidth
+              value={fechaHasta}
+              onChange={(e) => { setFechaHasta(e.target.value); setPage(0); }}
+              InputLabelProps={{ shrink: true }}
+              InputProps={{
+                sx: { borderRadius: 3 },
+              }}
+            />
+          </Grid>
+          {(fechaDesde || fechaHasta) && (
+            <Grid item xs={12} md={6}>
+              <Button
+                variant="text"
+                color="secondary"
+                size="small"
+                onClick={() => {
+                  setFechaDesde("");
+                  setFechaHasta("");
+                  setPage(0);
+                }}
+                sx={{ textTransform: 'none', borderRadius: 3 }}
+              >
+                Limpiar fechas
+              </Button>
+            </Grid>
+          )}
         </Grid>
         <TableContainer>
           <Table>

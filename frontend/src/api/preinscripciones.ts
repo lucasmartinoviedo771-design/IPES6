@@ -93,6 +93,8 @@ export const listarPreinscripciones = (params: {
   profesorado_id?: number;
   anio?: number;
   exclude_confirmed?: boolean;
+  fecha_desde?: string;
+  fecha_hasta?: string;
 }): Promise<{ count: number; results: PreinscripcionDTO[] }> =>
   client
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

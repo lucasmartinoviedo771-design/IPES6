@@ -7,7 +7,7 @@ de documentación y confirmación final de vacante.
 
 import copy
 import logging
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from django.db import DatabaseError, IntegrityError, transaction
@@ -174,6 +174,8 @@ def listar_preinscripciones(
     profesorado_id: int | None = None,
     anio: int | None = None,
     exclude_confirmed: bool = False,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
 ):
     """
     Listado administrativo de solicitudes con filtros avanzados y paginación.
@@ -196,6 +198,10 @@ def listar_preinscripciones(
         qs = qs.filter(carrera_id=profesorado_id)
     if anio:
         qs = qs.filter(anio=anio)
+    if fecha_desde:
+        qs = qs.filter(created_at__date__gte=fecha_desde)
+    if fecha_hasta:
+        qs = qs.filter(created_at__date__lte=fecha_hasta)
 
     if search:
         search = search[:100]
