@@ -73,20 +73,14 @@ def _es_taller_o_practica_4_residencia(materia) -> bool:
         return False
     nombre = getattr(materia, "nombre", "") or ""
     nombre_norm = (
-        nombre.upper()
-        .replace("Á", "A")
-        .replace("É", "E")
-        .replace("Í", "I")
-        .replace("Ó", "O")
-        .replace("Ú", "U")
-        .strip()
+        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
     )
     nombres_validos = {
         "PRACTICA IV: RESIDENCIA PEDAGOGICA",
         "TALLER DE RESIDENCIA DE CIENCIAS NATURALES",
         "TALLER DE RESIDENCIA DE CIENCIAS SOCIALES",
         "TALLER DE RESIDENCIA DE MATEMATICA",
-        "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE"
+        "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE",
     }
     return any(nombre_norm.startswith(nv) for nv in nombres_validos)
 
@@ -313,9 +307,9 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             ]
         )
         if actuales.exists():
-            det_act = HorarioCatedraDetalle.objects.select_related("horario_catedra__turno", "horario_catedra__espacio", "bloque").filter(
-                horario_catedra__espacio_id__in=list(actuales.values_list("materia_id", flat=True))
-            )
+            det_act = HorarioCatedraDetalle.objects.select_related(
+                "horario_catedra__turno", "horario_catedra__espacio", "bloque"
+            ).filter(horario_catedra__espacio_id__in=list(actuales.values_list("materia_id", flat=True)))
             for d in det_act:
                 for t, dia, desde, hasta in cand:
                     # Si coinciden en Turno y Día, verificamos solapamiento de horas

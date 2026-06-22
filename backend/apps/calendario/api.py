@@ -67,20 +67,14 @@ def _es_taller_o_practica_4_residencia(materia: Materia) -> bool:
         return False
     nombre = getattr(materia, "nombre", "") or ""
     nombre_norm = (
-        nombre.upper()
-        .replace("Á", "A")
-        .replace("É", "E")
-        .replace("Í", "I")
-        .replace("Ó", "O")
-        .replace("Ú", "U")
-        .strip()
+        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
     )
     nombres_validos = {
         "PRACTICA IV: RESIDENCIA PEDAGOGICA",
         "TALLER DE RESIDENCIA DE CIENCIAS NATURALES",
         "TALLER DE RESIDENCIA DE CIENCIAS SOCIALES",
         "TALLER DE RESIDENCIA DE MATEMATICA",
-        "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE"
+        "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE",
     }
     return any(nombre_norm.startswith(nv) for nv in nombres_validos)
 
@@ -249,10 +243,7 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
                 return 409, ApiResponse(
                     ok=False,
                     message=f"Existe una superposición horaria con '{conf.horario_catedra.espacio.nombre}'. ¿Desea guardarla de todas formas?",
-                    data={
-                        "superposicion_residencia": True,
-                        "materia_nombre": conf.horario_catedra.espacio.nombre
-                    }
+                    data={"superposicion_residencia": True, "materia_nombre": conf.horario_catedra.espacio.nombre},
                 )
             real_conflict = conf
             break
@@ -274,16 +265,17 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     docentes_ids = [d for d in docentes_ids if d]
 
     if docentes_ids:
-        conflictos_docente = HorarioCatedraDetalle.objects.filter(
-            bloque=bloque,
-            horario_catedra__anio_academico=hc.anio_academico,
-            horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
-            horario_catedra__comisiones__docente_id__in=docentes_ids,
-        ).exclude(
-            horario_catedra=hc
-        ).exclude(
-            horario_catedra__comisiones__docente_id__in=docentes_ids,
-            horario_catedra__comisiones__estado="LIC"
+        conflictos_docente = (
+            HorarioCatedraDetalle.objects.filter(
+                bloque=bloque,
+                horario_catedra__anio_academico=hc.anio_academico,
+                horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
+                horario_catedra__comisiones__docente_id__in=docentes_ids,
+            )
+            .exclude(horario_catedra=hc)
+            .exclude(
+                horario_catedra__comisiones__docente_id__in=docentes_ids, horario_catedra__comisiones__estado="LIC"
+            )
         )
 
         if conflictos_docente.exists():
