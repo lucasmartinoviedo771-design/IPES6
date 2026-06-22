@@ -1,7 +1,9 @@
-import pytest
 from datetime import date, timedelta
+
+import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
+
 from core.models import Estudiante, Persona, Preinscripcion, Profesorado
 
 pytestmark = pytest.mark.django_db

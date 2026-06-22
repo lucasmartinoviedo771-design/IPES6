@@ -222,8 +222,10 @@ const CargarHorarioPage: React.FC = () => {
         for (const bId of toAdd) {
           try {
             await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: forceAll });
-          } catch (error: any) {
-            const responseData = error.original?.response?.data || error.response?.data;
+          } catch (error) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const err = error as any;
+            const responseData = err.original?.response?.data || err.response?.data;
             const dataVal = responseData?.data;
             if (dataVal?.superposicion_residencia) {
               if (forceAll) {
@@ -260,18 +262,19 @@ const CargarHorarioPage: React.FC = () => {
 
       alert('Horario guardado exitosamente!');
       fetchHorario(); // Recargar el horario
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      if (error?.isCancel) {
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as any;
+      if (err?.isCancel) {
         alert('Guardado cancelado por el usuario. Se restablecerán los horarios previos.');
         fetchHorario();
         return;
       }
       void 0;
-      const responseData = error.original?.response?.data || error.response?.data;
+      const responseData = err.original?.response?.data || err.response?.data;
       const data = responseData;
       const conflictData = data?.conflict || data?.data?.conflict;
-      let message = data?.message || data?.detail || error.message;
+      let message = data?.message || data?.detail || err.message;
       if (conflictData) {
         const conflict = conflictData;
         const bloque = conflict.bloque;

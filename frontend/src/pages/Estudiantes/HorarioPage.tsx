@@ -13,7 +13,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 import { toPng } from "html-to-image";
@@ -32,7 +31,6 @@ import {
 import { getDefaultHomeRoute, hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { listarPlanes, listarProfesorados, PlanDTO, ProfesoradoDTO } from "@/api/cargaNotas";
-import HorarioTablaCard from "@/features/estudiantes/horario/HorarioTablaCard";
 import InstitutionalScheduleFormat from "@/features/estudiantes/horario/InstitutionalScheduleFormat";
 import { useAuth } from "@/context/AuthContext";
 import { fetchVentanas, VentanaDto } from "@/api/ventanas";
@@ -280,17 +278,6 @@ const HorarioPage: React.FC = () => {
     });
   }, [tablas, turnoFilter, anioFilter]);
 
-  const tablasAgrupadas = useMemo(() => {
-    const grupos = new Map<number, HorarioTablaDTO[]>();
-    tablasFiltradas.forEach((tabla) => {
-      if (!grupos.has(tabla.anio_plan)) {
-        grupos.set(tabla.anio_plan, []);
-      }
-      grupos.get(tabla.anio_plan)!.push(tabla);
-    });
-    return Array.from(grupos.entries()).sort((a, b) => a[0] - b[0]);
-  }, [tablasFiltradas]);
-
   const handleDownloadPDF = async () => {
     if (!exportRef.current) {
       enqueueSnackbar("No hay contenido para exportar.", { variant: "warning" });
@@ -320,7 +307,7 @@ const HorarioPage: React.FC = () => {
       exportRef.current.style.zIndex = "-1000";
 
       // Force layout recalculation and give the browser time to paint the layout change
-      exportRef.current.offsetHeight;
+      void exportRef.current.offsetHeight;
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Buscamos todos los contenedores de página (cada uno tiene 2 años)
