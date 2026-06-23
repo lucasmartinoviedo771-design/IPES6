@@ -190,6 +190,12 @@ def listar_preinscripciones(
 
     qs = Preinscripcion.objects.select_related("alumno__persona", "carrera").all().order_by("-created_at")
 
+    from core.permissions import allowed_profesorados
+
+    allowed_ids = allowed_profesorados(request.user)
+    if allowed_ids is not None:
+        qs = qs.filter(carrera_id__in=allowed_ids)
+
     if not include_inactivas:
         qs = qs.filter(activa=True)
     if exclude_confirmed:
@@ -226,6 +232,7 @@ def obtener_preinscripcion(request, pre_id: int, profesorado_id: int | None = No
     pre = Preinscripcion.objects.select_related("alumno__persona", "carrera").filter(id=pre_id).first()
     if not pre:
         raise HttpError(404, "Solicitud no encontrada.")
+    ensure_profesorado_access(request.user, pre.carrera_id)
     return pre
 
 
@@ -238,6 +245,7 @@ def obtener_checklist(request, pre_id: int, profesorado_id: int | None = None):
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
         raise HttpError(404, "Preinscripción no encontrada.")
+    ensure_profesorado_access(request.user, pre.carrera_id)
     cl = getattr(pre, "checklist", None)
     if not cl:
         cl, _ = PreinscripcionChecklist.objects.get_or_create(preinscripcion=pre)
@@ -254,6 +262,7 @@ def eliminar_preinscripcion(request, pre_id: int, profesorado_id: int | None = N
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
         return 404, ApiResponse(ok=False, message="No encontrada.")
+    ensure_profesorado_access(request.user, pre.carrera_id)
     pre.activa = False
     pre.estado = "Borrador"
     pre.save(update_fields=["activa", "estado"])
@@ -270,6 +279,7 @@ def activar_preinscripcion(request, pre_id: int, profesorado_id: int | None = No
     pre = Preinscripcion.objects.filter(id=pre_id).first()
     if not pre:
         raise HttpError(404, "Solicitud no encontrada.")
+    ensure_profesorado_access(request.user, pre.carrera_id)
     pre.activa = True
     pre.estado = "Enviada"
     pre.save(update_fields=["activa", "estado"])
@@ -436,6 +446,7 @@ def confirmar_por_codigo(request, codigo: str, payload: ChecklistIn | None = Non
     """Confirma la vacante y sincroniza el checklist de documentación."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
     res = PreinscripcionService.confirm_preinscripcion(pre, payload.dict() if payload else None)
     return ApiResponse(ok=True, message="Inscripción confirmada con éxito.", data=res)
 
@@ -549,6 +560,7 @@ def obtener_por_codigo(request, codigo: str, profesorado_id: int | None = None):
     """Busca una solicitud específica por su código de seguridad."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
     return serialize_pre(pre)
 
 
@@ -564,6 +576,12 @@ def listar_por_estudiante(request, dni: str, profesorado_id: int | None = None):
         .filter(alumno__persona__dni=dni)
         .order_by("-anio", "-created_at")
     )
+
+    from core.permissions import allowed_profesorados
+
+    allowed_ids = allowed_profesorados(request.user)
+    if allowed_ids is not None:
+        preins = preins.filter(carrera_id__in=allowed_ids)
 
     filtered = []
     for p in preins:
@@ -586,6 +604,7 @@ def descargar_pdf_por_dni(request, dni: str):
     pre = Preinscripcion.objects.filter(alumno__persona__dni=dni, activa=True).order_by("-anio", "-created_at").first()
     if not pre:
         raise HttpError(404, "No se encontró ninguna preinscripción activa para este DNI.")
+    ensure_profesorado_access(request.user, pre.carrera_id)
 
     return preinscripcion_pdf(request, preinscripcion_id=pre.id)
 
@@ -602,6 +621,8 @@ def agregar_carrera(request, codigo: str, payload: NuevaCarreraIn, profesorado_i
 
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
+    ensure_profesorado_access(request.user, payload.carrera_id)
     carrera = Profesorado.objects.filter(id=payload.carrera_id).first()
     if not carrera:
         return 404, ApiResponse(ok=False, message="Profesorado no encontrado.")
@@ -657,6 +678,9 @@ def actualizar_por_codigo(request, codigo: str, payload: PreinscripcionUpdateIn,
     """Actualización integral de datos de identidad, contacto, académicos y checklist."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
+    if payload.carrera_id:
+        ensure_profesorado_access(request.user, payload.carrera_id)
 
     if payload.estudiante:
         est = payload.estudiante
@@ -715,6 +739,7 @@ def observar(request, codigo: str, motivo: str | None = None, profesorado_id: in
     """Cambia el estado a 'Observada'."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
     pre.estado = "Observada"
     pre.save(update_fields=["estado"])
     return {"ok": True, "message": "Actualizado a Observada."}
@@ -725,6 +750,7 @@ def rechazar(request, codigo: str, motivo: str | None = None, profesorado_id: in
     """Cambia el estado a 'Rechazada'."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
     pre.estado = "Rechazada"
     pre.save(update_fields=["estado"])
     return {"ok": True, "message": "Actualizado a Rechazada."}
@@ -735,6 +761,8 @@ def cambiar_carrera(request, codigo: str, carrera_id: int, profesorado_id: int |
     """Mueve la preinscripción a una carrera diferente preservando el expediente."""
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
     pre = PreinscripcionService.get_by_codigo(codigo)
+    ensure_profesorado_access(request.user, pre.carrera_id)
+    ensure_profesorado_access(request.user, carrera_id)
     updated_pre, error_msg = PreinscripcionService.cambiar_carrera(pre, carrera_id)
     if error_msg:
         from apps.common.api_schemas import ApiResponse as _ApiResponse
