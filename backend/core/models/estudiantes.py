@@ -321,8 +321,6 @@ class EstudianteCarrera(models.Model):
         super().save(*args, **kwargs)
         self._original_estado = self.estado_academico
 
-
-
     class Meta:
         unique_together = ("estudiante", "profesorado")
         verbose_name = "Asignación estudiante-profesorado"
