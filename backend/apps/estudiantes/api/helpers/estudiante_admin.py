@@ -57,9 +57,11 @@ def es_carrera_visible(
         return True
 
     # 3. Actividad académica
-    if Regularidad.objects.filter(estudiante=estudiante, materia__profesorado_id=carrera_id).exists():
+    if Regularidad.objects.filter(estudiante=estudiante, materia__plan_de_estudio__profesorado_id=carrera_id).exists():
         return True
-    if InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia__profesorado_id=carrera_id).exists():
+    if InscripcionMateriaEstudiante.objects.filter(
+        estudiante=estudiante, materia__plan_de_estudio__profesorado_id=carrera_id
+    ).exists():
         return True
     if ActaExamenEstudiante.objects.filter(dni=estudiante.dni, acta__profesorado_id=carrera_id).exists():
         return True
