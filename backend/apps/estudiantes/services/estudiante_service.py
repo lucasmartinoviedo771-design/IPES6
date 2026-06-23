@@ -161,6 +161,18 @@ class EstudianteService:
                 if carrera_id and cd.profesorado_id != int(carrera_id):
                     continue
 
+                # 3. Filtro por año de ingreso (si aplica)
+                if anio_ingreso and cd.anio_ingreso != int(anio_ingreso):
+                    continue
+
+                # 4. Filtro por estado académico (si aplica)
+                if estado_academico and cd.estado_academico != estado_academico:
+                    continue
+
+                # 5. Filtro por estado de legajo (si aplica)
+                if condicion_filter and cd.estado_legajo != condicion_filter.upper():
+                    continue
+
                 from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
 
                 if not es_carrera_visible(est, cd.profesorado_id, cd.anio_ingreso, cd.estado_legajo):

@@ -458,6 +458,13 @@ def curso_intro_listar_pendientes(
     for est in qs:
         profesorados = []
         for detalle in est.carreras_detalle.all():
+            if anio_ingreso and detalle.anio_ingreso != anio_ingreso:
+                continue
+            if profesorado_id and detalle.profesorado_id != profesorado_id:
+                continue
+            if solo_activos and detalle.estado_academico != "ACT":
+                continue
+
             from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
 
             if not es_carrera_visible(est, detalle.profesorado_id, detalle.anio_ingreso, detalle.estado_legajo):
