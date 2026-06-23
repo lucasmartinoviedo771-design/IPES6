@@ -75,41 +75,7 @@ def sync_estudiante_from_checklist(sender, instance, **kwargs):
 @receiver(post_save, sender=Estudiante)
 def sync_checklists_from_estudiante(sender, instance, **kwargs):
     """
-    Sincroniza los flags de documentación desde el legajo oficial (Estudiante)
-    hacia todas sus preinscripciones activas.
+    DESACTIVADO: Ya no sincronizamos masivamente los checklists desde Estudiante.
+    La documentación ahora se maneja de forma independiente por carrera.
     """
-    if getattr(instance, "_syncing_from_cl", False):
-        return
-
-    checklists = PreinscripcionChecklist.objects.filter(preinscripcion__alumno=instance, preinscripcion__activa=True)
-
-    fields_to_sync = [
-        "dni_legalizado",
-        "fotos_4x4",
-        "certificado_salud",
-        "folios_oficio",
-        "titulo_secundario_legalizado",
-        "certificado_titulo_en_tramite",
-        "analitico_legalizado",
-        "articulo_7",
-        "adeuda_materias",
-        "adeuda_materias_detalle",
-        "escuela_secundaria",
-        "certificado_alumno_regular_sec",
-        "es_certificacion_docente",
-        "titulo_terciario_univ",
-        "incumbencia",
-        "curso_introductorio_aprobado",
-    ]
-
-    for cl in checklists:
-        updated_cl = False
-        for field in fields_to_sync:
-            if hasattr(cl, field):
-                val_est = getattr(instance, field)
-                val_cl = getattr(cl, field)
-                if val_est != val_cl:
-                    setattr(cl, field, val_est)
-                    updated_cl = True
-        if updated_cl:
-            cl.save()
+    return

@@ -121,12 +121,44 @@ class PreinscripcionChecklist(models.Model):
 
             pre = self.preinscripcion
             # Buscamos la inscripción correspondiente a esta preinscripción
-            # (Misno alumno + misma carrera)
+            # (Mismo alumno + misma carrera)
             inscripcion = EstudianteCarrera.objects.filter(estudiante=pre.alumno, profesorado=pre.carrera).first()
 
-            if inscripcion and inscripcion.estado_legajo != self.estado_legajo:
-                inscripcion.estado_legajo = self.estado_legajo
-                inscripcion.save(update_fields=["estado_legajo"])
+            if inscripcion:
+                doc_fields = [
+                    "dni_legalizado",
+                    "fotos_4x4",
+                    "certificado_salud",
+                    "folios_oficio",
+                    "titulo_secundario_legalizado",
+                    "certificado_titulo_en_tramite",
+                    "analitico_legalizado",
+                    "articulo_7",
+                    "adeuda_materias",
+                    "adeuda_materias_detalle",
+                    "escuela_secundaria",
+                    "certificado_alumno_regular_sec",
+                    "es_certificacion_docente",
+                    "titulo_terciario_univ",
+                    "incumbencia",
+                    "curso_introductorio_aprobado",
+                    "libreta_entregada",
+                ]
+                changed = False
+                for field in doc_fields:
+                    if hasattr(self, field) and hasattr(inscripcion, field):
+                        val_self = getattr(self, field)
+                        val_ins = getattr(inscripcion, field)
+                        if val_self != val_ins:
+                            setattr(inscripcion, field, val_self)
+                            changed = True
+                
+                if inscripcion.estado_legajo != self.estado_legajo:
+                    inscripcion.estado_legajo = self.estado_legajo
+                    changed = True
+                
+                if changed:
+                    inscripcion.save()
         except Exception:
             pass
 

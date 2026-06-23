@@ -268,6 +268,49 @@ class EstudianteCarrera(models.Model):
         self._original_estado = self.estado_academico
 
     def save(self, *args, **kwargs):
+        is_new = not self.pk
+        if is_new:
+            # Sincronizar campos de documentación desde el checklist de preinscripción si existe
+            try:
+                from .preinscripciones import PreinscripcionChecklist
+
+                checklist = (
+                    PreinscripcionChecklist.objects.filter(
+                        preinscripcion__alumno=self.estudiante,
+                        preinscripcion__carrera=self.profesorado,
+                    )
+                    .order_by("-updated_at")
+                    .first()
+                )
+
+                if checklist:
+                    doc_fields = [
+                        "dni_legalizado",
+                        "fotos_4x4",
+                        "certificado_salud",
+                        "folios_oficio",
+                        "titulo_secundario_legalizado",
+                        "certificado_titulo_en_tramite",
+                        "analitico_legalizado",
+                        "articulo_7",
+                        "adeuda_materias",
+                        "adeuda_materias_detalle",
+                        "escuela_secundaria",
+                        "certificado_alumno_regular_sec",
+                        "es_certificacion_docente",
+                        "titulo_terciario_univ",
+                        "incumbencia",
+                        "curso_introductorio_aprobado",
+                        "libreta_entregada",
+                    ]
+                    for field in doc_fields:
+                        if hasattr(checklist, field) and hasattr(self, field):
+                            setattr(self, field, getattr(checklist, field))
+                    
+                    self.estado_legajo = checklist.estado_legajo
+            except Exception:
+                pass
+
         if self.pk:
             if self._original_estado != self.estado_academico:
                 self.estado_academico_changed_at = timezone.now()
@@ -277,6 +320,8 @@ class EstudianteCarrera(models.Model):
 
         super().save(*args, **kwargs)
         self._original_estado = self.estado_academico
+
+
 
     class Meta:
         unique_together = ("estudiante", "profesorado")
