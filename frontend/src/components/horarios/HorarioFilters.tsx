@@ -27,6 +27,7 @@ interface Materia {
   nombre: string;
   horas_semana: number;
   regimen: string;
+  esta_cerrada?: boolean;
 }
 
 interface HorarioFiltersProps {
@@ -85,20 +86,21 @@ const HorarioFilters: React.FC<HorarioFiltersProps> = (props) => {
     }
   }, [profesoradoId]);
 
-  // Cargar materias cuando haya plan y año de carrera. Filtrar por cuatrimestre: ANU o PCU/SCU según corresponda
+  // Cargar materias cuando haya plan y año de carrera. Filtrar por cuatrimestre: ANU o PCU/SCU según corresponda y excluir cerradas
   useEffect(() => {
     if (planId && anioCarrera) {
       axios
         .get<Materia[]>(`/planes/${planId}/materias`, { params: { anio_cursada: anioCarrera } })
         .then(({ data }) => {
           const normalize = (s: string) => (s || '').toUpperCase().trim();
-          const filtered = cuatrimestre
-            ? data.filter((m) => {
-                const reg = normalize(m.regimen);
-                const regCuatri = cuatrimestre === 1 ? 'PCU' : 'SCU';
-                return reg === 'ANU' || reg === regCuatri;
-              })
-            : data;
+          const filtered = data
+            .filter((m) => !m.esta_cerrada)
+            .filter((m) => {
+              if (!cuatrimestre) return true;
+              const reg = normalize(m.regimen);
+              const regCuatri = cuatrimestre === 1 ? 'PCU' : 'SCU';
+              return reg === 'ANU' || reg === regCuatri;
+            });
           setMaterias(filtered);
         })
         .catch(() => setMaterias([]));
