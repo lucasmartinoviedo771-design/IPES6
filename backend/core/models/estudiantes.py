@@ -306,7 +306,7 @@ class EstudianteCarrera(models.Model):
                     for field in doc_fields:
                         if hasattr(checklist, field) and hasattr(self, field):
                             setattr(self, field, getattr(checklist, field))
-                    
+
                     self.estado_legajo = checklist.estado_legajo
             except Exception:
                 pass

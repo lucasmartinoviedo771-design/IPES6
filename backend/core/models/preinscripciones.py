@@ -152,11 +152,11 @@ class PreinscripcionChecklist(models.Model):
                         if val_self != val_ins:
                             setattr(inscripcion, field, val_self)
                             changed = True
-                
+
                 if inscripcion.estado_legajo != self.estado_legajo:
                     inscripcion.estado_legajo = self.estado_legajo
                     changed = True
-                
+
                 if changed:
                     inscripcion.save()
         except Exception:
