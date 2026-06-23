@@ -458,6 +458,10 @@ def curso_intro_listar_pendientes(
     for est in qs:
         profesorados = []
         for detalle in est.carreras_detalle.all():
+            from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
+
+            if not es_carrera_visible(est, detalle.profesorado_id, detalle.anio_ingreso, detalle.estado_legajo):
+                continue
             profesorados.append(
                 {
                     "id": detalle.profesorado_id,
@@ -465,6 +469,8 @@ def curso_intro_listar_pendientes(
                     "anio_ingreso": detalle.anio_ingreso,
                 }
             )
+        if not profesorados:
+            continue
         pendientes.append(
             CursoIntroPendienteOut(
                 estudiante_id=est.id,

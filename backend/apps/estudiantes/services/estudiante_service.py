@@ -161,6 +161,11 @@ class EstudianteService:
                 if carrera_id and cd.profesorado_id != int(carrera_id):
                     continue
 
+                from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
+
+                if not es_carrera_visible(est, cd.profesorado_id, cd.anio_ingreso, cd.estado_legajo):
+                    continue
+
                 carreras_det.append(
                     {
                         "profesorado_id": cd.profesorado_id,

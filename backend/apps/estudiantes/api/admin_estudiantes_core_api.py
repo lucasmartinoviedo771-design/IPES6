@@ -70,13 +70,17 @@ def admin_buscar_estudiantes_global(request, q: str = ""):
 
     result = []
     for est in qs:
-        carreras = [
-            {
-                "nombre": ec.profesorado.nombre,
-                "estado_academico": ec.get_estado_academico_display(),
-            }
-            for ec in est.carreras_detalle.all()
-        ]
+        carreras = []
+        for ec in est.carreras_detalle.all():
+            from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
+
+            if es_carrera_visible(est, ec.profesorado_id, ec.anio_ingreso, ec.estado_legajo):
+                carreras.append(
+                    {
+                        "nombre": ec.profesorado.nombre,
+                        "estado_academico": ec.get_estado_academico_display(),
+                    }
+                )
         result.append(
             {
                 "dni": est.dni,

@@ -17,13 +17,55 @@ from apps.estudiantes.schemas import (
 )
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 from core.models import (
+    ActaExamenEstudiante,
     Estudiante,
     EstudianteCarrera,
+    InscripcionMateriaEstudiante,
     PlanDeEstudio,
     PreinscripcionChecklist,
     Profesorado,
     Regularidad,
 )
+
+
+def es_carrera_visible(
+    estudiante: Estudiante,
+    carrera_id: int,
+    anio_ingreso: int | None,
+    estado_legajo: str | None,
+    estado_pre: str | None = None,
+) -> bool:
+    """
+    Determina si una carrera o preinscripción debe ser visible para el estudiante.
+    Retorna True si cumple alguna de las condiciones:
+    1. Es del año de ingreso vigente (2026 en adelante) o posterior.
+    2. Está confirmada (preinscripción aprobada/confirmada o legajo completo/incompleto).
+    3. Tiene actividad académica registrada (Regularidades, Inscripciones a materias o Actas de examen).
+    """
+    from django.utils import timezone
+
+    current_year = timezone.now().year
+
+    # 1. Año vigente o posterior
+    if anio_ingreso and anio_ingreso >= current_year:
+        return True
+
+    # 2. Confirmado/Activo
+    if estado_pre == "Confirmada":
+        return True
+    if estado_legajo in ("COM", "INC"):
+        return True
+
+    # 3. Actividad académica
+    if Regularidad.objects.filter(estudiante=estudiante, materia__profesorado_id=carrera_id).exists():
+        return True
+    if InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante, materia__profesorado_id=carrera_id).exists():
+        return True
+    if ActaExamenEstudiante.objects.filter(dni=estudiante.dni, acta__profesorado_id=carrera_id).exists():
+        return True
+
+    return False
+
 
 DOCUMENTACION_FIELDS = {
     "dni_legalizado",
@@ -58,6 +100,18 @@ def _listar_carreras_detalle(est: Estudiante, carreras: Iterable[Profesorado] | 
     carreras_list = list(carreras) if carreras is not None else list(est.carreras.all())
     if not carreras_list:
         return []
+
+    ecs = EstudianteCarrera.objects.filter(estudiante=est, profesorado__in=carreras_list)
+    ecs_by_prof = {ec.profesorado_id: ec for ec in ecs}
+
+    filtered_carreras = []
+    for prof in carreras_list:
+        ec = ecs_by_prof.get(prof.id)
+        if ec:
+            if not es_carrera_visible(est, prof.id, ec.anio_ingreso, ec.estado_legajo):
+                continue
+        filtered_carreras.append(prof)
+    carreras_list = filtered_carreras
 
     planes_qs = PlanDeEstudio.objects.filter(profesorado__in=carreras_list).order_by(
         "profesorado_id", "-vigente", "-anio_inicio", "resolucion"
@@ -455,6 +509,10 @@ def _build_admin_detail(
             continue
 
         ec = ecs_by_prof.get(cd.profesorado_id)
+        if ec:
+            if not es_carrera_visible(estudiante, cd.profesorado_id, ec.anio_ingreso, ec.estado_legajo):
+                continue
+
         ec_doc_data = _extract_documentacion_from_ec(ec) if ec else {}
 
         checklist = (

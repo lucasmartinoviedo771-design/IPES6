@@ -555,6 +555,7 @@ def obtener_por_codigo(request, codigo: str, profesorado_id: int | None = None):
 @router.get("/estudiante/{dni}", auth=JWTAuth())
 def listar_por_estudiante(request, dni: str, profesorado_id: int | None = None):
     """Busca todas las preinscripciones asociadas a un DNI."""
+    from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
     from core.models import Preinscripcion
 
     check_roles(request, PREINS_ALLOWED_ROLES, profesorado_id)
@@ -563,7 +564,14 @@ def listar_por_estudiante(request, dni: str, profesorado_id: int | None = None):
         .filter(alumno__persona__dni=dni)
         .order_by("-anio", "-created_at")
     )
-    return [serialize_pre(p) for p in preins]
+
+    filtered = []
+    for p in preins:
+        legajo_status = getattr(p, "estado_legajo", "PEN")
+        if es_carrera_visible(p.alumno, p.carrera_id, p.anio, legajo_status, p.estado):
+            filtered.append(p)
+
+    return [serialize_pre(p) for p in filtered]
 
 
 @router.get("/estudiante/{dni}/pdf", auth=JWTAuth())
