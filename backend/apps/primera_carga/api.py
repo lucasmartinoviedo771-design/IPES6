@@ -32,9 +32,9 @@ from apps.primera_carga.services import (
     process_folios_finales_csv,
 )
 from apps.primera_carga.services.mesas_pandemia import registrar_mesa_pandemia
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import PlanillaRegularidad
-from core.permissions import allowed_profesorados
+from core.permissions import allowed_profesorados, requires
 
 primera_carga_router = Router(tags=["primera_carga"], auth=JWTAuth())
 
@@ -68,7 +68,7 @@ class EstudianteManualIn(Schema):
     "/estudiantes",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def upload_estudiantes(request, file: UploadedFile = File(...), form: UploadForm = Form(...)):  # noqa: B008
     try:
         file_content = file.read().decode("utf-8")
@@ -85,7 +85,7 @@ def upload_estudiantes(request, file: UploadedFile = File(...), form: UploadForm
     "/estudiantes/manual",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def crear_estudiante_manual_endpoint(request, payload: EstudianteManualIn):
     try:
         result = crear_estudiante_manual(user=request.user, data=payload.dict())
@@ -108,7 +108,7 @@ class FoliosFinalesUploadForm(Schema):
     "/folios-finales",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def upload_folios_finales(request, file: UploadedFile = File(...), form: FoliosFinalesUploadForm = Form(...)):  # noqa: B008
     try:
         file_content = file.read().decode("utf-8")
@@ -133,7 +133,7 @@ class EquivalenciasUploadForm(Schema):
     "/equivalencias",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def upload_equivalencias(request, file: UploadedFile = File(...), form: EquivalenciasUploadForm = Form(...)):  # noqa: B008
     try:
         file_content = file.read().decode("utf-8")
@@ -154,7 +154,7 @@ def upload_equivalencias(request, file: UploadedFile = File(...), form: Equivale
     "/equivalencias/disposiciones",
     response={200: EquivalenciaDisposicionOut, 400: ApiResponse, 403: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def registrar_disposicion_equivalencia_primera_carga(request, payload: EquivalenciaDisposicionCreateIn):
     if not payload.detalles:
         return 400, ApiResponse(ok=False, message="Debes cargar al menos una materia.")
@@ -223,7 +223,7 @@ class PlanillaRegularidadCreateIn(Schema):
     "/regularidades/metadata",
     response={200: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def regularidades_metadata(request, include_all: bool = False):
     data = obtener_regularidad_metadata(request.user, include_all=include_all)
     return ApiResponse(ok=True, message="Metadata de planillas de regularidad.", data=data)
@@ -233,7 +233,7 @@ def regularidades_metadata(request, include_all: bool = False):
     "/regularidades/planillas",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def crear_planilla(request, payload: PlanillaRegularidadCreateIn):
     logger.debug("Iniciando crear_planilla. Materia=%s, Filas=%s", payload.materia_id, len(payload.filas))
     try:
@@ -294,7 +294,7 @@ class RegularidadIndividualIn(Schema):
     "/regularidades/individual",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def registrar_regularidad_individual(request, payload: RegularidadIndividualIn):
     try:
         from apps.primera_carga.services import registrar_regularidad_individual_historica
@@ -330,7 +330,7 @@ class PlanillaRegularidadListOut(Schema):
     "/regularidades/historial",
     response={200: list[PlanillaRegularidadListOut], 403: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def listar_historial_regularidades(
     request, anio: int | None = None, profesorado_id: int | None = None, ordering: str = "-created_at"
 ):
@@ -344,7 +344,7 @@ def listar_historial_regularidades(
     "/regularidades/planillas/{planilla_id}/pdf",
     response={200: Any, 403: ApiResponse, 404: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def descargar_planilla_pdf(request, planilla_id: int):
     planilla = PlanillaRegularidad.objects.filter(id=planilla_id).first()
     if not planilla:
@@ -364,7 +364,7 @@ def descargar_planilla_pdf(request, planilla_id: int):
     "/regularidades/planillas/{planilla_id}",
     response={200: Any, 404: ApiResponse, 403: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def ver_planilla_detalle(request, planilla_id: int):
     try:
         data = obtener_planilla_regularidad_detalle(planilla_id)
@@ -379,7 +379,7 @@ def ver_planilla_detalle(request, planilla_id: int):
     "/regularidades/planillas/{planilla_id}",
     response={200: ApiResponse, 404: ApiResponse, 403: ApiResponse, 400: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def actualizar_planilla_endpoint(request, planilla_id: int, payload: PlanillaRegularidadCreateIn):
     try:
         data = actualizar_planilla_regularidad(
@@ -426,7 +426,7 @@ class MesaPandemiaIn(Schema):
     "/mesas-pandemia",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
     try:
         result = registrar_mesa_pandemia(
@@ -455,7 +455,7 @@ def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
     "/mesas-pandemia",
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
     """Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'."""
     data = get_historico_mesas_pandemia(request.user, ordering=ordering)
@@ -466,7 +466,7 @@ def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
     "/regularidades/materias/{materia_id}/inscriptos-activos",
     response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | None = None):
     from datetime import date
 
@@ -501,7 +501,7 @@ def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | No
     "/regularidades/materias/{materia_id}/docentes-defecto",
     response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("primera_carga")
 def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: int, anio: int | None = None):
     from datetime import date
 
