@@ -32,7 +32,7 @@ from core.models import (
     VentanaHabilitacion,
 )
 from core.models.inscripciones import InscripcionMateriaMovimiento
-from core.permissions import ensure_roles
+from core.permissions import require
 
 from ..schemas import (
     AceptarResidenciaCondicionalIn,
@@ -525,7 +525,7 @@ from core.models.estudiantes import EstudianteCarrera
 @estudiantes_router.get("/cambio-comision/pendientes", response=list[SolicitudCambioComisionItem], auth=JWTAuth())
 def listar_cambios_comision_pendientes(request, dni: str | None = None, profesorado_id: int | None = None):
     """Lista inscripciones en estado CONDICIONAL (solicitudes de cambio de comisión pendientes)."""
-    ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor", "attp"})
+    require(request.user, "gestionar_cambio_comision")
     qs = (
         InscripcionMateriaEstudiante.objects.filter(estado=InscripcionMateriaEstudiante.Estado.CONDICIONAL)
         .select_related(
@@ -770,7 +770,7 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
     """
     from apps.estudiantes.services.notificaciones_service import NotificacionesService
 
-    ensure_roles(request.user, {"admin", "secretaria", "bedel", "tutor", "attp"})
+    require(request.user, "gestionar_cambio_comision")
 
     ins = get_object_or_404(InscripcionMateriaEstudiante, id=inscripcion_id)
 
