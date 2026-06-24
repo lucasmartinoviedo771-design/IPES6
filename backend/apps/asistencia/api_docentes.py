@@ -9,7 +9,7 @@ from ninja.errors import HttpError
 from apps.common.date_utils import format_date, format_datetime
 from core.auth_ninja import JWTAuth
 from core.models import Docente
-from core.permissions import get_user_roles
+from core.permissions import can
 
 from .api_helpers import (
     _build_horario,
@@ -62,8 +62,7 @@ def listar_clases_docente(
     if desde > hasta:
         raise HttpError(400, "La fecha 'desde' no puede ser posterior a 'hasta'.")
 
-    roles_usuario = get_user_roles(getattr(request, "user", None))
-    is_admin_staff = bool(roles_usuario & {"admin", "secretaria", "bedel"})
+    is_admin_staff = can(request.user, "asistencia_docentes_editar")
 
     # El docente solo puede verse a sí mismo, a menos que sea staff
     if not is_admin_staff and request.user.username != dni:
@@ -100,8 +99,7 @@ def listar_clases_docente(
         registro.clase_id: registro for registro in AsistenciaDocente.objects.filter(clase__in=clases, docente=docente)
     }
 
-    roles_usuario = get_user_roles(getattr(request, "user", None))
-    puede_editar_staff = bool(roles_usuario & {"admin", "secretaria", "bedel"})
+    puede_editar_staff = can(request.user, "asistencia_docentes_editar")
 
     now = timezone.now()
     if settings.USE_TZ:
@@ -195,8 +193,7 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     alerta_motivo = ""
     categoria = AsistenciaDocente.MarcacionCategoria.NORMAL
     detalle_log = "Presente registrado"
-    roles_usuario = get_user_roles(getattr(request, "user", None))
-    staff_override = bool(roles_usuario & {"admin", "secretaria", "bedel"})
+    staff_override = can(request.user, "asistencia_docentes_editar")
 
     if ventanas[0] and ventanas[1] and ventanas[2]:
         ventana_inicio, umbral_tarde, ventana_fin, _ = ventanas
