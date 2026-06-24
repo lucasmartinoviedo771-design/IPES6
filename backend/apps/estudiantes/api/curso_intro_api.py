@@ -18,7 +18,7 @@ from core.models import (
     Turno,
     VentanaHabilitacion,
 )
-from core.permissions import CI_ALLOWED_ROLES, CI_FULL_ACCESS_ROLES, ensure_roles
+from core.permissions import can, require
 
 from ..schemas import (
     CursoIntroAsistenciaIn,
@@ -47,7 +47,7 @@ def _ci_allowed_profesorados(user: User | None) -> set[int] | None:
     if user.is_superuser or user.is_staff:
         return None
     groups = _user_group_names(user)
-    if groups.intersection(CI_FULL_ACCESS_ROLES):
+    if can(user, "admin_ci"):
         return None
     roles = []
     if "bedel" in groups:
@@ -291,7 +291,7 @@ def curso_intro_estado(request):
 
 @estudiantes_router.get("/curso-intro/cohortes", response=list[CursoIntroCohorteOut], auth=JWTAuth())
 def curso_intro_listar_cohortes(request):
-    ensure_roles(request.user, CI_ALLOWED_ROLES)
+    require(request.user, "gestionar_ci")
     qs = (
         CursoIntroductorioCohorte.objects.select_related("profesorado", "turno", "ventana_inscripcion")
         .all()
@@ -303,7 +303,7 @@ def curso_intro_listar_cohortes(request):
 
 @estudiantes_router.post("/curso-intro/cohortes", response=CursoIntroCohorteOut, auth=JWTAuth())
 def curso_intro_crear_cohorte(request, payload: CursoIntroCohorteIn):
-    ensure_roles(request.user, {"admin", "secretaria"})
+    require(request.user, "admin_ci")
     cohorte = CursoIntroductorioCohorte(
         nombre=payload.nombre or "",
         anio_academico=payload.anio_academico,
@@ -336,7 +336,7 @@ def curso_intro_crear_cohorte(request, payload: CursoIntroCohorteIn):
 
 @estudiantes_router.put("/curso-intro/cohortes/{cohorte_id}", response=CursoIntroCohorteOut, auth=JWTAuth())
 def curso_intro_actualizar_cohorte(request, cohorte_id: int, payload: CursoIntroCohorteIn):
-    ensure_roles(request.user, {"admin", "secretaria"})
+    require(request.user, "admin_ci")
     cohorte = CursoIntroductorioCohorte.objects.filter(id=cohorte_id).first()
     if not cohorte:
         raise HttpError(404, "Cohorte no encontrada.")
@@ -379,7 +379,7 @@ def curso_intro_listar_registros(
     resultado: str | None = None,
     anio: int | None = None,
 ):
-    ensure_roles(request.user, CI_ALLOWED_ROLES)
+    require(request.user, "gestionar_ci")
     qs = (
         CursoIntroductorioRegistro.objects.select_related("estudiante__user", "cohorte", "profesorado", "turno")
         .all()
@@ -407,7 +407,7 @@ def curso_intro_listar_pendientes(
     solo_activos: bool = False,
     anio_ingreso: int | None = None,
 ):
-    ensure_roles(request.user, CI_ALLOWED_ROLES)
+    require(request.user, "gestionar_ci")
 
     from django.core.cache import cache
 
@@ -497,7 +497,7 @@ def curso_intro_listar_pendientes(
 
 @estudiantes_router.post("/curso-intro/registros", response=CursoIntroRegistroOut, auth=JWTAuth())
 def curso_intro_inscribir(request, payload: CursoIntroRegistroIn):
-    ensure_roles(request.user, CI_ALLOWED_ROLES)
+    require(request.user, "gestionar_ci")
     estudiante = Estudiante.objects.filter(id=payload.estudiante_id).select_related("user").first()
     if not estudiante:
         raise HttpError(404, "Estudiante no encontrado.")
@@ -575,7 +575,7 @@ def curso_intro_auto_inscripcion(request, payload: CursoIntroAutoInscripcionIn):
     auth=JWTAuth(),
 )
 def curso_intro_registrar_asistencia(request, registro_id: int, payload: CursoIntroAsistenciaIn):
-    ensure_roles(request.user, CI_ALLOWED_ROLES)
+    require(request.user, "gestionar_ci")
     registro = (
         CursoIntroductorioRegistro.objects.select_related("estudiante__user", "profesorado", "cohorte", "turno")
         .filter(id=registro_id)
@@ -609,7 +609,7 @@ def curso_intro_registrar_asistencia(request, registro_id: int, payload: CursoIn
     auth=JWTAuth(),
 )
 def curso_intro_cerrar_registro(request, registro_id: int, payload: CursoIntroCierreIn):
-    ensure_roles(request.user, CI_ALLOWED_ROLES)
+    require(request.user, "gestionar_ci")
     registro = (
         CursoIntroductorioRegistro.objects.select_related(
             "estudiante", "estudiante__user", "profesorado", "cohorte", "turno"
