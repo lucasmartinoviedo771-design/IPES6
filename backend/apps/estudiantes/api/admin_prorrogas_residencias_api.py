@@ -21,7 +21,7 @@ from core.models import (
     Regularidad,
     ResidenciaCondicional,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access, ensure_roles
+from core.permissions import allowed_profesorados, ensure_profesorado_access, require
 
 from ..schemas import (
     AutorizarRendirIn,
@@ -60,7 +60,7 @@ def admin_alertas_prorrogas_titulo(
     Lista prórrogas vencidas o próximas a vencer (dentro de `dias_aviso` días).
     Usar desde el dashboard de secretaría para anticipar cierres masivos erróneos.
     """
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
     from datetime import timedelta
 
     from django.utils import timezone as tz
@@ -106,7 +106,7 @@ def admin_resguardo_correlativas(
     Incluye tanto Regularidades como Equivalencias con en_resguardo=True.
     Usar desde el dashboard de secretaría/bedelía para seguimiento.
     """
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
 
     resultado_map: dict[int, dict] = {}
 
@@ -197,7 +197,7 @@ def admin_residencias_condicionales(
     """
     from datetime import date
 
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
 
     ciclo = ciclo or date.today().year
     qs = (
