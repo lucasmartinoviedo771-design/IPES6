@@ -6,8 +6,9 @@ from django.db.models import Count, Q
 from ninja import Router, Schema
 
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import Comision, Estudiante, InscripcionMateriaEstudiante, Materia, Turno
+from core.permissions import requires
 
 router = Router(tags=["gestion_comisiones"])
 
@@ -50,7 +51,7 @@ class MoverEstudiantesIn(Schema):
 
 
 @router.get("/materia/{materia_id}/anio/{anio_lectivo}", response=list[ComisionGestionDTO], auth=JWTAuth())
-@ensure_roles(["admin", "secretaria"])
+@requires("editar_estructura")
 def listar_comisiones_gestion(request, materia_id: int, anio_lectivo: int):
     comisiones = (
         Comision.objects.filter(materia_id=materia_id, anio_lectivo=anio_lectivo)
@@ -76,7 +77,7 @@ def listar_comisiones_gestion(request, materia_id: int, anio_lectivo: int):
 
 
 @router.post("/crear", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
-@ensure_roles(["admin", "secretaria"])
+@requires("editar_estructura")
 def crear_comision(request, payload: CrearComisionIn):
     if Comision.objects.filter(
         materia_id=payload.materia_id, anio_lectivo=payload.anio_lectivo, codigo=payload.codigo
@@ -120,7 +121,7 @@ def crear_comision(request, payload: CrearComisionIn):
 
 
 @router.post("/crear-masiva", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
-@ensure_roles(["admin", "secretaria"])
+@requires("editar_estructura")
 def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
     materias = Materia.objects.filter(plan_id=payload.plan_id, anio_cursada=payload.anio_cursada)
 
@@ -160,7 +161,7 @@ def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
 
 
 @router.post("/distribuir", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
-@ensure_roles(["admin", "secretaria"])
+@requires("editar_estructura")
 def distribuir_estudiantes(request, payload: DistribuirEstudiantesIn):
     with transaction.atomic():
         inscripciones = list(
@@ -187,7 +188,7 @@ def distribuir_estudiantes(request, payload: DistribuirEstudiantesIn):
 
 
 @router.post("/mover", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
-@ensure_roles(["admin", "secretaria"])
+@requires("editar_estructura")
 def mover_estudiantes(request, payload: MoverEstudiantesIn):
     updated = InscripcionMateriaEstudiante.objects.filter(id__in=payload.inscripcion_ids).update(
         comision_id=payload.comision_destino_id
