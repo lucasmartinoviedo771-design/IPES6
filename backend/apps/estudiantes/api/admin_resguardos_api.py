@@ -21,7 +21,7 @@ from core.models import (
     Regularidad,
     ResidenciaCondicional,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access, ensure_roles
+from core.permissions import allowed_profesorados, ensure_profesorado_access, require
 
 from ..schemas import (
     AutorizarRendirIn,
@@ -66,7 +66,7 @@ def admin_resguardo_materias(
     )
     from core.models import Correlatividad, Materia
 
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
 
     hoy = date.today()
     resultado = []
@@ -210,7 +210,7 @@ def admin_recalcular_resguardo(
 
     from django.core.management import call_command
 
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
 
     kwargs = {
         "dry_run": False,
