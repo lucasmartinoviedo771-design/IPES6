@@ -155,6 +155,7 @@ CAPABILITIES: dict[str, set[str]] = {
     "gestionar_preinscripcion": {"admin", "secretaria", "bedel"},
     "gestionar_ventanas": {"admin", "secretaria", "jefa_aaee"},
     "formalizar_inscripcion": {"admin", "secretaria", "bedel", "attp"},
+    "gestionar_cambio_comision": {"admin", "secretaria", "bedel", "tutor", "attp"},
     # --- Equivalencias ---
     "gestionar_equivalencias": {"admin", "secretaria", "bedel", "tutor"},
     "revisar_equivalencias": {"admin", "secretaria", "equivalencias"},
