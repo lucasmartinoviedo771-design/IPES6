@@ -389,7 +389,7 @@ def listar_mesas_estudiante(
     # Restricciones para Alumnos
     from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
 
-    es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+    es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES | {"docente"})
 
     # Barrido automático antes de listar para Alumnos (Removido por R2)
     # MesaExamen.auto_cleanup_deserted_mesas()

@@ -42,6 +42,7 @@ STRUCTURE_VIEW_ROLES = {
     "jefa_aaee",
     "consulta",
     "estudiante",
+    "docente",
     "rectorado",
     "attp",
 }

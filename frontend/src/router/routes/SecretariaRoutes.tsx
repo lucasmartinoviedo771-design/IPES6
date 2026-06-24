@@ -48,6 +48,7 @@ const titulosRoles: string[] = ["titulos", "secretaria", "admin"];
 const coordinacionRoles: string[] = ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"];
 const jefaturaRoles: string[] = ["jefes", "jefa_aaee", "secretaria", "admin"];
 const secretariaBaseRoles: string[] = ["secretaria", "admin", "bedel", "attp", "rectorado"];
+const cargaNotasRoles: string[] = ["docente", "secretaria", "admin", "bedel", "attp", "rectorado"];
 const secretariaAdminRoles: string[] = ["secretaria", "admin"];
 const horariosRoles: string[] = ["secretaria", "admin", "coordinador", "bedel", "attp", "rectorado"];
 const habilitarFechasRoles: string[] = ["secretaria", "admin", "jefa_aaee"];
@@ -102,6 +103,8 @@ export const buildSecretariaRoutes = () => (
       <Route path="/secretaria/confirmar-inscripcion" element={<ConfirmarInscripcionSecretaria />} />
       <Route path="/secretaria/correlatividades" element={<CorrelatividadesPage />} />
       <Route path="/secretaria/correlatividades/analisis" element={<AnalisisMateriaPage />} />
+    </Route>
+    <Route element={<ProtectedRoute roles={cargaNotasRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/carga-notas" element={<CargaNotasPage />} />
       <Route path="/secretaria/actas-examen" element={<ActaExamenPage />} />
     </Route>
