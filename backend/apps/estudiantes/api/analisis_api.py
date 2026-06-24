@@ -9,7 +9,7 @@ from ninja import Router, Schema
 
 from apps.common.api_schemas import ApiResponse
 from apps.estudiantes.api.helpers import _acta_condicion, _correlatividades_qs
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import (
     ActaExamenEstudiante,
     Correlatividad,
@@ -19,7 +19,7 @@ from core.models import (
     Materia,
     Regularidad,
 )
-from core.permissions import allowed_profesorados
+from core.permissions import allowed_profesorados, requires
 
 from .router import estudiantes_router
 
@@ -41,7 +41,7 @@ class AnalisisMateriaOut(Schema):
 
 
 @estudiantes_router.get("/analisis-correlatividades/{materia_id}", response={200: AnalisisMateriaOut, 403: ApiResponse})
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("ver_estructura")
 def analizar_habilitados_materia(request, materia_id: int):
     materia = get_object_or_404(Materia.objects.select_related("plan_de_estudio__profesorado"), id=materia_id)
     profesorado = materia.plan_de_estudio.profesorado
