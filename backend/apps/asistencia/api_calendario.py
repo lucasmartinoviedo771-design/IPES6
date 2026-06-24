@@ -52,7 +52,7 @@ def listar_eventos_calendario(
     if tipo:
         queryset = queryset.filter(tipo=tipo)
 
-    queryset = _calendario_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _calendario_queryset_with_scope(queryset, request.user, staff_profesorados, docente_profile)
     queryset = queryset.order_by("-fecha_desde", "-fecha_hasta")
     return [_evento_to_schema(evento) for evento in queryset]
 
@@ -74,7 +74,7 @@ def crear_evento_calendario(
             raise HttpError(404, "El turno indicado no existe.")
 
     scope = _resolver_event_scope(payload)
-    _ensure_calendar_manage_scope(roles, staff_profesorados, scope)
+    _ensure_calendar_manage_scope(request.user, staff_profesorados, scope)
 
     evento = CalendarioAsistenciaEvento.objects.create(
         nombre=payload.nombre,
@@ -107,7 +107,7 @@ def actualizar_evento_calendario(
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
 
     queryset = CalendarioAsistenciaEvento.objects.filter(id=evento_id)
-    queryset = _calendario_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _calendario_queryset_with_scope(queryset, request.user, staff_profesorados, docente_profile)
     evento = queryset.first()
     if not evento:
         raise HttpError(404, "El evento solicitado no existe.")
@@ -122,7 +122,7 @@ def actualizar_evento_calendario(
             raise HttpError(404, "El turno indicado no existe.")
 
     scope = _resolver_event_scope(payload)
-    _ensure_calendar_manage_scope(roles, staff_profesorados, scope)
+    _ensure_calendar_manage_scope(request.user, staff_profesorados, scope)
 
     evento.nombre = payload.nombre
     evento.tipo = payload.tipo
@@ -150,7 +150,7 @@ def eliminar_evento_calendario(request: HttpRequest, evento_id: int):
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
 
     queryset = CalendarioAsistenciaEvento.objects.filter(id=evento_id)
-    queryset = _calendario_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _calendario_queryset_with_scope(queryset, request.user, staff_profesorados, docente_profile)
     evento = queryset.first()
     if not evento:
         raise HttpError(404, "El evento solicitado no existe.")
@@ -160,7 +160,7 @@ def eliminar_evento_calendario(request: HttpRequest, evento_id: int):
         "plan": evento.plan,
         "comision": evento.comision,
     }
-    _ensure_calendar_manage_scope(roles, staff_profesorados, scope)
+    _ensure_calendar_manage_scope(request.user, staff_profesorados, scope)
 
     evento.delete()
     return 200, None
