@@ -2,14 +2,14 @@ from django.db.models import Avg, Case, Count, FloatField, When
 from ninja import Router
 
 from apps.asistencia.models import AsistenciaEstudiante
-from core.auth_ninja import ensure_roles
 from core.models import Preinscripcion, Regularidad
+from core.permissions import requires
 
 router = Router(tags=["Metrics"])
 
 
 @router.get("/inscripciones/resumen-por-profesorado/")
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("ver_dashboard")
 def get_summary_by_profesorado(request):
     """
     Calcula el total de preinscripciones y confirmaciones por profesorado.
@@ -42,7 +42,7 @@ def get_summary_by_profesorado(request):
 
 
 @router.get("/academicos/resumen-por-profesorado/")
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("ver_dashboard")
 def get_academic_summary_by_profesorado(request):
     """
     Calcula la tasa de aprobación y la nota promedio por profesorado.
@@ -78,7 +78,7 @@ def get_academic_summary_by_profesorado(request):
 
 
 @router.get("/asistencia/resumen-por-profesorado/")
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("ver_dashboard")
 def get_attendance_summary_by_profesorado(request):
     """
     Calcula la tasa de asistencia por profesorado.
