@@ -6,6 +6,7 @@ from ninja.errors import HttpError
 
 from core.auth_ninja import JWTAuth
 from core.models import Turno
+from core.permissions import require
 
 from .api_helpers import (
     _calendario_queryset_with_scope,
@@ -60,9 +61,8 @@ def listar_eventos_calendario(
 def crear_evento_calendario(
     request: HttpRequest, payload: AsistenciaCalendarioEventoIn
 ) -> AsistenciaCalendarioEventoOut:
+    require(request.user, "editar_calendario")
     roles, staff_profesorados, _docente_profile = _resolve_scope(request)
-    if not roles & {"admin", "secretaria", "bedel"}:
-        raise HttpError(403, "No tenes permisos para crear eventos de asistencia.")
 
     if payload.fecha_desde > payload.fecha_hasta:
         raise HttpError(400, "La fecha desde no puede ser posterior a la fecha hasta.")
@@ -103,9 +103,8 @@ def actualizar_evento_calendario(
     evento_id: int,
     payload: AsistenciaCalendarioEventoIn,
 ) -> AsistenciaCalendarioEventoOut:
+    require(request.user, "editar_calendario")
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
-    if not roles & {"admin", "secretaria", "bedel"}:
-        raise HttpError(403, "No tenes permisos para modificar eventos de asistencia.")
 
     queryset = CalendarioAsistenciaEvento.objects.filter(id=evento_id)
     queryset = _calendario_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
@@ -147,9 +146,8 @@ def actualizar_evento_calendario(
 
 @router.delete("/{evento_id}", response=None, auth=JWTAuth())
 def eliminar_evento_calendario(request: HttpRequest, evento_id: int):
+    require(request.user, "editar_calendario")
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
-    if not roles & {"admin", "secretaria", "bedel"}:
-        raise HttpError(403, "No tenes permisos para eliminar eventos de asistencia.")
 
     queryset = CalendarioAsistenciaEvento.objects.filter(id=evento_id)
     queryset = _calendario_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
