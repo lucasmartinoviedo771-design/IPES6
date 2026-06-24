@@ -8,7 +8,7 @@ from ninja.errors import HttpError
 from apps.common.date_utils import calcular_limite_baja_mesa
 from core.auth_ninja import JWTAuth
 from core.models import Docente, Materia, MesaExamen, Profesorado, SolicitudMesa
-from core.permissions import allowed_profesorados, ensure_profesorado_access, ensure_roles
+from core.permissions import allowed_profesorados, ensure_profesorado_access, require
 
 from ..router import management_router
 from ..schemas import CrearMesaDesdeSolicitudIn, MesaDocenteOut, MesaIn, MesaOut, SolicitudMesaOut
@@ -92,9 +92,7 @@ def list_mesas(
     hasta: str | None = None,
     tipo: str | None = None,
 ):
-    ensure_roles(
-        request.user, {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta"}
-    )
+    require(request.user, "ver_estructura")
 
     # Barrido automático antes de listar
     # _auto_cleanup_deserted_mesas()  # R2: Removido de GET
@@ -129,7 +127,7 @@ def list_mesas(
 
 @management_router.post("/mesas", response=MesaOut, auth=JWTAuth())
 def create_mesa(request, payload: MesaIn):
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estructura")
     materia = get_object_or_404(Materia, id=payload.materia_id)
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
 
@@ -165,7 +163,7 @@ def create_mesa(request, payload: MesaIn):
 
 @management_router.put("/mesas/{mesa_id}", response=MesaOut, auth=JWTAuth())
 def update_mesa(request, mesa_id: int, payload: MesaIn):
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estructura")
     mesa = get_object_or_404(MesaExamen, id=mesa_id)
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
 
@@ -192,7 +190,7 @@ def update_mesa(request, mesa_id: int, payload: MesaIn):
 
 @management_router.delete("/mesas/{mesa_id}", response={204: None}, auth=JWTAuth())
 def delete_mesa(request, mesa_id: int):
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estructura")
     mesa = get_object_or_404(MesaExamen, id=mesa_id)
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
     mesa.delete()
@@ -206,7 +204,7 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
     automáticamente a todos los demás alumnos con solicitudes idénticas
     (misma materia, modalidad y ventana) que estén pendientes.
     """
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estructura")
 
     # 1. Obtener la solicitud semilla
     semilla = get_object_or_404(SolicitudMesa, id=payload.solicitud_id)
@@ -255,7 +253,7 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
 
 @management_router.get("/solicitudes_mesas", response=list[SolicitudMesaOut], auth=JWTAuth())
 def list_solicitudes(request, ventana_id: int | None = None, estado: str | None = None):
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estructura")
 
     qs = SolicitudMesa.objects.select_related("estudiante__persona", "materia__plan_de_estudio__profesorado").all()
 
@@ -293,7 +291,7 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
 
 @management_router.post("/solicitudes_mesas/{sol_id}/procesar", response=SolicitudMesaOut, auth=JWTAuth())
 def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = None):
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estructura")
     sol = get_object_or_404(SolicitudMesa, id=sol_id)
 
     with transaction.atomic():
