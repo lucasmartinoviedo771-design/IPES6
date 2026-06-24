@@ -14,7 +14,7 @@ from apps.common.date_utils import format_date, format_datetime
 from apps.docentes.services.docente_service import DocenteService
 from core.auth_ninja import JWTAuth
 from core.models import Comision, Docente, Estudiante
-from core.permissions import get_user_roles
+from core.permissions import can, get_user_roles
 
 from .api_helpers import (
     _build_horario,
@@ -75,8 +75,7 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         raise HttpError(404, "No se encontró la clase requerida.")
 
     # Verificación de membresía/acceso
-    roles = get_user_roles(request.user)
-    es_admin_staff = bool(roles & {"admin", "secretaria", "bedel"})
+    es_admin_staff = can(request.user, "asistencia_estudiantes_justificar")
 
     if not es_admin_staff:
         # ¿Es el docente de la clase?
@@ -215,7 +214,7 @@ def listar_clases_estudiantes(
     if not roles:
         raise HttpError(401, "Autenticación requerida.")
 
-    if not roles & {"admin", "secretaria"}:
+    if not can(request.user, "asistencia_docentes_ver"):
         profesorados_limit = _staff_profesorados(getattr(request, "user", None), roles)
         if profesorados_limit:
             comisiones_qs = comisiones_qs.filter(materia__plan_de_estudio__profesorado_id__in=profesorados_limit)
@@ -289,8 +288,7 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
     presentes = set(payload.presentes)
     tardes = set(payload.tardes)
 
-    roles = get_user_roles(getattr(request, "user", None))
-    es_staff = bool(roles & {"admin", "secretaria", "bedel"})
+    es_staff = can(request.user, "asistencia_estudiantes_justificar")
 
     if not es_staff:
         docente_profile = Docente.objects.filter(persona__user_profile__user=request.user).first()
@@ -342,8 +340,7 @@ def listar_mis_asistencias(request: HttpRequest, dni: str | None = None):
     if not request.user.is_authenticated:
         raise HttpError(401, "Autenticación requerida.")
 
-    roles = get_user_roles(request.user)
-    is_staff = bool(roles & {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefatura"})
+    is_staff = can(request.user, "ver_estudiantes")
 
     if dni:
         if not is_staff:
@@ -405,7 +402,7 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
         raise HttpError(404, "Comisión inexistente.")
 
     profesorado_id = _get_profesorado_id_from_comision(comision)
-    if roles & {"admin", "secretaria"}:
+    if can(request.user, "asistencia_docentes_ver"):
         pass
     elif "bedel" in roles:
         if not staff_profesorados or profesorado_id not in staff_profesorados:
@@ -430,7 +427,7 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
         docente = Docente.objects.filter(id=docente_id).first()
         if not docente:
             raise HttpError(404, "Docente inexistente.")
-        if docente_profile and docente.id != docente_profile.id and not roles & {"admin", "secretaria", "bedel"}:
+        if docente_profile and docente.id != docente_profile.id and not can(request.user, "asistencia_estudiantes_justificar"):
             raise HttpError(403, "No podés crear justificativos para otro docente.")
 
     justificacion = Justificacion.objects.create(
@@ -502,7 +499,7 @@ def listar_justificaciones(
     if profesorado_id:
         queryset = queryset.filter(detalles__clase__comision__materia__plan_de_estudio__profesorado_id=profesorado_id)
 
-    queryset = _justificacion_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _justificacion_queryset_with_scope(queryset, request.user, staff_profesorados, docente_profile)
     queryset = (
         queryset.select_related("creado_por", "aprobado_por")
         .prefetch_related(
@@ -525,7 +522,7 @@ def obtener_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     roles, staff_profesorados, docente_profile = _resolve_scope(request)
     _ensure_authenticated_scope(roles, docente_profile)
     queryset = Justificacion.objects.filter(id=justificacion_id)
-    queryset = _justificacion_queryset_with_scope(queryset, roles, staff_profesorados, docente_profile)
+    queryset = _justificacion_queryset_with_scope(queryset, request.user, staff_profesorados, docente_profile)
     justificacion = (
         queryset.select_related("creado_por", "aprobado_por")
         .prefetch_related(
@@ -551,7 +548,7 @@ def aprobar_justificacion(request: HttpRequest, justificacion_id: int) -> Justif
     queryset = Justificacion.objects.filter(id=justificacion_id)
     queryset = _justificacion_queryset_with_scope(
         queryset,
-        roles,
+        request.user,
         staff_profesorados,
         docente_profile,
         for_manage=True,
@@ -594,7 +591,7 @@ def rechazar_justificacion(
     queryset = Justificacion.objects.filter(id=justificacion_id)
     queryset = _justificacion_queryset_with_scope(
         queryset,
-        roles,
+        request.user,
         staff_profesorados,
         docente_profile,
         for_manage=True,
