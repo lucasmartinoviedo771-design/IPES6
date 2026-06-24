@@ -24,6 +24,7 @@ from core.models import (
 )
 from core.permissions import (
     allowed_profesorados,
+    can,
     ensure_profesorado_access,
     ensure_roles,
     get_user_roles,
@@ -127,11 +128,11 @@ def _scope_profesorado_ids(scope: dict[str, object | None]) -> set[int]:
 
 def _calendario_queryset_with_scope(
     queryset,
-    roles: set[str],
+    user,
     staff_profesorados: set[int],
     docente_profile: Docente | None,
 ):
-    if roles & {"admin", "secretaria"}:
+    if can(user, "asistencia_docentes_ver"):
         return queryset
     filters = Q()
     if staff_profesorados:
@@ -147,12 +148,13 @@ def _calendario_queryset_with_scope(
 
 
 def _ensure_calendar_manage_scope(
-    roles: set[str],
+    user,
     staff_profesorados: set[int],
     scope: dict[str, object | None],
 ) -> None:
-    if roles & {"admin", "secretaria"}:
+    if can(user, "asistencia_docentes_ver"):
         return
+    roles = get_user_roles(user)
     if "bedel" in roles:
         if not staff_profesorados:
             raise HttpError(403, "No tenes profesorados asignados.")
@@ -272,14 +274,15 @@ def _docente_nombre(docente: Docente) -> str:
 
 def _justificacion_queryset_with_scope(
     queryset,
-    roles: set[str],
+    user,
     staff_profesorados: set[int],
     docente_profile: Docente | None,
     *,
     for_manage: bool = False,
 ):
-    if roles & {"admin", "secretaria"}:
+    if can(user, "asistencia_docentes_ver"):
         return queryset
+    roles = get_user_roles(user)
     if "bedel" in roles:
         if not staff_profesorados:
             raise HttpError(403, "No tenés profesorados asignados.")
