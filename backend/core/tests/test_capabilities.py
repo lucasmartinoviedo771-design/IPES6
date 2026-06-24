@@ -75,3 +75,14 @@ class TestCapabilities:
         jefa = self._make_user("jefa_aaee")
         assert not can(jefa, "asignar_roles")
         assert can(jefa, "gestionar_ventanas")  # pero sí mantiene ventanas
+
+    def test_ver_metricas_roles(self):
+        """Verifica los roles autorizados para ver_metricas."""
+        bedel = self._make_user("bedel")
+        jefes = self._make_user("jefes")
+        rectorado = self._make_user("rectorado")
+        tutor = self._make_user("tutor")
+        assert can(bedel, "ver_metricas")
+        assert can(jefes, "ver_metricas")
+        assert can(rectorado, "ver_metricas")
+        assert not can(tutor, "ver_metricas")

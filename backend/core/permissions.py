@@ -193,6 +193,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "rectorado",
         "attp",
     },
+    "ver_metricas": {"admin", "secretaria", "bedel", "jefes", "rectorado"},
     "ver_reportes": {"admin", "secretaria", "jefes", "rectorado", "attp"},
     # --- Mensajería ---
     # Nota: el estudiante puede ACCEDER a mensajería pero solo puede INICIAR

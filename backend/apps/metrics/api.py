@@ -9,7 +9,7 @@ router = Router(tags=["Metrics"])
 
 
 @router.get("/inscripciones/resumen-por-profesorado/")
-@requires("ver_dashboard")
+@requires("ver_metricas")
 def get_summary_by_profesorado(request):
     """
     Calcula el total de preinscripciones y confirmaciones por profesorado.
@@ -42,7 +42,7 @@ def get_summary_by_profesorado(request):
 
 
 @router.get("/academicos/resumen-por-profesorado/")
-@requires("ver_dashboard")
+@requires("ver_metricas")
 def get_academic_summary_by_profesorado(request):
     """
     Calcula la tasa de aprobación y la nota promedio por profesorado.
@@ -78,7 +78,7 @@ def get_academic_summary_by_profesorado(request):
 
 
 @router.get("/asistencia/resumen-por-profesorado/")
-@requires("ver_dashboard")
+@requires("ver_metricas")
 def get_attendance_summary_by_profesorado(request):
     """
     Calcula la tasa de asistencia por profesorado.
