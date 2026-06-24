@@ -6,7 +6,7 @@ from ninja.errors import HttpError
 
 from core.auth_ninja import JWTAuth
 from core.models import Docente, Estudiante, Profesorado, StaffAsignacion
-from core.permissions import ALL_ROLES, ensure_roles
+from core.permissions import ALL_ROLES, require
 from core.schemas import AsignarRolIn, ForceResetPasswordIn, UserSchema
 
 from ..router import management_router
@@ -14,7 +14,7 @@ from ..router import management_router
 
 @management_router.get("/staff", response=list[UserSchema], auth=JWTAuth())
 def list_staff(request):
-    ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
+    require(request.user, "asignar_roles")
     users = User.objects.filter(is_active=True).select_related("profile__persona").prefetch_related("groups")
     res = []
     for u in users:
@@ -34,7 +34,7 @@ def list_staff(request):
 
 @management_router.post("/staff/roles", response={200: dict, 400: dict}, auth=JWTAuth())
 def manage_staff_role(request, payload: AsignarRolIn):
-    ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
+    require(request.user, "asignar_roles")
     user = get_object_or_404(User, id=payload.user_id)
     role = payload.role.lower()
 
@@ -119,7 +119,7 @@ def manage_staff_role(request, payload: AsignarRolIn):
 
 @management_router.get("/staff/{user_id}/asignaciones", response=list[dict], auth=JWTAuth())
 def list_user_assignments(request, user_id: int):
-    ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
+    require(request.user, "asignar_roles")
     user = get_object_or_404(User, id=user_id)
     asignaciones = StaffAsignacion.objects.filter(user=user).select_related("profesorado")
     return [
@@ -139,7 +139,7 @@ def list_user_assignments(request, user_id: int):
 @management_router.post("/staff/force-password-reset", response={200: dict}, auth=JWTAuth())
 def force_reset_password(request, payload: ForceResetPasswordIn):
     """Permite el reseteo administrativo forzado para dar acceso inmediato a un usuario."""
-    ensure_roles(request.user, {"admin", "secretaria", "jefa_aaee"})
+    require(request.user, "asignar_roles")
     user = get_object_or_404(User, username=payload.username)
     using_default = not (payload.new_password and payload.new_password.strip())
     new_pass = "pass12346789" if using_default else payload.new_password
