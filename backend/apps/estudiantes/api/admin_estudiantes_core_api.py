@@ -21,7 +21,7 @@ from core.models import (
     Regularidad,
     ResidenciaCondicional,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access, ensure_roles
+from core.permissions import allowed_profesorados, ensure_profesorado_access, require
 
 from ..schemas import (
     AutorizarRendirIn,
@@ -54,7 +54,7 @@ def admin_buscar_estudiantes_global(request, q: str = ""):
     Devuelve datos mínimos (dni, nombre, carreras actuales).
     Usado para agregar un estudiante de otra carrera a la propia.
     """
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
     from django.db.models import Q as DQ
 
     q = q.strip()[:100]
@@ -302,7 +302,7 @@ def admin_autorizar_rendir(request, dni: str, payload: AutorizarRendirIn):
     Activa o desactiva la autorización excepcional para rendir exámenes finales
     con legajo incompleto. Solo Secretaría y Bedelía pueden usar este endpoint.
     """
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
     est = get_object_or_404(Estudiante, persona__dni=dni)
 
     est.autorizado_rendir = payload.autorizado
@@ -342,7 +342,7 @@ def _prorroga_to_out(p: ProrrogaTituloSecundario) -> dict:
 )
 def admin_list_prorrogas_titulo(request, dni: str):
     """Lista todas las prórrogas del título secundario de un estudiante."""
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
     est = get_object_or_404(Estudiante, persona__dni=dni)
     prorrogas = ProrrogaTituloSecundario.objects.filter(estudiante=est)
     return 200, [ProrrogaTituloOut(**_prorroga_to_out(p)) for p in prorrogas]
@@ -354,7 +354,7 @@ def admin_list_prorrogas_titulo(request, dni: str):
 )
 def admin_create_prorroga_titulo(request, dni: str, payload: ProrrogaTituloIn):
     """Crea una prórroga del título secundario para el estudiante."""
-    ensure_roles(request.user, {"admin", "secretaria"})
+    require(request.user, "gestionar_staff")
     est = get_object_or_404(Estudiante, persona__dni=dni)
     from django.utils.dateparse import parse_date
 
@@ -382,7 +382,7 @@ def admin_create_prorroga_titulo(request, dni: str, payload: ProrrogaTituloIn):
 )
 def admin_update_prorroga_titulo(request, prorroga_id: int, payload: ProrrogaTituloIn):
     """Actualiza una prórroga existente."""
-    ensure_roles(request.user, {"admin", "secretaria"})
+    require(request.user, "gestionar_staff")
     p = get_object_or_404(ProrrogaTituloSecundario, id=prorroga_id)
     from django.utils.dateparse import parse_date
 
@@ -407,7 +407,7 @@ def admin_update_prorroga_titulo(request, prorroga_id: int, payload: ProrrogaTit
 )
 def admin_delete_prorroga_titulo(request, prorroga_id: int):
     """Elimina una prórroga."""
-    ensure_roles(request.user, {"admin", "secretaria"})
+    require(request.user, "gestionar_staff")
     p = get_object_or_404(ProrrogaTituloSecundario, id=prorroga_id)
     p.delete()
     return 200, ApiResponse(ok=True, message="Prórroga eliminada.")
@@ -427,7 +427,7 @@ class AgregarCarreraIn(_Schema):
 )
 def admin_agregar_carrera(request, dni: str, payload: AgregarCarreraIn):
     """Vincula a un estudiante existente con una nueva carrera (sin requerir preinscripción)."""
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "editar_estudiantes")
     from django.utils import timezone
 
     from core.models import Profesorado
