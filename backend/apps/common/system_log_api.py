@@ -12,8 +12,9 @@ from django.core.management import call_command
 from ninja import Router, Schema
 
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import SystemLog
+from core.permissions import requires
 
 # Acceso restringido únicamente a Superusuarios/Administradores globales.
 router = Router(tags=["system_logs"], auth=JWTAuth())
@@ -32,7 +33,7 @@ class SystemLogOut(Schema):
 
 
 @router.get("/", response=list[SystemLogOut])
-@ensure_roles(["admin"])
+@requires("admin_sistema")
 def list_system_logs(request, resuelto: bool = False):
     """Lista las alertas del sistema, filtrando por estado de resolución."""
     qs = SystemLog.objects.filter(resuelto=resuelto).order_by("-created_at")
@@ -40,7 +41,7 @@ def list_system_logs(request, resuelto: bool = False):
 
 
 @router.post("/{log_id}/resolve", response=ApiResponse)
-@ensure_roles(["admin"])
+@requires("admin_sistema")
 def resolve_system_log(request, log_id: int):
     """Marca una alerta del sistema como atendida/resuelta."""
     try:
@@ -53,7 +54,7 @@ def resolve_system_log(request, log_id: int):
 
 
 @router.post("/sync-repair", response=ApiResponse)
-@ensure_roles(["admin"])
+@requires("admin_sistema")
 def sync_repair_system(request):
     """
     Herramienta de autorecuperación del sistema.
