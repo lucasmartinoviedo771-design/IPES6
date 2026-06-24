@@ -13,7 +13,7 @@ from ninja.errors import HttpError
 from apps.common.api_schemas import AuditLogItem, AuditLogList
 from core.auth_ninja import JWTAuth
 from core.models import AuditLog
-from core.permissions import ensure_roles
+from core.permissions import require
 
 # La auditoría es sensible: requiere JWT y roles administrativos.
 router = Router(tags=["auditoria"], auth=JWTAuth())
@@ -83,7 +83,7 @@ def listar_logs(
     Filtros soportados: rango de fechas (desde/hasta), usuario, acción y entidad.
     """
     # Seguridad: solo personal de gestión tiene acceso a la auditoría
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "auditoria")
 
     # Normalización de paginación
     limit = max(1, min(limit, 200))  # Tope de 200 registros por página
@@ -125,7 +125,7 @@ def listar_logs(
 @router.get("/logs/{log_id}", response=AuditLogItem)
 def obtener_log(request, log_id: int):
     """Recupera los detalles completos (incluyendo cambios/payload) de un registro específico."""
-    ensure_roles(request.user, {"admin", "secretaria", "bedel"})
+    require(request.user, "auditoria")
     log = AuditLog.objects.filter(id=log_id).first()
     if not log:
         raise HttpError(404, "Registro de auditoría no encontrado.")
