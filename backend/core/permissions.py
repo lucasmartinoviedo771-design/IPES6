@@ -64,18 +64,25 @@ GLOBAL_OVERVIEW_ROLES = {
     "attp",
 }
 ALL_ROLES: set[str] = {
+    # Roles de gestión
     "admin",
     "secretaria",
     "bedel",
+    "coordinador",
+    # Roles funcionales específicos
+    "titulos",
+    "equivalencias",
+    "curso_intro",
+    # Roles de supervisión/dirección
     "jefa_aaee",
     "jefes",
     "tutor",
-    "coordinador",
     "consulta",
-    "estudiante",
-    "docente",
     "rectorado",
     "attp",
+    # Roles de usuario final
+    "estudiante",
+    "docente",
 }
 
 # --- DEFINICIONES ADICIONALES CONSOLIDADAS ---
@@ -99,6 +106,150 @@ ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
     "secretaria": [role for role in ALL_ROLES if role != "admin"],
     "jefa_aaee": ["bedel", "tutor", "coordinador"],
 }
+
+
+# ══════════════════════════════════════════════════════════════
+# TABLA DE CAPACIDADES — fuente única de verdad para permisos
+# Cada capability mapea a los roles que la tienen.
+# Para cambiar quién puede hacer qué, se modifica SOLO esta tabla.
+# ══════════════════════════════════════════════════════════════
+
+CAPABILITIES: dict[str, set[str]] = {
+    # --- Gestión de estudiantes ---
+    "ver_estudiantes": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "coordinador",
+        "tutor",
+        "jefes",
+        "jefa_aaee",
+        "consulta",
+        "rectorado",
+        "attp",
+    },
+    "editar_estudiantes": {"admin", "secretaria", "bedel"},
+    "ver_documentacion": {"admin", "secretaria", "bedel", "coordinador", "jefes"},
+    "editar_documentacion": {"admin", "secretaria", "bedel"},
+    # --- Académico ---
+    "carga_regularidades": {"admin", "secretaria", "bedel", "docente"},
+    "carga_finales": {"admin", "secretaria", "bedel", "docente"},
+    "acta_manual": {"admin", "secretaria", "bedel", "docente"},
+    "ver_actas": {"admin", "secretaria", "bedel", "titulos", "rectorado", "attp"},
+    # --- Estructura curricular ---
+    "ver_estructura": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "coordinador",
+        "tutor",
+        "jefes",
+        "jefa_aaee",
+        "consulta",
+        "estudiante",
+        "rectorado",
+        "attp",
+    },
+    "editar_estructura": {"admin", "secretaria", "bedel"},
+    # --- Inscripciones ---
+    "gestionar_preinscripcion": {"admin", "secretaria", "bedel"},
+    "gestionar_ventanas": {"admin", "secretaria", "jefa_aaee"},
+    "formalizar_inscripcion": {"admin", "secretaria", "bedel", "attp"},
+    # --- Equivalencias ---
+    "gestionar_equivalencias": {"admin", "secretaria", "bedel", "tutor"},
+    "revisar_equivalencias": {"admin", "secretaria", "equivalencias"},
+    "cargar_equivalencias_titulos": {"admin", "secretaria", "titulos"},
+    # --- Títulos y analíticos ---
+    "gestionar_titulos": {"admin", "secretaria", "titulos", "tutor"},
+    "ver_analiticos": {"admin", "secretaria", "titulos", "bedel", "tutor"},
+    # --- Curso introductorio ---
+    "gestionar_ci": {"admin", "secretaria", "bedel", "curso_intro", "tutor"},
+    "admin_ci": {"admin", "secretaria"},
+    # --- Staff ---
+    "asignar_roles": {"admin", "secretaria"},
+    "gestionar_staff": {"admin", "secretaria"},
+    # --- Horarios ---
+    "ver_horarios": {"admin", "secretaria", "bedel", "coordinador", "rectorado", "attp", "estudiante", "docente"},
+    "editar_horarios": {"admin", "secretaria"},
+    # --- Asistencia de estudiantes ---
+    "asistencia_estudiantes_ver": {"admin", "secretaria", "bedel", "docente"},
+    "asistencia_estudiantes_editar": {"admin", "secretaria", "bedel", "docente"},
+    "asistencia_estudiantes_justificar": {"admin", "secretaria", "bedel"},
+    # --- Asistencia de docentes ---
+    "asistencia_docentes_ver": {"admin", "secretaria"},
+    "asistencia_docentes_editar": {"admin", "secretaria"},
+    # --- Calendario ---
+    "editar_calendario": {"admin", "secretaria", "bedel", "attp"},
+    # --- Dashboard / reportes ---
+    "ver_dashboard": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "jefa_aaee",
+        "jefes",
+        "tutor",
+        "coordinador",
+        "consulta",
+        "rectorado",
+        "attp",
+    },
+    "ver_reportes": {"admin", "secretaria", "jefes", "rectorado", "attp"},
+    # --- Mensajería ---
+    # Nota: el estudiante puede ACCEDER a mensajería pero solo puede INICIAR
+    # conversación con bedel/tutor de su carrera. Esa restricción se implementa
+    # en el endpoint de mensajería, no en esta tabla.
+    "enviar_mensajes": {"admin", "secretaria", "bedel", "coordinador", "tutor", "docente", "estudiante"},
+    # --- Admin del sistema ---
+    "admin_sistema": {"admin"},
+    "primera_carga": {"admin", "secretaria", "bedel"},
+    "auditoria": {"admin", "secretaria"},
+}
+
+
+def can(user: User, capability: str) -> bool:
+    """
+    ¿El usuario tiene esta capacidad?
+    Consulta la tabla CAPABILITIES como fuente única de verdad.
+    """
+    if user.is_superuser:
+        return True
+    allowed = CAPABILITIES.get(capability)
+    if allowed is None:
+        raise ValueError(f"Capability desconocida: '{capability}'. Revisar CAPABILITIES en permissions.py.")
+    return bool(get_user_roles(user) & allowed)
+
+
+def require(user: User | None, capability: str) -> None:
+    """
+    Exige que el usuario tenga la capacidad indicada.
+    Lanza AppError(401) si no está autenticado, AppError(403) si no tiene permiso.
+    """
+    user = _ensure_authenticated(user)
+    if not can(user, capability):
+        raise AppError(
+            403,
+            AppErrorCode.PERMISSION_DENIED,
+            f"No tiene permisos para '{capability}'.",
+        )
+
+
+def requires(capability: str):
+    """
+    Decorador para endpoints Django Ninja.
+    Uso: @requires("carga_regularidades")
+    Reemplaza tanto a @ensure_roles([...]) como a ensure_roles(user, {...}).
+    """
+    from functools import wraps
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(request, *args, **kwargs):
+            require(request.user, capability)
+            return func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 def _ensure_authenticated(user: User | None) -> User:
