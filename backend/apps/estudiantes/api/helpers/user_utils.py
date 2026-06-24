@@ -11,7 +11,7 @@ from core.models import (
     Docente,
     Estudiante,
 )
-from core.permissions import ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES, ensure_roles
+from core.permissions import ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES, require
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:
@@ -50,15 +50,15 @@ def _user_has_roles(user, roles: Iterable[str]) -> bool:
 
 
 def _ensure_admin(request, include_attp: bool = False):
-    allowed = ADMIN_ALLOWED_ROLES
     if include_attp:
-        allowed = allowed | {"attp"}
-    ensure_roles(request.user, allowed)
+        require(request.user, "formalizar_inscripcion")
+    else:
+        require(request.user, "editar_estudiantes")
 
 
 def _ensure_staff_view(request):
     """Permite el acceso a roles administrativos y de consulta/tutoría (Solo Lectura)."""
-    ensure_roles(request.user, STAFF_VIEW_ROLES)
+    require(request.user, "ver_estudiantes")
 
 
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
