@@ -34,7 +34,7 @@ from core.models import (
     Regularidad,
     RegularidadPlanillaLock,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access, requires
+from core.permissions import allowed_profesorados, can, ensure_profesorado_access, requires
 
 from .notas_utils import (
     ALIAS_TO_SITUACION,
@@ -263,7 +263,7 @@ def listar_comisiones(
         return CargaNotasLookup(materias=[], comisiones=[])
 
     roles = normalized_user_roles(request.user)
-    is_privileged = bool(roles.intersection({"admin", "secretaria", "bedel", "titulos", "coordinador"}))
+    is_privileged = can(request.user, "editar_estructura")
     docente_profile = docente_from_user(request.user) if "docente" in roles and not is_privileged else None
 
     comisiones_qs = (
