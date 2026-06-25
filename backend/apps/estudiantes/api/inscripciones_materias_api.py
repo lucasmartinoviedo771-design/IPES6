@@ -149,14 +149,8 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     5. Correlatividades: Consulta el motor de correlatividades consolidado (Actas + Regularidades).
     6. Colisión Horaria: Analiza los bloques horarios de la materia contra las ya inscriptas en el año.
     """
-    # Bloqueo temporal para estudiantes (solo habilitado para bedeles, secretaría y administradores)
-    from core.permissions import can
+    # Bloqueo temporal para estudiantes eliminado por requerimiento de negocio.
 
-    if not can(request.user, "editar_estudiantes"):
-        return 400, ApiResponse(
-            ok=False,
-            message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría.",
-        )
 
     _ensure_estudiante_access(request, getattr(payload, "dni", None))
     est = _resolve_estudiante(request, getattr(payload, "dni", None))

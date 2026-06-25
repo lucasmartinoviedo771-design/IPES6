@@ -328,27 +328,7 @@ export default function EstudiantesIndex() {
       return filteredSections;
     }
 
-    // Si es estudiante y no es personal de gestión/admin, deshabilitamos temporalmente "Inscripción a Materias"
-    if (isStudent && !isAdmin) {
-      filteredSections = filteredSections.map(s => {
-        if (s.title !== "Inscripciones") return s;
-        return {
-          ...s,
-          items: s.items.map(item => {
-            if (item.path === "/estudiantes/inscripcion-materia") {
-              return {
-                ...item,
-                disabled: true,
-                subtitle: "Deshabilitada temporalmente por mantenimiento de inscripciones.",
-              };
-            }
-            return item;
-          })
-        };
-      });
-    }
 
-    // 2. Lógica para estudiantes (Curso Intro y alertas)
     const subtitle = cursoIntroEstado
       ? cursoIntroEstado.aprobado
         ? "Curso introductorio aprobado."
@@ -435,9 +415,6 @@ export default function EstudiantesIndex() {
                 <Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
                   <Box
                     onClick={() => {
-                      if (event.path === "/estudiantes/inscripcion-materia" && isStudent && !isAdmin) {
-                        return;
-                      }
                       if (event.path) navigate(event.path);
                     }}
                     sx={{
@@ -451,7 +428,7 @@ export default function EstudiantesIndex() {
                         : isFuture
                         ? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
                         : `1px solid rgba(158,158,158,0.35)`,
-                      cursor: (event.path && !(event.path === "/estudiantes/inscripcion-materia" && isStudent && !isAdmin)) ? "pointer" : "default",
+                      cursor: event.path ? "pointer" : "default",
                       backgroundColor: isUnscheduled ? "rgba(125,127,110,0.05)" : "#fff",
                       transition: "all 0.2s ease",
                       "&:hover": event.path
