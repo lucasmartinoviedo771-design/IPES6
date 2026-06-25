@@ -3,7 +3,7 @@ from ninja.errors import HttpError
 
 from core.auth_ninja import JWTAuth
 from core.models import VentanaHabilitacion
-from core.permissions import ensure_roles, require
+from core.permissions import require
 
 from ..router import management_router
 from ..schemas import VentanaIn, VentanaOut
@@ -11,10 +11,7 @@ from ..schemas import VentanaIn, VentanaOut
 
 @management_router.get("/ventanas", response=list[VentanaOut], auth=JWTAuth())
 def list_ventanas(request, tipo: str | None = None):
-    ensure_roles(
-        request.user,
-        {"admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "consulta", "estudiante"},
-    )
+    require(request.user, "ver_estructura")
     qs = VentanaHabilitacion.objects.all()
     if tipo:
         qs = qs.filter(tipo=tipo)
