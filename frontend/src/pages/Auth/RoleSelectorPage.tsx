@@ -141,7 +141,7 @@ export default function RoleSelectorPage() {
                     background: "rgba(19, 25, 48, 0.85)",
                     backdropFilter: "blur(20px)",
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    color: "#fff",
+                    color: "#ffffff",
                     position: "relative",
                     overflow: "hidden",
                     "&:hover": {
@@ -162,8 +162,8 @@ export default function RoleSelectorPage() {
                         sx={{
                           p: 2,
                           borderRadius: 3,
-                          background: "rgba(255,255,255,0.06)",
-                          color: "#fff",
+                          background: config.gradient,
+                          color: "#ffffff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -173,10 +173,10 @@ export default function RoleSelectorPage() {
                         {config.icon}
                       </Box>
                       <Stack spacing={1} sx={{ pt: 0.5 }}>
-                        <Typography variant="h5" fontWeight="bold">
+                        <Typography variant="h5" fontWeight="bold" sx={{ color: "#ffffff" }}>
                           {config.title}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.65)", lineHeight: 1.5 }}>
+                        <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.85)", lineHeight: 1.5 }}>
                           {config.subtitle}
                         </Typography>
                       </Stack>
