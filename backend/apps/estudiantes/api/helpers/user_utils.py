@@ -11,7 +11,7 @@ from core.models import (
     Docente,
     Estudiante,
 )
-from core.permissions import ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES, require
+from core.permissions import ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES, can, get_user_roles, require
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:
@@ -74,7 +74,7 @@ def _ensure_estudiante_access(request, dni: str | None) -> None:
         return
     solicitante = getattr(request.user, "estudiante", None)
     if solicitante and solicitante.dni != dni:
-        _ensure_staff_view(request)
+        require(request.user, "ver_estudiantes")
 
 
 def _resolve_docente_from_user(user) -> Docente | None:
@@ -93,9 +93,9 @@ def _resolve_docente_from_user(user) -> Docente | None:
 
 
 def _user_can_manage_mesa_planilla(request, mesa) -> bool:
-    if _user_has_roles(request.user, ADMIN_ALLOWED_ROLES):
+    if can(request.user, "editar_estudiantes"):
         return True
-    if _user_has_roles(request.user, {"docente"}):
+    if "docente" in get_user_roles(request.user):
         docente = _resolve_docente_from_user(request.user)
         if not docente:
             return False
@@ -109,4 +109,4 @@ def _user_can_manage_mesa_planilla(request, mesa) -> bool:
 
 
 def _user_can_override_planilla_lock(user) -> bool:
-    return _user_has_roles(user, {"admin", "secretaria"})
+    return can(user, "gestionar_staff")
