@@ -183,3 +183,24 @@ export const getDefaultHomeRoute = (user: User | null | undefined): string => {
   // Fallback para roles no contemplados o staff básico
   return "/dashboard";
 };
+
+/**
+ * Verifica si el usuario tiene una capability específica del sistema IPES6.
+ * Lee el campo `capabilities` que devuelve el backend en /profile y /login.
+ * Es la función preferida para chequeos de acceso — reemplaza progresivamente a hasAnyRole().
+ *
+ * @example
+ * hasCapability(user, "ver_estudiantes")  // true para admin, secretaria, bedel, etc.
+ * hasCapability(user, "admin_sistema")    // true solo para admin
+ */
+export const hasCapability = (
+  user: User | null | undefined,
+  capability: string
+): boolean => {
+  if (!user) return false;
+  // Superusuario sin impersonation siempre puede todo
+  if (user.is_superuser && !getGlobalRoleOverride()) return true;
+  // Leer capabilities del backend
+  const caps = user.capabilities ?? [];
+  return caps.includes(capability);
+};

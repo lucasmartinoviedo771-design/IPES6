@@ -1,58 +1,53 @@
 import { useMemo } from "react";
-import { hasAnyRole } from "@/utils/roles";
+import { hasCapability } from "@/utils/roles";
 import { ROLE_NAV_MAP } from "./constants";
+import type { User } from "@/context/AuthContext";
 
-type User = Parameters<typeof hasAnyRole>[0];
-
+/**
+ * Hook central de permisos de navegación.
+ * Usa el campo `capabilities` del usuario (devuelto por el backend en /profile y /login)
+ * como fuente de verdad, eliminando los sets de roles hardcodeados.
+ *
+ * Compatible con el sistema de roleOverride (impersonation) para admins.
+ */
 export const useNavPermissions = (user: User, roleOverride: string | null) => {
+  // Cuando hay roleOverride activo, restringimos según ROLE_NAV_MAP (para simulación de admin)
   const allowedNavSet = useMemo(() => {
     if (!roleOverride) return null;
     const entries = ROLE_NAV_MAP[roleOverride];
-    if (!entries || entries.length === 0) {
-      return null;
-    }
+    if (!entries || entries.length === 0) return null;
     return new Set(entries);
   }, [roleOverride]);
 
-  const isNavAllowed = (key: string, defaultValue: boolean) => {
+  const isNavAllowed = (key: string, capabilityCheck: boolean) => {
     if (roleOverride) {
       return allowedNavSet ? allowedNavSet.has(key) : false;
     }
-    return defaultValue;
+    return capabilityCheck;
   };
 
-  const dashboardVisible = isNavAllowed("dashboard", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta"
-  ]));
-  const canPreins = isNavAllowed("preinscripciones", hasAnyRole(user, ["admin", "secretaria", "bedel"]));
-  const canSeeCarreras = isNavAllowed("carreras", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "coordinador", "tutor", "jefes", "jefa_aaee", "attp", "rectorado"
-  ]));
-  const canSeeReportes = isNavAllowed("reportes", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "attp", "rectorado"
-  ]));
-  const canSecretaria = isNavAllowed("secretaria", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "attp", "rectorado"
-  ]));
-  const canBedeles = isNavAllowed("bedeles", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"
-  ]));
-  const canDocentesPanel = isNavAllowed("docentes", hasAnyRole(user, ["docente", "secretaria", "admin", "bedel"]));
-  const canTutoriasPanel = isNavAllowed("tutorias", hasAnyRole(user, ["tutor", "secretaria", "admin", "bedel"]));
-  const canEquivalenciasPanel = isNavAllowed("equivalencias", hasAnyRole(user, ["equivalencias", "secretaria", "admin", "bedel"]));
-  const canTitulosPanel = isNavAllowed("titulos", hasAnyRole(user, ["titulos", "secretaria", "admin"]));
-  const canCoordinacionPanel = isNavAllowed("coordinacion", hasAnyRole(user, ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"]));
-  const canJefaturaPanel = isNavAllowed("jefatura", hasAnyRole(user, ["jefes", "jefa_aaee", "secretaria", "admin"]));
-  const canAsistenciaReportes = isNavAllowed("asistencia", hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado"]));
-  const canCursoIntro = isNavAllowed("cursoIntro", hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]));
-  const canEstudiantePortal = isNavAllowed("estudiante", hasAnyRole(user, ["estudiante"]));
-  const canEstudiantePanel = isNavAllowed("estudiante", hasAnyRole(user, [
-    "admin", "secretaria", "bedel", "tutor", "coordinador", "attp", "rectorado", "jefes", "jefa_aaee"
-  ]));
-  const canPrimeraCarga = isNavAllowed("primeraCarga", hasAnyRole(user, ["admin", "secretaria", "bedel", "attp"]));
-  const canAttpPanel = isNavAllowed("attp", hasAnyRole(user, ["attp"]));
-  const canRectoradoPanel = isNavAllowed("rectorado", hasAnyRole(user, ["rectorado"]));
-  const canUseMessages = isNavAllowed("mensajes", !!user);
+  const can = (capability: string) => hasCapability(user, capability);
+
+  const dashboardVisible     = isNavAllowed("dashboard",     can("ver_dashboard"));
+  const canPreins            = isNavAllowed("preinscripciones", can("gestionar_preinscripcion"));
+  const canSeeCarreras       = isNavAllowed("carreras",      can("ver_estructura"));
+  const canSeeReportes       = isNavAllowed("reportes",      can("ver_reportes"));
+  const canSecretaria        = isNavAllowed("secretaria",    can("ver_estudiantes"));
+  const canBedeles           = isNavAllowed("bedeles",       can("editar_documentacion") || can("carga_regularidades"));
+  const canDocentesPanel     = isNavAllowed("docentes",      can("carga_regularidades") || can("editar_estructura"));
+  const canTutoriasPanel     = isNavAllowed("tutorias",      can("gestionar_ci") && !can("editar_estudiantes"));
+  const canEquivalenciasPanel = isNavAllowed("equivalencias", can("revisar_equivalencias") || can("gestionar_equivalencias"));
+  const canTitulosPanel      = isNavAllowed("titulos",       can("gestionar_titulos") || can("ver_analiticos"));
+  const canCoordinacionPanel = isNavAllowed("coordinacion",  can("ver_estructura") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
+  const canJefaturaPanel     = isNavAllowed("jefatura",      can("ver_reportes") && !can("editar_estudiantes"));
+  const canAsistenciaReportes = isNavAllowed("asistencia",   can("ver_asistencia"));
+  const canCursoIntro        = isNavAllowed("cursoIntro",    can("gestionar_ci"));
+  const canEstudiantePortal  = isNavAllowed("estudiante",    !!(user && (user.roles ?? []).includes("estudiante")));
+  const canEstudiantePanel   = isNavAllowed("estudiante",    can("ver_estudiantes") && !(user?.roles ?? []).includes("estudiante"));
+  const canPrimeraCarga      = isNavAllowed("primeraCarga",  can("primera_carga"));
+  const canAttpPanel         = isNavAllowed("attp",          (user?.roles ?? []).includes("attp") && !can("editar_estudiantes"));
+  const canRectoradoPanel    = isNavAllowed("rectorado",     (user?.roles ?? []).includes("rectorado") && !can("editar_estudiantes"));
+  const canUseMessages       = isNavAllowed("mensajes",      can("enviar_mensajes") || !!(user));
 
   return {
     dashboardVisible,

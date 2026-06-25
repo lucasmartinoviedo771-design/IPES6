@@ -18,6 +18,8 @@ export type User = {
   dni: string;
   name?: string;
   roles?: string[];
+  /** Capacidades derivadas del sistema CAPABILITIES del backend */
+  capabilities?: string[];
   is_staff?: boolean;
   is_superuser?: boolean;
   must_change_password?: boolean;
