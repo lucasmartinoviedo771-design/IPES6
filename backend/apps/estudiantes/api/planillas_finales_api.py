@@ -277,10 +277,9 @@ def listar_constancias_examen(request, dni: str | None = None):
     from django.utils import timezone
 
     from core.models import VentanaHabilitacion
+    from core.permissions import can
 
-    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
-
-    es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+    es_staff = can(request.user, "editar_estudiantes")
     if not es_staff:
         today = timezone.now().date()
         exam_windows = VentanaHabilitacion.objects.filter(
