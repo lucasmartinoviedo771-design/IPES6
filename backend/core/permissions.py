@@ -162,6 +162,7 @@ CAPABILITIES: dict[str, set[str]] = {
     "cargar_equivalencias_titulos": {"admin", "secretaria", "titulos"},
     # --- Títulos y analíticos ---
     "gestionar_titulos": {"admin", "secretaria", "titulos", "tutor"},
+    "gestionar_analiticos": {"admin", "secretaria", "titulos", "bedel"},
     "ver_analiticos": {"admin", "secretaria", "titulos", "bedel", "tutor"},
     # --- Curso introductorio ---
     "gestionar_ci": {"admin", "secretaria", "bedel", "curso_intro", "tutor"},
