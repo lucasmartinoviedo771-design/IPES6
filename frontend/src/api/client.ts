@@ -111,6 +111,8 @@ const extractString = (value: unknown): string | null => {
  */
 client.interceptors.request.use((config) => {
   const method = (config.method || "").toLowerCase();
+  
+  // Inyección de CSRF Token
   if (!["get", "head", "options"].includes(method)) {
     const csrftoken = getCookie("csrftoken");
     if (csrftoken) {
@@ -118,6 +120,14 @@ client.interceptors.request.use((config) => {
       config.headers["X-CSRFToken"] = csrftoken;
     }
   }
+
+  // Inyección del Rol Activo Seleccionado
+  const activeRole = localStorage.getItem("ipes_active_role");
+  if (activeRole) {
+    config.headers = config.headers ?? {};
+    config.headers["X-Active-Role"] = activeRole;
+  }
+
   return config;
 }, (error) => Promise.reject(error));
 

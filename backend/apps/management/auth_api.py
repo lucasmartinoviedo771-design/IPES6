@@ -256,7 +256,9 @@ def profile(request):
         if "admin" not in roles:
             roles.append("admin")
 
-    capabilities = [cap for cap in CAPABILITIES if can(u, cap)]
+    # Leemos la cabecera X-Active-Role para filtrar capacidades según el contexto activo
+    active_role = request.headers.get("X-Active-Role")
+    capabilities = [cap for cap in CAPABILITIES if can(u, cap, active_role)]
 
     estudiante = getattr(u, "estudiante", None)
     profile = getattr(u, "profile", None)

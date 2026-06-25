@@ -82,18 +82,43 @@ export default function LoginPage() {
       if (loggedUser?.must_change_password) {
         navigate("/cambiar-password", { replace: true, state: { from: { pathname: from } } });
       } else {
-        const defaultHome = getDefaultHomeRoute(loggedUser);
-        let target = from ?? defaultHome;
-        if (target === "/preinscripcion") {
-          target = defaultHome;
+        // Obtenemos los roles normalizados del usuario
+        const rawRoles = loggedUser?.roles ?? [];
+        const uniqueRoles = new Set<string>();
+        rawRoles.forEach((r) => {
+          const norm = r.toLowerCase().trim();
+          if (norm === "estudiantes") uniqueRoles.add("estudiante");
+          else if (norm === "docentes") uniqueRoles.add("docente");
+          else if (norm.startsWith("bedel")) uniqueRoles.add("bedel");
+          else if (norm.startsWith("secretaria")) uniqueRoles.add("secretaria");
+          else uniqueRoles.add(norm);
+        });
+        if (loggedUser?.is_superuser) {
+          uniqueRoles.add("admin");
         }
-        if (isOnlyEstudiante(loggedUser) && target && !target.startsWith("/estudiantes")) {
-          target = defaultHome;
+
+        if (uniqueRoles.size > 1) {
+          // Si tiene múltiples roles, lo enviamos a seleccionar
+          navigate("/seleccionar-rol", { replace: true });
+        } else {
+          // Si tiene un rol único, se auto-selecciona en localStorage y navega
+          const onlyRole = Array.from(uniqueRoles)[0] || "";
+          if (onlyRole) {
+            localStorage.setItem("ipes_active_role", onlyRole);
+          }
+          const defaultHome = getDefaultHomeRoute(loggedUser);
+          let target = from ?? defaultHome;
+          if (target === "/preinscripcion") {
+            target = defaultHome;
+          }
+          if (isOnlyEstudiante(loggedUser) && target && !target.startsWith("/estudiantes")) {
+            target = defaultHome;
+          }
+          if (!target) {
+            target = defaultHome;
+          }
+          navigate(target, { replace: true });
         }
-        if (!target) {
-          target = defaultHome;
-        }
-        navigate(target, { replace: true });
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

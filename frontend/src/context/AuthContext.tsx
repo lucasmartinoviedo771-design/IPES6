@@ -45,6 +45,10 @@ interface AuthContextType {
   setRoleOverride: (role: string | null) => void;
   /** Lista de roles a los que el usuario tiene acceso legítimo o por privilegios admin */
   availableRoleOptions: Array<{ value: string; label: string }>;
+  /** Rol activo seleccionado por el usuario para su sesión actual */
+  activeRole: string | null;
+  /** Cambia el rol activo de la sesión actual */
+  setActiveRole: (role: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -301,10 +305,39 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     setGlobalRoleOverride(roleOverride);
   }, [user, roleOverride, availableRoleOptions]);
 
+  const [activeRole, setActiveRoleState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("ipes_active_role") || null;
+    } catch { return null; }
+  });
+
+  const setActiveRole = (role: string | null) => {
+    const normalized = role ? role.toLowerCase().trim() : null;
+    setActiveRoleState(normalized);
+    try {
+      if (normalized) {
+        localStorage.setItem("ipes_active_role", normalized);
+      } else {
+        localStorage.removeItem("ipes_active_role");
+      }
+    } catch { /* ignore */ }
+  };
+
+  // Limpiar activeRole al cerrar sesión
+  useEffect(() => {
+    if (!user) {
+      setActiveRoleState(null);
+      try {
+        localStorage.removeItem("ipes_active_role");
+      } catch { /* ignore */ }
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{
       user, loading, login, logout, refreshProfile,
       roleOverride, setRoleOverride, availableRoleOptions,
+      activeRole, setActiveRole,
     }}>
       {children}
     </AuthContext.Provider>

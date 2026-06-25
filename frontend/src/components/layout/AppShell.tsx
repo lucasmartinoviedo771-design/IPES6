@@ -19,7 +19,7 @@ import { AppSidebar } from "./app-shell/AppSidebar";
 import { UserGuideDialog } from "./app-shell/UserGuideDialog";
 
 export default function AppShell({ children }: PropsWithChildren) {
-  const { user, logout, roleOverride, setRoleOverride, availableRoleOptions } = useAuth();
+  const { user, logout, roleOverride, setRoleOverride, availableRoleOptions, activeRole, setActiveRole, refreshProfile } = useAuth();
   const [open, setOpen] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem("sidebarOpen");
@@ -77,37 +77,45 @@ export default function AppShell({ children }: PropsWithChildren) {
 
   const showRoleSwitcher = roleOptions.length > 1;
 
-  const previousRoleRef = useRef<string | null>(roleOverride);
+  const previousRoleRef = useRef<string | null>(roleOverride || activeRole);
   const isInitialMount = useRef<boolean>(true);
+
+  // Al cambiar el rol en el TopBar, actualizamos tanto el override como el activeRole
+  const handleRoleChange = async (value: string | null) => {
+    setRoleOverride(value);
+    setActiveRole(value);
+    try {
+      await refreshProfile();
+    } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     if (!user) return;
 
-    // Solo redirigimos si el rol ha CAMBIADO explícitamente durante la sesión activa.
-    // Si anterior era null, es la carga inicial (F5 o primer login) y ya estamos 
-    // en la URL correcta (o LoginPage ya nos redirigió al lugar correcto).
-    if (previousRoleRef.current !== null && previousRoleRef.current !== roleOverride) {
-      if (roleOverride) {
-        const destination = roleHomeMap[roleOverride] ?? "/dashboard";
+    const currentRole = roleOverride || activeRole;
+    if (previousRoleRef.current !== null && previousRoleRef.current !== currentRole) {
+      if (currentRole) {
+        const destination = roleHomeMap[currentRole] ?? "/dashboard";
         navigate(destination, { replace: true });
       } else {
         navigate(getDefaultHomeRoute(user), { replace: true });
       }
     }
     
-    previousRoleRef.current = roleOverride;
-  }, [roleOverride, user, navigate]);
+    previousRoleRef.current = currentRole;
+  }, [roleOverride, activeRole, user, navigate]);
 
   useEffect(() => {
-    if (!user || roleOverride || isInitialMount.current === false) return;
+    if (!user || roleOverride || activeRole || isInitialMount.current === false) return;
     
-    // Auto-selección inicial de rol si no hay uno activo
+    // Auto-selección inicial si no hay un rol activo en localStorage/session
     if (availableRoleOptions.length > 0) {
-      // Usamos useLayoutEffect o una señal para no navegar en este paso inicial
-      setRoleOverride(availableRoleOptions[0].value);
+      const defaultRole = availableRoleOptions[0].value;
+      setRoleOverride(defaultRole);
+      setActiveRole(defaultRole);
     }
     isInitialMount.current = false;
-  }, [user, roleOverride, availableRoleOptions, setRoleOverride]);
+  }, [user, roleOverride, activeRole, availableRoleOptions, setRoleOverride, setActiveRole]);
 
   const { data: messageSummary } = useQuery({
     queryKey: ["mensajes", "resumen"],
@@ -142,7 +150,7 @@ export default function AppShell({ children }: PropsWithChildren) {
       <AppTopBar
         open={open}
         user={user}
-        roleOverride={roleOverride}
+        roleOverride={roleOverride || activeRole}
         roleOptions={roleOptions}
         showRoleSwitcher={showRoleSwitcher}
         canUseMessages={canUseMessages}
@@ -150,7 +158,7 @@ export default function AppShell({ children }: PropsWithChildren) {
         badgeColor={badgeColor as "default" | "error" | "warning" | "primary"}
         onToggleSidebar={() => setOpen((v) => !v)}
         onGuideOpen={() => setGuideOpen(true)}
-        onRoleChange={setRoleOverride}
+        onRoleChange={handleRoleChange}
         onLogout={logout}
       />
 

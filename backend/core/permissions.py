@@ -162,26 +162,35 @@ CAPABILITIES: dict[str, set[str]] = {
 }
 
 
-def can(user: User, capability: str) -> bool:
+def can(user: User, capability: str, active_role: str | None = None) -> bool:
     """
     ¿El usuario tiene esta capacidad?
     Consulta la tabla CAPABILITIES como fuente única de verdad.
+    Si se provee active_role, evalúa de forma estricta contra ese rol (validando que pertenezca al usuario).
     """
     if user.is_superuser:
         return True
     allowed = CAPABILITIES.get(capability)
     if allowed is None:
         raise ValueError(f"Capability desconocida: '{capability}'. Revisar CAPABILITIES en permissions.py.")
-    return bool(get_user_roles(user) & allowed)
+
+    user_roles = get_user_roles(user)
+    if active_role:
+        # Validamos que el active_role solicitado sea uno de los roles reales del usuario
+        if active_role in user_roles:
+            return active_role in allowed
+        return False
+
+    return bool(user_roles & allowed)
 
 
-def require(user: User | None, capability: str) -> None:
+def require(user: User | None, capability: str, active_role: str | None = None) -> None:
     """
     Exige que el usuario tenga la capacidad indicada.
     Lanza AppError(401) si no está autenticado, AppError(403) si no tiene permiso.
     """
     user = _ensure_authenticated(user)
-    if not can(user, capability):
+    if not can(user, capability, active_role):
         raise AppError(
             403,
             AppErrorCode.PERMISSION_DENIED,
@@ -193,14 +202,16 @@ def requires(capability: str):
     """
     Decorador para endpoints Django Ninja.
     Uso: @requires("carga_regularidades")
-    Reemplaza tanto a @ensure_roles([...]) como a ensure_roles(user, {...}).
+    Lee el rol activo de la cabecera 'X-Active-Role'.
     """
     from functools import wraps
 
     def decorator(func):
         @wraps(func)
         def wrapper(request, *args, **kwargs):
-            require(request.user, capability)
+            # Leemos el rol activo desde las cabeceras HTTP de Django
+            active_role = request.headers.get("X-Active-Role")
+            require(request.user, capability, active_role)
             return func(request, *args, **kwargs)
 
         return wrapper
