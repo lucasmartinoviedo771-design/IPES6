@@ -387,9 +387,9 @@ def listar_mesas_estudiante(
     ).all()
 
     # Restricciones para Alumnos
-    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+    from core.permissions import can
 
-    es_staff = _user_has_roles(request.user, ADMIN_ALLOWED_ROLES | {"docente"})
+    es_staff = can(request.user, "carga_finales")
 
     # Barrido automático antes de listar para Alumnos (Removido por R2)
     # MesaExamen.auto_cleanup_deserted_mesas()
@@ -537,9 +537,9 @@ def inscribir_mesa(request, payload: InscripcionMesaIn):
         return 404, {"message": "Mesa no encontrada"}
 
     # --- VALIDACIÓN UNIFICADA ---
-    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+    from core.permissions import can
 
-    es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+    es_staff = payload.dni and can(request.user, "editar_estudiantes")
 
     # Validar que la ventana esté activa y dentro de fecha (solo para alumnos)
     if not es_staff:
@@ -664,9 +664,9 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
         )
 
     # --- VALIDACIÓN ACADÉMICA ---
-    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+    from core.permissions import can
 
-    es_staff = payload.dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES)
+    es_staff = payload.dni and can(request.user, "editar_estudiantes")
     is_ok, msg, extra = _check_academic_eligibility(
         est,
         materia=materia,
@@ -783,9 +783,9 @@ def listar_materias_solicitables(
     ]
     materias_qs = materias_qs.exclude(formato__in=formatos_excluidos)
 
-    from .helpers import ADMIN_ALLOWED_ROLES, _user_has_roles
+    from core.permissions import can
 
-    es_staff = bool(dni and _user_has_roles(request.user, ADMIN_ALLOWED_ROLES))
+    es_staff = bool(dni and can(request.user, "editar_estudiantes"))
 
     solicitables = []
 
