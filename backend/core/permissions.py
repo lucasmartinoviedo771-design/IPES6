@@ -53,7 +53,6 @@ ALL_ROLES: set[str] = {
 }
 
 
-
 # Define qué roles pueden asignar a otros roles (Admin Console)
 ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
     "admin": list(ALL_ROLES),
@@ -245,7 +244,6 @@ def get_user_roles(user: User) -> set[str]:
     if user.is_superuser:
         roles.add("admin")
     return roles
-
 
 
 def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = None) -> set[int] | None:

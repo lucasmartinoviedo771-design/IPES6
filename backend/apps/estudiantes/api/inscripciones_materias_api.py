@@ -151,7 +151,6 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     """
     # Bloqueo temporal para estudiantes eliminado por requerimiento de negocio.
 
-
     _ensure_estudiante_access(request, getattr(payload, "dni", None))
     est = _resolve_estudiante(request, getattr(payload, "dni", None))
     if not est:
