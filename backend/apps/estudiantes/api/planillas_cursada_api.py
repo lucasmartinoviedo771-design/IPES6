@@ -19,7 +19,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import (
     Comision,
     Estudiante,
@@ -32,9 +32,9 @@ from core.models import (
     RegularidadPlantilla,
     VentanaHabilitacion,
 )
-from core.permissions import allowed_profesorados
+from core.permissions import allowed_profesorados, can
 
-from .notas_utils import docente_from_user, normalized_user_roles
+from .notas_utils import docente_from_user
 
 router = Router(tags=["planillas_cursada"], auth=JWTAuth())
 
@@ -204,8 +204,7 @@ def generar_planillas_cursada(request, payload: GenerarPlanillasIn):
     - Si ya existen planillas para esta comisión+año+cuatrimestre, las retorna sin duplicar.
     - Solo accesible para docentes de la comisión, bedel y secretaría.
     """
-    roles = normalized_user_roles(request.user)
-    es_privilegiado = bool(roles & {"admin", "secretaria", "bedel"})
+    es_privilegiado = can(request.user, "editar_estructura")
 
     comision = (
         Comision.objects.select_related("materia__plan_de_estudio__profesorado", "docente")
@@ -328,8 +327,7 @@ def generar_planillas_cursada(request, payload: GenerarPlanillasIn):
 )
 def obtener_planilla_cursada(request, planilla_id: int):
     """Retorna una planilla de cursada con todas sus filas."""
-    roles = normalized_user_roles(request.user)
-    es_privilegiado = bool(roles & {"admin", "secretaria", "bedel"})
+    es_privilegiado = can(request.user, "editar_estructura")
 
     planilla = (
         PlanillaCursada.objects.select_related("materia", "profesorado", "profesorado_destino", "docente")
@@ -354,8 +352,7 @@ def obtener_planilla_cursada(request, planilla_id: int):
 )
 def guardar_borrador(request, planilla_id: int, payload: GuardarFilasIn):
     """Guarda notas y asistencia en borrador sin cerrar la planilla."""
-    roles = normalized_user_roles(request.user)
-    es_privilegiado = bool(roles & {"admin", "secretaria", "bedel"})
+    es_privilegiado = can(request.user, "editar_estructura")
 
     planilla = PlanillaCursada.objects.filter(id=planilla_id).first()
     if not planilla:
@@ -426,8 +423,7 @@ def cerrar_planilla_cursada(request, planilla_id: int):
         * Si el legajo no está COMPLETO → crea Regularidad con en_resguardo=True.
     - Marca la planilla como CERRADA y registra fecha_entrega.
     """
-    roles = normalized_user_roles(request.user)
-    es_privilegiado = bool(roles & {"admin", "secretaria", "bedel"})
+    es_privilegiado = can(request.user, "editar_estructura")
 
     planilla = (
         PlanillaCursada.objects.select_related("materia", "profesorado", "docente").filter(id=planilla_id).first()
@@ -542,8 +538,7 @@ def sincronizar_planilla(request, planilla_id: int, payload: SincronizarPlanilla
     que aún no figuran como filas. No modifica filas existentes.
     Solo accesible para secretaría y bedel.
     """
-    roles = normalized_user_roles(request.user)
-    if not bool(roles & {"admin", "secretaria", "bedel"}):
+    if not can(request.user, "editar_estructura"):
         return 403, ApiResponse(ok=False, message="Solo Secretaría o Bedel pueden sincronizar planillas.")
 
     planilla = PlanillaCursada.objects.select_related("materia", "profesorado").filter(id=planilla_id).first()
@@ -626,8 +621,7 @@ def reabrir_planilla_cursada(request, planilla_id: int):
     Reabre una planilla cerrada. Solo Secretaría puede hacerlo.
     El docente que guarde de nuevo → se vuelve a cerrar automáticamente.
     """
-    roles = normalized_user_roles(request.user)
-    if not bool(roles & {"admin", "secretaria"}):
+    if not can(request.user, "gestionar_staff"):
         return 403, ApiResponse(ok=False, message="Solo Secretaría puede reabrir planillas cerradas.")
 
     planilla = PlanillaCursada.objects.filter(id=planilla_id).first()
