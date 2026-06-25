@@ -5,10 +5,9 @@ from django.shortcuts import get_object_or_404
 
 from apps.common.api_schemas import ApiResponse
 from apps.common.date_utils import format_datetime
-from apps.estudiantes.api.common import ADMIN_ALLOWED_ROLES, TITULOS_ROLES
 from core.auth_ninja import JWTAuth
 from core.models import Estudiante, PedidoAnalitico, PlanDeEstudio, Profesorado, VentanaHabilitacion
-from core.permissions import ensure_roles
+from core.permissions import can, require
 
 from ..schemas import PedidoAnaliticoIn, PedidoAnaliticoItem, PedidoAnaliticoOut
 from .helpers import _listar_carreras_detalle
@@ -85,7 +84,8 @@ def crear_pedido_analitico(request, payload: PedidoAnaliticoIn):
 @estudiantes_router.get("/analiticos_ext", response=list[PedidoAnaliticoItem], auth=JWTAuth())
 def listar_pedidos_analitico(request, ventana_id: int, dni: str | None = None):
     # VULN-02 fix: restringir a roles administrativos — evita exposición de PII de estudiantes
-    ensure_roles(request.user, ADMIN_ALLOWED_ROLES | TITULOS_ROLES | {"coordinador", "tutor", "jefes"})
+    if not (can(request.user, "ver_analiticos") or can(request.user, "ver_documentacion")):
+        require(request.user, "ver_analiticos")
     qs = PedidoAnalitico.objects.select_related(
         "estudiante__user", "estudiante__persona", "profesorado", "ventana"
     ).filter(ventana_id=ventana_id)
@@ -117,7 +117,8 @@ def listar_pedidos_analitico(request, ventana_id: int, dni: str | None = None):
 @estudiantes_router.get("/analiticos_ext/pdf", auth=JWTAuth())
 def descargar_pedidos_analitico_pdf(request, ventana_id: int, dni: str | None = None):
     # VULN-02 fix: mismo control de acceso que el endpoint de listado
-    ensure_roles(request.user, ADMIN_ALLOWED_ROLES | TITULOS_ROLES | {"coordinador", "tutor", "jefes"})
+    if not (can(request.user, "ver_analiticos") or can(request.user, "ver_documentacion")):
+        require(request.user, "ver_analiticos")
     import datetime
     import os
 
@@ -164,7 +165,7 @@ def marcar_analitico_confeccionado(request, pedido_id: int):
 
     from apps.estudiantes.services.notificaciones_service import NotificacionesService
 
-    ensure_roles(request.user, TITULOS_ROLES | {"bedel"})
+    require(request.user, "gestionar_analiticos")
 
     pedido = get_object_or_404(PedidoAnalitico, id=pedido_id)
     if pedido.estado != PedidoAnalitico.Estado.PENDIENTE:
@@ -192,7 +193,7 @@ def marcar_analitico_entregado(request, pedido_id: int):
 
     from apps.estudiantes.services.notificaciones_service import NotificacionesService
 
-    ensure_roles(request.user, TITULOS_ROLES | {"bedel"})
+    require(request.user, "gestionar_analiticos")
 
     pedido = get_object_or_404(PedidoAnalitico, id=pedido_id)
     if pedido.estado != PedidoAnalitico.Estado.CONFECCIONADO:
