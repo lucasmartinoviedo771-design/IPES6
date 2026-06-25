@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Q
 
@@ -35,33 +33,6 @@ def _format_user_display(user) -> str | None:
         return username
     return None
 
-
-# DEPRECATED — usar can()
-def _user_has_roles(user, roles: Iterable[str]) -> bool:
-    if not user or not getattr(user, "is_authenticated", False):
-        return False
-    if user.is_superuser:
-        return True
-    role_set = {role.lower() for role in roles}
-    raw_groups = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
-    user_groups = set(raw_groups)
-    if "estudiantes" in raw_groups:
-        user_groups.add("estudiante")
-    return bool(user_groups.intersection(role_set))
-
-
-# DEPRECATED — usar require()
-def _ensure_admin(request, include_attp: bool = False):
-    if include_attp:
-        require(request.user, "formalizar_inscripcion")
-    else:
-        require(request.user, "editar_estudiantes")
-
-
-# DEPRECATED — usar require()
-def _ensure_staff_view(request):
-    """Permite el acceso a roles administrativos y de consulta/tutoría (Solo Lectura)."""
-    require(request.user, "ver_estudiantes")
 
 
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:

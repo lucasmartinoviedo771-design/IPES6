@@ -12,7 +12,6 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate
 
 from core.models import Estudiante, StaffAsignacion, VentanaHabilitacion
 from core.permissions import (
-    ADMIN_ALLOWED_ROLES,
     EQUIVALENCIAS_REVIEW_ROLES,
     EQUIVALENCIAS_STAFF_ROLES,
     TITULOS_ROLES,
@@ -213,7 +212,6 @@ def build_certificate_header(doc: SimpleDocTemplate) -> list:
 
 
 __all__ = [
-    "ADMIN_ALLOWED_ROLES",
     "EQUIVALENCIAS_STAFF_ROLES",
     "EQUIVALENCIAS_REVIEW_ROLES",
     "MONTH_NAMES",

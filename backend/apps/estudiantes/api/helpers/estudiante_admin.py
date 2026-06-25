@@ -8,7 +8,6 @@ from django.contrib.auth.models import User
 
 from apps.common.api_schemas import ApiResponse
 from apps.common.date_utils import format_date, parse_date
-from apps.estudiantes.api.helpers.user_utils import ADMIN_ALLOWED_ROLES
 from apps.estudiantes.schemas import (
     EstudianteAdminDetail,
     EstudianteAdminDocumentacion,
