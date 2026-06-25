@@ -134,10 +134,8 @@ def user_has_privileged_planilla_access(user) -> bool:
     """Verifica si el usuario tiene permisos de gestión (Admin, Bedelía, Secretaría)."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    if user.is_superuser or user.is_staff:
-        return True
-    group_names = {name.lower().strip() for name in user.groups.values_list("name", flat=True)}
-    return bool(group_names.intersection({"admin", "secretaria", "bedel"}))
+    from core.permissions import can
+    return can(user, "editar_estructura")
 
 
 def regularidad_lock_for_scope(
