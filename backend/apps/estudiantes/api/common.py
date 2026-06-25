@@ -17,7 +17,6 @@ from core.permissions import (
     TITULOS_ROLES,
     TUTORIA_ROLES,
     can,
-    ensure_roles,
     require,
 )
 

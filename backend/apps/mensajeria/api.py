@@ -34,7 +34,6 @@ from core.models import (
 from core.permissions import (
     allowed_profesorados,
     ensure_profesorado_access,
-    ensure_roles,
     get_user_roles,
 )
 
