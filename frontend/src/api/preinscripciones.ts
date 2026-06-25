@@ -112,7 +112,7 @@ export const activarPreinscripcion = (id: number) =>
 // Descarga del comprobante PDF oficial
 export const descargarPdf = (id: number) => {
   const token = localStorage.getItem("token");
-  client.get(`/preinscripciones/${id}/pdf`, { 
+  return client.get(`/preinscripciones/${id}/pdf`, { 
     responseType: 'blob',
     headers: { Authorization: `Bearer ${token}` }
   }).then(response => {

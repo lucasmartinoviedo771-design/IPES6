@@ -31,7 +31,7 @@ import { preinscripcionSchema, PreinscripcionForm } from "./schema";
 import { defaultValues } from "./defaultValues";
 import { PreinscripcionOut } from "@/types/preinscripcion";
 import { listarCarreras, crearPreinscripcion, recuperarPreinscripcion } from "@/services/preinscripcion";
-import { apiUploadPreDoc } from "@/api/preinscripciones";
+import { apiUploadPreDoc, descargarPdf } from "@/api/preinscripciones";
 import PrintIcon from "@mui/icons-material/Print";
 import { client } from "@/api/client";
 
@@ -117,7 +117,6 @@ export default function PreinscripcionWizard() {
   const [honeypotValue, setHoneypotValue] = useState('');
   const [activeStep, setActiveStep] = useState(0);
   const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
-  const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [recuperarOpen, setRecuperarOpen] = useState(false);
   const [duplicatePdfUrl, setDuplicatePdfUrl] = useState<string | null>(null);
@@ -188,9 +187,7 @@ export default function PreinscripcionWizard() {
     return () => { alive = false; };
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (activeStep === steps.length - 1) setPdfDownloaded(false);
-  }, [activeStep]);
+  // pdfDownloaded was removed since download is automatic on submission
 
   const handleNext = async () => {
     if (activeStep === 3) {
@@ -238,6 +235,17 @@ export default function PreinscripcionWizard() {
   };
   const handleBack = () => setActiveStep((s) => s - 1);
 
+  const handleResetWizard = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch { /* localStorage no disponible */ }
+    form.reset(defaultValues);
+    setActiveStep(0);
+    setHoneypotValue("");
+    setPhotoFile(null);
+    setSubmit({ status: "idle" });
+  };
+
   const onSubmit: SubmitHandler<PreinscripcionForm> = async (values) => {
     setSubmit({ status: "loading" });
     try {
@@ -260,17 +268,16 @@ export default function PreinscripcionWizard() {
         }
       }
 
-      setSubmit({ status: "ok", data: response });
-      setTimeout(() => {
+      // Descargar PDF automáticamente tras la preinscripción exitosa
+      if (response?.id) {
         try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch { /* localStorage no disponible */ }
-        form.reset(defaultValues);
-        setActiveStep(0);
-        setPdfDownloaded(false);
-        setHoneypotValue("");
-        setSubmit({ status: "idle" });
-      }, 300);
+          descargarPdf(response.id);
+        } catch (_pdfError) {
+          void 0;
+        }
+      }
+
+      setSubmit({ status: "ok", data: response });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setSubmit({ status: "error", message: err.message || "Error desconocido" });
@@ -494,46 +501,68 @@ export default function PreinscripcionWizard() {
                     )}
                     {activeStep === 5 && (
                       submit.status !== "ok" ? 
-                      <Confirmacion carreraNombre={carreraNombre} onDownloaded={() => setPdfDownloaded(true)} /> : 
-                      <Alert severity="success">
-                        <AlertTitle>Preinscripción enviada con éxito</AlertTitle>
-                        Tu código de seguimiento es: <strong>{submit.data.codigo}</strong>
-                      </Alert>
+                      <Confirmacion carreraNombre={carreraNombre} /> : 
+                      <Stack spacing={3}>
+                        <Alert severity="success">
+                          <AlertTitle>Preinscripción enviada con éxito</AlertTitle>
+                          Tu código de seguimiento es: <strong>{submit.data.codigo}</strong>
+                        </Alert>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "center" }}>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            onClick={() => descargarPdf(submit.data.id)}
+                            startIcon={<PrintIcon />}
+                            sx={{ borderRadius: 4, py: 1.2, px: 3, fontWeight: 700 }}
+                          >
+                            Descargar Planilla nuevamente (PDF)
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={handleResetWizard}
+                            sx={{ borderRadius: 4, py: 1.2, px: 3, fontWeight: 700 }}
+                          >
+                            Hacer otra preinscripción
+                          </Button>
+                        </Box>
+                      </Stack>
                     )}
                   </Box>
 
-                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={1.5}>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => {
-                        localStorage.removeItem(STORAGE_KEY);
-                        form.reset(defaultValues);
-                      }}
-                      sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}
-                    >
-                      Limpiar formulario
-                    </Button>
-                    <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", sm: "flex-end" }} flexWrap="wrap">
-                      <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"} sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}>
-                        Atrás
-                      </Button>
-                    {activeStep < steps.length - 1 ? (
-                      <Button variant="contained" onClick={() => void handleNext()} sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}>
-                        Siguiente
-                      </Button>
-                    ) : (
+                  {submit.status !== "ok" && (
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} spacing={1.5}>
                       <Button
-                        variant="contained"
-                        onClick={handleSubmit}
-                        disabled={!pdfDownloaded || submit.status === "loading" || submit.status === "ok"}
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => {
+                          localStorage.removeItem(STORAGE_KEY);
+                          form.reset(defaultValues);
+                        }}
                         sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}
                       >
-                        {submit.status === "loading" ? <CircularProgress size={24} /> : "Enviar preinscripción"}
+                        Limpiar formulario
                       </Button>
-                    )}
+                      <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", sm: "flex-end" }} flexWrap="wrap">
+                        <Button onClick={handleBack} disabled={activeStep === 0 || submit.status === "loading"} sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}>
+                          Atrás
+                        </Button>
+                      {activeStep < steps.length - 1 ? (
+                        <Button variant="contained" onClick={() => void handleNext()} sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}>
+                          Siguiente
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="contained"
+                          onClick={handleSubmit}
+                          disabled={submit.status === "loading"}
+                          sx={{ borderRadius: 4, width: { xs: "100%", sm: "auto" } }}
+                        >
+                          {submit.status === "loading" ? <CircularProgress size={24} /> : "Confirmar y Descargar Planilla (PDF)"}
+                        </Button>
+                      )}
+                      </Stack>
                     </Stack>
-                  </Stack>
+                  )}
 
                   {submit.status === "error" && (
                     <Alert severity="error">{submit.message}</Alert>

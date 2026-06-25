@@ -1,6 +1,5 @@
 // src/components/preinscripcion/steps/Confirmacion.tsx
 import { useFormContext } from "react-hook-form";
-import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
@@ -10,8 +9,7 @@ import Checkbox from "@mui/material/Checkbox";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { PreinscripcionForm } from "../schema";
-import React, { useState } from "react";
-import { apiPreviewPdf } from "@/api/preinscripciones";
+import React from "react";
 
 const fmtDate = (iso?: string) => {
   if (!iso) return undefined;
@@ -42,30 +40,9 @@ async function imageUrlToDataUrl(url: string): Promise<string> {
   });
 }
 
-export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraNombre: string; onDownloaded?: () => void }) {
+export default function Confirmacion({ carreraNombre }: { carreraNombre: string }) {
   const { watch } = useFormContext<PreinscripcionForm>();
   const v = watch();
-
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownloadPreview = async () => {
-    setIsDownloading(true);
-    try {
-      const blob = await apiPreviewPdf(v);
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Preinscripcion_IPES_2026.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      onDownloaded?.();
-    } catch (_error) {
-      alert("Hubo un error al generar el PDF. Por favor, reintente en unos instantes.");
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   return (
     <Box>
@@ -130,25 +107,6 @@ export default function Confirmacion({ carreraNombre, onDownloaded }: { carreraN
         <Divider sx={{ my: 2 }} />
         <Typography variant="h6" sx={{ mb: 2 }}>Inscripción</Typography>
         <Row label="Carrera" value={carreraNombre} />
-
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="h6" sx={{ mb: 2 }}>Descargue el PDF para continuar</Typography>
-        <Typography variant="body2" color="text.secondary">
-          
-        </Typography>
-      </Box>
-
-      <Box sx={{ display: "flex", gap: 2, mt: 2, alignItems: 'center' }}>
-        <Button
-          variant="contained"
-          disabled={isDownloading}
-          onClick={handleDownloadPreview}
-        >
-          {isDownloading ? "Generando..." : "Descargar PDF para Revisión"}
-        </Button>
-        <Typography variant="body2" color="text.secondary">
-          Para finalizar, primero debe descargar el formulario de preinscripción.
-        </Typography>
       </Box>
     </Box>
   );
