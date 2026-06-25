@@ -14,11 +14,9 @@ from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
 from core.models import Comision, Materia, PlanDeEstudio, Turno
 from core.permissions import (
-    ACADEMIC_MANAGE_ROLES,
-    ACADEMIC_VIEW_ROLES,
     allowed_profesorados,
     ensure_profesorado_access,
-    ensure_roles,
+    require,
 )
 
 from .schemas import ComisionBulkGenerateIn, ComisionIn, ComisionOut
@@ -28,12 +26,12 @@ router = Router(tags=["Comisiones"])
 
 def _require_manage(user):
     """Verifica si el usuario tiene permisos de gestión académica."""
-    ensure_roles(user, ACADEMIC_MANAGE_ROLES)
+    require(user, "editar_estructura")
 
 
 def _require_view(user):
     """Verifica si el usuario tiene permisos de visualización académica."""
-    ensure_roles(user, ACADEMIC_VIEW_ROLES)
+    require(user, "ver_estructura")
 
 
 def _serialize_comision(comision: Comision) -> ComisionOut:

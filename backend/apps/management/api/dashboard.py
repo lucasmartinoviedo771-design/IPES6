@@ -16,7 +16,7 @@ from core.models import (
     Regularidad,
     VentanaHabilitacion,
 )
-from core.permissions import GLOBAL_OVERVIEW_ROLES, ensure_roles
+from core.permissions import require
 
 from ..router import management_router
 from ..schemas import (
@@ -41,7 +41,7 @@ from ..schemas import (
 
 @management_router.get("/overview", response=GlobalOverviewOut, auth=JWTAuth())
 def global_overview(request, profesorado_id: int = None, anio: int = None):
-    ensure_roles(request.user, GLOBAL_OVERVIEW_ROLES)
+    require(request.user, "ver_dashboard")
 
     # Filtros base
     pre_filters = {}

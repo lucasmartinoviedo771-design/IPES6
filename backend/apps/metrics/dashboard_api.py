@@ -21,7 +21,7 @@ from core.models import (
     Regularidad,
     VentanaHabilitacion,
 )
-from core.permissions import GLOBAL_OVERVIEW_ROLES, ensure_roles
+from core.permissions import require
 
 router = Router(tags=["Dashboard"])
 
@@ -141,7 +141,7 @@ class GlobalOverviewOut(Schema):
 
 @router.get("/overview/global", response=GlobalOverviewOut, auth=JWTAuth())
 def global_overview(request):
-    ensure_roles(request.user, GLOBAL_OVERVIEW_ROLES)
+    require(request.user, "ver_dashboard")
 
     # 1. DOCENTES
     docentes_qs = (

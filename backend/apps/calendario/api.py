@@ -10,12 +10,8 @@ from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
 from core.models import Bloque, Comision, HorarioCatedra, HorarioCatedraDetalle, Materia, Turno
 from core.permissions import (
-    CALENDARIO_EDIT_ROLES as STRUCTURE_EDIT_ROLES,
-)
-from core.permissions import (
-    STRUCTURE_VIEW_ROLES,
     ensure_profesorado_access,
-    ensure_roles,
+    require,
 )
 
 from .schemas import (
@@ -31,13 +27,13 @@ from .schemas import (
 
 
 def _ensure_structure_view(user, profesorado_id: int | None = None) -> None:
-    ensure_roles(user, STRUCTURE_VIEW_ROLES)
+    require(user, "ver_estructura")
     if profesorado_id is not None:
         ensure_profesorado_access(user, profesorado_id)
 
 
 def _ensure_structure_edit(user, profesorado_id: int | None = None) -> None:
-    ensure_roles(user, STRUCTURE_EDIT_ROLES)
+    require(user, "editar_calendario")
     if profesorado_id is not None:
         ensure_profesorado_access(user, profesorado_id)
 

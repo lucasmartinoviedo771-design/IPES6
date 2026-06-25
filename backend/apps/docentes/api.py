@@ -8,11 +8,9 @@ from ninja.errors import HttpError
 from core.auth_ninja import JWTAuth
 from core.models import Docente, Persona, Profesorado, StaffAsignacion
 from core.permissions import (
-    STRUCTURE_EDIT_ROLES,
-    STRUCTURE_VIEW_ROLES,
     allowed_profesorados,
     ensure_profesorado_access,
-    ensure_roles,
+    require,
 )
 
 from .schemas import DocenteIn, DocenteOut, DocenteRoleAssignIn, DocenteRoleAssignOut
@@ -22,11 +20,11 @@ router = Router(tags=["Docentes"])
 
 
 def _ensure_structure_view(user):
-    ensure_roles(user, STRUCTURE_VIEW_ROLES)
+    require(user, "ver_estructura")
 
 
 def _ensure_structure_edit(user):
-    ensure_roles(user, STRUCTURE_EDIT_ROLES)
+    require(user, "editar_estructura")
 
 
 @router.get("/", response=list[DocenteOut], auth=JWTAuth())

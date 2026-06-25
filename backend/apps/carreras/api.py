@@ -28,12 +28,10 @@ from core.models import (
     ProfesoradoRequisitoDocumentacion,
 )
 from core.permissions import (
-    STRUCTURE_EDIT_ROLES,
-    STRUCTURE_VIEW_ROLES,
     allowed_profesorados,
     ensure_profesorado_access,
-    ensure_roles,
     get_user_roles,
+    require,
 )
 
 from .schemas import (
@@ -68,14 +66,14 @@ class MateriaInscriptoOut(Schema):
 
 def _require_view(user, profesorado_id: int | None = None) -> None:
     """Valida permisos de lectura global o sobre una carrera específica."""
-    ensure_roles(user, STRUCTURE_VIEW_ROLES)
+    require(user, "ver_estructura")
     if profesorado_id is not None:
         ensure_profesorado_access(user, profesorado_id)
 
 
 def _require_edit(user, profesorado_id: int | None = None) -> None:
     """Valida permisos de escritura sobre la estructura académica."""
-    ensure_roles(user, STRUCTURE_EDIT_ROLES)
+    require(user, "editar_estructura")
     if profesorado_id is not None:
         ensure_profesorado_access(user, profesorado_id)
 

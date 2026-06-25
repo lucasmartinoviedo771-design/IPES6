@@ -13,7 +13,7 @@ from ninja.errors import HttpError
 
 from core.auth_ninja import JWTAuth
 from core.models import Correlatividad, CorrelatividadVersion, CorrelatividadVersionDetalle, Materia, PlanDeEstudio
-from core.permissions import STRUCTURE_EDIT_ROLES, STRUCTURE_VIEW_ROLES, ensure_profesorado_access, ensure_roles
+from core.permissions import ensure_profesorado_access, require
 
 from .schemas import (
     CorrelatividadSetIn,
@@ -29,14 +29,14 @@ router = Router(tags=["Correlatividades"])
 
 def _ensure_view(user, profesorado_id: int | None = None):
     """Garantiza permisos de lectura para ver la matriz de correlatividades."""
-    ensure_roles(user, STRUCTURE_VIEW_ROLES)
+    require(user, "ver_estructura")
     if profesorado_id:
         ensure_profesorado_access(user, profesorado_id)
 
 
 def _ensure_edit(user, profesorado_id: int | None = None):
     """Garantiza permisos de edición para modificar versiones o reglas."""
-    ensure_roles(user, STRUCTURE_EDIT_ROLES)
+    require(user, "editar_estructura")
     if profesorado_id:
         ensure_profesorado_access(user, profesorado_id)
 
