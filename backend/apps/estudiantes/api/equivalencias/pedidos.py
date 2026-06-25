@@ -6,9 +6,6 @@ from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
 from apps.estudiantes.api.common import (
-    EQUIVALENCIAS_REVIEW_ROLES,
-    TITULOS_ROLES,
-    TUTORIA_ROLES,
     can_manage_equivalencias,
     ensure_estudiante_access,
     get_equivalencia_window,
@@ -39,7 +36,7 @@ from core.models import (
     PlanDeEstudio,
     Profesorado,
 )
-from core.permissions import ensure_roles
+from core.permissions import require
 
 
 @estudiantes_router.get("/equivalencias/pedidos", response=list[PedidoEquivalenciaOut])
@@ -271,7 +268,7 @@ def registrar_documentacion_equivalencia(
     pedido_id: int,
     payload: PedidoEquivalenciaDocumentacionIn,
 ):
-    ensure_roles(request.user, TUTORIA_ROLES)
+    require(request.user, "gestionar_equivalencias")
     pedido = _get_pedido_or_404(pedido_id)
     if pedido.workflow_estado not in {
         PedidoEquivalencia.WorkflowEstado.PENDIENTE_DOCUMENTACION,
@@ -303,7 +300,7 @@ def registrar_evaluacion_equivalencia(
     pedido_id: int,
     payload: PedidoEquivalenciaEvaluacionIn,
 ):
-    ensure_roles(request.user, EQUIVALENCIAS_REVIEW_ROLES)
+    require(request.user, "revisar_equivalencias")
     pedido = _pedido_queryset().prefetch_related("materias").filter(id=pedido_id).first()
     if not pedido:
         return 404, ApiResponse(ok=False, message="Pedido no encontrado.")
@@ -353,7 +350,7 @@ def registrar_documentos_titulos(
     pedido_id: int,
     payload: PedidoEquivalenciaTitulosIn,
 ):
-    ensure_roles(request.user, TITULOS_ROLES)
+    require(request.user, "cargar_equivalencias_titulos")
     pedido = _get_pedido_or_404(pedido_id)
     if pedido.workflow_estado != PedidoEquivalencia.WorkflowEstado.EN_TITULOS:
         raise HttpError(400, "El pedido no se encuentra en etapa de T\u00edtulos.")
@@ -405,7 +402,7 @@ def notificar_pedido_equivalencia(
     pedido_id: int,
     payload: PedidoEquivalenciaNotificarIn,
 ):
-    ensure_roles(request.user, TUTORIA_ROLES)
+    require(request.user, "gestionar_equivalencias")
     pedido = _get_pedido_or_404(pedido_id)
     if pedido.workflow_estado not in {
         PedidoEquivalencia.WorkflowEstado.EN_TITULOS,
