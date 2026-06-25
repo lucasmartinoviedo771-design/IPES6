@@ -299,10 +299,9 @@ export const useInscripcionMateria = () => {
       return Boolean(ventana?.activo);
     }
   }, [ventana]);
-  const puedeInscribirse = ventanaActiva && puedeGestionar;
+  const puedeInscribirse = ventanaActiva || puedeGestionar;
   const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
-
-  const inscripcionesData = inscripcionesQ.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const inscripcionesData = inscripcionesQ.data ?? []; // eslint-disable-line react-hooks/exhaustive-deps
 
   const yaInscriptas = new Set<number>([...(historial.inscriptasActuales || []), ...seleccionadas]);
   const esPeriodoHabilitado = (m: Materia) => {
