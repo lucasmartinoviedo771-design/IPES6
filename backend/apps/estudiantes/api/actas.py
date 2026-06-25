@@ -38,7 +38,7 @@ from apps.estudiantes.api.actas_schemas import (
 from apps.estudiantes.services.actas_pdf import generar_acta_examen_pdf
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 from apps.primera_carga.audit_utils import verify_acta_consistency
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import (
     ActaExamen,
     ActaExamenDocente,
@@ -50,9 +50,9 @@ from core.models import (
     MesaExamen,
     Profesorado,
 )
-from core.permissions import ensure_profesorado_access
+from core.permissions import can, ensure_profesorado_access, requires
 
-from .notas_utils import format_user_display, normalized_user_roles
+from .notas_utils import format_user_display
 
 router = Router(tags=["actas"])
 
@@ -62,7 +62,7 @@ router = Router(tags=["actas"])
     response={200: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+@requires("ver_actas")
 def obtener_acta_metadata(request):
     """Retorna metadatos auxiliares para la carga de actas (Carreras, Planes, Roles)."""
     data = _acta_metadata(user=request.user)
@@ -78,7 +78,7 @@ def obtener_acta_metadata(request):
     response={200: list[ActaListItem]},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+@requires("ver_actas")
 def listar_actas(
     request,
     anio: int = None,
@@ -96,9 +96,7 @@ def listar_actas(
     Implementa control de acceso territorial (Bedeles solo ven sus carreras).
     """
     user = request.user
-    roles = normalized_user_roles(user)
-
-    if roles.intersection({"admin", "secretaria", "titulos"}):
+    if can(user, "cargar_equivalencias_titulos"):
         qs = ActaExamen.objects.all()
     else:
         from core.models import StaffAsignacion
@@ -190,7 +188,7 @@ def listar_actas(
     response={200: ActaDetailLocal, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+@requires("ver_actas")
 def obtener_acta(request, acta_id: int):
     """Obtiene el detalle completo de un acta, incluyendo nómina de alumnos y tribunal docente."""
     acta = ActaExamen.objects.select_related("materia", "profesorado", "created_by", "plan").filter(id=acta_id).first()
@@ -199,8 +197,7 @@ def obtener_acta(request, acta_id: int):
 
     # Verificación de permisos territoriales
     user = request.user
-    roles = normalized_user_roles(user)
-    if not roles.intersection({"admin", "secretaria", "titulos"}):
+    if not can(user, "cargar_equivalencias_titulos"):
         from core.models import StaffAsignacion
 
         carreras_ids = StaffAsignacion.objects.filter(user=user).values_list("profesorado_id", flat=True)
@@ -262,7 +259,7 @@ def obtener_acta(request, acta_id: int):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+@requires("acta_manual")
 def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     """
     Crea un acta de examen y sincroniza los resultados con las inscripciones a mesa.
@@ -593,7 +590,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+@requires("acta_manual")
 def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Body(...)):
     """
     Actualiza o rectifica un acta de examen existente.
@@ -790,7 +787,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("editar_estructura")
 def actualizar_cabecera_acta(request, acta_id: int):
     """Acceso rápido para editar Libro/Folio sin afectar la nómina."""
     return ApiResponse(ok=False, message="Operación deshabilitada. Utilice la actualización completa del acta.")
@@ -801,7 +798,7 @@ def actualizar_cabecera_acta(request, acta_id: int):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel"])
+@requires("editar_estructura")
 def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLocal] = Body(...)):
     """
     Actualiza solo el tribunal docente de un acta, sin tocar notas ni estudiantes.
@@ -812,8 +809,7 @@ def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLoc
         return 404, ApiResponse(ok=False, message="Acta no encontrada.")
 
     user = request.user
-    roles = normalized_user_roles(user)
-    if not roles.intersection({"admin", "secretaria", "titulos"}):
+    if not can(user, "cargar_equivalencias_titulos"):
         from core.models import StaffAsignacion
 
         carreras_ids = StaffAsignacion.objects.filter(user=user).values_list("profesorado_id", flat=True)
@@ -872,7 +868,7 @@ def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLoc
     "/actas/{acta_id}/pdf",
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+@requires("ver_actas")
 def descargar_acta_pdf(request, acta_id: int):
     """Genera y descarga el PDF del acta principal (alumnos del profesorado)."""
     acta = ActaExamen.objects.filter(id=acta_id).first()
@@ -891,7 +887,7 @@ def descargar_acta_pdf(request, acta_id: int):
     "/actas/{acta_id}/pdf-comisionados",
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "titulos", "coordinador"])
+@requires("ver_actas")
 def descargar_acta_comisionados_pdf(request, acta_id: int):
     """Genera y descarga el PDF de alumnos comisionados de un acta."""
     acta = ActaExamen.objects.filter(id=acta_id).first()
