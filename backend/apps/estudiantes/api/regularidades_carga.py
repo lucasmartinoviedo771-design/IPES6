@@ -23,7 +23,7 @@ from apps.common.api_schemas import ApiResponse
 from apps.common.audit import log_action_from_request, snapshot
 from apps.common.date_utils import format_date, format_datetime
 from apps.estudiantes.api.reportes_api import _check_correlativas_caidas
-from core.auth_ninja import JWTAuth, ensure_roles
+from core.auth_ninja import JWTAuth
 from core.models import (
     Comision,
     Estudiante,
@@ -34,7 +34,7 @@ from core.models import (
     Regularidad,
     RegularidadPlanillaLock,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access
+from core.permissions import allowed_profesorados, ensure_profesorado_access, requires
 
 from .notas_utils import (
     ALIAS_TO_SITUACION,
@@ -352,7 +352,7 @@ def listar_comisiones(
 
 
 @router.get("/regularidad", response={200: RegularidadPlanillaOut, 400: ApiResponse, 404: ApiResponse}, auth=JWTAuth())
-@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+@requires("carga_regularidades")
 def obtener_planilla_regularidad(request, comision_id: int):
     """Retorna los datos completos de una planilla (real o virtual) incluyendo el estado del bloqueo."""
     can_override_lock = user_has_privileged_planilla_access(request.user)
@@ -450,7 +450,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
 @router.post(
     "/regularidad", response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse}, auth=JWTAuth()
 )
-@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+@requires("carga_regularidades")
 def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...)):
     """
     Guarda masivamente las notas y estados de regularidad de la cátedra.
@@ -609,7 +609,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+@requires("carga_regularidades")
 def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(...)):
     """Gestiona el bloqueo (Cierre) o reapertura de una planilla de cátedra."""
     is_virtual = payload.comision_id < 0
@@ -673,7 +673,7 @@ def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(..
     response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
-@ensure_roles(["admin", "secretaria", "bedel", "docente"])
+@requires("carga_regularidades")
 def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: int, anio: int | None = None):
     from datetime import date
 
