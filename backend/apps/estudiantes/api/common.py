@@ -17,7 +17,9 @@ from core.permissions import (
     EQUIVALENCIAS_STAFF_ROLES,
     TITULOS_ROLES,
     TUTORIA_ROLES,
+    can,
     ensure_roles,
+    require,
 )
 
 
@@ -35,7 +37,7 @@ def user_has_roles(user: User | None, roles: Iterable[str]) -> bool:
 
 
 def ensure_admin(request) -> None:
-    ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
+    require(request.user, "editar_estudiantes")
 
 
 def resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
@@ -60,11 +62,15 @@ def ensure_estudiante_access(request, dni: str | None) -> None:
         return
     solicitante = getattr(request.user, "estudiante", None)
     if solicitante and solicitante.dni != dni:
-        ensure_roles(request.user, ADMIN_ALLOWED_ROLES)
+        require(request.user, "editar_estudiantes")
 
 
 def can_manage_equivalencias(user) -> bool:
-    return user_has_roles(user, EQUIVALENCIAS_STAFF_ROLES)
+    return (
+        can(user, "gestionar_equivalencias")
+        or can(user, "revisar_equivalencias")
+        or can(user, "cargar_equivalencias_titulos")
+    )
 
 
 def get_equivalencia_window() -> VentanaHabilitacion | None:
