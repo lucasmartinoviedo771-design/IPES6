@@ -35,8 +35,6 @@ from apps.estudiantes.api.helpers.misc_utils import (
     _to_iso,
 )
 from apps.estudiantes.api.helpers.user_utils import (
-    ADMIN_ALLOWED_ROLES,
-    STAFF_VIEW_ROLES,
     _docente_full_name,
     _ensure_estudiante_access,
     _format_user_display,
@@ -48,8 +46,6 @@ from apps.estudiantes.api.helpers.user_utils import (
 
 __all__ = [
     # user_utils
-    "ADMIN_ALLOWED_ROLES",
-    "STAFF_VIEW_ROLES",
     "_docente_full_name",
     "_format_user_display",
     "_resolve_estudiante",

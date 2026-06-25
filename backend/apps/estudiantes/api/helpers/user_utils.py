@@ -9,7 +9,7 @@ from core.models import (
     Docente,
     Estudiante,
 )
-from core.permissions import ADMIN_ALLOWED_ROLES, STAFF_VIEW_ROLES, can, get_user_roles, require
+from core.permissions import can, get_user_roles, require
 
 
 def _docente_full_name(docente: Docente | None) -> str | None:

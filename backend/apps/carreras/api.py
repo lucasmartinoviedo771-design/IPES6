@@ -29,6 +29,7 @@ from core.models import (
 )
 from core.permissions import (
     allowed_profesorados,
+    can,
     ensure_profesorado_access,
     get_user_roles,
     require,
@@ -435,7 +436,7 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
 
     solo_docente = False
     # Verificamos si es un docente sin acceso administrativo
-    if "docente" in roles and not (roles & STRUCTURE_VIEW_ROLES):
+    if "docente" in roles and not can(request.user, "ver_estructura"):
         if not docente_profile:
             raise AppError(403, AppErrorCode.PERMISSION_DENIED, "Perfil docente no vinculado.")
 

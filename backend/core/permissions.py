@@ -30,39 +30,6 @@ _UNRESTRICTED_ROLES = {
     "attp",
 }
 
-# --- MATRICES DE DEFINICIÓN DE ACCESO ---
-
-STRUCTURE_VIEW_ROLES = {
-    "admin",
-    "secretaria",
-    "bedel",
-    "coordinador",
-    "tutor",
-    "jefes",
-    "jefa_aaee",
-    "consulta",
-    "estudiante",
-    "docente",
-    "rectorado",
-    "attp",
-}
-STRUCTURE_EDIT_ROLES = {"admin", "secretaria", "bedel"}
-ACADEMIC_MANAGE_ROLES = {"admin", "secretaria", "bedel"}
-ACADEMIC_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor"}
-VENTANA_VIEW_ROLES = STRUCTURE_VIEW_ROLES | {"tutor", "estudiante"}
-PREINS_GESTION_ROLES = {"admin", "secretaria", "bedel"}
-GLOBAL_OVERVIEW_ROLES = {
-    "admin",
-    "secretaria",
-    "bedel",
-    "jefa_aaee",
-    "jefes",
-    "tutor",
-    "coordinador",
-    "consulta",
-    "rectorado",
-    "attp",
-}
 ALL_ROLES: set[str] = {
     # Roles de gestión
     "admin",
@@ -85,20 +52,7 @@ ALL_ROLES: set[str] = {
     "docente",
 }
 
-# --- DEFINICIONES ADICIONALES CONSOLIDADAS ---
-VENTANA_GESTION_ROLES = {"admin", "secretaria", "jefa_aaee"}
-ADMIN_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
-TUTORIA_ROLES = {"admin", "secretaria", "tutor"}
-EQUIVALENCIAS_REVIEW_ROLES = {"admin", "secretaria", "equivalencias"}
-TITULOS_ROLES = {"admin", "secretaria", "titulos"}
-EQUIVALENCIAS_STAFF_ROLES = ADMIN_ALLOWED_ROLES | TUTORIA_ROLES | EQUIVALENCIAS_REVIEW_ROLES | TITULOS_ROLES
-CI_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "curso_intro", "tutor"}
-CI_FULL_ACCESS_ROLES = {"admin", "secretaria"}
-STAFF_VIEW_ROLES = ADMIN_ALLOWED_ROLES | {"tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "rectorado", "attp"}
-PREINS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
-DOC_ALLOWED_ROLES = {"admin", "secretaria", "bedel", "coordinador", "jefes"}
-EQUIVALENCIAS_ALLOWED_ROLES = {"admin", "secretaria", "bedel"}
-CALENDARIO_EDIT_ROLES = {"admin", "secretaria", "bedel", "attp"}
+
 
 # Define qué roles pueden asignar a otros roles (Admin Console)
 ROLE_ASSIGN_MATRIX: dict[str, list[str]] = {
@@ -292,20 +246,6 @@ def get_user_roles(user: User) -> set[str]:
         roles.add("admin")
     return roles
 
-
-def ensure_roles(user: User | None, allowed_roles: Iterable[str]) -> None:
-    """
-    Función imperativa para validar roles en vistas clásicas o servicios.
-    Si el usuario no tiene al menos uno de los roles permitidos, lanza un AppError(403).
-    """
-    user = _ensure_authenticated(user)
-    if user.is_superuser:
-        return
-
-    allowed = {role.lower() for role in allowed_roles}
-    groups = get_user_roles(user)
-    if not groups.intersection(allowed):
-        raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos suficientes para realizar esta acción.")
 
 
 def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = None) -> set[int] | None:
