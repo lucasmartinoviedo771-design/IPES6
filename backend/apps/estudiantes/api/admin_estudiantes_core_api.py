@@ -40,8 +40,6 @@ from ..services.estudiante_service import EstudianteService
 from .helpers import (
     _apply_estudiante_updates,
     _build_admin_detail,
-    _ensure_admin,
-    _ensure_staff_view,
     _recalcular_estado_legajo,
 )
 from .router import estudiantes_router as router
@@ -110,7 +108,7 @@ def admin_list_estudiantes(
     Lista estudiantes con filtros administrativos y de carrera.
     Utiliza el servicio EstudianteService para la lógica compleja de filtrado.
     """
-    _ensure_staff_view(request)
+    require(request.user, "ver_estudiantes")
     allowed_ids = allowed_profesorados(request.user)
     filters = {
         "q": q,
@@ -131,7 +129,7 @@ def admin_list_anios_ingreso(request, carrera_id: int | None = None):
     Obtiene la lista de años de ingreso únicos presentes en la base de datos
     para alimentar los filtros de búsqueda.
     """
-    _ensure_staff_view(request)
+    require(request.user, "ver_estudiantes")
     allowed_ids = allowed_profesorados(request.user)
 
     # Si se pasa una carrera_id, debemos verificar que el usuario tenga acceso
@@ -150,7 +148,7 @@ def admin_list_anios_ingreso(request, carrera_id: int | None = None):
 )
 def admin_get_estudiante(request, dni: str):
     """Obtiene el detalle completo del legajo de un estudiante."""
-    _ensure_staff_view(request)
+    require(request.user, "ver_estudiantes")
     allowed_ids = allowed_profesorados(request.user)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
@@ -167,7 +165,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     Actualiza la información base del estudiante (Perfil, Legajo, Password).
     Permite el reseteo forzado de contraseña desde la administración.
     """
-    _ensure_admin(request, include_attp=True)
+    require(request.user, "formalizar_inscripcion")
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
@@ -212,7 +210,7 @@ def admin_delete_estudiante(request, dni: str):
     REGLA CRÍTICA DE INTEGRIDAD: Solo se permite si NO tiene historial académico.
     Se verifica: Inscripciones a materias, mesas, regularidades y actas históricas.
     """
-    _ensure_admin(request)
+    require(request.user, "editar_estudiantes")
     est = Estudiante.objects.filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
@@ -266,7 +264,7 @@ def admin_reset_estudiante_password(request, dni: str):
     Resetea la contraseña del estudiante a una clave segura aleatoria.
     Útil cuando el alumno olvida su primer acceso o hay problemas de login masivos.
     """
-    _ensure_admin(request)
+    require(request.user, "editar_estudiantes")
     est = get_object_or_404(Estudiante, persona__dni=dni)
 
     # Verificar si el usuario tiene permisos para esta carrera
