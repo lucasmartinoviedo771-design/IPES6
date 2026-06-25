@@ -1,4 +1,4 @@
-import { Outlet, Route } from "react-router-dom";
+import { Outlet, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/router/guards";
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { lazyPage } from "@/utils/lazy";
@@ -39,103 +39,107 @@ const ConfirmarInscripcionSecretaria = lazyPage(() => import("@/pages/Secretaria
 const DocumentacionEstudiantesPage = lazyPage(() => import("@/pages/Secretaria/DocumentacionEstudiantesPage"));
 const AnalisisMateriaPage = lazyPage(() => import("@/pages/Secretaria/AnalisisMateriaPage"));
 
-const secretariaPanelRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor", "attp", "rectorado"];
-const bedelesRoles: string[] = ["secretaria", "admin", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador"];
-const docentesRoles: string[] = ["docente", "secretaria", "admin", "bedel"];
-const tutoriaRoles: string[] = ["tutor", "secretaria", "admin", "bedel"];
-const equivalenciasRoles: string[] = ["equivalencias", "secretaria", "admin", "bedel"];
-const titulosRoles: string[] = ["titulos", "secretaria", "admin"];
-const coordinacionRoles: string[] = ["coordinador", "jefes", "jefa_aaee", "secretaria", "admin"];
-const jefaturaRoles: string[] = ["jefes", "jefa_aaee", "secretaria", "admin"];
-const secretariaBaseRoles: string[] = ["secretaria", "admin", "bedel", "attp", "rectorado"];
-const cargaNotasRoles: string[] = ["docente", "secretaria", "admin", "bedel", "attp", "rectorado"];
-const secretariaAdminRoles: string[] = ["secretaria", "admin"];
-const horariosRoles: string[] = ["secretaria", "admin", "coordinador", "bedel", "attp", "rectorado"];
-const habilitarFechasRoles: string[] = ["secretaria", "admin", "jefa_aaee"];
-const analiticosRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "jefes", "jefa_aaee", "coordinador"];
-const mesasRoles: string[] = ["secretaria", "bedel", "admin", "jefes", "jefa_aaee", "attp", "rectorado"];
-const secretariaTutorRoles: string[] = ["secretaria", "bedel", "admin", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "attp", "rectorado"];
-const cursoIntroRoles: string[] = ["secretaria", "bedel", "admin", "curso_intro", "coordinador", "tutor"];
-const docentesConsultaRoles: string[] = ["docente", "admin", "secretaria", "bedel"];
-
 export const buildSecretariaRoutes = () => (
   <>
-    <Route element={<ProtectedRoute roles={secretariaPanelRoles}><Outlet /></ProtectedRoute>}>
+    {/* ── Landing pages por rol (sin cambio de URL) ── */}
+    <Route element={<ProtectedRoute capability="ver_estudiantes"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria" element={<SecretariaIndex />} />
     </Route>
-    <Route element={<ProtectedRoute roles={bedelesRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="editar_documentacion"><Outlet /></ProtectedRoute>}>
       <Route path="/bedeles" element={<BedelesIndex />} />
     </Route>
-    <Route element={<ProtectedRoute roles={docentesRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="carga_regularidades"><Outlet /></ProtectedRoute>}>
       <Route path="/docentes" element={<DocentesIndex />} />
-    </Route>
-    <Route element={<ProtectedRoute roles={docentesConsultaRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/docentes/mis-materias" element={<DocentesMisMateriasPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={tutoriaRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="gestionar_ci"><Outlet /></ProtectedRoute>}>
       <Route path="/tutorias" element={<TutoriasIndex />} />
     </Route>
-    <Route element={<ProtectedRoute roles={equivalenciasRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="revisar_equivalencias"><Outlet /></ProtectedRoute>}>
       <Route path="/equivalencias" element={<EquivalenciasIndex />} />
     </Route>
-    <Route element={<ProtectedRoute roles={titulosRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="gestionar_titulos"><Outlet /></ProtectedRoute>}>
       <Route path="/titulos" element={<TitulosIndex />} />
       <Route path="/titulos/planillas-regularidad" element={<PlanillasRegularidadPage />} />
       <Route path="/titulos/planillas-finales" element={<PlanillasFinalesPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={coordinacionRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="ver_estructura"><Outlet /></ProtectedRoute>}>
       <Route path="/coordinacion" element={<CoordinacionIndex />} />
-    </Route>
-    <Route element={<ProtectedRoute roles={jefaturaRoles}><Outlet /></ProtectedRoute>}>
       <Route path="/jefatura" element={<JefaturaIndex />} />
     </Route>
-    <Route element={<ProtectedRoute roles={secretariaTutorRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Gestión de estudiantes ── */}
+    <Route element={<ProtectedRoute capability="ver_estudiantes"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/estudiantes" element={<EstudiantesAdminPage />} />
       <Route path="/secretaria/estudiantes/:dni" element={<EstudiantesAdminPage />} />
       <Route path="/secretaria/estudiantes-documentacion" element={<DocumentacionEstudiantesPage />} />
+      <Route path="/secretaria/cambio-comision" element={<CambioComisionAdminPage />} />
+      <Route path="/secretaria/pedidos-equivalencias" element={<PedidosEquivalenciasPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={secretariaBaseRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Estructura académica ── */}
+    <Route element={<ProtectedRoute capability="ver_estructura"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/profesorado" element={<CargarProfesoradoPage />} />
       <Route path="/secretaria/profesorado/:profesoradoId/planes" element={<CargarPlanPage />} />
       <Route path="/secretaria/plan/:planId/materias" element={<CargarMateriasPage />} />
-      <Route path="/asistencia/reportes" element={<AsistenciaReportesPage />} />
       <Route path="/secretaria/comisiones" element={<ComisionesPage />} />
-      <Route path="/secretaria/confirmar-inscripcion" element={<ConfirmarInscripcionSecretaria />} />
       <Route path="/secretaria/correlatividades" element={<CorrelatividadesPage />} />
       <Route path="/secretaria/correlatividades/analisis" element={<AnalisisMateriaPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={cargaNotasRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Académico: notas, actas ── */}
+    <Route element={<ProtectedRoute capability="carga_regularidades"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/carga-notas" element={<CargaNotasPage />} />
       <Route path="/secretaria/actas-examen" element={<ActaExamenPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={secretariaAdminRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Asistencia ── */}
+    <Route element={<ProtectedRoute capability="ver_asistencia"><Outlet /></ProtectedRoute>}>
+      <Route path="/asistencia/reportes" element={<AsistenciaReportesPage />} />
+    </Route>
+
+    {/* ── Inscripciones ── */}
+    <Route element={<ProtectedRoute capability="gestionar_preinscripcion"><Outlet /></ProtectedRoute>}>
+      <Route path="/secretaria/confirmar-inscripcion" element={<ConfirmarInscripcionSecretaria />} />
+    </Route>
+
+    {/* ── Staff ── */}
+    <Route element={<ProtectedRoute capability="gestionar_staff"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/docentes" element={<CargarDocentesPage />} />
       <Route path="/secretaria/asignar-rol" element={<AsignarRolPage />} />
       <Route path="/secretaria/catedra-docente" element={<CatedraDocentePage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={horariosRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Horarios ── */}
+    <Route element={<ProtectedRoute capability="ver_horarios"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/horarios" element={<ErrorBoundary><CargarHorarioPage /></ErrorBoundary>} />
     </Route>
-    <Route element={<ProtectedRoute roles={habilitarFechasRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Ventanas de inscripción ── */}
+    <Route element={<ProtectedRoute capability="gestionar_ventanas"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/habilitar-fechas" element={<HabilitarFechasPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={analiticosRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Analíticos / Títulos ── */}
+    <Route element={<ProtectedRoute capability="ver_analiticos"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/analiticos" element={<AnaliticosPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={mesasRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Mesas de examen ── */}
+    <Route element={<ProtectedRoute capability="ver_actas"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/mesas" element={<MesasPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={secretariaTutorRoles}><Outlet /></ProtectedRoute>}>
-      <Route path="/secretaria/pedidos-equivalencias" element={<PedidosEquivalenciasPage />} />
-      <Route path="/secretaria/cambio-comision" element={<CambioComisionAdminPage />} />
-    </Route>
-    <Route element={<ProtectedRoute roles={cursoIntroRoles}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Curso introductorio ── */}
+    <Route element={<ProtectedRoute capability="gestionar_ci"><Outlet /></ProtectedRoute>}>
       <Route path="/curso-introductorio" element={<CursoIntroductorioPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={["attp"]}><Outlet /></ProtectedRoute>}>
+
+    {/* ── Paneles de roles específicos ── */}
+    <Route element={<ProtectedRoute capability="formalizar_inscripcion"><Outlet /></ProtectedRoute>}>
       <Route path="/attp" element={<AttpIndex />} />
     </Route>
-    <Route element={<ProtectedRoute roles={["rectorado"]}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="ver_dashboard"><Outlet /></ProtectedRoute>}>
       <Route path="/rectorado" element={<RectoradoIndex />} />
     </Route>
   </>

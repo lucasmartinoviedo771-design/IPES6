@@ -3,11 +3,12 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole, hasAllRoles } from "@/utils/roles";
+import { hasAnyRole, hasAllRoles, hasCapability } from "@/utils/roles";
 
 type ProtectedProps = {
   children: JSX.Element;
   roles?: string[];           // p.ej. ["bedel","secretaria","admin"]
+  capability?: string;        // p.ej. "ver_estudiantes" (preferido sobre roles)
   redirectTo?: string;        // default: "/login"
   forbiddenTo?: string;       // default: "/403"
   requireAll?: boolean;       // default: false (OR). Si true => AND.
@@ -16,6 +17,7 @@ type ProtectedProps = {
 export function ProtectedRoute({
   children,
   roles,
+  capability,
   redirectTo = "/login",
   forbiddenTo = "/403",
   requireAll = false,
@@ -45,12 +47,18 @@ export function ProtectedRoute({
     return <Navigate to="/estudiantes/completar-perfil" replace state={{ from: loc }} />;
   }
 
-  // Sin requisitos de rol → alcanza con estar logueado
-  if (!roles || roles.length === 0) return children;
+  // Sin requisitos de acceso → alcanza con estar logueado
+  if (!capability && (!roles || roles.length === 0)) return children;
 
+  // Prioridad 1: capability del backend (fuente de verdad)
+  if (capability) {
+    return hasCapability(user, capability) ? children : <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
+  }
+
+  // Prioridad 2: roles legacy (compatibilidad hacia atrás)
   const allowed = requireAll
-    ? hasAllRoles(user, roles)
-    : hasAnyRole(user, roles);
+    ? hasAllRoles(user, roles!)
+    : hasAnyRole(user, roles!);
 
   return allowed ? children : <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
 }
