@@ -150,9 +150,9 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     6. Colisión Horaria: Analiza los bloques horarios de la materia contra las ya inscriptas en el año.
     """
     # Bloqueo temporal para estudiantes (solo habilitado para bedeles, secretaría y administradores)
-    from core.permissions import get_user_roles
+    from core.permissions import can
 
-    if not (get_user_roles(request.user) & {"admin", "secretaria", "bedel"}):
+    if not can(request.user, "editar_estudiantes"):
         return 400, ApiResponse(
             ok=False,
             message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría.",
@@ -453,9 +453,9 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
         hasta__gte=hoy,
     ).exists()
 
-    from core.permissions import get_user_roles
+    from core.permissions import can
 
-    es_gestion = bool(get_user_roles(request.user) & {"admin", "secretaria", "bedel", "attp"})
+    es_gestion = can(request.user, "formalizar_inscripcion")
 
     est = _resolve_estudiante(request, dni)
     if not est:
@@ -675,11 +675,10 @@ def baja_inscripcion_materia(request, inscripcion_id: int, payload: BajaInscripc
     """
     from django.utils.timezone import now
 
-    from core.permissions import allowed_profesorados, get_user_roles
+    from core.permissions import allowed_profesorados, can, get_user_roles
 
-    roles = get_user_roles(request.user)
-    es_gestion = bool(roles & {"admin", "secretaria", "attp"})
-    es_bedel = "bedel" in roles
+    es_gestion = can(request.user, "formalizar_inscripcion")
+    es_bedel = "bedel" in get_user_roles(request.user)
 
     # Resolver el estudiante según el payload
     dni_solicitado = payload.dni
@@ -844,9 +843,9 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
     from core.models import ResidenciaCondicional
 
     # Bloqueo temporal para estudiantes (solo habilitado para bedeles, secretaría y administradores)
-    from core.permissions import get_user_roles
+    from core.permissions import can
 
-    if not (get_user_roles(request.user) & {"admin", "secretaria", "bedel"}):
+    if not can(request.user, "editar_estudiantes"):
         return 400, ApiResponse(
             ok=False,
             message="La inscripción por parte de estudiantes se encuentra desactivada temporalmente por mantenimiento de carga de datos. Por favor, consulte con Bedelía o Secretaría.",
