@@ -1,4 +1,4 @@
-import { Outlet, Route, Navigate } from "react-router-dom";
+import { Outlet, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/router/guards";
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { lazyPage } from "@/utils/lazy";
