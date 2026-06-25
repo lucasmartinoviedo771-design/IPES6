@@ -290,7 +290,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     from core.permissions import get_user_roles
 
     user_roles = get_user_roles(request.user)
-    is_docente_only = "docente" in user_roles and not user_roles.intersection({"admin", "secretaria", "bedel"})
+    is_docente_only = "docente" in user_roles and not can(request.user, "editar_estructura")
 
     try:
         profesorado = Profesorado.objects.get(pk=payload.profesorado_id)
