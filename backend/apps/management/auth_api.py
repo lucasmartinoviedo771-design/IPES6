@@ -49,6 +49,7 @@ class UserOut(BaseModel):
     dni: str
     name: str
     roles: list[str]
+    capabilities: list[str] = []
     is_staff: bool
     is_superuser: bool
     must_change_password: bool = False
@@ -108,7 +109,7 @@ def _serialize_user(user):
     profile = getattr(user, "profile", None)
     must_change = getattr(estudiante, "must_change_password", False) or getattr(profile, "must_change_password", False)
     must_complete_profile = _must_complete_profile(user)
-    from core.permissions import allowed_profesorados
+    from core.permissions import CAPABILITIES, allowed_profesorados, can
 
     allowed = allowed_profesorados(user)
     prof_ids = list(allowed) if allowed is not None else None
@@ -118,6 +119,8 @@ def _serialize_user(user):
     if user.is_superuser:
         if "admin" not in roles:
             roles.append("admin")
+
+    capabilities = [cap for cap in CAPABILITIES if can(user, cap)]
 
     persona = getattr(estudiante, "persona", None) or getattr(profile, "persona", None)
     name = (
@@ -131,6 +134,7 @@ def _serialize_user(user):
         "dni": user.username,
         "name": name,
         "roles": roles,
+        "capabilities": capabilities,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "must_change_password": bool(must_change),
@@ -242,7 +246,7 @@ def profile(request):
     if not request.user or not request.user.is_authenticated:
         raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
     u = request.user
-    from core.permissions import allowed_profesorados
+    from core.permissions import CAPABILITIES, allowed_profesorados, can
 
     allowed = allowed_profesorados(u)
     prof_ids = list(allowed) if allowed is not None else None
@@ -251,6 +255,8 @@ def profile(request):
     if u.is_superuser:
         if "admin" not in roles:
             roles.append("admin")
+
+    capabilities = [cap for cap in CAPABILITIES if can(u, cap)]
 
     estudiante = getattr(u, "estudiante", None)
     profile = getattr(u, "profile", None)
@@ -262,6 +268,7 @@ def profile(request):
         "dni": getattr(u, "username", ""),
         "name": name,
         "roles": roles,
+        "capabilities": capabilities,
         "is_staff": u.is_staff,
         "is_superuser": u.is_superuser,
         "must_change_password": bool(
