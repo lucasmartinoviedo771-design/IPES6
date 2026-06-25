@@ -40,8 +40,6 @@ from ..services.estudiante_service import EstudianteService
 from .helpers import (
     _apply_estudiante_updates,
     _build_admin_detail,
-    _ensure_admin,
-    _ensure_staff_view,
     _recalcular_estado_legajo,
 )
 from .router import estudiantes_router as router
