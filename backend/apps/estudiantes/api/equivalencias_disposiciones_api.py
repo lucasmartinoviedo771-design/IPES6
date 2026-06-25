@@ -14,7 +14,7 @@ from apps.estudiantes.services.equivalencias_disposicion import (
     resolver_contexto_equivalencia,
     serialize_disposicion,
 )
-from core.permissions import EQUIVALENCIAS_ALLOWED_ROLES, ensure_roles
+from core.permissions import require
 
 from .router import estudiantes_router
 
@@ -34,7 +34,7 @@ def materias_pendientes_equivalencia(
     profesorado_id: int,
     plan_id: int,
 ):
-    ensure_roles(request.user, EQUIVALENCIAS_ALLOWED_ROLES)
+    require(request.user, "gestionar_equivalencias")
     estudiante, _, plan = resolver_contexto_equivalencia(
         dni=dni,
         profesorado_id=profesorado_id,
@@ -57,7 +57,7 @@ def materias_pendientes_equivalencia(
     response={200: EquivalenciaDisposicionOut, 400: ApiResponse},
 )
 def crear_disposicion_equivalencia(request, payload: EquivalenciaDisposicionCreateIn):
-    ensure_roles(request.user, EQUIVALENCIAS_ALLOWED_ROLES)
+    require(request.user, "gestionar_equivalencias")
     if not payload.detalles:
         return 400, ApiResponse(ok=False, message="Debes cargar al menos una materia.")
     try:
@@ -91,7 +91,7 @@ def listar_disposiciones_equivalencia(
     request,
     dni: str | None = None,
 ):
-    ensure_roles(request.user, EQUIVALENCIAS_ALLOWED_ROLES)
+    require(request.user, "gestionar_equivalencias")
     from core.models import EquivalenciaDisposicion
 
     qs = EquivalenciaDisposicion.objects.select_related(
