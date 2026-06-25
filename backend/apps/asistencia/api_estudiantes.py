@@ -427,7 +427,11 @@ def crear_justificacion(request: HttpRequest, payload: JustificacionCreateIn) ->
         docente = Docente.objects.filter(id=docente_id).first()
         if not docente:
             raise HttpError(404, "Docente inexistente.")
-        if docente_profile and docente.id != docente_profile.id and not can(request.user, "asistencia_estudiantes_justificar"):
+        if (
+            docente_profile
+            and docente.id != docente_profile.id
+            and not can(request.user, "asistencia_estudiantes_justificar")
+        ):
             raise HttpError(403, "No podés crear justificativos para otro docente.")
 
     justificacion = Justificacion.objects.create(

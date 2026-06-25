@@ -135,6 +135,7 @@ def user_has_privileged_planilla_access(user) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
     from core.permissions import can
+
     return can(user, "editar_estructura")
 
 
