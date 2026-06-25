@@ -38,15 +38,12 @@ from apps.estudiantes.api.helpers.user_utils import (
     ADMIN_ALLOWED_ROLES,
     STAFF_VIEW_ROLES,
     _docente_full_name,
-    _ensure_admin,
     _ensure_estudiante_access,
-    _ensure_staff_view,
     _format_user_display,
     _resolve_docente_from_user,
     _resolve_estudiante,
     _user_can_manage_mesa_planilla,
     _user_can_override_planilla_lock,
-    _user_has_roles,
 )
 
 __all__ = [
@@ -55,9 +52,6 @@ __all__ = [
     "STAFF_VIEW_ROLES",
     "_docente_full_name",
     "_format_user_display",
-    "_user_has_roles",
-    "_ensure_admin",
-    "_ensure_staff_view",
     "_resolve_estudiante",
     "_ensure_estudiante_access",
     "_resolve_docente_from_user",
