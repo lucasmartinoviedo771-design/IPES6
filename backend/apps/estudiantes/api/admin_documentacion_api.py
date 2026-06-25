@@ -21,7 +21,7 @@ from core.models import (
     Regularidad,
     ResidenciaCondicional,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access, ensure_roles
+from core.permissions import allowed_profesorados, require
 
 from ..schemas import (
     AutorizarRendirIn,
@@ -40,8 +40,6 @@ from ..services.estudiante_service import EstudianteService
 from .helpers import (
     _apply_estudiante_updates,
     _build_admin_detail,
-    _ensure_admin,
-    _ensure_staff_view,
     _recalcular_estado_legajo,
 )
 from .router import estudiantes_router as router
@@ -63,7 +61,7 @@ def admin_list_estudiantes_documentacion(
     Obtiene la nómina de estudiantes con el estado de su documentación física.
     Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
     """
-    _ensure_staff_view(request)
+    require(request.user, "ver_estudiantes")
     total, items = _get_estudiantes_documentacion_raw(
         request, q=q, carrera_id=carrera_id, estado_academico=estado_academico, limit=limit, offset=offset
     )
@@ -229,7 +227,7 @@ def admin_export_estudiantes_documentacion_excel(
     request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None
 ):
     """Genera exportación Excel de la nómina de documentación para auditoría interna."""
-    _ensure_staff_view(request)
+    require(request.user, "ver_estudiantes")
     _total, items = _get_estudiantes_documentacion_raw(
         request, q=q, carrera_id=carrera_id, estado_academico=estado_academico
     )
@@ -299,7 +297,7 @@ def admin_export_estudiantes_documentacion_pdf(
     request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None
 ):
     """Genera exportación PDF de la nómina de documentación (formato imprimible)."""
-    _ensure_staff_view(request)
+    require(request.user, "ver_estudiantes")
     _total, items = _get_estudiantes_documentacion_raw(
         request, q=q, carrera_id=carrera_id, estado_academico=estado_academico
     )
@@ -416,7 +414,7 @@ def admin_update_estudiante_documentacion(
     Actualiza individualmente la documentación técnica de un estudiante.
     Incluye chequeo de permisos territoriales para bedeles.
     """
-    _ensure_admin(request)
+    require(request.user, "editar_documentacion")
     est = get_object_or_404(Estudiante, persona__dni=dni)
 
     # Auditoría de permisos por carrera
@@ -459,7 +457,7 @@ def admin_bulk_update_estudiante_documentacion(
     request,
     payload: EstudianteDocumentacionBulkUpdateIn,
 ):
-    _ensure_admin(request)
+    require(request.user, "editar_documentacion")
     allowed_ids = allowed_profesorados(request.user)
 
     updated_count = 0
