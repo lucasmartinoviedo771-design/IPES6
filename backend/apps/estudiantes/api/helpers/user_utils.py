@@ -36,6 +36,7 @@ def _format_user_display(user) -> str | None:
     return None
 
 
+# DEPRECATED — usar can()
 def _user_has_roles(user, roles: Iterable[str]) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
@@ -49,6 +50,7 @@ def _user_has_roles(user, roles: Iterable[str]) -> bool:
     return bool(user_groups.intersection(role_set))
 
 
+# DEPRECATED — usar require()
 def _ensure_admin(request, include_attp: bool = False):
     if include_attp:
         require(request.user, "formalizar_inscripcion")
@@ -56,6 +58,7 @@ def _ensure_admin(request, include_attp: bool = False):
         require(request.user, "editar_estudiantes")
 
 
+# DEPRECATED — usar require()
 def _ensure_staff_view(request):
     """Permite el acceso a roles administrativos y de consulta/tutoría (Solo Lectura)."""
     require(request.user, "ver_estudiantes")
