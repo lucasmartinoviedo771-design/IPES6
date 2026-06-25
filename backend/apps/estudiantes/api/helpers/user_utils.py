@@ -34,7 +34,6 @@ def _format_user_display(user) -> str | None:
     return None
 
 
-
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     if dni:
         return Estudiante.objects.filter(persona__dni=dni).first()
