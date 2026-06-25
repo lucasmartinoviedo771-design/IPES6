@@ -12,7 +12,6 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from apps.common.api_schemas import ApiResponse
 from apps.estudiantes.api.common import (
-    EQUIVALENCIAS_STAFF_ROLES,
     MONTH_NAMES,
     build_certificate_header,
     can_manage_equivalencias,
@@ -35,7 +34,7 @@ from core.models import (
     Materia,
     PedidoEquivalencia,
 )
-from core.permissions import ensure_roles
+from core.permissions import can, require
 
 
 @estudiantes_router.get("/equivalencias", response=list[EquivalenciaItem], auth=JWTAuth())
@@ -126,7 +125,6 @@ def equivalencias_para_materia(request, materia_id: int):
     return items
 
 
-@estudiantes_router.post("/equivalencias/pedidos/{pedido_id}/nota", auth=JWTAuth())
 @estudiantes_router.post("/equivalencias/pedidos/{pedido_id}/nota", auth=JWTAuth())
 def generar_nota_equivalencias(request, pedido_id: int):
     pedido = (
@@ -290,14 +288,15 @@ def generar_nota_equivalencias(request, pedido_id: int):
     return response
 
 
-@estudiantes_router.get("/equivalencias/export")
+@estudiantes_router.get("/equivalencias/export", auth=JWTAuth())
 def exportar_pedidos_equivalencia(
     request,
     profesorado_id: int | None = None,
     ventana_id: int | None = None,
     estado: str | None = None,
 ):
-    ensure_roles(request.user, EQUIVALENCIAS_STAFF_ROLES)
+    if not can_manage_equivalencias(request.user):
+        require(request.user, "gestionar_equivalencias")
     qs = (
         PedidoEquivalencia.objects.select_related(
             "profesorado_destino",
