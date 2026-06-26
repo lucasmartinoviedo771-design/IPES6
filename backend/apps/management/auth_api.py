@@ -117,15 +117,18 @@ def _get_role_assignments(user):
     # 1. Staff assignments
     try:
         from core.models.horarios import StaffAsignacion
+
         staff_qs = StaffAsignacion.objects.filter(user=user).select_related("profesorado")
         for sa in staff_qs:
             prof_name = sa.profesorado.nombre if sa.profesorado else "Todos"
-            assignments.append({
-                "role": sa.rol,
-                "profesorado_id": sa.profesorado_id,
-                "profesorado_nombre": prof_name,
-                "turno": sa.turno,
-            })
+            assignments.append(
+                {
+                    "role": sa.rol,
+                    "profesorado_id": sa.profesorado_id,
+                    "profesorado_nombre": prof_name,
+                    "turno": sa.turno,
+                }
+            )
     except Exception:
         pass
 
@@ -134,12 +137,14 @@ def _get_role_assignments(user):
         estudiante = getattr(user, "estudiante", None)
         if estudiante:
             for carrera in estudiante.carreras.all():
-                assignments.append({
-                    "role": "estudiante",
-                    "profesorado_id": carrera.id,
-                    "profesorado_nombre": carrera.nombre,
-                    "turno": None,
-                })
+                assignments.append(
+                    {
+                        "role": "estudiante",
+                        "profesorado_id": carrera.id,
+                        "profesorado_nombre": carrera.nombre,
+                        "turno": None,
+                    }
+                )
     except Exception:
         pass
 

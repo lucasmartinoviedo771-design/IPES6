@@ -274,6 +274,7 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
     session_role = None
     session_prof_id = None
     from core.middleware import get_current_request
+
     req = get_current_request()
     if req:
         ar = req.headers.get("X-Active-Role")
