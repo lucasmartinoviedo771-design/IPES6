@@ -270,8 +270,6 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
     if user.is_superuser:
         return None
 
-    from core.models.horarios import StaffAsignacion
-
     # 1. Resolver el active_role y active_prof_id del request/sesión actual (si existe)
     session_role = None
     session_prof_id = None
