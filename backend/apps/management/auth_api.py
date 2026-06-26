@@ -44,6 +44,13 @@ def _resolve_user_by_identifier(ident: str):
     return u
 
 
+class RoleAssignmentOut(BaseModel):
+    role: str
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
+    turno: str | None = None
+
+
 class UserOut(BaseModel):
     id: int
     dni: str
@@ -55,6 +62,7 @@ class UserOut(BaseModel):
     must_change_password: bool = False
     must_complete_profile: bool = False
     profesorado_ids: list[int] | None = None
+    role_assignments: list[RoleAssignmentOut] = []
 
 
 class TokenOut(BaseModel):
@@ -104,6 +112,40 @@ def _must_complete_profile(user) -> bool:
     return not bool(getattr(estudiante, "perfil_actualizado", False))
 
 
+def _get_role_assignments(user):
+    assignments = []
+    # 1. Staff assignments
+    try:
+        from core.models.horarios import StaffAsignacion
+        staff_qs = StaffAsignacion.objects.filter(user=user).select_related("profesorado")
+        for sa in staff_qs:
+            prof_name = sa.profesorado.nombre if sa.profesorado else "Todos"
+            assignments.append({
+                "role": sa.rol,
+                "profesorado_id": sa.profesorado_id,
+                "profesorado_nombre": prof_name,
+                "turno": sa.turno,
+            })
+    except Exception:
+        pass
+
+    # 2. Student careers
+    try:
+        estudiante = getattr(user, "estudiante", None)
+        if estudiante:
+            for carrera in estudiante.carreras.all():
+                assignments.append({
+                    "role": "estudiante",
+                    "profesorado_id": carrera.id,
+                    "profesorado_nombre": carrera.nombre,
+                    "turno": None,
+                })
+    except Exception:
+        pass
+
+    return assignments
+
+
 def _serialize_user(user):
     estudiante = getattr(user, "estudiante", None)
     profile = getattr(user, "profile", None)
@@ -140,6 +182,7 @@ def _serialize_user(user):
         "must_change_password": bool(must_change),
         "must_complete_profile": bool(must_complete_profile),
         "profesorado_ids": prof_ids,
+        "role_assignments": _get_role_assignments(user),
     }
 
 
@@ -278,6 +321,7 @@ def profile(request):
         ),
         "must_complete_profile": _must_complete_profile(u),
         "profesorado_ids": prof_ids,
+        "role_assignments": _get_role_assignments(u),
     }
 
 

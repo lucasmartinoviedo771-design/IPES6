@@ -176,9 +176,10 @@ def can(user: User, capability: str, active_role: str | None = None) -> bool:
 
     user_roles = get_user_roles(user)
     if active_role:
+        role_part = active_role.split(":")[0].lower().strip()
         # Validamos que el active_role solicitado sea uno de los roles reales del usuario
-        if active_role in user_roles:
-            return active_role in allowed
+        if role_part in user_roles:
+            return role_part in allowed
         return False
 
     return bool(user_roles & allowed)
@@ -269,9 +270,79 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
     if user.is_superuser:
         return None
 
+    from core.models.horarios import StaffAsignacion
+
+    # 1. Resolver el active_role y active_prof_id del request/sesión actual (si existe)
+    session_role = None
+    session_prof_id = None
+    from core.middleware import get_current_request
+    req = get_current_request()
+    if req:
+        ar = req.headers.get("X-Active-Role")
+        if ar:
+            ar = ar.lower().strip()
+            if ":" in ar:
+                parts = ar.split(":")
+                session_role = parts[0]
+                try:
+                    session_prof_id = int(parts[1])
+                except ValueError:
+                    pass
+            else:
+                session_role = ar
+
+    # 2. Determinar active_role y active_prof_id final a usar
+    active_role = None
+    active_prof_id = None
+
+    if role_filter is None:
+        if session_role:
+            active_role = session_role
+            active_prof_id = session_prof_id
+            role_filter = [active_role]
+    else:
+        filter_list = {r.lower().strip() for r in role_filter}
+        # Si el rol activo de la sesión actual coincide con los roles filtrados, aplicamos sus restricciones
+        if session_role and session_role in filter_list:
+            active_role = session_role
+            active_prof_id = session_prof_id
+            role_filter = [active_role]
+        elif len(filter_list) == 1:
+            ar = list(filter_list)[0]
+            if ":" in ar:
+                parts = ar.split(":")
+                active_role = parts[0]
+                try:
+                    active_prof_id = int(parts[1])
+                except ValueError:
+                    pass
+            else:
+                active_role = ar
+            role_filter = [active_role]
+
     groups = get_user_roles(user)
-    if groups.intersection(_UNRESTRICTED_ROLES):
-        return None
+    if active_role:
+        if active_role in _UNRESTRICTED_ROLES:
+            return None
+    else:
+        if groups.intersection(_UNRESTRICTED_ROLES):
+            return None
+
+    # Si hay un active_prof_id explícito, validamos el acceso únicamente para ese ID
+    if active_prof_id is not None:
+        # Caso Estudiante:
+        if "estudiante" in groups:
+            est = getattr(user, "estudiante", None)
+            if est and est.carreras.filter(id=active_prof_id).exists():
+                return {active_prof_id}
+        # Caso Staff:
+        staff_qs = StaffAsignacion.objects.filter(user=user)
+        if role_filter:
+            role_filter_clean = [r.split(":")[0].lower() for r in role_filter]
+            staff_qs = staff_qs.filter(rol__in=role_filter_clean)
+        if staff_qs.filter(profesorado_id=active_prof_id).exists():
+            return {active_prof_id}
+        return set()
 
     relevant_roles = _LIMITED_ROLES
     if role_filter:

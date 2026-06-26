@@ -12,14 +12,14 @@ import { getDefaultHomeRoute, isOnlyEstudiante } from "@/utils/roles";
 import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback";
 import BackButton from "@/components/ui/BackButton";
 
-import { roleLabels, roleHomeMap } from "./app-shell/constants";
+import { roleHomeMap } from "./app-shell/constants";
 import { useNavPermissions } from "./app-shell/useNavPermissions";
 import { AppTopBar } from "./app-shell/AppTopBar";
 import { AppSidebar } from "./app-shell/AppSidebar";
 import { UserGuideDialog } from "./app-shell/UserGuideDialog";
 
 export default function AppShell({ children }: PropsWithChildren) {
-  const { user, logout, roleOverride, setRoleOverride, availableRoleOptions, activeRole, setActiveRole, refreshProfile } = useAuth();
+  const { user, logout, roleOverride, setRoleOverride, availableRoleOptions, activeRole, setActiveRole } = useAuth();
   const [open, setOpen] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem("sidebarOpen");
@@ -55,39 +55,8 @@ export default function AppShell({ children }: PropsWithChildren) {
   const navPerms = useNavPermissions(user, roleOverride);
   const { canUseMessages } = navPerms;
 
-  const roleOptions = useMemo(() => {
-    const roles = Array.from(new Set(
-      (user?.roles ?? [])
-        .map((r: string) => r.toLowerCase().trim())
-        .filter((r: string) => r.length > 0)
-    ));
-
-    const existingValues = new Set(roles);
-    availableRoleOptions.forEach((opt: { value: string }) => {
-      if (!existingValues.has(opt.value.toLowerCase())) {
-        roles.push(opt.value.toLowerCase());
-      }
-    });
-
-    return (roles as string[]).map((r) => ({
-      value: r,
-      label: roleLabels[r] || r.toUpperCase()
-    })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [user, availableRoleOptions]);
-
-  const showRoleSwitcher = roleOptions.length > 1;
-
   const previousRoleRef = useRef<string | null>(roleOverride || activeRole);
   const isInitialMount = useRef<boolean>(true);
-
-  // Al cambiar el rol en el TopBar, actualizamos tanto el override como el activeRole
-  const handleRoleChange = async (value: string | null) => {
-    setRoleOverride(value);
-    setActiveRole(value);
-    try {
-      await refreshProfile();
-    } catch { /* ignore */ }
-  };
 
   useEffect(() => {
     if (!user) return;
@@ -150,15 +119,11 @@ export default function AppShell({ children }: PropsWithChildren) {
       <AppTopBar
         open={open}
         user={user}
-        roleOverride={roleOverride || activeRole}
-        roleOptions={roleOptions}
-        showRoleSwitcher={showRoleSwitcher}
         canUseMessages={canUseMessages}
         unreadMessages={unreadMessages}
         badgeColor={badgeColor as "default" | "error" | "warning" | "primary"}
         onToggleSidebar={() => setOpen((v) => !v)}
         onGuideOpen={() => setGuideOpen(true)}
-        onRoleChange={handleRoleChange}
         onLogout={logout}
       />
 

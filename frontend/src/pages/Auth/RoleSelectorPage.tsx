@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
+import Button from "@mui/material/Button";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -128,12 +129,24 @@ export default function RoleSelectorPage() {
               gradient: "linear-gradient(135deg, #a2a495, #7d7f6e)",
             };
 
+            const assignments = user?.role_assignments?.filter((a) => {
+              const r = a.role.toLowerCase().trim();
+              const target = role.toLowerCase().trim();
+              if (target === "estudiante") return r === "estudiante";
+              if (target === "bedel") return r.startsWith("bedel");
+              if (target === "coordinador") return r.startsWith("coordinador");
+              if (target === "tutor") return r.startsWith("tutor");
+              return r === target;
+            }) || [];
+
+            const isGranular = assignments.length > 0;
+
             return (
               <Grid item xs={12} sm={6} key={role}>
                 <Card
-                  onClick={() => handleSelectRole(role)}
+                  onClick={isGranular ? undefined : () => handleSelectRole(role)}
                   sx={{
-                    cursor: "pointer",
+                    cursor: isGranular ? "default" : "pointer",
                     height: "100%",
                     minHeight: 180,
                     borderRadius: 4,
@@ -144,15 +157,17 @@ export default function RoleSelectorPage() {
                     color: "#ffffff",
                     position: "relative",
                     overflow: "hidden",
-                    "&:hover": {
-                      transform: "translateY(-6px)",
-                      boxShadow: "0 12px 30px rgba(0, 0, 0, 0.4)",
-                      borderColor: config.color,
-                      "& .icon-wrapper": {
-                        background: config.gradient,
-                        transform: "scale(1.1)",
+                    ...(!isGranular && {
+                      "&:hover": {
+                        transform: "translateY(-6px)",
+                        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.4)",
+                        borderColor: config.color,
+                        "& .icon-wrapper": {
+                          background: config.gradient,
+                          transform: "scale(1.1)",
+                        },
                       },
-                    },
+                    }),
                   }}
                 >
                   <CardContent sx={{ p: 4, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -172,13 +187,52 @@ export default function RoleSelectorPage() {
                       >
                         {config.icon}
                       </Box>
-                      <Stack spacing={1} sx={{ pt: 0.5 }}>
+                      <Stack spacing={1} sx={{ pt: 0.5, width: "100%" }}>
                         <Typography variant="h5" fontWeight="bold" sx={{ color: "#ffffff" }}>
                           {config.title}
                         </Typography>
                         <Typography variant="body2" sx={{ color: "rgba(255, 255, 255, 0.85)", lineHeight: 1.5 }}>
                           {config.subtitle}
                         </Typography>
+                        {isGranular && (
+                          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: "1px solid rgba(255, 255, 255, 0.1)", width: "100%" }}>
+                            <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: 1, fontWeight: "bold", display: "block", mb: 1.5 }}>
+                              Seleccioná Profesorado:
+                            </Typography>
+                            <Stack spacing={1} sx={{ width: "100%" }}>
+                              {assignments.map((asg, idx) => (
+                                <Button
+                                  key={idx}
+                                  variant="outlined"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectRole(`${role}:${asg.profesorado_id}`);
+                                  }}
+                                  sx={{
+                                    textTransform: "none",
+                                    justifyContent: "flex-start",
+                                    textAlign: "left",
+                                    borderColor: "rgba(255, 255, 255, 0.15)",
+                                    color: "#ffffff",
+                                    py: 1,
+                                    px: 2,
+                                    width: "100%",
+                                    borderRadius: 2,
+                                    background: "rgba(255, 255, 255, 0.02)",
+                                    "&:hover": {
+                                      borderColor: config.color,
+                                      background: "rgba(255, 255, 255, 0.08)",
+                                    },
+                                  }}
+                                >
+                                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                    {asg.profesorado_nombre} {asg.turno ? `(${asg.turno})` : ""}
+                                  </Typography>
+                                </Button>
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
                       </Stack>
                     </Stack>
                   </CardContent>

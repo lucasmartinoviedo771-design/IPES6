@@ -97,14 +97,21 @@ export default function LoginPage() {
           uniqueRoles.add("admin");
         }
 
-        if (uniqueRoles.size > 1) {
-          // Si tiene múltiples roles, lo enviamos a seleccionar
+        const hasMultipleOptions = uniqueRoles.size > 1 || (loggedUser?.role_assignments && loggedUser.role_assignments.length > 1);
+
+        if (hasMultipleOptions) {
+          // Si tiene múltiples roles o múltiples asignaciones de profesorado, lo enviamos a seleccionar
           navigate("/seleccionar-rol", { replace: true });
         } else {
-          // Si tiene un rol único, se auto-selecciona en localStorage y navega
+          // Si tiene un rol único con una única o cero asignación
           const onlyRole = Array.from(uniqueRoles)[0] || "";
           if (onlyRole) {
-            localStorage.setItem("ipes_active_role", onlyRole);
+            const assignment = loggedUser?.role_assignments?.[0];
+            if (assignment && assignment.profesorado_id) {
+              localStorage.setItem("ipes_active_role", `${onlyRole}:${assignment.profesorado_id}`);
+            } else {
+              localStorage.setItem("ipes_active_role", onlyRole);
+            }
           }
           const defaultHome = getDefaultHomeRoute(loggedUser);
           let target = from ?? defaultHome;

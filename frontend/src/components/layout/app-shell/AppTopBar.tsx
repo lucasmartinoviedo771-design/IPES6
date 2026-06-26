@@ -4,11 +4,7 @@ import AppBar from "@mui/material/AppBar";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
-import InputLabel from "@mui/material/InputLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Select from "@mui/material/Select";
 import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -17,6 +13,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import SchoolIcon from "@mui/icons-material/School";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { hasAnyRole } from "@/utils/roles";
 import {
   INSTITUTIONAL_TERRACOTTA,
@@ -25,42 +22,47 @@ import {
 import ipesLogoFull from "@/assets/ipes-logo.png";
 import { roleLabels, drawerWidth, collapsedDrawerWidth } from "./constants";
 
-interface RoleOption {
-  value: string;
-  label: string;
-}
-
 interface AppTopBarProps {
   open: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any;
-  roleOverride: string | null;
-  roleOptions: RoleOption[];
-  showRoleSwitcher: boolean;
   canUseMessages: boolean;
   unreadMessages: number;
   badgeColor: "default" | "error" | "warning" | "primary";
   onToggleSidebar: () => void;
   onGuideOpen: () => void;
-  onRoleChange: (value: string | null) => void;
   onLogout: () => void;
 }
 
 export const AppTopBar: React.FC<AppTopBarProps> = ({
   open,
   user,
-  roleOverride,
-  roleOptions,
-  showRoleSwitcher,
   canUseMessages,
   unreadMessages,
   badgeColor,
   onToggleSidebar,
   onGuideOpen,
-  onRoleChange,
   onLogout,
 }) => {
   const navigate = useNavigate();
+
+  const hasMultipleRoles = React.useMemo(() => {
+    if (!user) return false;
+    const unique = new Set<string>();
+    const rawRoles = user.roles ?? [];
+    rawRoles.forEach((r: string) => {
+      const normalized = r.toLowerCase().trim();
+      if (normalized === "estudiantes") unique.add("estudiante");
+      else if (normalized === "docentes") unique.add("docente");
+      else if (normalized.startsWith("bedel")) unique.add("bedel");
+      else if (normalized.startsWith("secretaria")) unique.add("secretaria");
+      else unique.add(normalized);
+    });
+    if (user.is_superuser) {
+      unique.add("admin");
+    }
+    return unique.size > 1;
+  }, [user]);
 
   return (
     <AppBar
@@ -171,40 +173,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
               <HelpOutlineIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          {showRoleSwitcher && (
-            <FormControl
-              size="small"
-              variant="outlined"
-              sx={{
-                minWidth: { xs: 110, sm: 180, md: 220 },
-                "& .MuiInputBase-root": {
-                  borderRadius: 2,
-                  backgroundColor: "#f8fafc",
-                  fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                },
-              }}
-            >
-              <InputLabel id="role-switcher-label">Rol activo</InputLabel>
-              <Select
-                labelId="role-switcher-label"
-                label="Rol activo"
-                value={roleOverride ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value as string;
-                  onRoleChange(value ? value : null);
-                }}
-              >
-                <MenuItem value="">
-                  <em>Rol automático (Todos)</em>
-                </MenuItem>
-                {roleOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+
           {canUseMessages && (
             <Tooltip title="Mensajes">
               <IconButton
@@ -262,6 +231,21 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
               Mis Datos
             </Button>
           )}
+          {hasMultipleRoles && (
+            <Button
+              component={Link}
+              to="/seleccionar-rol"
+              sx={{
+                display: { xs: "none", md: "inline-flex" },
+                textTransform: "none",
+                fontWeight: 600,
+                color: INSTITUTIONAL_TERRACOTTA,
+                borderRadius: 10,
+              }}
+            >
+              Cambiar Rol
+            </Button>
+          )}
           <Button
             component={Link}
             to="/cambiar-password"
@@ -293,6 +277,25 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
           >
             Salir
           </Button>
+          {/* Botón Cambiar Rol - Móvil */}
+          {hasMultipleRoles && (
+            <Tooltip title="Cambiar Rol">
+              <IconButton
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                {...({ component: Link, to: "/seleccionar-rol" } as any)}
+                sx={{
+                  display: { xs: "inline-flex", md: "none" },
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#f8fafc",
+                  color: "#0f172a",
+                  p: 0.75,
+                }}
+              >
+                <SwapHorizIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {/* Botón Salir - Móvil */}
           <Tooltip title="Salir">
             <IconButton

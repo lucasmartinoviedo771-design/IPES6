@@ -13,6 +13,13 @@ import { setGlobalRoleOverride } from "@/utils/roles";
 /**
  * Perfil de usuario normalizado del sistema SIGED.
  */
+export type RoleAssignment = {
+  role: string;
+  profesorado_id?: number | null;
+  profesorado_nombre?: string | null;
+  turno?: string | null;
+};
+
 export type User = {
   id?: number;
   dni: string;
@@ -26,6 +33,7 @@ export type User = {
   must_complete_profile?: boolean;
   email?: string;
   profesorado_ids?: number[] | null;
+  role_assignments?: RoleAssignment[];
 } | null;
 
 interface AuthContextType {
