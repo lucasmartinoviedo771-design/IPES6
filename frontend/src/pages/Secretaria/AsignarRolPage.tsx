@@ -62,6 +62,9 @@ const ROLES = [
   { value: 'consulta',   label: 'Consulta',          requiereProf: false, requiereTurno: false },
   { value: 'rectorado',  label: 'Rectorado',         requiereProf: false, requiereTurno: false },
   { value: 'attp',       label: 'A.T.T.P.',          requiereProf: false, requiereTurno: false },
+  { value: 'titulos',    label: 'Títulos',           requiereProf: false, requiereTurno: false },
+  { value: 'equivalencias', label: 'Equivalencias',  requiereProf: false, requiereTurno: false },
+  { value: 'curso_intro', label: 'Curso Introductorio', requiereProf: false, requiereTurno: false },
 ];
 
 const TURNOS = [

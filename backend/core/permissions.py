@@ -141,6 +141,7 @@ CAPABILITIES: dict[str, set[str]] = {
     },
     "editar_horarios": {"admin", "secretaria"},
     # --- Asistencia de estudiantes ---
+    "ver_asistencia": {"admin", "secretaria", "bedel", "docente", "bedel_secretaria"},
     "asistencia_estudiantes_ver": {"admin", "secretaria", "bedel", "docente", "bedel_secretaria"},
     "asistencia_estudiantes_editar": {"admin", "secretaria", "bedel", "docente"},
     "asistencia_estudiantes_justificar": {"admin", "secretaria", "bedel"},
