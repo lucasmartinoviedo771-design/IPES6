@@ -103,7 +103,7 @@ class Command(BaseCommand):
         dnis_no_encontrados = dnis_activos - {ec.estudiante.dni for ec in activos_lista}
 
         # Mostrar resumen antes de actuar
-        self.stdout.write(f"\nResultado esperado:")
+        self.stdout.write("\nResultado esperado:")
         self.stdout.write(f"  → ACTIVO  : {len(activos_lista)} estudiantes")
         self.stdout.write(f"  → INACTIVO: {len(inactivos_lista)} estudiantes")
 
