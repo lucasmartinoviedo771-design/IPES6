@@ -16,6 +16,7 @@ from core.models import Comision, Materia, PlanDeEstudio, Turno
 from core.permissions import (
     allowed_profesorados,
     ensure_profesorado_access,
+    get_user_roles,
     require,
 )
 
@@ -97,6 +98,14 @@ def list_comisiones(
         "docente",
     )
     qs = _restrict_comisiones_queryset(request.user, qs)
+
+    # Si es docente, limitar a sus propias materias/comisiones
+    active_role = request.headers.get("X-Active-Role")
+    if active_role:
+        active_role = active_role.split(":")[0].lower().strip()
+    roles = get_user_roles(request.user)
+    if active_role == "docente" or (not active_role and "docente" in roles and not (roles & {"admin", "secretaria", "bedel"})):
+        qs = qs.filter(docente__persona__user=request.user)
 
     if profesorado_id:
         qs = qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
