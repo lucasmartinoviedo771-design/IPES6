@@ -62,17 +62,20 @@ export default function AppShell({ children }: PropsWithChildren) {
     if (!user) return;
 
     const currentRole = roleOverride || activeRole;
-    if (previousRoleRef.current !== null && previousRoleRef.current !== currentRole) {
-      if (currentRole) {
-        const destination = roleHomeMap[currentRole] ?? "/dashboard";
+    if (currentRole) {
+      const destination = roleHomeMap[currentRole] ?? "/dashboard";
+      const isAtGenericHome = loc.pathname === "/dashboard" || loc.pathname === "/";
+      const isRoleMismatch = isAtGenericHome && destination !== "/dashboard";
+
+      if (previousRoleRef.current !== currentRole || isRoleMismatch) {
         navigate(destination, { replace: true });
-      } else {
-        navigate(getDefaultHomeRoute(user), { replace: true });
       }
+    } else if (previousRoleRef.current !== currentRole) {
+      navigate(getDefaultHomeRoute(user), { replace: true });
     }
     
     previousRoleRef.current = currentRole;
-  }, [roleOverride, activeRole, user, navigate]);
+  }, [roleOverride, activeRole, user, navigate, loc.pathname]);
 
   useEffect(() => {
     if (!user || roleOverride || activeRole || isInitialMount.current === false) return;
