@@ -109,9 +109,7 @@ class Command(BaseCommand):
 
         if dnis_no_encontrados:
             self.stdout.write(
-                self.style.WARNING(
-                    f"\n  ⚠ {len(dnis_no_encontrados)} DNI(s) de la lista NO están en este profesorado:"
-                )
+                self.style.WARNING(f"\n  ⚠ {len(dnis_no_encontrados)} DNI(s) de la lista NO están en este profesorado:")
             )
             for dni in sorted(dnis_no_encontrados):
                 self.stdout.write(f"      {dni}")
