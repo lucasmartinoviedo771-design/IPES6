@@ -13,6 +13,7 @@ const shellRoles: string[] = [
   "admin",
   "estudiante",
   "bedel",
+  "bedel_secretaria",
   "coordinador",
   "tutor",
   "jefes",

@@ -105,6 +105,7 @@ export const hasRole = (user: User | null | undefined, role: Role): boolean => {
 export const hasAnyRole = (user: User | null | undefined, roles: Role[]): boolean => {
   if (!roles || roles.length === 0) return true;
   const bag = collectRoles(user);
+  if (bag.has("admin")) return true;
   if (user?.is_superuser && !getGlobalRoleOverride()) return true;
 
   return roles.some((role) => {
@@ -120,6 +121,7 @@ export const hasAnyRole = (user: User | null | undefined, roles: Role[]): boolea
 export const hasAllRoles = (user: User | null | undefined, roles: Role[]): boolean => {
   if (!roles || roles.length === 0) return true;
   const bag = collectRoles(user);
+  if (bag.has("admin")) return true;
   if (user?.is_superuser && !getGlobalRoleOverride()) return true;
 
   return roles.every((role) => {
