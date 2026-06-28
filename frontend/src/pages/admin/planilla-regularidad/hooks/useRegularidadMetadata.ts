@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
 import {
   fetchRegularidadMetadata,
   RegularidadMetadataMateria,
@@ -25,8 +26,10 @@ export function useRegularidadMetadata({
   plantillaId,
   selectedFecha,
 }: UseRegularidadMetadataOptions) {
+  const { user } = useAuth();
+
   const metadataQuery = useQuery({
-    queryKey: ['primera-carga', 'regularidades', 'metadata', crossLoadEnabled],
+    queryKey: ['primera-carga', 'regularidades', 'metadata', crossLoadEnabled, user?.id],
     queryFn: () => fetchRegularidadMetadata(crossLoadEnabled),
     enabled: open,
     staleTime: 1000 * 60 * 10,
@@ -46,17 +49,14 @@ export function useRegularidadMetadata({
     }
     const raw = selectedProfesorado.planes.flatMap((plan) => plan.materias);
     
-    // Si hay una fecha seleccionada, filtramos por vigencia
+    // Si hay una fecha seleccionada, filtramos por vigencia (comparación de strings timezone-safe)
     if (selectedFecha) {
-      const target = new Date(selectedFecha);
       return raw.filter(m => {
-        if (m.fecha_inicio) {
-          const inicio = new Date(m.fecha_inicio);
-          if (inicio > target) return false;
+        if (m.fecha_inicio && m.fecha_inicio > selectedFecha) {
+          return false;
         }
-        if (m.fecha_fin) {
-          const fin = new Date(m.fecha_fin);
-          if (fin < target) return false;
+        if (m.fecha_fin && m.fecha_fin < selectedFecha) {
+          return false;
         }
         return true;
       });
