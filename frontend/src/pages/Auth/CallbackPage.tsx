@@ -17,10 +17,52 @@ export default function AuthCallbackPage() {
       try {
         const freshUser = await refreshProfile();
         if (freshUser) {
-          const target = getDefaultHomeRoute(freshUser);
-          navigate(target, { replace: true });
+          const uniqueRoles = new Set<string>();
+          
+          const rawRoles = freshUser?.roles ?? [];
+          rawRoles.forEach((r) => {
+            const norm = r.toLowerCase().trim();
+            if (norm === "estudiantes") uniqueRoles.add("estudiante");
+            else if (norm === "docentes") uniqueRoles.add("docente");
+            else if (norm === "bedel_secretaria") uniqueRoles.add("bedel_secretaria");
+            else if (norm.startsWith("bedel")) uniqueRoles.add("bedel");
+            else if (norm.startsWith("secretaria")) uniqueRoles.add("secretaria");
+            else uniqueRoles.add(norm);
+          });
+
+          const assignments = freshUser?.role_assignments ?? [];
+          assignments.forEach((asg) => {
+            const norm = asg.role.toLowerCase().trim();
+            if (norm === "estudiantes") uniqueRoles.add("estudiante");
+            else if (norm === "docentes") uniqueRoles.add("docente");
+            else if (norm === "bedel_secretaria") uniqueRoles.add("bedel_secretaria");
+            else if (norm.startsWith("bedel")) uniqueRoles.add("bedel");
+            else if (norm.startsWith("secretaria")) uniqueRoles.add("secretaria");
+            else uniqueRoles.add(norm);
+          });
+
+          if (freshUser?.is_superuser) {
+            uniqueRoles.add("admin");
+          }
+
+          const hasMultipleOptions = uniqueRoles.size > 1 || (freshUser?.role_assignments && freshUser.role_assignments.length > 1);
+
+          if (hasMultipleOptions) {
+            navigate("/seleccionar-rol", { replace: true });
+          } else {
+            const onlyRole = Array.from(uniqueRoles)[0] || "";
+            if (onlyRole) {
+              const assignment = freshUser?.role_assignments?.[0];
+              if (assignment && assignment.profesorado_id) {
+                localStorage.setItem("ipes_active_role", `${onlyRole}:${assignment.profesorado_id}`);
+              } else {
+                localStorage.setItem("ipes_active_role", onlyRole);
+              }
+            }
+            const target = getDefaultHomeRoute(freshUser);
+            navigate(target, { replace: true });
+          }
         } else {
-          // Not authenticated, send to login
           navigate("/login", { replace: true });
         }
       } catch {

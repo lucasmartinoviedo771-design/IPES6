@@ -28,6 +28,7 @@ _UNRESTRICTED_ROLES = {
     "jefes",
     "rectorado",
     "attp",
+    "bedel_secretaria",
 }
 
 ALL_ROLES: set[str] = {
@@ -36,6 +37,7 @@ ALL_ROLES: set[str] = {
     "secretaria",
     "bedel",
     "coordinador",
+    "bedel_secretaria",
     # Roles funcionales específicos
     "titulos",
     "equivalencias",
@@ -80,15 +82,16 @@ CAPABILITIES: dict[str, set[str]] = {
         "consulta",
         "rectorado",
         "attp",
+        "bedel_secretaria",
     },
     "editar_estudiantes": {"admin", "secretaria", "bedel"},
-    "ver_documentacion": {"admin", "secretaria", "bedel", "coordinador", "jefes"},
+    "ver_documentacion": {"admin", "secretaria", "bedel", "coordinador", "jefes", "bedel_secretaria"},
     "editar_documentacion": {"admin", "secretaria", "bedel"},
     # --- Académico ---
     "carga_regularidades": {"admin", "secretaria", "bedel", "docente"},
     "carga_finales": {"admin", "secretaria", "bedel", "docente"},
     "acta_manual": {"admin", "secretaria", "bedel", "docente"},
-    "ver_actas": {"admin", "secretaria", "bedel", "titulos", "rectorado", "attp"},
+    "ver_actas": {"admin", "secretaria", "bedel", "titulos", "rectorado", "attp", "bedel_secretaria"},
     # --- Estructura curricular ---
     "ver_estructura": {
         "admin",
@@ -102,10 +105,11 @@ CAPABILITIES: dict[str, set[str]] = {
         "estudiante",
         "rectorado",
         "attp",
+        "bedel_secretaria",
     },
     "editar_estructura": {"admin", "secretaria", "bedel"},
     # --- Inscripciones ---
-    "gestionar_preinscripcion": {"admin", "secretaria", "bedel"},
+    "gestionar_preinscripcion": {"admin", "secretaria", "bedel", "bedel_secretaria"},
     "gestionar_ventanas": {"admin", "secretaria", "jefa_aaee"},
     "formalizar_inscripcion": {"admin", "secretaria", "bedel", "attp"},
     "gestionar_cambio_comision": {"admin", "secretaria", "bedel", "tutor", "attp"},
@@ -116,18 +120,28 @@ CAPABILITIES: dict[str, set[str]] = {
     # --- Títulos y analíticos ---
     "gestionar_titulos": {"admin", "secretaria", "titulos", "tutor"},
     "gestionar_analiticos": {"admin", "secretaria", "titulos", "bedel"},
-    "ver_analiticos": {"admin", "secretaria", "titulos", "bedel", "tutor"},
+    "ver_analiticos": {"admin", "secretaria", "titulos", "bedel", "tutor", "bedel_secretaria"},
     # --- Curso introductorio ---
-    "gestionar_ci": {"admin", "secretaria", "bedel", "curso_intro", "tutor"},
+    "gestionar_ci": {"admin", "secretaria", "bedel", "curso_intro", "tutor", "bedel_secretaria"},
     "admin_ci": {"admin", "secretaria"},
     # --- Staff ---
     "asignar_roles": {"admin", "secretaria"},
     "gestionar_staff": {"admin", "secretaria"},
     # --- Horarios ---
-    "ver_horarios": {"admin", "secretaria", "bedel", "coordinador", "rectorado", "attp", "estudiante", "docente"},
+    "ver_horarios": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "coordinador",
+        "rectorado",
+        "attp",
+        "estudiante",
+        "docente",
+        "bedel_secretaria",
+    },
     "editar_horarios": {"admin", "secretaria"},
     # --- Asistencia de estudiantes ---
-    "asistencia_estudiantes_ver": {"admin", "secretaria", "bedel", "docente"},
+    "asistencia_estudiantes_ver": {"admin", "secretaria", "bedel", "docente", "bedel_secretaria"},
     "asistencia_estudiantes_editar": {"admin", "secretaria", "bedel", "docente"},
     "asistencia_estudiantes_justificar": {"admin", "secretaria", "bedel"},
     # --- Asistencia de docentes ---
@@ -147,6 +161,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "consulta",
         "rectorado",
         "attp",
+        "bedel_secretaria",
     },
     "ver_metricas": {"admin", "secretaria", "bedel", "jefes", "rectorado"},
     "ver_reportes": {"admin", "secretaria", "jefes", "rectorado", "attp"},
@@ -154,7 +169,16 @@ CAPABILITIES: dict[str, set[str]] = {
     # Nota: el estudiante puede ACCEDER a mensajería pero solo puede INICIAR
     # conversación con bedel/tutor de su carrera. Esa restricción se implementa
     # en el endpoint de mensajería, no en esta tabla.
-    "enviar_mensajes": {"admin", "secretaria", "bedel", "coordinador", "tutor", "docente", "estudiante"},
+    "enviar_mensajes": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "coordinador",
+        "tutor",
+        "docente",
+        "estudiante",
+        "bedel_secretaria",
+    },
     # --- Admin del sistema ---
     "admin_sistema": {"admin"},
     "primera_carga": {"admin", "secretaria", "bedel"},

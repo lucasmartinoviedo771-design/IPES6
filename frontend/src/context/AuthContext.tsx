@@ -256,6 +256,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     if (!user) return [];
     const ROLE_LABELS: Record<string, string> = {
       admin: "Administrador", secretaria: "Secretaría", bedel: "Bedelía",
+      bedel_secretaria: "Bedelía de Secretaría",
       docente: "Docentes", tutor: "Tutorías", coordinador: "Coordinación",
       jefes: "Jefatura", jefa_aaee: "Jefa A.A.E.E.", consulta: "Consulta",
       estudiante: "Estudiante", equivalencias: "Equipo de equivalencias",
@@ -268,6 +269,18 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       const role = (r || "").toLowerCase().trim();
       if (!role) return;
       if (role === "estudiantes") normalized.add("estudiante");
+      else if (role === "bedel_secretaria") normalized.add("bedel_secretaria");
+      else if (role.startsWith("bedel")) normalized.add("bedel");
+      else if (role.startsWith("secretaria")) normalized.add("secretaria");
+      else if (role.startsWith("coordinador")) normalized.add("coordinador");
+      else normalized.add(role);
+    });
+
+    (user.role_assignments ?? []).forEach((asg) => {
+      const role = (asg.role || "").toLowerCase().trim();
+      if (!role) return;
+      if (role === "estudiantes") normalized.add("estudiante");
+      else if (role === "bedel_secretaria") normalized.add("bedel_secretaria");
       else if (role.startsWith("bedel")) normalized.add("bedel");
       else if (role.startsWith("secretaria")) normalized.add("secretaria");
       else if (role.startsWith("coordinador")) normalized.add("coordinador");

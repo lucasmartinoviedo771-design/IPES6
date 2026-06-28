@@ -4,19 +4,19 @@ import Stack from "@mui/material/Stack";
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole } from "@/utils/roles";
+import { hasCapability } from "@/utils/roles";
 import ResidenciasCondicionalesWidget from "@/components/dashboard/ResidenciasCondicionalesWidget";
 
 export default function BedelesIndex() {
   const { user } = useAuth();
 
-  const canManageStudents = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canManageStructure = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canFormalize = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canManageAnaliticos = hasAnyRole(user, ["admin", "secretaria", "bedel", "tutor"]);
-  const canManageEquivalencias = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const canCursoIntro = hasAnyRole(user, ["admin", "secretaria", "bedel", "curso_intro"]);
-  const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+  const canManageStudents = hasCapability(user, "ver_estudiantes");
+  const canManageStructure = hasCapability(user, "ver_estructura");
+  const canFormalize = hasCapability(user, "gestionar_preinscripcion");
+  const canManageAnaliticos = hasCapability(user, "ver_analiticos");
+  const canManageEquivalencias = hasCapability(user, "ver_documentacion");
+  const canCursoIntro = hasCapability(user, "gestionar_ci");
+  const canManageNotas = hasCapability(user, "carga_regularidades") || hasCapability(user, "carga_finales") || hasCapability(user, "acta_manual") || hasCapability(user, "ver_actas");
 
   const sections: RoleDashboardSection[] = useMemo(
     () => [

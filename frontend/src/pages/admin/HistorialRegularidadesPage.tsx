@@ -26,7 +26,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { hasRole } from '@/utils/roles';
+import { hasRole, hasCapability } from '@/utils/roles';
 import { listarHistorialRegularidades, PlanillaRegularidadListItem } from '@/api/primeraCarga';
 import PlanillaRegularidadDialog from './PlanillaRegularidadDialog';
 
@@ -45,6 +45,7 @@ const HistorialRegularidadesPage: React.FC = () => {
     const [filterID, setFilterID] = React.useState<string>('');
 
     const { user } = useAuth();
+    const canEdit = hasCapability(user, 'carga_regularidades');
     const isAdminOrSecretaria = React.useMemo(() => 
         hasRole(user, 'admin') || hasRole(user, 'secretaria'), 
     [user]);
@@ -376,14 +377,16 @@ const HistorialRegularidadesPage: React.FC = () => {
                                                             <VisibilityIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
-                                                    <Tooltip title="Editar">
-                                                        <IconButton
-                                                            onClick={() => handleOpenDialog(planilla.id, 'edit')}
-                                                            color="primary" size="small"
-                                                        >
-                                                            <EditIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    {canEdit && (
+                                                        <Tooltip title="Editar">
+                                                            <IconButton
+                                                                onClick={() => handleOpenDialog(planilla.id, 'edit')}
+                                                                color="primary" size="small"
+                                                            >
+                                                                <EditIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip title="Imprimir PDF">
                                                         <IconButton
                                                             onClick={() => window.open(`/api/admin/primera-carga/regularidades/planillas/${planilla.id}/pdf`, '_blank')}

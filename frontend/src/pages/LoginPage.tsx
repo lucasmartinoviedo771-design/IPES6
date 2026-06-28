@@ -82,17 +82,31 @@ export default function LoginPage() {
       if (loggedUser?.must_change_password) {
         navigate("/cambiar-password", { replace: true, state: { from: { pathname: from } } });
       } else {
-        // Obtenemos los roles normalizados del usuario
-        const rawRoles = loggedUser?.roles ?? [];
+        // Obtenemos los roles normalizados del usuario (de grupos y de asignaciones)
         const uniqueRoles = new Set<string>();
+        
+        const rawRoles = loggedUser?.roles ?? [];
         rawRoles.forEach((r) => {
           const norm = r.toLowerCase().trim();
           if (norm === "estudiantes") uniqueRoles.add("estudiante");
           else if (norm === "docentes") uniqueRoles.add("docente");
+          else if (norm === "bedel_secretaria") uniqueRoles.add("bedel_secretaria");
           else if (norm.startsWith("bedel")) uniqueRoles.add("bedel");
           else if (norm.startsWith("secretaria")) uniqueRoles.add("secretaria");
           else uniqueRoles.add(norm);
         });
+
+        const assignments = loggedUser?.role_assignments ?? [];
+        assignments.forEach((asg) => {
+          const norm = asg.role.toLowerCase().trim();
+          if (norm === "estudiantes") uniqueRoles.add("estudiante");
+          else if (norm === "docentes") uniqueRoles.add("docente");
+          else if (norm === "bedel_secretaria") uniqueRoles.add("bedel_secretaria");
+          else if (norm.startsWith("bedel")) uniqueRoles.add("bedel");
+          else if (norm.startsWith("secretaria")) uniqueRoles.add("secretaria");
+          else uniqueRoles.add(norm);
+        });
+
         if (loggedUser?.is_superuser) {
           uniqueRoles.add("admin");
         }
@@ -114,7 +128,32 @@ export default function LoginPage() {
             }
           }
           const defaultHome = getDefaultHomeRoute(loggedUser);
-          let target = from ?? defaultHome;
+          
+          const isFromValid = (path: string | null, activeRole: string): boolean => {
+            if (!path || path === "/" || path === "/dashboard" || path === "/mensajes" || path === "/carreras") return true;
+            const segment = path.split("/").filter(Boolean)[0];
+            if (!segment) return true;
+            const segmentRoles: Record<string, string[]> = {
+              secretaria: ["secretaria", "admin"],
+              bedeles: ["bedel", "bedel_secretaria", "admin"],
+              docentes: ["docente", "admin"],
+              tutorias: ["tutor", "admin"],
+              coordinacion: ["coordinador", "admin"],
+              jefatura: ["jefes", "jefa_aaee", "admin"],
+              titulos: ["titulos", "admin"],
+              equivalencias: ["equivalencias", "admin"],
+              attp: ["attp", "admin"],
+              rectorado: ["rectorado", "admin"],
+              estudiantes: ["estudiante", "admin"],
+            };
+            const allowed = segmentRoles[segment];
+            if (!allowed) return true;
+            const baseRole = activeRole.split(":")[0];
+            return allowed.includes(baseRole);
+          };
+
+          const activeRole = localStorage.getItem("ipes_active_role") || onlyRole;
+          let target = (from && isFromValid(from, activeRole)) ? from : defaultHome;
           if (target === "/preinscripcion") {
             target = defaultHome;
           }

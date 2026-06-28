@@ -48,6 +48,13 @@ const ROLE_VISUAL_CONFIG: Record<
     color: "#7D7F6E",
     gradient: "linear-gradient(135deg, #a2a495, #7d7f6e)",
   },
+  bedel_secretaria: {
+    title: "Bedelía de Secretaría",
+    subtitle: "Acceso global de consulta, preinscripciones, actas y legajos.",
+    icon: <SupervisorAccountIcon sx={{ fontSize: 48 }} />,
+    color: "#4d8c75",
+    gradient: "linear-gradient(135deg, #7d7f6e, #4d8c75)",
+  },
 };
 
 export default function RoleSelectorPage() {
@@ -65,6 +72,18 @@ export default function RoleSelectorPage() {
       const normalized = r.toLowerCase().trim();
       if (normalized === "estudiantes") unique.add("estudiante");
       else if (normalized === "docentes") unique.add("docente");
+      else if (normalized === "bedel_secretaria") unique.add("bedel_secretaria");
+      else if (normalized.startsWith("bedel")) unique.add("bedel");
+      else if (normalized.startsWith("secretaria")) unique.add("secretaria");
+      else unique.add(normalized);
+    });
+
+    const assignments = user.role_assignments ?? [];
+    assignments.forEach((asg) => {
+      const normalized = asg.role.toLowerCase().trim();
+      if (normalized === "estudiantes") unique.add("estudiante");
+      else if (normalized === "docentes") unique.add("docente");
+      else if (normalized === "bedel_secretaria") unique.add("bedel_secretaria");
       else if (normalized.startsWith("bedel")) unique.add("bedel");
       else if (normalized.startsWith("secretaria")) unique.add("secretaria");
       else unique.add(normalized);
@@ -133,7 +152,7 @@ export default function RoleSelectorPage() {
               const r = a.role.toLowerCase().trim();
               const target = role.toLowerCase().trim();
               if (target === "estudiante") return r === "estudiante";
-              if (target === "bedel") return r.startsWith("bedel");
+              if (target === "bedel") return r.startsWith("bedel") && r !== "bedel_secretaria";
               if (target === "coordinador") return r.startsWith("coordinador");
               if (target === "tutor") return r.startsWith("tutor");
               return r === target;
@@ -196,7 +215,7 @@ export default function RoleSelectorPage() {
                         </Typography>
                         {isGranular && (
                           <Box sx={{ mt: 1.5, pt: 1.5, borderTop: "1px solid rgba(255, 255, 255, 0.1)", width: "100%" }}>
-                            <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.5)", textTransform: "uppercase", letterSpacing: 1, fontWeight: "bold", display: "block", mb: 1.5 }}>
+                            <Typography variant="caption" sx={{ color: "#ffffff", textTransform: "uppercase", letterSpacing: 1, fontWeight: "bold", display: "block", mb: 1.5 }}>
                               Seleccioná Profesorado:
                             </Typography>
                             <Stack spacing={1} sx={{ width: "100%" }}>
@@ -212,20 +231,20 @@ export default function RoleSelectorPage() {
                                     textTransform: "none",
                                     justifyContent: "flex-start",
                                     textAlign: "left",
-                                    borderColor: "rgba(255, 255, 255, 0.15)",
+                                    borderColor: "rgba(255, 255, 255, 0.3)",
                                     color: "#ffffff",
                                     py: 1,
                                     px: 2,
                                     width: "100%",
                                     borderRadius: 2,
-                                    background: "rgba(255, 255, 255, 0.02)",
+                                    background: "rgba(255, 255, 255, 0.05)",
                                     "&:hover": {
-                                      borderColor: config.color,
-                                      background: "rgba(255, 255, 255, 0.08)",
+                                      borderColor: "#ffffff",
+                                      background: "rgba(255, 255, 255, 0.15)",
                                     },
                                   }}
                                 >
-                                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#ffffff" }}>
                                     {asg.profesorado_nombre} {asg.turno ? `(${asg.turno})` : ""}
                                   </Typography>
                                 </Button>

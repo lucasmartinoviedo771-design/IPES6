@@ -12,7 +12,7 @@ import { fetchCarreras } from "@/api/carreras";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import BackButton from "@/components/ui/BackButton";
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole } from "@/utils/roles";
+import { hasCapability } from "@/utils/roles";
 
 import { EstadoLegajo, EstadoAcademico, DetailFormValues, DEFAULT_LIMIT } from "./estudiantes-admin/types";
 import { useDebouncedValue } from "./estudiantes-admin/hooks/useDebouncedValue";
@@ -34,8 +34,8 @@ import { AgregarEstudianteExternoPanel } from "./estudiantes-admin/components/Ag
 
 export default function EstudiantesAdminPage() {
   const { user } = useAuth();
-  const isAdminOrSec = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
-  const isReadOnly = !isAdminOrSec;
+  const isReadOnly = !hasCapability(user, "editar_estudiantes");
+  const isAdminOrSec = !isReadOnly;
   const isRectorado = isReadOnly;
   const isAttp = isReadOnly;
 

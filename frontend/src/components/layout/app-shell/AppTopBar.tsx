@@ -54,6 +54,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
       const normalized = r.toLowerCase().trim();
       if (normalized === "estudiantes") unique.add("estudiante");
       else if (normalized === "docentes") unique.add("docente");
+      else if (normalized === "bedel_secretaria") unique.add("bedel_secretaria");
       else if (normalized.startsWith("bedel")) unique.add("bedel");
       else if (normalized.startsWith("secretaria")) unique.add("secretaria");
       else unique.add(normalized);

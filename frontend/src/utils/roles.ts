@@ -46,7 +46,11 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
     set.add(r);
     // Auto-expansión de roles conocidos para consistencia en la UI simulada
     if (r.includes("estudiante")) set.add("estudiante");
-    if (r.startsWith("bedel")) set.add("bedel");
+    if (r === "bedel_secretaria") {
+      // no expandir
+    } else if (r.startsWith("bedel")) {
+      set.add("bedel");
+    }
     if (r.startsWith("secretaria")) set.add("secretaria");
     if (r.startsWith("coordinador")) set.add("coordinador");
     if (r.startsWith("tutor")) set.add("tutor");
@@ -61,7 +65,11 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
     set.add(role);
     // Expansión semántica: 'bedel-secundaria' otorga capacidades de 'bedel' genérico
     if (role.includes("estudiante")) set.add("estudiante");
-    if (role.startsWith("bedel")) set.add("bedel");
+    if (role === "bedel_secretaria") {
+      // no expandir
+    } else if (role.startsWith("bedel")) {
+      set.add("bedel");
+    }
     if (role.startsWith("secretaria")) set.add("secretaria");
     if (role.startsWith("coordinador")) set.add("coordinador");
     if (role.startsWith("tutor")) set.add("tutor");

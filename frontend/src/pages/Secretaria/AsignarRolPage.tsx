@@ -53,6 +53,7 @@ const ROLES = [
   { value: 'admin',      label: 'Administrador',   requiereProf: false, requiereTurno: false },
   { value: 'secretaria', label: 'Secretaría',       requiereProf: false, requiereTurno: false },
   { value: 'bedel',      label: 'Bedel',            requiereProf: true,  requiereTurno: false, multiProf: true },
+  { value: 'bedel_secretaria', label: 'Bedelía de Secretaría', requiereProf: false, requiereTurno: false },
   { value: 'jefa_aaee',  label: 'Jefa A.A.E.E.',   requiereProf: false, requiereTurno: false },
   { value: 'jefes',      label: 'Jefes',            requiereProf: false, requiereTurno: false },
   { value: 'docente',    label: 'Docente',           requiereProf: false, requiereTurno: false },

@@ -14,6 +14,8 @@ import Alert from "@mui/material/Alert";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import { Controller } from "react-hook-form";
+import { useAuth } from '@/context/AuthContext';
+import { hasCapability } from '@/utils/roles';
 
 import { PlanillaRegularidadDialogProps } from './planilla-regularidad/types';
 import { useRegularidadMetadata } from './planilla-regularidad/hooks/useRegularidadMetadata';
@@ -35,7 +37,8 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   scope = 'primera_carga',
   comisionId,
 }) => {
-  const isReadOnly = mode === 'view';
+  const { user } = useAuth();
+  const isReadOnly = mode === 'view' || !hasCapability(user, 'carga_regularidades');
 
   const [crossLoadEnabled, setCrossLoadEnabled] = React.useState(false);
 

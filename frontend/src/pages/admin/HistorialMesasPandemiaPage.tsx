@@ -28,15 +28,18 @@ import TableSortLabel from "@mui/material/TableSortLabel";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import { listarHistoricoMesasPandemia } from '@/api/primeraCarga';
 import { actualizarMesaPlanilla, obtenerMesaPlanilla } from '@/api/estudiantes';
 import { INSTITUTIONAL_TERRACOTTA } from '@/styles/institutionalColors';
+import { useAuth } from '@/context/AuthContext';
+import { hasCapability } from '@/utils/roles';
 
 const HistorialMesasPandemiaPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canEdit = hasCapability(user, 'carga_finales');
   const queryClient = useQueryClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedMesa, setSelectedMesa] = useState<any>(null);
@@ -261,9 +264,9 @@ const HistorialMesasPandemiaPage: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell align="center">
-                        <Tooltip title="Ver / Editar Notas">
+                        <Tooltip title={canEdit ? "Ver / Editar Notas" : "Ver Notas"}>
                           <IconButton size="small" onClick={() => handleOpenPlanilla(row)} color="primary">
-                            <EditIcon fontSize="small" />
+                            {canEdit ? <EditIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
                           </IconButton>
                         </Tooltip>
                       </TableCell>
@@ -312,6 +315,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
                           size="small"
                           value={est.condicion || ''}
                           onChange={(e) => handleUpdateGrade(est.inscripcion_id, 'condicion', e.target.value)}
+                          disabled={!canEdit}
                           sx={{ minWidth: 120 }}
                         >
                           {condiciones.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
@@ -323,6 +327,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
                           size="small"
                           value={est.nota ?? ''}
                           onChange={(e) => handleUpdateGrade(est.inscripcion_id, 'nota', e.target.value)}
+                          disabled={!canEdit}
                           inputProps={{ step: 0.5, min: 0, max: 10 }}
                           sx={{ width: 80 }}
                         />
@@ -332,6 +337,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
                           size="small"
                           value={est.folio || ''}
                           onChange={(e) => handleUpdateGrade(est.inscripcion_id, 'folio', e.target.value)}
+                          disabled={!canEdit}
                           sx={{ width: 100 }}
                         />
                       </TableCell>
@@ -340,6 +346,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
                           size="small"
                           value={est.observaciones || ''}
                           onChange={(e) => handleUpdateGrade(est.inscripcion_id, 'observaciones', e.target.value)}
+                          disabled={!canEdit}
                           fullWidth
                         />
                       </TableCell>
@@ -352,14 +359,16 @@ const HistorialMesasPandemiaPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-          <Button 
-            variant="contained" 
-            onClick={handleSave} 
-            disabled={mutation.isPending}
-            startIcon={mutation.isPending ? <CircularProgress size={20} /> : null}
-          >
-            Guardar Cambios
-          </Button>
+          {canEdit && (
+            <Button 
+              variant="contained" 
+              onClick={handleSave} 
+              disabled={mutation.isPending}
+              startIcon={mutation.isPending ? <CircularProgress size={20} /> : null}
+            >
+              Guardar Cambios
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Container>
