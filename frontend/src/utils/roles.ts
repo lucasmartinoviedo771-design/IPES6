@@ -37,14 +37,18 @@ const normalizeRoles = (roles?: string[] | null) =>
  * Expande roles base (como 'bedel_informatica' -> 'bedel') para simplificar 
  * chequeos de permisos en componentes.
  */
+const getActiveRole = (): string | null => {
+  try { return localStorage.getItem("ipes_active_role"); } catch { return null; }
+};
+
 const collectRoles = (user: User | null | undefined): Set<string> => {
   const set = new Set<string>();
 
-  // Prioridad 1: Simulación activa (Impersonation)
-  if (globalRoleOverride) {
-    const r = globalRoleOverride.toLowerCase().trim();
+  // Prioridad 1: Simulación activa (Impersonation) o rol seleccionado por usuario multi-rol
+  const effectiveOverride = globalRoleOverride || getActiveRole();
+  if (effectiveOverride) {
+    const r = effectiveOverride.toLowerCase().trim();
     set.add(r);
-    // Auto-expansión de roles conocidos para consistencia en la UI simulada
     if (r.includes("estudiante")) set.add("estudiante");
     if (r === "bedel_secretaria") {
       // no expandir
