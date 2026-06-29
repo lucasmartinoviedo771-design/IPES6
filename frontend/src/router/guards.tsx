@@ -50,17 +50,25 @@ export function ProtectedRoute({
   // Sin requisitos de acceso → alcanza con estar logueado
   if (!capability && (!roles || roles.length === 0)) return children;
 
-  // Prioridad 1: capability del backend (fuente de verdad)
-  if (capability) {
-    return hasCapability(user, capability) ? children : <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
+  let hasAccess = false;
+
+  // 1. Evaluar capability del backend (fuente de verdad)
+  if (capability && hasCapability(user, capability)) {
+    hasAccess = true;
   }
 
-  // Prioridad 2: roles legacy (compatibilidad hacia atrás)
-  const allowed = requireAll
-    ? hasAllRoles(user, roles!)
-    : hasAnyRole(user, roles!);
+  // 2. Evaluar roles legacy / fallback (compatibilidad hacia atrás)
+  if (!hasAccess && roles && roles.length > 0) {
+    hasAccess = requireAll
+      ? hasAllRoles(user, roles)
+      : hasAnyRole(user, roles);
+  }
 
-  return allowed ? children : <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
+  if (!hasAccess) {
+    return <Navigate to={forbiddenTo} replace state={{ from: loc }} />;
+  }
+
+  return children;
 }
 
 import { getDefaultHomeRoute } from "@/utils/roles";

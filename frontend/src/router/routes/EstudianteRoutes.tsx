@@ -17,15 +17,9 @@ const HorarioPage = lazyPage(() => import("@/pages/Estudiantes/HorarioPage"));
 const MisAsistenciasPage = lazyPage(() => import("@/pages/Estudiantes/MisAsistenciasPage"));
 const CursoIntroductorioEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/CursoIntroductorioPage"));
 
-const baseRoles: string[] = ["estudiante", "admin", "secretaria", "bedel", "tutor", "coordinador", "jefes", "jefa_aaee", "consulta", "attp", "rectorado"];
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const estudianteSecretariaRoles: string[] = ["estudiante", "admin", "secretaria", "bedel"];
-const trayectoriaRoles: string[] = ["estudiante", "admin", "bedel", "secretaria", "coordinador", "tutor", "attp", "rectorado", "jefes", "jefa_aaee", "consulta"];
-const cursoIntroRoles: string[] = ["estudiante", "admin", "secretaria", "bedel", "curso_intro", "coordinador"];
-
 export const buildEstudianteRoutes = () => (
   <>
-    <Route element={<ProtectedRoute roles={baseRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="ver_estudiantes" roles={["estudiante"]}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes" element={<EstudiantesIndex />} />
       <Route path="/estudiantes/completar-perfil" element={<CompletarPerfilPage />} />
       <Route path="/estudiantes/inscripcion-materia" element={<InscripcionMateriaPage />} />
@@ -39,10 +33,10 @@ export const buildEstudianteRoutes = () => (
       <Route path="/estudiantes/certificado-regular" element={<CertificadoRegularPage />} />
       <Route path="/estudiantes/constancia-examen" element={<ConstanciaExamenPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={trayectoriaRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="ver_estudiantes" roles={["estudiante"]}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes/trayectoria" element={<TrayectoriaPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={cursoIntroRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="gestionar_ci" roles={["estudiante"]}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes/curso-introductorio" element={<CursoIntroductorioEstudiantePage />} />
     </Route>
   </>

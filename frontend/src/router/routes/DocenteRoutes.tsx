@@ -11,10 +11,14 @@ const PlanillaCursadaFormPage = lazyPage(() => import("@/pages/Docentes/mis-plan
 const docenteRoles: string[] = ["docente", "admin", "secretaria", "bedel"];
 
 export const buildDocenteRoutes = () => (
-  <Route element={<ProtectedRoute roles={docenteRoles}><Outlet /></ProtectedRoute>}>
-    <Route path="/docentes/clases/:claseId/asistencia" element={<TomarAsistenciaPage />} />
-    <Route path="/docentes/demo-asistencia" element={<TomarAsistenciaDemoPage />} />
-    <Route path="/docentes/mis-planillas" element={<MisPlanillasPage />} />
-    <Route path="/docentes/mis-planillas/:comisionId" element={<PlanillaCursadaFormPage />} />
-  </Route>
+  <>
+    <Route element={<ProtectedRoute capability="asistencia_estudiantes_editar"><Outlet /></ProtectedRoute>}>
+      <Route path="/docentes/clases/:claseId/asistencia" element={<TomarAsistenciaPage />} />
+      <Route path="/docentes/demo-asistencia" element={<TomarAsistenciaDemoPage />} />
+    </Route>
+    <Route element={<ProtectedRoute capability="carga_regularidades"><Outlet /></ProtectedRoute>}>
+      <Route path="/docentes/mis-planillas" element={<MisPlanillasPage />} />
+      <Route path="/docentes/mis-planillas/:comisionId" element={<PlanillaCursadaFormPage />} />
+    </Route>
+  </>
 );

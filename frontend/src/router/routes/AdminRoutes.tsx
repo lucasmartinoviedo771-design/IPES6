@@ -16,13 +16,11 @@ const ResguardoMateriasPage = lazyPage(() => import("@/pages/Bedeles/ResguardoMa
 
 const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
 
-const adminRoles: string[] = ["admin", "secretaria", "bedel", "titulos", "jefatura", "coordinador", "attp"];
-
 export const buildAdminRoutes = () => (
   <>
     <Route
       element={(
-        <ProtectedRoute roles={adminRoles}>
+        <ProtectedRoute capability="ver_actas">
           <AppShell>
             <Outlet />
           </AppShell>
@@ -43,7 +41,7 @@ export const buildAdminRoutes = () => (
     <Route
       path="/admin/actas/:actaId/print"
       element={(
-        <ProtectedRoute roles={adminRoles}>
+        <ProtectedRoute capability="ver_actas">
           <ActaPrintPage />
         </ProtectedRoute>
       )}
@@ -51,7 +49,7 @@ export const buildAdminRoutes = () => (
     <Route
       path="/system/logs"
       element={(
-        <ProtectedRoute roles={["admin"]}>
+        <ProtectedRoute capability="admin_sistema">
           <AppShell>
             <SystemLogsPage />
           </AppShell>

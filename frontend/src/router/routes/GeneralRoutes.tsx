@@ -11,26 +11,27 @@ const MateriaInscriptosPage = lazyPage(() => import("@/pages/MateriaInscriptosPa
 const ReportesPage = lazyPage(() => import("@/pages/ReportesPage"));
 const ConfirmarInscripcionPage = lazyPage(() => import("@/pages/ConfirmarInscripcionPage"));
 
-const managementRoles: string[] = ["admin", "secretaria", "bedel", "bedel_secretaria", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente", "attp", "rectorado"];
-const preinscripcionesRoles: string[] = ["admin", "secretaria", "bedel", "bedel_secretaria"];
-const mensajesRoles: string[] = ["admin", "secretaria", "bedel", "bedel_secretaria", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "estudiante", "attp", "rectorado"];
-const confirmacionRoles: string[] = ["bedel", "secretaria", "admin"];
-
 export const buildGeneralRoutes = () => (
   <>
-    <Route element={<ProtectedRoute roles={managementRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="ver_dashboard"><Outlet /></ProtectedRoute>}>
       <Route path="/dashboard" element={<DashboardPage />} />
+    </Route>
+    <Route element={<ProtectedRoute capability="ver_estructura"><Outlet /></ProtectedRoute>}>
       <Route path="/carreras" element={<CarrerasPage />} />
+    </Route>
+    <Route element={<ProtectedRoute capability="ver_estudiantes"><Outlet /></ProtectedRoute>}>
       <Route path="/carreras/:profesoradoId/planes/:planId/materias/:materiaId/inscriptos" element={<MateriaInscriptosPage />} />
+    </Route>
+    <Route element={<ProtectedRoute capability="ver_reportes"><Outlet /></ProtectedRoute>}>
       <Route path="/reportes" element={<ReportesPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={preinscripcionesRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="gestionar_preinscripcion"><Outlet /></ProtectedRoute>}>
       <Route path="/preinscripciones" element={<PreinscripcionesPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={mensajesRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="enviar_mensajes"><Outlet /></ProtectedRoute>}>
       <Route path="/mensajes" element={<MensajesInboxPage />} />
     </Route>
-    <Route element={<ProtectedRoute roles={confirmacionRoles}><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="formalizar_inscripcion"><Outlet /></ProtectedRoute>}>
       <Route path="/gestion/confirmar" element={<ConfirmarInscripcionPage />} />
     </Route>
   </>
