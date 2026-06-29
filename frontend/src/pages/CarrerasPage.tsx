@@ -26,7 +26,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole, isOnlyEstudiante } from "@/utils/roles";
+import { hasAnyRole, hasCapability, isOnlyEstudiante } from "@/utils/roles";
 import { fetchCarreras, Carrera } from "@/api/carreras";
 import { listarPlanes, PlanDTO } from "@/api/cargaNotas";
 import { listarMaterias, MateriaDTO } from "@/api/comisiones";
@@ -219,7 +219,7 @@ export default function CarrerasPage() {
   const navigate = useNavigate();
 
   const soloEstudiante = isOnlyEstudiante(user);
-  const puedeGestionarCarreras = hasAnyRole(user, STAFF_ROLES as unknown as string[]);
+  const puedeGestionarCarreras = hasCapability(user, "ver_estructura");
 
 
 
