@@ -16,7 +16,7 @@ export default function BedelesIndex() {
   const canManageAnaliticos = hasCapability(user, "ver_analiticos");
   const canManageEquivalencias = hasCapability(user, "ver_documentacion");
   const canCursoIntro = hasCapability(user, "gestionar_ci");
-  const canManageNotas = hasCapability(user, "carga_regularidades") || hasCapability(user, "carga_finales") || hasCapability(user, "acta_manual") || hasCapability(user, "ver_actas");
+  const canManageNotas = hasCapability(user, "carga_regularidades") || hasCapability(user, "carga_finales") || hasCapability(user, "acta_manual");
 
   const sections: RoleDashboardSection[] = useMemo(
     () => [
