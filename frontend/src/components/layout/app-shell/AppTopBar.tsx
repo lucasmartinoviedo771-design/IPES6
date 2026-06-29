@@ -26,6 +26,7 @@ interface AppTopBarProps {
   open: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any;
+  activeRole?: string | null;
   canUseMessages: boolean;
   unreadMessages: number;
   badgeColor: "default" | "error" | "warning" | "primary";
@@ -37,6 +38,7 @@ interface AppTopBarProps {
 export const AppTopBar: React.FC<AppTopBarProps> = ({
   open,
   user,
+  activeRole,
   canUseMessages,
   unreadMessages,
   badgeColor,
@@ -202,20 +204,25 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
                 {user.email}
               </Typography>
             )}
-            {user?.roles && user.roles.length > 0 && (
-              <Typography
-                variant="caption"
-                sx={{
-                  color: INSTITUTIONAL_TERRACOTTA,
-                  display: "block",
-                  fontWeight: 700,
-                  fontSize: "0.65rem",
-                  textTransform: "uppercase"
-                }}
-              >
-                {user.roles.map((r: string) => roleLabels[r.toLowerCase()] || r.toUpperCase()).join(" • ")}
-              </Typography>
-            )}
+            {(() => {
+              const label = activeRole
+                ? (roleLabels[activeRole.split(":")[0].toLowerCase()] || activeRole.split(":")[0].toUpperCase())
+                : (user?.roles ?? []).map((r: string) => roleLabels[r.toLowerCase()] || r.toUpperCase()).join(" • ");
+              return label ? (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: INSTITUTIONAL_TERRACOTTA,
+                    display: "block",
+                    fontWeight: 700,
+                    fontSize: "0.65rem",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  {label}
+                </Typography>
+              ) : null;
+            })()}
           </Box>
           {hasAnyRole(user, ["estudiante"]) && (
             <Button

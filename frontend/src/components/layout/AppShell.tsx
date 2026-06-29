@@ -122,6 +122,7 @@ export default function AppShell({ children }: PropsWithChildren) {
       <AppTopBar
         open={open}
         user={user}
+        activeRole={activeRole}
         canUseMessages={canUseMessages}
         unreadMessages={unreadMessages}
         badgeColor={badgeColor as "default" | "error" | "warning" | "primary"}

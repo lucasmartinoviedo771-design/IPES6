@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { hasCapability } from "@/utils/roles";
+import { hasCapability, hasAnyRole } from "@/utils/roles";
 import { ROLE_NAV_MAP } from "./constants";
 import type { User } from "@/context/AuthContext";
 
@@ -42,8 +42,8 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const canJefaturaPanel     = isNavAllowed("jefatura",      can("ver_reportes") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
   const canAsistenciaReportes = isNavAllowed("asistencia",   can("ver_asistencia"));
   const canCursoIntro        = isNavAllowed("cursoIntro",    can("gestionar_ci"));
-  const canEstudiantePortal  = isNavAllowed("estudiante",    !!(user && (user.roles ?? []).includes("estudiante")));
-  const canEstudiantePanel   = isNavAllowed("estudiante",    can("ver_estudiantes") && !(user?.roles ?? []).includes("estudiante"));
+  const canEstudiantePortal  = isNavAllowed("estudiante",    hasAnyRole(user, ["estudiante"]));
+  const canEstudiantePanel   = isNavAllowed("estudiante",    can("ver_estudiantes") && !hasAnyRole(user, ["estudiante"]));
   const canPrimeraCarga      = isNavAllowed("primeraCarga",  can("primera_carga"));
   const canAttpPanel         = isNavAllowed("attp",          (user?.roles ?? []).includes("attp") && !can("editar_estudiantes"));
   const canRectoradoPanel    = isNavAllowed("rectorado",     (user?.roles ?? []).includes("rectorado") && !can("editar_estudiantes"));
