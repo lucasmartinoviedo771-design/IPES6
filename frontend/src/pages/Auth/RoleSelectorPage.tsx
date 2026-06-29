@@ -218,7 +218,8 @@ export default function RoleSelectorPage() {
               gradient: "linear-gradient(135deg, #a2a495, #7d7f6e)",
             };
 
-            const assignments = user?.role_assignments?.filter((a) => {
+            const assignments = (user?.role_assignments?.filter((a) => {
+              if (!a.profesorado_id) return false;
               const r = a.role.toLowerCase().trim();
               const target = role.toLowerCase().trim();
               if (target === "estudiante") return r === "estudiante";
@@ -226,7 +227,7 @@ export default function RoleSelectorPage() {
               if (target === "coordinador") return r.startsWith("coordinador");
               if (target === "tutor") return r.startsWith("tutor");
               return r === target;
-            }) || [];
+            }) || []);
 
             const isGranular = assignments.length > 0;
 

@@ -148,6 +148,24 @@ def _get_role_assignments(user):
     except Exception:
         pass
 
+    # 3. Django groups not yet covered by StaffAsignacion (ej: bedel_secretaria asignado directo)
+    covered_roles = {a["role"] for a in assignments}
+    try:
+        for group in user.groups.all():
+            role_name = group.name.lower().strip()
+            if role_name not in covered_roles:
+                assignments.append(
+                    {
+                        "role": role_name,
+                        "profesorado_id": None,
+                        "profesorado_nombre": None,
+                        "turno": None,
+                    }
+                )
+                covered_roles.add(role_name)
+    except Exception:
+        pass
+
     return assignments
 
 
