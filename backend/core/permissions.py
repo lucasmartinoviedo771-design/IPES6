@@ -100,7 +100,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "rectorado",
         "attp",
         "bedel_secretaria",
-        "jefatura",
+        "jefes",
         "coordinador",
     },
     # --- Estructura curricular ---
