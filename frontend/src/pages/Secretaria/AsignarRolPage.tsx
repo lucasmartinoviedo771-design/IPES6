@@ -256,7 +256,7 @@ const AsignarRolPage: React.FC = () => {
     }
   };
 
-  const nonStudentUsers = users.filter(u => !u.groups.includes('estudiante'));
+  const nonStudentUsers = users;
 
   // Roles del usuario que tienen asignaciones detalladas
   const rolesConAsignacion = new Set(asignaciones.map(a => a.rol));
