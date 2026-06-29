@@ -36,6 +36,7 @@ interface HistorialPanelProps {
   handleAddRow: () => void;
   rowsToAdd: string;
   setRowsToAdd: (value: string) => void;
+  scope?: 'primera_carga' | 'standard';
 }
 
 export const HistorialPanel: React.FC<HistorialPanelProps> = ({
@@ -55,6 +56,7 @@ export const HistorialPanel: React.FC<HistorialPanelProps> = ({
   handleAddRow,
   rowsToAdd,
   setRowsToAdd,
+  scope = 'primera_carga',
 }) => {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -86,7 +88,7 @@ export const HistorialPanel: React.FC<HistorialPanelProps> = ({
           </Button>
         </Tooltip>
       </Box>
-      {!isReadOnly && (
+      {!isReadOnly && scope !== 'standard' && (
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>

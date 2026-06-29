@@ -39,6 +39,7 @@ interface HeaderFieldsProps {
   filaFields: any[];
   calculateSituacionForRow: (index: number) => void;
   mode: 'create' | 'edit' | 'view';
+  scope?: 'primera_carga' | 'standard';
 }
 
 export const HeaderFields: React.FC<HeaderFieldsProps> = ({
@@ -60,6 +61,7 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
   filaFields,
   calculateSituacionForRow,
   mode,
+  scope = 'primera_carga',
 }) => {
   return (
     <>
@@ -67,22 +69,24 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
         Datos generales
       </Typography>
       <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={crossLoadEnabled}
-                onChange={(e) => onCrossLoadChange(e.target.checked)}
-              />
-            }
-            label="Habilitar carga de comisiones cruzadas (Cargar en otro profesorado)"
-          />
-          {crossLoadEnabled && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              Esta opción mostrará todos los profesorados disponibles. Utilícela solo para cargar estudiantes de comisiones o equivalencias.
-            </Alert>
-          )}
-        </Grid>
+        {scope !== 'standard' && (
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={crossLoadEnabled}
+                  onChange={(e) => onCrossLoadChange(e.target.checked)}
+                />
+              }
+              label="Habilitar carga de comisiones cruzadas (Cargar en otro profesorado)"
+            />
+            {crossLoadEnabled && (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                Esta opción mostrará todos los profesorados disponibles. Utilícela solo para cargar estudiantes de comisiones o equivalencias.
+              </Alert>
+            )}
+          </Grid>
+        )}
         <Grid item xs={12} sm={6} md={3}>
           <Controller
             control={control}
@@ -273,7 +277,7 @@ export const HeaderFields: React.FC<HeaderFieldsProps> = ({
         </Grid>
       </Grid>
 
-      {selectedMateria && selectedPlantilla && (
+      {scope !== 'standard' && selectedMateria && selectedPlantilla && (
         <Alert
           severity="info"
           variant="outlined"

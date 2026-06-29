@@ -27,6 +27,8 @@ export type PlanillaCursadaOut = {
   anio_lectivo: number;
   cuatrimestre: string;
   fecha_entrega: string | null;
+  columnas?: any[];
+  situaciones?: any[];
   filas: FilaCursadaOut[];
 };
 

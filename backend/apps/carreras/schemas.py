@@ -154,9 +154,15 @@ class ComisionOut(Schema):
 
     id: int
     materia_id: int
+    materia_nombre: str | None = None
+    plan_id: int | None = None
+    plan_resolucion: str | None = None
+    profesorado_id: int | None = None
+    profesorado_nombre: str | None = None
     anio_lectivo: int
     codigo: str
     turno_id: int
+    turno_nombre: str | None = None
     docente_id: int | None = None
     docente_nombre: str | None = None
     horario_id: int | None = None

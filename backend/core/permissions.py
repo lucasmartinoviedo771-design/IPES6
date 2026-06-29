@@ -176,8 +176,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "secretaria",
         "bedel",
         "coordinador",
-        "tutor",
-                                                                                                            "docente",
+        "tutor",                                                                                                            "docente",
         "estudiante",
         "bedel_secretaria",
     },
@@ -347,10 +346,10 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
 
     groups = get_user_roles(user)
     if active_role:
-        if active_role in _UNRESTRICTED_ROLES:
+        if active_role in _UNRESTRICTED_ROLES or active_role == "docente":
             return None
     else:
-        if groups.intersection(_UNRESTRICTED_ROLES):
+        if groups.intersection(_UNRESTRICTED_ROLES) or "docente" in groups:
             return None
 
     # Si hay un active_prof_id explícito, validamos el acceso únicamente para ese ID

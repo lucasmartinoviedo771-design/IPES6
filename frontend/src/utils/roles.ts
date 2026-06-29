@@ -160,7 +160,7 @@ export const getDefaultHomeRoute = (user: User | null | undefined): string => {
   if (bag.has("secretaria")) return "/secretaria";
 
   // 3. Bedelía (Gestión operativa)
-  if (bag.has("bedel")) return "/bedeles";
+  if (bag.has("bedel") || bag.has("bedel_secretaria")) return "/bedeles";
 
   // 4. Docentes (Mis materias y actas)
   if (bag.has("docente")) return "/docentes";

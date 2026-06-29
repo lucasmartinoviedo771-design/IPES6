@@ -40,9 +40,15 @@ def _serialize_comision(comision: Comision) -> ComisionOut:
     return ComisionOut(
         id=comision.id,
         materia_id=comision.materia_id,
+        materia_nombre=comision.materia.nombre if comision.materia else None,
+        plan_id=comision.materia.plan_de_estudio_id if comision.materia else None,
+        plan_resolucion=comision.materia.plan_de_estudio.resolucion if comision.materia and comision.materia.plan_de_estudio else None,
+        profesorado_id=comision.materia.plan_de_estudio.profesorado_id if comision.materia and comision.materia.plan_de_estudio else None,
+        profesorado_nombre=comision.materia.plan_de_estudio.profesorado.nombre if comision.materia and comision.materia.plan_de_estudio and comision.materia.plan_de_estudio.profesorado else None,
         anio_lectivo=comision.anio_lectivo,
         codigo=comision.codigo,
         turno_id=comision.turno_id,
+        turno_nombre=comision.turno.nombre if comision.turno else None,
         docente_id=comision.docente_id,
         docente_nombre=str(comision.docente) if comision.docente else None,
         horario_id=comision.horario_id,
@@ -105,7 +111,7 @@ def list_comisiones(
         active_role = active_role.split(":")[0].lower().strip()
     roles = get_user_roles(request.user)
     if active_role == "docente" or (not active_role and "docente" in roles and not (roles & {"admin", "secretaria", "bedel"})):
-        qs = qs.filter(docente__persona__user=request.user)
+        qs = qs.filter(docente__persona__user_profile__user=request.user)
 
     if profesorado_id:
         qs = qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)

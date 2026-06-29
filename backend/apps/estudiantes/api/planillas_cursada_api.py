@@ -78,6 +78,8 @@ class PlanillaCursadaOut(Schema):
     anio_lectivo: int
     cuatrimestre: str
     fecha_entrega: date | None
+    columnas: list = []
+    situaciones: list = []
     filas: list[FilaOut]
 
 
@@ -183,6 +185,8 @@ def _serializar_planilla(planilla: PlanillaCursada) -> PlanillaCursadaOut:
         anio_lectivo=planilla.anio_lectivo,
         cuatrimestre=planilla.cuatrimestre,
         fecha_entrega=planilla.fecha_entrega,
+        columnas=planilla.plantilla.columnas if planilla.plantilla else [],
+        situaciones=planilla.plantilla.situaciones if planilla.plantilla else [],
         filas=filas,
     )
 
@@ -270,6 +274,17 @@ def generar_planillas_cursada(request, payload: GenerarPlanillasIn):
     plantilla = None
     if payload.plantilla_id:
         plantilla = RegularidadPlantilla.objects.filter(id=payload.plantilla_id).first()
+    else:
+        slug_map = {
+            "ASI": "asignatura",
+            "MOD": "modulo",
+            "TAL": "taller",
+        }
+        slug = slug_map.get(comision.materia.formato, "asignatura")
+        plantilla = RegularidadPlantilla.objects.filter(
+            formato__slug=slug,
+            dictado=payload.cuatrimestre,
+        ).first()
 
     docente = comision.docente
 

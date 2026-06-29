@@ -39,6 +39,24 @@ const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "default"> =
   REABIERTA: "info",
 };
 
+const headerCellSx = {
+  fontWeight: 600,
+  fontSize: "0.75rem",
+  textTransform: "uppercase" as const,
+  backgroundColor: "grey.100",
+  border: "1px solid",
+  borderColor: "grey.300",
+  whiteSpace: "nowrap" as const,
+};
+
+const bodyCellSx = {
+  border: "1px solid",
+  borderColor: "grey.200",
+  px: 1.5,
+  py: 1,
+  verticalAlign: "middle" as const,
+};
+
 type FilaEditable = FilaCursadaOut & { _asistencia: string; _situacion: string };
 
 function filaToEditable(f: FilaCursadaOut): FilaEditable {
@@ -69,7 +87,7 @@ export default function PlanillaCursadaFormPage() {
   const [filasEditables, setFilasEditables] = useState<Record<number, FilaEditable[]>>({});
 
   // Genera o trae las planillas de esta comisión
-  const { isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["planillas-cursada", comisionId, anioLectivo, cuatrimestre],
     queryFn: () =>
       generarPlanillasCursada({
@@ -78,16 +96,18 @@ export default function PlanillaCursadaFormPage() {
         cuatrimestre,
       }),
     enabled: !!comisionId,
-    onSuccess: (data: PlanillaCursadaOut[]) => {
+  });
+
+  useEffect(() => {
+    if (data) {
       setPlanillas(data);
       const editable: Record<number, FilaEditable[]> = {};
       data.forEach((p) => {
         editable[p.id] = p.filas.map(filaToEditable);
       });
       setFilasEditables(editable);
-    },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+    }
+  }, [data]);
 
   const buildFilasPayload = (filas: FilaEditable[]) =>
     filas.map((f) => ({
@@ -172,6 +192,28 @@ export default function PlanillaCursadaFormPage() {
       ...prev,
       [planillaId]: prev[planillaId].map((f) =>
         f.fila_id === filaId ? { ...f, _situacion: value } : f
+      ),
+    }));
+  };
+
+  const handleColumnaDatoChange = (
+    planillaId: number,
+    filaId: number,
+    colKey: string,
+    value: string
+  ) => {
+    setFilasEditables((prev) => ({
+      ...prev,
+      [planillaId]: prev[planillaId].map((f) =>
+        f.fila_id === filaId
+          ? {
+              ...f,
+              columnas_datos: {
+                ...f.columnas_datos,
+                [colKey]: value !== "" ? (isNaN(Number(value)) ? value : Number(value)) : null,
+              },
+            }
+          : f
       ),
     }));
   };
@@ -270,36 +312,140 @@ export default function PlanillaCursadaFormPage() {
                 )}
 
                 {/* Tabla de filas */}
-                <TableContainer>
+                <TableContainer component={Paper} variant="outlined" sx={{ mt: 1 }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell width={40}>#</TableCell>
-                        <TableCell>Apellido y nombre</TableCell>
-                        <TableCell>DNI</TableCell>
-                        <TableCell width={120}>Asistencia %</TableCell>
-                        <TableCell width={160}>Situación</TableCell>
+                        <TableCell sx={{ ...headerCellSx, width: 60 }} rowSpan={2}>
+                          N°
+                        </TableCell>
+                        <TableCell sx={{ ...headerCellSx, minWidth: 240 }} rowSpan={2}>
+                          Estudiantes
+                        </TableCell>
+                        <TableCell sx={{ ...headerCellSx, width: 140 }} rowSpan={2}>
+                          DNI
+                        </TableCell>
+
+                        {/* Render Groups for Dynamic Columns */}
+                        {(() => {
+                          const groups: { name: string; span: number }[] = [];
+                          let currentGroup = "";
+                          let currentSpan = 0;
+
+                          (planilla.columnas ?? []).forEach((col: any) => {
+                            const gName = col.group || "";
+                            if (gName !== currentGroup) {
+                              if (currentSpan > 0) groups.push({ name: currentGroup, span: currentSpan });
+                              currentGroup = gName;
+                              currentSpan = 1;
+                            } else {
+                              currentSpan++;
+                            }
+                          });
+                          if (currentSpan > 0) groups.push({ name: currentGroup, span: currentSpan });
+
+                          if (groups.length === 0 && (planilla.columnas ?? []).length > 0) {
+                            return (
+                              <TableCell
+                                sx={{ ...headerCellSx, textAlign: "center" }}
+                                colSpan={planilla.columnas?.length}
+                              >
+                                Nota de trabajos prácticos
+                              </TableCell>
+                            );
+                          }
+
+                          return groups.map((g, idx) => (
+                            <TableCell
+                              key={`group-${idx}`}
+                              sx={{ ...headerCellSx, textAlign: "center" }}
+                              colSpan={g.span}
+                            >
+                              {g.name}
+                            </TableCell>
+                          ));
+                        })()}
+
+                        <TableCell sx={{ ...headerCellSx, width: 80, textAlign: "center" }} rowSpan={2}>
+                          Final
+                        </TableCell>
+                        <TableCell sx={{ ...headerCellSx, width: 80, textAlign: "center" }} rowSpan={2}>
+                          Asistencia
+                        </TableCell>
+                        <TableCell sx={{ ...headerCellSx, minWidth: 200 }} rowSpan={2}>
+                          Situación académica
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        {(planilla.columnas ?? []).map((col: any) => (
+                          <TableCell sx={{ ...headerCellSx, width: 80, minWidth: 80 }} key={col.key}>
+                            <Typography variant="body2" sx={{ fontSize: "0.70rem" }}>
+                              {col.label}
+                            </Typography>
+                            {col.optional ? (
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.65rem" }}>
+                                (opt)
+                              </Typography>
+                            ) : null}
+                          </TableCell>
+                        ))}
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {filas.map((fila) => (
                         <TableRow key={fila.fila_id}>
-                          <TableCell>{fila.orden}</TableCell>
-                          <TableCell>
-                            {fila.apellido_nombre}
-                            {fila.en_resguardo && (
-                              <Tooltip title="Nota en resguardo — legajo incompleto">
-                                <Chip
-                                  label="Resguardo"
-                                  size="small"
-                                  color="warning"
-                                  sx={{ ml: 1 }}
-                                />
-                              </Tooltip>
-                            )}
+                          <TableCell sx={{ ...bodyCellSx, width: 60, textAlign: "center" }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              {fila.orden}
+                            </Typography>
                           </TableCell>
-                          <TableCell>{fila.dni}</TableCell>
-                          <TableCell>
+                          <TableCell sx={{ ...bodyCellSx, minWidth: 320 }}>
+                            <Box sx={{ display: "flex", alignItems: "center" }}>
+                              <Typography variant="body2">{fila.apellido_nombre}</Typography>
+                              {fila.en_resguardo && (
+                                <Tooltip title="Nota en resguardo — legajo incompleto">
+                                  <Chip
+                                    label="Resguardo"
+                                    size="small"
+                                    color="warning"
+                                    sx={{ ml: 1 }}
+                                  />
+                                </Tooltip>
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ ...bodyCellSx, width: 100 }}>{fila.dni}</TableCell>
+                          {(planilla.columnas ?? []).map((col: any) => (
+                            <TableCell key={col.key} sx={{ ...bodyCellSx, width: 80 }} align="center">
+                              <TextField
+                                size="small"
+                                type={col.type === "number" ? "number" : "text"}
+                                value={fila.columnas_datos?.[col.key] ?? ""}
+                                disabled={esCerrada}
+                                onChange={(e) =>
+                                  handleColumnaDatoChange(
+                                    planilla.id,
+                                    fila.fila_id,
+                                    col.key,
+                                    e.target.value
+                                  )
+                                }
+                                sx={{ width: 80 }}
+                              />
+                            </TableCell>
+                          ))}
+                          {/* Final column cell */}
+                          <TableCell sx={{ ...bodyCellSx, width: 80 }} align="center">
+                            <TextField
+                              size="small"
+                              type="number"
+                              disabled
+                              value={fila.columnas_datos?.final ?? ""}
+                              placeholder="--"
+                              sx={{ width: 60 }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ ...bodyCellSx, width: 100 }} align="center">
                             <TextField
                               size="small"
                               type="number"
@@ -321,8 +467,9 @@ export default function PlanillaCursadaFormPage() {
                               sx={{ width: 100 }}
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={{ ...bodyCellSx, minWidth: 200 }}>
                             <TextField
+                              select
                               size="small"
                               value={fila._situacion}
                               disabled={esCerrada}
@@ -333,8 +480,16 @@ export default function PlanillaCursadaFormPage() {
                                   e.target.value
                                 )
                               }
-                              sx={{ width: 150 }}
-                            />
+                              sx={{ width: "100%" }}
+                              SelectProps={{ native: true }}
+                            >
+                              <option value="">-- Seleccionar --</option>
+                              {planilla.situaciones?.map((sit: any) => (
+                                <option key={sit.codigo} value={sit.codigo}>
+                                  {sit.label}
+                                </option>
+                              ))}
+                            </TextField>
                           </TableCell>
                         </TableRow>
                       ))}

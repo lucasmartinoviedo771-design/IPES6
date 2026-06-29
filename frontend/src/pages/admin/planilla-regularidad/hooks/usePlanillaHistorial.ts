@@ -11,13 +11,14 @@ import { buildDefaultRow } from '../constants';
 interface UsePlanillaHistorialOptions {
   open: boolean;
   replaceFilas: (filas: PlanillaFilaFormValues[]) => void;
+  scope?: 'primera_carga' | 'standard';
 }
 
-export function usePlanillaHistorial({ open, replaceFilas }: UsePlanillaHistorialOptions) {
+export function usePlanillaHistorial({ open, replaceFilas, scope = 'primera_carga' }: UsePlanillaHistorialOptions) {
   const historyQuery = useQuery({
     queryKey: ['primera-carga', 'regularidades', 'historial'],
     queryFn: () => listarHistorialRegularidades(),
-    enabled: open,
+    enabled: open && scope === 'primera_carga',
     staleTime: 1000 * 60 * 5,
   });
 

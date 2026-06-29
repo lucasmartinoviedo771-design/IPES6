@@ -146,6 +146,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
   const historial = usePlanillaHistorial({
     open,
     replaceFilas: form.replaceFilas,
+    scope,
   });
 
   // Actualizamos el puente de estado cuando el formulario cambia
@@ -230,6 +231,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
               filaFields={form.filaFields}
               calculateSituacionForRow={form.calculateSituacionForRow}
               mode={mode}
+              scope={scope}
             />
 
             <Divider sx={{ my: 4 }} />
@@ -265,6 +267,7 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
               handleAddRow={form.handleAddRow}
               rowsToAdd={form.rowsToAdd}
               setRowsToAdd={form.setRowsToAdd}
+              scope={scope}
             />
 
             <FilasTable

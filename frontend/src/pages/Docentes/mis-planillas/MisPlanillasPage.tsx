@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -16,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { listarComisiones, ComisionDTO } from "@/api/comisiones";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
+import PlanillaRegularidadDialog from "@/pages/admin/PlanillaRegularidadDialog";
 
 const currentYear = new Date().getFullYear();
 
@@ -34,6 +36,8 @@ const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "default"> =
 
 export default function MisPlanillasPage() {
   const navigate = useNavigate();
+  const [openPlanilla, setOpenPlanilla] = useState(false);
+  const [selectedComisionId, setSelectedComisionId] = useState<number | null>(null);
 
   const { data: comisiones, isLoading, isError } = useQuery<ComisionDTO[]>({
     queryKey: ["docente", "comisiones", currentYear],
@@ -101,18 +105,10 @@ export default function MisPlanillasPage() {
                       <Button
                         size="small"
                         variant="contained"
-                        onClick={() =>
-                          navigate(
-                            `/docentes/mis-planillas/${comision.id}`,
-                            {
-                              state: {
-                                comision,
-                                cuatrimestre: CUATRIMESTRE_ACTUAL(),
-                                anioLectivo: currentYear,
-                              },
-                            }
-                          )
-                        }
+                        onClick={() => {
+                          setSelectedComisionId(comision.id);
+                          setOpenPlanilla(true);
+                        }}
                       >
                         Abrir planilla
                       </Button>
@@ -124,6 +120,17 @@ export default function MisPlanillasPage() {
           </TableContainer>
         )}
       </Stack>
+
+      <PlanillaRegularidadDialog
+        open={openPlanilla}
+        onClose={() => {
+          setOpenPlanilla(false);
+          setSelectedComisionId(null);
+        }}
+        comisionId={selectedComisionId || undefined}
+        scope="standard"
+        mode="edit"
+      />
     </Box>
   );
 }
