@@ -92,7 +92,17 @@ CAPABILITIES: dict[str, set[str]] = {
     "carga_regularidades": {"admin", "secretaria", "bedel", "docente"},
     "carga_finales": {"admin", "secretaria", "bedel", "docente"},
     "acta_manual": {"admin", "secretaria", "bedel", "docente"},
-    "ver_actas": {"admin", "secretaria", "bedel", "titulos", "rectorado", "attp", "bedel_secretaria", "jefatura", "coordinador"},
+    "ver_actas": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "titulos",
+        "rectorado",
+        "attp",
+        "bedel_secretaria",
+        "jefatura",
+        "coordinador",
+    },
     # --- Estructura curricular ---
     "ver_estructura": {
         "admin",
@@ -168,7 +178,20 @@ CAPABILITIES: dict[str, set[str]] = {
         "docente",
     },
     "ver_metricas": {"admin", "secretaria", "bedel", "jefes", "rectorado"},
-    "ver_reportes": {"admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente", "rectorado", "attp", "bedel_secretaria"},
+    "ver_reportes": {
+        "admin",
+        "secretaria",
+        "bedel",
+        "jefa_aaee",
+        "jefes",
+        "tutor",
+        "coordinador",
+        "consulta",
+        "docente",
+        "rectorado",
+        "attp",
+        "bedel_secretaria",
+    },
     # --- Mensajería ---
     # Nota: el estudiante puede ACCEDER a mensajería pero solo puede INICIAR
     # conversación con bedel/tutor de su carrera. Esa restricción se implementa

@@ -193,6 +193,7 @@ def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[Regu
     fila_map = {}
     if comision_id is not None and comision_id >= 0:
         from core.models import PlanillaRegularidad
+
         planilla = PlanillaRegularidad.objects.filter(comision_id=comision_id).first()
         if planilla:
             for f in planilla.filas.all():
@@ -247,7 +248,8 @@ def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[Regu
                     asistencia=fila_obj.asistencia_porcentaje,
                     excepcion=fila_obj.excepcion,
                     situacion=fila_obj.situacion or alias,
-                    observaciones=fila_obj.datos.get("observaciones") or (regularidad.observaciones if regularidad else None),
+                    observaciones=fila_obj.datos.get("observaciones")
+                    or (regularidad.observaciones if regularidad else None),
                     correlativas_caidas=caidas_map.get(insc.estudiante_id, []),
                     is_baja=is_baja,
                     baja_fecha=insc.baja_fecha if is_baja else None,
@@ -538,8 +540,13 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
         planilla = None
         if not is_virtual:
             from core.models import PlanillaRegularidad, PlanillaRegularidadFila, RegularidadPlantilla
+
             # Resolver plantilla
-            dictado_val = "ANUAL" if (materia.regimen or "").upper() in ["ANU", "ANUAL"] else ("1C" if (materia.regimen or "").upper() in ["1C", "PCU", "1° CUATRIMESTRE"] else "2C")
+            dictado_val = (
+                "ANUAL"
+                if (materia.regimen or "").upper() in ["ANU", "ANUAL"]
+                else ("1C" if (materia.regimen or "").upper() in ["1C", "PCU", "1° CUATRIMESTRE"] else "2C")
+            )
             plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato, dictado=dictado_val).first()
             if not plantilla:
                 plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato).first()
@@ -558,7 +565,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                     "dictado": dictado_val,
                     "fecha": fecha_base,
                     "estado": PlanillaRegularidad.Estado.FINAL,
-                }
+                },
             )
             # Limpiar filas previas
             planilla.filas.all().delete()
@@ -648,6 +655,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
             # Guardar en PlanillaRegularidadFila
             if planilla:
                 from core.models import PlanillaRegularidadFila
+
                 PlanillaRegularidadFila.objects.create(
                     planilla=planilla,
                     orden=est_payload.orden,

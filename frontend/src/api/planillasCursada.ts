@@ -27,8 +27,8 @@ export type PlanillaCursadaOut = {
   anio_lectivo: number;
   cuatrimestre: string;
   fecha_entrega: string | null;
-  columnas?: any[];
-  situaciones?: any[];
+  columnas?: { key: string; label: string; group?: string; optional?: boolean; type?: string }[];
+  situaciones?: { codigo: string; label: string }[];
   filas: FilaCursadaOut[];
 };
 

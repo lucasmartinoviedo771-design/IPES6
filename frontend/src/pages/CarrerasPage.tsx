@@ -26,22 +26,11 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole, hasCapability, isOnlyEstudiante } from "@/utils/roles";
+import { hasCapability, isOnlyEstudiante } from "@/utils/roles";
 import { fetchCarreras, Carrera } from "@/api/carreras";
 import { listarPlanes, PlanDTO } from "@/api/cargaNotas";
 import { listarMaterias, MateriaDTO } from "@/api/comisiones";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
-
-const STAFF_ROLES = [
-  "admin",
-  "secretaria",
-  "bedel",
-  "coordinador",
-  "tutor",
-  "jefes",
-  "jefa_aaee",
-  "consulta",
-] as const;
 
 const SELECTION_STORAGE_KEY = "carreras.selection";
 

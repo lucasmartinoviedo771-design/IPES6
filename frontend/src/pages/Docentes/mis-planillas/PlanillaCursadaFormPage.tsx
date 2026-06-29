@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
@@ -332,7 +331,7 @@ export default function PlanillaCursadaFormPage() {
                           let currentGroup = "";
                           let currentSpan = 0;
 
-                          (planilla.columnas ?? []).forEach((col: any) => {
+                          (planilla.columnas ?? []).forEach((col) => {
                             const gName = col.group || "";
                             if (gName !== currentGroup) {
                               if (currentSpan > 0) groups.push({ name: currentGroup, span: currentSpan });
@@ -377,7 +376,7 @@ export default function PlanillaCursadaFormPage() {
                         </TableCell>
                       </TableRow>
                       <TableRow>
-                        {(planilla.columnas ?? []).map((col: any) => (
+                        {(planilla.columnas ?? []).map((col) => (
                           <TableCell sx={{ ...headerCellSx, width: 80, minWidth: 80 }} key={col.key}>
                             <Typography variant="body2" sx={{ fontSize: "0.70rem" }}>
                               {col.label}
@@ -415,7 +414,7 @@ export default function PlanillaCursadaFormPage() {
                             </Box>
                           </TableCell>
                           <TableCell sx={{ ...bodyCellSx, width: 100 }}>{fila.dni}</TableCell>
-                          {(planilla.columnas ?? []).map((col: any) => (
+                          {(planilla.columnas ?? []).map((col) => (
                             <TableCell key={col.key} sx={{ ...bodyCellSx, width: 80 }} align="center">
                               <TextField
                                 size="small"
@@ -484,7 +483,7 @@ export default function PlanillaCursadaFormPage() {
                               SelectProps={{ native: true }}
                             >
                               <option value="">-- Seleccionar --</option>
-                              {planilla.situaciones?.map((sit: any) => (
+                              {planilla.situaciones?.map((sit) => (
                                 <option key={sit.codigo} value={sit.codigo}>
                                   {sit.label}
                                 </option>

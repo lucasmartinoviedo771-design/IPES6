@@ -8,8 +8,6 @@ const TomarAsistenciaDemoPage = lazyPage(() => import("@/pages/Docentes/TomarAsi
 const MisPlanillasPage = lazyPage(() => import("@/pages/Docentes/mis-planillas/MisPlanillasPage"));
 const PlanillaCursadaFormPage = lazyPage(() => import("@/pages/Docentes/mis-planillas/PlanillaCursadaFormPage"));
 
-const docenteRoles: string[] = ["docente", "admin", "secretaria", "bedel"];
-
 export const buildDocenteRoutes = () => (
   <>
     <Route element={<ProtectedRoute capability="asistencia_estudiantes_editar"><Outlet /></ProtectedRoute>}>

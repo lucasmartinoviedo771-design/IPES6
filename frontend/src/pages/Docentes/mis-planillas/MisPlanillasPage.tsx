@@ -13,7 +13,6 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { listarComisiones, ComisionDTO } from "@/api/comisiones";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
@@ -35,7 +34,6 @@ const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "default"> =
 };
 
 export default function MisPlanillasPage() {
-  const navigate = useNavigate();
   const [openPlanilla, setOpenPlanilla] = useState(false);
   const [selectedComisionId, setSelectedComisionId] = useState<number | null>(null);
 
