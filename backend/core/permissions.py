@@ -83,6 +83,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "rectorado",
         "attp",
         "bedel_secretaria",
+        "docente",
     },
     "editar_estudiantes": {"admin", "secretaria", "bedel"},
     "ver_documentacion": {"admin", "secretaria", "bedel", "coordinador", "jefes", "bedel_secretaria"},
@@ -91,7 +92,7 @@ CAPABILITIES: dict[str, set[str]] = {
     "carga_regularidades": {"admin", "secretaria", "bedel", "docente"},
     "carga_finales": {"admin", "secretaria", "bedel", "docente"},
     "acta_manual": {"admin", "secretaria", "bedel", "docente"},
-    "ver_actas": {"admin", "secretaria", "bedel", "titulos", "rectorado", "attp", "bedel_secretaria"},
+    "ver_actas": {"admin", "secretaria", "bedel", "titulos", "rectorado", "attp", "bedel_secretaria", "jefatura", "coordinador"},
     # --- Estructura curricular ---
     "ver_estructura": {
         "admin",
@@ -123,7 +124,7 @@ CAPABILITIES: dict[str, set[str]] = {
     "gestionar_analiticos": {"admin", "secretaria", "titulos", "bedel"},
     "ver_analiticos": {"admin", "secretaria", "titulos", "bedel", "tutor", "bedel_secretaria"},
     # --- Curso introductorio ---
-    "gestionar_ci": {"admin", "secretaria", "bedel", "curso_intro", "tutor", "bedel_secretaria"},
+    "gestionar_ci": {"admin", "secretaria", "bedel", "curso_intro", "tutor", "coordinador", "bedel_secretaria"},
     "admin_ci": {"admin", "secretaria"},
     # --- Staff ---
     "asignar_roles": {"admin", "secretaria"},
@@ -164,9 +165,10 @@ CAPABILITIES: dict[str, set[str]] = {
         "rectorado",
         "attp",
         "bedel_secretaria",
+        "docente",
     },
     "ver_metricas": {"admin", "secretaria", "bedel", "jefes", "rectorado"},
-    "ver_reportes": {"admin", "secretaria", "jefes", "rectorado", "attp"},
+    "ver_reportes": {"admin", "secretaria", "bedel", "jefa_aaee", "jefes", "tutor", "coordinador", "consulta", "docente", "rectorado", "attp", "bedel_secretaria"},
     # --- Mensajería ---
     # Nota: el estudiante puede ACCEDER a mensajería pero solo puede INICIAR
     # conversación con bedel/tutor de su carrera. Esa restricción se implementa
@@ -176,9 +178,15 @@ CAPABILITIES: dict[str, set[str]] = {
         "secretaria",
         "bedel",
         "coordinador",
-        "tutor",                                                                                                            "docente",
+        "tutor",
+        "docente",
         "estudiante",
         "bedel_secretaria",
+        "jefa_aaee",
+        "jefes",
+        "consulta",
+        "attp",
+        "rectorado",
     },
     # --- Admin del sistema ---
     "admin_sistema": {"admin"},
