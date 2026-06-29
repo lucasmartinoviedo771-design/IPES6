@@ -31,8 +31,8 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const dashboardVisible     = isNavAllowed("dashboard",     can("ver_dashboard"));
   const canPreins            = isNavAllowed("preinscripciones", can("gestionar_preinscripcion"));
   const canSeeCarreras       = isNavAllowed("carreras",      can("ver_estructura"));
-  const canSeeReportes       = isNavAllowed("reportes",      can("ver_reportes"));
-  const canSecretaria        = isNavAllowed("secretaria",    can("ver_estudiantes"));
+  const canSeeReportes       = isNavAllowed("reportes",      can("ver_reportes") && (can("editar_documentacion") || !can("gestionar_preinscripcion")));
+  const canSecretaria        = isNavAllowed("secretaria",    can("ver_estudiantes") && can("editar_documentacion"));
   const canBedeles           = isNavAllowed("bedeles",       can("editar_documentacion") || can("carga_regularidades") || can("ver_documentacion"));
   const canDocentesPanel     = isNavAllowed("docentes",      can("carga_regularidades") || can("editar_estructura"));
   const canTutoriasPanel     = isNavAllowed("tutorias",      can("gestionar_ci") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
