@@ -37,7 +37,7 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const canDocentesPanel     = isNavAllowed("docentes",      can("carga_regularidades") || can("editar_estructura"));
   const canTutoriasPanel     = isNavAllowed("tutorias",      can("gestionar_ci") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
   const canEquivalenciasPanel = isNavAllowed("equivalencias", can("revisar_equivalencias") || can("gestionar_equivalencias"));
-  const canTitulosPanel      = isNavAllowed("titulos",       can("gestionar_titulos") || can("ver_analiticos"));
+  const canTitulosPanel      = isNavAllowed("titulos",       can("gestionar_titulos") || (can("ver_analiticos") && can("editar_documentacion")));
   const canCoordinacionPanel = isNavAllowed("coordinacion",  can("ver_estructura") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
   const canJefaturaPanel     = isNavAllowed("jefatura",      can("ver_reportes") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
   const canAsistenciaReportes = isNavAllowed("asistencia",   can("ver_asistencia"));
