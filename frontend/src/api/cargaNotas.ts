@@ -53,6 +53,7 @@ export type RegularidadEstudianteDTO = {
   situacion: string | null;
   observaciones: string | null;
   correlativas_caidas: string[];
+  datos?: Record<string, any>;
 };
 
 export type SituacionOptionDTO = {
@@ -95,6 +96,7 @@ export type RegularidadEstudiantePayload = {
   excepcion?: boolean;
   situacion: string;
   observaciones?: string | null;
+  datos?: Record<string, any>;
 };
 
 export type GuardarRegularidadPayload = {

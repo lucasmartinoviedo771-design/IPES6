@@ -118,6 +118,13 @@ class PlanillaRegularidad(models.Model):
         on_delete=models.CASCADE,
         related_name="planillas_regularidad",
     )
+    comision = models.ForeignKey(
+        Comision,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="planillas_regularidad",
+    )
     plantilla = models.ForeignKey(
         RegularidadPlantilla,
         on_delete=models.PROTECT,

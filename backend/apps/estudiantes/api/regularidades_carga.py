@@ -99,6 +99,7 @@ class RegularidadEstudianteOut(Schema):
     situacion: str | None = None
     observaciones: str | None = None
     correlativas_caidas: list[str] = []
+    datos: dict = {}
 
 
 class RegularidadCargaEstudiante(Schema):
@@ -111,6 +112,7 @@ class RegularidadCargaEstudiante(Schema):
     excepcion: bool = False
     situacion: str  # Alias (REGULAR, APROBADO, etc)
     observaciones: str | None = None
+    datos: dict = {}
 
 
 class RegularidadCargaIn(Schema):
@@ -167,7 +169,7 @@ CargaNotasLookup.model_rebuild()
 router = Router(tags=["carga_notas"])
 
 
-def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteOut]:
+def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[RegularidadEstudianteOut]:
     """Auxiliar: Enriquecimiento de la nómina con detección de correlatividades caídas."""
     if not inscripciones:
         return []
@@ -186,7 +188,17 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
         msg = f"{item['materia_correlativa']}: {item['motivo']}"
         caidas_map[est_id].append(msg)
 
-    # Optimizamos la obtención de regularidades (evitar N+1)
+    # Buscar si existe una PlanillaRegularidad para esta comisión
+    planilla = None
+    fila_map = {}
+    if comision_id is not None and comision_id >= 0:
+        from core.models import PlanillaRegularidad
+        planilla = PlanillaRegularidad.objects.filter(comision_id=comision_id).first()
+        if planilla:
+            for f in planilla.filas.all():
+                fila_map[f.dni] = f
+
+    # Optimizamos la obtención de regularidades (evitar N+1) como fallback
     insc_ids = [insc.id for insc in inscripciones]
     regs_qs = Regularidad.objects.filter(inscripcion_id__in=insc_ids).order_by("inscripcion_id", "-fecha_cierre", "-id")
 
@@ -207,29 +219,67 @@ def _build_regularidad_estudiantes(inscripciones) -> list[RegularidadEstudianteO
         else:
             alias = alias_desde_situacion(regularidad.situacion) if regularidad else None
 
-        estudiantes.append(
-            RegularidadEstudianteOut(
-                inscripcion_id=insc.id,
-                estudiante_id=insc.estudiante_id,
-                orden=idx,
-                apellido_nombre=f"{(insc.estudiante.apellido or '').upper()}, {insc.estudiante.nombre or ''}".strip(
-                    ", "
-                ),
-                dni=insc.estudiante.dni,
-                nota_tp=float(regularidad.nota_trabajos_practicos)
-                if regularidad and regularidad.nota_trabajos_practicos is not None
-                else None,
-                nota_final=regularidad.nota_final_cursada if regularidad else None,
-                asistencia=regularidad.asistencia_porcentaje if regularidad else None,
-                excepcion=regularidad.excepcion if regularidad else False,
-                situacion=alias,
-                observaciones=regularidad.observaciones if regularidad else None,
-                correlativas_caidas=caidas_map.get(insc.estudiante_id, []),
-                is_baja=is_baja,
-                baja_fecha=insc.baja_fecha if is_baja else None,
-                baja_motivo=insc.baja_motivo if is_baja else None,
+        fila_obj = fila_map.get(insc.estudiante.dni) if planilla else None
+        if fila_obj:
+            nota_tp = None
+            if "tp_final" in fila_obj.datos:
+                try:
+                    nota_tp = float(fila_obj.datos.get("tp_final"))
+                except:
+                    pass
+            elif "tp_1c" in fila_obj.datos:
+                try:
+                    nota_tp = float(fila_obj.datos.get("tp_1c"))
+                except:
+                    pass
+
+            estudiantes.append(
+                RegularidadEstudianteOut(
+                    inscripcion_id=insc.id,
+                    estudiante_id=insc.estudiante_id,
+                    orden=idx,
+                    apellido_nombre=f"{(insc.estudiante.apellido or '').upper()}, {insc.estudiante.nombre or ''}".strip(
+                        ", "
+                    ),
+                    dni=insc.estudiante.dni,
+                    nota_tp=nota_tp,
+                    nota_final=fila_obj.nota_final,
+                    asistencia=fila_obj.asistencia_porcentaje,
+                    excepcion=fila_obj.excepcion,
+                    situacion=fila_obj.situacion or alias,
+                    observaciones=fila_obj.datos.get("observaciones") or (regularidad.observaciones if regularidad else None),
+                    correlativas_caidas=caidas_map.get(insc.estudiante_id, []),
+                    is_baja=is_baja,
+                    baja_fecha=insc.baja_fecha if is_baja else None,
+                    baja_motivo=insc.baja_motivo if is_baja else None,
+                    datos=fila_obj.datos,
+                )
             )
-        )
+        else:
+            estudiantes.append(
+                RegularidadEstudianteOut(
+                    inscripcion_id=insc.id,
+                    estudiante_id=insc.estudiante_id,
+                    orden=idx,
+                    apellido_nombre=f"{(insc.estudiante.apellido or '').upper()}, {insc.estudiante.nombre or ''}".strip(
+                        ", "
+                    ),
+                    dni=insc.estudiante.dni,
+                    nota_tp=float(regularidad.nota_trabajos_practicos)
+                    if regularidad and regularidad.nota_trabajos_practicos is not None
+                    else None,
+                    nota_final=regularidad.nota_final_cursada if regularidad else None,
+                    asistencia=regularidad.asistencia_porcentaje if regularidad else None,
+                    excepcion=regularidad.excepcion if regularidad else False,
+                    situacion=alias,
+                    observaciones=regularidad.observaciones if regularidad else None,
+                    correlativas_caidas=caidas_map.get(insc.estudiante_id, []),
+                    is_baja=is_baja,
+                    baja_fecha=insc.baja_fecha if is_baja else None,
+                    baja_motivo=insc.baja_motivo if is_baja else None,
+                    datos={},
+                )
+            )
     return estudiantes
 
 
@@ -374,7 +424,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
             .order_by("estudiante__persona__apellido", "estudiante__persona__nombre", "estudiante__persona__dni")
         )
 
-        estudiantes = _build_regularidad_estudiantes(inscripciones)
+        estudiantes = _build_regularidad_estudiantes(inscripciones, comision_id=comision.id)
         lock = regularidad_lock_for_scope(comision=comision)
         esta_cerrada = lock is not None
 
@@ -485,6 +535,34 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
     user_dni = getattr(request.user, "username", "")
 
     with transaction.atomic():
+        planilla = None
+        if not is_virtual:
+            from core.models import PlanillaRegularidad, PlanillaRegularidadFila, RegularidadPlantilla
+            # Resolver plantilla
+            dictado_val = "ANUAL" if (materia.regimen or "").upper() in ["ANU", "ANUAL"] else ("1C" if (materia.regimen or "").upper() in ["1C", "PCU", "1° CUATRIMESTRE"] else "2C")
+            plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato, dictado=dictado_val).first()
+            if not plantilla:
+                plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato).first()
+
+            codigo_planilla = f"PRP-COM{comision.id}"
+            planilla, created = PlanillaRegularidad.objects.update_or_create(
+                comision=comision,
+                defaults={
+                    "codigo": codigo_planilla,
+                    "numero": comision.id,
+                    "anio_academico": comision.anio_lectivo,
+                    "profesorado": materia.plan_de_estudio.profesorado,
+                    "materia": materia,
+                    "plantilla": plantilla,
+                    "formato": materia.formato,
+                    "dictado": dictado_val,
+                    "fecha": fecha_base,
+                    "estado": PlanillaRegularidad.Estado.FINAL,
+                }
+            )
+            # Limpiar filas previas
+            planilla.filas.all().delete()
+
         for est_payload in payload.estudiantes:
             # A. Validación de Situación (Codificada vs Alias)
             if est_payload.situacion not in situaciones_validas:
@@ -567,6 +645,25 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                 insc.estudiante, materia, situacion=situ_cod
             )
 
+            # Guardar en PlanillaRegularidadFila
+            if planilla:
+                from core.models import PlanillaRegularidadFila
+                PlanillaRegularidadFila.objects.create(
+                    planilla=planilla,
+                    orden=est_payload.orden,
+                    estudiante=insc.estudiante,
+                    dni=insc.estudiante.dni,
+                    apellido_nombre=f"{(insc.estudiante.apellido or '').upper()}, {insc.estudiante.nombre or ''}".strip(
+                        ", "
+                    ),
+                    nota_final=est_payload.nota_final,
+                    asistencia_porcentaje=est_payload.asistencia,
+                    situacion=est_payload.situacion,
+                    excepcion=est_payload.excepcion,
+                    datos=est_payload.datos or {},
+                )
+
+            # Mantener sincronizado el registro consolidado de Regularidad
             Regularidad.objects.update_or_create(
                 inscripcion=insc,
                 defaults={

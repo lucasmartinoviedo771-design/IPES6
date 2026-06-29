@@ -165,12 +165,17 @@ export function usePlanillaQueries({
           observaciones_generales: payload.observaciones || undefined,
           estudiantes: payload.filas.map((f: PlanillaRegularidadFilaPayload & { inscripcion_id?: number; observaciones?: string }) => ({
             inscripcion_id: f.inscripcion_id || 0,
-            nota_tp: f.datos?.tp_final ? parseVal(f.datos.tp_final) : null,
+            nota_tp: f.datos?.tp_final
+              ? parseVal(f.datos.tp_final)
+              : f.datos?.tp_1c
+              ? parseVal(f.datos.tp_1c)
+              : null,
             nota_final: f.nota_final ? parseVal(f.nota_final) : null,
             asistencia: f.asistencia ? parseVal(f.asistencia) : null,
             excepcion: f.excepcion,
             situacion: f.situacion,
             observaciones: f.observaciones || undefined,
+            datos: f.datos || {},
           })),
         };
         return guardarPlanillaRegularidad(standardPayload);
