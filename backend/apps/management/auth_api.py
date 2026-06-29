@@ -136,7 +136,7 @@ def _get_role_assignments(user):
     try:
         estudiante = getattr(user, "estudiante", None)
         if estudiante:
-            for carrera in estudiante.carreras.all():
+            for carrera in estudiante.carreras.filter(activo=True):
                 assignments.append(
                     {
                         "role": "estudiante",
