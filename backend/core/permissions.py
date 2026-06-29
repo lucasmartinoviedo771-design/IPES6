@@ -109,7 +109,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "bedel_secretaria",
         "docente",
     },
-    "editar_estructura": {"admin", "secretaria", "bedel", "bedel_secretaria"},
+    "editar_estructura": {"admin", "secretaria", "bedel"},
     # --- Inscripciones ---
     "gestionar_preinscripcion": {"admin", "secretaria", "bedel", "bedel_secretaria"},
     "gestionar_ventanas": {"admin", "secretaria", "jefa_aaee"},

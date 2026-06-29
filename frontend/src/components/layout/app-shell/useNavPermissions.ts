@@ -35,11 +35,11 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const canSecretaria        = isNavAllowed("secretaria",    can("ver_estudiantes"));
   const canBedeles           = isNavAllowed("bedeles",       can("editar_documentacion") || can("carga_regularidades") || can("ver_documentacion"));
   const canDocentesPanel     = isNavAllowed("docentes",      can("carga_regularidades") || can("editar_estructura"));
-  const canTutoriasPanel     = isNavAllowed("tutorias",      can("gestionar_ci") && !can("editar_estudiantes"));
+  const canTutoriasPanel     = isNavAllowed("tutorias",      can("gestionar_ci") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
   const canEquivalenciasPanel = isNavAllowed("equivalencias", can("revisar_equivalencias") || can("gestionar_equivalencias"));
   const canTitulosPanel      = isNavAllowed("titulos",       can("gestionar_titulos") || can("ver_analiticos"));
   const canCoordinacionPanel = isNavAllowed("coordinacion",  can("ver_estructura") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
-  const canJefaturaPanel     = isNavAllowed("jefatura",      can("ver_reportes") && !can("editar_estudiantes"));
+  const canJefaturaPanel     = isNavAllowed("jefatura",      can("ver_reportes") && !can("editar_estudiantes") && !can("gestionar_preinscripcion"));
   const canAsistenciaReportes = isNavAllowed("asistencia",   can("ver_asistencia"));
   const canCursoIntro        = isNavAllowed("cursoIntro",    can("gestionar_ci"));
   const canEstudiantePortal  = isNavAllowed("estudiante",    !!(user && (user.roles ?? []).includes("estudiante")));

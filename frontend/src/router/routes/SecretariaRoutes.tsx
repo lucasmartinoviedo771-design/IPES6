@@ -45,7 +45,7 @@ export const buildSecretariaRoutes = () => (
     <Route element={<ProtectedRoute capability="ver_estudiantes"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria" element={<SecretariaIndex />} />
     </Route>
-    <Route element={<ProtectedRoute capability="editar_estructura"><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="ver_documentacion"><Outlet /></ProtectedRoute>}>
       <Route path="/bedeles" element={<BedelesIndex />} />
     </Route>
     <Route element={<ProtectedRoute capability="carga_regularidades"><Outlet /></ProtectedRoute>}>
