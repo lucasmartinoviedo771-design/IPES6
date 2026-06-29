@@ -63,7 +63,8 @@ export default function AppShell({ children }: PropsWithChildren) {
 
     const currentRole = roleOverride || activeRole;
     if (currentRole) {
-      const destination = roleHomeMap[currentRole] ?? "/dashboard";
+      const baseRole = currentRole.split(":")[0].toLowerCase();
+      const destination = roleHomeMap[baseRole] ?? roleHomeMap[currentRole] ?? "/dashboard";
       const isAtGenericHome = loc.pathname === "/dashboard" || loc.pathname === "/";
       const isRoleMismatch = isAtGenericHome && destination !== "/dashboard";
 
