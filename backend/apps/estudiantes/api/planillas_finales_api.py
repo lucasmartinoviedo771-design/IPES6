@@ -148,7 +148,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
         condiciones=_mesa_planilla_condiciones(),
         estudiantes=estudiantes,
         esta_cerrada=esta_cerrada,
-        cerrada_en=format_datetime(mesa.planilla_cerrada_en),
+        cerrada_en=mesa.planilla_cerrada_en.isoformat() if mesa.planilla_cerrada_en else None,
         cerrada_por=_format_user_display(mesa.planilla_cerrada_por),
         puede_editar=(not esta_cerrada) or can_override,
         puede_cerrar=not esta_cerrada,

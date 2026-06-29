@@ -445,7 +445,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
             docentes=[docente_to_string(comision.docente)] if comision.docente else [],
             fecha_cierre=format_date(_max_regularidad_fecha(inscripciones)),
             esta_cerrada=esta_cerrada,
-            cerrada_en=format_datetime(lock.cerrado_en) if lock else None,
+            cerrada_en=lock.cerrado_en.isoformat() if lock else None,
             cerrada_por=format_user_display(lock.cerrado_por) if lock else None,
             puede_editar=(not esta_cerrada) or can_override_lock,
             puede_cerrar=not esta_cerrada,
