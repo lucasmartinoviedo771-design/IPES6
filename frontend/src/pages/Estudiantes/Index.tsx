@@ -414,9 +414,6 @@ export default function EstudiantesIndex() {
               return (
                 <Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
                   <Box
-                    onClick={() => {
-                      if (event.path) navigate(event.path);
-                    }}
                     sx={{
                       position: "relative",
                       display: "flex",
@@ -428,15 +425,8 @@ export default function EstudiantesIndex() {
                         : isFuture
                         ? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
                         : `1px solid rgba(158,158,158,0.35)`,
-                      cursor: event.path ? "pointer" : "default",
+                      cursor: "default",
                       backgroundColor: isUnscheduled ? "rgba(125,127,110,0.05)" : "#fff",
-                      transition: "all 0.2s ease",
-                      "&:hover": event.path
-                        ? {
-                            transform: "translateY(-2px)",
-                            boxShadow: 2,
-                          }
-                        : {},
                     }}
                   >
                     {/* Badge superior derecho */}
@@ -527,11 +517,6 @@ export default function EstudiantesIndex() {
                       </Stack>
                     </Box>
 
-                    {event.path && (
-                      <Box sx={{ ml: 1, color: 'text.secondary', opacity: 0.5 }}>
-                        <CompareArrows sx={{ fontSize: 16, transform: 'rotate(-90deg)' }} />
-                      </Box>
-                    )}
                   </Box>
                 </Grid>
               );
