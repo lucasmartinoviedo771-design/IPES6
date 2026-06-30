@@ -55,7 +55,11 @@ export function usePlanillaColumns({
 
   const localSituacionesDisponibles = useMemo(() => {
     if (scope === 'standard') {
-      return detailData?.situaciones ?? [];
+      return (detailData?.situaciones ?? []).map(s => ({
+        ...s,
+        label: s.alias || s.codigo,
+        codigo: s.alias || s.codigo,
+      }));
     }
     return situacionesDisponibles;
   }, [scope, detailData?.situaciones, situacionesDisponibles]);

@@ -253,6 +253,21 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
     }
   }, [detailQuery.data, reset, open]);
 
+  // Auto-calcular situación para filas que ya tienen notas/asistencia pero situación vacía
+  useEffect(() => {
+    if (open && detailQuery.data?.data) {
+      const d = detailQuery.data.data;
+      const timer = setTimeout(() => {
+        d.filas.forEach((f, idx) => {
+          if (!f.situacion && (f.nota_final || f.asistencia || Object.keys(f.datos || {}).length > 0)) {
+            calculateSituacionForRow(idx);
+          }
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [open, detailQuery.data, calculateSituacionForRow]);
+
   useEffect(() => {
     if (selectedMateria) {
       setValue('planResolucion', selectedMateria.plan_resolucion || '');

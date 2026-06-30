@@ -117,7 +117,7 @@ export function usePlanillaQueries({
               asistencia: e.asistencia !== null ? String(e.asistencia) : '',
               situacion: e.situacion || '',
               excepcion: e.excepcion ?? false,
-              datos: e.datos || {
+              datos: (e.datos as Record<string, string | number | null | undefined>) || {
                 tp_final: e.nota_tp !== null ? String(e.nota_tp) : '',
               },
               inscripcion_id: e.inscripcion_id,
