@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { UseFormSetValue, UseFormGetValues } from 'react-hook-form';
-import { PlanillaFormValues, SituacionDisponible } from '../types';
+import { PlanillaFormValues, SituacionDisponible, PlanillaDetalleData } from '../types';
 import {
   RegularidadMetadataMateria,
   RegularidadMetadataPlantilla,
@@ -14,6 +14,7 @@ interface UsePlanillaCalculationsOptions {
   localSituacionesDisponibles: SituacionDisponible[];
   getValues: UseFormGetValues<PlanillaFormValues>;
   setValue: UseFormSetValue<PlanillaFormValues>;
+  detailData?: PlanillaDetalleData;
 }
 
 export function usePlanillaCalculations({
@@ -23,6 +24,7 @@ export function usePlanillaCalculations({
   localSituacionesDisponibles,
   getValues,
   setValue,
+  detailData,
 }: UsePlanillaCalculationsOptions) {
   
   const previewCodigo = useMemo(() => {
@@ -39,20 +41,20 @@ export function usePlanillaCalculations({
 
   const calculateSituacionForRow = (index: number) => {
     const row = getValues(`filas.${index}`);
-    if (!selectedMateria) return;
-
+    if (!selectedMateria && !detailData) return;
+ 
     // Parsers
     const parseVal = (v: string | number | null | undefined) => {
       if (!v || v === '---') return 0;
       return Number(String(v).replace(',', '.'));
     };
-
+ 
     const asistencia = row.asistencia ? parseInt(row.asistencia, 10) : 0;
     const notaVal = row.nota_final === '---' || !row.nota_final ? 0 : parseVal(row.nota_final);
-
+ 
     let newSit = '';
-    const dictado = selectedPlantilla?.dictado || selectedMateria?.dictado || '';
-    let formato = selectedMateria?.formato?.toUpperCase() || '';
+    const dictado = selectedPlantilla?.dictado || selectedMateria?.dictado || detailData?.regimen || '';
+    let formato = selectedMateria?.formato?.toUpperCase() || detailData?.formato?.toUpperCase() || '';
 
     // Fallback if materia has no format but template does
     if (!formato && selectedPlantilla) {

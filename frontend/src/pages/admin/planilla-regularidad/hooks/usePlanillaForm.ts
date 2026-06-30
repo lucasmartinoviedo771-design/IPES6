@@ -134,6 +134,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
     localSituacionesDisponibles,
     getValues,
     setValue,
+    detailData: detailQuery.data?.data,
   });
 
   const {
