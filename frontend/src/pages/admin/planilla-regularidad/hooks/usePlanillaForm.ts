@@ -189,7 +189,9 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 
   useEffect(() => {
     if (open) {
-      metadataQueryRefetch();
+      if (scope === 'primera_carga') {
+        metadataQueryRefetch();
+      }
       if (mode === 'create') {
         reset({
           profesoradoId: defaultProfesoradoId ?? '',
