@@ -55,7 +55,9 @@ def _es_taller_residencia(materia: Materia) -> bool:
 
 
 def _normalizar(texto: str) -> str:
-    return texto.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
+    return (
+        texto.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
+    )
 
 
 def _es_taller_o_practica_4_residencia(materia: Materia) -> bool:

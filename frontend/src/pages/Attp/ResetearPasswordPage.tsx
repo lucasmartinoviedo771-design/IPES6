@@ -68,7 +68,6 @@ export default function ResetearPasswordPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         fullWidth
-        autoFocus
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
