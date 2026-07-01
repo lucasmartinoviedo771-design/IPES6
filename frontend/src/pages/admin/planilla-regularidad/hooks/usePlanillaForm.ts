@@ -215,7 +215,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
     if (!open) {
       reset();
     }
-  }, [open, defaultProfesoradoId, defaultMateriaId, mode, metadataQueryRefetch, reset]);
+  }, [open, defaultProfesoradoId, defaultMateriaId, mode, scope, metadataQueryRefetch, reset]);
 
   useEffect(() => {
     if (open && detailQuery.data?.data) {
