@@ -13,7 +13,6 @@ import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import SupervisorAccountIcon from "@mui/icons-material/SupervisorAccount";
 import { PageHero } from "@/components/ui/GradientTitles";
-import { getDefaultHomeRoute } from "@/utils/roles";
 
 // Configuración visual premium para cada tarjeta de rol
 const ROLE_VISUAL_CONFIG: Record<
@@ -128,16 +127,20 @@ const ROLE_VISUAL_CONFIG: Record<
 };
 
 export default function RoleSelectorPage() {
-  const { user, setActiveRole, refreshProfile } = useAuth();
+  const { user, setActiveRole, setRoleOverride, availableRoleOptions } = useAuth();
   const navigate = useNavigate();
 
-  // Filtrar solo los roles relevantes que el usuario posee
+  // Para superuser: muestra todos los roles del sistema para simulación.
+  // Para usuarios normales: muestra solo sus roles reales.
   const userRoles = React.useMemo(() => {
     if (!user) return [];
-    // Mapeamos los roles reales a nuestro config o creamos fallback
-    const rawRoles = user.roles ?? [];
+
+    if (user.is_superuser) {
+      return availableRoleOptions.map((opt) => opt.value);
+    }
+
     const unique = new Set<string>();
-    
+    const rawRoles = user.roles ?? [];
     rawRoles.forEach((r) => {
       const normalized = r.toLowerCase().trim();
       if (normalized === "estudiantes") unique.add("estudiante");
@@ -164,22 +167,14 @@ export default function RoleSelectorPage() {
     }
 
     return Array.from(unique);
-  }, [user]);
+  }, [user, availableRoleOptions]);
 
-  const handleSelectRole = async (role: string) => {
-    setActiveRole(role);
-    try {
-      // Forzar recarga de perfil para que el backend filtre capacidades según el rol activo
-      const updatedUser = await refreshProfile();
-      if (updatedUser) {
-        // Redirigir a la landing de ese rol específico
-        const homeRoute = getDefaultHomeRoute(updatedUser);
-        navigate(homeRoute, { replace: true });
-      }
-    } catch {
-      // Fallback redirect
-      navigate("/login", { replace: true });
-    }
+  const handleSelectRole = (role: string) => {
+    const baseRole = role.split(":")[0];
+    setRoleOverride(baseRole);
+    setActiveRole(baseRole);
+    // AppShell navega automáticamente al destino del rol via roleHomeMap
+    navigate("/dashboard", { replace: true });
   };
 
   return (

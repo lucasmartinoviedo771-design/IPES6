@@ -86,6 +86,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "docente",
     },
     "editar_estudiantes": {"admin", "secretaria", "bedel"},
+    "resetear_password_estudiante": {"admin", "secretaria", "bedel", "attp"},
     "ver_documentacion": {"admin", "secretaria", "bedel", "coordinador", "jefes", "bedel_secretaria"},
     "editar_documentacion": {"admin", "secretaria", "bedel"},
     # --- Académico ---

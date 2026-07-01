@@ -30,6 +30,7 @@ const MesasPage = lazyPage(() => import("@/pages/Secretaria/MesasPage"));
 const PedidosEquivalenciasPage = lazyPage(() => import("@/pages/Secretaria/PedidosEquivalenciasPage"));
 const CambioComisionAdminPage = lazyPage(() => import("@/pages/Secretaria/CambioComisionAdminPage"));
 const AttpIndex = lazyPage(() => import("@/pages/Attp/Index"));
+const AttpResetearPasswordPage = lazyPage(() => import("@/pages/Attp/ResetearPasswordPage"));
 const RectoradoIndex = lazyPage(() => import("@/pages/Rectorado/Index"));
 const CursoIntroductorioPage = lazyPage(() => import("@/pages/Secretaria/CursoIntroductorioPage"));
 const CorrelatividadesPage = lazyPage(() => import("@/pages/Secretaria/CorrelatividadesPage"));
@@ -138,6 +139,7 @@ export const buildSecretariaRoutes = () => (
     {/* ── Paneles de roles específicos ── */}
     <Route element={<ProtectedRoute capability="formalizar_inscripcion"><Outlet /></ProtectedRoute>}>
       <Route path="/attp" element={<AttpIndex />} />
+      <Route path="/attp/resetear-password" element={<AttpResetearPasswordPage />} />
     </Route>
     <Route element={<ProtectedRoute capability="ver_dashboard"><Outlet /></ProtectedRoute>}>
       <Route path="/rectorado" element={<RectoradoIndex />} />

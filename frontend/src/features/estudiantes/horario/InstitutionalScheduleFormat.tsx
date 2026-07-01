@@ -3,18 +3,11 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import { HorarioTablaDTO, HorarioMateriaCeldaDTO } from "@/api/estudiantes";
-import { getProfessoradoColor } from "@/styles/institutionalColors";
+import { getProfessoradoColor, getTextColorForBackground } from "@/styles/institutionalColors";
 
 // Los colores se obtienen globalmente desde getProfessoradoColor
 
-const cleanProfesoradoName = (name: string) => {
-  return name
-    .replace(/Profesorado de Educación Secundaria en/gi, "")
-    .replace(/Profesorado de Educación/gi, "")
-    .replace(/Profesorado en/gi, "")
-    .replace(/PROFESORADOEN/gi, "")
-    .trim();
-};
+const formatProfesoradoHeader = (name: string): string => name.toUpperCase();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_COLOR = "#F2F2F2";
@@ -33,6 +26,7 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
   cuatrimestre,
 }) => {
   const bgColor = getProfessoradoColor(tabla.profesorado_nombre);
+  const headerTextColor = getTextColorForBackground(bgColor);
 
   const dias = useMemo(() => [...tabla.dias].sort((a, b) => a.numero - b.numero), [tabla.dias]);
   const franjas = useMemo(() => [...tabla.franjas].sort((a, b) => a.posicion - b.posicion), [tabla.franjas]);
@@ -187,10 +181,10 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         textAlign: "center",
         borderBottom: "none"
       }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: "bold", textTransform: "uppercase", fontSize: "1.1rem" }}>
-          PROFESORADO EN {cleanProfesoradoName(tabla.profesorado_nombre)}
+        <Typography variant="subtitle1" sx={{ fontWeight: "bold", fontSize: "1.1rem", color: headerTextColor }}>
+          {formatProfesoradoHeader(tabla.profesorado_nombre)}
         </Typography>
-        <Typography variant="caption" sx={{ fontWeight: "bold" }}>
+        <Typography variant="caption" sx={{ fontWeight: "bold", color: headerTextColor }}>
           Plan Nº {tabla.plan_resolucion || "---"}
         </Typography>
       </Box>
@@ -206,13 +200,13 @@ const InstitutionalScheduleFormat: React.FC<InstitutionalScheduleFormatProps> = 
         bgcolor: bgColor,
         px: 4
       }}>
-        <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem" }}>
+        <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem", color: headerTextColor }}>
           {tabla.turno_nombre.toUpperCase()}
         </Typography>
-        <Typography sx={{ fontWeight: "bold", fontSize: "1.4rem", textDecoration: "underline", flex: 1, textAlign: "center" }}>
+        <Typography sx={{ fontWeight: "bold", fontSize: "1.4rem", textDecoration: "underline", flex: 1, textAlign: "center", color: headerTextColor }}>
           {tabla.anio_plan_label.toUpperCase().replace("ANIO", "AÑO")}
         </Typography>
-        <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem", minWidth: "100px", textAlign: "right" }}>
+        <Typography sx={{ fontWeight: "bold", fontSize: "1.1rem", minWidth: "100px", textAlign: "right", color: headerTextColor }}>
           {salon}
         </Typography>
       </Box>

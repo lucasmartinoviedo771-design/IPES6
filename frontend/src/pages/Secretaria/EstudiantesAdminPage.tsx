@@ -38,6 +38,7 @@ export default function EstudiantesAdminPage() {
   const isAdminOrSec = !isReadOnly;
   const isRectorado = isReadOnly;
   const isAttp = isReadOnly;
+  const canResetPassword = hasCapability(user, "resetear_password_estudiante");
 
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -300,6 +301,7 @@ export default function EstudiantesAdminPage() {
         agregarCarreraIsPending={agregarCarreraMutation.isPending}
         isAttp={isAttp}
         isRectorado={isRectorado}
+        canResetPassword={canResetPassword}
       />
 
       <FinalConfirmationDialog

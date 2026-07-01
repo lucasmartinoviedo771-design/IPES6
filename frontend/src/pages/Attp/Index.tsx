@@ -1,3 +1,4 @@
+import LockResetIcon from "@mui/icons-material/LockReset";
 import RoleDashboard, { RoleDashboardSection } from "@/components/roles/RoleDashboard";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 
@@ -27,6 +28,17 @@ const sections: RoleDashboardSection[] = [
     title: "Horarios (escritura)",
     items: [
       DASHBOARD_ITEMS.HORARIOS_PUBLICADOS,
+    ],
+  },
+  {
+    title: "Estudiantes",
+    items: [
+      {
+        title: "Resetear contraseña",
+        subtitle: "Restablecé la contraseña de un estudiante usando su DNI.",
+        icon: <LockResetIcon />,
+        path: "/attp/resetear-password",
+      },
     ],
   },
   {

@@ -264,7 +264,7 @@ def admin_reset_estudiante_password(request, dni: str):
     Resetea la contraseña del estudiante a una clave segura aleatoria.
     Útil cuando el alumno olvida su primer acceso o hay problemas de login masivos.
     """
-    require(request.user, "editar_estudiantes")
+    require(request.user, "resetear_password_estudiante")
     est = get_object_or_404(Estudiante, persona__dni=dni)
 
     # Verificar si el usuario tiene permisos para esta carrera

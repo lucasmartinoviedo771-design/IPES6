@@ -54,25 +54,41 @@ def _es_taller_residencia(materia: Materia) -> bool:
     return "taller" in nombre and "residencia" in nombre
 
 
+def _normalizar(texto: str) -> str:
+    return texto.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
+
+
 def _es_taller_o_practica_4_residencia(materia: Materia) -> bool:
     """
     Retorna True si la materia es un taller de residencia, residencia o práctica 4 (de 4° año)
-    con base en los 5 nombres exactos provistos.
+    con base en los nombres exactos provistos por profesorado.
     """
     if getattr(materia, "anio_cursada", None) != 4:
         return False
-    nombre = getattr(materia, "nombre", "") or ""
-    nombre_norm = (
-        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
-    )
-    nombres_validos = {
+    nombre_norm = _normalizar(getattr(materia, "nombre", "") or "")
+
+    # Nombres válidos para Primaria, Secundaria y Especial
+    nombres_primaria = {
         "PRACTICA IV: RESIDENCIA PEDAGOGICA",
         "TALLER DE RESIDENCIA DE CIENCIAS NATURALES",
         "TALLER DE RESIDENCIA DE CIENCIAS SOCIALES",
         "TALLER DE RESIDENCIA DE MATEMATICA",
         "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE",
     }
-    return any(nombre_norm.startswith(nv) for nv in nombres_validos)
+    if any(nombre_norm.startswith(nv) for nv in nombres_primaria):
+        return True
+
+    # Nombres válidos específicamente para Inicial
+    try:
+        prof_nombre = _normalizar(materia.plan_de_estudio.profesorado.nombre or "")
+    except AttributeError:
+        prof_nombre = ""
+    if "INICIAL" in prof_nombre:
+        nombres_inicial = {"PRACTICA IV", "TALLER INTEGRADOR INTERDISCIPLINARIO"}
+        if any(nombre_norm.startswith(nv) for nv in nombres_inicial):
+            return True
+
+    return False
 
 
 def _permite_superposicion_residencia(m1: Materia, m2: Materia) -> bool:

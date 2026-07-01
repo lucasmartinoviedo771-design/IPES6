@@ -45,8 +45,8 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
   const canEstudiantePortal  = isNavAllowed("estudiante",    hasAnyRole(user, ["estudiante"]));
   const canEstudiantePanel   = isNavAllowed("estudiante",    can("ver_estudiantes") && !hasAnyRole(user, ["estudiante"]));
   const canPrimeraCarga      = isNavAllowed("primeraCarga",  can("primera_carga"));
-  const canAttpPanel         = isNavAllowed("attp",          (user?.roles ?? []).includes("attp") && !can("editar_estudiantes"));
-  const canRectoradoPanel    = isNavAllowed("rectorado",     (user?.roles ?? []).includes("rectorado") && !can("editar_estudiantes"));
+  const canAttpPanel         = isNavAllowed("attp",          !!user?.is_superuser || ((user?.roles ?? []).includes("attp") && !can("editar_estudiantes")));
+  const canRectoradoPanel    = isNavAllowed("rectorado",     !!user?.is_superuser || ((user?.roles ?? []).includes("rectorado") && !can("editar_estudiantes")));
   const canUseMessages       = isNavAllowed("mensajes",      can("enviar_mensajes") || !!(user));
 
   return {
