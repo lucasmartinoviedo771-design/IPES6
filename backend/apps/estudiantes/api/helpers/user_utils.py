@@ -39,6 +39,13 @@ def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
         return Estudiante.objects.filter(persona__dni=dni).first()
     if isinstance(request.user, AnonymousUser):
         return None
+    # Un usuario puede tener a la vez un rol de gestión (bedel, secretaria, etc.)
+    # y una ficha de Estudiante propia (ej. cursa una certificación docente).
+    # Si está operando activamente en un rol de gestión, no debe resolverse
+    # como "consultando su propio historial de estudiante".
+    active_role = (request.headers.get("X-Active-Role") or "").split(":")[0].lower().strip()
+    if active_role and active_role != "estudiante":
+        return None
     return getattr(request.user, "estudiante", None)
 
 

@@ -233,20 +233,25 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     _ensure_structure_edit(request.user, hc.espacio.plan_de_estudio.profesorado_id)
     bloque = get_object_or_404(Bloque, id=payload.bloque_id)
 
-    # Lógica de detección de conflictos (simplificada o migrada tal cual)
-    # ... (Omitida por brevedad en este script inicial, pero debe incluirse)
-    # [Para seguir el plan, incluiré la lógica completa]
+    # Un espacio (materia/EDI) con fecha_fin ya vencida no debe seguir "ocupando"
+    # el bloque horario para futuras cargas, aunque sus registros históricos
+    # de HorarioCatedra/HorarioCatedraDetalle sigan existiendo.
+    hoy = timezone.now().date()
 
     # 1. Conflicto por Alumnos (Mismo Plan + Mismo Año de Carrera + Mismo Turno + Mismo Cuatrimestre)
     # Esto permite que 1er año y 2do año del mismo profesorado tengan clases al mismo tiempo.
-    conflictos_alumnos = HorarioCatedraDetalle.objects.filter(
-        bloque=bloque,
-        horario_catedra__anio_academico=hc.anio_academico,
-        horario_catedra__turno=hc.turno,
-        horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
-        horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
-        horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
-    ).exclude(horario_catedra=hc)
+    conflictos_alumnos = (
+        HorarioCatedraDetalle.objects.filter(
+            bloque=bloque,
+            horario_catedra__anio_academico=hc.anio_academico,
+            horario_catedra__turno=hc.turno,
+            horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
+            horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
+            horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
+        )
+        .exclude(horario_catedra=hc)
+        .exclude(horario_catedra__espacio__fecha_fin__lt=hoy)
+    )
 
     if conflictos_alumnos.exists():
         real_conflict = None
@@ -290,6 +295,7 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
             .exclude(
                 horario_catedra__comisiones__docente_id__in=docentes_ids, horario_catedra__comisiones__estado="LIC"
             )
+            .exclude(horario_catedra__espacio__fecha_fin__lt=hoy)
         )
 
         if conflictos_docente.exists():
@@ -323,7 +329,7 @@ def get_occupied_blocks(
 
     schedules = HorarioCatedra.objects.filter(
         anio_academico=anio_academico, turno_id=turno_id, espacio__anio_cursada=anio_cursada
-    )
+    ).exclude(espacio__fecha_fin__lt=timezone.now().date())
     if cuatrimestre:
         schedules = schedules.filter(Q(cuatrimestre=Materia.TipoCursada.ANUAL) | Q(cuatrimestre=cuatrimestre))
 
