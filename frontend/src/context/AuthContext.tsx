@@ -287,7 +287,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       else normalized.add(role);
     });
 
-    if (normalized.has("admin")) {
+    if (normalized.has("admin") || user.is_superuser) {
       Object.keys(ROLE_LABELS).forEach((role) => normalized.add(role));
     }
     return Array.from(normalized).sort().map((role) => ({ value: role, label: ROLE_LABELS[role] ?? role }));

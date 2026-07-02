@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Box from "@mui/material/Box";
-import { client as api } from '@/api/client';
+import { client as api, AppAxiosRequestConfig } from '@/api/client';
 import HorarioFilters from '@/components/horarios/HorarioFilters';
 import TimetableGrid from '@/components/horarios/TimetableGrid';
 import BackButton from "@/components/ui/BackButton";
@@ -145,7 +145,7 @@ const CargarHorarioPage: React.FC = () => {
         nombreNormalizado.includes('practica') ||
         nombreNormalizado.includes('residencia') ||
         nombreNormalizado.includes('campo de la practica') ||
-        nombreNormalizado.includes('taller integrador interdisciplinario') ||
+        nombreNormalizado.includes('taller integrador') ||
         esTallerCuarto ||
         esTallerResidencia;
 
@@ -221,7 +221,7 @@ const CargarHorarioPage: React.FC = () => {
 
         for (const bId of toAdd) {
           try {
-            await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: forceAll });
+            await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: forceAll }, { suppressErrorToast: true } as AppAxiosRequestConfig);
           } catch (error) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const err = error as any;
@@ -229,7 +229,7 @@ const CargarHorarioPage: React.FC = () => {
             const dataVal = responseData?.data;
             if (dataVal?.superposicion_residencia) {
               if (forceAll) {
-                await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: true });
+                await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: true }, { suppressErrorToast: true } as AppAxiosRequestConfig);
                 continue;
               }
               const confirmForzar = window.confirm(
@@ -237,7 +237,7 @@ const CargarHorarioPage: React.FC = () => {
               );
               if (confirmForzar) {
                 forceAll = true;
-                await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: true });
+                await api.post(`/horarios_catedra/${hcId}/detalles`, { bloque_id: bId, forzar: true }, { suppressErrorToast: true } as AppAxiosRequestConfig);
               } else {
                 throw { isCancel: true };
               }

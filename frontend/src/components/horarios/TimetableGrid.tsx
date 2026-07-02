@@ -240,7 +240,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
     nombreNormalizado.includes('practica') ||
     nombreNormalizado.includes('residencia') ||
     nombreNormalizado.includes('campo de la practica') ||
-    nombreNormalizado.includes('taller integrador interdisciplinario') ||
+    nombreNormalizado.includes('taller integrador') ||
     esTallerCuarto ||
     esTallerResidencia
   );

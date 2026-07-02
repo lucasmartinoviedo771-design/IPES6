@@ -404,6 +404,13 @@ def cerrar_edi(request, materia_id: int, payload: CerrarEDIIn):
     materia_vieja.fecha_fin = fecha_fin
     materia_vieja.save()
 
+    # El EDI cerrado deja de tener docente "activo" asignado: cerramos sus
+    # comisiones abiertas (sin borrar el registro, para no perder el historial
+    # de quién lo dictó).
+    Comision.objects.filter(materia=materia_vieja, estado=Comision.Estado.ABIERTA).update(
+        estado=Comision.Estado.CERRADA
+    )
+
     # Crear EDI nuevo
     materia_nueva = Materia.objects.create(
         plan_de_estudio=materia_vieja.plan_de_estudio,

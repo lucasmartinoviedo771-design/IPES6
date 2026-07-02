@@ -11,6 +11,12 @@ from core.schemas import AsignarRolIn, ForceResetPasswordIn, UserSchema
 
 from ..router import management_router
 
+# "estudiante" es un rol de usuario final, no de personal institucional.
+# Un usuario que además de sus roles de gestión tenga una ficha de Estudiante
+# (ej. cursa una certificación docente) igual debe aparecer si tiene algún
+# otro rol de STAFF_ROLES; pero un estudiante puro no debe listarse acá.
+STAFF_ROLES = ALL_ROLES - {"estudiante"}
+
 
 @management_router.get("/staff", response=list[UserSchema], auth=JWTAuth())
 def list_staff(request):
@@ -18,7 +24,7 @@ def list_staff(request):
     users = User.objects.filter(is_active=True).select_related("profile__persona").prefetch_related("groups")
     res = []
     for u in users:
-        if any(g.name in ALL_ROLES for g in u.groups.all()):
+        if any(g.name in STAFF_ROLES for g in u.groups.all()):
             persona = getattr(getattr(u, "profile", None), "persona", None)
             res.append(
                 UserSchema(

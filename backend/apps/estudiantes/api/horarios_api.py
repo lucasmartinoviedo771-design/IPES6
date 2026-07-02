@@ -244,7 +244,7 @@ def horarios_profesorado(
         if max_year:
             current_year = max_year
 
-    horarios_qs = horarios_qs.filter(anio_academico=current_year)
+    horarios_qs = horarios_qs.filter(anio_academico=current_year).exclude(espacio__fecha_fin__lt=timezone.now().date())
 
     if turno_id is not None:
         horarios_qs = horarios_qs.filter(turno_id=turno_id)

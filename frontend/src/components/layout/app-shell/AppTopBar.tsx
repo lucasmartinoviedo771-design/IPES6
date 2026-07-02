@@ -64,7 +64,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
     if (user.is_superuser) {
       unique.add("admin");
     }
-    return unique.size > 1 || (user.role_assignments ?? []).length > 1;
+    return unique.size > 1 || (user.role_assignments ?? []).length > 1 || !!user.is_superuser;
   }, [user]);
 
   return (

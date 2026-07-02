@@ -54,25 +54,43 @@ def _es_taller_residencia(materia: Materia) -> bool:
     return "taller" in nombre and "residencia" in nombre
 
 
+def _normalizar(texto: str) -> str:
+    return (
+        texto.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
+    )
+
+
 def _es_taller_o_practica_4_residencia(materia: Materia) -> bool:
     """
     Retorna True si la materia es un taller de residencia, residencia o práctica 4 (de 4° año)
-    con base en los 5 nombres exactos provistos.
+    con base en los nombres exactos provistos por profesorado.
     """
     if getattr(materia, "anio_cursada", None) != 4:
         return False
-    nombre = getattr(materia, "nombre", "") or ""
-    nombre_norm = (
-        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").strip()
-    )
-    nombres_validos = {
+    nombre_norm = _normalizar(getattr(materia, "nombre", "") or "")
+
+    # Nombres válidos para Primaria, Secundaria y Especial
+    nombres_primaria = {
         "PRACTICA IV: RESIDENCIA PEDAGOGICA",
         "TALLER DE RESIDENCIA DE CIENCIAS NATURALES",
         "TALLER DE RESIDENCIA DE CIENCIAS SOCIALES",
         "TALLER DE RESIDENCIA DE MATEMATICA",
         "TALLER DE RESIDENCIA DE PRACTICAS DEL LENGUAJE",
     }
-    return any(nombre_norm.startswith(nv) for nv in nombres_validos)
+    if any(nombre_norm.startswith(nv) for nv in nombres_primaria):
+        return True
+
+    # Nombres válidos específicamente para Inicial
+    try:
+        prof_nombre = _normalizar(materia.plan_de_estudio.profesorado.nombre or "")
+    except AttributeError:
+        prof_nombre = ""
+    if "INICIAL" in prof_nombre:
+        nombres_inicial = {"PRACTICA IV", "TALLER INTEGRADOR INTERDISCIPLINARIO"}
+        if any(nombre_norm.startswith(nv) for nv in nombres_inicial):
+            return True
+
+    return False
 
 
 def _permite_superposicion_residencia(m1: Materia, m2: Materia) -> bool:
@@ -219,20 +237,25 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
     _ensure_structure_edit(request.user, hc.espacio.plan_de_estudio.profesorado_id)
     bloque = get_object_or_404(Bloque, id=payload.bloque_id)
 
-    # Lógica de detección de conflictos (simplificada o migrada tal cual)
-    # ... (Omitida por brevedad en este script inicial, pero debe incluirse)
-    # [Para seguir el plan, incluiré la lógica completa]
+    # Un espacio (materia/EDI) con fecha_fin ya vencida no debe seguir "ocupando"
+    # el bloque horario para futuras cargas, aunque sus registros históricos
+    # de HorarioCatedra/HorarioCatedraDetalle sigan existiendo.
+    hoy = timezone.now().date()
 
     # 1. Conflicto por Alumnos (Mismo Plan + Mismo Año de Carrera + Mismo Turno + Mismo Cuatrimestre)
     # Esto permite que 1er año y 2do año del mismo profesorado tengan clases al mismo tiempo.
-    conflictos_alumnos = HorarioCatedraDetalle.objects.filter(
-        bloque=bloque,
-        horario_catedra__anio_academico=hc.anio_academico,
-        horario_catedra__turno=hc.turno,
-        horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
-        horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
-        horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
-    ).exclude(horario_catedra=hc)
+    conflictos_alumnos = (
+        HorarioCatedraDetalle.objects.filter(
+            bloque=bloque,
+            horario_catedra__anio_academico=hc.anio_academico,
+            horario_catedra__turno=hc.turno,
+            horario_catedra__espacio__plan_de_estudio=hc.espacio.plan_de_estudio,
+            horario_catedra__espacio__anio_cursada=hc.espacio.anio_cursada,
+            horario_catedra__cuatrimestre__in=_compatible_cuatrimestres(hc.cuatrimestre),
+        )
+        .exclude(horario_catedra=hc)
+        .exclude(horario_catedra__espacio__fecha_fin__lt=hoy)
+    )
 
     if conflictos_alumnos.exists():
         real_conflict = None
@@ -276,6 +299,7 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
             .exclude(
                 horario_catedra__comisiones__docente_id__in=docentes_ids, horario_catedra__comisiones__estado="LIC"
             )
+            .exclude(horario_catedra__espacio__fecha_fin__lt=hoy)
         )
 
         if conflictos_docente.exists():
@@ -309,7 +333,7 @@ def get_occupied_blocks(
 
     schedules = HorarioCatedra.objects.filter(
         anio_academico=anio_academico, turno_id=turno_id, espacio__anio_cursada=anio_cursada
-    )
+    ).exclude(espacio__fecha_fin__lt=timezone.now().date())
     if cuatrimestre:
         schedules = schedules.filter(Q(cuatrimestre=Materia.TipoCursada.ANUAL) | Q(cuatrimestre=cuatrimestre))
 

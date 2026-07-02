@@ -1,5 +1,3 @@
-import secrets
-
 from django.db.models import Prefetch, Q
 
 from apps.estudiantes.api.helpers.estudiante_admin import (
@@ -209,12 +207,13 @@ class EstudianteService:
 
     @staticmethod
     def reset_password(estudiante: Estudiante) -> str | None:
-        """Resetea la contraseña del estudiante a una clave segura aleatoria."""
+        """Resetea la contraseña del estudiante a pass{DNI}."""
         user = estudiante.user
         if not user:
             return None
 
-        new_password = secrets.token_urlsafe(12)
+        dni = estudiante.persona.dni if hasattr(estudiante, "persona") and estudiante.persona else user.username
+        new_password = f"pass{dni}"
         user.set_password(new_password)
         user.save(update_fields=["password"])
 

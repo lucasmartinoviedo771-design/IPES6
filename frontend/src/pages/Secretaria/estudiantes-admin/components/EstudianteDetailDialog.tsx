@@ -73,6 +73,7 @@ type Props = {
   isAdmin?: boolean;
   isAttp?: boolean;
   isRectorado?: boolean;
+  canResetPassword?: boolean;
 };
 
 export function EstudianteDetailDialog({
@@ -105,6 +106,7 @@ export function EstudianteDetailDialog({
   isAdmin = true,
   isAttp = false,
   isRectorado = false,
+  canResetPassword = false,
 }: Props) {
   const estudiante = detailQuery.data;
   const [activeTab, setActiveTab] = useState(0);
@@ -236,8 +238,8 @@ export function EstudianteDetailDialog({
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
-        {(!isAttp && !isRectorado) && (
-          <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1}>
+          {(!isAttp && !isRectorado) && (
             <Button
               color="error"
               startIcon={<DeleteIcon />}
@@ -246,19 +248,19 @@ export function EstudianteDetailDialog({
             >
               Eliminar estudiante
             </Button>
-            {onResetPassword && (
-              <Button
-                color="warning"
-                variant="outlined"
-                startIcon={resetPassIsPending ? <CircularProgress size={18} color="inherit" /> : <LockResetIcon />}
-                onClick={onResetPassword}
-                disabled={updateIsPending || deleteIsPending || !!resetPassIsPending}
-              >
-                Resetear Contraseña
-              </Button>
-            )}
-          </Stack>
-        )}
+          )}
+          {(canResetPassword || (!isAttp && !isRectorado)) && onResetPassword && (
+            <Button
+              color="warning"
+              variant="outlined"
+              startIcon={resetPassIsPending ? <CircularProgress size={18} color="inherit" /> : <LockResetIcon />}
+              onClick={onResetPassword}
+              disabled={updateIsPending || deleteIsPending || !!resetPassIsPending}
+            >
+              Resetear Contraseña
+            </Button>
+          )}
+        </Stack>
         <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
           <Button startIcon={<CloseIcon />} onClick={onClose}>
             Cerrar

@@ -176,8 +176,10 @@ client.interceptors.response.use(
 
     // Notificación automática al usuario
     const isLoginFailure = isAuthRoute && config?.url?.includes("login");
-    const suppress = config?.suppressErrorToast || (status === 401 && !isLoginFailure);
-    
+    const isSuperposicionResidencia = !!(data as unknown as Record<string, unknown> | null | undefined)?.data &&
+      !!((data as unknown as Record<string, unknown>)?.data as Record<string, unknown>)?.superposicion_residencia;
+    const suppress = config?.suppressErrorToast || (status === 401 && !isLoginFailure) || isSuperposicionResidencia;
+
     if (!suppress) {
       toast.error(message);
     }
