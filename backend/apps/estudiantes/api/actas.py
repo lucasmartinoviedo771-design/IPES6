@@ -256,21 +256,24 @@ def obtener_acta(request, acta_id: int):
 
 @router.post(
     "/actas",
-    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
-@requires("acta_manual")
 def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     """
     Crea un acta de examen y sincroniza los resultados con las inscripciones a mesa.
-
-    Lógica de Alta Especializada:
-    1. Valida rangos de calificación (1-10, Abreviaturas de Ausente).
-    2. Auto-crea registros de Estudiante/Persona si no existen (soporte para migración de datos históricos).
-    3. Asigna automáticamente el alumno a la carrera si no está vinculado.
-    4. Sincroniza con MesaExamen: Si no existe una mesa para esa fecha/materia, la crea 'cerrada'.
-    5. Actualiza inscripciones a mesa para reflejar el resultado en la trayectoria.
     """
+    from core.permissions import can, get_user_roles, require
+    from datetime import date
+
+    user_roles = get_user_roles(request.user)
+    is_docente_only = "docente" in user_roles and not can(request.user, "acta_manual")
+
+    if is_docente_only:
+        require(request.user, "carga_notas")
+    else:
+        require(request.user, "acta_manual")
+
     NOTA_NUMERIC_VALUES = [str(i) for i in range(1, 11)]
     ACTA_NOTA_CHOICES = NOTA_NUMERIC_VALUES + [
         ActaExamenEstudiante.NOTA_AUSENTE_JUSTIFICADO,
@@ -286,12 +289,6 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         except ValueError:
             return 400, ApiResponse(ok=False, message="Formato de fecha inválido. Use YYYY-MM-DD")
 
-    # Validaciones de pertenencia académica
-    from core.permissions import get_user_roles
-
-    user_roles = get_user_roles(request.user)
-    is_docente_only = "docente" in user_roles and not can(request.user, "editar_estructura")
-
     try:
         profesorado = Profesorado.objects.get(pk=payload.profesorado_id)
         if not is_docente_only:
@@ -299,26 +296,51 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     except Profesorado.DoesNotExist:
         return 404, ApiResponse(ok=False, message="Profesorado no encontrado.")
 
-    # Si es solo docente, verificar que pertenece al tribunal de una mesa para esa materia/fecha
+    # Resolución de mesa
+    mesa = None
+    if payload.mesa_id:
+        mesa = MesaExamen.objects.filter(id=payload.mesa_id).first()
+        if not mesa:
+            return 404, ApiResponse(ok=False, message="Mesa de examen no encontrada.")
+
+    # Si es solo docente, verificar tribunal
     if is_docente_only:
         try:
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
-            tribunal_valido = (
-                MesaExamen.objects.filter(
-                    materia_id=payload.materia_id,
-                    fecha=acta_fecha,
+            if mesa:
+                # Validar tribunal de la mesa específica
+                tribunal_valido = docente_obj.id in [
+                    mesa.docente_presidente_id,
+                    mesa.docente_vocal1_id,
+                    mesa.docente_vocal2_id,
+                ]
+                if not tribunal_valido:
+                    return 403, ApiResponse(
+                        ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
+                    )
+                # Validar fecha/cierre para docentes
+                if mesa.fecha < date.today() and mesa.planilla_cerrada_en is not None:
+                    return 403, ApiResponse(
+                        ok=False, message="No tiene permisos para modificar un acta de mesa pasada y cerrada."
+                    )
+            else:
+                # Validar tribunal para mesas en la fecha dada
+                tribunal_valido = (
+                    MesaExamen.objects.filter(
+                        materia_id=payload.materia_id,
+                        fecha=acta_fecha,
+                    )
+                    .filter(
+                        models.Q(docente_presidente=docente_obj)
+                        | models.Q(docente_vocal1=docente_obj)
+                        | models.Q(docente_vocal2=docente_obj)
+                    )
+                    .exists()
                 )
-                .filter(
-                    models.Q(docente_presidente=docente_obj)
-                    | models.Q(docente_vocal1=docente_obj)
-                    | models.Q(docente_vocal2=docente_obj)
-                )
-                .exists()
-            )
-            if not tribunal_valido:
-                return 403, ApiResponse(
-                    ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
-                )
+                if not tribunal_valido:
+                    return 403, ApiResponse(
+                        ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
+                    )
         except Docente.DoesNotExist:
             return 403, ApiResponse(ok=False, message="No se encontró un perfil de docente asociado a su usuario.")
 
@@ -414,9 +436,9 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 modalidad=mesa.modalidad,
                 mesa=mesa,
                 bypass_legajo=True,
-                bypass_correlativas=True,
-                bypass_regularidad=True,
-                bypass_historial=True,  # En Actas siempre somos un poco más flexibles si el admin fuerza
+                bypass_correlativas=not payload.strict,
+                bypass_regularidad=not payload.strict,
+                bypass_historial=not payload.strict,
             )
             if not eligible:
                 # Advertencia no bloqueante para inscripciones ya existentes;
@@ -466,6 +488,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             total_desaprobados=categoria_counts["desaprobado"],
             total_ausentes=categoria_counts["ausente"],
             created_by=usuario if getattr(usuario, "is_authenticated", False) else None,
+            mesa=mesa,
         )
 
         # Persistir tribunal docente
@@ -491,30 +514,40 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 docente_presidente = docente_obj
 
         # Sincronización de Mesa de Examen (Presidencia, Vocales)
-        mesa = MesaExamen.objects.filter(
-            materia=materia,
-            fecha=acta_fecha,
-            modalidad=MesaExamen.Modalidad.LIBRE
-            if payload.tipo == ActaExamen.Tipo.LIBRE
-            else MesaExamen.Modalidad.REGULAR,
-        ).first()
         if not mesa:
-            mesa = MesaExamen.objects.create(
+            mesa = MesaExamen.objects.filter(
                 materia=materia,
                 fecha=acta_fecha,
-                tipo=MesaExamen.Tipo.FINAL,
                 modalidad=MesaExamen.Modalidad.LIBRE
                 if payload.tipo == ActaExamen.Tipo.LIBRE
                 else MesaExamen.Modalidad.REGULAR,
-                codigo=f"MA-{acta.id}-{acta_fecha.strftime('%Y%m%d')}",
-                docente_presidente=docente_presidente,
-                planilla_cerrada_en=timezone.now(),
-                planilla_cerrada_por=usuario if getattr(usuario, "is_authenticated", False) else None,
-            )
-        elif not mesa.planilla_cerrada_en:
-            mesa.planilla_cerrada_en = timezone.now()
-            mesa.planilla_cerrada_por = usuario if getattr(usuario, "is_authenticated", False) else None
-            mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
+            ).first()
+            if not mesa:
+                mesa = MesaExamen.objects.create(
+                    materia=materia,
+                    fecha=acta_fecha,
+                    tipo=MesaExamen.Tipo.FINAL,
+                    modalidad=MesaExamen.Modalidad.LIBRE
+                    if payload.tipo == ActaExamen.Tipo.LIBRE
+                    else MesaExamen.Modalidad.REGULAR,
+                    codigo=f"MA-{acta.id}-{acta_fecha.strftime('%Y%m%d')}",
+                    docente_presidente=docente_presidente,
+                    planilla_cerrada_en=timezone.now(),
+                    planilla_cerrada_por=usuario if getattr(usuario, "is_authenticated", False) else None,
+                )
+                acta.mesa = mesa
+                acta.save(update_fields=["mesa"])
+            elif not mesa.planilla_cerrada_en:
+                mesa.planilla_cerrada_en = timezone.now()
+                mesa.planilla_cerrada_por = usuario if getattr(usuario, "is_authenticated", False) else None
+                mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
+                acta.mesa = mesa
+                acta.save(update_fields=["mesa"])
+        else:
+            if not mesa.planilla_cerrada_en:
+                mesa.planilla_cerrada_en = timezone.now()
+                mesa.planilla_cerrada_por = usuario if getattr(usuario, "is_authenticated", False) else None
+                mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
 
         # Carga de renglones de acta y actualización de inscripciones a mesa
         for est_item in payload.estudiantes:
@@ -590,12 +623,22 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse, 403: ApiResponse},
     auth=JWTAuth(),
 )
-@requires("acta_manual")
 def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Body(...)):
     """
     Actualiza o rectifica un acta de examen existente.
     Bloquea la edición si la Mesa de Examen ya ha sido auditada y cerrada por bedelía fuera de este flujo.
     """
+    from core.permissions import can, get_user_roles, require
+    from datetime import date
+
+    user_roles = get_user_roles(request.user)
+    is_docente_only = "docente" in user_roles and not can(request.user, "acta_manual")
+
+    if is_docente_only:
+        require(request.user, "carga_notas")
+    else:
+        require(request.user, "acta_manual")
+
     acta = ActaExamen.objects.filter(id=acta_id).first()
     if not acta:
         return 404, ApiResponse(ok=False, message="Acta no encontrada.")
@@ -607,6 +650,34 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     nuevo_profesorado = Profesorado.objects.filter(id=payload.profesorado_id).first()
     if not nuevo_profesorado:
         return 400, ApiResponse(ok=False, message="Profesorado no encontrado.")
+
+    # Resolución de mesa
+    mesa = None
+    if payload.mesa_id:
+        mesa = MesaExamen.objects.filter(id=payload.mesa_id).first()
+    if not mesa and acta.mesa_id:
+        mesa = acta.mesa
+
+    # Validar tribunal y fecha para docentes
+    if is_docente_only:
+        try:
+            docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
+            if mesa:
+                tribunal_valido = docente_obj.id in [
+                    mesa.docente_presidente_id,
+                    mesa.docente_vocal1_id,
+                    mesa.docente_vocal2_id,
+                ]
+                if not tribunal_valido:
+                    return 403, ApiResponse(
+                        ok=False, message="Solo los docentes del tribunal de la mesa pueden modificar esta acta."
+                    )
+                if mesa.fecha < date.today() and mesa.planilla_cerrada_en is not None:
+                    return 403, ApiResponse(
+                        ok=False, message="No tiene permisos para modificar un acta de mesa pasada y cerrada."
+                    )
+        except Docente.DoesNotExist:
+            return 403, ApiResponse(ok=False, message="No se encontró un perfil de docente asociado a su usuario.")
 
     # Mesa vinculada a la materia/fecha ORIGINAL (antes de editar)
     fecha_original = acta.fecha
@@ -681,7 +752,13 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         acta.total_desaprobados = categoria_counts["desaprobado"]
         acta.total_ausentes = categoria_counts["ausente"]
         acta.updated_by = usuario if getattr(usuario, "is_authenticated", False) else None
+        acta.mesa = mesa
         acta.save()
+
+        if mesa and not mesa.planilla_cerrada_en:
+            mesa.planilla_cerrada_en = timezone.now()
+            mesa.planilla_cerrada_por = usuario if getattr(usuario, "is_authenticated", False) else None
+            mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
 
         # Re-construcción del tribunal docente
         acta.docentes.all().delete()

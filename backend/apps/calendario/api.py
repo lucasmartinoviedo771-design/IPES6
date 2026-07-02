@@ -157,12 +157,16 @@ def list_horarios_catedra(
 def create_horario_catedra(request, payload: HorarioCatedraIn):
     materia = get_object_or_404(Materia, id=payload.espacio_id)
     _ensure_structure_edit(request.user, materia.plan_de_estudio.profesorado_id)
-    hc, _ = HorarioCatedra.objects.get_or_create(
+    hc, created = HorarioCatedra.objects.get_or_create(
         espacio=materia,
         turno_id=payload.turno_id,
         anio_academico=payload.anio_academico,
         cuatrimestre=payload.cuatrimestre,
     )
+    if created:
+        from core.models import Comision
+        comisiones = Comision.objects.filter(materia=materia, turno_id=payload.turno_id, horario__isnull=True)
+        comisiones.update(horario=hc)
     return hc
 
 

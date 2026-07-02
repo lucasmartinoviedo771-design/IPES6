@@ -39,6 +39,18 @@ class DocenteHistorialOut(Schema):
     observacion: str | None
 
 
+class DocenteMisAsistenciasOut(Schema):
+    id: int
+    fecha: str
+    espacio_curricular: str
+    comision: str
+    horario: str
+    turno: str
+    estado: str
+    categoria: str
+    observacion: str | None
+
+
 class DocenteClasesResponse(Schema):
     docente: DocenteInfoOut
     clases: list[DocenteClaseOut]
@@ -62,6 +74,10 @@ class DocenteMarcarPresenteOut(Schema):
     alerta_motivo: str | None
     mensaje: str | None
     turno: str | None
+
+
+class IniciarPinResponse(Schema):
+    pin: str
 
 
 class EstudianteResumenOut(Schema):
@@ -89,15 +105,23 @@ class ClaseEstudianteDetalleOut(Schema):
     materia: str
     docentes: list[str]
     docente_presente: bool
+    docente_ausente: bool = False
     docente_categoria_asistencia: str | None = None
     estudiantes: list[EstudianteResumenOut]
     otras_clases: list[ClaseNavegacionOut] = []
+    pin_asistencia: str | None = None
 
 
 class RegistrarAsistenciaEstudiantesIn(Schema):
     presentes: list[int]
     tardes: list[int] = []  # IDs de estudiantes
     observaciones: str | None = None
+
+
+class RegistrarAsistenciaPinIn(Schema):
+    pin: str
+    latitud: float | None = None
+    longitud: float | None = None
 
 
 class JustificacionCreateIn(Schema):

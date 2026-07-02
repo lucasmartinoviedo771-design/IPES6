@@ -7,6 +7,7 @@ const TomarAsistenciaPage = lazyPage(() => import("@/pages/Docentes/TomarAsisten
 const TomarAsistenciaDemoPage = lazyPage(() => import("@/pages/Docentes/TomarAsistenciaDemoPage"));
 const MisPlanillasPage = lazyPage(() => import("@/pages/Docentes/mis-planillas/MisPlanillasPage"));
 const PlanillaCursadaFormPage = lazyPage(() => import("@/pages/Docentes/mis-planillas/PlanillaCursadaFormPage"));
+const MisAsistenciasPage = lazyPage(() => import("@/pages/Docentes/MisAsistenciasPage"));
 
 export const buildDocenteRoutes = () => (
   <>
@@ -18,5 +19,9 @@ export const buildDocenteRoutes = () => (
       <Route path="/docentes/mis-planillas" element={<MisPlanillasPage />} />
       <Route path="/docentes/mis-planillas/:comisionId" element={<PlanillaCursadaFormPage />} />
     </Route>
+    <Route element={<ProtectedRoute roles={["docente"]}><Outlet /></ProtectedRoute>}>
+      <Route path="/docentes/mis-asistencias" element={<MisAsistenciasPage />} />
+    </Route>
   </>
 );
+

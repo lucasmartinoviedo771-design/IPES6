@@ -45,6 +45,29 @@ export async function fetchDocenteClases(
   return data;
 }
 
+export interface DocenteMisAsistenciasOut {
+  id: number;
+  fecha: string;
+  espacio_curricular: string;
+  comision: string;
+  horario: string;
+  turno: string;
+  estado: string;
+  categoria: string;
+  observacion: string | null;
+}
+
+export async function fetchDocenteMisAsistencias(params?: {
+  fecha?: string;
+  desde?: string;
+  hasta?: string;
+  materia_id?: number;
+  estado?: string;
+}): Promise<DocenteMisAsistenciasOut[]> {
+  const { data } = await client.get<DocenteMisAsistenciasOut[]>("/asistencia/docentes/mis-asistencias", { params });
+  return data;
+}
+
 export interface MarcarDocentePresentePayload {
   dni: string;
   observaciones?: string;
@@ -204,9 +227,11 @@ export interface ClaseEstudianteDetalle {
   materia: string;
   docentes: string[];
   docente_presente: boolean;
+  docente_ausente?: boolean;
   docente_categoria_asistencia?: "normal" | "tarde" | "diferida";
   estudiantes: EstudianteResumen[];
   otras_clases: ClaseNavegacion[];
+  pin_asistencia?: string | null;
 }
 
 export async function fetchClaseEstudiantes(claseId: number): Promise<ClaseEstudianteDetalle> {
@@ -222,6 +247,25 @@ export interface RegistrarAsistenciaEstudiantesPayload {
 
 export async function registrarAsistenciaEstudiantes(claseId: number, payload: RegistrarAsistenciaEstudiantesPayload) {
   await client.post(`/asistencia/estudiantes/clases/${claseId}/registrar`, payload);
+}
+
+export interface IniciarPinResponse {
+  pin: string;
+}
+
+export async function iniciarAsistenciaPin(claseId: number): Promise<IniciarPinResponse> {
+  const { data } = await client.post<IniciarPinResponse>(`/asistencia/docentes/clases/${claseId}/iniciar-pin`);
+  return data;
+}
+
+export interface RegistrarAsistenciaPinPayload {
+  pin: string;
+  latitud?: number;
+  longitud?: number;
+}
+
+export async function registrarAsistenciaPin(payload: RegistrarAsistenciaPinPayload): Promise<void> {
+  await client.post(`/asistencia/estudiantes/registrar-pin`, payload);
 }
 
 export interface CrearJustificacionPayload {

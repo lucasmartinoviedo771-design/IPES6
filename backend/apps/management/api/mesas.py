@@ -92,7 +92,17 @@ def list_mesas(
     hasta: str | None = None,
     tipo: str | None = None,
 ):
-    require(request.user, "ver_estructura")
+    from core.permissions import get_user_roles, can, require
+    from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+    from datetime import date
+
+    user_roles = get_user_roles(request.user)
+    is_docente_only = "docente" in user_roles and not can(request.user, "ver_estructura")
+
+    if is_docente_only:
+        require(request.user, "carga_notas")
+    else:
+        require(request.user, "ver_estructura")
 
     # Barrido automático antes de listar
     # _auto_cleanup_deserted_mesas()  # R2: Removido de GET
@@ -104,8 +114,24 @@ def list_mesas(
         "docente_vocal2__persona",
     ).annotate(num_inscriptos=Count("inscripciones", filter=Q(inscripciones__estado="INS")))
 
+    if is_docente_only:
+        docente = _resolve_docente_from_user(request.user)
+        if docente:
+            qs = qs.filter(
+                Q(docente_presidente=docente)
+                | Q(docente_vocal1=docente)
+                | Q(docente_vocal2=docente)
+            )
+            # Filtro de vigencia: futuras/del día, o pasadas abiertas
+            qs = qs.filter(
+                Q(fecha__gte=date.today())
+                | Q(planilla_cerrada_en__isnull=True)
+            )
+        else:
+            qs = qs.none()
+
     allowed = allowed_profesorados(request.user)
-    if allowed is not None:
+    if allowed is not None and not is_docente_only:
         qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
 
     if profesorado_id:

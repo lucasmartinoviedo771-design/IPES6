@@ -108,6 +108,9 @@ def crear_comision(request, payload: CrearComisionIn):
         # Fallback: Primer turno disponible (probablemente Tarde o Noche)
         turno = Turno.objects.first()
 
+    from core.models import HorarioCatedra
+    hc = HorarioCatedra.objects.filter(espacio=materia, turno=turno).first()
+
     comision = Comision.objects.create(
         materia=materia,
         anio_lectivo=payload.anio_lectivo,
@@ -115,6 +118,7 @@ def crear_comision(request, payload: CrearComisionIn):
         turno=turno,
         cupo_maximo=payload.cupo_maximo,
         estado=Comision.Estado.ABIERTA,
+        horario=hc,
     )
 
     return ApiResponse(ok=True, message="Comisión creada exitosamente.", data={"id": comision.id})
@@ -144,6 +148,9 @@ def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
         if not Comision.objects.filter(
             materia=materia, anio_lectivo=payload.anio_lectivo, codigo=payload.codigo
         ).exists():
+            from core.models import HorarioCatedra
+            hc = HorarioCatedra.objects.filter(espacio=materia, turno=turno).first()
+
             Comision.objects.create(
                 materia=materia,
                 anio_lectivo=payload.anio_lectivo,
@@ -151,6 +158,7 @@ def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
                 turno=turno,
                 cupo_maximo=payload.cupo_maximo,
                 estado=Comision.Estado.ABIERTA,
+                horario=hc,
             )
             created_count += 1
 

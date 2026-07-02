@@ -35,6 +35,7 @@ class ActaCreateLocal(Schema):
     total_desaprobados: int | None = None
     total_ausentes: int | None = None
     strict: bool = True
+    mesa_id: int | None = None
 
 
 class ActaCreateOutLocal(Schema):

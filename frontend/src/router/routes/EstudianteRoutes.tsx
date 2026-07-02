@@ -16,11 +16,13 @@ const ConstanciaExamenPage = lazyPage(() => import("@/pages/Estudiantes/Constanc
 const HorarioPage = lazyPage(() => import("@/pages/Estudiantes/HorarioPage"));
 const MisAsistenciasPage = lazyPage(() => import("@/pages/Estudiantes/MisAsistenciasPage"));
 const CursoIntroductorioEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/CursoIntroductorioPage"));
+const PresentePage = lazyPage(() => import("@/pages/Estudiantes/PresentePage"));
 
 export const buildEstudianteRoutes = () => (
   <>
     <Route element={<ProtectedRoute capability="ver_estudiantes" roles={["estudiante"]}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes" element={<EstudiantesIndex />} />
+      <Route path="/estudiantes/presente" element={<PresentePage />} />
       <Route path="/estudiantes/completar-perfil" element={<CompletarPerfilPage />} />
       <Route path="/estudiantes/inscripcion-materia" element={<InscripcionMateriaPage />} />
       <Route path="/estudiantes/cambio-comision" element={<CambioComisionPage />} />

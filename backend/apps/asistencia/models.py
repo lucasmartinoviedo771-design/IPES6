@@ -113,6 +113,12 @@ class ClaseProgramada(models.Model):
         default=Estado.PROGRAMADA,
     )
     notas = models.TextField(blank=True)
+    pin_asistencia = models.CharField(
+        max_length=6,
+        null=True,
+        blank=True,
+        help_text="PIN numérico generado para la asistencia de los estudiantes.",
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

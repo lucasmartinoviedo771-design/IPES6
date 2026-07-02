@@ -102,6 +102,12 @@ const baseSections: Section[] = [
     subtitle: "Explora tu historial de cursada, materias y seguimiento de inscripciones.",
     items: [
       {
+        title: "Dar el Presente",
+        subtitle: "Registrá tu asistencia a clase usando el PIN del docente.",
+        icon: <VerifiedUser />,
+        path: "/estudiantes/presente",
+      },
+      {
         title: "Trayectoria del Estudiante",
         subtitle: "Historial completo, materias y seguimiento de inscripciones.",
         icon: <TrendingUp />,

@@ -149,13 +149,21 @@ def create_comision(request, payload: ComisionIn):
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
 
     estado = (payload.estado or Comision.Estado.ABIERTA).upper()
+    
+    horario_id = payload.horario_id
+    if not horario_id:
+        from core.models import HorarioCatedra
+        hc = HorarioCatedra.objects.filter(espacio=materia, turno_id=payload.turno_id).first()
+        if hc:
+            horario_id = hc.id
+
     comision = Comision.objects.create(
         materia=materia,
         anio_lectivo=payload.anio_lectivo,
         codigo=payload.codigo,
         turno_id=payload.turno_id,
         docente_id=payload.docente_id,
-        horario_id=payload.horario_id,
+        horario_id=horario_id,
         cupo_maximo=payload.cupo_maximo,
         estado=estado,
         rol=(payload.rol or Comision.Rol.TITULAR).upper(),
@@ -175,6 +183,13 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
     for attr, value in payload.dict().items():
         if value is not None:
             setattr(comision, attr, value)
+            
+    if not comision.horario_id:
+        from core.models import HorarioCatedra
+        hc = HorarioCatedra.objects.filter(espacio=comision.materia_id, turno_id=comision.turno_id).first()
+        if hc:
+            comision.horario = hc
+            
     comision.save()
     return _serialize_comision(comision)
 
@@ -242,12 +257,16 @@ def bulk_generate_comisiones(request, payload: ComisionBulkGenerateIn):
                 # Rotación de turnos basada en la cantidad de comisiones
                 turno = turnos[(existentes + nuevos_creados) % len(turnos)]
 
+                from core.models import HorarioCatedra
+                hc = HorarioCatedra.objects.filter(espacio=materia, turno=turno).first()
+
                 comision = Comision.objects.create(
                     materia=materia,
                     anio_lectivo=payload.anio_lectivo,
                     codigo=codigo,
                     turno=turno,
                     estado=estado,
+                    horario=hc,
                     observaciones="",
                 )
                 created.append(comision)

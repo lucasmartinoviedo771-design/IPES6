@@ -32,6 +32,7 @@ import GestionComisionesDialog from "./components/GestionComisionesDialog";
 import { INSTITUTIONAL_TERRACOTTA, INSTITUTIONAL_TERRACOTTA_DARK } from "@/styles/institutionalColors";
 import PlanillaRegularidadDialog from "@/pages/admin/PlanillaRegularidadDialog";
 import AssignmentIcon from "@mui/icons-material/Assignment";
+import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
 
 import { FiltersState, FinalFiltersState } from "./carga-notas/types";
 import { useRegularidadFilters } from "./carga-notas/hooks/useRegularidadFilters";
@@ -447,24 +448,26 @@ const CargaNotasPage: React.FC = () => {
           <Stack gap={3}>
             <Paper sx={{ p: 3 }}>
               <Stack gap={3}>
-                <FinalExamFiltersPanel
-                  finalFilters={finalFilters}
-                  setFinalFilters={setFinalFilters}
-                  profesorados={profesorados}
-                  ventanasFinales={ventanasFinales}
-                  finalPlanes={finalPlanes}
-                  finalMaterias={finalMaterias}
-                  loadingFinalPlanes={loadingFinalPlanes}
-                  loadingFinalMaterias={loadingFinalMaterias}
-                  finalAvailableAnios={finalAvailableAnios}
-                  finalCuatrimestreOptions={finalCuatrimestreOptions}
-                  finalMateriasFiltradas={finalMateriasFiltradas}
-                  finalError={finalError}
-                  setFinalError={setFinalError}
-                  finalSuccess={finalSuccess}
-                  setFinalSuccess={setFinalSuccess}
-                  hideEstadoFilter={isDocente}
-                />
+                {!isDocente && (
+                  <FinalExamFiltersPanel
+                    finalFilters={finalFilters}
+                    setFinalFilters={setFinalFilters}
+                    profesorados={profesorados}
+                    ventanasFinales={ventanasFinales}
+                    finalPlanes={finalPlanes}
+                    finalMaterias={finalMaterias}
+                    loadingFinalPlanes={loadingFinalPlanes}
+                    loadingFinalMaterias={loadingFinalMaterias}
+                    finalAvailableAnios={finalAvailableAnios}
+                    finalCuatrimestreOptions={finalCuatrimestreOptions}
+                    finalMateriasFiltradas={finalMateriasFiltradas}
+                    finalError={finalError}
+                    setFinalError={setFinalError}
+                    finalSuccess={finalSuccess}
+                    setFinalSuccess={setFinalSuccess}
+                    hideEstadoFilter={isDocente}
+                  />
+                )}
 
                 <FinalExamMesasGrid
                   finalMesas={finalMesas}
@@ -480,33 +483,20 @@ const CargaNotasPage: React.FC = () => {
 
             {finalSelectedMesaId && (
               <Stack gap={3}>
-                <FinalExamPlanillaSection
-                  finalPlanilla={finalPlanilla}
-                  finalLoadingPlanilla={finalLoadingPlanilla}
-                  finalSelectedMesaId={finalSelectedMesaId}
-                  finalCondiciones={finalCondiciones}
-                  finalRows={finalRows}
-                  filteredFinalRows={filteredFinalRows}
-                  finalReadOnly={finalReadOnly}
-                  finalPermissionDenied={finalPermissionDenied}
-                  finalSaving={finalSaving}
-                  finalCierreLoading={finalCierreLoading}
-                  finalSearch={finalSearch}
-                  setFinalSearch={setFinalSearch}
-                  totalFinalRows={totalFinalRows}
-                  visibleFinalRows={visibleFinalRows}
-                  hasFinalSearch={hasFinalSearch}
-                  downloadingOralBatch={downloadingOralBatch}
-                  onRowChange={handleFinalRowChange}
-                  onOpenOralActa={handleOpenOralActa}
-                  onFinalSaveClick={handleFinalSaveClick}
-                  onFinalPlanillaCierre={handleFinalPlanillaCierre}
-                  onDownloadAllOralActas={handleDownloadAllOralActas}
-                />
-                <OralActasSection
-                  mesaPreseleccionada={selectedMesaResumen}
-                  finalRows={finalRows}
-                />
+                <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+                  <ActaExamenForm
+                    strict={!isDocente}
+                    title={isDocente ? "Carga de calificaciones de mesa" : "Generar acta de examen"}
+                    subtitle={isDocente ? "Complete las notas del examen final para los alumnos inscriptos." : undefined}
+                    mesaPreseleccionada={selectedMesaResumen}
+                    estudiantesPreseleccionados={finalRows.map((r) => ({
+                      dni: r.dni,
+                      apellido_nombre: r.apellidoNombre,
+                      inscripcionId: r.inscripcionId,
+                    }))}
+                    editId={finalPlanilla?.acta_id || undefined}
+                  />
+                </Paper>
               </Stack>
             )}
           </Stack>

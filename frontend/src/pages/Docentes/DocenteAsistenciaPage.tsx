@@ -4,6 +4,7 @@ import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -31,6 +32,7 @@ import {
 } from "@/api/asistencia";
 import { useAuth } from "@/context/AuthContext";
 import { PageHero } from "@/components/ui/GradientTitles";
+import BackButton from "@/components/ui/BackButton";
 
 type TurnoId = "morning" | "afternoon" | "evening";
 
@@ -116,11 +118,17 @@ const DocenteAsistenciaPage = () => {
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [attemptingLogin, setAttemptingLogin] = useState(false);
 
+  const isDocenteSession = useMemo(() => {
+    if (!user) return false;
+    const roles = (user.roles || []).map((role) => role.toLowerCase());
+    return roles.includes("docente");
+  }, [user]);
+
   const authorized = useMemo(() => {
     if (!user) return false;
     if (user.is_superuser) return true;
     const roles = (user.roles || []).map((role) => role.toLowerCase());
-    return roles.includes("admin") || roles.includes("secretaria") || roles.includes("kiosk");
+    return roles.includes("admin") || roles.includes("secretaria") || roles.includes("kiosk") || roles.includes("docente");
   }, [user]);
 
   useEffect(() => {
@@ -129,18 +137,39 @@ const DocenteAsistenciaPage = () => {
   }, []);
 
   useEffect(() => {
-    if (authorized) {
+    if (isDocenteSession && user?.dni) {
+      const trimmed = user.dni.trim();
+      setDni(trimmed);
+      setLoadingDocente(true);
+      fetchDocenteClases(trimmed)
+        .then((data) => {
+          setDocente(data.docente);
+          setClases(data.clases);
+          setHistorial(data.historial || []);
+          setFeedback(null);
+        })
+        .catch(() => {
+          setFeedback({ severity: "error", message: "No se pudieron obtener tus clases de hoy." });
+        })
+        .finally(() => {
+          setLoadingDocente(false);
+        });
+    }
+  }, [isDocenteSession, user?.dni]);
+
+  useEffect(() => {
+    if (authorized && !isDocenteSession) {
       inputRef.current?.focus();
     }
-  }, [authorized]);
+  }, [authorized, isDocenteSession]);
 
   useEffect(() => {
     const trimmed = dni.trim();
-    if (authorized && trimmed.length === 8 && trimmed !== lastLoggedDni) {
+    if (authorized && !isDocenteSession && trimmed.length === 8 && trimmed !== lastLoggedDni) {
       registrarDocenteDni(trimmed).catch(() => { });
       setLastLoggedDni(trimmed);
     }
-  }, [dni, lastLoggedDni, authorized]);
+  }, [dni, lastLoggedDni, authorized, isDocenteSession]);
 
   const fechaLegible = useMemo(
     () =>
@@ -184,9 +213,30 @@ const DocenteAsistenciaPage = () => {
     }
     const executeReset = () => {
       limpiarEstado();
-      setDni("");
-      setLastLoggedDni(null);
-      setTimeout(() => inputRef.current?.focus(), 80);
+      if (isDocenteSession) {
+        if (user?.dni) {
+          const trimmed = user.dni.trim();
+          setDni(trimmed);
+          setLoadingDocente(true);
+          fetchDocenteClases(trimmed)
+            .then((data) => {
+              setDocente(data.docente);
+              setClases(data.clases);
+              setHistorial(data.historial || []);
+              setFeedback(null);
+            })
+            .catch(() => {
+              setFeedback({ severity: "error", message: "No se pudieron obtener tus clases de hoy." });
+            })
+            .finally(() => {
+              setLoadingDocente(false);
+            });
+        }
+      } else {
+        setDni("");
+        setLastLoggedDni(null);
+        setTimeout(() => inputRef.current?.focus(), 80);
+      }
     };
     if (delay > 0) {
       resetTimeoutRef.current = window.setTimeout(executeReset, delay);
@@ -202,7 +252,7 @@ const DocenteAsistenciaPage = () => {
     }
   };
 
-  const buscarDocente = async () => {
+  const procesarDni = async () => {
     if (!authorized) {
       mostrarFeedback({ severity: "warning", message: "Debés iniciar sesión para registrar asistencias." });
       return;
@@ -213,17 +263,51 @@ const DocenteAsistenciaPage = () => {
       return;
     }
     setLoadingDocente(true);
-    mostrarFeedback({ severity: "info", message: "Verificando información del docente..." });
+    mostrarFeedback({ severity: "info", message: "Procesando asistencia..." });
     try {
       const data = await fetchDocenteClases(trimmed);
       setDocente(data.docente);
       setClases(data.clases);
       setHistorial(data.historial);
       setMarcadas(new Set(data.clases.filter((clase) => clase.ya_registrada).map((clase) => clase.id)));
+      
       if (data.clases.length === 0) {
-        mostrarFeedback({ severity: "info", message: "No se encontraron clases programadas para hoy." }, true);
+        mostrarFeedback({ severity: "info", message: "No se encontraron clases programadas para hoy en este turno." }, true);
+        return;
+      }
+
+      const clasePendiente = data.clases.find(c => c.puede_marcar && !c.ya_registrada);
+      if (clasePendiente) {
+        setSaving(true);
+        try {
+          const response = await marcarDocentePresente(clasePendiente.id, {
+            dni: data.docente.dni,
+            observaciones: observaciones || undefined,
+            via: "docente",
+            propagar_turno: true,
+          });
+          
+          const updatedData = await fetchDocenteClases(trimmed);
+          setClases(updatedData.clases);
+          setMarcadas(new Set(updatedData.clases.filter((clase) => clase.ya_registrada).map((clase) => clase.id)));
+          
+          const message =
+            response.mensaje ||
+            (response.alerta ? "Llegada tarde registrada. Se notificará a Secretaría." : "Asistencia registrada correctamente para el turno.");
+          mostrarFeedback({ severity: response.alerta ? "warning" : "success", message }, true, 8000);
+        } catch (err) {
+          const message = isAxiosError(err) && err.response ? err.response.data?.detail || err.response.data?.message || "No se pudo registrar la asistencia." : "No se pudo registrar la asistencia.";
+          mostrarFeedback({ severity: "error", message }, true);
+        } finally {
+          setSaving(false);
+        }
       } else {
-        setFeedback(null);
+        const todasMarcadas = data.clases.every(c => c.ya_registrada);
+        if (todasMarcadas) {
+          mostrarFeedback({ severity: "success", message: "Ya tenés la asistencia registrada para tus clases del turno." }, true, 8000);
+        } else {
+          mostrarFeedback({ severity: "warning", message: "No hay clases dentro de la ventana de marcado actual." }, true, 8000);
+        }
       }
     } catch (err) {
       let message = "No se pudo cargar la información del docente.";
@@ -231,7 +315,7 @@ const DocenteAsistenciaPage = () => {
         const status = err.response.status;
         const detail = err.response.data?.detail || err.response.data?.message;
         if (status === 404) {
-          message = "El docente no existe en nuestros registros. Por favor, comunicate con Secretaría.";
+          message = "El docente no existe en nuestros registros.";
         } else if (detail) {
           message = detail;
         }
@@ -288,7 +372,7 @@ const DocenteAsistenciaPage = () => {
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      buscarDocente();
+      procesarDni();
     }
     if (event.key === "Escape") {
       event.preventDefault();
@@ -365,24 +449,61 @@ const DocenteAsistenciaPage = () => {
 
           {authorized && (
             <>
-              <Box display="flex" justifyContent="flex-end">
-                <Button variant="text" color="secondary" onClick={handleLogout}>
-                  Cerrar sesión
-                </Button>
-              </Box>
+              {isDocenteSession ? (
+                <Box display="flex" justifyContent="flex-start" mb={2}>
+                  <BackButton fallbackPath="/login" />
+                </Box>
+              ) : (
+                <Box display="flex" justifyContent="flex-end">
+                  <Button variant="text" color="secondary" onClick={handleLogout}>
+                    Cerrar sesión
+                  </Button>
+                </Box>
+              )}
               <Stack spacing={1} textAlign="center">
                 <Typography variant="h4" fontWeight={700}>
                   Registro de asistencia docente
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
-                  Ingresá tu DNI, presioná Enter y el sistema registrará tu presencia en el turno correspondiente.
+                  {isDocenteSession
+                    ? "Confirmá tu asistencia en tus materias asignadas de hoy."
+                    : "Ingresá tu DNI, presioná Enter y el sistema registrará tu presencia en el turno correspondiente."}
                 </Typography>
-                <Grid container spacing={2} justifyContent="center">
+                <Grid container spacing={3} justifyContent="center" sx={{ my: 1 }}>
                   <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
-                    <Chip icon={<CalendarToday />} label={fechaLegible} color="primary" variant="outlined" sx={highlightChipSx} />
+                    <Chip icon={<CalendarToday />} label={fechaLegible} color="primary" variant="outlined" sx={{ ...highlightChipSx, fontSize: "1.5rem", px: 4 }} />
                   </Grid>
                   <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
-                    <Chip icon={<AccessTime />} label={horaLegible} color="primary" sx={clockChipSx} />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor: "primary.main",
+                        color: "primary.contrastText",
+                        borderRadius: 4,
+                        px: { xs: 4, sm: 6 },
+                        py: { xs: 2, sm: 3 },
+                        boxShadow: "0 8px 32px 0 rgba(183, 105, 78, 0.25)",
+                        background: "linear-gradient(135deg, #7d7f6e, #b7694e)",
+                      }}
+                    >
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        <AccessTime sx={{ fontSize: { xs: "2.8rem", sm: "3.8rem" } }} />
+                        <Typography
+                          variant="h2"
+                          fontWeight={800}
+                          sx={{
+                            fontFamily: "monospace",
+                            letterSpacing: "1px",
+                            fontSize: { xs: "2.8rem", sm: "4rem", md: "4.8rem" },
+                            lineHeight: 1,
+                          }}
+                        >
+                          {horaLegible}
+                        </Typography>
+                      </Stack>
+                    </Box>
                   </Grid>
                 </Grid>
                 {feedback && (
@@ -392,46 +513,59 @@ const DocenteAsistenciaPage = () => {
                 )}
               </Stack>
 
-              <Paper elevation={3} sx={{ p: 3 }}>
-                <Stack spacing={2}>
-                  <Typography variant="h6" fontWeight={600}>
-                    Paso 1. Ingresá tu DNI
-                  </Typography>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                    <TextField
-                      fullWidth
-                      label="DNI del docente"
-                      value={dni}
-                      onChange={(event) => setDni(event.target.value)}
-                      placeholder="Ej: 12345678"
-                      inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
-                      disabled={loadingDocente || saving}
-                      inputRef={inputRef}
-                      onKeyDown={handleKeyDown}
-                    />
-                    <Button
-                      variant="contained"
-                      size="large"
-                      onClick={buscarDocente}
-                      sx={{ minWidth: 180 }}
-                      disabled={loadingDocente || saving}
-                    >
-                      Buscar docente
-                    </Button>
-                    <Button variant="text" size="large" color="secondary" onClick={() => volverAInicio()}>
-                      Limpiar
-                    </Button>
+              {isDocenteSession && loadingDocente && (
+                <Box display="flex" justifyContent="center" py={4}>
+                  <CircularProgress />
+                </Box>
+              )}
+
+              {!isDocenteSession && (
+                <Paper elevation={3} sx={{ p: 3 }}>
+                  <Stack spacing={2}>
+                    <Typography variant="h6" fontWeight={600}>
+                      Paso 1. Ingresá tu DNI
+                    </Typography>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                      <TextField
+                        fullWidth
+                        label="DNI del docente"
+                        value={dni}
+                        onChange={(event) => setDni(event.target.value)}
+                        placeholder="Ej: 12345678"
+                        inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
+                        disabled={loadingDocente || saving}
+                        inputRef={inputRef}
+                        onKeyDown={handleKeyDown}
+                      />
+                      <Button
+                        variant="contained"
+                        size="large"
+                        onClick={procesarDni}
+                        sx={{ minWidth: 180 }}
+                        disabled={loadingDocente || saving}
+                      >
+                        Marcar asistencia
+                      </Button>
+                      <Button variant="text" size="large" color="secondary" onClick={() => volverAInicio()}>
+                        Limpiar
+                      </Button>
+                    </Stack>
                   </Stack>
-                </Stack>
-              </Paper>
+                </Paper>
+              )}
 
               {docente && (
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={4}>
-                    <Card elevation={2}>
-                      <CardContent>
-                        <Stack spacing={2} alignItems="center">
-                          <Avatar sx={{ width: 96, height: 96, fontSize: 36 }}>
+                <Grid container spacing={3} justifyContent="center">
+                  <Grid item xs={12} md={6}>
+                    <Card elevation={4} sx={{ borderRadius: 4, overflow: "hidden" }}>
+                      <Box sx={{ bgcolor: feedback?.severity === "warning" ? "warning.main" : (feedback?.severity === "error" ? "error.main" : "success.main"), py: 2, px: 3 }}>
+                        <Typography variant="h5" color="white" fontWeight={700} textAlign="center">
+                          {feedback?.message || "Procesando..."}
+                        </Typography>
+                      </Box>
+                      <CardContent sx={{ pt: 4, pb: 4 }}>
+                        <Stack spacing={3} alignItems="center">
+                          <Avatar sx={{ width: 120, height: 120, fontSize: 48, bgcolor: "grey.200", color: "grey.700" }}>
                             {docente.nombre
                               .split(" ")
                               .map((part) => part[0])
@@ -439,224 +573,21 @@ const DocenteAsistenciaPage = () => {
                               .slice(0, 2)}
                           </Avatar>
                           <Stack spacing={0.5} alignItems="center">
-                            <Typography variant="h6" fontWeight={700}>
+                            <Typography variant="h5" fontWeight={800}>
                               {docente.nombre}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="h6" color="text.secondary">
                               DNI {docente.dni}
                             </Typography>
                           </Stack>
-                          <Divider flexItem />
-                          <Stack spacing={1} width="100%">
-                            <Typography variant="subtitle2" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <Person fontSize="small" /> Cursos asignados hoy
-                            </Typography>
-                            {clases.length === 0 ? (
-                              <Alert severity="info" variant="outlined">
-                                No se encontraron cátedras para este turno.
-                              </Alert>
-                            ) : (
-                              clases.map((clase) => {
-                                const turnoConfig = resolveTurnoConfig(clase.turno);
-                                return (
-                                  <Paper key={clase.id} variant="outlined" sx={{ p: 1.5, bgcolor: "grey.50" }}>
-                                    <Stack spacing={0.75}>
-                                      <Typography variant="subtitle2" fontWeight={600}>
-                                        {clase.materia}
-                                      </Typography>
-                                      <Typography variant="body2" color="text.secondary">
-                                        {clase.comision}
-                                      </Typography>
-                                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                        {turnoConfig && (
-                                          <Chip
-                                            size="small"
-                                            icon={<Schedule fontSize="small" />}
-                                            label={`${turnoConfig.label} · ${turnoConfig.horario}`}
-                                            variant="outlined"
-                                          />
-                                        )}
-                                        {clase.horario && (
-                                          <Chip size="small" icon={<AccessTime fontSize="small" />} label={clase.horario} />
-                                        )}
-                                        {clase.aula && <Chip size="small" label={`Aula ${clase.aula}`} />}
-                                      </Stack>
-                                    </Stack>
-                                  </Paper>
-                                );
-                              })
-                            )}
-                          </Stack>
+                          {isDocenteSession && (
+                            <Button variant="outlined" onClick={() => volverAInicio()}>
+                              Volver
+                            </Button>
+                          )}
                         </Stack>
                       </CardContent>
                     </Card>
-                  </Grid>
-                  <Grid item xs={12} md={8}>
-                    <Stack spacing={3}>
-                      <Paper elevation={3} sx={{ p: 3 }}>
-                        <Stack spacing={2}>
-                          <Typography variant="h6" fontWeight={600}>
-                            Paso 2. Confirmá y marcá tu asistencia
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Si necesitás dejar una observación para la secretaría, escribila antes de registrar tu presente.
-                          </Typography>
-                          <TextField
-                            multiline
-                            minRows={2}
-                            label="Observaciones (opcional)"
-                            value={observaciones}
-                            onChange={(event) => setObservaciones(event.target.value)}
-                            placeholder="Ej: llegué tarde por problemas de transporte."
-                          />
-                          {clases.length === 0 ? (
-                            <Alert severity="info" variant="outlined">
-                              No hay clases programadas para tu DNI en este turno.
-                            </Alert>
-                          ) : (
-                            <Stack spacing={2}>
-                              {clases.map((clase) => {
-                                const turnoConfig = resolveTurnoConfig(clase.turno);
-                                const yaMarcada = clase.ya_registrada || marcadas.has(clase.id);
-                                const puedeMarcar = clase.puede_marcar && !yaMarcada;
-                                const registradaEn =
-                                  clase.registrada_en &&
-                                  new Date(clase.registrada_en).toLocaleTimeString("es-AR", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  });
-                                const estadoTexto = yaMarcada
-                                  ? registradaEn
-                                    ? `Registrada a las ${registradaEn}.`
-                                    : "Marcación registrada."
-                                  : clase.puede_marcar
-                                    ? "Dentro de la ventana de marcado."
-                                    : "Fuera de la ventana de marcado.";
-                                const estadoColor = yaMarcada
-                                  ? "success.main"
-                                  : clase.puede_marcar
-                                    ? "info.main"
-                                    : "error.main";
-                                return (
-                                  <Paper key={clase.id} variant="outlined" sx={{ p: 2 }}>
-                                    <Stack spacing={1.5}>
-                                      <Stack spacing={0.25}>
-                                        <Typography variant="subtitle1" fontWeight={600}>
-                                          {clase.materia}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                          {clase.comision}
-                                        </Typography>
-                                      </Stack>
-                                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                        {turnoConfig && (
-                                          <Chip
-                                            size="small"
-                                            icon={<Schedule fontSize="small" />}
-                                            label={`${turnoConfig.label} · ${turnoConfig.horario}`}
-                                            variant="outlined"
-                                          />
-                                        )}
-                                        {clase.horario && (
-                                          <Chip size="small" icon={<AccessTime fontSize="small" />} label={`Horario: ${clase.horario}`} />
-                                        )}
-                                        {clase.aula && <Chip size="small" label={`Aula ${clase.aula}`} />}
-                                      </Stack>
-                                      {clase.ventana_inicio && clase.ventana_fin && (
-                                        <Typography variant="caption" color="text.secondary">
-                                          Ventana de marcado: {clase.ventana_inicio} - {clase.ventana_fin}
-                                        </Typography>
-                                      )}
-                                      {clase.umbral_tarde && (
-                                        <Typography variant="caption" color="warning.main">
-                                          Marca tardía a partir de {clase.umbral_tarde}.
-                                        </Typography>
-                                      )}
-                                      <Stack
-                                        direction={{ xs: "column", sm: "row" }}
-                                        spacing={1}
-                                        justifyContent="space-between"
-                                        alignItems={{ xs: "stretch", sm: "center" }}
-                                      >
-                                        <Typography variant="body2" sx={{ color: estadoColor }}>
-                                          {estadoTexto}
-                                        </Typography>
-                                        <Button
-                                          variant={yaMarcada ? "outlined" : "contained"}
-                                          color={yaMarcada ? "success" : "primary"}
-                                          startIcon={<CheckCircle />}
-                                          onClick={() => marcarAsistencia(clase.id)}
-                                          disabled={!puedeMarcar || saving}
-                                        >
-                                          {yaMarcada ? "Marcada" : "Registrar presente"}
-                                        </Button>
-                                      </Stack>
-                                    </Stack>
-                                  </Paper>
-                                );
-                              })}
-                            </Stack>
-                          )}
-                          {!algunaPendiente && clases.length > 0 && (
-                            <Alert
-                              severity="success"
-                              action={
-                                <Button color="inherit" size="small" onClick={() => volverAInicio()}>
-                                  Nueva marcación
-                                </Button>
-                              }
-                            >
-                              Todas las clases del turno fueron marcadas. ¡Gracias!
-                            </Alert>
-                          )}
-                        </Stack>
-                      </Paper>
-
-                      <Paper elevation={1} sx={{ p: 3 }}>
-                        <Stack spacing={2}>
-                          <Typography variant="h6" fontWeight={600} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <History fontSize="small" /> Últimas marcaciones
-                          </Typography>
-                          {historial.length === 0 ? (
-                            <Alert severity="info" variant="outlined">
-                              Todavía no hay registros recientes para este docente.
-                            </Alert>
-                          ) : (
-                            <Stack spacing={1.5}>
-                              {historial.slice(0, 10).map((item, index) => {
-                                const estado = item.estado.toLowerCase();
-                                const chipColor: ChipProps["color"] = estado.includes("ausente")
-                                  ? "error"
-                                  : estado.includes("tarde")
-                                    ? "warning"
-                                    : "success";
-                                return (
-                                  <Stack
-                                    key={`${item.fecha}-${index}`}
-                                    direction={{ xs: "column", sm: "row" }}
-                                    spacing={1}
-                                    alignItems={{ sm: "center" }}
-                                  >
-                                    <Typography variant="body2" sx={{ minWidth: 110, fontWeight: 600 }}>
-                                      {item.fecha}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
-                                      {item.turno}
-                                    </Typography>
-                                    <Chip size="small" label={item.estado} color={chipColor} />
-                                    {item.observacion && (
-                                      <Typography variant="caption" color="text.secondary">
-                                        {item.observacion}
-                                      </Typography>
-                                    )}
-                                  </Stack>
-                                );
-                              })}
-                            </Stack>
-                          )}
-                        </Stack>
-                      </Paper>
-                    </Stack>
                   </Grid>
                 </Grid>
               )}

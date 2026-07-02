@@ -340,12 +340,16 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             if not turno_def:
                 turno_def = Turno.objects.create(nombre="No definido")
 
+            from core.models import HorarioCatedra
+            hc = HorarioCatedra.objects.filter(espacio=mat, turno=turno_def).first()
+
             comision_obj = Comision.objects.create(
                 materia=mat,
                 anio_lectivo=anio_actual,
                 codigo="A",  # Código por defecto histórico
                 turno=turno_def,
                 estado=Comision.Estado.ABIERTA,
+                horario=hc,
                 observaciones="Asignada automáticamente por el sistema de inscripciones.",
             )
 
@@ -887,12 +891,16 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
     comision_obj = Comision.objects.filter(materia=mat, anio_lectivo=anio_actual).order_by("orden", "id").first()
     if not comision_obj:
         turno_def = Turno.objects.first() or Turno.objects.create(nombre="No definido")
+        from core.models import HorarioCatedra
+        hc = HorarioCatedra.objects.filter(espacio=mat, turno=turno_def).first()
+
         comision_obj = Comision.objects.create(
             materia=mat,
             anio_lectivo=anio_actual,
             codigo="A",
             turno=turno_def,
             estado=Comision.Estado.ABIERTA,
+            horario=hc,
             observaciones="Asignada automáticamente — inscripción condicional de Residencia.",
         )
 

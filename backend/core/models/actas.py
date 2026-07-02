@@ -12,6 +12,13 @@ class ActaExamen(models.Model):
         LIBRE = "LIB", "Libre"
 
     codigo = models.CharField(max_length=128, unique=True)
+    mesa = models.ForeignKey(
+        "MesaExamen",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="actas_cargadas",
+    )
     numero = models.PositiveIntegerField(default=0)
     anio_academico = models.IntegerField(default=0)
     tipo = models.CharField(max_length=4, choices=Tipo.choices)

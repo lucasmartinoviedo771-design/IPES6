@@ -135,6 +135,7 @@ class MesaPlanillaOut(Schema):
     puede_editar: bool = True
     puede_cerrar: bool = True
     puede_reabrir: bool = False
+    acta_id: int | None = None
 
 
 MesaPlanillaOut.model_rebuild()

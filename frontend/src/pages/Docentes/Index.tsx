@@ -12,22 +12,19 @@ const sections: RoleDashboardSection[] = [
         path: "/docentes/mis-planillas",
       },
       {
-        ...DASHBOARD_ITEMS.REGULARIDAD_CARGA,
-        subtitle: "Completa o revisa las planillas de cursada habilitadas.",
-      },
-      {
         ...DASHBOARD_ITEMS.ACTAS_FINALES,
         subtitle: "Carga las notas finales de la mesa en la que integrás el tribunal.",
       },
-      DASHBOARD_ITEMS.ACTA_MANUAL,
     ],
   },
   {
     title: "Operativa diaria",
     items: [
       {
-        ...DASHBOARD_ITEMS.DOCENTE_ASISTENCIA,
-        subtitle: "Registra o consulta tu asistencia en el campus.",
+        title: "Mi asistencia diaria",
+        subtitle: "Consultá tu historial y estado de asistencia registrada.",
+        icon: DASHBOARD_ITEMS.DOCENTE_ASISTENCIA.icon,
+        path: "/docentes/mis-asistencias",
       },
       {
         ...DASHBOARD_ITEMS.MENSAJES,
