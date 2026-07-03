@@ -11,11 +11,12 @@ from core.schemas import AsignarRolIn, ForceResetPasswordIn, UserSchema
 
 from ..router import management_router
 
-# "estudiante" es un rol de usuario final, no de personal institucional.
-# Un usuario que además de sus roles de gestión tenga una ficha de Estudiante
-# (ej. cursa una certificación docente) igual debe aparecer si tiene algún
-# otro rol de STAFF_ROLES; pero un estudiante puro no debe listarse acá.
-STAFF_ROLES = ALL_ROLES - {"estudiante"}
+# "estudiante" es un rol de usuario final y "kiosk" una cuenta de dispositivo;
+# ninguno de los dos es personal institucional. Un usuario que además de sus
+# roles de gestión tenga una ficha de Estudiante (ej. cursa una certificación
+# docente) igual debe aparecer si tiene algún otro rol de STAFF_ROLES; pero un
+# estudiante puro o la cuenta del kiosco no deben listarse acá.
+STAFF_ROLES = ALL_ROLES - {"estudiante", "kiosk"}
 
 
 @management_router.get("/staff", response=list[UserSchema], auth=JWTAuth())

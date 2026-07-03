@@ -52,6 +52,8 @@ ALL_ROLES: set[str] = {
     # Roles de usuario final
     "estudiante",
     "docente",
+    # Cuentas de dispositivo/servicio
+    "kiosk",
 }
 
 
