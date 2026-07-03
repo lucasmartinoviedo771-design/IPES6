@@ -27,7 +27,7 @@ export default function SecretariaIndex() {
 
   const canManageDocentes = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
   const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]); // Solo ellos asignan roles
-  const canManageHorarios = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
+  const canManageHorarios = hasAnyRole(user, ["admin", "secretaria"]);
   const canManageMesas = hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado", "attp"]);
   const canManageCatDoc = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
   const canManageVentanas = hasAnyRole(user, [
@@ -74,8 +74,8 @@ export default function SecretariaIndex() {
         ...(canManageHorarios
           ? [
             {
-              title: "Cargar horario",
-              subtitle: "Armar y publicar horarios de cursada.",
+              title: "Armar Horarios de Cátedra",
+              subtitle: "Definí los bloques horarios que ocupará cada cátedra.",
               icon: <EventIcon />,
               path: "/secretaria/horarios",
             },

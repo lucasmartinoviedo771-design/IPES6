@@ -143,9 +143,12 @@ CAPABILITIES: dict[str, set[str]] = {
     "asignar_roles": {"admin", "secretaria"},
     "gestionar_staff": {"admin", "secretaria"},
     # --- Horarios ---
-    # El horario de cursada es informacion no sensible que debe poder
-    # consultar cualquier rol institucional, no solo quienes lo gestionan.
+    # El horario de cursada (consulta y descarga en PDF) es informacion no
+    # sensible que debe poder ver cualquier rol institucional.
     "ver_horarios": ALL_ROLES - {"kiosk"},
+    # Armar Horarios de Catedra (CargarHorarioPage): a diferencia de
+    # "ver_horarios", esta herramienta de carga/edicion queda acotada
+    # exclusivamente a Secretaria y Administradores.
     "editar_horarios": {"admin", "secretaria"},
     # --- Asistencia de estudiantes ---
     "ver_asistencia": {"admin", "secretaria", "bedel", "docente", "bedel_secretaria"},

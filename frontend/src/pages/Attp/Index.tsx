@@ -26,10 +26,7 @@ const sections: RoleDashboardSection[] = [
   },
   {
     title: "Horarios",
-    items: [
-      DASHBOARD_ITEMS.HORARIOS_PUBLICADOS,
-      DASHBOARD_ITEMS.HORARIO_CURSADA,
-    ],
+    items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
   },
   {
     title: "Estudiantes",
@@ -57,7 +54,7 @@ export default function AttpIndex() {
   return (
     <RoleDashboard
       title="A.T.T.P."
-      subtitle="Gestión de horarios, inscripciones a carreras y espacios curriculares. Consulta en modo solo lectura para el resto."
+      subtitle="Gestión de inscripciones a carreras y espacios curriculares. Consulta en modo solo lectura para el resto."
       sections={sections}
     />
   );

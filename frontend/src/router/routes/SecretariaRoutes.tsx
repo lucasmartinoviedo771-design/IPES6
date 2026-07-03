@@ -112,7 +112,7 @@ export const buildSecretariaRoutes = () => (
     </Route>
 
     {/* ── Horarios ── */}
-    <Route element={<ProtectedRoute capability="ver_horarios"><Outlet /></ProtectedRoute>}>
+    <Route element={<ProtectedRoute capability="editar_horarios"><Outlet /></ProtectedRoute>}>
       <Route path="/secretaria/horarios" element={<ErrorBoundary><CargarHorarioPage /></ErrorBoundary>} />
     </Route>
 
