@@ -149,10 +149,11 @@ def create_comision(request, payload: ComisionIn):
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
 
     estado = (payload.estado or Comision.Estado.ABIERTA).upper()
-    
+
     horario_id = payload.horario_id
     if not horario_id:
         from core.models import HorarioCatedra
+
         hc = HorarioCatedra.objects.filter(espacio=materia, turno_id=payload.turno_id).first()
         if hc:
             horario_id = hc.id
@@ -183,13 +184,14 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
     for attr, value in payload.dict().items():
         if value is not None:
             setattr(comision, attr, value)
-            
+
     if not comision.horario_id:
         from core.models import HorarioCatedra
+
         hc = HorarioCatedra.objects.filter(espacio=comision.materia_id, turno_id=comision.turno_id).first()
         if hc:
             comision.horario = hc
-            
+
     comision.save()
     return _serialize_comision(comision)
 
@@ -258,6 +260,7 @@ def bulk_generate_comisiones(request, payload: ComisionBulkGenerateIn):
                 turno = turnos[(existentes + nuevos_creados) % len(turnos)]
 
                 from core.models import HorarioCatedra
+
                 hc = HorarioCatedra.objects.filter(espacio=materia, turno=turno).first()
 
                 comision = Comision.objects.create(

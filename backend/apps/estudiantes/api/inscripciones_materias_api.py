@@ -341,6 +341,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                 turno_def = Turno.objects.create(nombre="No definido")
 
             from core.models import HorarioCatedra
+
             hc = HorarioCatedra.objects.filter(espacio=mat, turno=turno_def).first()
 
             comision_obj = Comision.objects.create(
@@ -892,6 +893,7 @@ def aceptar_residencia_condicional(request, payload: AceptarResidenciaCondiciona
     if not comision_obj:
         turno_def = Turno.objects.first() or Turno.objects.create(nombre="No definido")
         from core.models import HorarioCatedra
+
         hc = HorarioCatedra.objects.filter(espacio=mat, turno=turno_def).first()
 
         comision_obj = Comision.objects.create(

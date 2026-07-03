@@ -263,8 +263,9 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     """
     Crea un acta de examen y sincroniza los resultados con las inscripciones a mesa.
     """
-    from core.permissions import can, get_user_roles, require
     from datetime import date
+
+    from core.permissions import can, get_user_roles, require
 
     user_roles = get_user_roles(request.user)
     is_docente_only = "docente" in user_roles and not can(request.user, "acta_manual")
@@ -628,8 +629,9 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     Actualiza o rectifica un acta de examen existente.
     Bloquea la edición si la Mesa de Examen ya ha sido auditada y cerrada por bedelía fuera de este flujo.
     """
-    from core.permissions import can, get_user_roles, require
     from datetime import date
+
+    from core.permissions import can, get_user_roles, require
 
     user_roles = get_user_roles(request.user)
     is_docente_only = "docente" in user_roles and not can(request.user, "acta_manual")

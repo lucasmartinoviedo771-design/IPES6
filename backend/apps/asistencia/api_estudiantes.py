@@ -152,9 +152,7 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
 
     if clase.docente:
         docentes.append(_docente_nombre(clase.docente))
-        asistencia_doc = AsistenciaDocente.objects.filter(
-            clase=clase, docente=clase.docente
-        ).first()
+        asistencia_doc = AsistenciaDocente.objects.filter(clase=clase, docente=clase.docente).first()
 
         if asistencia_doc:
             if asistencia_doc.estado == AsistenciaDocente.Estado.PRESENTE:
@@ -344,47 +342,52 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
 
 @router.post("/registrar-pin", response=None)
 def registrar_asistencia_estudiante_pin(request: HttpRequest, payload: RegistrarAsistenciaPinIn):
-    from .utils import haversine, INSTITUTE_LATITUDE, INSTITUTE_LONGITUDE, MAX_DISTANCE_METERS
-    
-    clase = ClaseProgramada.objects.filter(pin_asistencia=payload.pin, estado=ClaseProgramada.Estado.PROGRAMADA).order_by('-fecha', '-hora_inicio').first()
+    from .utils import INSTITUTE_LATITUDE, INSTITUTE_LONGITUDE, MAX_DISTANCE_METERS, haversine
+
+    clase = (
+        ClaseProgramada.objects.filter(pin_asistencia=payload.pin, estado=ClaseProgramada.Estado.PROGRAMADA)
+        .order_by("-fecha", "-hora_inicio")
+        .first()
+    )
     if not clase:
         raise HttpError(404, "PIN inválido o expirado.")
-        
+
     if not clase.pin_asistencia:
         raise HttpError(400, "Esta clase no tiene habilitada la asistencia por PIN.")
-        
+
     if clase.pin_asistencia != payload.pin:
         raise HttpError(400, "El PIN ingresado es incorrecto.")
-        
+
     if payload.latitud is None or payload.longitud is None:
         raise HttpError(400, "Se requiere la ubicación GPS para registrar la asistencia.")
-        
+
     distancia = haversine(payload.latitud, payload.longitud, INSTITUTE_LATITUDE, INSTITUTE_LONGITUDE)
     if distancia > MAX_DISTANCE_METERS:
-        raise HttpError(400, f"Estás demasiado lejos de la institución (A {int(distancia)} metros). Acercate para registrar tu presente.")
-        
+        raise HttpError(
+            400,
+            f"Estás demasiado lejos de la institución (A {int(distancia)} metros). Acercate para registrar tu presente.",
+        )
+
     estudiante = Estudiante.objects.filter(user=request.user).first()
     if not estudiante:
         estudiante = Estudiante.objects.filter(persona__dni=request.user.username).first()
         if not estudiante:
             raise HttpError(403, "No tenés un perfil de estudiante asociado.")
-            
-    es_alumno_clase = CursoEstudianteSnapshot.objects.filter(
-        comision_id=clase.comision_id, dni=estudiante.dni
-    ).exists()
+
+    es_alumno_clase = CursoEstudianteSnapshot.objects.filter(comision_id=clase.comision_id, dni=estudiante.dni).exists()
     if not es_alumno_clase:
         raise HttpError(403, "No estás inscripto en esta comisión.")
-        
+
     registro, created = AsistenciaEstudiante.objects.get_or_create(
         clase=clase,
         estudiante=estudiante,
         defaults={
             "estado": AsistenciaEstudiante.Estado.PRESENTE,
             "registrado_via": AsistenciaEstudiante.RegistradoVia.SISTEMA,
-            "registrado_por": request.user
-        }
+            "registrado_por": request.user,
+        },
     )
-    
+
     if not created and registro.estado != AsistenciaEstudiante.Estado.PRESENTE:
         if registro.estado == AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA:
             raise HttpError(400, "Ya tenés una falta justificada para esta clase.")
@@ -392,7 +395,7 @@ def registrar_asistencia_estudiante_pin(request: HttpRequest, payload: Registrar
         registro.registrado_via = AsistenciaEstudiante.RegistradoVia.SISTEMA
         registro.registrado_por = request.user
         registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
-    
+
     log_action_from_request(
         request,
         accion="UPDATE",
@@ -400,9 +403,9 @@ def registrar_asistencia_estudiante_pin(request: HttpRequest, payload: Registrar
         detalle_accion=f"Asistencia por PIN - Estudiante {estudiante.dni} - Clase ID: {clase.id}",
         entidad="AsistenciaEstudiante",
         entidad_id=clase.id,
-        metadata={"distancia_metros": int(distancia)}
+        metadata={"distancia_metros": int(distancia)},
     )
-    
+
     return 200, {"success": True}
 
 

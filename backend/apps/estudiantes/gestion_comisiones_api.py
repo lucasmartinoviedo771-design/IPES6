@@ -109,6 +109,7 @@ def crear_comision(request, payload: CrearComisionIn):
         turno = Turno.objects.first()
 
     from core.models import HorarioCatedra
+
     hc = HorarioCatedra.objects.filter(espacio=materia, turno=turno).first()
 
     comision = Comision.objects.create(
@@ -149,6 +150,7 @@ def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
             materia=materia, anio_lectivo=payload.anio_lectivo, codigo=payload.codigo
         ).exists():
             from core.models import HorarioCatedra
+
             hc = HorarioCatedra.objects.filter(espacio=materia, turno=turno).first()
 
             Comision.objects.create(

@@ -92,9 +92,10 @@ def list_mesas(
     hasta: str | None = None,
     tipo: str | None = None,
 ):
-    from core.permissions import get_user_roles, can, require
-    from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
     from datetime import date
+
+    from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+    from core.permissions import can, get_user_roles, require
 
     user_roles = get_user_roles(request.user)
     is_docente_only = "docente" in user_roles and not can(request.user, "ver_estructura")
@@ -117,16 +118,9 @@ def list_mesas(
     if is_docente_only:
         docente = _resolve_docente_from_user(request.user)
         if docente:
-            qs = qs.filter(
-                Q(docente_presidente=docente)
-                | Q(docente_vocal1=docente)
-                | Q(docente_vocal2=docente)
-            )
+            qs = qs.filter(Q(docente_presidente=docente) | Q(docente_vocal1=docente) | Q(docente_vocal2=docente))
             # Filtro de vigencia: futuras/del día, o pasadas abiertas
-            qs = qs.filter(
-                Q(fecha__gte=date.today())
-                | Q(planilla_cerrada_en__isnull=True)
-            )
+            qs = qs.filter(Q(fecha__gte=date.today()) | Q(planilla_cerrada_en__isnull=True))
         else:
             qs = qs.none()
 

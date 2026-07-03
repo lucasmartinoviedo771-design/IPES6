@@ -77,17 +77,24 @@ def listar_mis_asistencias(
         # wait, AsistenciaDocente has 'estado' (presente, ausente, justificada) and 'marcacion_categoria' (normal, tarde)
         # We can map the frontend's concept of 'tarde' to marcacion_categoria='tarde'
         if estado.lower() == "tarde":
-            asistencias = asistencias.filter(estado=AsistenciaDocente.Estado.PRESENTE, marcacion_categoria=AsistenciaDocente.MarcacionCategoria.TARDE)
+            asistencias = asistencias.filter(
+                estado=AsistenciaDocente.Estado.PRESENTE, marcacion_categoria=AsistenciaDocente.MarcacionCategoria.TARDE
+            )
         elif estado.lower() == "presente":
-            asistencias = asistencias.filter(estado=AsistenciaDocente.Estado.PRESENTE, marcacion_categoria=AsistenciaDocente.MarcacionCategoria.NORMAL)
+            asistencias = asistencias.filter(
+                estado=AsistenciaDocente.Estado.PRESENTE,
+                marcacion_categoria=AsistenciaDocente.MarcacionCategoria.NORMAL,
+            )
         elif estado.lower() == "ausente":
             asistencias = asistencias.filter(estado=AsistenciaDocente.Estado.AUSENTE)
 
     data = []
     for asist in asistencias:
-        turno_nombre = asist.clase.comision.turno.nombre if asist.clase.comision.turno_id else (asist.marcada_en_turno or "N/A")
+        turno_nombre = (
+            asist.clase.comision.turno.nombre if asist.clase.comision.turno_id else (asist.marcada_en_turno or "N/A")
+        )
         horario = _build_horario(asist.clase.hora_inicio, asist.clase.hora_fin)
-        
+
         data.append(
             DocenteMisAsistenciasOut(
                 id=asist.id,
@@ -103,7 +110,6 @@ def listar_mis_asistencias(
         )
 
     return data
-
 
 
 @router.get("/{dni}/clases", response=DocenteClasesResponse)
@@ -236,22 +242,22 @@ def listar_clases_docente(
 @router.post("/clases/{clase_id}/iniciar-pin", response=IniciarPinResponse)
 def iniciar_pin_asistencia(request: HttpRequest, clase_id: int):
     import random
-    
+
     clase = ClaseProgramada.objects.select_related("docente", "comision").filter(id=clase_id).first()
     if not clase:
         raise HttpError(404, "La clase indicada no existe.")
-        
+
     is_admin_staff = can(request.user, "asistencia_docentes_editar")
     if not is_admin_staff and (not clase.docente or clase.docente.persona.dni != request.user.username):
         raise HttpError(403, "No tenés permiso para iniciar asistencia en esta clase.")
-        
+
     if clase.estado == ClaseProgramada.Estado.CANCELADA:
         raise HttpError(400, "No se puede iniciar asistencia en una clase cancelada.")
-        
+
     pin = str(random.randint(1000, 9999))
     clase.pin_asistencia = pin
     clase.save(update_fields=["pin_asistencia", "actualizado_en"])
-    
+
     return IniciarPinResponse(pin=pin)
 
 
