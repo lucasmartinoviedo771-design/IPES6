@@ -26,7 +26,6 @@ import Person from "@mui/icons-material/Person";
 import Save from "@mui/icons-material/Save";
 import Warning from "@mui/icons-material/Warning";
 import ArrowBack from "@mui/icons-material/ArrowBack";
-import AccessTime from "@mui/icons-material/AccessTime";
 import { useSnackbar } from "notistack";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
@@ -93,7 +92,7 @@ export default function TomarAsistenciaPage() {
         setPin(clase.pin_asistencia);
       }
     }
-  }, [clase]);
+  }, [clase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const marcarDocenteMutation = useMutation({
     mutationFn: () =>

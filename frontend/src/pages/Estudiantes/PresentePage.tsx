@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -27,13 +27,6 @@ export default function PresentePage() {
   const [lng, setLng] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
   const [success, setSuccess] = useState(false);
-  
-  // Auto-request location if consent was already given
-  useEffect(() => {
-    if (locationConsent && lat === null && !locating) {
-      requestLocation();
-    }
-  }, [locationConsent, lat, locating]);
 
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
@@ -46,7 +39,7 @@ export default function PresentePage() {
     },
   });
 
-  const requestLocation = () => {
+  const requestLocation = useCallback(() => {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -63,7 +56,14 @@ export default function PresentePage() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  };
+  }, [enqueueSnackbar]);
+
+  // Auto-request location if consent was already given
+  useEffect(() => {
+    if (locationConsent && lat === null && !locating) {
+      requestLocation();
+    }
+  }, [locationConsent, lat, locating, requestLocation]);
 
   if (success) {
     return (

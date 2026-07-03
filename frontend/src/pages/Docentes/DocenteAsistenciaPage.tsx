@@ -9,7 +9,6 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -18,10 +17,6 @@ import Typography from "@mui/material/Typography";
 import type { ChipProps } from "@mui/material";
 import AccessTime from "@mui/icons-material/AccessTime";
 import CalendarToday from "@mui/icons-material/CalendarToday";
-import CheckCircle from "@mui/icons-material/CheckCircle";
-import History from "@mui/icons-material/History";
-import Person from "@mui/icons-material/Person";
-import Schedule from "@mui/icons-material/Schedule";
 
 import {
   DocenteClase,
@@ -81,7 +76,7 @@ const highlightChipSx = {
   },
 } satisfies ChipProps["sx"];
 
-const clockChipSx = {
+const _clockChipSx = {
   ...highlightChipSx,
   fontSize: "1.85rem",
   "& .MuiChip-icon": {
@@ -90,7 +85,7 @@ const clockChipSx = {
   },
 } satisfies ChipProps["sx"];
 
-const resolveTurnoConfig = (turno: string | undefined | null): TurnoConfig | null => {
+const _resolveTurnoConfig = (turno: string | undefined | null): TurnoConfig | null => {
   if (!turno) return null;
   const normalized = turno.toLowerCase();
   if (normalized.includes("mañana")) return TURNOS.morning;
@@ -104,9 +99,9 @@ const DocenteAsistenciaPage = () => {
   const [dni, setDni] = useState("");
   const [docente, setDocente] = useState<DocenteClasesResponse["docente"] | null>(null);
   const [clases, setClases] = useState<DocenteClase[]>([]);
-  const [historial, setHistorial] = useState<DocenteClasesResponse["historial"]>([]);
+  const [_historial, setHistorial] = useState<DocenteClasesResponse["historial"]>([]);
   const [observaciones, setObservaciones] = useState("");
-  const [marcadas, setMarcadas] = useState<Set<number>>(new Set());
+  const [_marcadas, setMarcadas] = useState<Set<number>>(new Set());
   const [clock, setClock] = useState(() => new Date());
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [loadingDocente, setLoadingDocente] = useState(false);
@@ -326,7 +321,7 @@ const DocenteAsistenciaPage = () => {
     }
   };
 
-  const marcarAsistencia = async (claseId: number) => {
+  const _marcarAsistencia = async (claseId: number) => {
     if (!docente) return;
     setSaving(true);
     try {
@@ -367,7 +362,7 @@ const DocenteAsistenciaPage = () => {
     }
   };
 
-  const algunaPendiente = useMemo(() => clases.some((clase) => !clase.ya_registrada), [clases]);
+  const _algunaPendiente = useMemo(() => clases.some((clase) => !clase.ya_registrada), [clases]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {

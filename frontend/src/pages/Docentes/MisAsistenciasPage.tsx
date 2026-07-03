@@ -6,6 +6,7 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
+import type { ChipProps } from "@mui/material";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import MenuItem from "@mui/material/MenuItem";
@@ -40,7 +41,7 @@ const MisAsistenciasPage = () => {
     enabled: !!user,
   });
 
-  const getChipColor = (estadoAsistencia: string, categoria: string) => {
+  const getChipColor = (estadoAsistencia: string, categoria: string): ChipProps["color"] => {
     const est = estadoAsistencia.toLowerCase();
     if (est === "ausente") return "error";
     if (categoria === "tarde") return "warning";
@@ -175,7 +176,7 @@ const MisAsistenciasPage = () => {
                   <TableCell align="center">
                     <Chip
                       label={getEstadoLabel(asist.estado, asist.categoria)}
-                      color={getChipColor(asist.estado, asist.categoria) as any}
+                      color={getChipColor(asist.estado, asist.categoria)}
                       size="small"
                       sx={{ fontWeight: 600, minWidth: 100 }}
                     />
