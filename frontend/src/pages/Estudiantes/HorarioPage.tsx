@@ -15,7 +15,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
-import { toPng } from "html-to-image";
+import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 import { isAxiosError } from "axios";
 
@@ -285,7 +285,7 @@ const HorarioPage: React.FC = () => {
     }
     enqueueSnackbar("Generando PDF profesional...", { variant: "info" });
     try {
-      const pdf = new jsPDF("l", "mm", "a4");
+      const pdf = new jsPDF("l", "mm", "a4", true);
       const pageWidth = 297;
       const margin = 5;
       const contentWidth = pageWidth - margin * 2;
@@ -315,7 +315,11 @@ const HorarioPage: React.FC = () => {
       
       if (pageElements.length === 0) {
         // Fallback si no estamos en modo impresión o algo falló en la query
-        const imgData = await toPng(exportRef.current, { pixelRatio: 2 });
+        const imgData = await toJpeg(exportRef.current, {
+          pixelRatio: 1.5,
+          quality: 0.92,
+          backgroundColor: "#ffffff",
+        });
         let imgHeight = (exportRef.current.offsetHeight * contentWidth) / exportRef.current.offsetWidth;
         let imgWidth = contentWidth;
         const maxContentHeight = 210 - margin * 2;
@@ -325,12 +329,16 @@ const HorarioPage: React.FC = () => {
             imgWidth = imgWidth * scale;
         }
         const xOffset = margin + (contentWidth - imgWidth) / 2;
-        pdf.addImage(imgData, "PNG", xOffset, margin, imgWidth, imgHeight);
+        pdf.addImage(imgData, "JPEG", xOffset, margin, imgWidth, imgHeight);
       } else {
         for (let i = 0; i < pageElements.length; i++) {
           if (i > 0) pdf.addPage();
           const element = pageElements[i] as HTMLElement;
-          const imgData = await toPng(element, { pixelRatio: 2 });
+          const imgData = await toJpeg(element, {
+            pixelRatio: 1.5,
+            quality: 0.92,
+            backgroundColor: "#ffffff",
+          });
           let imgHeight = (element.offsetHeight * contentWidth) / element.offsetWidth;
           let imgWidth = contentWidth;
           const maxContentHeight = 210 - margin * 2;
@@ -340,7 +348,7 @@ const HorarioPage: React.FC = () => {
               imgWidth = imgWidth * scale;
           }
           const xOffset = margin + (contentWidth - imgWidth) / 2;
-          pdf.addImage(imgData, "PNG", xOffset, margin, imgWidth, imgHeight);
+          pdf.addImage(imgData, "JPEG", xOffset, margin, imgWidth, imgHeight);
         }
       }
 
