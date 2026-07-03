@@ -316,8 +316,8 @@ const HorarioPage: React.FC = () => {
       if (pageElements.length === 0) {
         // Fallback si no estamos en modo impresión o algo falló en la query
         const imgData = await toJpeg(exportRef.current, {
-          pixelRatio: 1.5,
-          quality: 0.92,
+          pixelRatio: 1,
+          quality: 0.78,
           backgroundColor: "#ffffff",
         });
         let imgHeight = (exportRef.current.offsetHeight * contentWidth) / exportRef.current.offsetWidth;
@@ -335,8 +335,8 @@ const HorarioPage: React.FC = () => {
           if (i > 0) pdf.addPage();
           const element = pageElements[i] as HTMLElement;
           const imgData = await toJpeg(element, {
-            pixelRatio: 1.5,
-            quality: 0.92,
+            pixelRatio: 1,
+            quality: 0.78,
             backgroundColor: "#ffffff",
           });
           let imgHeight = (element.offsetHeight * contentWidth) / element.offsetWidth;
