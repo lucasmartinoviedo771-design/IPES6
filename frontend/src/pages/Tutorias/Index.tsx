@@ -24,6 +24,10 @@ const sections: RoleDashboardSection[] = [
       DASHBOARD_ITEMS.EQUIVALENCIAS_GESTION,
     ],
   },
+  {
+    title: "Horarios",
+    items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+  },
 ];
 
 export default function TutoriasIndex() {

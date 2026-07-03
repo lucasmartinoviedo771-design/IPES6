@@ -17,6 +17,7 @@ const sections: RoleDashboardSection[] = [
     title: "Herramientas de apoyo",
     items: [
       DASHBOARD_ITEMS.HORARIOS_PUBLICADOS,
+      DASHBOARD_ITEMS.HORARIO_CURSADA,
       DASHBOARD_ITEMS.REPORTES,
       DASHBOARD_ITEMS.MENSAJES,
     ],

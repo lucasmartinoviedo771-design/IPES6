@@ -123,6 +123,10 @@ export default function SecretariaIndex() {
           : []),
       ],
     },
+    {
+      title: "Horarios",
+      items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+    },
   ];
 
   const visibleSections = sections.filter((section) => section.items.length > 0);

@@ -1,6 +1,7 @@
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import EventIcon from "@mui/icons-material/Event";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
 import ChecklistIcon from "@mui/icons-material/Checklist";
@@ -113,6 +114,12 @@ export const DASHBOARD_ITEMS = {
     subtitle: "Visualizá las comisiones asignadas por profesorado.",
     icon: <ScheduleIcon />,
     path: "/secretaria/horarios",
+  },
+  HORARIO_CURSADA: {
+    title: "Horario de Cursada",
+    subtitle: "Consultá el horario de tu profesorado y descargalo en PDF.",
+    icon: <EventIcon />,
+    path: "/estudiantes/horarios",
   },
   REPORTES: {
     title: "Reportes institucionales",

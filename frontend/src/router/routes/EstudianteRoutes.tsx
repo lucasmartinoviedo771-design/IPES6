@@ -28,7 +28,6 @@ export const buildEstudianteRoutes = () => (
       <Route path="/estudiantes/cambio-comision" element={<CambioComisionPage />} />
       <Route path="/estudiantes/pedido-analitico" element={<PedidoAnaliticoPage />} />
       <Route path="/estudiantes/mesa-examen" element={<MesaExamenPage />} />
-      <Route path="/estudiantes/horarios" element={<HorarioPage />} />
       <Route path="/estudiantes/mis-asistencias" element={<MisAsistenciasPage />} />
       <Route path="/estudiantes/pedido-equivalencias" element={<PedidoEquivalenciasPage />} />
       <Route path="/estudiantes/tramites" element={<TramitesEstudiantePage />} />
@@ -37,6 +36,9 @@ export const buildEstudianteRoutes = () => (
     </Route>
     <Route element={<ProtectedRoute capability="ver_estudiantes" roles={["estudiante"]}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes/trayectoria" element={<TrayectoriaPage />} />
+    </Route>
+    <Route element={<ProtectedRoute capability="ver_horarios"><Outlet /></ProtectedRoute>}>
+      <Route path="/estudiantes/horarios" element={<HorarioPage />} />
     </Route>
     <Route element={<ProtectedRoute capability="gestionar_ci" roles={["estudiante"]}><Outlet /></ProtectedRoute>}>
       <Route path="/estudiantes/curso-introductorio" element={<CursoIntroductorioEstudiantePage />} />

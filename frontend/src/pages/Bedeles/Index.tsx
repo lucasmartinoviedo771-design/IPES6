@@ -45,6 +45,10 @@ export default function BedelesIndex() {
           ...(canManageStructure ? [DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES, DASHBOARD_ITEMS.CORRELATIVIDADES_ANALISIS, DASHBOARD_ITEMS.AUDITORIA_INCONSISTENCIAS, DASHBOARD_ITEMS.RESGUARDO_MATERIAS] : []),
         ],
       },
+      {
+        title: "Horarios",
+        items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+      },
       ...(canCursoIntro
         ? [
           {

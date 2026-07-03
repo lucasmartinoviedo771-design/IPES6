@@ -13,6 +13,7 @@ from core.models import (
     PlanDeEstudio,
     Profesorado,
 )
+from core.permissions import ensure_profesorado_access, require
 
 from ..schemas import Horario, HorarioTabla, MateriaPlan
 from .helpers import (
@@ -172,6 +173,8 @@ def horarios_profesorado(
     cuatrimestre: str | None = None,
     dni: str | None = None,
 ):
+    require(request.user, "ver_horarios")
+
     est = _resolve_estudiante(request, dni)
     if dni and not est:
         return 404, ApiResponse(ok=False, message="No se encontró el estudiante indicado.")
@@ -184,6 +187,8 @@ def horarios_profesorado(
             return 404, ApiResponse(ok=False, message="No se encontró el profesorado solicitado.")
         if est and profesorado not in carreras_est:
             return 403, ApiResponse(ok=False, message="El estudiante no pertenece a ese profesorado.")
+        if not est:
+            ensure_profesorado_access(request.user, profesorado.id)
     else:
         if est:
             if not carreras_est:

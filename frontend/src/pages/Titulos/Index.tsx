@@ -13,6 +13,7 @@ const sections: RoleDashboardSection[] = [
       },
       DASHBOARD_ITEMS.REGULARIDAD_CONSULTA,
       DASHBOARD_ITEMS.PLANILLAS_FINALES_CONSULTA,
+      DASHBOARD_ITEMS.HORARIO_CURSADA,
     ],
   },
   {

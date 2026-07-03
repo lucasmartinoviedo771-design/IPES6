@@ -143,17 +143,9 @@ CAPABILITIES: dict[str, set[str]] = {
     "asignar_roles": {"admin", "secretaria"},
     "gestionar_staff": {"admin", "secretaria"},
     # --- Horarios ---
-    "ver_horarios": {
-        "admin",
-        "secretaria",
-        "bedel",
-        "coordinador",
-        "rectorado",
-        "attp",
-        "estudiante",
-        "docente",
-        "bedel_secretaria",
-    },
+    # El horario de cursada es informacion no sensible que debe poder
+    # consultar cualquier rol institucional, no solo quienes lo gestionan.
+    "ver_horarios": ALL_ROLES - {"kiosk"},
     "editar_horarios": {"admin", "secretaria"},
     # --- Asistencia de estudiantes ---
     "ver_asistencia": {"admin", "secretaria", "bedel", "docente", "bedel_secretaria"},

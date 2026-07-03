@@ -18,6 +18,10 @@ const sections: RoleDashboardSection[] = [
     ],
   },
   {
+    title: "Horarios",
+    items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+  },
+  {
     title: "Operativa diaria",
     items: [
       {
