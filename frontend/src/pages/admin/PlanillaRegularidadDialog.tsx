@@ -292,17 +292,19 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
       </DialogContent>
       <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
         <Stack direction="row" spacing={2}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={form.persistStudents}
-                onChange={(e) => form.setPersistStudents(e.target.checked)}
-                disabled={mode !== 'create'}
-              />
-            }
-            label="Mantener lista de alumnos"
-          />
-          {mode !== 'view' && (
+          {scope === 'primera_carga' && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={form.persistStudents}
+                  onChange={(e) => form.setPersistStudents(e.target.checked)}
+                  disabled={mode !== 'create'}
+                />
+              }
+              label="Mantener lista de alumnos"
+            />
+          )}
+          {scope === 'primera_carga' && mode !== 'view' && (
             <Controller
               name="force_upgrade"
               control={form.control}

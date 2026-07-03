@@ -30,14 +30,17 @@ import AccessTime from "@mui/icons-material/AccessTime";
 import { useSnackbar } from "notistack";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
-
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import {
   fetchClaseEstudiantes,
   registrarAsistenciaEstudiantes,
   marcarDocentePresente,
+  iniciarAsistenciaPin,
 } from "@/api/asistencia";
 import { useAuth } from "@/context/AuthContext";
 import { PageHero } from "@/components/ui/GradientTitles";
+
+dayjs.extend(customParseFormat);
 
 export default function TomarAsistenciaPage() {
   const { claseId } = useParams<{ claseId: string }>();
@@ -49,11 +52,25 @@ export default function TomarAsistenciaPage() {
   const [presentes, setPresentes] = useState<Set<number>>(new Set());
   const [tardes, setTardes] = useState<Set<number>>(new Set());
   const [hasChanges, setHasChanges] = useState(false);
+  const [pin, setPin] = useState<string | null>(null);
 
   const { data: clase, isLoading, error } = useQuery({
     queryKey: ["clase-estudiantes", claseId],
     queryFn: () => fetchClaseEstudiantes(Number(claseId)),
     enabled: !!claseId,
+  });
+
+  const iniciarPinMutation = useMutation({
+    mutationFn: () => iniciarAsistenciaPin(Number(claseId)),
+    onSuccess: (data) => {
+      setPin(data.pin);
+      enqueueSnackbar("PIN generado exitosamente.", { variant: "success" });
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || "Error al generar el PIN.";
+      enqueueSnackbar(msg, { variant: "error" });
+    },
   });
 
   // Inicializar estados cuando carga la data
@@ -72,6 +89,9 @@ export default function TomarAsistenciaPage() {
       setPresentes(newPresentes);
       setTardes(newTardes);
       setHasChanges(false);
+      if (clase.pin_asistencia && !pin) {
+        setPin(clase.pin_asistencia);
+      }
     }
   }, [clase]);
 
@@ -152,8 +172,9 @@ export default function TomarAsistenciaPage() {
   if (isLoading) return <Container sx={{ py: 4 }}>Cargando clase...</Container>;
   if (error || !clase) return <Container sx={{ py: 4 }}>Error al cargar la clase.</Container>;
 
-  const fechaLegible = dayjs(clase.fecha).locale("es").format("dddd D [de] MMMM");
+  const fechaLegible = dayjs(clase.fecha, "DD/MM/YYYY").locale("es").format("dddd D [de] MMMM");
   const docentePresente = clase.docente_presente;
+  const docenteAusente = clase.docente_ausente;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f4f6f8", pb: 8 }}>
@@ -196,55 +217,106 @@ export default function TomarAsistenciaPage() {
           </Stack>
 
           {/* Tarjeta de Estado del Docente */}
-          <Card elevation={0} variant="outlined" sx={{ bgcolor: "white" }}>
-            <CardContent>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} md={8}>
-                  <Stack spacing={1}>
-                    <Typography variant="h6" fontWeight={600}>
-                      Tu Asistencia
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {docentePresente
-                        ? "Ya registraste tu presencia para esta clase. Podés gestionar la asistencia de los estudiantes."
-                        : "Para habilitar la lista de estudiantes, primero debés confirmar tu presencia en el aula."}
-                    </Typography>
-                  </Stack>
+          {docenteAusente ? (
+            <Alert severity="error" icon={<Warning />} sx={{ fontSize: "1.1rem", py: 2 }}>
+              No se podrá tomar asistencia debido a que el docente se encuentra ausente.
+            </Alert>
+          ) : (
+            <Card elevation={0} variant="outlined" sx={{ bgcolor: "white" }}>
+              <CardContent>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={8}>
+                    <Stack spacing={1}>
+                      <Typography variant="h6" fontWeight={600}>
+                        Tu Asistencia
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {docentePresente
+                          ? "Ya registraste tu presencia para esta clase. Podés gestionar la asistencia de los estudiantes."
+                          : "Para habilitar la lista de estudiantes, primero debés confirmar tu presencia en el aula."}
+                      </Typography>
+                    </Stack>
+                  </Grid>
+                  <Grid item xs={12} md={4} sx={{ display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
+                    {docentePresente ? (
+                      <Chip
+                        icon={<CheckCircle />}
+                        label="Presente Registrado"
+                        color="success"
+                        variant="outlined"
+                        sx={{ px: 2, py: 2.5, borderRadius: 2, fontSize: "1rem" }}
+                      />
+                    ) : (
+                      <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={<Person />}
+                        onClick={() => marcarDocenteMutation.mutate()}
+                        disabled={marcarDocenteMutation.isPending}
+                        sx={{ px: 4, py: 1.5, borderRadius: 2 }}
+                      >
+                        {marcarDocenteMutation.isPending ? "Registrando..." : "Marcar mi Presente"}
+                      </Button>
+                    )}
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} md={4} sx={{ display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" } }}>
-                  {docentePresente ? (
-                    <Chip
-                      icon={
-                        clase.docente_categoria_asistencia === "tarde" ? <Warning /> : 
-                        clase.docente_categoria_asistencia === "diferida" ? <AccessTime /> : <CheckCircle />
-                      }
-                      label={
-                        clase.docente_categoria_asistencia === "tarde" ? "Presente (Llegada Tarde)" : 
-                        clase.docente_categoria_asistencia === "diferida" ? "Presente (Carga Diferida)" : "Presente Registrado"
-                      }
-                      color={
-                        clase.docente_categoria_asistencia === "tarde" ? "warning" : 
-                        clase.docente_categoria_asistencia === "diferida" ? "info" : "success"
-                      }
-                      variant="outlined"
-                      sx={{ px: 2, py: 2.5, borderRadius: 2, fontSize: "1rem" }}
-                    />
-                  ) : (
-                    <Button
-                      variant="contained"
-                      size="large"
-                      startIcon={<Person />}
-                      onClick={() => marcarDocenteMutation.mutate()}
-                      disabled={marcarDocenteMutation.isPending}
-                      sx={{ px: 4, py: 1.5, borderRadius: 2 }}
-                    >
-                      {marcarDocenteMutation.isPending ? "Registrando..." : "Marcar mi Presente"}
-                    </Button>
-                  )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Generador de PIN */}
+          {docentePresente && !docenteAusente && (
+            <Card elevation={0} variant="outlined" sx={{ bgcolor: "white" }}>
+              <CardContent>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} md={6}>
+                    <Stack spacing={1}>
+                      <Typography variant="h6" fontWeight={600}>
+                        Asistencia por PIN y Geolocalización
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Podés generar un código PIN temporal para que los estudiantes registren su presente desde sus celulares (se validará que estén en la institución).
+                      </Typography>
+                    </Stack>
+                  </Grid>
+                  <Grid item xs={12} md={6} sx={{ display: "flex", justifyContent: { xs: "flex-start", md: "flex-end" }, alignItems: "center", gap: 2 }}>
+                    {pin ? (
+                      <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                        <Box sx={{ p: 2, bgcolor: "#f0fdf4", border: "1px dashed #4ade80", borderRadius: 2, textAlign: "center" }}>
+                          <Typography variant="overline" color="success.main" fontWeight="bold">
+                            PIN ACTIVO
+                          </Typography>
+                          <Typography variant="h4" sx={{ letterSpacing: 8, fontWeight: 700, color: "#166534" }}>
+                            {pin}
+                          </Typography>
+                        </Box>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="secondary"
+                          onClick={() => iniciarPinMutation.mutate()}
+                          disabled={iniciarPinMutation.isPending}
+                        >
+                          {iniciarPinMutation.isPending ? "..." : "Regenerar"}
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        size="large"
+                        onClick={() => iniciarPinMutation.mutate()}
+                        disabled={iniciarPinMutation.isPending}
+                        sx={{ px: 4, py: 1.5, borderRadius: 2 }}
+                      >
+                        {iniciarPinMutation.isPending ? "Generando..." : "Generar PIN"}
+                      </Button>
+                    )}
+                  </Grid>
                 </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Lista de Estudiantes */}
           <Paper elevation={0} variant="outlined" sx={{ overflow: "hidden" }}>
@@ -257,14 +329,14 @@ export default function TomarAsistenciaPage() {
                   variant="contained"
                   startIcon={<Save />}
                   onClick={() => guardarEstudiantesMutation.mutate()}
-                  disabled={!docentePresente || guardarEstudiantesMutation.isPending || !hasChanges}
+                  disabled={!docentePresente || docenteAusente || guardarEstudiantesMutation.isPending || !hasChanges}
                 >
                   {guardarEstudiantesMutation.isPending ? "Guardando..." : "Guardar Cambios"}
                 </Button>
               </Stack>
             </Box>
 
-            {!docentePresente && (
+            {!docentePresente && !docenteAusente && (
               <Alert severity="warning" sx={{ m: 2 }} icon={<Warning />}>
                 La lista de estudiantes está bloqueada hasta que registres tu asistencia.
               </Alert>

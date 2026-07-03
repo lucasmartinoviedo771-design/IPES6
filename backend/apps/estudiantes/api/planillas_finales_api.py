@@ -153,6 +153,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
         puede_editar=(not esta_cerrada) or can_override,
         puede_cerrar=not esta_cerrada,
         puede_reabrir=esta_cerrada and can_override,
+        acta_id=mesa.actas_cargadas.values_list("id", flat=True).first(),
     )
 
 

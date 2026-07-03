@@ -536,6 +536,7 @@ export type MesaPlanillaDTO = {
   puede_editar: boolean;
   puede_cerrar: boolean;
   puede_reabrir: boolean;
+  acta_id?: number | null;
 };
 
 export type MesaMateriaResumenDTO = {
