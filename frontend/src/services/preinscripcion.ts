@@ -1,4 +1,4 @@
-import { client } from "@/api/client";
+import { client, AppAxiosRequestConfig } from "@/api/client";
 import { toast } from "@/utils/toast";
 import { Carrera, PreinscripcionOut } from "@/types/preinscripcion";
 import dayjs from "dayjs";
@@ -226,23 +226,16 @@ export async function recuperarPreinscripcion(
   carrera_id: number,
   fecha_nacimiento: string,
 ): Promise<{ ok: boolean; message?: string; data?: { id: number; codigo: string; estado: string; pdf_url: string } }> {
-  try {
-    const { data } = await client.post("/preinscripciones/recuperar", {
-      dni,
-      carrera_id: Number(carrera_id),
-      fecha_nacimiento,
-    });
-    return data;
-  } catch (err: unknown) {
-    const apiErr = err as ApiErrorResponse;
-    const backendMsg = apiErr.response?.data?.message || apiErr.response?.data?.detail;
-    if (typeof backendMsg === "string") {
-      toast.error(backendMsg);
-    } else {
-      toast.error("Error al recuperar la preinscripción.");
-    }
-    throw err;
-  }
+  // No mostramos un toast automático acá: "no se encontró preinscripción" es
+  // un resultado esperado (ej. chequeo silencioso de duplicados al avanzar en
+  // el wizard), no un error. Cada llamador decide si corresponde informarlo.
+  const config: AppAxiosRequestConfig = { suppressErrorToast: true };
+  const { data } = await client.post(
+    "/preinscripciones/recuperar",
+    { dni, carrera_id: Number(carrera_id), fecha_nacimiento },
+    config,
+  );
+  return data;
 }
 
 

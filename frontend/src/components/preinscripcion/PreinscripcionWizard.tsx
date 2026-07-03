@@ -611,7 +611,7 @@ function RecuperarPreinscripcionDialog({ open, onClose, carreras }: RecuperarDia
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.response?.data?.detail || "Ocurrió un error al verificar.");
+      setError(err?.message || "Ocurrió un error al verificar.");
     } finally {
       setLoading(false);
     }
