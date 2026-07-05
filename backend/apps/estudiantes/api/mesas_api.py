@@ -386,6 +386,32 @@ def listar_mesas_estudiante(
         "materia__plan_de_estudio__profesorado", "docente_presidente", "docente_vocal1", "docente_vocal2"
     ).all()
 
+    # Filtro de visibilidad para docentes:
+    # Si su rol activo es docente o es su único rol administrativo, solo ven sus mesas.
+    active_role = request.headers.get("X-Active-Role", "").split(":")[0].lower()
+    es_docente_estricto = active_role == "docente"
+    if not active_role:
+        from core.permissions import get_user_roles
+
+        user_roles = get_user_roles(request.user)
+        if "docente" in user_roles and not user_roles.intersection({"admin", "secretaria", "bedel"}):
+            es_docente_estricto = True
+
+    if es_docente_estricto:
+        from apps.estudiantes.api.notas_utils import docente_from_user
+
+        docente_profile = docente_from_user(request.user)
+        if docente_profile:
+            from django.db.models import Q
+
+            qs = qs.filter(
+                Q(docente_presidente=docente_profile)
+                | Q(docente_vocal1=docente_profile)
+                | Q(docente_vocal2=docente_profile)
+            )
+        else:
+            qs = qs.none()
+
     # Restricciones para Alumnos
     from core.permissions import can
 
