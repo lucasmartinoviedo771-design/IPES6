@@ -215,19 +215,19 @@ export default function CarrerasPage() {
   const [profesoradoId, setProfesoradoId] = useState<number | "">("");
   const [planId, setPlanId] = useState<number | "">("");
 
-  const carrerasQuery = useQuery({
+  const { data: carrerasData, isLoading: carrerasLoading } = useQuery({
     queryKey: ["carreras", "listado"],
     queryFn: fetchCarreras,
     enabled: puedeGestionarCarreras,
   });
 
-  const planesQuery = useQuery({
+  const { data: planesQueryData } = useQuery({
     queryKey: ["carreras", "planes", profesoradoId],
     queryFn: () => listarPlanes(Number(profesoradoId)),
     enabled: puedeGestionarCarreras && typeof profesoradoId === "number",
   });
 
-  const materiasQuery = useQuery({
+  const { data: materiasQueryData } = useQuery({
     queryKey: ["carreras", "materias", planId],
     queryFn: () => listarMaterias(Number(planId)),
     enabled: puedeGestionarCarreras && typeof planId === "number",
@@ -247,7 +247,7 @@ export default function CarrerasPage() {
   }, [profesoradoId, planId]);
 
   useEffect(() => {
-    if (carrerasQuery.data) {
+    if (carrerasData) {
       const stored = (() => {
         try {
           const raw = window.sessionStorage.getItem(SELECTION_STORAGE_KEY);
@@ -259,16 +259,16 @@ export default function CarrerasPage() {
         }
       })();
 
-      if (stored && carrerasQuery.data.some((c) => c.id === stored)) {
+      if (stored && carrerasData.some((c) => c.id === stored)) {
         setProfesoradoId(stored);
-      } else if (carrerasQuery.data.length > 0) {
-        setProfesoradoId(carrerasQuery.data[0].id);
+      } else if (carrerasData.length > 0) {
+        setProfesoradoId(carrerasData[0].id);
       }
     }
-  }, [carrerasQuery.data]);
+  }, [carrerasData]);
 
   useEffect(() => {
-    if (planesQuery.data) {
+    if (planesQueryData) {
       const stored = (() => {
         try {
           const raw = window.sessionStorage.getItem(SELECTION_STORAGE_KEY);
@@ -280,22 +280,22 @@ export default function CarrerasPage() {
         }
       })();
 
-      if (stored && planesQuery.data.some((p) => p.id === stored)) {
+      if (stored && planesQueryData.some((p) => p.id === stored)) {
         setPlanId(stored);
-      } else if (planesQuery.data.length > 0) {
-        setPlanId(planesQuery.data[0].id);
+      } else if (planesQueryData.length > 0) {
+        setPlanId(planesQueryData[0].id);
       } else {
         setPlanId("");
       }
     }
-  }, [planesQuery.data]);
+  }, [planesQueryData]);
 
   const carreraSeleccionada: Carrera | undefined = useMemo(() => {
-    if (!carrerasQuery.data) return undefined;
-    return carrerasQuery.data.find((carrera) => carrera.id === profesoradoId);
-  }, [carrerasQuery.data, profesoradoId]);
+    if (!carrerasData) return undefined;
+    return carrerasData.find((carrera) => carrera.id === profesoradoId);
+  }, [carrerasData, profesoradoId]);
 
-  const planesData = planesQuery.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const planesData = planesQueryData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
   const planSeleccionado: PlanDTO | undefined = useMemo(() => {
     if (typeof planId !== "number") return undefined;
     return planesData.find((plan) => plan.id === planId);
@@ -334,7 +334,7 @@ export default function CarrerasPage() {
   }
 
   const planes = planesData;
-  const materias = materiasQuery.data ?? [];
+  const materias = materiasQueryData ?? [];
 
   const handleVerInscriptos = (materia: MateriaDTO) => {
     if (typeof planId !== "number" || typeof profesoradoId !== "number") {
@@ -371,9 +371,9 @@ export default function CarrerasPage() {
                     setProfesoradoId(value ? Number(value) : "");
                     setPlanId("");
                   }}
-                  disabled={carrerasQuery.isLoading}
+                  disabled={carrerasLoading}
                 >
-                  {carrerasQuery.data?.map((carrera) => (
+                  {carrerasData?.map((carrera) => (
                     <MenuItem key={carrera.id} value={String(carrera.id)}>
                       {carrera.nombre}
                     </MenuItem>
@@ -382,8 +382,8 @@ export default function CarrerasPage() {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6} display="flex" alignItems="center">
-              {carrerasQuery.isLoading && <Skeleton variant="rounded" width="100%" height={36} />}
-              {!carrerasQuery.isLoading && carreraSeleccionada && (
+              {carrerasLoading && <Skeleton variant="rounded" width="100%" height={36} />}
+              {!carrerasLoading && carreraSeleccionada && (
                 <Stack direction="row" spacing={1}>
                   <Chip
                     label={carreraSeleccionada.activo ? "Carrera activa" : "Carrera inactiva"}

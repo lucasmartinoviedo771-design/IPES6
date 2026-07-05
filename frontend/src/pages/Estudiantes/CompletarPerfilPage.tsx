@@ -194,14 +194,14 @@ export default function CompletarPerfilPage() {
   const trabaja = watch("trabaja");
   const condicionSalud = watch("condicion_salud_informada");
 
-  const detailQuery = useQuery({
+  const { data: detailData } = useQuery({
     queryKey: ["perfil-completar"],
     queryFn: fetchPerfilCompletar,
   });
 
   useEffect(() => {
-    if (detailQuery.data) {
-      const detail = detailQuery.data;
+    if (detailData) {
+      const detail = detailData;
       const extra = detail.datos_extra ?? {};
       const fb = (direct: unknown, key: string) =>
         direct !== null && direct !== undefined && direct !== "" ? direct : extra[key];

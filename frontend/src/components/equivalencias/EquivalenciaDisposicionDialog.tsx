@@ -100,13 +100,13 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
     }
   }, [open]);
 
-  const metadataQuery = useQuery({
+  const { data: metadataData } = useQuery({
     queryKey: ['primera-carga', 'metadata-global'],
     queryFn: () => fetchRegularidadMetadata(true),
     enabled: open,
     staleTime: 1000 * 60 * 10,
   });
-  const estudiantesOptions = metadataQuery.data?.estudiantes ?? [];
+  const estudiantesOptions = metadataData?.estudiantes ?? [];
 
   const handleBuscarCarreras = async (dniToSearch?: string) => {
     const dniTrimmed = (dniToSearch || dni).trim();
@@ -378,7 +378,7 @@ const EquivalenciaDisposicionDialog: React.FC<Props> = ({
                 renderOption={(props, option) => {
                   const { key, ...restProps } = props as React.HTMLAttributes<HTMLLIElement> & { key: React.Key };
                   return (
-                    <li key={key} {...restProps}>
+                    <li key={option.dni} {...restProps}>
                       <Box>
                         <Typography variant="body2">{option.apellido_nombre}</Typography>
                         <Typography variant="caption" color="text.secondary">

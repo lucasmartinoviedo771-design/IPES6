@@ -94,7 +94,7 @@ const HorarioPage: React.FC = () => {
   };
   const [cuatrFilter, setCuatrFilter] = useState<string>(getCuatrDefault);
 
-  const carrerasQuery = useQuery({
+  const { data: carrerasData } = useQuery({
     queryKey: ["estudiantes", "carreras-activas", targetDni],
     queryFn: () => obtenerCarrerasActivas({ dni: targetDni ?? undefined }),
     staleTime: 5 * 60 * 1000,
@@ -103,13 +103,13 @@ const HorarioPage: React.FC = () => {
 
   const profesoradosQuery = useCarreras();
 
-  const planesAdminQuery = useQuery({
+  const { data: planesAdminData } = useQuery({
     queryKey: ["estudiantes", "profesorados", "planes", profesoradoId],
     queryFn: () => listarPlanes(Number(profesoradoId)),
     enabled: !isActingAsEstudiante && Boolean(profesoradoId),
   });
 
-  const ventanasCalendarioQuery = useQuery<VentanaDto[]>({
+  const { data: ventanasData } = useQuery<VentanaDto[]>({
     queryKey: ["ventanas", "calendario-cuatrimestre"],
     queryFn: () => fetchVentanas({ tipo: "CALENDARIO_CUATRIMESTRE" }),
     staleTime: 5 * 60 * 1000,
@@ -117,28 +117,28 @@ const HorarioPage: React.FC = () => {
 
   useEffect(() => {
     if (!profesoradoId) {
-      if (targetDni && carrerasQuery.data && carrerasQuery.data.carreras.length > 0) {
-        setProfesoradoId(String(carrerasQuery.data.carreras[0].profesorado_id));
+      if (targetDni && carrerasData && carrerasData.carreras.length > 0) {
+        setProfesoradoId(String(carrerasData.carreras[0].profesorado_id));
       }
       if (!targetDni && profesoradosQuery.data && profesoradosQuery.data.length > 0) {
         setProfesoradoId(String(profesoradosQuery.data[0].id));
       }
     }
-  }, [targetDni, carrerasQuery.data, profesoradosQuery.data, profesoradoId]);
+  }, [targetDni, carrerasData, profesoradosQuery.data, profesoradoId]);
 
   const planesDisponibles = useMemo<PlanOption[]>(() => {
     if (targetDni) {
-      if (!carrerasQuery.data) return [];
-      const selected = carrerasQuery.data.carreras.find(
+      if (!carrerasData) return [];
+      const selected = carrerasData.carreras.find(
         (item) => item.profesorado_id === Number(profesoradoId),
       );
       return selected?.planes ?? [];
     }
-    return (planesAdminQuery.data ?? []).map((plan: PlanDTO): PlanOption => ({
+    return (planesAdminData ?? []).map((plan: PlanDTO): PlanOption => ({
       id: plan.id,
       resolucion: plan.resolucion,
     }));
-  }, [targetDni, carrerasQuery.data, planesAdminQuery.data, profesoradoId]);
+  }, [targetDni, carrerasData, planesAdminData, profesoradoId]);
 
   useEffect(() => {
     if (!planesDisponibles.length) {
@@ -229,7 +229,7 @@ const HorarioPage: React.FC = () => {
   useEffect(() => {
     if (cuatrFilter) return;
     if (!cuatrDisponibles.length) return;
-    const ventanas = ventanasCalendarioQuery.data ?? [];
+    const ventanas = ventanasData.data ?? [];
     if (!ventanas.length) return;
 
     const hoy = new Date();
@@ -267,7 +267,7 @@ const HorarioPage: React.FC = () => {
     if (sugerido && cuatrDisponibles.includes(sugerido) && cuatrFilter !== sugerido) {
       setCuatrFilter(sugerido);
     }
-  }, [cuatrDisponibles, cuatrFilter, ventanasCalendarioQuery.data]);
+  }, [cuatrDisponibles, cuatrFilter, ventanasData.data]);
 
   const tablasFiltradas = useMemo(() => {
     return tablas.filter((tabla) => {
@@ -361,7 +361,7 @@ const HorarioPage: React.FC = () => {
 
       const fileNameParts = ["Horario"];
       if (isEstudiante) {
-        const carrera = carrerasQuery.data?.carreras.find(
+        const carrera = carrerasData?.carreras.find(
           (item) => item.profesorado_id === Number(profesoradoId),
         );
         if (carrera) {
@@ -426,7 +426,7 @@ const HorarioPage: React.FC = () => {
     planesAdminQuery.isLoading ||
     horarioQuery.isLoading;
   const sinCarreras =
-    !!targetDni && !loading && (!carrerasQuery.data || carrerasQuery.data.carreras.length === 0);
+    !!targetDni && !loading && (!carrerasData || carrerasData.carreras.length === 0);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -448,7 +448,7 @@ const HorarioPage: React.FC = () => {
               disabled={carrerasQuery.isLoading}
             >
               {targetDni
-                ? carrerasQuery.data?.carreras.map((carrera: TrayectoriaCarreraDetalleDTO) => (
+                ? carrerasData?.carreras.map((carrera: TrayectoriaCarreraDetalleDTO) => (
                   <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
                     {carrera.nombre}
                   </MenuItem>

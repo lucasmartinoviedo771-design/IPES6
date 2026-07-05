@@ -34,13 +34,13 @@ const ConstanciaExamenPage: React.FC = () => {
   const isEstudiante = hasRole(user, "estudiante");
   const dniObjetivo = isEstudiante ? user?.dni ?? "" : dniFiltro;
 
-  const constanciasQuery = useQuery<ConstanciaExamenDTO[]>({
+  const { data: constanciasData } = useQuery<ConstanciaExamenDTO[]>({
     queryKey: ["constancias-examen", dniObjetivo || null],
     queryFn: () => obtenerConstanciasExamen(dniObjetivo ? { dni: dniObjetivo } : undefined),
     enabled: isEstudiante || (dniObjetivo?.length ?? 0) === 8,
   });
 
-  const constancias = constanciasQuery.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const constancias = constanciasData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const carrerasDisponibles = useMemo(() => {
     const map = new Map<number, string>();

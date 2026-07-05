@@ -579,7 +579,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
                           />
                         )}
                         renderOption={(props, option) => (
-                          <li {...props}>
+                          <li {...props} key={option.dni}>
                             <Box>
                               <Typography variant="body2">{option.apellido_nombre}</Typography>
                               <Typography variant="caption" color="text.secondary">

@@ -183,7 +183,7 @@ export function ResultadosTable({
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const { key, ...restProps } = props as any;
                         return (
-                          <li key={key} {...restProps}>
+                          <li key={option.dni} {...restProps}>
                             <Box>
                               <Typography variant="body2">{option.apellido_nombre}</Typography>
                               <Typography variant="caption" display="block" color="text.secondary">

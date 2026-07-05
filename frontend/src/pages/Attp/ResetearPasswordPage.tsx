@@ -31,7 +31,7 @@ export default function ResetearPasswordPage() {
   const debouncedSearch = useDebouncedValue(search);
   const [selectedEstudiante, setSelectedEstudiante] = useState<{ dni: string; nombre: string; apellido: string } | null>(null);
 
-  const listQuery = useQuery({
+  const { data: listData } = useQuery({
     queryKey: ["attp-reset-estudiantes", debouncedSearch],
     queryFn: () => fetchEstudiantesAdmin({ q: debouncedSearch || undefined, limit: 30, offset: 0 }),
     enabled: debouncedSearch.length >= 2,
@@ -48,7 +48,7 @@ export default function ResetearPasswordPage() {
     },
   });
 
-  const estudiantes = listQuery.data?.items ?? [];
+  const estudiantes = listData?.items ?? [];
 
   return (
     <Box p={2} display="flex" flexDirection="column" gap={3} maxWidth={700} mx="auto">

@@ -47,13 +47,13 @@ const CertificadoRegularPage: React.FC = () => {
 
   const dniObjetivo = isOnlyStudent ? (user?.dni ?? "") : dniManual.trim();
 
-  const carrerasQuery = useQuery({
+  const { data: carrerasData } = useQuery({
     queryKey: ["estudiantes", "carreras-activas", dniObjetivo || null],
     queryFn: () => obtenerCarrerasActivas(dniObjetivo ? { dni: dniObjetivo } : {}),
     enabled: (isOnlyStudent || Boolean(dniObjetivo)) && (canGestionar || isOnlyStudent),
   });
 
-  const carreras = carrerasQuery.data?.carreras ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const carreras = carrerasData?.carreras ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!carreras.length) {

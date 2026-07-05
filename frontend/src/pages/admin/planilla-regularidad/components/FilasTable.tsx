@@ -230,7 +230,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const { key, ...restProps } = props as any;
                         return (
-                          <li key={key} {...restProps}>
+                          <li key={option.dni} {...restProps}>
                             <Box>
                               <Typography variant="body2">{option.apellido_nombre}</Typography>
                               <Typography variant="caption" color="text.secondary">
@@ -518,7 +518,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
                           // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           const { key, ...restProps } = props as any;
                           return (
-                            <li key={key} {...restProps}>
+                            <li key={option.codigo} {...restProps}>
                               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                                 <Typography variant="body2">{option.label || option.codigo}</Typography>
                                 {option.descripcion ? (
