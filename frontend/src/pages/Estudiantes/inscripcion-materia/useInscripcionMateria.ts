@@ -1,646 +1,840 @@
-import { useEffect, useMemo, useState } from "react";
 import type { SelectChangeEvent } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import {
-  solicitarInscripcionMateria,
-  cancelarInscripcionMateria,
-  bajaInscripcionMateria,
-  obtenerMateriasPlanEstudiante,
-  obtenerMateriasInscriptas,
-  obtenerHistorialEstudiante,
-  obtenerVentanaMaterias,
-  obtenerCarrerasActivas,
-  CarrerasActivasDTO,
-  HistorialEstudianteDTO,
-  MateriaInscriptaItemDTO,
-  ApiResponseDTO,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  TrayectoriaCarreraDetalleDTO,
-  VentanaInscripcion,
+	type ApiResponseDTO,
+	bajaInscripcionMateria,
+	type CarrerasActivasDTO,
+	cancelarInscripcionMateria,
+	type HistorialEstudianteDTO,
+	type MateriaInscriptaItemDTO,
+	obtenerCarrerasActivas,
+	obtenerHistorialEstudiante,
+	obtenerMateriasInscriptas,
+	obtenerMateriasPlanEstudiante,
+	obtenerVentanaMaterias,
+	solicitarInscripcionMateria,
+		TrayectoriaCarreraDetalleDTO,
+	type VentanaInscripcion,
 } from "@/api/estudiantes";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 import {
-  Materia,
-  MateriaEvaluada,
-  TipoBloqueo,
-  mapMateria,
-  hayChoque,
-  cuatrimestreCompatible,
-  esResidencia,
-  EMPTY_HISTORIAL,
+	cuatrimestreCompatible,
+	EMPTY_HISTORIAL,
+	esResidencia,
+	hayChoque,
+	type Materia,
+	type MateriaEvaluada,
+	mapMateria,
+	type TipoBloqueo,
 } from "./types";
 
 export const useInscripcionMateria = () => {
-  const qc = useQueryClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { user } = (useAuth?.() ?? { user: null }) as any;
-  const puedeGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+	const qc = useQueryClient();
+		const { user } = (useAuth?.() ?? { user: null }) as any;
+	const puedeGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
-  const [dniInput, setDniInput] = useState<string>("");
-  const [dniFiltro, setDniFiltro] = useState<string>("");
-  const [anioFiltro, setAnioFiltro] = useState<number | "all">("all");
-  
-  // Persistencia de seleccion de carrera/plan
-  const [selectedCarreraId, setSelectedCarreraId] = useState<string>(() => {
-    return localStorage.getItem("ipes_inscr_carrera_id") || "";
-  });
-  const [selectedPlanId, setSelectedPlanId] = useState<string>(() => {
-    return localStorage.getItem("ipes_inscr_plan_id") || "";
-  });
+	const [dniInput, setDniInput] = useState<string>("");
+	const [dniFiltro, setDniFiltro] = useState<string>("");
+	const [anioFiltro, setAnioFiltro] = useState<number | "all">("all");
 
-  const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
-  const [info, setInfo] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [confirmInscripcionOpen, setConfirmInscripcionOpen] = useState(false);
-  const [materiaConfirmId, setMateriaConfirmId] = useState<number | null>(null);
+	// Persistencia de seleccion de carrera/plan
+	const [selectedCarreraId, setSelectedCarreraId] = useState<string>(() => {
+		return localStorage.getItem("ipes_inscr_carrera_id") || "";
+	});
+	const [selectedPlanId, setSelectedPlanId] = useState<string>(() => {
+		return localStorage.getItem("ipes_inscr_plan_id") || "";
+	});
 
-  const normalizedDni = dniFiltro.trim();
-  const shouldFetchInscriptas = !puedeGestionar || normalizedDni.length > 0;
-  const requiereSeleccionEstudiante = puedeGestionar && !shouldFetchInscriptas;
+	const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
+	const [info, setInfo] = useState<string | null>(null);
+	const [err, setErr] = useState<string | null>(null);
+	const [confirmInscripcionOpen, setConfirmInscripcionOpen] = useState(false);
+	const [materiaConfirmId, setMateriaConfirmId] = useState<number | null>(null);
 
-  const handleAnioChange = (event: SelectChangeEvent<string>) => {
-    const value = event.target.value;
-    setAnioFiltro(value === "all" ? "all" : Number(value));
-  };
+	const normalizedDni = dniFiltro.trim();
+	const shouldFetchInscriptas = !puedeGestionar || normalizedDni.length > 0;
+	const requiereSeleccionEstudiante = puedeGestionar && !shouldFetchInscriptas;
 
-  const handleCarreraChange = (event: SelectChangeEvent<string>) => {
-    const value = event.target.value;
-    setSelectedCarreraId(value);
-    localStorage.setItem("ipes_inscr_carrera_id", value);
-    setErr(null);
-    setInfo(null);
-    if (!value) {
-      setSelectedPlanId("");
-      localStorage.removeItem("ipes_inscr_plan_id");
-      return;
-    }
-    const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === value);
-    if (!carrera) {
-      setSelectedPlanId("");
-      localStorage.removeItem("ipes_inscr_plan_id");
-      return;
-    }
-    const preferido = carrera.planes.find((p) => p.vigente) ?? carrera.planes[0];
-    const planIdStr = preferido ? String(preferido.id) : "";
-    setSelectedPlanId(planIdStr);
-    if (planIdStr) localStorage.setItem("ipes_inscr_plan_id", planIdStr);
-    else localStorage.removeItem("ipes_inscr_plan_id");
-  };
+	const handleAnioChange = (event: SelectChangeEvent<string>) => {
+		const value = event.target.value;
+		setAnioFiltro(value === "all" ? "all" : Number(value));
+	};
 
-  const handlePlanChange = (event: SelectChangeEvent<string>) => {
-    setErr(null);
-    setInfo(null);
-    setSelectedPlanId(event.target.value);
-    localStorage.setItem("ipes_inscr_plan_id", event.target.value);
-  };
+	const handleCarreraChange = (event: SelectChangeEvent<string>) => {
+		const value = event.target.value;
+		setSelectedCarreraId(value);
+		localStorage.setItem("ipes_inscr_carrera_id", value);
+		setErr(null);
+		setInfo(null);
+		if (!value) {
+			setSelectedPlanId("");
+			localStorage.removeItem("ipes_inscr_plan_id");
+			return;
+		}
+		const carrera = carrerasDisponibles.find(
+			(c) => String(c.profesorado_id) === value,
+		);
+		if (!carrera) {
+			setSelectedPlanId("");
+			localStorage.removeItem("ipes_inscr_plan_id");
+			return;
+		}
+		const preferido =
+			carrera.planes.find((p) => p.vigente) ?? carrera.planes[0];
+		const planIdStr = preferido ? String(preferido.id) : "";
+		setSelectedPlanId(planIdStr);
+		if (planIdStr) localStorage.setItem("ipes_inscr_plan_id", planIdStr);
+		else localStorage.removeItem("ipes_inscr_plan_id");
+	};
 
-  useEffect(() => {
-    setInfo(null);
-    setErr(null);
-    setSeleccionadas([]);
-    // Ya no limpiamos carrera/plan aqui para favorecer persistencia
-    // setSelectedCarreraId("");
-    // setSelectedPlanId("");
-  }, [dniFiltro]);
+	const handlePlanChange = (event: SelectChangeEvent<string>) => {
+		setErr(null);
+		setInfo(null);
+		setSelectedPlanId(event.target.value);
+		localStorage.setItem("ipes_inscr_plan_id", event.target.value);
+	};
 
-  const { data: carrerasQData, isSuccess: carrerasQSuccess, isLoading: carrerasQLoading, isError: carrerasQError } = useQuery<CarrerasActivasDTO>({
-    queryKey: ["carreras-activas", dniFiltro],
-    queryFn: () => obtenerCarrerasActivas(shouldFetchInscriptas ? (dniFiltro ? { dni: dniFiltro } : undefined) : undefined, true),
-    enabled: shouldFetchInscriptas,
-    retry: false,
-  });
+	useEffect(() => {
+		setInfo(null);
+		setErr(null);
+		setSeleccionadas([]);
+		// Ya no limpiamos carrera/plan aqui para favorecer persistencia
+		// setSelectedCarreraId("");
+		// setSelectedPlanId("");
+	}, [dniFiltro]);
 
-  const carrerasDisponibles = carrerasQData?.carreras ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
-  const selectedCarreraIdNum = selectedCarreraId ? Number(selectedCarreraId) : undefined;
-  const selectedPlanIdNum = selectedPlanId ? Number(selectedPlanId) : undefined;
-  const puedeSolicitarMaterias = !shouldFetchInscriptas || (carrerasQSuccess && (carrerasDisponibles.length <= 1 || !!selectedCarreraIdNum || !!selectedPlanIdNum));
+	const {
+		data: carrerasQData,
+		isSuccess: carrerasQSuccess,
+		isLoading: carrerasQLoading,
+		isError: carrerasQError,
+	} = useQuery<CarrerasActivasDTO>({
+		queryKey: ["carreras-activas", dniFiltro],
+		queryFn: () =>
+			obtenerCarrerasActivas(
+				shouldFetchInscriptas
+					? dniFiltro
+						? { dni: dniFiltro }
+						: undefined
+					: undefined,
+				true,
+			),
+		enabled: shouldFetchInscriptas,
+		retry: false,
+	});
 
-  const planesDisponibles = useMemo(() => {
-    if (!selectedCarreraId) return [];
-    const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === selectedCarreraId);
-    return carrera ? carrera.planes : [];
-  }, [selectedCarreraId, carrerasDisponibles]);
+	const carrerasDisponibles = carrerasQData?.carreras ?? [];  
+	const selectedCarreraIdNum = selectedCarreraId
+		? Number(selectedCarreraId)
+		: undefined;
+	const selectedPlanIdNum = selectedPlanId ? Number(selectedPlanId) : undefined;
+	const puedeSolicitarMaterias =
+		!shouldFetchInscriptas ||
+		(carrerasQSuccess &&
+			(carrerasDisponibles.length <= 1 ||
+				!!selectedCarreraIdNum ||
+				!!selectedPlanIdNum));
 
-  useEffect(() => {
-    const disponibles = carrerasDisponibles;
-    const isLoading = carrerasQLoading;
+	const planesDisponibles = useMemo(() => {
+		if (!selectedCarreraId) return [];
+		const carrera = carrerasDisponibles.find(
+			(c) => String(c.profesorado_id) === selectedCarreraId,
+		);
+		return carrera ? carrera.planes : [];
+	}, [selectedCarreraId, carrerasDisponibles]);
 
-    if (isLoading || !disponibles.length) {
-      // No hacemos nada mientras carga o si no hay datos aun
-      return;
-    }
-    if (selectedCarreraId) {
-      const actual = disponibles.find((c) => String(c.profesorado_id) === selectedCarreraId);
-      if (!actual) {
-        setSelectedCarreraId("");
-        setSelectedPlanId("");
-        return;
-      }
-      if (!selectedPlanId || !actual.planes.some((p) => String(p.id) === selectedPlanId)) {
-        const preferido = actual.planes.find((p) => p.vigente) ?? actual.planes[0];
-        setSelectedPlanId(preferido ? String(preferido.id) : "");
-      }
-      return;
-    }
-    if (disponibles.length === 1) {
-      const unica = disponibles[0];
-      setSelectedCarreraId(String(unica.profesorado_id));
-      const preferido = unica.planes.find((p) => p.vigente) ?? unica.planes[0];
-      setSelectedPlanId(preferido ? String(preferido.id) : "");
-    }
-  }, [carrerasDisponibles, selectedCarreraId, selectedPlanId]);  // eslint-disable-line react-hooks/exhaustive-deps
+	useEffect(() => {
+		const disponibles = carrerasDisponibles;
+		const isLoading = carrerasQLoading;
 
-  const { data: materiasQData, isError: materiasQError, error: materiasQError2, isSuccess: materiasQSuccess } = useQuery<Materia[]>({
-    queryKey: ["materias-plan", dniFiltro, selectedCarreraId, selectedPlanId],
-    enabled: shouldFetchInscriptas && puedeSolicitarMaterias,
-    queryFn: async () => {
-      const params: { dni?: string; plan_id?: number; profesorado_id?: number } = {};
-      if (dniFiltro) params.dni = dniFiltro;
-      if (selectedPlanIdNum) {
-        params.plan_id = selectedPlanIdNum;
-      } else if (selectedCarreraIdNum) {
-        params.profesorado_id = selectedCarreraIdNum;
-      }
-      const data = await obtenerMateriasPlanEstudiante(Object.keys(params).length ? params : undefined, true);
-      return data.map(mapMateria);
-    },
-    retry: false,
-  });
+		if (isLoading || !disponibles.length) {
+			// No hacemos nada mientras carga o si no hay datos aun
+			return;
+		}
+		if (selectedCarreraId) {
+			const actual = disponibles.find(
+				(c) => String(c.profesorado_id) === selectedCarreraId,
+			);
+			if (!actual) {
+				setSelectedCarreraId("");
+				setSelectedPlanId("");
+				return;
+			}
+			if (
+				!selectedPlanId ||
+				!actual.planes.some((p) => String(p.id) === selectedPlanId)
+			) {
+				const preferido =
+					actual.planes.find((p) => p.vigente) ?? actual.planes[0];
+				setSelectedPlanId(preferido ? String(preferido.id) : "");
+			}
+			return;
+		}
+		if (disponibles.length === 1) {
+			const unica = disponibles[0];
+			setSelectedCarreraId(String(unica.profesorado_id));
+			const preferido = unica.planes.find((p) => p.vigente) ?? unica.planes[0];
+			setSelectedPlanId(preferido ? String(preferido.id) : "");
+		}
+	}, [carrerasDisponibles, selectedCarreraId, selectedPlanId]);  
 
-  useEffect(() => {
-    if (materiasQError) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = materiasQError2 as any;
-      setErr(error?.response?.data?.message || "No se pudieron obtener las materias del plan.");
-    } else if (materiasQSuccess) {
-      setErr(null);
-    }
-  }, [materiasQError, materiasQSuccess, materiasQError2]);
+	const {
+		data: materiasQData,
+		isError: materiasQError,
+		error: materiasQError2,
+		isSuccess: materiasQSuccess,
+		isLoading: materiasQLoading,
+	} = useQuery<Materia[]>({
+		queryKey: ["materias-plan", dniFiltro, selectedCarreraId, selectedPlanId],
+		enabled: shouldFetchInscriptas && puedeSolicitarMaterias,
+		queryFn: async () => {
+			const params: {
+				dni?: string;
+				plan_id?: number;
+				profesorado_id?: number;
+			} = {};
+			if (dniFiltro) params.dni = dniFiltro;
+			if (selectedPlanIdNum) {
+				params.plan_id = selectedPlanIdNum;
+			} else if (selectedCarreraIdNum) {
+				params.profesorado_id = selectedCarreraIdNum;
+			}
+			const data = await obtenerMateriasPlanEstudiante(
+				Object.keys(params).length ? params : undefined,
+				true,
+			);
+			return data.map(mapMateria);
+		},
+		retry: false,
+	});
 
-  const { data: historialQData, isError: historialQError } = useQuery<HistorialEstudianteDTO>({
-    queryKey: ["historial-estudiante", dniFiltro],
-    queryFn: async () => {
-      const d: HistorialEstudianteDTO = await obtenerHistorialEstudiante(dniFiltro ? { dni: dniFiltro } : undefined, true);
-      return {
-        ...d,
-        aprobadas: d.aprobadas || [],
-        regularizadas: d.regularizadas || [],
-        inscriptas_actuales: d.inscriptas_actuales || [],
-      };
-    },
-    enabled: shouldFetchInscriptas,
-  });
+	useEffect(() => {
+		if (materiasQError) {
+						const error = materiasQError2 as any;
+			setErr(
+				error?.response?.data?.message ||
+					"No se pudieron obtener las materias del plan.",
+			);
+		} else if (materiasQSuccess) {
+			setErr(null);
+		}
+	}, [materiasQError, materiasQSuccess, materiasQError2]);
 
-  const { data: ventanaQData, isError: ventanaQError } = useQuery<VentanaInscripcion | null>({
-    queryKey: ["ventana-materias"],
-    queryFn: obtenerVentanaMaterias,
-  });
+	const {
+		data: historialQData,
+		isError: historialQError,
+		isLoading: historialQLoading,
+	} = useQuery<HistorialEstudianteDTO>({
+		queryKey: ["historial-estudiante", dniFiltro],
+		queryFn: async () => {
+			const d: HistorialEstudianteDTO = await obtenerHistorialEstudiante(
+				dniFiltro ? { dni: dniFiltro } : undefined,
+				true,
+			);
+			return {
+				...d,
+				aprobadas: d.aprobadas || [],
+				regularizadas: d.regularizadas || [],
+				inscriptas_actuales: d.inscriptas_actuales || [],
+			};
+		},
+		enabled: shouldFetchInscriptas,
+	});
 
-  const { data: inscripcionesQData, isError: inscripcionesQError } = useQuery<MateriaInscriptaItemDTO[]>({
-    queryKey: ["materias-inscriptas", normalizedDni],
-    queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined, true),
-    enabled: shouldFetchInscriptas,
-  });
+	const {
+		data: ventanaQData,
+		isError: ventanaQError,
+		isLoading: ventanaQLoading,
+	} = useQuery<VentanaInscripcion | null>({
+		queryKey: ["ventana-materias"],
+		queryFn: obtenerVentanaMaterias,
+	});
 
-  const queryError =
-    materiasQError ||
-    historialQError ||
-    ventanaQError ||
-    (shouldFetchInscriptas && (inscripcionesQError || carrerasQError));
+	const {
+		data: inscripcionesQData,
+		isError: inscripcionesQError,
+		isLoading: inscripcionesQLoading,
+	} = useQuery<MateriaInscriptaItemDTO[]>({
+		queryKey: ["materias-inscriptas", normalizedDni],
+		queryFn: () =>
+			obtenerMateriasInscriptas(
+				normalizedDni ? { dni: normalizedDni } : undefined,
+				true,
+			),
+		enabled: shouldFetchInscriptas,
+	});
 
-  const mInscribir = useMutation({
-    mutationFn: (materiaId: number) =>
-      solicitarInscripcionMateria({
-        materia_id: materiaId,
-        dni: normalizedDni ? normalizedDni : undefined,
-      }),
-    onMutate: (materiaId) => {
-      setSeleccionadas((prev) => (prev.includes(materiaId) ? prev : [...prev, materiaId]));
-    },
-    onSuccess: (res) => {
-      setInfo(res.message || "Inscripción registrada");
-      setErr(null);
-      qc.invalidateQueries();
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any, materiaId) => {
-      setSeleccionadas((prev) => prev.filter((id) => id !== materiaId));
-      setErr(error?.response?.data?.message || "No se pudo inscribir");
-      setInfo(null);
-    },
-  });
-  const pendingMateriaId = mInscribir.variables as number | undefined;
+	const queryError =
+		materiasQError ||
+		historialQError ||
+		ventanaQError ||
+		(shouldFetchInscriptas && (inscripcionesQError || carrerasQError));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mCancelar = useMutation<ApiResponseDTO, any, { inscripcionId: number; materiaId: number }>({
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    mutationFn: ({ inscripcionId, materiaId }) =>
-      cancelarInscripcionMateria({
-        inscripcion_id: inscripcionId,
-        dni: normalizedDni ? normalizedDni : undefined,
-      }),
-    onSuccess: (res, variables) => {
-      const message = res?.message || "inscripción cancelada";
-      setInfo(message);
-      setErr(null);
-      setSeleccionadas((prev) => prev.filter((id) => id !== variables.materiaId));
-      qc.invalidateQueries();
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
-      setErr(error?.response?.data?.message || "No se pudo cancelar la inscripción");
-      setInfo(null);
-    },
-  });
-  const cancelarVars = mCancelar.variables;
+	const mInscribir = useMutation({
+		mutationFn: (materiaId: number) =>
+			solicitarInscripcionMateria({
+				materia_id: materiaId,
+				dni: normalizedDni ? normalizedDni : undefined,
+			}),
+		onMutate: (materiaId) => {
+			setSeleccionadas((prev) =>
+				prev.includes(materiaId) ? prev : [...prev, materiaId],
+			);
+		},
+		onSuccess: (res) => {
+			setInfo(res.message || "Inscripción registrada");
+			setErr(null);
+			qc.invalidateQueries();
+		},
+				onError: (error: any, materiaId) => {
+			setSeleccionadas((prev) => prev.filter((id) => id !== materiaId));
+			setErr(error?.response?.data?.message || "No se pudo inscribir");
+			setInfo(null);
+		},
+	});
+	const pendingMateriaId = mInscribir.variables as number | undefined;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mBaja = useMutation<ApiResponseDTO, any, { inscripcionId: number; motivo: string }>({
-    mutationFn: ({ inscripcionId, motivo }) =>
-      bajaInscripcionMateria({
-        inscripcion_id: inscripcionId,
-        motivo,
-        dni: normalizedDni ? normalizedDni : undefined,
-      }),
-    onSuccess: (res) => {
-      setInfo(res?.message || "Baja registrada correctamente.");
-      setErr(null);
-      qc.invalidateQueries();
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onError: (error: any) => {
-      setErr(error?.response?.data?.message || "No se pudo registrar la baja.");
-      setInfo(null);
-    },
-  });
+		const mCancelar = useMutation<
+		ApiResponseDTO,
+		any,
+		{ inscripcionId: number; materiaId: number }
+	>({
+				mutationFn: ({ inscripcionId, materiaId }) =>
+			cancelarInscripcionMateria({
+				inscripcion_id: inscripcionId,
+				dni: normalizedDni ? normalizedDni : undefined,
+			}),
+		onSuccess: (res, variables) => {
+			const message = res?.message || "inscripción cancelada";
+			setInfo(message);
+			setErr(null);
+			setSeleccionadas((prev) =>
+				prev.filter((id) => id !== variables.materiaId),
+			);
+			qc.invalidateQueries();
+		},
+				onError: (error: any) => {
+			setErr(
+				error?.response?.data?.message || "No se pudo cancelar la inscripción",
+			);
+			setInfo(null);
+		},
+	});
+	const cancelarVars = mCancelar.variables;
 
-  const handleBaja = (inscripcionId: number, motivo: string) => {
-    if (mBaja.isPending) return;
-    mBaja.mutate({ inscripcionId, motivo });
-  };
+		const mBaja = useMutation<
+		ApiResponseDTO,
+		any,
+		{ inscripcionId: number; motivo: string }
+	>({
+		mutationFn: ({ inscripcionId, motivo }) =>
+			bajaInscripcionMateria({
+				inscripcion_id: inscripcionId,
+				motivo,
+				dni: normalizedDni ? normalizedDni : undefined,
+			}),
+		onSuccess: (res) => {
+			setInfo(res?.message || "Baja registrada correctamente.");
+			setErr(null);
+			qc.invalidateQueries();
+		},
+				onError: (error: any) => {
+			setErr(error?.response?.data?.message || "No se pudo registrar la baja.");
+			setInfo(null);
+		},
+	});
 
-  const materias = materiasQData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
-  const historialRaw = historialQData ?? EMPTY_HISTORIAL;
-  const historial = {
-    aprobadas: historialRaw.aprobadas ?? [],
-    regularizadas: historialRaw.regularizadas ?? [],
-    inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
-  };
-  const ventana = ventanaQData ?? null;
-  const ventanaActiva = useMemo(() => {
-    if (!ventana) return false;
-    try {
-      const desde = new Date(ventana.desde);
-      const hasta = new Date(ventana.hasta);
-      const hoy = new Date();
-      return Boolean(ventana.activo) && hoy >= desde && hoy <= hasta;
-    } catch {
-      return Boolean(ventana?.activo);
-    }
-  }, [ventana]);
-  const puedeInscribirse = ventanaActiva || puedeGestionar;
-  const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
-  const inscripcionesData = inscripcionesQData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const handleBaja = (inscripcionId: number, motivo: string) => {
+		if (mBaja.isPending) return;
+		mBaja.mutate({ inscripcionId, motivo });
+	};
 
-  const yaInscriptas = new Set<number>([...(historial.inscriptasActuales || []), ...seleccionadas]);
-  const esPeriodoHabilitado = (m: Materia) => {
-    if (!ventanaActiva || !periodo) return true;
-    if (periodo === "1C_ANUALES") {
-      return m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C";
-    }
-    if (periodo === "2C") {
-      return m.cuatrimestre === "2C";
-    }
-    return true;
-  };
+	const materias = materiasQData ?? [];  
+	const historialRaw = historialQData ?? EMPTY_HISTORIAL;
+	const historial = {
+		aprobadas: historialRaw.aprobadas ?? [],
+		regularizadas: historialRaw.regularizadas ?? [],
+		inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
+	};
+	const ventana = ventanaQData ?? null;
+	const ventanaActiva = useMemo(() => {
+		if (!ventana) return false;
+		try {
+			const desde = new Date(ventana.desde);
+			const hasta = new Date(ventana.hasta);
+			const hoy = new Date();
+			return Boolean(ventana.activo) && hoy >= desde && hoy <= hasta;
+		} catch {
+			return Boolean(ventana?.activo);
+		}
+	}, [ventana]);
+	const puedeInscribirse = ventanaActiva || puedeGestionar;
+	const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
+	const inscripcionesData = inscripcionesQData ?? [];  
 
-  const materiaById = useMemo(() => {
-    const map = new Map<number, Materia>();
-    for (const materia of materias) map.set(materia.id, materia);
-    return map;
-  }, [materias]);
+	const yaInscriptas = new Set<number>([
+		...(historial.inscriptasActuales || []),
+		...seleccionadas,
+	]);
+	const esPeriodoHabilitado = (m: Materia) => {
+		if (!ventanaActiva || !periodo) return true;
+		if (periodo === "1C_ANUALES") {
+			return m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C";
+		}
+		if (periodo === "2C") {
+			return m.cuatrimestre === "2C";
+		}
+		return true;
+	};
 
-  const inscripcionPorMateria = useMemo(() => {
-    const map = new Map<number, MateriaInscriptaItemDTO>();
-    inscripcionesData.forEach((ins) => {
-      if (!map.has(ins.materia_id) && (ins.estado === "CONF" || ins.estado === "PEND")) {
-        map.set(ins.materia_id, ins);
-      }
-    });
-    return map;
-  }, [inscripcionesData]);
+	const materiaById = useMemo(() => {
+		const map = new Map<number, Materia>();
+		for (const materia of materias) map.set(materia.id, materia);
+		return map;
+	}, [materias]);
 
-  const inscripcionesConHorario = useMemo(() => {
-    return inscripcionesData
-      .filter((ins) => (ins.estado === "CONF" || ins.estado === "PEND") && ins.comision_actual)
-      .map((ins) => {
-        const materiaRef = materiaById.get(ins.materia_id);
-        const horarios = ins.comision_actual?.horarios ?? [];
-        return {
-          ins,
-          horarios,
-          materiaNombre: materiaRef?.nombre ?? ins.materia_nombre,
-          cuatrimestre: materiaRef?.cuatrimestre ?? "ANUAL",
-        };
-      })
-      .filter((item) => item.horarios.length > 0);
-  }, [inscripcionesData, materiaById]);
+	const inscripcionPorMateria = useMemo(() => {
+		const map = new Map<number, MateriaInscriptaItemDTO>();
+		inscripcionesData.forEach((ins) => {
+			if (
+				!map.has(ins.materia_id) &&
+				(ins.estado === "CONF" || ins.estado === "PEND")
+			) {
+				map.set(ins.materia_id, ins);
+			}
+		});
+		return map;
+	}, [inscripcionesData]);
 
-  const aniosDisponibles = useMemo(() => {
-    const unique = Array.from(new Set(materias.map((m) => m.anio))).sort((a, b) => a - b);
-    return unique;
-  }, [materias]);
+	const inscripcionesConHorario = useMemo(() => {
+		return inscripcionesData
+			.filter(
+				(ins) =>
+					(ins.estado === "CONF" || ins.estado === "PEND") &&
+					ins.comision_actual,
+			)
+			.map((ins) => {
+				const materiaRef = materiaById.get(ins.materia_id);
+				const horarios = ins.comision_actual?.horarios ?? [];
+				return {
+					ins,
+					horarios,
+					materiaNombre: materiaRef?.nombre ?? ins.materia_nombre,
+					cuatrimestre: materiaRef?.cuatrimestre ?? "ANUAL",
+				};
+			})
+			.filter((item) => item.horarios.length > 0);
+	}, [inscripcionesData, materiaById]);
 
-  const selectedCarreraIdNum2 = selectedCarreraId ? Number(selectedCarreraId) : undefined;
-  const selectedPlanIdNum2 = selectedPlanId ? Number(selectedPlanId) : undefined;
+	const aniosDisponibles = useMemo(() => {
+		const unique = Array.from(new Set(materias.map((m) => m.anio))).sort(
+			(a, b) => a - b,
+		);
+		return unique;
+	}, [materias]);
 
-  const matchesFilters = (materia: MateriaEvaluada | Materia) => {
-    const byAnio = anioFiltro === "all" || materia.anio === anioFiltro;
-    const byCarrera = !selectedCarreraIdNum2 || materia.profesoradoId === selectedCarreraIdNum2;
-    const byPlan = !selectedPlanIdNum2 || materia.planId === selectedPlanIdNum2;
-    return byAnio && byCarrera && byPlan;
-  };
+	const selectedCarreraIdNum2 = selectedCarreraId
+		? Number(selectedCarreraId)
+		: undefined;
+	const selectedPlanIdNum2 = selectedPlanId
+		? Number(selectedPlanId)
+		: undefined;
 
-  const materiasEvaluadas: MateriaEvaluada[] = useMemo(() => materias.map((materia) => {
-    if (historial.aprobadas.includes(materia.id)) {
-      return { ...materia, status: "aprobada", motivos: ["Materia aprobada"], faltantesRegular: [], faltantesAprob: [] };
-    }
+	const matchesFilters = (materia: MateriaEvaluada | Materia) => {
+		const byAnio = anioFiltro === "all" || materia.anio === anioFiltro;
+		const byCarrera =
+			!selectedCarreraIdNum2 || materia.profesoradoId === selectedCarreraIdNum2;
+		const byPlan = !selectedPlanIdNum2 || materia.planId === selectedPlanIdNum2;
+		return byAnio && byCarrera && byPlan;
+	};
 
-    if (!materia.vigente) {
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos: ["Esta materia ya no está vigente en el plan"],
-        tipoBloqueo: "periodo",
-        faltantesRegular: [],
-        faltantesAprob: [],
-      };
-    }
+	const materiasEvaluadas: MateriaEvaluada[] = useMemo(
+		() =>
+			materias.map((materia) => {
+				if (historial.aprobadas.includes(materia.id)) {
+					return {
+						...materia,
+						status: "aprobada",
+						motivos: ["Materia aprobada"],
+						faltantesRegular: [],
+						faltantesAprob: [],
+					};
+				}
 
-    if (historial.regularizadas.includes(materia.id)) {
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos: ["Ya tienes la regularidad de esta materia"],
-        tipoBloqueo: "otro",
-        faltantesRegular: [],
-        faltantesAprob: [],
-      };
-    }
+				if (!materia.vigente) {
+					return {
+						...materia,
+						status: "bloqueada",
+						motivos: ["Esta materia ya no está vigente en el plan"],
+						tipoBloqueo: "periodo",
+						faltantesRegular: [],
+						faltantesAprob: [],
+					};
+				}
 
-    if (!esPeriodoHabilitado(materia)) {
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos: ["No habilitada en este período de inscripción"],
-        tipoBloqueo: "periodo",
-        faltantesRegular: [],
-        faltantesAprob: [],
-      };
-    }
+				if (historial.regularizadas.includes(materia.id)) {
+					return {
+						...materia,
+						status: "bloqueada",
+						motivos: ["Ya tienes la regularidad de esta materia"],
+						tipoBloqueo: "otro",
+						faltantesRegular: [],
+						faltantesAprob: [],
+					};
+				}
 
-    // Chequear inscripción activa ANTES que correlativas para que materias
-    // ya inscriptas condicionalmente no aparezcan en el listado condicional
-    if (yaInscriptas.has(materia.id)) {
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos: ["Ya estás inscripto/a en esta materia"],
-        tipoBloqueo: "inscripta",
-        faltantesRegular: [],
-        faltantesAprob: [],
-      };
-    }
+				if (!esPeriodoHabilitado(materia)) {
+					return {
+						...materia,
+						status: "bloqueada",
+						motivos: ["No habilitada en este período de inscripción"],
+						tipoBloqueo: "periodo",
+						faltantesRegular: [],
+						faltantesAprob: [],
+					};
+				}
 
-    const faltasReg = materia.correlativasRegular.filter((id) => !historial.regularizadas.includes(id) && !historial.aprobadas.includes(id));
-    const faltasApr = materia.correlativasAprob.filter((id) => !historial.aprobadas.includes(id));
-    const faltasRegNombres = Array.from(new Set(faltasReg.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
-    const faltasAprNombres = Array.from(new Set(faltasApr.map((id) => materiaById.get(id)?.nombre || `Materia ${id}`)));
+				// Chequear inscripción activa ANTES que correlativas para que materias
+				// ya inscriptas condicionalmente no aparezcan en el listado condicional
+				if (yaInscriptas.has(materia.id)) {
+					return {
+						...materia,
+						status: "bloqueada",
+						motivos: ["Ya estás inscripto/a en esta materia"],
+						tipoBloqueo: "inscripta",
+						faltantesRegular: [],
+						faltantesAprob: [],
+					};
+				}
 
-    if (faltasReg.length || faltasApr.length) {
-      // Caso especial: Residencia con exactamente 1 materia faltante → inscripción condicional
-      const totalFaltantes = [...new Set([...faltasReg, ...faltasApr])];
-      if (esResidencia(materia.nombre, materia.anio) && totalFaltantes.length === 1) {
-        const nombreFaltante = materiaById.get(totalFaltantes[0])?.nombre || `Materia ${totalFaltantes[0]}`;
-        return {
-          ...materia,
-          status: "condicional_residencia",
-          motivos: [`Podés inscribirte condicionalmente. Adeudás: ${nombreFaltante}`],
-          tipoBloqueo: "condicional_residencia",
-          faltantesRegular: faltasRegNombres,
-          faltantesAprob: faltasAprNombres,
-          pendienteId: totalFaltantes[0],
-        };
-      }
-      const motivos: string[] = [];
-      if (faltasRegNombres.length) motivos.push(`Regularizar: ${faltasRegNombres.join(", ")}`);
-      if (faltasAprNombres.length) motivos.push(`Aprobar: ${faltasAprNombres.join(", ")}`);
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos,
-        tipoBloqueo: "correlativas",
-        faltantesRegular: faltasRegNombres,
-        faltantesAprob: faltasAprNombres,
-      };
-    }
+				const faltasReg = materia.correlativasRegular.filter(
+					(id) =>
+						!historial.regularizadas.includes(id) &&
+						!historial.aprobadas.includes(id),
+				);
+				const faltasApr = materia.correlativasAprob.filter(
+					(id) => !historial.aprobadas.includes(id),
+				);
+				const faltasRegNombres = Array.from(
+					new Set(
+						faltasReg.map(
+							(id) => materiaById.get(id)?.nombre || `Materia ${id}`,
+						),
+					),
+				);
+				const faltasAprNombres = Array.from(
+					new Set(
+						faltasApr.map(
+							(id) => materiaById.get(id)?.nombre || `Materia ${id}`,
+						),
+					),
+				);
 
-    const conflictoConInscripciones = inscripcionesConHorario.find((insData) => {
-      if (insData.ins.materia_id === materia.id) return false;
-      if (materia.horarios.length === 0 || insData.horarios.length === 0) return false;
-      if (!cuatrimestreCompatible(materia.cuatrimestre, insData.cuatrimestre as Materia["cuatrimestre"])) return false;
-      return hayChoque(materia.horarios, insData.horarios);
-    });
-    if (conflictoConInscripciones) {
-      return {
-        ...materia,
-        status: "bloqueada",
-        motivos: [`Superposición horaria con ${conflictoConInscripciones.materiaNombre}`],
-        tipoBloqueo: "choque",
-        faltantesRegular: [],
-        faltantesAprob: [],
-      };
-    }
+				if (faltasReg.length || faltasApr.length) {
+					// Caso especial: Residencia con exactamente 1 materia faltante → inscripción condicional
+					const totalFaltantes = [...new Set([...faltasReg, ...faltasApr])];
+					if (
+						esResidencia(materia.nombre, materia.anio) &&
+						totalFaltantes.length === 1
+					) {
+						const nombreFaltante =
+							materiaById.get(totalFaltantes[0])?.nombre ||
+							`Materia ${totalFaltantes[0]}`;
+						return {
+							...materia,
+							status: "condicional_residencia",
+							motivos: [
+								`Podés inscribirte condicionalmente. Adeudás: ${nombreFaltante}`,
+							],
+							tipoBloqueo: "condicional_residencia",
+							faltantesRegular: faltasRegNombres,
+							faltantesAprob: faltasAprNombres,
+							pendienteId: totalFaltantes[0],
+						};
+					}
+					const motivos: string[] = [];
+					if (faltasRegNombres.length)
+						motivos.push(`Regularizar: ${faltasRegNombres.join(", ")}`);
+					if (faltasAprNombres.length)
+						motivos.push(`Aprobar: ${faltasAprNombres.join(", ")}`);
+					return {
+						...materia,
+						status: "bloqueada",
+						motivos,
+						tipoBloqueo: "correlativas",
+						faltantesRegular: faltasRegNombres,
+						faltantesAprob: faltasAprNombres,
+					};
+				}
 
-    const seleccionadasMaterias = materias.filter((x) => seleccionadas.includes(x.id));
-    for (const seleccionada of seleccionadasMaterias) {
-      if (seleccionada.horarios.length === 0 || materia.horarios.length === 0) continue;
-      if (!cuatrimestreCompatible(materia.cuatrimestre, seleccionada.cuatrimestre)) continue;
-      if (hayChoque(materia.horarios, seleccionada.horarios)) {
-        return {
-          ...materia,
-          status: "bloqueada",
-          motivos: [`Superposición horaria con ${seleccionada.nombre}`],
-          tipoBloqueo: "choque",
-          faltantesRegular: [],
-          faltantesAprob: [],
-        };
-      }
-    }
+				const conflictoConInscripciones = inscripcionesConHorario.find(
+					(insData) => {
+						if (insData.ins.materia_id === materia.id) return false;
+						if (materia.horarios.length === 0 || insData.horarios.length === 0)
+							return false;
+						if (
+							!cuatrimestreCompatible(
+								materia.cuatrimestre,
+								insData.cuatrimestre as Materia["cuatrimestre"],
+							)
+						)
+							return false;
+						return hayChoque(materia.horarios, insData.horarios);
+					},
+				);
+				if (conflictoConInscripciones) {
+					return {
+						...materia,
+						status: "bloqueada",
+						motivos: [
+							`Superposición horaria con ${conflictoConInscripciones.materiaNombre}`,
+						],
+						tipoBloqueo: "choque",
+						faltantesRegular: [],
+						faltantesAprob: [],
+					};
+				}
 
-    const cumplidas: string[] = [];
-    materia.correlativasRegular.forEach((id) => {
-      const name = materiaById.get(id)?.nombre || `Materia ${id}`;
-      if (historial.aprobadas.includes(id)) cumplidas.push(`${name} (Aprobada)`);
-      else if (historial.regularizadas.includes(id)) cumplidas.push(`${name} (Regular)`);
-    });
-    materia.correlativasAprob.forEach((id) => {
-      const name = materiaById.get(id)?.nombre || `Materia ${id}`;
-      if (historial.aprobadas.includes(id)) cumplidas.push(`${name} (Aprobada)`);
-    });
+				const seleccionadasMaterias = materias.filter((x) =>
+					seleccionadas.includes(x.id),
+				);
+				for (const seleccionada of seleccionadasMaterias) {
+					if (
+						seleccionada.horarios.length === 0 ||
+						materia.horarios.length === 0
+					)
+						continue;
+					if (
+						!cuatrimestreCompatible(
+							materia.cuatrimestre,
+							seleccionada.cuatrimestre,
+						)
+					)
+						continue;
+					if (hayChoque(materia.horarios, seleccionada.horarios)) {
+						return {
+							...materia,
+							status: "bloqueada",
+							motivos: [`Superposición horaria con ${seleccionada.nombre}`],
+							tipoBloqueo: "choque",
+							faltantesRegular: [],
+							faltantesAprob: [],
+						};
+					}
+				}
 
-    return {
-      ...materia,
-      status: "habilitada",
-      motivos: cumplidas,
-      faltantesRegular: [],
-      faltantesAprob: [],
-    };
-  }), [materias, historial.aprobadas, historial.regularizadas, historial.inscriptasActuales, seleccionadas, periodo, inscripcionesConHorario, materiaById]);  // eslint-disable-line react-hooks/exhaustive-deps
+				const cumplidas: string[] = [];
+				materia.correlativasRegular.forEach((id) => {
+					const name = materiaById.get(id)?.nombre || `Materia ${id}`;
+					if (historial.aprobadas.includes(id))
+						cumplidas.push(`${name} (Aprobada)`);
+					else if (historial.regularizadas.includes(id))
+						cumplidas.push(`${name} (Regular)`);
+				});
+				materia.correlativasAprob.forEach((id) => {
+					const name = materiaById.get(id)?.nombre || `Materia ${id}`;
+					if (historial.aprobadas.includes(id))
+						cumplidas.push(`${name} (Aprobada)`);
+				});
 
-  const materiasHabilitadas = materiasEvaluadas.filter((m) => m.status === "habilitada");
-  const materiasBloqueadas = materiasEvaluadas.filter((m) => m.status === "bloqueada");
-  const materiasAprobadas = materiasEvaluadas.filter((m) => m.status === "aprobada");
-  const materiasCondicionales = materiasEvaluadas.filter((m) => m.status === "condicional_residencia");
+				return {
+					...materia,
+					status: "habilitada",
+					motivos: cumplidas,
+					faltantesRegular: [],
+					faltantesAprob: [],
+				};
+			}),
+		[
+			materias,
+			historial.aprobadas,
+			historial.regularizadas,
+			historial.inscriptasActuales,
+			seleccionadas,
+			periodo,
+			inscripcionesConHorario,
+			materiaById,
+		],
+	);  
 
-  const habilitadasFiltradas = materiasHabilitadas.filter(matchesFilters);
-  const bloqueadasFiltradas = materiasBloqueadas.filter(matchesFilters);
-  const aprobadasFiltradas = materiasAprobadas.filter(matchesFilters);
+	const materiasHabilitadas = materiasEvaluadas.filter(
+		(m) => m.status === "habilitada",
+	);
+	const materiasBloqueadas = materiasEvaluadas.filter(
+		(m) => m.status === "bloqueada",
+	);
+	const materiasAprobadas = materiasEvaluadas.filter(
+		(m) => m.status === "aprobada",
+	);
+	const materiasCondicionales = materiasEvaluadas.filter(
+		(m) => m.status === "condicional_residencia",
+	);
 
-  const habilitadasPorAnio = useMemo(() => {
-    const groups = new Map<number, MateriaEvaluada[]>();
-    habilitadasFiltradas.forEach((materia) => {
-      if (!groups.has(materia.anio)) groups.set(materia.anio, []);
-      groups.get(materia.anio)!.push(materia);
-    });
-    return Array.from(groups.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([anio, items]) => ({ anio, items }));
-  }, [habilitadasFiltradas]);
+	const habilitadasFiltradas = materiasHabilitadas.filter(matchesFilters);
+	const bloqueadasFiltradas = materiasBloqueadas.filter(matchesFilters);
+	const aprobadasFiltradas = materiasAprobadas.filter(matchesFilters);
 
-  const bloqueadasPorTipo = bloqueadasFiltradas.reduce<Record<TipoBloqueo, MateriaEvaluada[]>>((acc, materia) => {
-    const tipo = materia.tipoBloqueo ?? "otro";
-    if (!acc[tipo]) acc[tipo] = [];
-    acc[tipo].push(materia);
-    return acc;
-  }, { correlativas: [], periodo: [], choque: [], inscripta: [], otro: [], condicional_residencia: [] });
+	const habilitadasPorAnio = useMemo(() => {
+		const groups = new Map<number, MateriaEvaluada[]>();
+		habilitadasFiltradas.forEach((materia) => {
+			if (!groups.has(materia.anio)) groups.set(materia.anio, []);
+			groups.get(materia.anio)!.push(materia);
+		});
+		return Array.from(groups.entries())
+			.sort((a, b) => a[0] - b[0])
+			.map(([anio, items]) => ({ anio, items }));
+	}, [habilitadasFiltradas]);
 
-  const inscriptasDetalle = (historial.inscriptasActuales || [])
-    .map((id) => {
-      const materia = materiaById.get(id);
-      if (!materia) return null;
-      return {
-        materia,
-        inscripcion: inscripcionPorMateria.get(id) || null,
-      };
-    })
-    .filter((item): item is { materia: Materia; inscripcion: MateriaInscriptaItemDTO | null } => Boolean(item))
-    .filter(({ materia }) => matchesFilters(materia));
+	const bloqueadasPorTipo = bloqueadasFiltradas.reduce<
+		Record<TipoBloqueo, MateriaEvaluada[]>
+	>(
+		(acc, materia) => {
+			const tipo = materia.tipoBloqueo ?? "otro";
+			if (!acc[tipo]) acc[tipo] = [];
+			acc[tipo].push(materia);
+			return acc;
+		},
+		{
+			correlativas: [],
+			periodo: [],
+			choque: [],
+			inscripta: [],
+			otro: [],
+			condicional_residencia: [],
+		},
+	);
 
-  const profesoradoNombre = useMemo(() => {
-    if (selectedCarreraId) {
-      const carrera = carrerasDisponibles.find((c) => String(c.profesorado_id) === selectedCarreraId);
-      if (carrera) return carrera.nombre;
-    }
-    if (materias.length) {
-      const withNombre = materias.find((m) => m.profesorado);
-      if (withNombre?.profesorado) return withNombre.profesorado;
-    }
-    if (carrerasDisponibles.length === 1) {
-      return carrerasDisponibles[0].nombre;
-    }
-    return "Profesorado";
-  }, [selectedCarreraId, materias, carrerasDisponibles]);
+	const inscriptasDetalle = (historial.inscriptasActuales || [])
+		.map((id) => {
+			const materia = materiaById.get(id);
+			if (!materia) return null;
+			return {
+				materia,
+				inscripcion: inscripcionPorMateria.get(id) || null,
+			};
+		})
+		.filter(
+			(
+				item,
+			): item is {
+				materia: Materia;
+				inscripcion: MateriaInscriptaItemDTO | null;
+			} => Boolean(item),
+		)
+		.filter(({ materia }) => matchesFilters(materia));
 
-  const periodoLabel = ventanaActiva
-    ? ventana?.periodo === "2C"
-      ? "2º Cuatrimestre"
-      : "1º Cuatrimestre + Anuales"
-    : "Sin ventana activa (se muestran todas las materias habilitadas por correlatividad)";
+	const profesoradoNombre = useMemo(() => {
+		if (selectedCarreraId) {
+			const carrera = carrerasDisponibles.find(
+				(c) => String(c.profesorado_id) === selectedCarreraId,
+			);
+			if (carrera) return carrera.nombre;
+		}
+		if (materias.length) {
+			const withNombre = materias.find((m) => m.profesorado);
+			if (withNombre?.profesorado) return withNombre.profesorado;
+		}
+		if (carrerasDisponibles.length === 1) {
+			return carrerasDisponibles[0].nombre;
+		}
+		return "Profesorado";
+	}, [selectedCarreraId, materias, carrerasDisponibles]);
 
-  const handleInscribir = (materiaId: number) => {
-    if (!puedeInscribirse) {
-      setErr("No hay una ventana de inscripción habilitada.");
-      return;
-    }
-    if (mInscribir.isPending) return;
-    setMateriaConfirmId(materiaId);
-    setConfirmInscripcionOpen(true);
-  };
+	const periodoLabel = ventanaActiva
+		? ventana?.periodo === "2C"
+			? "2º Cuatrimestre"
+			: "1º Cuatrimestre + Anuales"
+		: "Sin ventana activa (se muestran todas las materias habilitadas por correlatividad)";
 
-  const confirmInscripcion = () => {
-    if (materiaConfirmId === null || mInscribir.isPending) return;
-    mInscribir.mutate(materiaConfirmId, {
-      onSettled: () => {
-        setConfirmInscripcionOpen(false);
-        setMateriaConfirmId(null);
-      },
-    });
-  };
+	const handleInscribir = (materiaId: number) => {
+		if (!puedeInscribirse) {
+			setErr("No hay una ventana de inscripción habilitada.");
+			return;
+		}
+		if (mInscribir.isPending) return;
+		setMateriaConfirmId(materiaId);
+		setConfirmInscripcionOpen(true);
+	};
 
-  const cancelInscripcionConfirm = () => {
-    if (mInscribir.isPending) return;
-    setConfirmInscripcionOpen(false);
-    setMateriaConfirmId(null);
-  };
+	const confirmInscripcion = () => {
+		if (materiaConfirmId === null || mInscribir.isPending) return;
+		mInscribir.mutate(materiaConfirmId, {
+			onSettled: () => {
+				setConfirmInscripcionOpen(false);
+				setMateriaConfirmId(null);
+			},
+		});
+	};
 
-  const handleCancelar = (materiaId: number, inscripcionId?: number | null) => {
-    if (!ventanaActiva || !inscripcionId) return;
-    if (mCancelar.isPending && cancelarVars?.inscripcionId === inscripcionId) return;
-    mCancelar.mutate({ inscripcionId, materiaId });
-  };
+	const cancelInscripcionConfirm = () => {
+		if (mInscribir.isPending) return;
+		setConfirmInscripcionOpen(false);
+		setMateriaConfirmId(null);
+	};
 
-  const loadingEstudiante =
-    shouldFetchInscriptas && (carrerasQLoading || historialQ.isLoading || materiasQ.isLoading || inscripcionesQ.isLoading);
+	const handleCancelar = (materiaId: number, inscripcionId?: number | null) => {
+		if (!ventanaActiva || !inscripcionId) return;
+		if (mCancelar.isPending && cancelarVars?.inscripcionId === inscripcionId)
+			return;
+		mCancelar.mutate({ inscripcionId, materiaId });
+	};
 
-  return {
-    // state
-    dniInput,
-    setDniInput,
-    dniFiltro,
-    setDniFiltro,
-    anioFiltro,
-    selectedCarreraId,
-    selectedPlanId,
-    info,
-    err,
-    confirmInscripcionOpen,
-    // computed
-    puedeGestionar,
-    shouldFetchInscriptas,
-    requiereSeleccionEstudiante,
-    carrerasDisponibles,
-    planesDisponibles,
-    aniosDisponibles,
-    ventana,
-    ventanaActiva,
-    puedeInscribirse,
-    periodoLabel,
-    profesoradoNombre,
-    queryError,
-    loadingEstudiante,
-    isVentanaLoading: ventanaQ.isLoading,
-    // evaluated data
-    habilitadasPorAnio,
-    bloqueadasPorTipo,
-    materiasCondicionales,
-    aprobadasFiltradas,
-    inscriptasDetalle,
-    // mutation state
-    mInscribir,
-    pendingMateriaId,
-    mCancelar,
-    cancelarVars,
-    mBaja,
-    // handlers
-    handleAnioChange,
-    handleCarreraChange,
-    handlePlanChange,
-    handleInscribir,
-    confirmInscripcion,
-    cancelInscripcionConfirm,
-    handleCancelar,
-    handleBaja,
-  };
+	const loadingEstudiante =
+		shouldFetchInscriptas &&
+		(carrerasQLoading ||
+			historialQLoading ||
+			materiasQLoading ||
+			inscripcionesQLoading);
+
+	return {
+		// state
+		dniInput,
+		setDniInput,
+		dniFiltro,
+		setDniFiltro,
+		anioFiltro,
+		selectedCarreraId,
+		selectedPlanId,
+		info,
+		err,
+		confirmInscripcionOpen,
+		// computed
+		puedeGestionar,
+		shouldFetchInscriptas,
+		requiereSeleccionEstudiante,
+		carrerasDisponibles,
+		planesDisponibles,
+		aniosDisponibles,
+		ventana,
+		ventanaActiva,
+		puedeInscribirse,
+		periodoLabel,
+		profesoradoNombre,
+		queryError,
+		loadingEstudiante,
+		isVentanaLoading: ventanaQLoading,
+		// evaluated data
+		habilitadasPorAnio,
+		bloqueadasPorTipo,
+		materiasCondicionales,
+		aprobadasFiltradas,
+		inscriptasDetalle,
+		// mutation state
+		mInscribir,
+		pendingMateriaId,
+		mCancelar,
+		cancelarVars,
+		mBaja,
+		// handlers
+		handleAnioChange,
+		handleCarreraChange,
+		handlePlanChange,
+		handleInscribir,
+		confirmInscripcion,
+		cancelInscripcionConfirm,
+		handleCancelar,
+		handleBaja,
+	};
 };

@@ -1,256 +1,363 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
-import { EstudianteAdminDetailDTO, fetchAniosIngreso } from "@/api/estudiantes";
-import { DetailFormValues, DetailDocumentacionForm, EstadoLegajo, normalizeDoc } from "../types";
+import {
+	type EstudianteAdminDetailDTO,
+	fetchAniosIngreso,
+} from "@/api/estudiantes";
+import {
+	type DetailDocumentacionForm,
+	type DetailFormValues,
+	type EstadoLegajo,
+	normalizeDoc,
+} from "../types";
 
 export function useEstudianteDetailForm() {
-  const form = useForm<DetailFormValues>({
-    defaultValues: {
-      dni: "",
-      apellido: "",
-      nombre: "",
-      telefono: "",
-      domicilio: "",
-      estado_legajo: "PEN",
-      must_change_password: false,
-      activo: true,
-      fecha_nacimiento: "",
-      anio_ingreso: "",
-      genero: "",
-      observaciones: "",
-      cuil: "",
-      documentacion: normalizeDoc(),
-      curso_introductorio_aprobado: false,
-      libreta_entregada: false,
-      nacionalidad: "",
-      estado_civil: "",
-      localidad_nac: "",
-      provincia_nac: "",
-      pais_nac: "",
-      emergencia_telefono: "",
-      emergencia_parentesco: "",
-      sec_titulo: "",
-      sec_establecimiento: "",
-      sec_fecha_egreso: "",
-      sec_localidad: "",
-      sec_provincia: "",
-      sec_pais: "",
-      sup1_titulo: "",
-      sup1_establecimiento: "",
-      sup1_fecha_egreso: "",
-      sup1_localidad: "",
-      sup1_provincia: "",
-      sup1_pais: "",
-      cud_informado: false,
-      condicion_salud_informada: false,
-      condicion_salud_detalle: "",
-      trabaja: false,
-      empleador: "",
-      horario_trabajo: "",
-      domicilio_trabajo: "",
-      email: "",
-    },
-  });
+	const form = useForm<DetailFormValues>({
+		defaultValues: {
+			dni: "",
+			apellido: "",
+			nombre: "",
+			telefono: "",
+			domicilio: "",
+			estado_legajo: "PEN",
+			must_change_password: false,
+			activo: true,
+			fecha_nacimiento: "",
+			anio_ingreso: "",
+			genero: "",
+			observaciones: "",
+			cuil: "",
+			documentacion: normalizeDoc(),
+			curso_introductorio_aprobado: false,
+			libreta_entregada: false,
+			nacionalidad: "",
+			estado_civil: "",
+			localidad_nac: "",
+			provincia_nac: "",
+			pais_nac: "",
+			emergencia_telefono: "",
+			emergencia_parentesco: "",
+			sec_titulo: "",
+			sec_establecimiento: "",
+			sec_fecha_egreso: "",
+			sec_localidad: "",
+			sec_provincia: "",
+			sec_pais: "",
+			sup1_titulo: "",
+			sup1_establecimiento: "",
+			sup1_fecha_egreso: "",
+			sup1_localidad: "",
+			sup1_provincia: "",
+			sup1_pais: "",
+			cud_informado: false,
+			condicion_salud_informada: false,
+			condicion_salud_detalle: "",
+			trabaja: false,
+			empleador: "",
+			horario_trabajo: "",
+			domicilio_trabajo: "",
+			email: "",
+		},
+	});
 
-  return form;
+	return form;
 }
 
 export function useAnioIngresoOptions(carreraId?: number | "") {
-  const { data } = useQuery({
-    queryKey: ["anios-ingreso", carreraId],
-    queryFn: () => fetchAniosIngreso(carreraId),
-    staleTime: 1000 * 60 * 60, // 1 hora
-  });
+	const { data } = useQuery({
+		queryKey: ["anios-ingreso", carreraId],
+		queryFn: () => fetchAniosIngreso(carreraId),
+		staleTime: 1000 * 60 * 60, // 1 hora
+	});
 
-  return useMemo(() => {
-    const current = new Date().getFullYear();
-    const MIN_YEAR = 2010;
-    const apiMin = Array.isArray(data) && data.length > 0 ? Math.min(...data) : current;
-    const start = Math.min(apiMin, MIN_YEAR);
-    const values: string[] = [];
-    for (let year = current; year >= start; year -= 1) {
-      values.push(String(year));
-    }
-    return values;
-  }, [data]);
+	return useMemo(() => {
+		const current = new Date().getFullYear();
+		const MIN_YEAR = 2010;
+		const apiMin =
+			Array.isArray(data) && data.length > 0 ? Math.min(...data) : current;
+		const start = Math.min(apiMin, MIN_YEAR);
+		const values: string[] = [];
+		for (let year = current; year >= start; year -= 1) {
+			values.push(String(year));
+		}
+		return values;
+	}, [data]);
 }
 
 export function useDocumentacionSideEffects(
-  docValues: DetailDocumentacionForm,
-  setValue: ReturnType<typeof useForm<DetailFormValues>>["setValue"],
-  getValues: ReturnType<typeof useForm<DetailFormValues>>["getValues"],
+	docValues: DetailDocumentacionForm,
+	setValue: ReturnType<typeof useForm<DetailFormValues>>["setValue"],
+	getValues: ReturnType<typeof useForm<DetailFormValues>>["getValues"],
 ) {
-  const mainDocKeys: Array<keyof DetailDocumentacionForm> = [
-    "titulo_secundario_legalizado",
-    "certificado_titulo_en_tramite",
-    "analitico_legalizado",
-  ];
+	const mainDocKeys: Array<keyof DetailDocumentacionForm> = [
+		"titulo_secundario_legalizado",
+		"certificado_titulo_en_tramite",
+		"analitico_legalizado",
+	];
 
-  const anyMainSelected = docValues.es_certificacion_docente
-    ? false
-    : mainDocKeys.some((key) => Boolean(docValues[key]));
+	const anyMainSelected = docValues.es_certificacion_docente
+		? false
+		: mainDocKeys.some((key) => Boolean(docValues[key]));
 
-  useEffect(() => {
-    if (!docValues.es_certificacion_docente) {
-      if (docValues.titulo_terciario_univ) {
-        setValue("documentacion.titulo_terciario_univ" as const, false, { shouldDirty: true });
-      }
-      if (docValues.incumbencia) {
-        setValue("documentacion.incumbencia" as const, false, { shouldDirty: true });
-      }
-    } else {
-      if (docValues.certificado_alumno_regular_sec) {
-        setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
-      }
-      if (docValues.adeuda_materias) {
-        setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
-        setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
-        setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
-      }
-    }
-  }, [
-    docValues.es_certificacion_docente,
-    docValues.titulo_terciario_univ,
-    docValues.incumbencia,
-    docValues.certificado_alumno_regular_sec,
-    docValues.adeuda_materias,
-    setValue,
-  ]);
+	useEffect(() => {
+		if (!docValues.es_certificacion_docente) {
+			if (docValues.titulo_terciario_univ) {
+				setValue("documentacion.titulo_terciario_univ" as const, false, {
+					shouldDirty: true,
+				});
+			}
+			if (docValues.incumbencia) {
+				setValue("documentacion.incumbencia" as const, false, {
+					shouldDirty: true,
+				});
+			}
+		} else {
+			if (docValues.certificado_alumno_regular_sec) {
+				setValue(
+					"documentacion.certificado_alumno_regular_sec" as const,
+					false,
+					{ shouldDirty: true },
+				);
+			}
+			if (docValues.adeuda_materias) {
+				setValue("documentacion.adeuda_materias" as const, false, {
+					shouldDirty: true,
+				});
+				setValue("documentacion.adeuda_materias_detalle" as const, "", {
+					shouldDirty: true,
+				});
+				setValue("documentacion.escuela_secundaria" as const, "", {
+					shouldDirty: true,
+				});
+			}
+		}
+	}, [
+		docValues.es_certificacion_docente,
+		docValues.titulo_terciario_univ,
+		docValues.incumbencia,
+		docValues.certificado_alumno_regular_sec,
+		docValues.adeuda_materias,
+		setValue,
+	]);
 
-  useEffect(() => {
-    if (!docValues) return;
+	useEffect(() => {
+		if (!docValues) return;
 
-    const docs_base = [
-      docValues.dni_legalizado,
-      docValues.certificado_salud,
-      docValues.fotos_4x4,
-      docValues.folios_oficio,
-    ];
+		const docs_base = [
+			docValues.dni_legalizado,
+			docValues.certificado_salud,
+			docValues.fotos_4x4,
+			docValues.folios_oficio,
+		];
 
-    let isComplete = false;
+		let isComplete = false;
 
-    if (docValues.es_certificacion_docente) {
-      isComplete = docs_base.every(Boolean) && docValues.titulo_terciario_univ && docValues.incumbencia;
-    } else {
-      const tituloSecOk = Boolean(docValues.titulo_secundario_legalizado);
-      const art7Ok = Boolean(docValues.articulo_7);
+		if (docValues.es_certificacion_docente) {
+			isComplete =
+				docs_base.every(Boolean) &&
+				docValues.titulo_terciario_univ &&
+				docValues.incumbencia;
+		} else {
+			const tituloSecOk = Boolean(docValues.titulo_secundario_legalizado);
+			const art7Ok = Boolean(docValues.articulo_7);
 
-      isComplete = docs_base.every(Boolean) && (tituloSecOk || art7Ok);
-    }
+			isComplete = docs_base.every(Boolean) && (tituloSecOk || art7Ok);
+		}
 
-    const nextEstado: EstadoLegajo = isComplete ? "COM" : "INC";
-    const currentEstado = getValues("estado_legajo");
+		const nextEstado: EstadoLegajo = isComplete ? "COM" : "INC";
+		const currentEstado = getValues("estado_legajo");
 
-    // Solo actualizar si hay una diferencia real. Comparamos como strings para evitar fallos del compilador TS.
-    if (String(nextEstado) !== String(currentEstado)) {
-      setValue("estado_legajo", nextEstado, { shouldDirty: true, shouldValidate: true });
-    }
-  }, [JSON.stringify(docValues), setValue, getValues]);  // eslint-disable-line react-hooks/exhaustive-deps
+		// Solo actualizar si hay una diferencia real. Comparamos como strings para evitar fallos del compilador TS.
+		if (String(nextEstado) !== String(currentEstado)) {
+			setValue("estado_legajo", nextEstado, {
+				shouldDirty: true,
+				shouldValidate: true,
+			});
+		}
+	}, [JSON.stringify(docValues), setValue, getValues]);  
 
-  const handleMainDocChange = (target: typeof mainDocKeys[number]) => (_: unknown, checked: boolean) => {
-    mainDocKeys.forEach((key) => {
-      setValue(`documentacion.${key}` as const, key === target ? checked : false, { shouldDirty: true });
-    });
-    if (checked) {
-      setValue("documentacion.certificado_alumno_regular_sec" as const, false, { shouldDirty: true });
-      setValue("documentacion.adeuda_materias" as const, false, { shouldDirty: true });
-      setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
-      setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
-    }
-  };
+	const handleMainDocChange =
+		(target: (typeof mainDocKeys)[number]) =>
+		(_: unknown, checked: boolean) => {
+			mainDocKeys.forEach((key) => {
+				setValue(
+					`documentacion.${key}` as const,
+					key === target ? checked : false,
+					{ shouldDirty: true },
+				);
+			});
+			if (checked) {
+				setValue(
+					"documentacion.certificado_alumno_regular_sec" as const,
+					false,
+					{ shouldDirty: true },
+				);
+				setValue("documentacion.adeuda_materias" as const, false, {
+					shouldDirty: true,
+				});
+				setValue("documentacion.adeuda_materias_detalle" as const, "", {
+					shouldDirty: true,
+				});
+				setValue("documentacion.escuela_secundaria" as const, "", {
+					shouldDirty: true,
+				});
+			}
+		};
 
-  const handleAdeudaChange = (_: unknown, checked: boolean) => {
-    setValue("documentacion.adeuda_materias" as const, checked, { shouldDirty: true });
-    if (!checked) {
-      setValue("documentacion.adeuda_materias_detalle" as const, "", { shouldDirty: true });
-      setValue("documentacion.escuela_secundaria" as const, "", { shouldDirty: true });
-    }
-  };
+	const handleAdeudaChange = (_: unknown, checked: boolean) => {
+		setValue("documentacion.adeuda_materias" as const, checked, {
+			shouldDirty: true,
+		});
+		if (!checked) {
+			setValue("documentacion.adeuda_materias_detalle" as const, "", {
+				shouldDirty: true,
+			});
+			setValue("documentacion.escuela_secundaria" as const, "", {
+				shouldDirty: true,
+			});
+		}
+	};
 
-  const handleEstudianteRegularChange = (_: unknown, checked: boolean) => {
-    setValue("documentacion.certificado_alumno_regular_sec" as const, checked, { shouldDirty: true });
-  };
+	const handleEstudianteRegularChange = (_: unknown, checked: boolean) => {
+		setValue("documentacion.certificado_alumno_regular_sec" as const, checked, {
+			shouldDirty: true,
+		});
+	};
 
-  return { anyMainSelected, handleMainDocChange, handleAdeudaChange, handleEstudianteRegularChange };
+	return {
+		anyMainSelected,
+		handleMainDocChange,
+		handleAdeudaChange,
+		handleEstudianteRegularChange,
+	};
 }
 
 export function usePopulateFormFromDetail(
-  detailData: EstudianteAdminDetailDTO | undefined,
-  reset: ReturnType<typeof useForm<DetailFormValues>>["reset"],
+	detailData: EstudianteAdminDetailDTO | undefined,
+	reset: ReturnType<typeof useForm<DetailFormValues>>["reset"],
 ) {
-  useEffect(() => {
-    if (detailData) {
-      const detail = detailData;
-      const extra = detail.datos_extra ?? {};
-      const toStringOrEmpty = (value: unknown) => (value === null || value === undefined ? "" : String(value));
-      // La documentación ahora viene por carrera. Usamos la primera carrera como referencia inicial.
-      const firstCarrera = detail.carreras_detalle?.[0];
-      const docSource = firstCarrera ?? null;
-      const firstProfId = firstCarrera?.profesorado_id ?? null;
+	useEffect(() => {
+		if (detailData) {
+			const detail = detailData;
+			const extra = detail.datos_extra ?? {};
+			const toStringOrEmpty = (value: unknown) =>
+				value === null || value === undefined ? "" : String(value);
+			// La documentación ahora viene por carrera. Usamos la primera carrera como referencia inicial.
+			const firstCarrera = detail.carreras_detalle?.[0];
+			const docSource = firstCarrera ?? null;
+			const firstProfId = firstCarrera?.profesorado_id ?? null;
 
-      const formValues: DetailFormValues = {
-        dni: detail.dni,
-        apellido: detail.apellido ?? "",
-        nombre: detail.nombre ?? "",
-        telefono: detail.telefono ?? "",
-        domicilio: detail.domicilio ?? "",
-        estado_legajo: ((firstCarrera?.estado_legajo ?? detail.estado_legajo) as EstadoLegajo) ?? "PEN",
-        must_change_password: false, // El usuario solicitó mantener esto siempre destildado por defecto al abrir.
-        activo: detail.activo !== undefined ? detail.activo : true,
-        fecha_nacimiento: detail.fecha_nacimiento ? detail.fecha_nacimiento.slice(0, 10) : "",
-        anio_ingreso: toStringOrEmpty(extra.anio_ingreso),
-        genero: toStringOrEmpty(extra.genero),
-        observaciones: toStringOrEmpty(extra.observaciones),
-        cuil: toStringOrEmpty(extra.cuil),
-        documentacion: normalizeDoc(docSource?.documentacion ?? detail.documentacion),
-        curso_introductorio_aprobado: Boolean(docSource?.curso_introductorio_aprobado ?? detail.curso_introductorio_aprobado),
-        libreta_entregada: Boolean(docSource?.libreta_entregada ?? detail.libreta_entregada),
-        legajo_profesorado_id: firstProfId,
+			const formValues: DetailFormValues = {
+				dni: detail.dni,
+				apellido: detail.apellido ?? "",
+				nombre: detail.nombre ?? "",
+				telefono: detail.telefono ?? "",
+				domicilio: detail.domicilio ?? "",
+				estado_legajo:
+					((firstCarrera?.estado_legajo ??
+						detail.estado_legajo) as EstadoLegajo) ?? "PEN",
+				must_change_password: false, // El usuario solicitó mantener esto siempre destildado por defecto al abrir.
+				activo: detail.activo !== undefined ? detail.activo : true,
+				fecha_nacimiento: detail.fecha_nacimiento
+					? detail.fecha_nacimiento.slice(0, 10)
+					: "",
+				anio_ingreso: toStringOrEmpty(extra.anio_ingreso),
+				genero: toStringOrEmpty(extra.genero),
+				observaciones: toStringOrEmpty(extra.observaciones),
+				cuil: toStringOrEmpty(extra.cuil),
+				documentacion: normalizeDoc(
+					docSource?.documentacion ?? detail.documentacion,
+				),
+				curso_introductorio_aprobado: Boolean(
+					docSource?.curso_introductorio_aprobado ??
+						detail.curso_introductorio_aprobado,
+				),
+				libreta_entregada: Boolean(
+					docSource?.libreta_entregada ?? detail.libreta_entregada,
+				),
+				legajo_profesorado_id: firstProfId,
 
-        // Campos directos (desde columnas de BD vía API tipada), con fallback a datos_extra
-        nacionalidad: toStringOrEmpty(detail.nacionalidad ?? extra.nacionalidad),
-        estado_civil: toStringOrEmpty(detail.estado_civil ?? extra.estado_civil),
-        localidad_nac: toStringOrEmpty(detail.localidad_nac ?? extra.localidad_nac),
-        provincia_nac: toStringOrEmpty(detail.provincia_nac ?? extra.provincia_nac),
-        pais_nac: toStringOrEmpty(detail.pais_nac ?? extra.pais_nac),
-        emergencia_telefono: toStringOrEmpty(detail.emergencia_telefono ?? extra.emergencia_telefono),
-        emergencia_parentesco: toStringOrEmpty(detail.emergencia_parentesco ?? extra.emergencia_parentesco),
-        sec_titulo: toStringOrEmpty(detail.sec_titulo ?? extra.sec_titulo),
-        sec_establecimiento: toStringOrEmpty(detail.sec_establecimiento ?? extra.sec_establecimiento),
-        sec_fecha_egreso: (detail.sec_fecha_egreso ?? extra.sec_fecha_egreso)
-          ? String(detail.sec_fecha_egreso ?? extra.sec_fecha_egreso).slice(0, 10)
-          : "",
-        sec_localidad: toStringOrEmpty(detail.sec_localidad ?? extra.sec_localidad),
-        sec_provincia: toStringOrEmpty(detail.sec_provincia ?? extra.sec_provincia),
-        sec_pais: toStringOrEmpty(detail.sec_pais ?? extra.sec_pais),
-        sup1_titulo: toStringOrEmpty(detail.sup1_titulo ?? extra.sup1_titulo),
-        sup1_establecimiento: toStringOrEmpty(detail.sup1_establecimiento ?? extra.sup1_establecimiento),
-        sup1_fecha_egreso: (detail.sup1_fecha_egreso ?? extra.sup1_fecha_egreso)
-          ? String(detail.sup1_fecha_egreso ?? extra.sup1_fecha_egreso).slice(0, 10)
-          : "",
-        sup1_localidad: toStringOrEmpty(detail.sup1_localidad ?? extra.sup1_localidad),
-        sup1_provincia: toStringOrEmpty(detail.sup1_provincia ?? extra.sup1_provincia),
-        sup1_pais: toStringOrEmpty(detail.sup1_pais ?? extra.sup1_pais),
-        cud_informado: Boolean(detail.cud_informado ?? extra.cud_informado),
-        condicion_salud_informada: Boolean(detail.condicion_salud_informada ?? extra.condicion_salud_informada),
-        condicion_salud_detalle: toStringOrEmpty(detail.condicion_salud_detalle ?? extra.condicion_salud_detalle),
-        trabaja: Boolean(detail.trabaja ?? extra.trabaja),
-        empleador: toStringOrEmpty(detail.empleador ?? extra.empleador),
-        horario_trabajo: toStringOrEmpty(detail.horario_trabajo ?? extra.horario_trabajo),
-        domicilio_trabajo: toStringOrEmpty(detail.domicilio_trabajo ?? extra.domicilio_trabajo),
-        email: toStringOrEmpty(detail.email),
-        carreras_situacion: detail.carreras_detalle?.map((c) => ({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          profesorado_id: (c as any).profesorado_id || 0,
-          nombre: c.nombre,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          estado_academico: c.estado_academico as any,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          condicion: (c as any).condicion ?? "",
-        })),
-      };
-      reset(formValues);
-    }
-  }, [detailData, reset]);
+				// Campos directos (desde columnas de BD vía API tipada), con fallback a datos_extra
+				nacionalidad: toStringOrEmpty(
+					detail.nacionalidad ?? extra.nacionalidad,
+				),
+				estado_civil: toStringOrEmpty(
+					detail.estado_civil ?? extra.estado_civil,
+				),
+				localidad_nac: toStringOrEmpty(
+					detail.localidad_nac ?? extra.localidad_nac,
+				),
+				provincia_nac: toStringOrEmpty(
+					detail.provincia_nac ?? extra.provincia_nac,
+				),
+				pais_nac: toStringOrEmpty(detail.pais_nac ?? extra.pais_nac),
+				emergencia_telefono: toStringOrEmpty(
+					detail.emergencia_telefono ?? extra.emergencia_telefono,
+				),
+				emergencia_parentesco: toStringOrEmpty(
+					detail.emergencia_parentesco ?? extra.emergencia_parentesco,
+				),
+				sec_titulo: toStringOrEmpty(detail.sec_titulo ?? extra.sec_titulo),
+				sec_establecimiento: toStringOrEmpty(
+					detail.sec_establecimiento ?? extra.sec_establecimiento,
+				),
+				sec_fecha_egreso:
+					(detail.sec_fecha_egreso ?? extra.sec_fecha_egreso)
+						? String(detail.sec_fecha_egreso ?? extra.sec_fecha_egreso).slice(
+								0,
+								10,
+							)
+						: "",
+				sec_localidad: toStringOrEmpty(
+					detail.sec_localidad ?? extra.sec_localidad,
+				),
+				sec_provincia: toStringOrEmpty(
+					detail.sec_provincia ?? extra.sec_provincia,
+				),
+				sec_pais: toStringOrEmpty(detail.sec_pais ?? extra.sec_pais),
+				sup1_titulo: toStringOrEmpty(detail.sup1_titulo ?? extra.sup1_titulo),
+				sup1_establecimiento: toStringOrEmpty(
+					detail.sup1_establecimiento ?? extra.sup1_establecimiento,
+				),
+				sup1_fecha_egreso:
+					(detail.sup1_fecha_egreso ?? extra.sup1_fecha_egreso)
+						? String(detail.sup1_fecha_egreso ?? extra.sup1_fecha_egreso).slice(
+								0,
+								10,
+							)
+						: "",
+				sup1_localidad: toStringOrEmpty(
+					detail.sup1_localidad ?? extra.sup1_localidad,
+				),
+				sup1_provincia: toStringOrEmpty(
+					detail.sup1_provincia ?? extra.sup1_provincia,
+				),
+				sup1_pais: toStringOrEmpty(detail.sup1_pais ?? extra.sup1_pais),
+				cud_informado: Boolean(detail.cud_informado ?? extra.cud_informado),
+				condicion_salud_informada: Boolean(
+					detail.condicion_salud_informada ?? extra.condicion_salud_informada,
+				),
+				condicion_salud_detalle: toStringOrEmpty(
+					detail.condicion_salud_detalle ?? extra.condicion_salud_detalle,
+				),
+				trabaja: Boolean(detail.trabaja ?? extra.trabaja),
+				empleador: toStringOrEmpty(detail.empleador ?? extra.empleador),
+				horario_trabajo: toStringOrEmpty(
+					detail.horario_trabajo ?? extra.horario_trabajo,
+				),
+				domicilio_trabajo: toStringOrEmpty(
+					detail.domicilio_trabajo ?? extra.domicilio_trabajo,
+				),
+				email: toStringOrEmpty(detail.email),
+				carreras_situacion: detail.carreras_detalle?.map((c) => ({
+										profesorado_id: (c as any).profesorado_id || 0,
+					nombre: c.nombre,
+										estado_academico: c.estado_academico as any,
+										condicion: (c as any).condicion ?? "",
+				})),
+			};
+			reset(formValues);
+		}
+	}, [detailData, reset]);
 }

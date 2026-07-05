@@ -1,34 +1,32 @@
-import { ConversationStatus } from "@/api/mensajes";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { SimpleUserDTO } from "@/api/mensajes";
+import { type ConversationStatus, SimpleUserDTO } from "@/api/mensajes";
 
 export interface ConversationFilters {
-  status?: ConversationStatus | "";
-  unreadOnly?: boolean;
-  topicId?: number | "";
-  q?: string;
+	status?: ConversationStatus | "";
+	unreadOnly?: boolean;
+	topicId?: number | "";
+	q?: string;
 }
 
 export interface NewConversationDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (conversationIds: number[]) => void;
+	open: boolean;
+	onClose: () => void;
+	onCreated: (conversationIds: number[]) => void;
 }
 
 export const DEFAULT_FILTERS: ConversationFilters = {
-  status: "open",
-  unreadOnly: false,
-  topicId: "",
-  q: "",
+	status: "open",
+	unreadOnly: false,
+	topicId: "",
+	q: "",
 };
 
 export const ROLE_OPTIONS = [
-  { value: "estudiante", label: "Estudiantes" },
-  /*
+	{ value: "estudiante", label: "Estudiantes" },
+	/*
   { value: "docente", label: "Docentes" },
   */
-  { value: "bedel", label: "Bedeles" },
-  /*
+	{ value: "bedel", label: "Bedeles" },
+	/*
   { value: "tutor", label: "Tutores" },
   { value: "coordinador", label: "Coordinadores" },
   { value: "secretaria", label: "Secretaría" },
@@ -40,7 +38,7 @@ export const ROLE_OPTIONS = [
 ];
 
 export const MASS_ROLE_RULES: Record<string, string[] | null> = {
-  /*
+	/*
   admin: null,
   secretaria: null,
   jefa_aaee: null,
@@ -48,10 +46,10 @@ export const MASS_ROLE_RULES: Record<string, string[] | null> = {
   coordinador: ["estudiante", "docente"],
   tutor: ["estudiante"],
   */
-  bedel: ["estudiante"],
-  /*
+	bedel: ["estudiante"],
+	/*
   preinscripciones: [],
   consulta: [],
   */
-  estudiante: [],
+	estudiante: [],
 };

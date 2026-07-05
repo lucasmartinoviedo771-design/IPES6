@@ -99,6 +99,9 @@ class RegularidadEstudianteOut(Schema):
     situacion: str | None = None
     observaciones: str | None = None
     correlativas_caidas: list[str] = []
+    is_baja: bool = False
+    baja_fecha: str | None = None
+    baja_motivo: str | None = None
     datos: dict = {}
 
 
@@ -180,7 +183,7 @@ def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[Regu
 
     caidas_report = _check_correlativas_caidas(anio_cursada, materia_id=materia_id)
 
-    caidas_map = {}
+    caidas_map: dict[int, list[str]] = {}
     for item in caidas_report:
         est_id = item["estudiante_id"]
         if est_id not in caidas_map:
@@ -196,7 +199,7 @@ def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[Regu
 
         planilla = PlanillaRegularidad.objects.filter(comision_id=comision_id).first()
         if planilla:
-            for f in planilla.filas.all():
+            for f in planilla.filas.all():  # type: ignore[attr-defined]
                 fila_map[f.dni] = f
 
     # Optimizamos la obtención de regularidades (evitar N+1) como fallback
@@ -205,8 +208,8 @@ def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[Regu
 
     reg_map = {}
     for r in regs_qs:
-        if r.inscripcion_id not in reg_map:
-            reg_map[r.inscripcion_id] = r
+        if r.inscripcion_id not in reg_map:  # type: ignore[attr-defined]
+            reg_map[r.inscripcion_id] = r  # type: ignore[attr-defined]
 
     from core.models import InscripcionMateriaEstudiante as IME
 
@@ -216,7 +219,7 @@ def _build_regularidad_estudiantes(inscripciones, comision_id=None) -> list[Regu
         is_baja = insc.estado == IME.Estado.BAJA
 
         if is_baja:
-            alias = "BAJA"
+            alias: str | None = "BAJA"
         else:
             alias = alias_desde_situacion(regularidad.situacion) if regularidad else None
 
@@ -539,6 +542,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
     with transaction.atomic():
         planilla = None
         if not is_virtual:
+            assert comision is not None
             from core.models import PlanillaRegularidad, PlanillaRegularidadFila, RegularidadPlantilla
 
             # Resolver plantilla
@@ -658,7 +662,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
 
                 PlanillaRegularidadFila.objects.create(
                     planilla=planilla,
-                    orden=est_payload.orden,
+                    orden=est_payload.orden,  # type: ignore[attr-defined]
                     estudiante=insc.estudiante,
                     dni=insc.estudiante.dni,
                     apellido_nombre=f"{(insc.estudiante.apellido or '').upper()}, {insc.estudiante.nombre or ''}".strip(
@@ -680,7 +684,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                     "fecha_cierre": fecha_base,
                     "nota_trabajos_practicos": Decimal(str(est_payload.nota_tp))
                     if est_payload.nota_tp is not None
-                    else None,
+                    else None,  # type: ignore[assignment]
                     "nota_final_cursada": est_payload.nota_final,
                     "asistencia_porcentaje": est_payload.asistencia,
                     "excepcion": est_payload.excepcion,

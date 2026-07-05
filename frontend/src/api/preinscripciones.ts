@@ -1,292 +1,368 @@
-import { client } from "@/api/client";
 import dayjs from "dayjs";
+import { client } from "@/api/client";
 import type { PreinscripcionForm } from "@/components/preinscripcion/schema";
 
 export interface ApiResponse<T = unknown> {
-  ok: boolean;
-  message: string;
-  data?: T;
+	ok: boolean;
+	message: string;
+	data?: T;
 }
 
 const d = (s?: string) => (s ? dayjs(s).format("YYYY-MM-DD") : null);
 
-export function mapFormToPayload(v: PreinscripcionForm) {
-  return {
-    carrera_id: v.carrera_id ?? 0,
-    foto_4x4_dataurl: v.foto_dataUrl ?? null,
-    estudiante: {
-      dni: v.dni,
-      nombres: v.nombres,
-      apellido: v.apellido,
-      cuil: v.cuil ?? null,
-      fecha_nacimiento: d(v.fecha_nacimiento) ?? "",
-      email: v.email ?? null,
-      telefono: v.tel_movil ?? null,
-      domicilio: v.domicilio ?? null,
-    },
-    // Datos personales adicionales
-    nacionalidad: v.nacionalidad ?? null,
-    estado_civil: v.estado_civil ?? null,
-    genero: v.genero ?? null,
-    localidad_nac: v.localidad_nac ?? null,
-    provincia_nac: v.provincia_nac ?? null,
-    pais_nac: v.pais_nac ?? null,
-    // Contacto
-    tel_fijo: v.tel_fijo ?? null,
-    emergencia_telefono: v.emergencia_telefono ?? null,
-    emergencia_parentesco: v.emergencia_parentesco ?? null,
-    // Laboral
-    trabaja: !!v.trabaja,
-    empleador: v.empleador ?? null,
-    horario_trabajo: v.horario_trabajo ?? null,
-    domicilio_trabajo: v.domicilio_trabajo ?? null,
-    // Estudios secundarios
-    sec_titulo: v.sec_titulo ?? null,
-    sec_establecimiento: v.sec_establecimiento ?? null,
-    sec_fecha_egreso: d(v.sec_fecha_egreso) ?? null,
-    sec_localidad: v.sec_localidad ?? null,
-    sec_provincia: v.sec_provincia ?? null,
-    sec_pais: v.sec_pais ?? null,
-    // Estudios superiores
-    sup1_titulo: v.sup1_titulo ?? null,
-    sup1_establecimiento: v.sup1_establecimiento ?? null,
-    sup1_fecha_egreso: d(v.sup1_fecha_egreso) ?? null,
-    sup1_localidad: v.sup1_localidad ?? null,
-    sup1_provincia: v.sup1_provincia ?? null,
-    sup1_pais: v.sup1_pais ?? null,
-    // Accesibilidad
-    cud_informado: v.cud_informado ?? false,
-    condicion_salud_informada: v.condicion_salud_informada ?? false,
-    condicion_salud_detalle: v.condicion_salud_detalle ?? null,
-    consentimiento_datos: v.consentimiento_datos ?? false,
-  };
+function mapFormToPayload(v: PreinscripcionForm) {
+	return {
+		carrera_id: v.carrera_id ?? 0,
+		foto_4x4_dataurl: v.foto_dataUrl ?? null,
+		estudiante: {
+			dni: v.dni,
+			nombres: v.nombres,
+			apellido: v.apellido,
+			cuil: v.cuil ?? null,
+			fecha_nacimiento: d(v.fecha_nacimiento) ?? "",
+			email: v.email ?? null,
+			telefono: v.tel_movil ?? null,
+			domicilio: v.domicilio ?? null,
+		},
+		// Datos personales adicionales
+		nacionalidad: v.nacionalidad ?? null,
+		estado_civil: v.estado_civil ?? null,
+		genero: v.genero ?? null,
+		localidad_nac: v.localidad_nac ?? null,
+		provincia_nac: v.provincia_nac ?? null,
+		pais_nac: v.pais_nac ?? null,
+		// Contacto
+		tel_fijo: v.tel_fijo ?? null,
+		emergencia_telefono: v.emergencia_telefono ?? null,
+		emergencia_parentesco: v.emergencia_parentesco ?? null,
+		// Laboral
+		trabaja: !!v.trabaja,
+		empleador: v.empleador ?? null,
+		horario_trabajo: v.horario_trabajo ?? null,
+		domicilio_trabajo: v.domicilio_trabajo ?? null,
+		// Estudios secundarios
+		sec_titulo: v.sec_titulo ?? null,
+		sec_establecimiento: v.sec_establecimiento ?? null,
+		sec_fecha_egreso: d(v.sec_fecha_egreso) ?? null,
+		sec_localidad: v.sec_localidad ?? null,
+		sec_provincia: v.sec_provincia ?? null,
+		sec_pais: v.sec_pais ?? null,
+		// Estudios superiores
+		sup1_titulo: v.sup1_titulo ?? null,
+		sup1_establecimiento: v.sup1_establecimiento ?? null,
+		sup1_fecha_egreso: d(v.sup1_fecha_egreso) ?? null,
+		sup1_localidad: v.sup1_localidad ?? null,
+		sup1_provincia: v.sup1_provincia ?? null,
+		sup1_pais: v.sup1_pais ?? null,
+		// Accesibilidad
+		cud_informado: v.cud_informado ?? false,
+		condicion_salud_informada: v.condicion_salud_informada ?? false,
+		condicion_salud_detalle: v.condicion_salud_detalle ?? null,
+		consentimiento_datos: v.consentimiento_datos ?? false,
+	};
 }
 
-export const crearPreinscripcion = (formData: FormData) =>
-  client.post("/preinscripciones", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+const crearPreinscripcion = (formData: FormData) =>
+	client.post("/preinscripciones", formData, {
+		headers: { "Content-Type": "multipart/form-data" },
+	});
 
-export const obtenerPreinscripcion = (id: number) =>
-  client.get(`/preinscripciones/${id}`).then(r => r.data);
+const obtenerPreinscripcion = (id: number) =>
+	client.get(`/preinscripciones/${id}`).then((r) => r.data);
 
-export const obtenerPorCodigo = (codigo: string) =>
-  client.get(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`).then(r => r.data);
+const obtenerPorCodigo = (codigo: string) =>
+	client
+		.get(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`)
+		.then((r) => r.data);
 
-export const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
-  client.patch(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`, mapFormToPayload(values)).then(r => r.data);
+const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
+	client
+		.patch(
+			`/preinscripciones/by-code/${encodeURIComponent(codigo)}`,
+			mapFormToPayload(values),
+		)
+		.then((r) => r.data);
 
-export const confirmarPreinscripcionById = (id: number, data: Record<string, unknown>) =>
-  client.post(`/preinscripciones/${id}/confirmar`, data).then(r => r.data);
+const confirmarPreinscripcionById = (
+	id: number,
+	data: Record<string, unknown>,
+) => client.post(`/preinscripciones/${id}/confirmar`, data).then((r) => r.data);
 
-export const crearInscripcion = (preId: number, carreraId: number, periodo = "2025") =>
-  client.post(`/inscripciones`, { preinscripcion: preId, carrera: carreraId, periodo }).then(r => r.data);
+const crearInscripcion = (preId: number, carreraId: number, periodo = "2025") =>
+	client
+		.post(`/inscripciones`, {
+			preinscripcion: preId,
+			carrera: carreraId,
+			periodo,
+		})
+		.then((r) => r.data);
 
-export const listarCarreras = () =>
-  client.get(`/carreras/`).then(r => r.data);
+const listarCarreras = () => client.get(`/carreras/`).then((r) => r.data);
 
 export const listarPreinscripciones = (params: {
-  search?: string;
-  limit?: number;
-  offset?: number;
-  include_inactivas?: boolean;
-  profesorado_id?: number;
-  anio?: number;
-  exclude_confirmed?: boolean;
-  fecha_desde?: string;
-  fecha_hasta?: string;
+	search?: string;
+	limit?: number;
+	offset?: number;
+	include_inactivas?: boolean;
+	profesorado_id?: number;
+	anio?: number;
+	exclude_confirmed?: boolean;
+	fecha_desde?: string;
+	fecha_hasta?: string;
 }): Promise<{ count: number; results: PreinscripcionDTO[] }> =>
-  client
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .get<any>("/preinscripciones/", { params })
-    .then((r) => {
-      if (Array.isArray(r.data)) {
-        return { count: r.data.length, results: r.data };
-      }
-      return { count: r.data.count || 0, results: r.data.results || [] };
-    });
+	client
+				.get<any>("/preinscripciones/", { params })
+		.then((r) => {
+			if (Array.isArray(r.data)) {
+				return { count: r.data.length, results: r.data };
+			}
+			return { count: r.data.count || 0, results: r.data.results || [] };
+		});
 
 export const activarPreinscripcion = (id: number) =>
-  client.post(`/preinscripciones/${id}/activar`).then(r => r.data);
+	client.post(`/preinscripciones/${id}/activar`).then((r) => r.data);
 
 // Descarga del comprobante PDF oficial
 export const descargarPdf = (id: number) => {
-  const token = localStorage.getItem("token");
-  return client.get(`/preinscripciones/${id}/pdf`, { 
-    responseType: 'blob',
-    headers: { Authorization: `Bearer ${token}` }
-  }).then(response => {
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Preinscripcion_${id}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  });
+	const token = localStorage.getItem("token");
+	return client
+		.get(`/preinscripciones/${id}/pdf`, {
+			responseType: "blob",
+			headers: { Authorization: `Bearer ${token}` },
+		})
+		.then((response) => {
+			const url = window.URL.createObjectURL(new Blob([response.data]));
+			const link = document.createElement("a");
+			link.href = url;
+			link.setAttribute("download", `Preinscripcion_${id}.pdf`);
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+		});
 };
 
 // Generación de vista previa del PDF (sin guardar)
-export const apiPreviewPdf = (v: PreinscripcionForm) =>
-  client.post("/preinscripciones/preview-pdf/", mapFormToPayload(v), {
-    responseType: "blob",
-  }).then(r => r.data);
+const apiPreviewPdf = (v: PreinscripcionForm) =>
+	client
+		.post("/preinscripciones/preview-pdf/", mapFormToPayload(v), {
+			responseType: "blob",
+		})
+		.then((r) => r.data);
 
 // New types and functions for PreConfirmEditor
 
-export type PreEstado = "borrador" | "enviada" | "observada" | "confirmada" | "rechazada";
+type PreEstado =
+	| "borrador"
+	| "enviada"
+	| "observada"
+	| "confirmada"
+	| "rechazada";
 
 export interface PreinscripcionDTO {
-  id: number;
-  codigo: string;          // PRE-2024-001
-  estado: PreEstado;
-  fecha: string;
-  activa?: boolean;
-  estudiante: {
-    dni: string;
-    nombres?: string;
-    nombre?: string;
-    apellido: string;
-    email: string;
-    telefono?: string;
-    domicilio?: string;
-    fecha_nacimiento?: string;
-    cuil?: string;
-  };
-  carrera: { id: number; nombre: string; es_certificacion_docente?: boolean };
-  anio?: number;
-  datos_extra?: Record<string, unknown>;
-  foto_4x4_dataurl?: string;
+	id: number;
+	codigo: string; // PRE-2024-001
+	estado: PreEstado;
+	fecha: string;
+	activa?: boolean;
+	estudiante: {
+		dni: string;
+		nombres?: string;
+		nombre?: string;
+		apellido: string;
+		email: string;
+		telefono?: string;
+		domicilio?: string;
+		fecha_nacimiento?: string;
+		cuil?: string;
+	};
+	carrera: { id: number; nombre: string; es_certificacion_docente?: boolean };
+	anio?: number;
+	datos_extra?: Record<string, unknown>;
+	foto_4x4_dataurl?: string;
 }
 
 export async function apiGetPreinscripcionByCodigo(codigo: string) {
-  const { data } = await client.get<PreinscripcionDTO>(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`);
-  return data;
+	const { data } = await client.get<PreinscripcionDTO>(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}`,
+	);
+	return data;
 }
 
 export type PreinscripcionUpdatePayload = {
-  carrera_id?: number;
-  estudiante?: {
-    dni: string;
-    nombres: string;
-    apellido: string;
-    cuil?: string | null;
-    fecha_nacimiento?: string | null;
-    email?: string | null;
-    telefono?: string | null;
-    domicilio?: string | null;
-    genero?: string | null;
-  };
-  datos_extra?: Record<string, unknown>;
-  checklist?: ChecklistDTO;
+	carrera_id?: number;
+	estudiante?: {
+		dni: string;
+		nombres: string;
+		apellido: string;
+		cuil?: string | null;
+		fecha_nacimiento?: string | null;
+		email?: string | null;
+		telefono?: string | null;
+		domicilio?: string | null;
+		genero?: string | null;
+	};
+	datos_extra?: Record<string, unknown>;
+	checklist?: ChecklistDTO;
 };
 
-export async function apiUpdatePreinscripcion(codigo: string, payload: PreinscripcionUpdatePayload) {
-  const { data } = await client.put(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`, payload);
-  return data;
+export async function apiUpdatePreinscripcion(
+	codigo: string,
+	payload: PreinscripcionUpdatePayload,
+) {
+	const { data } = await client.put(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}`,
+		payload,
+	);
+	return data;
 }
 
-export async function apiConfirmarPreinscripcion(codigo: string, payload?: Record<string, unknown>) {
-  const { data } = await client.post(`/preinscripciones/by-code/${encodeURIComponent(codigo)}/confirmar`, payload ?? {});
-  return data;
+export async function apiConfirmarPreinscripcion(
+	codigo: string,
+	payload?: Record<string, unknown>,
+) {
+	const { data } = await client.post(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}/confirmar`,
+		payload ?? {},
+	);
+	return data;
 }
 
 export async function listarPreinscripcionesEstudiante(dni: string) {
-  const { data } = await client.get<PreinscripcionDTO[]>(`/preinscripciones/estudiante/${encodeURIComponent(dni)}`);
-  return data;
+	const { data } = await client.get<PreinscripcionDTO[]>(
+		`/preinscripciones/estudiante/${encodeURIComponent(dni)}`,
+	);
+	return data;
 }
 
-export async function agregarCarreraPreinscripcion(codigo: string, carreraId: number, anio?: number) {
-  const payload: { carrera_id: number; anio?: number } = { carrera_id: carreraId };
-  if (typeof anio === "number" && Number.isFinite(anio) && anio > 0) {
-    payload.anio = anio;
-  }
-  const { data } = await client.post<ApiResponse<PreinscripcionDTO>>(
-    `/preinscripciones/by-code/${encodeURIComponent(codigo)}/carreras`,
-    payload,
-  );
-  return data;
+export async function agregarCarreraPreinscripcion(
+	codigo: string,
+	carreraId: number,
+	anio?: number,
+) {
+	const payload: { carrera_id: number; anio?: number } = {
+		carrera_id: carreraId,
+	};
+	if (typeof anio === "number" && Number.isFinite(anio) && anio > 0) {
+		payload.anio = anio;
+	}
+	const { data } = await client.post<ApiResponse<PreinscripcionDTO>>(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}/carreras`,
+		payload,
+	);
+	return data;
 }
 
-export async function apiObservarPreinscripcion(codigo: string, motivo: string) {
-  const { data } = await client.post(`/preinscripciones/by-code/${encodeURIComponent(codigo)}/observar`, { motivo });
-  return data;
+export async function apiObservarPreinscripcion(
+	codigo: string,
+	motivo: string,
+) {
+	const { data } = await client.post(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}/observar`,
+		{ motivo },
+	);
+	return data;
 }
 
-export async function apiRechazarPreinscripcion(codigo: string, motivo: string) {
-  const { data } = await client.post(`/preinscripciones/by-code/${encodeURIComponent(codigo)}/rechazar`, { motivo });
-  return data;
+export async function apiRechazarPreinscripcion(
+	codigo: string,
+	motivo: string,
+) {
+	const { data } = await client.post(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}/rechazar`,
+		{ motivo },
+	);
+	return data;
 }
 
 export async function apiCambiarCarrera(codigo: string, carrera_id: number) {
-  const { data } = await client.post(`/preinscripciones/by-code/${encodeURIComponent(codigo)}/cambiar-carrera`, { carrera_id });
-  return data;
+	const { data } = await client.post(
+		`/preinscripciones/by-code/${encodeURIComponent(codigo)}/cambiar-carrera`,
+		{ carrera_id },
+	);
+	return data;
 }
-export const eliminarPreinscripcion = (id: number) => client.delete(`/preinscripciones/${id}`).then(r => r.status === 204);
+export const eliminarPreinscripcion = (id: number) =>
+	client.delete(`/preinscripciones/${id}`).then((r) => r.status === 204);
 
 // Checklist (documentación) helpers
 export interface ChecklistDTO {
-  dni_legalizado: boolean;
-  fotos_4x4: boolean;
-  certificado_salud: boolean;
-  folios_oficio: boolean;
+	dni_legalizado: boolean;
+	fotos_4x4: boolean;
+	certificado_salud: boolean;
+	folios_oficio: boolean;
 
-  titulo_secundario_legalizado: boolean;
-  certificado_titulo_en_tramite: boolean;
-  analitico_legalizado: boolean;
-  certificado_alumno_regular_sec: boolean;
+	titulo_secundario_legalizado: boolean;
+	certificado_titulo_en_tramite: boolean;
+	analitico_legalizado: boolean;
+	certificado_alumno_regular_sec: boolean;
 
-  adeuda_materias: boolean;
-  adeuda_materias_detalle?: string;
-  escuela_secundaria?: string;
+	adeuda_materias: boolean;
+	adeuda_materias_detalle?: string;
+	escuela_secundaria?: string;
 
-  es_certificacion_docente?: boolean;
-  titulo_terciario_univ?: boolean;
-  incumbencia?: boolean;
-  estado_legajo?: string;
-  curso_introductorio_aprobado?: boolean;
-  libreta_entregada?: boolean;
-  articulo_7?: boolean;
+	es_certificacion_docente?: boolean;
+	titulo_terciario_univ?: boolean;
+	incumbencia?: boolean;
+	estado_legajo?: string;
+	curso_introductorio_aprobado?: boolean;
+	libreta_entregada?: boolean;
+	articulo_7?: boolean;
 }
 
 export const apiGetChecklist = async (preId: number) => {
-  const { data } = await client.get<ChecklistDTO>(`/preinscripciones/${preId}/checklist`);
-  return data;
+	const { data } = await client.get<ChecklistDTO>(
+		`/preinscripciones/${preId}/checklist`,
+	);
+	return data;
 };
 
 export const apiPutChecklist = async (preId: number, payload: ChecklistDTO) => {
-  const { data } = await client.put<ChecklistDTO>(`/preinscripciones/${preId}/checklist`, payload);
-  return data;
+	const { data } = await client.put<ChecklistDTO>(
+		`/preinscripciones/${preId}/checklist`,
+		payload,
+	);
+	return data;
 };
 
 // Archivos/documentos de preinscripción (subida y listado)
 export type PreDocItem = {
-  id: number;
-  tipo: string;
-  nombre_original: string;
-  tamano: number;
-  content_type: string;
-  url?: string;
-  creado_en: string;
+	id: number;
+	tipo: string;
+	nombre_original: string;
+	tamano: number;
+	content_type: string;
+	url?: string;
+	creado_en: string;
 };
 
 export const apiListPreDocs = async (preId: number): Promise<PreDocItem[]> => {
-  const token = localStorage.getItem("token");
-  const { data } = await client.get<{ count: number; results: PreDocItem[] }>(`/preinscripciones/uploads/${preId}/documentos`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return data.results || [];
+	const token = localStorage.getItem("token");
+	const { data } = await client.get<{ count: number; results: PreDocItem[] }>(
+		`/preinscripciones/uploads/${preId}/documentos`,
+		{
+			headers: { Authorization: `Bearer ${token}` },
+		},
+	);
+	return data.results || [];
 };
 
-export const apiUploadPreDoc = async (preId: number, tipo: string, file: File) => {
-  const token = localStorage.getItem("token");
-  const form = new FormData();
-  form.append('file', file);
-  const { data } = await client.post(`/preinscripciones/uploads/${preId}/documentos?tipo=${tipo}`, form, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return data;
+export const apiUploadPreDoc = async (
+	preId: number,
+	tipo: string,
+	file: File,
+) => {
+	const token = localStorage.getItem("token");
+	const form = new FormData();
+	form.append("file", file);
+	const { data } = await client.post(
+		`/preinscripciones/uploads/${preId}/documentos?tipo=${tipo}`,
+		form,
+		{
+			headers: {
+				"Content-Type": "multipart/form-data",
+				Authorization: `Bearer ${token}`,
+			},
+		},
+	);
+	return data;
 };

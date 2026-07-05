@@ -1,187 +1,340 @@
-import { client, AppAxiosRequestConfig } from "@/api/client";
+import { type AppAxiosRequestConfig, client } from "@/api/client";
 import { fetchVentanas } from "@/api/ventanas";
-import {
-  InscripcionMateriaPayload,
-  CambioComisionPayload,
-  CancelarInscripcionPayload,
-  MesaExamenPayload,
-  GenericResponse,
-  ApiResponseDTO,
-  VentanaInscripcion,
-  MateriaPlanDTO,
-  MateriaInscriptaItemDTO,
-  EquivalenciaItemDTO,
-  MesaListadoParams,
-  MesaListadoItemDTO,
-  MesaPlanillaDTO,
-  SolicitudCambioComisionDTO,
-  SolicitudMesaInDTO,
-  SolicitudMesaOutDTO,
-  CarrerasActivasDTO,
+import type {
+	ApiResponseDTO,
+	CambioComisionPayload,
+	CancelarInscripcionPayload,
+	CarrerasActivasDTO,
+	EquivalenciaItemDTO,
+	GenericResponse,
+	InscripcionMateriaPayload,
+	MateriaInscriptaItemDTO,
+	MateriaPlanDTO,
+	MesaExamenPayload,
+	MesaListadoItemDTO,
+	MesaListadoParams,
+	MesaPlanillaDTO,
+	SolicitudCambioComisionDTO,
+	SolicitudMesaInDTO,
+	SolicitudMesaOutDTO,
+	VentanaInscripcion,
 } from "./types";
 
-export const solicitarInscripcionMateria = (payload: InscripcionMateriaPayload) =>
-  client.post<GenericResponse>("/estudiantes/inscripcion-materia", payload).then(res => res.data);
+export const solicitarInscripcionMateria = (
+	payload: InscripcionMateriaPayload,
+) =>
+	client
+		.post<GenericResponse>("/estudiantes/inscripcion-materia", payload)
+		.then((res) => res.data);
 
-export const aceptarResidenciaCondicional = (payload: { materia_residencia_id: number; materia_pendiente_id: number; dni?: string }) =>
-  client.post<GenericResponse>("/estudiantes/inscripcion-materia/residencia-condicional/aceptar", payload).then(res => res.data);
+export const aceptarResidenciaCondicional = (payload: {
+	materia_residencia_id: number;
+	materia_pendiente_id: number;
+	dni?: string;
+}) =>
+	client
+		.post<GenericResponse>(
+			"/estudiantes/inscripcion-materia/residencia-condicional/aceptar",
+			payload,
+		)
+		.then((res) => res.data);
 
 export type ResidenciaCondicionalItemDTO = {
-  id: number;
-  dni: string;
-  nombre: string;
-  materia_residencia: string;
-  materia_pendiente: string;
-  ciclo_lectivo: number;
-  fecha_limite: string;
-  estado: "PENDIENTE" | "RESUELTA" | "CAÍDA";
-  profesorado?: string;
+	id: number;
+	dni: string;
+	nombre: string;
+	materia_residencia: string;
+	materia_pendiente: string;
+	ciclo_lectivo: number;
+	fecha_limite: string;
+	estado: "PENDIENTE" | "RESUELTA" | "CAÍDA";
+	profesorado?: string;
 };
 
-export async function listarResidenciasCondicionales(params?: { ciclo?: number; carrera_id?: number; solo_pendientes?: boolean }): Promise<ResidenciaCondicionalItemDTO[]> {
-  const { data } = await client.get<ResidenciaCondicionalItemDTO[]>("/estudiantes/admin/residencias-condicionales", { params });
-  return data;
+export async function listarResidenciasCondicionales(params?: {
+	ciclo?: number;
+	carrera_id?: number;
+	solo_pendientes?: boolean;
+}): Promise<ResidenciaCondicionalItemDTO[]> {
+	const { data } = await client.get<ResidenciaCondicionalItemDTO[]>(
+		"/estudiantes/admin/residencias-condicionales",
+		{ params },
+	);
+	return data;
 }
 
 export const solicitarCambioComision = (payload: CambioComisionPayload) =>
-  client.post<GenericResponse>("/estudiantes/cambio-comision", payload).then(res => res.data);
+	client
+		.post<GenericResponse>("/estudiantes/cambio-comision", payload)
+		.then((res) => res.data);
 
-export const cancelarInscripcionMateria = (payload: CancelarInscripcionPayload) => {
-  const { inscripcion_id, dni } = payload;
-  const body = dni ? { dni } : {};
-  return client.post<ApiResponseDTO>(`/estudiantes/inscripcion-materia/${inscripcion_id}/cancelar`, body).then(res => res.data);
+export const cancelarInscripcionMateria = (
+	payload: CancelarInscripcionPayload,
+) => {
+	const { inscripcion_id, dni } = payload;
+	const body = dni ? { dni } : {};
+	return client
+		.post<ApiResponseDTO>(
+			`/estudiantes/inscripcion-materia/${inscripcion_id}/cancelar`,
+			body,
+		)
+		.then((res) => res.data);
 };
 
-export const bajaInscripcionMateria = (payload: { inscripcion_id: number; motivo: string; dni?: string }) => {
-  const { inscripcion_id, motivo, dni } = payload;
-  return client.post<ApiResponseDTO>(`/estudiantes/inscripcion-materia/${inscripcion_id}/baja`, { motivo, dni }).then(res => res.data);
+export const bajaInscripcionMateria = (payload: {
+	inscripcion_id: number;
+	motivo: string;
+	dni?: string;
+}) => {
+	const { inscripcion_id, motivo, dni } = payload;
+	return client
+		.post<ApiResponseDTO>(
+			`/estudiantes/inscripcion-materia/${inscripcion_id}/baja`,
+			{ motivo, dni },
+		)
+		.then((res) => res.data);
 };
 
-export const solicitarPedidoAnalitico = (payload: { motivo: 'equivalencia' | 'beca' | 'control' | 'otro'; motivo_otro?: string; dni?: string; cohorte?: number; profesorado_id?: number; plan_id?: number; }) =>
-  client.post<GenericResponse>("/estudiantes/pedido_analitico", payload).then(res => res.data);
+export const solicitarPedidoAnalitico = (payload: {
+	motivo: "equivalencia" | "beca" | "control" | "otro";
+	motivo_otro?: string;
+	dni?: string;
+	cohorte?: number;
+	profesorado_id?: number;
+	plan_id?: number;
+}) =>
+	client
+		.post<GenericResponse>("/estudiantes/pedido_analitico", payload)
+		.then((res) => res.data);
 
-export async function listarCambiosComisionPendientes(params?: { dni?: string; profesorado_id?: number }): Promise<SolicitudCambioComisionDTO[]> {
-  const { data } = await client.get<SolicitudCambioComisionDTO[]>("/estudiantes/cambio-comision/pendientes", { params });
-  return data;
+export async function listarCambiosComisionPendientes(params?: {
+	dni?: string;
+	profesorado_id?: number;
+}): Promise<SolicitudCambioComisionDTO[]> {
+	const { data } = await client.get<SolicitudCambioComisionDTO[]>(
+		"/estudiantes/cambio-comision/pendientes",
+		{ params },
+	);
+	return data;
 }
 
-export async function autorizarCambioComision(inscripcionId: number, payload: { aprobado: boolean; disposicion_numero?: string; observaciones?: string }): Promise<ApiResponseDTO> {
-  const { data } = await client.patch<ApiResponseDTO>(`/estudiantes/inscripcion-materia/${inscripcionId}/autorizar-cambio-comision`, payload);
-  return data;
+export async function autorizarCambioComision(
+	inscripcionId: number,
+	payload: {
+		aprobado: boolean;
+		disposicion_numero?: string;
+		observaciones?: string;
+	},
+): Promise<ApiResponseDTO> {
+	const { data } = await client.patch<ApiResponseDTO>(
+		`/estudiantes/inscripcion-materia/${inscripcionId}/autorizar-cambio-comision`,
+		payload,
+	);
+	return data;
 }
 
 export const marcarAnaliticoConfeccionado = (pedidoId: number) =>
-  client.patch<GenericResponse>(`/estudiantes/analiticos_ext/${pedidoId}/marcar-confeccionado`).then(res => res.data);
+	client
+		.patch<GenericResponse>(
+			`/estudiantes/analiticos_ext/${pedidoId}/marcar-confeccionado`,
+		)
+		.then((res) => res.data);
 
 export const marcarAnaliticoEntregado = (pedidoId: number) =>
-  client.patch<GenericResponse>(`/estudiantes/analiticos_ext/${pedidoId}/marcar-entregado`).then(res => res.data);
+	client
+		.patch<GenericResponse>(
+			`/estudiantes/analiticos_ext/${pedidoId}/marcar-entregado`,
+		)
+		.then((res) => res.data);
 
-export const solicitarMesaExamen = (payload: MesaExamenPayload) =>
-  client.post<GenericResponse>("/estudiantes/mesa-examen", payload).then(res => res.data);
+const solicitarMesaExamen = (payload: MesaExamenPayload) =>
+	client
+		.post<GenericResponse>("/estudiantes/mesa-examen", payload)
+		.then((res) => res.data);
 
 export async function obtenerVentanaMaterias(): Promise<VentanaInscripcion | null> {
-  try {
-    const data = await fetchVentanas({ tipo: 'MATERIAS' });
-    const hoy = new Date();
-    const activa = (data || []).find(v => v.activo && new Date(v.desde) <= hoy && new Date(v.hasta) >= hoy);
-    return activa || (data && data[0]) || null;
-  } catch {
-    return null;
-  }
+	try {
+		const data = await fetchVentanas({ tipo: "MATERIAS" });
+		const hoy = new Date();
+		const activa = (data || []).find(
+			(v) => v.activo && new Date(v.desde) <= hoy && new Date(v.hasta) >= hoy,
+		);
+		return activa || (data && data[0]) || null;
+	} catch {
+		return null;
+	}
 }
 
-export async function obtenerMateriasPlanEstudiante(params?: { dni?: string; plan_id?: number; profesorado_id?: number }, suppressErrorToast = false): Promise<MateriaPlanDTO[]> {
-  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
-  const { data } = await client.get<MateriaPlanDTO[]>(`/estudiantes/materias-plan`, config);
-  return data;
+export async function obtenerMateriasPlanEstudiante(
+	params?: { dni?: string; plan_id?: number; profesorado_id?: number },
+	suppressErrorToast = false,
+): Promise<MateriaPlanDTO[]> {
+	const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+	const { data } = await client.get<MateriaPlanDTO[]>(
+		`/estudiantes/materias-plan`,
+		config,
+	);
+	return data;
 }
 
-export async function obtenerCarrerasActivas(params?: { dni?: string }, suppressErrorToast = false): Promise<CarrerasActivasDTO> {
-  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
-  const { data } = await client.get<CarrerasActivasDTO>(`/estudiantes/carreras-activas`, config);
-  return data;
+export async function obtenerCarrerasActivas(
+	params?: { dni?: string },
+	suppressErrorToast = false,
+): Promise<CarrerasActivasDTO> {
+	const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+	const { data } = await client.get<CarrerasActivasDTO>(
+		`/estudiantes/carreras-activas`,
+		config,
+	);
+	return data;
 }
 
-export async function obtenerMateriasInscriptas(params?: { anio?: number; dni?: string }, suppressErrorToast = false): Promise<MateriaInscriptaItemDTO[]> {
-  const config: AppAxiosRequestConfig = { params, suppressErrorToast };
-  const { data } = await client.get<MateriaInscriptaItemDTO[]>(`/estudiantes/materias-inscriptas`, config);
-  return data;
+export async function obtenerMateriasInscriptas(
+	params?: { anio?: number; dni?: string },
+	suppressErrorToast = false,
+): Promise<MateriaInscriptaItemDTO[]> {
+	const config: AppAxiosRequestConfig = { params, suppressErrorToast };
+	const { data } = await client.get<MateriaInscriptaItemDTO[]>(
+		`/estudiantes/materias-inscriptas`,
+		config,
+	);
+	return data;
 }
 
-export async function obtenerEquivalencias(materia_id: number): Promise<EquivalenciaItemDTO[]> {
-  const { data } = await client.get<EquivalenciaItemDTO[]>(`/estudiantes/equivalencias`, { params: { materia_id } });
-  return data;
+export async function obtenerEquivalencias(
+	materia_id: number,
+): Promise<EquivalenciaItemDTO[]> {
+	const { data } = await client.get<EquivalenciaItemDTO[]>(
+		`/estudiantes/equivalencias`,
+		{ params: { materia_id } },
+	);
+	return data;
 }
 
-export async function listarMesas(params?: MesaListadoParams): Promise<MesaListadoItemDTO[]> {
-  const { data } = await client.get<MesaListadoItemDTO[]>(`/estudiantes/mesas`, { params });
-  return data;
+export async function listarMesas(
+	params?: MesaListadoParams,
+): Promise<MesaListadoItemDTO[]> {
+	const { data } = await client.get<MesaListadoItemDTO[]>(
+		`/estudiantes/mesas`,
+		{ params },
+	);
+	return data;
 }
 
-export async function inscribirMesa(payload: { mesa_id: number; dni?: string }): Promise<{ message: string }> {
-  const { data } = await client.post<{ message: string }>(`/estudiantes/inscribir_mesa`, payload);
-  return data;
+export async function inscribirMesa(payload: {
+	mesa_id: number;
+	dni?: string;
+}): Promise<{ message: string }> {
+	const { data } = await client.post<{ message: string }>(
+		`/estudiantes/inscribir_mesa`,
+		payload,
+	);
+	return data;
 }
 
-export async function bajaMesa(payload: { mesa_id: number; dni?: string }): Promise<{ message: string }> {
-  const { data } = await client.post<{ message: string }>(`/estudiantes/baja_mesa`, payload);
-  return data;
+export async function bajaMesa(payload: {
+	mesa_id: number;
+	dni?: string;
+}): Promise<{ message: string }> {
+	const { data } = await client.post<{ message: string }>(
+		`/estudiantes/baja_mesa`,
+		payload,
+	);
+	return data;
 }
 
-export async function obtenerMesaPlanilla(mesaId: number): Promise<MesaPlanillaDTO> {
-  const { data } = await client.get<MesaPlanillaDTO>(`/estudiantes/mesas/${mesaId}/planilla`);
-  return data;
+export async function obtenerMesaPlanilla(
+	mesaId: number,
+): Promise<MesaPlanillaDTO> {
+	const { data } = await client.get<MesaPlanillaDTO>(
+		`/estudiantes/mesas/${mesaId}/planilla`,
+	);
+	return data;
 }
 
-export async function actualizarMesaPlanilla(mesaId: number, payload: {
-  estudiantes: Array<{
-    inscripcion_id: number;
-    fecha_resultado?: string | null;
-    condicion?: string | null;
-    nota?: number | null;
-    folio?: string | null;
-    libro?: string | null;
-    observaciones?: string | null;
-    cuenta_para_intentos?: boolean | null;
-  }>
-}): Promise<ApiResponseDTO> {
-  const { data } = await client.post<ApiResponseDTO>(`/estudiantes/mesas/${mesaId}/planilla`, payload);
-  return data;
+export async function actualizarMesaPlanilla(
+	mesaId: number,
+	payload: {
+		estudiantes: Array<{
+			inscripcion_id: number;
+			fecha_resultado?: string | null;
+			condicion?: string | null;
+			nota?: number | null;
+			folio?: string | null;
+			libro?: string | null;
+			observaciones?: string | null;
+			cuenta_para_intentos?: boolean | null;
+		}>;
+	},
+): Promise<ApiResponseDTO> {
+	const { data } = await client.post<ApiResponseDTO>(
+		`/estudiantes/mesas/${mesaId}/planilla`,
+		payload,
+	);
+	return data;
 }
 
-export async function gestionarMesaPlanillaCierre(mesaId: number, accion: "cerrar" | "reabrir"): Promise<ApiResponseDTO> {
-  const { data } = await client.post<ApiResponseDTO>(`/estudiantes/mesas/${mesaId}/cierre`, { accion });
-  return data;
+export async function gestionarMesaPlanillaCierre(
+	mesaId: number,
+	accion: "cerrar" | "reabrir",
+): Promise<ApiResponseDTO> {
+	const { data } = await client.post<ApiResponseDTO>(
+		`/estudiantes/mesas/${mesaId}/cierre`,
+		{ accion },
+	);
+	return data;
 }
 
-export async function solicitarMesa(payload: SolicitudMesaInDTO): Promise<{ message: string }> {
-  const { data } = await client.post<{ message: string }>(`/estudiantes/solicitar_mesa`, payload);
-  return data;
+export async function solicitarMesa(
+	payload: SolicitudMesaInDTO,
+): Promise<{ message: string }> {
+	const { data } = await client.post<{ message: string }>(
+		`/estudiantes/solicitar_mesa`,
+		payload,
+	);
+	return data;
 }
 
-export async function listarMisSolicitudes(params?: { dni?: string }): Promise<SolicitudMesaOutDTO[]> {
-  const { data } = await client.get<SolicitudMesaOutDTO[]>(`/estudiantes/mis_solicitudes`, { params });
-  return data;
+export async function listarMisSolicitudes(params?: {
+	dni?: string;
+}): Promise<SolicitudMesaOutDTO[]> {
+	const { data } = await client.get<SolicitudMesaOutDTO[]>(
+		`/estudiantes/mis_solicitudes`,
+		{ params },
+	);
+	return data;
 }
 
-export async function cancelarSolicitud(solicitudId: number): Promise<{ message: string }> {
-  const { data } = await client.delete<{ message: string }>(`/estudiantes/cancelar_solicitud/${solicitudId}`);
-  return data;
+export async function cancelarSolicitud(
+	solicitudId: number,
+): Promise<{ message: string }> {
+	const { data } = await client.delete<{ message: string }>(
+		`/estudiantes/cancelar_solicitud/${solicitudId}`,
+	);
+	return data;
 }
 
-export async function listarMateriasSolicitables(params?: { dni?: string, modalidad?: string, plan_id?: number }): Promise<Array<{
-  materia_id: number;
-  materia_nombre: string;
-  anio: number;
-  plan_resolucion: string;
-  modalidad: string;
-}>> {
-  const { data } = await client.get<Array<{
-    materia_id: number;
-    materia_nombre: string;
-    anio: number;
-    plan_resolucion: string;
-    modalidad: string;
-  }>>(`/estudiantes/materias_solicitables`, { params });
-  return data;
+export async function listarMateriasSolicitables(params?: {
+	dni?: string;
+	modalidad?: string;
+	plan_id?: number;
+}): Promise<
+	Array<{
+		materia_id: number;
+		materia_nombre: string;
+		anio: number;
+		plan_resolucion: string;
+		modalidad: string;
+	}>
+> {
+	const { data } = await client.get<
+		Array<{
+			materia_id: number;
+			materia_nombre: string;
+			anio: number;
+			plan_resolucion: string;
+			modalidad: string;
+		}>
+	>(`/estudiantes/materias_solicitables`, { params });
+	return data;
 }

@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -16,100 +15,126 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
+import DOMPurify from "dompurify";
+import { useMemo } from "react";
 
-import { type MesaPlanillaDTO, type MesaPlanillaEstudianteDTO } from "@/api/estudiantes";
+import type {
+	MesaPlanillaDTO,
+	MesaPlanillaEstudianteDTO,
+} from "@/api/estudiantes";
 import logoMinisterio from "@/assets/escudo_ministerio_tdf.png";
 import logoIpes from "@/assets/logo_ipes.png";
 
 import {
-  formatDate,
-  formatHora,
-  formatModalidad,
-  formatMesaTipo,
-  formatDictado,
+	formatDate,
+	formatDictado,
+	formatHora,
+	formatMesaTipo,
+	formatModalidad,
 } from "./utils";
 
 type Props = {
-  open: boolean;
-  planilla: MesaPlanillaDTO | null;
-  loading: boolean;
-  onClose: () => void;
+	open: boolean;
+	planilla: MesaPlanillaDTO | null;
+	loading: boolean;
+	onClose: () => void;
 };
 
 function MesaPlanillaDialog({ open, planilla, loading, onClose }: Props) {
-  const sortedEstudiantes = useMemo(() => {
-    if (!planilla) return [];
-    return [...planilla.estudiantes].sort((a, b) => (a.apellido_nombre || "").localeCompare(b.apellido_nombre || ""));
-  }, [planilla]);
+	const sortedEstudiantes = useMemo(() => {
+		if (!planilla) return [];
+		return [...planilla.estudiantes].sort((a, b) =>
+			(a.apellido_nombre || "").localeCompare(b.apellido_nombre || ""),
+		);
+	}, [planilla]);
 
-  const horaDesdeTexto = planilla?.hora_desde ? formatHora(planilla.hora_desde) : "-";
-  const horaHastaTexto = planilla?.hora_hasta ? formatHora(planilla.hora_hasta) : "-";
-  const horarioLabel =
-    horaDesdeTexto === "-" && horaHastaTexto === "-" ? "-" : `${horaDesdeTexto} a ${horaHastaTexto === "-" ? "-" : horaHastaTexto}`;
-  const modalidadLabel = planilla ? formatModalidad(planilla.modalidad) : "-";
-  const tipoLabel = planilla ? formatMesaTipo(planilla.tipo) : "-";
-  const dictadoLabel = planilla ? formatDictado(planilla.regimen) : "-";
-  const materiaLabel = planilla
-    ? planilla.materia_anio
-      ? `${planilla.materia_nombre} · ${planilla.materia_anio}º año`
-      : planilla.materia_nombre
-    : "-";
-  const fechaMesa = planilla ? dayjs(planilla.fecha).format("DD/MM/YYYY") : "-";
-  const planillaProfesorado = planilla?.profesorado_nombre ?? "-";
-  const planillaResolucion = planilla?.plan_resolucion ?? "-";
-  const codigoMesa = planilla?.mesa_codigo ?? "-";
+	const horaDesdeTexto = planilla?.hora_desde
+		? formatHora(planilla.hora_desde)
+		: "-";
+	const horaHastaTexto = planilla?.hora_hasta
+		? formatHora(planilla.hora_hasta)
+		: "-";
+	const horarioLabel =
+		horaDesdeTexto === "-" && horaHastaTexto === "-"
+			? "-"
+			: `${horaDesdeTexto} a ${horaHastaTexto === "-" ? "-" : horaHastaTexto}`;
+	const modalidadLabel = planilla ? formatModalidad(planilla.modalidad) : "-";
+	const tipoLabel = planilla ? formatMesaTipo(planilla.tipo) : "-";
+	const dictadoLabel = planilla ? formatDictado(planilla.regimen) : "-";
+	const materiaLabel = planilla
+		? planilla.materia_anio
+			? `${planilla.materia_nombre} · ${planilla.materia_anio}º año`
+			: planilla.materia_nombre
+		: "-";
+	const fechaMesa = planilla ? dayjs(planilla.fecha).format("DD/MM/YYYY") : "-";
+	const planillaProfesorado = planilla?.profesorado_nombre ?? "-";
+	const planillaResolucion = planilla?.plan_resolucion ?? "-";
+	const codigoMesa = planilla?.mesa_codigo ?? "-";
 
-  const renderEstudianteRow = (estudiante: MesaPlanillaEstudianteDTO) => (
-    <TableRow key={estudiante.estudiante_id ?? estudiante.inscripcion_id}>
-      <TableCell>{estudiante.apellido_nombre}</TableCell>
-      <TableCell>{estudiante.dni}</TableCell>
-      <TableCell>{estudiante.condicion_display || estudiante.condicion || "-"}</TableCell>
-      <TableCell>{estudiante.nota ?? "-"}</TableCell>
-      <TableCell>{estudiante.folio || "-"}</TableCell>
-      <TableCell>{estudiante.libro || "-"}</TableCell>
-      <TableCell>{estudiante.fecha_resultado ? formatDate(estudiante.fecha_resultado) : "-"}</TableCell>
-      <TableCell>{estudiante.observaciones || "-"}</TableCell>
-    </TableRow>
-  );
+		const renderEstudianteRow = (estudiante: MesaPlanillaEstudianteDTO) => (
+		<TableRow key={estudiante.estudiante_id ?? estudiante.inscripcion_id}>
+			<TableCell>{estudiante.apellido_nombre}</TableCell>
+			<TableCell>{estudiante.dni}</TableCell>
+			<TableCell>
+				{estudiante.condicion_display || estudiante.condicion || "-"}
+			</TableCell>
+			<TableCell>{estudiante.nota ?? "-"}</TableCell>
+			<TableCell>{estudiante.folio || "-"}</TableCell>
+			<TableCell>{estudiante.libro || "-"}</TableCell>
+			<TableCell>
+				{estudiante.fecha_resultado
+					? formatDate(estudiante.fecha_resultado)
+					: "-"}
+			</TableCell>
+			<TableCell>{estudiante.observaciones || "-"}</TableCell>
+		</TableRow>
+	);
 
-  const handlePrint = () => {
-    if (!planilla) return;
-    const horaDesde = planilla.hora_desde ? formatHora(planilla.hora_desde) : "-";
-    const horaHasta = planilla.hora_hasta ? formatHora(planilla.hora_hasta) : "-";
-    const horarioTexto = horaDesde === "-" && horaHasta === "-" ? "-" : `${horaDesde} a ${horaHasta === "-" ? "-" : horaHasta}`;
-    const modalidadTexto = formatModalidad(planilla.modalidad);
-    const tipoTexto = formatMesaTipo(planilla.tipo);
-    const dictadoTexto = formatDictado(planilla.regimen);
-    const materiaTexto = planilla.materia_anio
-      ? `${planilla.materia_nombre} · ${planilla.materia_anio}º año`
-      : planilla.materia_nombre;
-    const fechaTexto = dayjs(planilla.fecha).format("DD/MM/YYYY");
-    const metaLeft = [
-      { label: "UNIDAD CURRICULAR", value: materiaTexto },
-      { label: "PLAN / RESOLUCIÓN", value: planilla.plan_resolucion || "-" },
-      { label: "MODALIDAD", value: modalidadTexto },
-      { label: "MESA / CÓDIGO", value: planilla.mesa_codigo || "-" },
-    ];
-    const metaRight = [
-      { label: "FECHA", value: fechaTexto },
-      { label: "HORARIO", value: horarioTexto },
-      { label: "TIPO", value: tipoTexto },
-      { label: "DICTADO", value: dictadoTexto },
-    ];
-    const metaRows = metaLeft
-      .map((item, idx) => {
-        const counterpart = metaRight[idx];
-        return `
+	const handlePrint = () => {
+		if (!planilla) return;
+		const horaDesde = planilla.hora_desde
+			? formatHora(planilla.hora_desde)
+			: "-";
+		const horaHasta = planilla.hora_hasta
+			? formatHora(planilla.hora_hasta)
+			: "-";
+		const horarioTexto =
+			horaDesde === "-" && horaHasta === "-"
+				? "-"
+				: `${horaDesde} a ${horaHasta === "-" ? "-" : horaHasta}`;
+		const modalidadTexto = formatModalidad(planilla.modalidad);
+		const tipoTexto = formatMesaTipo(planilla.tipo);
+		const dictadoTexto = formatDictado(planilla.regimen);
+		const materiaTexto = planilla.materia_anio
+			? `${planilla.materia_nombre} · ${planilla.materia_anio}º año`
+			: planilla.materia_nombre;
+		const fechaTexto = dayjs(planilla.fecha).format("DD/MM/YYYY");
+		const metaLeft = [
+			{ label: "UNIDAD CURRICULAR", value: materiaTexto },
+			{ label: "PLAN / RESOLUCIÓN", value: planilla.plan_resolucion || "-" },
+			{ label: "MODALIDAD", value: modalidadTexto },
+			{ label: "MESA / CÓDIGO", value: planilla.mesa_codigo || "-" },
+		];
+		const metaRight = [
+			{ label: "FECHA", value: fechaTexto },
+			{ label: "HORARIO", value: horarioTexto },
+			{ label: "TIPO", value: tipoTexto },
+			{ label: "DICTADO", value: dictadoTexto },
+		];
+		const metaRows = metaLeft
+			.map((item, idx) => {
+				const counterpart = metaRight[idx];
+				return `
           <tr>
             <td><strong>${item.label}:</strong> ${item.value ?? ""}</td>
             <td><strong>${counterpart.label}:</strong> ${counterpart.value ?? ""}</td>
           </tr>
         `;
-      })
-      .join("");
-    const estudiantesRows = sortedEstudiantes
-      .map(
-        (estudiante, index) => `
+			})
+			.join("");
+		const estudiantesRows = sortedEstudiantes
+			.map(
+				(estudiante, index) => `
         <tr>
           <td>${index + 1}</td>
           <td>${estudiante.apellido_nombre || "-"}</td>
@@ -121,23 +146,23 @@ function MesaPlanillaDialog({ open, planilla, loading, onClose }: Props) {
           <td>${estudiante.observaciones || "-"}</td>
         </tr>
       `,
-      )
-      .join("");
-    const firmas = [
-      { label: "Firma Presidente", value: planilla.tribunal_presidente },
-      { label: "Firma Vocal 1", value: planilla.tribunal_vocal1 },
-      { label: "Firma Vocal 2", value: planilla.tribunal_vocal2 },
-    ]
-      .map(
-        (item) => `
+			)
+			.join("");
+		const firmas = [
+			{ label: "Firma Presidente", value: planilla.tribunal_presidente },
+			{ label: "Firma Vocal 1", value: planilla.tribunal_vocal1 },
+			{ label: "Firma Vocal 2", value: planilla.tribunal_vocal2 },
+		]
+			.map(
+				(item) => `
         <div>
           <div class="linea">${item.value || "................................"}</div>
           <span>${item.label}</span>
         </div>
       `,
-      )
-      .join("");
-    const html = `
+			)
+			.join("");
+		const html = `
     <html>
       <head>
         <title>Planilla de mesa final</title>
@@ -271,112 +296,116 @@ function MesaPlanillaDialog({ open, planilla, loading, onClose }: Props) {
       </body>
     </html>
     `;
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-    }
-  };
+		const printWindow = window.open("", "_blank");
+		if (printWindow) {
+						printWindow.document.write(
+				DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }),
+			);
+			printWindow.document.close();
+			printWindow.focus();
+			printWindow.print();
+		}
+	};
 
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
-      <DialogTitle>Planilla de mesa final</DialogTitle>
-      <DialogContent dividers>
-        {loading ? (
-          <Box display="flex" justifyContent="center" py={4}>
-            <CircularProgress />
-          </Box>
-        ) : planilla ? (
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={3} flexWrap="wrap">
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Profesorado
-                </Typography>
-                <Typography>{planillaProfesorado}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Materia
-                </Typography>
-                <Typography>{materiaLabel}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Fecha
-                </Typography>
-                <Typography>{fechaMesa}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Horario
-                </Typography>
-                <Typography>{horarioLabel}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Modalidad
-                </Typography>
-                <Typography>{modalidadLabel}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Tipo
-                </Typography>
-                <Typography>{tipoLabel}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Resolución
-                </Typography>
-                <Typography>{planillaResolucion}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Código de mesa
-                </Typography>
-                <Typography>{codigoMesa}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Dictado
-                </Typography>
-                <Typography>{dictadoLabel}</Typography>
-              </Box>
-            </Stack>
+	return (
+		<Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
+			<DialogTitle>Planilla de mesa final</DialogTitle>
+			<DialogContent dividers>
+				{loading ? (
+					<Box display="flex" justifyContent="center" py={4}>
+						<CircularProgress />
+					</Box>
+				) : planilla ? (
+					<Stack spacing={2}>
+						<Stack direction="row" spacing={3} flexWrap="wrap">
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Profesorado
+								</Typography>
+								<Typography>{planillaProfesorado}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Materia
+								</Typography>
+								<Typography>{materiaLabel}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Fecha
+								</Typography>
+								<Typography>{fechaMesa}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Horario
+								</Typography>
+								<Typography>{horarioLabel}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Modalidad
+								</Typography>
+								<Typography>{modalidadLabel}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Tipo
+								</Typography>
+								<Typography>{tipoLabel}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Resolución
+								</Typography>
+								<Typography>{planillaResolucion}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Código de mesa
+								</Typography>
+								<Typography>{codigoMesa}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Dictado
+								</Typography>
+								<Typography>{dictadoLabel}</Typography>
+							</Box>
+						</Stack>
 
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Apellido y nombre</TableCell>
-                    <TableCell>DNI</TableCell>
-                    <TableCell>Condición</TableCell>
-                    <TableCell>Nota</TableCell>
-                    <TableCell>Folio</TableCell>
-                    <TableCell>Libro</TableCell>
-                    <TableCell>Fecha resultado</TableCell>
-                    <TableCell>Observaciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>{sortedEstudiantes.map(renderEstudianteRow)}</TableBody>
-              </Table>
-            </TableContainer>
-          </Stack>
-        ) : (
-          <Typography>No se pudo cargar la planilla seleccionada.</Typography>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handlePrint} disabled={!planilla}>
-          Imprimir
-        </Button>
-        <Button onClick={onClose}>Cerrar</Button>
-      </DialogActions>
-    </Dialog>
-  );
+						<TableContainer component={Paper} variant="outlined">
+							<Table size="small">
+								<TableHead>
+									<TableRow>
+										<TableCell>Apellido y nombre</TableCell>
+										<TableCell>DNI</TableCell>
+										<TableCell>Condición</TableCell>
+										<TableCell>Nota</TableCell>
+										<TableCell>Folio</TableCell>
+										<TableCell>Libro</TableCell>
+										<TableCell>Fecha resultado</TableCell>
+										<TableCell>Observaciones</TableCell>
+									</TableRow>
+								</TableHead>
+								<TableBody>
+									{sortedEstudiantes.map(renderEstudianteRow)}
+								</TableBody>
+							</Table>
+						</TableContainer>
+					</Stack>
+				) : (
+					<Typography>No se pudo cargar la planilla seleccionada.</Typography>
+				)}
+			</DialogContent>
+			<DialogActions>
+				<Button onClick={handlePrint} disabled={!planilla}>
+					Imprimir
+				</Button>
+				<Button onClick={onClose}>Cerrar</Button>
+			</DialogActions>
+		</Dialog>
+	);
 }
 
 export default MesaPlanillaDialog;
