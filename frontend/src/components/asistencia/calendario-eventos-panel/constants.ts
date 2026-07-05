@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { Option, CalendarioEventoFormValues } from "./types";
 
-export const today = dayjs().format("YYYY-MM-DD");
+const today = dayjs().format("YYYY-MM-DD");
 
 export const tipoOptions: Option[] = [
   { id: 1, label: "Feriado" },

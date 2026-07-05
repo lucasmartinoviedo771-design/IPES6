@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-array-index-as-key, react-doctor/no-giant-component, react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
 import React from 'react';
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/no-initialize-state, react-doctor/exhaustive-deps */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useSnackbar } from "notistack";

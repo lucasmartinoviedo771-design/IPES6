@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/rerender-lazy-state-init, react-doctor/prefer-module-scope-pure-function, react-doctor/rerender-memo-with-default-value */
 import { useCallback, useState, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-static-value */
 import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";

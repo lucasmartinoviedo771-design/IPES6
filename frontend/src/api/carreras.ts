@@ -42,7 +42,7 @@ export async function listarPlanes(profesoradoId: number): Promise<PlanDetalle[]
   return data;
 }
 
-export async function listarPlanesVigentes(): Promise<PlanDetalle[]> {
+async function listarPlanesVigentes(): Promise<PlanDetalle[]> {
   const profesorados = await fetchCarreras();
   const allPlans = await Promise.all(profesorados.map((prof) => listarPlanes(prof.id)));
   return allPlans.flat();
@@ -59,7 +59,7 @@ export interface RequisitoDocumentacion {
   activo: boolean;
 }
 
-export async function apiListRequisitosDocumentacion(profesoradoId: number): Promise<RequisitoDocumentacion[]> {
+async function apiListRequisitosDocumentacion(profesoradoId: number): Promise<RequisitoDocumentacion[]> {
   const { data } = await client.get<RequisitoDocumentacion[]>(`/profesorados/${profesoradoId}/requisitos-documentacion`);
   return data;
 }

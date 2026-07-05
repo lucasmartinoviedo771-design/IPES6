@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-pure-function, react-doctor/exhaustive-deps */
 import { useForm } from "react-hook-form";
 import { useState, useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";

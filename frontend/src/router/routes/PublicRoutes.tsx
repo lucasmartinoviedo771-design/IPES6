@@ -7,12 +7,12 @@ type PublicRoutesProps = {
   preinscripcionElement: ReactNode;
 };
 
-const LoginPage = lazyPage(() => import("@/pages/LoginPage"));
-const AuthCallbackPage = lazyPage(() => import("@/pages/Auth/CallbackPage"));
-const RoleSelectorPage = lazyPage(() => import("@/pages/Auth/RoleSelectorPage"));
-const DocenteAsistenciaPage = lazyPage(() => import("@/pages/Docentes/DocenteAsistenciaPage"));
-const InscripcionPreview = lazyPage(() => import("@/pages/InscripcionPreview"));
-const Forbidden = lazyPage(() => import("@/pages/Forbidden"));
+const LoginPage = lazyPage(() => import("../../pages/LoginPage"));
+const AuthCallbackPage = lazyPage(() => import("../../pages/Auth/CallbackPage"));
+const RoleSelectorPage = lazyPage(() => import("../../pages/Auth/RoleSelectorPage"));
+const DocenteAsistenciaPage = lazyPage(() => import("../../pages/Docentes/DocenteAsistenciaPage"));
+const InscripcionPreview = lazyPage(() => import("../../pages/InscripcionPreview"));
+const Forbidden = lazyPage(() => import("../../pages/Forbidden"));
 
 export const buildPublicRoutes = ({ preinscripcionElement }: PublicRoutesProps) => (
   <>

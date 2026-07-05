@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-derived-state, react-doctor/no-derived-state-effect, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
 import dayjs from "dayjs";

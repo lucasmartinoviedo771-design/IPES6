@@ -3,18 +3,18 @@ import AppShell from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/router/guards";
 import { lazyPage } from "@/utils/lazy";
 
-const PrimeraCargaPage = lazyPage(() => import("@/pages/admin/PrimeraCargaPage"));
-const ActaExamenPrimeraCargaPage = lazyPage(() => import("@/pages/admin/ActaExamenPrimeraCargaPage"));
-const HistorialActasPage = lazyPage(() => import("@/pages/admin/HistorialActasPage"));
-const HistorialMesasPandemiaPage = lazyPage(() => import("@/pages/admin/HistorialMesasPandemiaPage"));
-const HistorialRegularidadesPage = lazyPage(() => import("@/pages/admin/HistorialRegularidadesPage"));
-const HistoricoRegularidadPage = lazyPage(() => import("@/pages/admin/HistoricoRegularidadPage"));
-const HistorialEquivalenciasPage = lazyPage(() => import("@/pages/admin/HistorialEquivalenciasPage"));
-const SystemLogsPage = lazyPage(() => import("@/pages/SystemLogsPage"));
-const AuditoriaInconsistenciasPage = lazyPage(() => import("@/pages/Bedeles/AuditoriaInconsistenciasPage"));
-const ResguardoMateriasPage = lazyPage(() => import("@/pages/Bedeles/ResguardoMateriasPage"));
+const PrimeraCargaPage = lazyPage(() => import("../../pages/admin/PrimeraCargaPage"));
+const ActaExamenPrimeraCargaPage = lazyPage(() => import("../../pages/admin/ActaExamenPrimeraCargaPage"));
+const HistorialActasPage = lazyPage(() => import("../../pages/admin/HistorialActasPage"));
+const HistorialMesasPandemiaPage = lazyPage(() => import("../../pages/admin/HistorialMesasPandemiaPage"));
+const HistorialRegularidadesPage = lazyPage(() => import("../../pages/admin/HistorialRegularidadesPage"));
+const HistoricoRegularidadPage = lazyPage(() => import("../../pages/admin/HistoricoRegularidadPage"));
+const HistorialEquivalenciasPage = lazyPage(() => import("../../pages/admin/HistorialEquivalenciasPage"));
+const SystemLogsPage = lazyPage(() => import("../../pages/SystemLogsPage"));
+const AuditoriaInconsistenciasPage = lazyPage(() => import("../../pages/Bedeles/AuditoriaInconsistenciasPage"));
+const ResguardoMateriasPage = lazyPage(() => import("../../pages/Bedeles/ResguardoMateriasPage"));
 
-const ActaPrintPage = lazyPage(() => import("@/pages/admin/ActaPrintPage"));
+const ActaPrintPage = lazyPage(() => import("../../pages/admin/ActaPrintPage"));
 
 export const buildAdminRoutes = () => (
   <>

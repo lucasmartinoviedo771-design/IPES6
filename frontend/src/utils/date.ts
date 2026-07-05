@@ -7,13 +7,13 @@ dayjs.locale("es");
 /**
  * Verifica si un string tiene el formato DD/MM/YYYY
  */
-export const isValidDDMMYYYY = (s: string) =>
+const isValidDDMMYYYY = (s: string) =>
   /^\d{2}\/\d{2}\/\d{4}$/.test(s) && dayjs(s, "DD/MM/YYYY", true).isValid();
 
 /**
  * Convierte DD/MM/YYYY a ISO (YYYY-MM-DD)
  */
-export const ddmmyyyyToISO = (s: string) => {
+const ddmmyyyyToISO = (s: string) => {
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
     const [d, m, y] = s.split("/");
     return `${y}-${m}-${d}`;
@@ -54,7 +54,7 @@ export const formatDate = (date: string | Date | null | undefined, format: strin
 /**
  * Formatea una fecha y hora ISO a formato legible.
  */
-export const formatDateTime = (date: string | Date | null | undefined, format: string = "DD/MM/YYYY HH:mm") => {
+const formatDateTime = (date: string | Date | null | undefined, format: string = "DD/MM/YYYY HH:mm") => {
   if (!date) return "-";
   const d = dayjs(date);
   if (!d.isValid()) return "Fecha inválida";

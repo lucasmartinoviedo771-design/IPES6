@@ -10,7 +10,7 @@ export const formatPercentage = (value?: number | null) => {
   return `${value}%`;
 };
 
-export const FORMATO_LABELS: Record<string, string> = {
+const FORMATO_LABELS: Record<string, string> = {
   TAL: "Taller",
   TEO: "Teórico",
   PRA: "Práctica",

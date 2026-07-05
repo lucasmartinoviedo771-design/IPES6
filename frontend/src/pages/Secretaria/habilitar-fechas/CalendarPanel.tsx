@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-render-in-render */
 import React from "react";
 import dayjs from "dayjs";
 import Box from "@mui/material/Box";

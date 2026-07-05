@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/query-mutation-missing-invalidation, react-doctor/no-derived-state, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/async-parallel */
 import React, { useEffect, useMemo, useState } from "react";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";

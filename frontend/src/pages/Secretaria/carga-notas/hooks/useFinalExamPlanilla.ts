@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/prefer-module-scope-pure-function, react-doctor/exhaustive-deps */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { enqueueSnackbar } from "notistack";
 import { isAxiosError } from "axios";

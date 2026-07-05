@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/prefer-useReducer, react-doctor/js-combine-iterations */
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';

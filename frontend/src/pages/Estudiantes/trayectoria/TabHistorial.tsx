@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/prefer-useReducer */
 import { useMemo, useState } from 'react';
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";

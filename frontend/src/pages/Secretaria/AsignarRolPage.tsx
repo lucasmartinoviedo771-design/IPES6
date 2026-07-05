@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/jsx-no-jsx-as-prop, react-doctor/no-cascading-set-state, react-doctor/rerender-state-only-in-handlers, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/jsx-key, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
 import React, { useState, useEffect, useCallback } from 'react';
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";

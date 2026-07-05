@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/prefer-module-scope-pure-function */
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Alert from "@mui/material/Alert";

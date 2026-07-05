@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/jsx-key */
 import React from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import Alert from "@mui/material/Alert";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-pass-data-to-parent */
 import { useEffect } from "react";
 import { UseFormReset, UseFormSetValue } from "react-hook-form";
 import { PreinscripcionDTO, ChecklistDTO } from "@/api/preinscripciones";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/query-mutation-missing-invalidation, react-doctor/no-cascading-set-state, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler */
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

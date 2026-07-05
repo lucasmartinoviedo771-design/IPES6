@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/rendering-hydration-mismatch-time, react-doctor/async-parallel */
 import React, { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-effect-chain, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

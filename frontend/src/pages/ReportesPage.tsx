@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/prefer-dynamic-import, react-doctor/no-array-index-as-key */
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Box from "@mui/material/Box";

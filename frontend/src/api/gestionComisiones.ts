@@ -14,7 +14,7 @@ export const listarComisionesGestion = async (materiaId: number, anioLectivo: nu
     return response.data;
 };
 
-export const crearComision = async (materiaId: number, anioLectivo: number, codigo: string, cupoMaximo?: number) => {
+const crearComision = async (materiaId: number, anioLectivo: number, codigo: string, cupoMaximo?: number) => {
     const response = await api.post("/estudiantes/comisiones/crear", {
         materia_id: materiaId,
         anio_lectivo: anioLectivo,

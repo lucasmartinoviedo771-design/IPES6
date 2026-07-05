@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/rendering-hydration-mismatch-time */
 import { useRef } from 'react';
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";

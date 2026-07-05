@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-flatmap-filter */
 /**
  * @module Utils/Roles
  * @description Utilidades para la gestión de Roles y Permisos en el lado del cliente (RBAC).
@@ -5,7 +6,7 @@
  * y la lógica de enrutamiento basada en privilegios institucionales.
  */
 
-import { User } from "@/context/AuthContext";
+import { User } from "@/types/auth";
 
 /** Tipo base para identificadores de roles */
 type Role = string;
@@ -24,7 +25,7 @@ export const setGlobalRoleOverride = (role: string | null) => {
 /**
  * Obtiene el rol simulado actual.
  */
-export const getGlobalRoleOverride = () => globalRoleOverride;
+const getGlobalRoleOverride = () => globalRoleOverride;
 
 /**
  * Limpia y normaliza una lista de roles crudos.

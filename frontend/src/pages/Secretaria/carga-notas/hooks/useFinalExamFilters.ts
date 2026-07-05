@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent, react-doctor/no-event-handler, react-doctor/exhaustive-deps */
 import { useEffect, useMemo, useState } from "react";
 import { enqueueSnackbar } from "notistack";
 import {

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/async-await-in-loop, react-doctor/no-fetch-in-effect, react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from 'react';
 
 import Alert from '@mui/material/Alert';

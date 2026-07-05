@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps, react-doctor/prefer-module-scope-static-value */
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";

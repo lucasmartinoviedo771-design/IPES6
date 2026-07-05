@@ -123,7 +123,7 @@ export async function listarComisiones(params: {
   return data;
 }
 
-export async function crearComision(payload: ComisionPayload): Promise<ComisionDTO> {
+async function crearComision(payload: ComisionPayload): Promise<ComisionDTO> {
   const body: Record<string, unknown> = {
     materia_id: payload.materia_id,
     anio_lectivo: payload.anio_lectivo,
@@ -143,7 +143,7 @@ export async function crearComision(payload: ComisionPayload): Promise<ComisionD
   return data;
 }
 
-export async function actualizarComision(
+async function actualizarComision(
   comisionId: number,
   payload: ComisionPayload,
 ): Promise<ComisionDTO> {

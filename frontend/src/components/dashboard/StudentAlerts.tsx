@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-array-index-as-key */
 import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";

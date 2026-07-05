@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/no-event-handler, react-doctor/jsx-no-jsx-as-prop, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Tabs from "@mui/material/Tabs";

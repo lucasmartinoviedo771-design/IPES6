@@ -1,17 +1,17 @@
 export const CURRENT_YEAR = new Date().getFullYear().toString();
 
-export const CUATRIMESTRE_LABELS: Record<string, string> = {
+const CUATRIMESTRE_LABELS: Record<string, string> = {
   PCU: "1º cuatrimestre",
   SCU: "2º cuatrimestre",
   ANU: "Ciclo anual",
 };
 
-export const MODALIDAD_LABELS: Record<string, string> = {
+const MODALIDAD_LABELS: Record<string, string> = {
   REG: "Regular",
   LIB: "Libre",
 };
 
-export const MESA_TIPO_LABELS: Record<string, string> = {
+const MESA_TIPO_LABELS: Record<string, string> = {
   FIN: "Ordinaria",
   EXT: "Extraordinaria",
   ESP: "Especial",

@@ -3,13 +3,13 @@ import { ProtectedRoute } from "@/router/guards";
 
 import { lazyPage } from "@/utils/lazy";
 
-const DashboardPage = lazyPage(() => import("@/pages/DashboardPage"));
-const PreinscripcionesPage = lazyPage(() => import("@/pages/PreinscripcionesPage"));
-const MensajesInboxPage = lazyPage(() => import("@/pages/Mensajes/InboxPage"));
-const CarrerasPage = lazyPage(() => import("@/pages/CarrerasPage"));
-const MateriaInscriptosPage = lazyPage(() => import("@/pages/MateriaInscriptosPage"));
-const ReportesPage = lazyPage(() => import("@/pages/ReportesPage"));
-const ConfirmarInscripcionPage = lazyPage(() => import("@/pages/ConfirmarInscripcionPage"));
+const DashboardPage = lazyPage(() => import("../../pages/DashboardPage"));
+const PreinscripcionesPage = lazyPage(() => import("../../pages/PreinscripcionesPage"));
+const MensajesInboxPage = lazyPage(() => import("../../pages/Mensajes/InboxPage"));
+const CarrerasPage = lazyPage(() => import("../../pages/CarrerasPage"));
+const MateriaInscriptosPage = lazyPage(() => import("../../pages/MateriaInscriptosPage"));
+const ReportesPage = lazyPage(() => import("../../pages/ReportesPage"));
+const ConfirmarInscripcionPage = lazyPage(() => import("../../pages/ConfirmarInscripcionPage"));
 
 export const buildGeneralRoutes = () => (
   <>

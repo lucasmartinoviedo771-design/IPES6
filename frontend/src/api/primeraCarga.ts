@@ -56,7 +56,7 @@ export const crearEstudianteInicial = async (
   );
   return data;
 };
-export const uploadEquivalencias = async (data: UploadData): Promise<UploadResult> => {
+const uploadEquivalencias = async (data: UploadData): Promise<UploadResult> => {
   const formData = new FormData();
   formData.append('file', data.file);
   formData.append('dry_run', String(data.dry_run));

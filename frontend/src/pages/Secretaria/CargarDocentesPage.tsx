@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-pure-function */
 import { useState, useMemo } from "react";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";

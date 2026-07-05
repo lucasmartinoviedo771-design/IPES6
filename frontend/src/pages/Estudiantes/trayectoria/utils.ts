@@ -1,6 +1,6 @@
 import { REGIMEN_LABEL } from "./types";
 
-export const formatRegimen = (value?: string | null, fallback?: string | null) => {
+const formatRegimen = (value?: string | null, fallback?: string | null) => {
   if (!value) return fallback ?? '-';
   return REGIMEN_LABEL[value] ?? value;
 };

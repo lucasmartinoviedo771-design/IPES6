@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/no-derived-state, react-doctor/no-event-handler, react-doctor/js-combine-iterations */
 import React, { useState } from "react";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";

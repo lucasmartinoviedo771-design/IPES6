@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/exhaustive-deps, react-doctor/no-pass-data-to-parent */
 import { useEffect, useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";

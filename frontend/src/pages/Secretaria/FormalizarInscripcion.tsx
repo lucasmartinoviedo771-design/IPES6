@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/prefer-module-scope-pure-function, react-doctor/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";

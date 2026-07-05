@@ -79,7 +79,7 @@ export async function notificarPedidoEquivalencia(id: number, payload: { mensaje
   return data;
 }
 
-export async function exportarPedidosEquivalencia(params: { ventana_id?: number; profesorado_id?: number; estado?: 'draft' | 'final' } = {}): Promise<Blob> {
+async function exportarPedidosEquivalencia(params: { ventana_id?: number; profesorado_id?: number; estado?: 'draft' | 'final' } = {}): Promise<Blob> {
   const { data } = await client.get<Blob>(`/estudiantes/equivalencias/export`, { params, responseType: "blob" });
   return data;
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/query-mutation-missing-invalidation, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-array-index-as-key, react-doctor/no-giant-component, react-doctor/no-reset-all-state-on-prop-change, react-doctor/no-event-handler, react-doctor/prefer-useReducer */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

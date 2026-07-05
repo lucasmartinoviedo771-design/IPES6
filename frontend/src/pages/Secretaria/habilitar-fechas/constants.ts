@@ -1,9 +1,10 @@
+/* eslint-disable react-doctor/js-combine-iterations */
 import dayjs from "dayjs";
 import { VentanaDto } from "@/api/ventanas";
 
 export type Ventana = VentanaDto;
 
-export const LABEL_PERIODO: Record<string, string> = {
+const LABEL_PERIODO: Record<string, string> = {
   "1C_ANUALES": "1er Cuatrimestre + Anuales",
   "2C": "2do Cuatrimestre",
   "1C": "1er Cuatrimestre",

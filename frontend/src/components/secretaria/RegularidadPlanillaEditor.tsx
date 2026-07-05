@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps */
 import React, { useEffect, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

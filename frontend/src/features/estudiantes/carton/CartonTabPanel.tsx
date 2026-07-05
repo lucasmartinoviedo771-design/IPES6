@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/exhaustive-deps */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useMemo, useState } from 'react';
 import Box from "@mui/material/Box";

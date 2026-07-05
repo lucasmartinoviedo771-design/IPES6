@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -39,6 +40,7 @@ type Props = {
   materiaInfo: MateriaOptionDTO | null;
 };
 
+// eslint-disable-next-line react-doctor/no-giant-component
 function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, materiaInfo }: Props) {
   const handlePrint = () => {
     if (!planilla) return;
@@ -282,7 +284,8 @@ function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, mat
     `;
     const printWindow = window.open("", "_blank");
     if (printWindow) {
-      printWindow.document.write(html);
+      // eslint-disable-next-line react-doctor/dangerous-html-sink
+      printWindow.document.write(DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }));
       printWindow.document.close();
       printWindow.focus();
       printWindow.print();

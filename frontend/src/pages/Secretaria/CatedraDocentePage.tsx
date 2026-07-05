@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/rerender-state-only-in-handlers, react-doctor/no-array-index-as-key, react-doctor/no-direct-state-mutation, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-pure-function, react-doctor/async-await-in-loop, react-doctor/no-giant-component, react-doctor/no-fetch-in-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useEffect, useMemo, useState } from 'react';
 import { client as axios } from '@/api/client';

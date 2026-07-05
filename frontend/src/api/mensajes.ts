@@ -134,7 +134,7 @@ export const enviarMensaje = async (
   return data;
 };
 
-export const marcarConversacionLeida = async (conversationId: number) => {
+const marcarConversacionLeida = async (conversationId: number) => {
   await client.post(`/mensajes/conversaciones/${conversationId}/leer`);
 };
 

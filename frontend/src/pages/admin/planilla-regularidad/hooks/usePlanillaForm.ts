@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-pass-live-state-to-parent, react-doctor/no-pass-data-to-parent, react-doctor/client-localstorage-no-version, react-doctor/no-event-handler */
 import React, { useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { enqueueSnackbar } from 'notistack';

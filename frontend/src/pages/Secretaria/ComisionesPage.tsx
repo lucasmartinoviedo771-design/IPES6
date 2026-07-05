@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from "react";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";

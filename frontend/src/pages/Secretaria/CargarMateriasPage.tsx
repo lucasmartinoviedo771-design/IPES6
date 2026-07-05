@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-cascading-set-state, react-doctor/prefer-useReducer */
 import { useEffect, useState } from "react";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";

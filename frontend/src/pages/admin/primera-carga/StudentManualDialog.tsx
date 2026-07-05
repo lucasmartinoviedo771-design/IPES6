@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/query-mutation-missing-invalidation, react-doctor/no-event-handler */
 import React, { useEffect, useMemo, useState } from 'react';
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

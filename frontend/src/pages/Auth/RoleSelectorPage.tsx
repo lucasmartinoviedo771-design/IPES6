@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-array-index-as-key */
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";

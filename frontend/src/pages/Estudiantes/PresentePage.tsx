@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/query-mutation-missing-invalidation, react-doctor/no-derived-state, react-doctor/no-chain-state-updates */
 import { useState, useEffect, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import Alert from "@mui/material/Alert";

@@ -10,7 +10,7 @@ export interface ApiResponse<T = unknown> {
 
 const d = (s?: string) => (s ? dayjs(s).format("YYYY-MM-DD") : null);
 
-export function mapFormToPayload(v: PreinscripcionForm) {
+function mapFormToPayload(v: PreinscripcionForm) {
   return {
     carrera_id: v.carrera_id ?? 0,
     foto_4x4_dataurl: v.foto_dataUrl ?? null,
@@ -62,7 +62,7 @@ export function mapFormToPayload(v: PreinscripcionForm) {
   };
 }
 
-export const crearPreinscripcion = (formData: FormData) =>
+const crearPreinscripcion = (formData: FormData) =>
   client.post("/preinscripciones", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -70,7 +70,7 @@ export const crearPreinscripcion = (formData: FormData) =>
 export const obtenerPreinscripcion = (id: number) =>
   client.get(`/preinscripciones/${id}`).then(r => r.data);
 
-export const obtenerPorCodigo = (codigo: string) =>
+const obtenerPorCodigo = (codigo: string) =>
   client.get(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`).then(r => r.data);
 
 export const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
@@ -127,7 +127,7 @@ export const descargarPdf = (id: number) => {
 };
 
 // Generación de vista previa del PDF (sin guardar)
-export const apiPreviewPdf = (v: PreinscripcionForm) =>
+const apiPreviewPdf = (v: PreinscripcionForm) =>
   client.post("/preinscripciones/preview-pdf/", mapFormToPayload(v), {
     responseType: "blob",
   }).then(r => r.data);

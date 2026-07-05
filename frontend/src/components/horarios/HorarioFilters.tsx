@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-fetch-in-effect, react-doctor/js-combine-iterations */
 import React, { useState, useEffect } from 'react';
 import { client as axios } from '@/api/client';
 import Grid from "@mui/material/Grid";

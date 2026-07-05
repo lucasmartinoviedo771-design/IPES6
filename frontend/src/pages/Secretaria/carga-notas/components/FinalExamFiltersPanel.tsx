@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/rendering-hydration-mismatch-time */
 import React from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

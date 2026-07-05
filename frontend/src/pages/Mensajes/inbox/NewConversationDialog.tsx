@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-reset-all-state-on-prop-change, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

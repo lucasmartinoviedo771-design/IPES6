@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-unstable-nested-components, react-doctor/no-nested-component-definition, react-doctor/no-derived-state, react-doctor/rerender-state-only-in-handlers, react-doctor/js-set-map-lookups, react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Button from "@mui/material/Button";

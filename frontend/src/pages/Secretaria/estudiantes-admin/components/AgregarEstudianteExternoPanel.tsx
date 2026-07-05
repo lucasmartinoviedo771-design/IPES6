@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-array-index-as-key */
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";

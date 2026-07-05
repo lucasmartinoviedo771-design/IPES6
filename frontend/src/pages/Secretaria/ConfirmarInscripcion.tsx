@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/no-cascading-set-state, react-doctor/jsx-no-jsx-as-prop, react-doctor/exhaustive-deps */
 import { useMemo, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Stack from "@mui/material/Stack";

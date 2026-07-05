@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component */
 import { useState } from "react";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";

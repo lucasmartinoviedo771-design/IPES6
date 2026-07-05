@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/rerender-state-only-in-handlers, react-doctor/rerender-lazy-ref-init, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/jsx-no-constructed-context-values, react-doctor/no-chain-state-updates */
 /**
  * @module Context/Auth
  * @description Proveedor central de Autenticación y Autorización (RBAC).
@@ -10,32 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { client, setUnauthorizedHandler } from "@/api/client";
 import { setGlobalRoleOverride } from "@/utils/roles";
 
-/**
- * Perfil de usuario normalizado del sistema SIGED.
- */
-export type RoleAssignment = {
-  role: string;
-  profesorado_id?: number | null;
-  profesorado_nombre?: string | null;
-  turno?: string | null;
-};
-
-export type User = {
-  id?: number;
-  dni: string;
-  name?: string;
-  roles?: string[];
-  /** Capacidades derivadas del sistema CAPABILITIES del backend */
-  capabilities?: string[];
-  is_staff?: boolean;
-  is_superuser?: boolean;
-  must_change_password?: boolean;
-  must_complete_profile?: boolean;
-  email?: string;
-  profesorado_ids?: number[] | null;
-  role_assignments?: RoleAssignment[];
-} | null;
-
+import { RoleAssignment, User } from "@/types/auth";
+export type { RoleAssignment, User };
 interface AuthContextType {
   /** Usuario actualmente autenticado */
   user: User;

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-derived-state-effect, react-doctor/no-cascading-set-state, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";

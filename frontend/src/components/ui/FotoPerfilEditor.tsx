@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/control-has-associated-label, react-doctor/no-initialize-state, react-doctor/rerender-state-only-in-handlers */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";

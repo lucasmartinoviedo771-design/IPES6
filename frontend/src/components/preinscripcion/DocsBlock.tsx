@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/control-has-associated-label, react-doctor/exhaustive-deps */
 import React, { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";

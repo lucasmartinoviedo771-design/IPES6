@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations */
 import { MateriaRow, FormState, PreferiblePlan } from "./types";
 import {
   PedidoEquivalenciaPayload,

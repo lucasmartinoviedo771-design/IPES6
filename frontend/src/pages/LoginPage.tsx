@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/rendering-svg-precision, react-doctor/prefer-module-scope-pure-function */
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";

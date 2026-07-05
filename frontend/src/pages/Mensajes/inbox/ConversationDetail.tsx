@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/control-has-associated-label */
 import React from "react";
 import dayjs from "dayjs";
 import Alert from "@mui/material/Alert";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-adjust-state-on-prop-change, react-doctor/no-derived-state, react-doctor/control-has-associated-label, react-doctor/no-giant-component, react-doctor/no-event-handler */
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';

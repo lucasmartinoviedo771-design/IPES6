@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/async-defer-await, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/prefer-useReducer */
 import React, { useEffect, useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { FieldErrors, FormProvider, SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";

@@ -76,7 +76,7 @@ export const marcarAnaliticoConfeccionado = (pedidoId: number) =>
 export const marcarAnaliticoEntregado = (pedidoId: number) =>
   client.patch<GenericResponse>(`/estudiantes/analiticos_ext/${pedidoId}/marcar-entregado`).then(res => res.data);
 
-export const solicitarMesaExamen = (payload: MesaExamenPayload) =>
+const solicitarMesaExamen = (payload: MesaExamenPayload) =>
   client.post<GenericResponse>("/estudiantes/mesa-examen", payload).then(res => res.data);
 
 export async function obtenerVentanaMaterias(): Promise<VentanaInscripcion | null> {

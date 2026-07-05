@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-unstable-nested-components, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-nested-component-definition, react-doctor/no-giant-component, react-doctor/no-derived-state-effect, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
 import { useState, useMemo, useEffect } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";

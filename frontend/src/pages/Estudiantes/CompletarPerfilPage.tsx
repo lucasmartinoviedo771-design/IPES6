@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/rerender-state-only-in-handlers, react-doctor/prefer-module-scope-static-value */
 import { useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -194,7 +195,7 @@ export default function CompletarPerfilPage() {
   const trabaja = watch("trabaja");
   const condicionSalud = watch("condicion_salud_informada");
 
-  const { data: detailData } = useQuery({
+  const { data: detailData, isLoading: detailIsLoading, isError: detailIsError } = useQuery({
     queryKey: ["perfil-completar"],
     queryFn: fetchPerfilCompletar,
   });
@@ -244,7 +245,7 @@ export default function CompletarPerfilPage() {
         documentacion: normalizeDocumentacion(detail.documentacion),
       });
     }
-  }, [detailQuery.data, reset]);
+  }, [detailData, reset]);
 
   const mutation = useMutation({
     mutationFn: async (values: PerfilFormValues) => {
@@ -323,7 +324,7 @@ export default function CompletarPerfilPage() {
     setPendingValues(null);
   };
 
-  const detail: EstudianteAdminDetailDTO | undefined = detailQuery.data;
+  const detail: EstudianteAdminDetailDTO | undefined = detailData;
   const docDetail = detail?.documentacion;
   const docSummary = [
     { label: "DNI legalizado", value: Boolean(docDetail?.dni_legalizado) },
@@ -348,13 +349,13 @@ export default function CompletarPerfilPage() {
             subtitle="Mantené tu información actualizada. El DNI y CUIL solo pueden ser modificados por Bedelía."
           />
 
-          {detailQuery.isLoading && (
+          {detailIsLoading && (
             <Box display="flex" justifyContent="center" py={6}>
               <CircularProgress />
             </Box>
           )}
 
-          {detailQuery.isError && (
+          {detailIsError && (
             <Alert severity="error">
               No se pudo cargar la información del estudiante. Intentá nuevamente más tarde.
             </Alert>

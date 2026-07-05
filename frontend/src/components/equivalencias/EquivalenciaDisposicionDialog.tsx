@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/jsx-key, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";

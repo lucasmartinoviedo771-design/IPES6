@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listarComisiones, ComisionDTO } from "@/api/comisiones";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
-import PlanillaRegularidadDialog from "@/pages/admin/PlanillaRegularidadDialog";
+import PlanillaRegularidadDialog from "../../admin/PlanillaRegularidadDialog";
 
 const currentYear = new Date().getFullYear();
 

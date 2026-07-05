@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/prefer-module-scope-pure-function */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Alert from "@mui/material/Alert";

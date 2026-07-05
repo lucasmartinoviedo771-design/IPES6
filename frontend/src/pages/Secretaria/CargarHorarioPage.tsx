@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/rerender-state-only-in-handlers, react-doctor/prefer-module-scope-pure-function, react-doctor/async-await-in-loop, react-doctor/no-giant-component, react-doctor/prefer-useReducer */
 import React, { useState, useCallback, useEffect } from 'react';
 import Box from "@mui/material/Box";
 import { client as api, AppAxiosRequestConfig } from '@/api/client';

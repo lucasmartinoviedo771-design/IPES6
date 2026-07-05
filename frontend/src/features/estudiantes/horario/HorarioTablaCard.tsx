@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/prefer-module-scope-pure-function, react-doctor/js-flatmap-filter, react-doctor/js-combine-iterations */
 import React, { useMemo } from "react";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";

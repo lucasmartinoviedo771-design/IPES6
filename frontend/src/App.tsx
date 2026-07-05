@@ -6,7 +6,7 @@ import { buildPublicRoutes } from "@/router/routes/PublicRoutes";
 import { buildAppShellRoutes } from "@/router/routes/AppShellRoutes";
 import { buildAdminRoutes } from "@/router/routes/AdminRoutes";
 import { ProtectedRoute } from "@/router/guards";
-import ChangePasswordPage from "@/pages/Auth/ChangePasswordPage";
+import ChangePasswordPage from "./pages/Auth/ChangePasswordPage";
 
 export default function App() {
   const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;

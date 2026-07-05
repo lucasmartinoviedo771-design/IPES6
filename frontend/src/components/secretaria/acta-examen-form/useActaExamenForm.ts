@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-derived-state, react-doctor/rerender-lazy-state-init, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

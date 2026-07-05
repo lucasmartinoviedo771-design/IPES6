@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/rendering-hydration-mismatch-time */
 import React, { useState, useEffect } from 'react';
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";

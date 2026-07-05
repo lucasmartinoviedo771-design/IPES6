@@ -7,7 +7,7 @@ export const SIDEBAR_GRADIENT = `linear-gradient(180deg, ${INSTITUTIONAL_GREEN} 
 export const TITLE_GRADIENT = `linear-gradient(120deg, ${INSTITUTIONAL_GREEN} 0%, ${INSTITUTIONAL_TERRACOTTA} 100%)`;
 export const ICON_GRADIENT = `linear-gradient(135deg, ${INSTITUTIONAL_TERRACOTTA}, ${INSTITUTIONAL_GREEN})`;
 
-export const PROFESORADO_COLORS: Record<string, string> = {
+const PROFESORADO_COLORS: Record<string, string> = {
     especial: "#DE2F82",
     biologia: "#669933",
     primaria: "#C299D6",

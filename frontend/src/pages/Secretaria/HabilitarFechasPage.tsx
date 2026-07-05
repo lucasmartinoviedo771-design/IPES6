@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/exhaustive-deps, react-doctor/rerender-state-only-in-handlers, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";

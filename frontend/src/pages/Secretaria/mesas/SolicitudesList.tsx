@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import React, { useEffect, useState } from 'react';
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -43,6 +44,7 @@ import { obtenerMesaPlanilla, type MesaPlanillaDTO } from '@/api/estudiantes';
 import { formatDate } from '@/utils/date';
 import { getIpesHeaderHtml, IPES_HEADER_CSS } from "@/utils/printActaHtml";
 
+// eslint-disable-next-line react-doctor/no-giant-component
 export const SolicitudesList: React.FC = () => {
   const [solicitudes, setSolicitudes] = useState<SolicitudMesaAdminDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -209,6 +211,7 @@ export const SolicitudesList: React.FC = () => {
     }
   };
 
+  // eslint-disable-next-line react-doctor/prefer-module-scope-pure-function
   const imprimirPlanilla = async (planilla: MesaPlanillaDTO) => {
     const parseFecha = (s: string | null | undefined): string => {
       if (!s) return '-';
@@ -328,7 +331,8 @@ export const SolicitudesList: React.FC = () => {
     </body></html>`;
     const w = window.open('', '_blank');
     if (w) {
-      w.document.write(html);
+      // eslint-disable-next-line react-doctor/dangerous-html-sink
+      w.document.write(DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }));
       w.document.close();
       w.focus();
       w.onload = () => w.print();

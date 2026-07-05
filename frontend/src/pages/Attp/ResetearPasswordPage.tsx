@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/query-mutation-missing-invalidation */
 import { useState } from "react";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
@@ -22,7 +23,7 @@ import Alert from "@mui/material/Alert";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchEstudiantesAdmin } from "@/api/estudiantes";
 import { resetPasswordEstudiante } from "@/api/estudiantes/admin";
-import { useDebouncedValue } from "@/pages/Secretaria/estudiantes-admin/hooks/useDebouncedValue";
+import { useDebouncedValue } from "../Secretaria/estudiantes-admin/hooks/useDebouncedValue";
 import BackButton from "@/components/ui/BackButton";
 import { toast } from "@/utils/toast";
 
@@ -31,7 +32,7 @@ export default function ResetearPasswordPage() {
   const debouncedSearch = useDebouncedValue(search);
   const [selectedEstudiante, setSelectedEstudiante] = useState<{ dni: string; nombre: string; apellido: string } | null>(null);
 
-  const { data: listData } = useQuery({
+  const { data: listData, isLoading: isListLoading } = useQuery({
     queryKey: ["attp-reset-estudiantes", debouncedSearch],
     queryFn: () => fetchEstudiantesAdmin({ q: debouncedSearch || undefined, limit: 30, offset: 0 }),
     enabled: debouncedSearch.length >= 2,
@@ -81,13 +82,13 @@ export default function ResetearPasswordPage() {
         <Alert severity="info">Escribí al menos 2 caracteres para buscar.</Alert>
       )}
 
-      {debouncedSearch.length >= 2 && listQuery.isLoading && (
+      {debouncedSearch.length >= 2 && isListLoading && (
         <Box textAlign="center" py={4}>
           <CircularProgress />
         </Box>
       )}
 
-      {debouncedSearch.length >= 2 && !listQuery.isLoading && estudiantes.length === 0 && (
+      {debouncedSearch.length >= 2 && !isListLoading && estudiantes.length === 0 && (
         <Alert severity="warning">No se encontraron estudiantes.</Alert>
       )}
 

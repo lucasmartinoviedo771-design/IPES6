@@ -59,7 +59,7 @@ export async function generarPlanillasCursada(
   return data;
 }
 
-export async function obtenerPlanillaCursada(
+async function obtenerPlanillaCursada(
   id: number
 ): Promise<PlanillaCursadaOut> {
   const { data } = await client.get<PlanillaCursadaOut>(
@@ -88,7 +88,7 @@ export async function cerrarPlanillaCursada(
   return data;
 }
 
-export async function reabrirPlanillaCursada(
+async function reabrirPlanillaCursada(
   id: number
 ): Promise<{ ok: boolean; message: string }> {
   const { data } = await client.post(

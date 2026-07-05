@@ -2,21 +2,21 @@ import { Outlet, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/router/guards";
 import { lazyPage } from "@/utils/lazy";
 
-const EstudiantesIndex = lazyPage(() => import("@/pages/Estudiantes/Index"));
-const CompletarPerfilPage = lazyPage(() => import("@/pages/Estudiantes/CompletarPerfilPage"));
-const InscripcionMateriaPage = lazyPage(() => import("@/pages/Estudiantes/InscripcionMateriaPage"));
-const CambioComisionPage = lazyPage(() => import("@/pages/Estudiantes/CambioComisionPage"));
-const PedidoAnaliticoPage = lazyPage(() => import("@/pages/Estudiantes/PedidoAnaliticoPage"));
-const PedidoEquivalenciasPage = lazyPage(() => import("@/pages/Estudiantes/PedidoEquivalenciasPage"));
-const TramitesEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/TramitesEstudiantePage"));
-const MesaExamenPage = lazyPage(() => import("@/pages/Estudiantes/MesaExamenPage"));
-const TrayectoriaPage = lazyPage(() => import("@/pages/Estudiantes/TrayectoriaPage"));
-const CertificadoRegularPage = lazyPage(() => import("@/pages/Estudiantes/CertificadoRegularPage"));
-const ConstanciaExamenPage = lazyPage(() => import("@/pages/Estudiantes/ConstanciaExamenPage"));
-const HorarioPage = lazyPage(() => import("@/pages/Estudiantes/HorarioPage"));
-const MisAsistenciasPage = lazyPage(() => import("@/pages/Estudiantes/MisAsistenciasPage"));
-const CursoIntroductorioEstudiantePage = lazyPage(() => import("@/pages/Estudiantes/CursoIntroductorioPage"));
-const PresentePage = lazyPage(() => import("@/pages/Estudiantes/PresentePage"));
+const EstudiantesIndex = lazyPage(() => import("../../pages/Estudiantes/Index"));
+const CompletarPerfilPage = lazyPage(() => import("../../pages/Estudiantes/CompletarPerfilPage"));
+const InscripcionMateriaPage = lazyPage(() => import("../../pages/Estudiantes/InscripcionMateriaPage"));
+const CambioComisionPage = lazyPage(() => import("../../pages/Estudiantes/CambioComisionPage"));
+const PedidoAnaliticoPage = lazyPage(() => import("../../pages/Estudiantes/PedidoAnaliticoPage"));
+const PedidoEquivalenciasPage = lazyPage(() => import("../../pages/Estudiantes/PedidoEquivalenciasPage"));
+const TramitesEstudiantePage = lazyPage(() => import("../../pages/Estudiantes/TramitesEstudiantePage"));
+const MesaExamenPage = lazyPage(() => import("../../pages/Estudiantes/MesaExamenPage"));
+const TrayectoriaPage = lazyPage(() => import("../../pages/Estudiantes/TrayectoriaPage"));
+const CertificadoRegularPage = lazyPage(() => import("../../pages/Estudiantes/CertificadoRegularPage"));
+const ConstanciaExamenPage = lazyPage(() => import("../../pages/Estudiantes/ConstanciaExamenPage"));
+const HorarioPage = lazyPage(() => import("../../pages/Estudiantes/HorarioPage"));
+const MisAsistenciasPage = lazyPage(() => import("../../pages/Estudiantes/MisAsistenciasPage"));
+const CursoIntroductorioEstudiantePage = lazyPage(() => import("../../pages/Estudiantes/CursoIntroductorioPage"));
+const PresentePage = lazyPage(() => import("../../pages/Estudiantes/PresentePage"));
 
 export const buildEstudianteRoutes = () => (
   <>

@@ -3,7 +3,7 @@ import { DocenteState, EstudianteState } from './types';
 
 export const getMesaTipoNombre = (tipo: string) => MESA_EXAMEN_TIPO_LABEL[tipo] ?? tipo;
 
-export const isAusente = (value: string) => value === "AJ" || value === "AI";
+const isAusente = (value: string) => value === "AJ" || value === "AI";
 
 export const clasificarNota = (value: string) => {
   if (isAusente(value)) return "ausente";

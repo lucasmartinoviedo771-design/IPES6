@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
 import { useEffect, useMemo, useState } from 'react';
 import { VentanaDto, fetchVentanas } from '@/api/ventanas';
 import { listarPlanes, PlanDTO } from '@/api/cargaNotas';

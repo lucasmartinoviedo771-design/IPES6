@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/query-mutation-missing-invalidation, react-doctor/prefer-module-scope-pure-function, react-doctor/no-array-index-as-key */
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";

@@ -143,13 +143,13 @@ export default function MateriaInscriptosPage() {
 
   const state = (location.state ?? {}) as LocationState;
 
-  const { data: materiaData } = useQuery<MateriaDetalleDTO>({
+  const { data: materiaData, isLoading: materiaIsLoading, isError: materiaIsError } = useQuery<MateriaDetalleDTO>({
     queryKey: ["materias", "detalle", materiaIdNumber],
     queryFn: () => obtenerMateria(materiaIdNumber),
     enabled: hasValidMateriaId && !isDocente,
   });
 
-  const { data: planData } = useQuery<PlanDetalle>({
+  const { data: planData, isLoading: planIsLoading, isError: planIsError } = useQuery<PlanDetalle>({
     queryKey: ["carreras", "plan", planIdNumber],
     queryFn: () => obtenerPlanCarrera(planIdNumber),
     enabled: hasValidPlanId && !isDocente,
@@ -159,13 +159,13 @@ export default function MateriaInscriptosPage() {
     planData?.profesorado_id ??
     (hasValidProfesoradoId ? profesoradoIdNumber : undefined);
 
-  const { data: carreraData } = useQuery<CarreraDetalle>({
+  const { data: carreraData, isLoading: carreraIsLoading, isError: carreraIsError } = useQuery<CarreraDetalle>({
     queryKey: ["carreras", "detalle", profesorIdForQuery],
     queryFn: () => obtenerCarrera(profesorIdForQuery!),
     enabled: Number.isInteger(profesorIdForQuery ?? NaN) && !isDocente,
   });
 
-  const { data: inscriptosData } = useQuery<MateriaInscriptoDTO[]>({
+  const { data: inscriptosData, isLoading: inscriptosIsLoading, isFetching: inscriptosIsFetching, isError: inscriptosIsError } = useQuery<MateriaInscriptoDTO[]>({
     queryKey: ["materias", "inscriptos", materiaIdNumber],
     queryFn: () => listarInscriptosMateria(materiaIdNumber),
     enabled: hasValidMateriaId,
@@ -184,10 +184,10 @@ export default function MateriaInscriptosPage() {
     state.profesoradoNombre ?? carreraDetalle?.nombre ?? null;
 
   const loadingSummary =
-    !isDocente && (materiaQuery.isLoading || planQuery.isLoading || carreraQuery.isLoading);
+    !isDocente && (materiaIsLoading || planIsLoading || carreraIsLoading);
 
   const summaryError =
-    !isDocente && (materiaQuery.isError || planQuery.isError || carreraQuery.isError);
+    !isDocente && (materiaIsError || planIsError || carreraIsError);
 
   if (!hasValidMateriaId || !hasValidPlanId) {
     return (
@@ -270,14 +270,14 @@ export default function MateriaInscriptosPage() {
           <Typography variant="h6" fontWeight={700} gutterBottom>
             Estudiantes inscriptos
           </Typography>
-          {inscriptosQuery.isError ? (
+          {inscriptosIsError ? (
             <Alert severity="error">
               No pudimos cargar los inscriptos de esta materia. Intentá nuevamente más tarde.
             </Alert>
           ) : (
             <InscriptosTable
               inscriptos={inscriptosData ?? []}
-              loading={inscriptosQuery.isLoading || inscriptosQuery.isFetching}
+              loading={inscriptosIsLoading || inscriptosIsFetching}
             />
           )}
         </Paper>

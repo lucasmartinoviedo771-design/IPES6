@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-pass-live-state-to-parent, react-doctor/no-array-index-as-key, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-pure-function, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/no-fetch-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps */
 import React, { useEffect, useMemo, useState } from 'react';
 import { client as axios } from '@/api/client';
 

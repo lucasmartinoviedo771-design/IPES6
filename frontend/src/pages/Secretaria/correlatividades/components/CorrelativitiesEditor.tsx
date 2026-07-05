@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/server-dedup-props */
 import React from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import Button from '@mui/material/Button';

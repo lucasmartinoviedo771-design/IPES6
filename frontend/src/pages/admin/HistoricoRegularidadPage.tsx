@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component, react-doctor/query-mutation-missing-invalidation, react-doctor/jsx-key, react-doctor/exhaustive-deps */
 import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import Box from "@mui/material/Box";

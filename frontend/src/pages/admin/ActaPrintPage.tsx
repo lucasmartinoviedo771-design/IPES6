@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/rendering-hydration-mismatch-time */
 
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";

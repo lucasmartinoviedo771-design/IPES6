@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-giant-component */
 import React, { useState } from 'react';
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";

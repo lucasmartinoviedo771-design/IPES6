@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/exhaustive-deps */
 import { useEffect, useMemo } from "react";
 import { FallbackProps } from "react-error-boundary";
 

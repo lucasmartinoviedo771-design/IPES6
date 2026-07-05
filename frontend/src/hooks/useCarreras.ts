@@ -16,4 +16,4 @@ export function useCarreras() {
 }
 
 // Alias para compatibilidad si es necesario
-export const useProfesorados = useCarreras;
+const useProfesorados = useCarreras;

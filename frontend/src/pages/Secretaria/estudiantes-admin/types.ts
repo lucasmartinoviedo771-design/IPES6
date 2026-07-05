@@ -97,7 +97,7 @@ export type DetailFormValues = {
   legajo_profesorado_id?: number | null;
 };
 
-export const estadoColorMap: Record<string, "default" | "success" | "warning"> = {
+const estadoColorMap: Record<string, "default" | "success" | "warning"> = {
   COM: "success",
   INC: "warning",
   PEN: "default",

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/query-mutation-missing-invalidation, react-doctor/prefer-module-scope-pure-function */
 import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

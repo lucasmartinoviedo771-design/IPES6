@@ -3,11 +3,11 @@ import { ProtectedRoute } from "@/router/guards";
 
 import { lazyPage } from "@/utils/lazy";
 
-const TomarAsistenciaPage = lazyPage(() => import("@/pages/Docentes/TomarAsistenciaPage"));
-const TomarAsistenciaDemoPage = lazyPage(() => import("@/pages/Docentes/TomarAsistenciaDemoPage"));
-const MisPlanillasPage = lazyPage(() => import("@/pages/Docentes/mis-planillas/MisPlanillasPage"));
-const PlanillaCursadaFormPage = lazyPage(() => import("@/pages/Docentes/mis-planillas/PlanillaCursadaFormPage"));
-const MisAsistenciasPage = lazyPage(() => import("@/pages/Docentes/MisAsistenciasPage"));
+const TomarAsistenciaPage = lazyPage(() => import("../../pages/Docentes/TomarAsistenciaPage"));
+const TomarAsistenciaDemoPage = lazyPage(() => import("../../pages/Docentes/TomarAsistenciaDemoPage"));
+const MisPlanillasPage = lazyPage(() => import("../../pages/Docentes/mis-planillas/MisPlanillasPage"));
+const PlanillaCursadaFormPage = lazyPage(() => import("../../pages/Docentes/mis-planillas/PlanillaCursadaFormPage"));
+const MisAsistenciasPage = lazyPage(() => import("../../pages/Docentes/MisAsistenciasPage"));
 
 export const buildDocenteRoutes = () => (
   <>

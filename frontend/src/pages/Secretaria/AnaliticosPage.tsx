@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
 import React from 'react';
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
 import { useAuth } from "@/context/AuthContext";

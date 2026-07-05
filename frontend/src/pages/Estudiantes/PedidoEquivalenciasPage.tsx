@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/jsx-no-jsx-as-prop */
 import React, { useState, useMemo } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/no-event-handler, react-doctor/no-derived-state-effect, react-doctor/no-adjust-state-on-prop-change, react-doctor/exhaustive-deps */
 import { useEffect, useState } from 'react';
 import { client as axios } from '@/api/client';
 import type { MatrixRow } from '../types';

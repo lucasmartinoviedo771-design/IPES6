@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/jsx-no-jsx-as-prop */
 import React from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

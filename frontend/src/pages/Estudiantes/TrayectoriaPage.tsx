@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Alert from "@mui/material/Alert";

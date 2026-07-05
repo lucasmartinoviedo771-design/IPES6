@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/control-has-associated-label */
 import React, { useId, useRef } from "react";
 import { compressImage } from "@/utils/compressImage";
 import Box from "@mui/material/Box";

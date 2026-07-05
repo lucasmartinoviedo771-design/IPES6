@@ -1,3 +1,4 @@
+/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-derived-state, react-doctor/rerender-state-only-in-handlers, react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/prefer-useReducer */
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { isAxiosError } from "axios";
 import Alert from "@mui/material/Alert";

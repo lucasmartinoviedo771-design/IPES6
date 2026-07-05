@@ -67,7 +67,7 @@ export async function uploadFotoPerfil(file: File): Promise<ApiResponseDTO> {
   return data;
 }
 
-export function getFotoPerfilUrl(): string {
+function getFotoPerfilUrl(): string {
   return `${client.defaults.baseURL ?? ""}/estudiantes/perfil/foto`;
 }
 
