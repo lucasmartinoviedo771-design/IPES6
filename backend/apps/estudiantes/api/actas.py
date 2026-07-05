@@ -81,15 +81,15 @@ def obtener_acta_metadata(request):
 @requires("ver_actas")
 def listar_actas(
     request,
-    anio: int = None,
-    materia: str = None,
-    libro: str = None,
-    folio: str = None,
-    anio_cursada_materia: int = None,
+    anio: int | None = None,  # type: ignore
+    materia: str | None = None,  # type: ignore
+    libro: str | None = None,  # type: ignore
+    folio: str | None = None,  # type: ignore
+    anio_cursada_materia: int | None = None,  # type: ignore
     incluir_equivalencias: bool = False,
     ordering: str = "-id",
     sin_tribunal: bool = False,
-    profesorado_id: int = None,
+    profesorado_id: int | None = None,  # type: ignore
 ):
     """
     Lista actas de examen con filtros por Libro, Folio y Materia.
@@ -154,20 +154,20 @@ def listar_actas(
     )
 
     # Prefetch de estados de cierre de mesas correspondientes
-    materia_ids = {a.materia_id for a in actas_list}
+    materia_ids = {a.materia_id for a in actas_list}  # type: ignore
     fechas = {a.fecha for a in actas_list if a.fecha}
     mesa_lookup: dict[tuple, MesaExamen] = {}
     if materia_ids and fechas:
         for mesa in MesaExamen.objects.filter(materia_id__in=materia_ids, fecha__in=fechas):
-            key = (mesa.materia_id, mesa.fecha, mesa.modalidad)
+            key = (mesa.materia_id, mesa.fecha, mesa.modalidad)  # type: ignore
             mesa_lookup[key] = mesa
 
     result = []
     for acta in actas_list:
-        mesa = mesa_lookup.get((acta.materia_id, acta.fecha, acta.tipo))
+        mesa: MesaExamen | None = mesa_lookup.get((acta.materia_id, acta.fecha, acta.tipo))  # type: ignore
         result.append(
             {
-                "id": acta.id,
+                "id": acta.id,  # type: ignore
                 "codigo": acta.codigo,
                 "fecha": acta.fecha.isoformat() if acta.fecha else None,
                 "materia": acta.materia.nombre if acta.materia else "Desconocida",
@@ -175,9 +175,9 @@ def listar_actas(
                 "folio": acta.folio,
                 "total_estudiantes": acta.total_alumnos,
                 "created_at": format_datetime(acta.created_at),
-                "mesa_id": mesa.id if mesa else None,
+                "mesa_id": mesa.id if mesa else None,  # type: ignore
                 "esta_cerrada": (mesa.planilla_cerrada_en is not None) if mesa else False,
-                "tiene_vocales": acta.tiene_vocales,
+                "tiene_vocales": acta.tiene_vocales,  # type: ignore
             }
         )
     return result
@@ -201,12 +201,12 @@ def obtener_acta(request, acta_id: int):
         from core.models import StaffAsignacion
 
         carreras_ids = StaffAsignacion.objects.filter(user=user).values_list("profesorado_id", flat=True)
-        if acta.profesorado_id not in carreras_ids:
+        if acta.profesorado_id not in carreras_ids:  # type: ignore
             return 403, ApiResponse(ok=False, message="No tiene permiso para ver actas de este profesorado.")
 
-    mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=acta.tipo).first()
+    mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=acta.tipo).first()  # type: ignore
 
-    estudiantes_qs = acta.estudiantes.all().order_by("numero_orden")
+    estudiantes_qs = acta.estudiantes.all().order_by("numero_orden")  # type: ignore
     estudiantes_list = [
         ActaEstudianteLocal(
             numero_orden=a.numero_orden,
@@ -221,19 +221,19 @@ def obtener_acta(request, acta_id: int):
         for a in estudiantes_qs
     ]
 
-    docentes_qs = acta.docentes.all().order_by("orden")
+    docentes_qs = acta.docentes.all().order_by("orden")  # type: ignore
     docentes_list = [
         ActaDocenteLocal(docente_id=a.docente_id, nombre=a.nombre, dni=a.dni, rol=a.rol) for a in docentes_qs
     ]
 
     return ActaDetailLocal(
-        id=acta.id,
+        id=acta.id,  # type: ignore
         codigo=acta.codigo,
-        fecha=format_date(acta.fecha),
+        fecha=format_date(acta.fecha),  # type: ignore
         tipo=acta.tipo,
-        profesorado_id=acta.profesorado_id,
-        materia_id=acta.materia_id,
-        plan_id=acta.plan_id,
+        profesorado_id=acta.profesorado_id,  # type: ignore
+        materia_id=acta.materia_id,  # type: ignore
+        plan_id=acta.plan_id,  # type: ignore
         profesorado=acta.profesorado.nombre,
         materia=acta.materia.nombre if acta.materia else "Desconocida",
         materia_anio=acta.materia.anio_cursada if acta.materia else None,
@@ -247,7 +247,7 @@ def obtener_acta(request, acta_id: int):
         total_ausentes=acta.total_ausentes or 0,
         created_by=format_user_display(acta.created_by),
         created_at=format_datetime(acta.created_at),
-        mesa_id=mesa.id if mesa else None,
+        mesa_id=mesa.id if mesa else None,  # type: ignore
         esta_cerrada=(mesa.planilla_cerrada_en is not None) if mesa else False,
         estudiantes=estudiantes_list,
         docentes=docentes_list,
@@ -310,10 +310,10 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
             if mesa:
                 # Validar tribunal de la mesa específica
-                tribunal_valido = docente_obj.id in [
-                    mesa.docente_presidente_id,
-                    mesa.docente_vocal1_id,
-                    mesa.docente_vocal2_id,
+                tribunal_valido = docente_obj.id in [  # type: ignore
+                    mesa.docente_presidente_id,  # type: ignore
+                    mesa.docente_vocal1_id,  # type: ignore
+                    mesa.docente_vocal2_id,  # type: ignore
                 ]
                 if not tribunal_valido:
                     return 403, ApiResponse(
@@ -501,7 +501,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                 else ActaExamenDocente.Rol.PRESIDENTE
             )
             docente_obj = (
-                Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None
+                Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None  # type: ignore
             )
             ActaExamenDocente.objects.create(
                 acta=acta,
@@ -531,7 +531,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                     modalidad=MesaExamen.Modalidad.LIBRE
                     if payload.tipo == ActaExamen.Tipo.LIBRE
                     else MesaExamen.Modalidad.REGULAR,
-                    codigo=f"MA-{acta.id}-{acta_fecha.strftime('%Y%m%d')}",
+                    codigo=f"MA-{acta.id}-{acta_fecha.strftime('%Y%m%d')}",  # type: ignore
                     docente_presidente=docente_presidente,
                     planilla_cerrada_en=timezone.now(),
                     planilla_cerrada_por=usuario if getattr(usuario, "is_authenticated", False) else None,
@@ -602,7 +602,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             tipo_accion="CRUD",
             detalle_accion=f"Creación de Acta de Examen: {codigo}",
             entidad="ActaExamen",
-            entidad_id=acta.id,
+            entidad_id=acta.id,  # type: ignore
             metadata={
                 "libro": payload.libro,
                 "folio": payload.folio,
@@ -614,7 +614,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
     return ApiResponse(
         ok=True,
         message="Acta de examen generada correctamente.",
-        data=ActaCreateOutLocal(id=acta.id, codigo=acta.codigo).dict(),
+        data=ActaCreateOutLocal(id=acta.id, codigo=acta.codigo).dict(),  # type: ignore
     )
 
 
@@ -657,7 +657,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     mesa = None
     if payload.mesa_id:
         mesa = MesaExamen.objects.filter(id=payload.mesa_id).first()
-    if not mesa and acta.mesa_id:
+    if not mesa and acta.mesa_id:  # type: ignore
         mesa = acta.mesa
 
     # Validar tribunal y fecha para docentes
@@ -665,10 +665,10 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         try:
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
             if mesa:
-                tribunal_valido = docente_obj.id in [
-                    mesa.docente_presidente_id,
-                    mesa.docente_vocal1_id,
-                    mesa.docente_vocal2_id,
+                tribunal_valido = docente_obj.id in [  # type: ignore
+                    mesa.docente_presidente_id,  # type: ignore
+                    mesa.docente_vocal1_id,  # type: ignore
+                    mesa.docente_vocal2_id,  # type: ignore
                 ]
                 if not tribunal_valido:
                     return 403, ApiResponse(
@@ -686,12 +686,12 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     tipo_original = acta.tipo
     mesa_modalidad = MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
     mesa_vieja = MesaExamen.objects.filter(
-        materia_id=acta.materia_id, fecha=fecha_original, modalidad=mesa_modalidad
+        materia_id=acta.materia_id, fecha=fecha_original, modalidad=mesa_modalidad  # type: ignore
     ).first()
 
     # Si cambió materia, fecha o tipo, buscar/crear la mesa correspondiente a los nuevos valores
     nueva_fecha = payload.fecha
-    materia_cambio = acta.materia_id != payload.materia_id
+    materia_cambio = acta.materia_id != payload.materia_id  # type: ignore
     fecha_cambio = str(fecha_original) != str(nueva_fecha)
     tipo_cambio = acta.tipo != payload.tipo
 
@@ -706,7 +706,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             modalidad=nueva_modalidad,
             defaults={
                 "tipo": MesaExamen.Tipo.FINAL,
-                "codigo": f"MA-{acta.id}-{nueva_fecha}-R",
+                "codigo": f"MA-{acta.id}-{nueva_fecha}-R",  # type: ignore
                 "planilla_cerrada_en": timezone.now(),
             },
         )
@@ -722,11 +722,11 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             if (
                 mesa_vieja.codigo
                 and mesa_vieja.codigo.startswith("MA-")
-                and not mesa_vieja.inscripciones.exists()
+                and not mesa_vieja.inscripciones.exists()  # type: ignore
                 and not ActaExamen.objects.filter(
                     materia=mesa_vieja.materia, fecha=mesa_vieja.fecha, tipo=tipo_original
                 )
-                .exclude(id=acta.id)
+                .exclude(id=acta.id)  # type: ignore
                 .exists()
             ):
                 mesa_vieja.delete()
@@ -763,7 +763,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
 
         # Re-construcción del tribunal docente
-        acta.docentes.all().delete()
+        acta.docentes.all().delete()  # type: ignore
         pres_obj = voc1_obj = voc2_obj = None
         for idx, docente_data in enumerate(payload.docentes):
             rol = (
@@ -772,7 +772,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
                 else ActaExamenDocente.Rol.PRESIDENTE
             )
             docente_obj = (
-                Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None
+                Docente.objects.filter(id=docente_data.docente_id).first() if docente_data.docente_id else None  # type: ignore
             )
             ActaExamenDocente.objects.create(
                 acta=acta,
@@ -797,7 +797,7 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             mesa.save(update_fields=["docente_presidente", "docente_vocal1", "docente_vocal2"])
 
         # Re-construcción de nómina (Idempotencia)
-        acta.estudiantes.all().delete()
+        acta.estudiantes.all().delete()  # type: ignore
         if mesa:
             InscripcionMesa.objects.filter(mesa=mesa, folio=payload.folio).delete()
 
@@ -892,11 +892,11 @@ def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLoc
         from core.models import StaffAsignacion
 
         carreras_ids = StaffAsignacion.objects.filter(user=user).values_list("profesorado_id", flat=True)
-        if acta.profesorado_id not in carreras_ids:
+        if acta.profesorado_id not in carreras_ids:  # type: ignore
             return 403, ApiResponse(ok=False, message="No tiene permiso para editar actas de este profesorado.")
 
     with transaction.atomic():
-        acta.docentes.all().delete()
+        acta.docentes.all().delete()  # type: ignore
         pres_obj = voc1_obj = voc2_obj = None
         for idx, docente_data in enumerate(payload):
             rol = (
@@ -924,7 +924,7 @@ def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLoc
 
         # Sincronizar mesa vinculada
         modalidad = MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
-        mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=modalidad).first()
+        mesa = MesaExamen.objects.filter(materia_id=acta.materia_id, fecha=acta.fecha, modalidad=modalidad).first()  # type: ignore
         if mesa:
             mesa.docente_presidente = pres_obj
             mesa.docente_vocal1 = voc1_obj

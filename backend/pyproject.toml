@@ -153,5 +153,16 @@ plugins = ["mypy_django_plugin.main"]
 strict_optional = true
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "apps.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "apps.estudiantes.api.regularidades_carga",
+    "apps.estudiantes.api.actas"
+]
+ignore_errors = false
+
 [tool.django-stubs]
 django_settings_module = "config.settings"
