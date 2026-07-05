@@ -104,17 +104,17 @@ export const useInscripcionMateria = () => {
     // setSelectedPlanId("");
   }, [dniFiltro]);
 
-  const carrerasQ = useQuery<CarrerasActivasDTO>({
+  const { data: carrerasQData, isSuccess: carrerasQSuccess, isLoading: carrerasQLoading, isError: carrerasQError } = useQuery<CarrerasActivasDTO>({
     queryKey: ["carreras-activas", dniFiltro],
     queryFn: () => obtenerCarrerasActivas(shouldFetchInscriptas ? (dniFiltro ? { dni: dniFiltro } : undefined) : undefined, true),
     enabled: shouldFetchInscriptas,
     retry: false,
   });
 
-  const carrerasDisponibles = carrerasQ.data?.carreras ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const carrerasDisponibles = carrerasQData?.carreras ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
   const selectedCarreraIdNum = selectedCarreraId ? Number(selectedCarreraId) : undefined;
   const selectedPlanIdNum = selectedPlanId ? Number(selectedPlanId) : undefined;
-  const puedeSolicitarMaterias = !shouldFetchInscriptas || (carrerasQ.isSuccess && (carrerasDisponibles.length <= 1 || !!selectedCarreraIdNum || !!selectedPlanIdNum));
+  const puedeSolicitarMaterias = !shouldFetchInscriptas || (carrerasQSuccess && (carrerasDisponibles.length <= 1 || !!selectedCarreraIdNum || !!selectedPlanIdNum));
 
   const planesDisponibles = useMemo(() => {
     if (!selectedCarreraId) return [];
@@ -124,7 +124,7 @@ export const useInscripcionMateria = () => {
 
   useEffect(() => {
     const disponibles = carrerasDisponibles;
-    const isLoading = carrerasQ.isLoading;
+    const isLoading = carrerasQLoading;
 
     if (isLoading || !disponibles.length) {
       // No hacemos nada mientras carga o si no hay datos aun
@@ -151,7 +151,7 @@ export const useInscripcionMateria = () => {
     }
   }, [carrerasDisponibles, selectedCarreraId, selectedPlanId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const materiasQ = useQuery<Materia[]>({
+  const { data: materiasQData, isError: materiasQError, error: materiasQError2, isSuccess: materiasQSuccess } = useQuery<Materia[]>({
     queryKey: ["materias-plan", dniFiltro, selectedCarreraId, selectedPlanId],
     enabled: shouldFetchInscriptas && puedeSolicitarMaterias,
     queryFn: async () => {
@@ -169,16 +169,16 @@ export const useInscripcionMateria = () => {
   });
 
   useEffect(() => {
-    if (materiasQ.isError) {
+    if (materiasQError) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = materiasQ.error as any;
+      const error = materiasQError2 as any;
       setErr(error?.response?.data?.message || "No se pudieron obtener las materias del plan.");
-    } else if (materiasQ.isSuccess) {
+    } else if (materiasQSuccess) {
       setErr(null);
     }
-  }, [materiasQ.isError, materiasQ.isSuccess, materiasQ.error]);
+  }, [materiasQError, materiasQSuccess, materiasQError2]);
 
-  const historialQ = useQuery<HistorialEstudianteDTO>({
+  const { data: historialQData, isError: historialQError } = useQuery<HistorialEstudianteDTO>({
     queryKey: ["historial-estudiante", dniFiltro],
     queryFn: async () => {
       const d: HistorialEstudianteDTO = await obtenerHistorialEstudiante(dniFiltro ? { dni: dniFiltro } : undefined, true);
@@ -192,22 +192,22 @@ export const useInscripcionMateria = () => {
     enabled: shouldFetchInscriptas,
   });
 
-  const ventanaQ = useQuery<VentanaInscripcion | null>({
+  const { data: ventanaQData, isError: ventanaQError } = useQuery<VentanaInscripcion | null>({
     queryKey: ["ventana-materias"],
     queryFn: obtenerVentanaMaterias,
   });
 
-  const inscripcionesQ = useQuery<MateriaInscriptaItemDTO[]>({
+  const { data: inscripcionesQData, isError: inscripcionesQError } = useQuery<MateriaInscriptaItemDTO[]>({
     queryKey: ["materias-inscriptas", normalizedDni],
     queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined, true),
     enabled: shouldFetchInscriptas,
   });
 
   const queryError =
-    materiasQ.isError ||
-    historialQ.isError ||
-    ventanaQ.isError ||
-    (shouldFetchInscriptas && (inscripcionesQ.isError || carrerasQ.isError));
+    materiasQError ||
+    historialQError ||
+    ventanaQError ||
+    (shouldFetchInscriptas && (inscripcionesQError || carrerasQError));
 
   const mInscribir = useMutation({
     mutationFn: (materiaId: number) =>
@@ -280,14 +280,14 @@ export const useInscripcionMateria = () => {
     mBaja.mutate({ inscripcionId, motivo });
   };
 
-  const materias = materiasQ.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
-  const historialRaw = historialQ.data ?? EMPTY_HISTORIAL;
+  const materias = materiasQData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const historialRaw = historialQData ?? EMPTY_HISTORIAL;
   const historial = {
     aprobadas: historialRaw.aprobadas ?? [],
     regularizadas: historialRaw.regularizadas ?? [],
     inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
   };
-  const ventana = ventanaQ.data ?? null;
+  const ventana = ventanaQData ?? null;
   const ventanaActiva = useMemo(() => {
     if (!ventana) return false;
     try {
@@ -301,7 +301,7 @@ export const useInscripcionMateria = () => {
   }, [ventana]);
   const puedeInscribirse = ventanaActiva || puedeGestionar;
   const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
-  const inscripcionesData = inscripcionesQ.data ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+  const inscripcionesData = inscripcionesQData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
 
   const yaInscriptas = new Set<number>([...(historial.inscriptasActuales || []), ...seleccionadas]);
   const esPeriodoHabilitado = (m: Materia) => {
@@ -592,7 +592,7 @@ export const useInscripcionMateria = () => {
   };
 
   const loadingEstudiante =
-    shouldFetchInscriptas && (carrerasQ.isLoading || historialQ.isLoading || materiasQ.isLoading || inscripcionesQ.isLoading);
+    shouldFetchInscriptas && (carrerasQLoading || historialQ.isLoading || materiasQ.isLoading || inscripcionesQ.isLoading);
 
   return {
     // state
