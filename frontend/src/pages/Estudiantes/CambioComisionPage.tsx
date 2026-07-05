@@ -197,24 +197,24 @@ const CambioComisionPage: React.FC = () => {
   const isEstudiante = !canGestionar;
   const shouldFetch = isEstudiante || normalizedDni.length > 0;
 
-  const materiasQ = useQuery({
+  const { data: materiasData, isError: materiasError, isLoading: materiasLoading } = useQuery({
     queryKey: ['cc-materias', normalizedDni],
     queryFn: async () => (await obtenerMateriasPlanEstudiante(normalizedDni ? { dni: normalizedDni } : undefined)).map(mapMateria),
     enabled: shouldFetch,
   });
 
-  const historialQ = useQuery({
+  const { data: historialData, isError: historialError, isLoading: historialLoading } = useQuery({
     queryKey: ['cc-historial', normalizedDni],
     queryFn: () => obtenerHistorialEstudiante(normalizedDni ? { dni: normalizedDni } : undefined),
     enabled: shouldFetch,
   });
 
-  const ventanaQ = useQuery({
+  const { data: ventanaData, isError: ventanaError, isLoading: ventanaLoading } = useQuery({
     queryKey: ['cc-ventana'],
     queryFn: obtenerVentanaMaterias,
   });
 
-  const inscriptasQ = useQuery({
+  const { data: inscriptasData, isError: inscriptasError, isLoading: inscriptasLoading } = useQuery({
     queryKey: ['cc-inscriptas', normalizedDni],
     queryFn: () => obtenerMateriasInscriptas(normalizedDni ? { dni: normalizedDni } : undefined),
     enabled: shouldFetch,
@@ -250,10 +250,10 @@ const CambioComisionPage: React.FC = () => {
     },
   });
 
-  const materias = materiasQ.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
-  const historial = historialQ.data ?? defaultHistorial;
-  const ventana = ventanaQ.data ?? null;
-  const inscripciones = inscriptasQ.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const materias = materiasData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const historial = historialData ?? defaultHistorial;
+  const ventana = ventanaData ?? null;
+  const inscripciones = inscriptasData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const materiaById = React.useMemo(() => {
     const map = new Map<number, Materia>();
@@ -434,8 +434,8 @@ const CambioComisionPage: React.FC = () => {
     });
   }, [mSolicitar, solicitudPendiente, tab, horarioLab]);
 
-  const queryError = shouldFetch && (materiasQ.isError || historialQ.isError || inscriptasQ.isError || ventanaQ.isError);
-  const loading = shouldFetch && (materiasQ.isLoading || historialQ.isLoading || inscriptasQ.isLoading || ventanaQ.isLoading);
+  const queryError = shouldFetch && (materiasError || historialError || inscriptasError || ventanaError);
+  const loading = shouldFetch && (materiasLoading || historialLoading || inscriptasLoading || ventanaLoading);
 
   if (loading) {
     return <Box p={3}><CircularProgress /></Box>;

@@ -58,7 +58,7 @@ const TrayectoriaPage: React.FC = () => {
     refreshCount
   ], [canGestionar, dniQuery, refreshCount]);
 
-  const trayectoriaQ = useQuery<TrayectoriaDTO>({
+  const { data: trayectoriaData, isFetching: trayectoriaFetching, isLoading: trayectoriaLoading, isError: trayectoriaError } = useQuery<TrayectoriaDTO>({
     queryKey,
     queryFn: () => obtenerTrayectoriaEstudiante(canGestionar ? ((dniQuery || '').trim() ? { dni: (dniQuery || '').trim() } : undefined) : undefined),
     enabled: canGestionar ? !!dniQuery : true,
@@ -70,7 +70,7 @@ const TrayectoriaPage: React.FC = () => {
     setRefreshCount(prev => prev + 1);
   };
 
-  const trayectoria = trayectoriaQ.data;
+  const trayectoria = trayectoriaData;
   const eventos = trayectoria?.historial ?? [];
   const regularidades = trayectoria?.regularidades ?? [];
   const planesCarton = trayectoria?.carton ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
@@ -144,9 +144,9 @@ const TrayectoriaPage: React.FC = () => {
               color="primary"
               startIcon={<RefreshIcon fontSize="small" />}
               onClick={handleRefresh}
-              disabled={trayectoriaQ.isFetching}
+              disabled={trayectoriaFetching}
             >
-              {trayectoriaQ.isFetching ? 'Actualizando...' : 'Actualizar'}
+              {trayectoriaFetching ? 'Actualizando...' : 'Actualizar'}
             </Button>
           </Stack>
         }
@@ -200,13 +200,13 @@ const TrayectoriaPage: React.FC = () => {
         </Paper>
       )}
 
-      {trayectoriaQ.isLoading && (
+      {trayectoriaLoading && (
         <Stack alignItems="center" sx={{ py: 4 }}>
           <CircularProgress size={32} />
         </Stack>
       )}
 
-      {trayectoriaQ.isError && (
+      {trayectoriaError && (
         <Alert severity="error" sx={{ mb: 2 }}>
           No se pudo obtener la trayectoria. Intenta nuevamente.
         </Alert>

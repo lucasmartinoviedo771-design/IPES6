@@ -57,7 +57,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
     setOrdering(newOrdering);
   };
 
-  const query = useQuery({
+  const { data: queryData, isLoading: queryLoading, isError: queryError } = useQuery({
     queryKey: ['historial-mesas-pandemia', ordering],
     queryFn: () => listarHistoricoMesasPandemia({ ordering }),
   });
@@ -178,15 +178,15 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 
         {/* CONTENIDO (TABLA) */}
         <Card variant="outlined">
-          {query.isLoading ? (
+          {queryLoading ? (
             <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
               <CircularProgress />
             </Box>
-          ) : query.isError ? (
+          ) : queryError ? (
             <Box sx={{ p: 2 }}>
               <Alert severity="error">Error al cargar el histórico de mesas de pandemia.</Alert>
             </Box>
-          ) : !query.data?.length ? (
+          ) : !queryData?.length ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">No hay historiales de actas de pandemia registrados.</Typography>
             </Box>
@@ -237,7 +237,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {query.data.map((row) => (
+                  {queryData.map((row) => (
                     <TableRow key={row.id} hover>
                       <TableCell>
                         <Typography variant="body2" fontWeight={600} color={INSTITUTIONAL_TERRACOTTA}>
