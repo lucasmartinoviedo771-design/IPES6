@@ -40,7 +40,6 @@ type Props = {
 	onClose: () => void;
 };
 
-// eslint-disable-next-line react-doctor/no-giant-component
 function MesaPlanillaDialog({ open, planilla, loading, onClose }: Props) {
 	const sortedEstudiantes = useMemo(() => {
 		if (!planilla) return [];
@@ -72,8 +71,7 @@ function MesaPlanillaDialog({ open, planilla, loading, onClose }: Props) {
 	const planillaResolucion = planilla?.plan_resolucion ?? "-";
 	const codigoMesa = planilla?.mesa_codigo ?? "-";
 
-	// eslint-disable-next-line react-doctor/prefer-module-scope-pure-function
-	const renderEstudianteRow = (estudiante: MesaPlanillaEstudianteDTO) => (
+		const renderEstudianteRow = (estudiante: MesaPlanillaEstudianteDTO) => (
 		<TableRow key={estudiante.estudiante_id ?? estudiante.inscripcion_id}>
 			<TableCell>{estudiante.apellido_nombre}</TableCell>
 			<TableCell>{estudiante.dni}</TableCell>
@@ -300,8 +298,7 @@ function MesaPlanillaDialog({ open, planilla, loading, onClose }: Props) {
     `;
 		const printWindow = window.open("", "_blank");
 		if (printWindow) {
-			// eslint-disable-next-line react-doctor/dangerous-html-sink
-			printWindow.document.write(
+						printWindow.document.write(
 				DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }),
 			);
 			printWindow.document.close();

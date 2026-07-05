@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-derived-state-effect, react-doctor/async-await-in-loop, react-doctor/no-adjust-state-on-prop-change */
-
 import { isAxiosError } from "axios";
 import { enqueueSnackbar } from "notistack";
 import { useEffect, useState } from "react";

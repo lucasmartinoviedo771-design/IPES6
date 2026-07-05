@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/jsx-key */
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";

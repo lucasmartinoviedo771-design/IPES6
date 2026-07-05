@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/no-derived-state */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

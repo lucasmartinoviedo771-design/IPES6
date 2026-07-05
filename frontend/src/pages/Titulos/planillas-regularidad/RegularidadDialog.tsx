@@ -40,7 +40,6 @@ type Props = {
 	materiaInfo: MateriaOptionDTO | null;
 };
 
-// eslint-disable-next-line react-doctor/no-giant-component
 function RegularidadDialog({
 	open,
 	planilla,
@@ -310,8 +309,7 @@ function RegularidadDialog({
     `;
 		const printWindow = window.open("", "_blank");
 		if (printWindow) {
-			// eslint-disable-next-line react-doctor/dangerous-html-sink
-			printWindow.document.write(
+						printWindow.document.write(
 				DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }),
 			);
 			printWindow.document.close();
@@ -407,7 +405,7 @@ function RegularidadDialog({
 									</TableRow>
 								</TableHead>
 								<TableBody>
-									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									{ }
 									{planilla.estudiantes.map((estudiante: any) => (
 										<TableRow key={estudiante.inscripcion_id}>
 											<TableCell>{estudiante.orden ?? "-"}</TableCell>

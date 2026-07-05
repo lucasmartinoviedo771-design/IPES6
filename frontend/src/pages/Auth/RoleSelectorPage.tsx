@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import SchoolIcon from "@mui/icons-material/School";

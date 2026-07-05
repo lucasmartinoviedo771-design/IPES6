@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps */
-
 import SaveIcon from "@mui/icons-material/Save";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Box from "@mui/material/Box";
@@ -135,7 +133,7 @@ const RegularidadPlanillaEditor: React.FC<RegularidadPlanillaEditorProps> = ({
 	}, [planilla, defaultFechaCierre, defaultObservaciones, reset]);
 
 	// eslint-disable-next-line react-hooks/incompatible-library
-	const filas = watch("filas") ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const filas = watch("filas") ?? [];  
 
 	const summary = useMemo(() => {
 		const total = filas.length;

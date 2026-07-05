@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/exhaustive-deps, react-doctor/no-pass-data-to-parent */
-
 import AddIcon from "@mui/icons-material/Add";
 import ShuffleIcon from "@mui/icons-material/Shuffle";
 import Alert from "@mui/material/Alert";
@@ -75,7 +73,7 @@ export default function GestionComisionesDialog({
 		if (open) {
 			loadComisiones();
 		}
-	}, [open, materiaId, anioLectivo]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [open, materiaId, anioLectivo]);  
 
 	const handleCreate = async () => {
 		if (

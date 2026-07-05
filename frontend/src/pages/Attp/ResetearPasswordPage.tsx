@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/query-mutation-missing-invalidation */
-
 import LockResetIcon from "@mui/icons-material/LockReset";
 import SearchIcon from "@mui/icons-material/Search";
 import Alert from "@mui/material/Alert";

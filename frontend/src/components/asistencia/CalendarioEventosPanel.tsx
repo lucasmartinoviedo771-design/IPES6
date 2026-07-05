@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/query-mutation-missing-invalidation, react-doctor/prefer-module-scope-pure-function */
-
 import AddIcon from "@mui/icons-material/Add";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import Alert from "@mui/material/Alert";

@@ -44,8 +44,7 @@ type TypeAccordionPanelProps = {
 	panelRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
 	onUpsert: (ventana: Ventana) => void;
 	onEdit: (ventana: Ventana) => void;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	notify: (message: string, options?: any) => void;
+		notify: (message: string, options?: any) => void;
 };
 
 const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({

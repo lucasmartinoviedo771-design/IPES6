@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/exhaustive-deps */
 import { useEffect, useMemo } from "react";
 import type { FallbackProps } from "react-error-boundary";
 
@@ -40,7 +39,7 @@ function ErrorBoundaryFallback({ error, resetErrorBoundary }: FallbackProps) {
 			}, 500);
 			return () => clearTimeout(timer);
 		}
-	}, [isChunkLoadError, tooManyRetries]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [isChunkLoadError, tooManyRetries]);  
 
 	if (isChunkLoadError) {
 		if (tooManyRetries) {

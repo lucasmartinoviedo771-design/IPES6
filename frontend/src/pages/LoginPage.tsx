@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/rendering-svg-precision, react-doctor/prefer-module-scope-pure-function */
-
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import Alert from "@mui/material/Alert";
@@ -51,8 +49,7 @@ export default function LoginPage() {
 	const { login } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const from = (location.state as any)?.from?.pathname ?? null;
+		const from = (location.state as any)?.from?.pathname ?? null;
 
 	const [loginId, setLoginId] = useState("");
 	const [password, setPassword] = useState("");
@@ -64,8 +61,7 @@ export default function LoginPage() {
 		import.meta.env.VITE_GOOGLE_LOGIN_URL ??
 		"https://ipesrg.com/api/auth/google/login";
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const hasGoogleEndpoint = true;
+		const hasGoogleEndpoint = true;
 
 	const handleClickShowPassword = () => setShowPassword((show) => !show);
 	const handleMouseDownPassword = (
@@ -204,8 +200,7 @@ export default function LoginPage() {
 					navigate(target, { replace: true });
 				}
 			}
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			const msg =
 				err?.message ||
 				err?.response?.data?.detail ||

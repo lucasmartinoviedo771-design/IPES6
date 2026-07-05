@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/rerender-lazy-state-init, react-doctor/async-await-in-loop */
-
 import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {

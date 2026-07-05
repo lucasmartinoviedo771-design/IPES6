@@ -52,8 +52,7 @@ export async function fetchEstudianteAdminDetail(
 	dni: string,
 	config?: AppAxiosRequestConfig,
 ): Promise<EstudianteAdminDetailDTO> {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { data } = await client.get<EstudianteAdminDetailDTO>(
+		const { data } = await client.get<EstudianteAdminDetailDTO>(
 		`/estudiantes/admin/estudiantes/${dni}`,
 		config as any,
 	);

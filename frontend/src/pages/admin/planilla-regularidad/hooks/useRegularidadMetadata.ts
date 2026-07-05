@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/exhaustive-deps */
-
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
@@ -50,7 +48,7 @@ export function useRegularidadMetadata({
 	});
 
 	const profesorados: RegularidadMetadataProfesorado[] =
-		metadataQuery.data?.profesorados ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+		metadataQuery.data?.profesorados ?? [];  
 
 	const selectedProfesorado = useMemo(
 		() => profesorados.find((p) => p.id === Number(profesoradoId)),

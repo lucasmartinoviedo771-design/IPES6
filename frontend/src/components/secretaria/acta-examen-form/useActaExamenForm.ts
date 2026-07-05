@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-derived-state, react-doctor/rerender-lazy-state-init, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { enqueueSnackbar } from "notistack";
@@ -19,7 +17,6 @@ import {
 import { fetchEstudianteAdminDetail } from "@/api/estudiantes";
 import type { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	type ActaExamenFormProps,
 	type DocenteState,
@@ -138,7 +135,7 @@ export function useActaExamenForm({
 		return uniqueList;
 	}, [metadata, actaParaEditar, editId]);
 
-	const docentesDisponibles = metadata?.docentes ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const docentesDisponibles = metadata?.docentes ?? [];  
 
 	const docenteOptions = useMemo(
 		() =>
@@ -233,8 +230,7 @@ export function useActaExamenForm({
 			setObservaciones(actaParaEditar.observaciones || "");
 			if (metadata) {
 				if (actaParaEditar.docentes && actaParaEditar.docentes.length > 0) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const loadedDocentes = actaParaEditar.docentes.map((d: any) => ({
+										const loadedDocentes = actaParaEditar.docentes.map((d: any) => ({
 						rol: d.rol,
 						docente_id: Number(d.docente_id) || null,
 						nombre: d.nombre || "",
@@ -255,8 +251,7 @@ export function useActaExamenForm({
 					actaParaEditar.estudiantes.length > 0
 				) {
 					setEstudiantes(
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						actaParaEditar.estudiantes.map((e: any, index: number) => ({
+												actaParaEditar.estudiantes.map((e: any, index: number) => ({
 							internoId: `${index}-${Date.now()}`,
 							numero_orden: e.numero_orden || index + 1,
 							permiso_examen: e.permiso_examen || "",
@@ -280,8 +275,7 @@ export function useActaExamenForm({
 		if (!mesaPreseleccionada || editId || !metadata) return;
 		applyMesaSeleccionada(mesaPreseleccionada);
 		setMesaSeleccionada(mesaPreseleccionada);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [mesaPreseleccionada?.id, !!metadata]);
+			}, [mesaPreseleccionada?.id, !!metadata]);
 
 	// Auto-popular estudiantes desde la planilla (modo integrado)
 	useEffect(() => {
@@ -298,8 +292,7 @@ export function useActaExamenForm({
 				inscripcionId: e.inscripcionId,
 			})),
 		);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [estudiantesPreseleccionados?.length, mesaPreseleccionada?.id]);
+			}, [estudiantesPreseleccionados?.length, mesaPreseleccionada?.id]);
 
 	useEffect(() => {
 		if (editId && !isInitialPopulated) return;
@@ -371,8 +364,7 @@ export function useActaExamenForm({
 			setPendingActaPayload(null);
 			setConfirmActaOpen(false);
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			enqueueSnackbar(
 				error?.response?.data?.message || "No se pudo generar el acta.",
 				{ variant: "error" },
@@ -390,8 +382,7 @@ export function useActaExamenForm({
 			});
 			setConfirmActaOpen(false);
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			enqueueSnackbar(
 				error?.response?.data?.message || "No se pudo actualizar el acta.",
 				{ variant: "error" },
@@ -514,8 +505,7 @@ export function useActaExamenForm({
 						: item,
 				),
 			);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (error: any) {
+					} catch (error: any) {
 			if (strict) {
 				enqueueSnackbar(
 					error?.response?.data?.message ||

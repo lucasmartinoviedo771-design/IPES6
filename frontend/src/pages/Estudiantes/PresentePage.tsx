@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/query-mutation-missing-invalidation, react-doctor/no-derived-state, react-doctor/no-chain-state-updates */
-
 import LocationOn from "@mui/icons-material/LocationOn";
 import VerifiedUser from "@mui/icons-material/VerifiedUser";
 import Alert from "@mui/material/Alert";

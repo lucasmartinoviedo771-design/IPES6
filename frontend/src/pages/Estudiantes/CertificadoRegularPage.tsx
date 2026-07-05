@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-derived-state, react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
-
 import DownloadIcon from "@mui/icons-material/Download";
 import type { SelectChangeEvent } from "@mui/material";
 import Alert from "@mui/material/Alert";
@@ -37,8 +35,7 @@ const CertificadoRegularPage: React.FC = () => {
 	const { enqueueSnackbar } = useSnackbar();
 	const { user } = useAuth();
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const roles = user?.roles ?? [];
+		const roles = user?.roles ?? [];
 	const isOnlyStudent =
 		hasAnyRole(user, ["estudiante"]) &&
 		!hasAnyRole(user, ["admin", "secretaria", "bedel"]);
@@ -61,7 +58,7 @@ const CertificadoRegularPage: React.FC = () => {
 			(canGestionar || isOnlyStudent),
 	});
 
-	const carreras = carrerasData?.carreras ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const carreras = carrerasData?.carreras ?? [];  
 
 	useEffect(() => {
 		if (!carreras.length) {
@@ -178,10 +175,8 @@ const CertificadoRegularPage: React.FC = () => {
 					}
 				} else {
 					mensaje =
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(error.response?.data as any)?.message ||
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(error.response?.data as any)?.detail ||
+												(error.response?.data as any)?.message ||
+												(error.response?.data as any)?.detail ||
 						error.message ||
 						mensaje;
 				}

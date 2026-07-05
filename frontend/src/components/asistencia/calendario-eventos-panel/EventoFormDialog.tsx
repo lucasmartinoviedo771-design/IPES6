@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/server-dedup-props */
-
 import CloseIcon from "@mui/icons-material/Close";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";

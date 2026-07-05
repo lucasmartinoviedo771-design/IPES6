@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/rendering-hydration-mismatch-time, react-doctor/async-parallel */
-
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";

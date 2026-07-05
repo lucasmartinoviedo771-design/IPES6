@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/prefer-module-scope-pure-function, react-doctor/exhaustive-deps */
-
 import { isAxiosError } from "axios";
 import { enqueueSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -88,7 +86,7 @@ export function useFinalExamPlanilla(
 				setFinalLoadingPlanilla(false);
 			}
 		},
-		[enqueueSnackbar], // eslint-disable-line react-hooks/exhaustive-deps
+		[enqueueSnackbar],  
 	);
 
 	useEffect(() => {

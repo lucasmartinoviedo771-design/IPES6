@@ -24,8 +24,7 @@ import { collapsedDrawerWidth, drawerWidth, roleLabels } from "./constants";
 
 interface AppTopBarProps {
 	open: boolean;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	user: any;
+		user: any;
 	activeRole?: string | null;
 	canUseMessages: boolean;
 	unreadMessages: number;
@@ -315,8 +314,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 					{hasMultipleRoles && (
 						<Tooltip title="Cambiar Rol">
 							<IconButton
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								{...({ component: Link, to: "/seleccionar-rol" } as any)}
+																{...({ component: Link, to: "/seleccionar-rol" } as any)}
 								sx={{
 									display: { xs: "inline-flex", md: "none" },
 									borderRadius: 10,

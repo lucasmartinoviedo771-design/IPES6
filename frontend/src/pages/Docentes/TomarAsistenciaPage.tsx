@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/query-mutation-missing-invalidation, react-doctor/no-cascading-set-state, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler */
-
 import ArrowBack from "@mui/icons-material/ArrowBack";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import Person from "@mui/icons-material/Person";
@@ -71,8 +69,7 @@ export default function TomarAsistenciaPage() {
 			setPin(data.pin);
 			enqueueSnackbar("PIN generado exitosamente.", { variant: "success" });
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg = err.response?.data?.message || "Error al generar el PIN.";
 			enqueueSnackbar(msg, { variant: "error" });
 		},
@@ -98,7 +95,7 @@ export default function TomarAsistenciaPage() {
 				setPin(clase.pin_asistencia);
 			}
 		}
-	}, [clase]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [clase]);  
 
 	const marcarDocenteMutation = useMutation({
 		mutationFn: () =>
@@ -114,8 +111,7 @@ export default function TomarAsistenciaPage() {
 				queryKey: ["clase-estudiantes", claseId],
 			});
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg =
 				err.response?.data?.message || "Error al registrar tu asistencia.";
 			enqueueSnackbar(msg, { variant: "error" });
@@ -137,8 +133,7 @@ export default function TomarAsistenciaPage() {
 				queryKey: ["clase-estudiantes", claseId],
 			});
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg = err.response?.data?.message || "Error al guardar asistencia.";
 			enqueueSnackbar(msg, { variant: "error" });
 		},

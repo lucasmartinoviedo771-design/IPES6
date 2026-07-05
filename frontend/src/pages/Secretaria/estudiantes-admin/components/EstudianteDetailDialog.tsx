@@ -1,12 +1,8 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/no-derived-state, react-doctor/no-many-boolean-props */
-
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/DeleteForever";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import DescriptionIcon from "@mui/icons-material/Description";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import GavelIcon from "@mui/icons-material/Gavel";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import SchoolIcon from "@mui/icons-material/School";
@@ -21,18 +17,13 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Divider from "@mui/material/Divider";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Switch from "@mui/material/Switch";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import type React from "react";
@@ -63,8 +54,7 @@ type Props = {
 	control: Control<DetailFormValues>;
 	handleSubmit: UseFormHandleSubmit<DetailFormValues>;
 	watch: UseFormWatch<DetailFormValues>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	setValue: (name: any, value: any, options?: any) => void;
+		setValue: (name: any, value: any, options?: any) => void;
 	onSubmit: (values: DetailFormValues) => void;
 	anioIngresoOptions: string[];
 	docValues: DetailDocumentacionForm;
@@ -97,8 +87,7 @@ export function EstudianteDetailDialog({
 	open,
 	onClose,
 	detailQuery,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	selectedDni,
+		selectedDni,
 	condicionCalculada,
 	control,
 	handleSubmit,

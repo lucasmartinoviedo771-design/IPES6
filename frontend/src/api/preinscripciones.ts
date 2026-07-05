@@ -111,8 +111,7 @@ export const listarPreinscripciones = (params: {
 	fecha_hasta?: string;
 }): Promise<{ count: number; results: PreinscripcionDTO[] }> =>
 	client
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		.get<any>("/preinscripciones/", { params })
+				.get<any>("/preinscripciones/", { params })
 		.then((r) => {
 			if (Array.isArray(r.data)) {
 				return { count: r.data.length, results: r.data };

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-derived-state, react-doctor/no-derived-state-effect, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
-
 import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
 import type React from "react";

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-derived-state-effect, react-doctor/no-cascading-set-state, react-doctor/no-chain-state-updates */
-
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
@@ -27,8 +25,7 @@ interface UseEstudiantesAsistenciaParams {
 }
 
 export const useEstudiantesAsistencia = ({
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	profesoradoOptions,
+		profesoradoOptions,
 	puedeVerEstudiantes,
 }: UseEstudiantesAsistenciaParams) => {
 	const { enqueueSnackbar } = useSnackbar();

@@ -1,7 +1,4 @@
-/* eslint-disable react-doctor/rerender-state-only-in-handlers, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/rendering-hydration-mismatch-time, react-doctor/no-chain-state-updates */
-
 import AssignmentIcon from "@mui/icons-material/Assignment";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -13,22 +10,18 @@ import { enqueueSnackbar } from "notistack";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ComisionOptionDTO,
+		ComisionOptionDTO,
 	type GuardarRegularidadPayload,
 	gestionarCierreRegularidad,
 	guardarPlanillaRegularidad,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	MateriaOptionDTO,
+		MateriaOptionDTO,
 	obtenerPlanillaRegularidad,
 	type RegularidadPlanillaDTO,
 } from "@/api/cargaNotas";
 import ActaExamenForm from "@/components/secretaria/ActaExamenForm";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import OralExamActaDialog, {
 	OralActFormValues,
 } from "@/components/secretaria/OralExamActaDialog";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import RegularidadPlanillaEditor from "@/components/secretaria/RegularidadPlanillaEditor";
 import BackButton from "@/components/ui/BackButton";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
@@ -75,8 +68,7 @@ const CargaNotasPage: React.FC = () => {
 
 	const [planilla, setPlanilla] = useState<RegularidadPlanillaDTO | null>(null);
 	const [searchParams] = useSearchParams();
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const navigate = useNavigate();
+		const navigate = useNavigate();
 	const scope = searchParams.get("scope");
 	const isFinalsMode = scope === "finales";
 
@@ -85,15 +77,12 @@ const CargaNotasPage: React.FC = () => {
 	const [regularidadConfirmOpen, setRegularidadConfirmOpen] = useState(false);
 	const [regularidadPendingPayload, setRegularidadPendingPayload] =
 		useState<GuardarRegularidadPayload | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [regularidadCierreLoading, setRegularidadCierreLoading] =
+		const [regularidadCierreLoading, setRegularidadCierreLoading] =
 		useState(false);
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [defaultFechaCierre, setDefaultFechaCierre] = useState<string>(() =>
+		const [defaultFechaCierre, setDefaultFechaCierre] = useState<string>(() =>
 		new Date().toISOString().slice(0, 10),
 	);
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [defaultObservaciones, setDefaultObservaciones] = useState<string>("");
+		const [defaultObservaciones, setDefaultObservaciones] = useState<string>("");
 	const [gestionComisionesOpen, setGestionComisionesOpen] = useState(false);
 	const [planillaOpen, setPlanillaOpen] = useState(false);
 
@@ -147,12 +136,10 @@ const CargaNotasPage: React.FC = () => {
 	const {
 		finalMesas,
 		finalSelectedMesaId,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		setFinalSelectedMesaId,
+				setFinalSelectedMesaId,
 		finalPlanilla,
 		setFinalPlanilla,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		finalCondiciones,
+				finalCondiciones,
 		setFinalCondiciones,
 		finalRows,
 		setFinalRows,
@@ -165,8 +152,7 @@ const CargaNotasPage: React.FC = () => {
 		finalReadOnly,
 		fetchFinalPlanilla,
 		mapEstudianteToFinalRow,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		handleFinalRowChange,
+				handleFinalRowChange,
 		handleOpenFinalPlanilla,
 		selectedMesaResumen,
 		selectedMesaCursoLabel,
@@ -176,16 +162,14 @@ const CargaNotasPage: React.FC = () => {
 	// --- Final Exam Persist Hook ---
 	const {
 		finalSaving,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		finalCierreLoading,
+				finalCierreLoading,
 		finalConfirmOpen,
 		finalSuccess,
 		setFinalSuccess,
 		handleFinalSaveClick: handleFinalSaveClickBase,
 		executeGuardarFinalPlanilla,
 		cancelFinalConfirm,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		handleFinalPlanillaCierre,
+				handleFinalPlanillaCierre,
 	} = useFinalExamPersist(
 		finalSelectedMesaId,
 		finalRows,
@@ -199,8 +183,7 @@ const CargaNotasPage: React.FC = () => {
 		setFinalError,
 	);
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const handleFinalSaveClick = () =>
+		const handleFinalSaveClick = () =>
 		handleFinalSaveClickBase(finalPermissionDenied);
 
 	// --- Oral Exam Acta Hook ---
@@ -209,14 +192,11 @@ const CargaNotasPage: React.FC = () => {
 		oralDialogRow,
 		oralActaLoading,
 		oralActaSaving,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		downloadingOralBatch,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		handleOpenOralActa,
+				downloadingOralBatch,
+				handleOpenOralActa,
 		handleCloseOralActa,
 		handleSaveOralActa,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		handleDownloadAllOralActas,
+				handleDownloadAllOralActas,
 	} = useOralExamActa(finalSelectedMesaId, finalReadOnly);
 
 	// --- Regularidad state and handlers ---
@@ -224,8 +204,7 @@ const CargaNotasPage: React.FC = () => {
 		() => filteredComisiones.find((c) => c.id === filters.comisionId) || null,
 		[filteredComisiones, filters.comisionId],
 	);
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const regularidadReadOnly = planilla ? !planilla.puede_editar : false;
+		const regularidadReadOnly = planilla ? !planilla.puede_editar : false;
 
 	const fetchPlanilla = useCallback(
 		async (comisionId: number) => {
@@ -244,7 +223,7 @@ const CargaNotasPage: React.FC = () => {
 				setLoadingPlanilla(false);
 			}
 		},
-		[enqueueSnackbar], // eslint-disable-line react-hooks/exhaustive-deps
+		[enqueueSnackbar],  
 	);
 
 	useEffect(() => {
@@ -265,8 +244,7 @@ const CargaNotasPage: React.FC = () => {
 			setDefaultFechaCierre(payload.fecha_cierre ?? "");
 			setDefaultObservaciones(payload.observaciones_generales ?? "");
 			await fetchPlanilla(payload.comision_id);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (error: any) {
+					} catch (error: any) {
 			const message =
 				error?.response?.data?.message ||
 				"No se pudieron guardar las notas de regularidad.";
@@ -276,8 +254,7 @@ const CargaNotasPage: React.FC = () => {
 		}
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const handleGuardarRegularidad = async (
+		const handleGuardarRegularidad = async (
 		payload: GuardarRegularidadPayload,
 	) => {
 		setRegularidadPendingPayload(payload);
@@ -291,8 +268,7 @@ const CargaNotasPage: React.FC = () => {
 		setRegularidadConfirmOpen(false);
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const handleRegularidadCierre = async (accion: "cerrar" | "reabrir") => {
+		const handleRegularidadCierre = async (accion: "cerrar" | "reabrir") => {
 		if (!selectedComision) return;
 		setRegularidadCierreLoading(true);
 		try {
@@ -304,8 +280,7 @@ const CargaNotasPage: React.FC = () => {
 				{ variant: "success" },
 			);
 			await fetchPlanilla(selectedComision.id);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (error: any) {
+					} catch (error: any) {
 			const message =
 				error?.response?.data?.message ||
 				"No se pudo actualizar el estado de cierre.";

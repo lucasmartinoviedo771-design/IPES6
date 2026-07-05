@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/control-has-associated-label */
-
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import FormControl from "@mui/material/FormControl";
@@ -27,8 +25,7 @@ type Props = {
 
 const CarreraDocumentacion: React.FC<Props> = ({
 	onFileChange,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	maxBytes = 1.5 * 1024 * 1024,
+		maxBytes = 1.5 * 1024 * 1024,
 	carreras,
 	isLoading,
 }) => {

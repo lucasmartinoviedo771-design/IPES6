@@ -15,12 +15,10 @@ import {
 	apiUpdatePreinscripcion,
 	apiUploadPreDoc,
 	type ChecklistDTO,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	eliminarPreinscripcion,
+		eliminarPreinscripcion,
 	listarPreinscripcionesEstudiante,
 	type PreinscripcionUpdatePayload,
 } from "@/api/preinscripciones";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { compressImage } from "@/utils/compressImage";
 import type { PreinscripcionForm } from "../schema";
 
@@ -77,8 +75,7 @@ export function usePreConfirmData(
 				domicilio,
 				fecha_nacimiento,
 				carrera_id,
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				ddjj_ok,
+								ddjj_ok,
 				...datos_extra
 			} = values;
 
@@ -157,8 +154,7 @@ export function usePreConfirmData(
 			qc.invalidateQueries({ queryKey: ["preins-busq-sec"] });
 			qc.invalidateQueries({ queryKey: ["preinscripciones"] });
 		},
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		onError: (err) => {
+				onError: (err) => {
 			void 0;
 			enqueueSnackbar("No se pudo guardar los cambios", { variant: "error" });
 		},
@@ -184,7 +180,7 @@ export function usePreConfirmData(
 				checklist as unknown as Record<string, unknown>,
 			);
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+		 
 		onSuccess: (resp: any) => {
 			enqueueSnackbar("Preinscripción confirmada", { variant: "success" });
 			qc.invalidateQueries({ queryKey: ["preinscripcion", codigo] });
@@ -229,8 +225,7 @@ export function usePreConfirmData(
 				queryKey: ["preinscripciones", "estudiante", estudianteDni],
 			});
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			const msg =
 				error?.response?.data?.message || "No se pudo cambiar el profesorado";
 			enqueueSnackbar(msg, { variant: "error" });
@@ -263,23 +258,19 @@ export function usePreConfirmData(
 		mutationFn: ({ carreraId, anio }: { carreraId: number; anio?: number }) =>
 			agregarCarreraPreinscripcion(codigo, carreraId, anio),
 		onSuccess: (resp, _vars, _ctx) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			enqueueSnackbar((resp as any).message || "Profesorado agregado", {
+						enqueueSnackbar((resp as any).message || "Profesorado agregado", {
 				variant: "success",
 			});
 			qc.invalidateQueries({
 				queryKey: ["preinscripciones", "estudiante", estudianteDni],
 			});
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			if ((resp as any).data?.codigo) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				navigate(
+						if ((resp as any).data?.codigo) {
+								navigate(
 					`/secretaria/confirmar-inscripcion?codigo=${(resp as any).data.codigo}`,
 				);
 			}
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			const msg =
 				error?.response?.data?.message || "No se pudo agregar el profesorado";
 			enqueueSnackbar(msg, { variant: "error" });

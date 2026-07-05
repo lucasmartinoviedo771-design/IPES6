@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent, react-doctor/no-event-handler, react-doctor/exhaustive-deps */
-
 import { enqueueSnackbar } from "notistack";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -71,7 +69,7 @@ export function useRegularidadFilters(
 			}
 		};
 		loadPlanes();
-	}, [filters.profesoradoId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [filters.profesoradoId]);  
 
 	useEffect(() => {
 		const planId = filters.planId;
@@ -105,7 +103,7 @@ export function useRegularidadFilters(
 			}
 		};
 		loadDatos();
-	}, [filters.planId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [filters.planId]);  
 
 	const uniqueAnios = useMemo(() => {
 		const set = new Set<number>();
@@ -144,7 +142,7 @@ export function useRegularidadFilters(
 				anio: uniqueAnios[0],
 			}));
 		}
-	}, [filters.planId, filters.anio, uniqueAnios]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [filters.planId, filters.anio, uniqueAnios]);  
 
 	useEffect(() => {
 		if (!filters.planId) return;
@@ -154,7 +152,7 @@ export function useRegularidadFilters(
 				cuatrimestre: uniqueCuatrimestres[0],
 			}));
 		}
-	}, [filters.planId, filters.cuatrimestre, uniqueCuatrimestres]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [filters.planId, filters.cuatrimestre, uniqueCuatrimestres]);  
 
 	const materiaOptions = useMemo(() => {
 		let base = materias;
@@ -239,7 +237,7 @@ export function useRegularidadFilters(
 		if (!exists) {
 			setFilters((prev) => ({ ...prev, materiaId: null, comisionId: null }));
 		}
-	}, [materiaOptions, filters.materiaId, filters.comisionId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [materiaOptions, filters.materiaId, filters.comisionId]);  
 
 	useEffect(() => {
 		if (!filters.materiaId) {
@@ -272,7 +270,7 @@ export function useRegularidadFilters(
 				setFilters((prev) => ({ ...prev, comisionId: null }));
 			}
 		}
-	}, [filteredComisiones, filters.materiaId, filters.comisionId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [filteredComisiones, filters.materiaId, filters.comisionId]);  
 
 	return {
 		profesorados,

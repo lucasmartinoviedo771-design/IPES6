@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-pure-function, react-doctor/exhaustive-deps */
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import Alert from "@mui/material/Alert";
@@ -45,13 +43,12 @@ export default function PreConfirmEditor({
 }) {
 	const { control, handleSubmit, reset, watch, setValue, register } =
 		useForm<PreinscripcionForm>({
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			resolver: zodResolver(preinscripcionSchema) as any,
+						resolver: zodResolver(preinscripcionSchema) as any,
 			defaultValues: formDefaults,
 		});
 
 	const { user: authUser } = useAuth();
-	const myProfIds = authUser?.profesorado_ids || []; // eslint-disable-line react-hooks/exhaustive-deps
+	const myProfIds = authUser?.profesorado_ids || [];  
 
 	const selectedCarreraIdRef = { current: 0 };
 	const checklistQDataRef = {
@@ -77,10 +74,8 @@ export default function PreConfirmEditor({
 		carrerasQ,
 		preinsEstudianteQ,
 		docsQ,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		estudianteDni,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mUpdate,
+				estudianteDni,
+				mUpdate,
 		mUploadFoto,
 		mConfirm,
 		mObservar,
@@ -94,8 +89,7 @@ export default function PreConfirmEditor({
 
 	// Asegurar registro del campo virtual de foto para que watch() funcione
 	useEffect(() => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		try {
+				try {
 			(register as any)("foto_dataUrl");
 		} catch {
 			/* campo virtual, ignorar */
@@ -263,8 +257,7 @@ export default function PreConfirmEditor({
 
 	const executeConfirmInscripcion = () => {
 		mConfirm.mutate(buildChecklistPayload(), {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			onSuccess: (resp: any) => {
+						onSuccess: (resp: any) => {
 				setConfirmInscripcionOpen(false);
 				// Si la respuesta trae el password redactado o real lo mostramos
 				if (resp?.data?.password_inicial || resp?.data?.password) {
@@ -355,10 +348,8 @@ export default function PreConfirmEditor({
 		setNuevaCarreraCohorte(String(new Date().getFullYear()));
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [validationErrors, setValidationErrors] = useState<any>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const onInvalid = (errors: any) => {
+		const [validationErrors, setValidationErrors] = useState<any>(null);
+		const onInvalid = (errors: any) => {
 		void 0;
 		setValidationErrors(errors);
 		enqueueSnackbar("Hay errores en el formulario, revise los mensajes abajo", {
@@ -391,8 +382,7 @@ export default function PreConfirmEditor({
 		);
 
 	return (
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		<Stack
+				<Stack
 			gap={2}
 			component="form"
 			onSubmit={handleSubmit(onSubmit as any, onInvalid)}
@@ -429,8 +419,7 @@ export default function PreConfirmEditor({
 							canConfirm={canConfirm}
 							mUpdate={mUpdate}
 							mConfirm={mConfirm}
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							docsQData={docsQ.data as any}
+														docsQData={docsQ.data as any}
 							checklistData={checklistQ.data}
 							onUploadFoto={(file) => mUploadFoto.mutate(file)}
 							onReset={() => reset()}

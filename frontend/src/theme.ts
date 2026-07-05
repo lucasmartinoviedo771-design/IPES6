@@ -3,7 +3,6 @@ import { createTheme } from "@mui/material";
 const PRIMARY_TERRACOTTA = "#B7694E";
 const PRIMARY_TERRACOTTA_DARK = "#9f4f37";
 const SECONDARY_OLIVE = "#7D7F6E";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SECONDARY_OLIVE_DARK = "#6a6c5d";
 const TEXT_COLOR = "#020617";
 

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/dangerous-html-sink */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

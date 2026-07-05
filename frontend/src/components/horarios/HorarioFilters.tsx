@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-fetch-in-effect, react-doctor/js-combine-iterations */
-
 import FormControl from "@mui/material/FormControl";
 import Grid from "@mui/material/Grid";
 import InputLabel from "@mui/material/InputLabel";

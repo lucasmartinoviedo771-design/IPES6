@@ -1,8 +1,4 @@
-/* eslint-disable react-doctor/no-unstable-nested-components, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-nested-component-definition, react-doctor/no-giant-component, react-doctor/no-derived-state-effect, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import CancelIcon from "@mui/icons-material/Cancel";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -13,7 +9,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -46,8 +41,7 @@ import {
 	fetchEstudiantesDocumentacion,
 	getExportDocumentacionExcelUrl,
 	getExportDocumentacionPdfUrl,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	updateEstudianteDocumentacion,
+		updateEstudianteDocumentacion,
 } from "@/api/estudiantes";
 import BackButton from "@/components/ui/BackButton";
 
@@ -151,8 +145,7 @@ export default function DocumentacionEstudiantesPage() {
 	const [rowsPerPage, setRowsPerPage] = useState(50);
 
 	const queryClient = useQueryClient();
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [updating, setUpdating] = useState<Record<string, boolean>>({});
+		const [updating, setUpdating] = useState<Record<string, boolean>>({});
 	const [isSavingBulk, setIsSavingBulk] = useState(false);
 	const [pendingChanges, setPendingChanges] = useState<
 		Record<string, Partial<EstudianteDocumentacionUpdatePayload>>
@@ -215,8 +208,7 @@ export default function DocumentacionEstudiantesPage() {
 		}));
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleUpdate = (dni: string, field: string, value: any) => {
+		const handleUpdate = (dni: string, field: string, value: any) => {
 		setPendingChanges((prev) => {
 			const studentChanges = prev[dni] || {};
 			return {

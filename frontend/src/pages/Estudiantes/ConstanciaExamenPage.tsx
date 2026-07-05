@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
-
 import type { SelectChangeEvent } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -50,7 +48,7 @@ const ConstanciaExamenPage: React.FC = () => {
 		enabled: isEstudiante || (dniObjetivo?.length ?? 0) === 8,
 	});
 
-	const constancias = constanciasData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const constancias = constanciasData ?? [];  
 
 	const carrerasDisponibles = useMemo(() => {
 		const map = new Map<number, string>();

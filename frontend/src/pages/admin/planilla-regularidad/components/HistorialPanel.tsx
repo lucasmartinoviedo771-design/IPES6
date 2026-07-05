@@ -19,11 +19,9 @@ import type React from "react";
 
 interface HistorialPanelProps {
 	isReadOnly: boolean;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	selectedMateria?: any;
+		selectedMateria?: any;
 	profesoradoId: number | "";
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	historyQuery: UseQueryResult<any[], Error>;
+		historyQuery: UseQueryResult<any[], Error>;
 	historyMenuAnchor: HTMLElement | null;
 	isHistoryOpen: boolean;
 	handleOpenHistory: (event: React.MouseEvent<HTMLButtonElement>) => void;

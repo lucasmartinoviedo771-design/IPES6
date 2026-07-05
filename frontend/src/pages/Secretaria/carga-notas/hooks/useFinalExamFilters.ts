@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent, react-doctor/no-event-handler, react-doctor/exhaustive-deps */
-
 import { enqueueSnackbar } from "notistack";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -45,7 +43,7 @@ export function useFinalExamFilters(
 			}
 		};
 		loadVentanasFinales();
-	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	}, []);  
 
 	useEffect(() => {
 		if (!isFinalsMode) {
@@ -79,7 +77,7 @@ export function useFinalExamFilters(
 			}
 		};
 		loadFinalPlanes();
-	}, [isFinalsMode, finalFilters.profesoradoId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [isFinalsMode, finalFilters.profesoradoId]);  
 
 	useEffect(() => {
 		if (!isFinalsMode) {
@@ -114,7 +112,7 @@ export function useFinalExamFilters(
 			}
 		};
 		loadFinalMaterias();
-	}, [isFinalsMode, finalFilters.planId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [isFinalsMode, finalFilters.planId]);  
 
 	const finalAvailableAnios = useMemo(() => {
 		const set = new Set<number>();
@@ -168,7 +166,7 @@ export function useFinalExamFilters(
 		finalAvailableAnios,
 		finalFilters.anio,
 		finalFilters.planId,
-	]); // eslint-disable-line react-hooks/exhaustive-deps
+	]);  
 
 	useEffect(() => {
 		if (!isFinalsMode) return;
@@ -184,7 +182,7 @@ export function useFinalExamFilters(
 		finalCuatrimestreOptions,
 		finalFilters.cuatrimestre,
 		finalFilters.planId,
-	]); // eslint-disable-line react-hooks/exhaustive-deps
+	]);  
 
 	return {
 		ventanasFinales,

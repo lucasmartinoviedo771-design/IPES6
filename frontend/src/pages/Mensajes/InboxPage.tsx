@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/query-mutation-missing-invalidation, react-doctor/no-derived-state, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/async-parallel */
-
 import AddIcon from "@mui/icons-material/Add";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import RefreshIcon from "@mui/icons-material/Refresh";

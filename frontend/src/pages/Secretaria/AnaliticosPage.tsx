@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
-
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Alert from "@mui/material/Alert";
@@ -228,7 +226,7 @@ export default function AnaliticosPage() {
 	};
 	React.useEffect(() => {
 		if (ventanaId) loadPedidos(Number(ventanaId));
-	}, [ventanaId, dniFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [ventanaId, dniFilter]);  
 
 	const [descargando, setDescargando] = React.useState(false);
 
@@ -286,8 +284,7 @@ export default function AnaliticosPage() {
 			setCreating(false);
 			resetModalState();
 			if (ventanaId) await loadPedidos(Number(ventanaId));
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setError(err?.response?.data?.message || "No se pudo crear el pedido");
 		}
 	};
@@ -298,8 +295,7 @@ export default function AnaliticosPage() {
 		try {
 			await marcarAnaliticoConfeccionado(pedidoId);
 			if (ventanaId) await loadPedidos(Number(ventanaId));
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setError(
 				err?.response?.data?.message || "No se pudo marcar como confeccionado.",
 			);
@@ -314,8 +310,7 @@ export default function AnaliticosPage() {
 		try {
 			await marcarAnaliticoEntregado(pedidoId);
 			if (ventanaId) await loadPedidos(Number(ventanaId));
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setError(
 				err?.response?.data?.message || "No se pudo marcar como entregado.",
 			);
@@ -551,7 +546,7 @@ export default function AnaliticosPage() {
 								</Select>
 							</FormControl>
 						)}
-						{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+						{ }
 						<TextField
 							select
 							label="Motivo"

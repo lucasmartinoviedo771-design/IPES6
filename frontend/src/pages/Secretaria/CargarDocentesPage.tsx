@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-pure-function */
-
 import ClearIcon from "@mui/icons-material/Clear";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -130,8 +128,7 @@ export default function CargarDocentesPage() {
 				cuil: newDocente.cuil || null,
 				fecha_nacimiento: newDocente.fecha_nacimiento || null,
 			};
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const response = await api.post("/docentes/", payload, {
+						const response = await api.post("/docentes/", payload, {
 				suppressErrorToast: true,
 			} as any);
 			return response.data;
@@ -146,8 +143,7 @@ export default function CargarDocentesPage() {
 				);
 			}
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			const msg = error.message || "No se pudo crear el docente.";
 			toast.error(msg);
 		},
@@ -155,8 +151,7 @@ export default function CargarDocentesPage() {
 
 	const updateDocenteMutation = useMutation<Docente, Error, Docente>({
 		mutationFn: async (updatedDocente) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const response = await api.put(
+						const response = await api.put(
 				`/docentes/${updatedDocente.id}`,
 				updatedDocente,
 				{ suppressErrorToast: true } as any,
@@ -173,8 +168,7 @@ export default function CargarDocentesPage() {
 				);
 			}
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			const msg = error.message || "No se pudo actualizar el docente.";
 			toast.error(msg);
 		},
@@ -188,7 +182,7 @@ export default function CargarDocentesPage() {
 			queryClient.invalidateQueries({ queryKey: ["docentes"] });
 			toast.success("Docente eliminado exitosamente");
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+		 
 		onError: (error: any) => {
 			void 0;
 			toast.error("Error al eliminar el docente");
@@ -254,10 +248,8 @@ export default function CargarDocentesPage() {
 	};
 
 	const docenteFormFields = (
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		control: any,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		errors: any,
+				control: any,
+				errors: any,
 		dniReadOnly = false,
 	) => (
 		<>

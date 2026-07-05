@@ -1,6 +1,3 @@
-/* eslint-disable react-doctor/no-unstable-nested-components, react-doctor/no-nested-component-definition, react-doctor/no-derived-state, react-doctor/rerender-state-only-in-handlers, react-doctor/js-set-map-lookups, react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
@@ -14,9 +11,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import CircularProgress from "@mui/material/CircularProgress";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Container from "@mui/material/Container";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -119,10 +114,8 @@ const MesaExamenPage: React.FC = () => {
 	const [activeTab, setActiveTab] = useState(0);
 	const [dni, setDni] = useState(initialDni);
 	const [dniBusqueda, setDniBusqueda] = useState(initialDni);
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [tipo, setTipo] = useState<"FIN" | "EXT" | "ESP" | "">("");
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [modalidad, setModalidad] = useState<"REG" | "LIB" | "">("");
+		const [tipo, setTipo] = useState<"FIN" | "EXT" | "ESP" | "">("");
+		const [modalidad, setModalidad] = useState<"REG" | "LIB" | "">("");
 	const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
 	const [ventanaId, setVentanaId] = useState<string>("");
 	const [mesas, setMesas] = useState<MesaListadoItemDTO[]>([]);
@@ -166,8 +159,7 @@ const MesaExamenPage: React.FC = () => {
 		"REG",
 	);
 	const [solicitando, setSolicitando] = useState(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [materiasSolicitables, setMateriasSolicitables] = useState<any[]>([]);
+		const [materiasSolicitables, setMateriasSolicitables] = useState<any[]>([]);
 	const [loadingSolicitables, setLoadingSolicitables] = useState(false);
 	const [pendingCancelSolicitudId, setPendingCancelSolicitudId] = useState<
 		number | null
@@ -222,8 +214,7 @@ const MesaExamenPage: React.FC = () => {
 						setSelectedPlanId("");
 					}
 				}
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			} catch (error: any) {
+							} catch (error: any) {
 				if (!cancelled) {
 					setErr(
 						error?.response?.data?.message ||
@@ -248,8 +239,7 @@ const MesaExamenPage: React.FC = () => {
 			return;
 		}
 		if (selectedCarreraId) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const actual = carreras.find(
+						const actual = carreras.find(
 				(c: any) => String(c.profesorado_id) === selectedCarreraId,
 			);
 			if (!actual) {
@@ -257,13 +247,11 @@ const MesaExamenPage: React.FC = () => {
 				setSelectedPlanId("");
 				return;
 			}
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			if (
+						if (
 				!selectedPlanId ||
 				!actual.planes.some((p: any) => String(p.id) === selectedPlanId)
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const preferido =
+								const preferido =
 					actual.planes.find((p: any) => p.vigente) || actual.planes[0] || null;
 				setSelectedPlanId(preferido ? String(preferido.id) : "");
 			}
@@ -272,8 +260,7 @@ const MesaExamenPage: React.FC = () => {
 		if (carreras.length === 1) {
 			const unica = carreras[0];
 			setSelectedCarreraId(String(unica.profesorado_id));
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const preferido =
+						const preferido =
 				unica.planes.find((p: any) => p.vigente) || unica.planes[0] || null;
 			setSelectedPlanId(preferido ? String(preferido.id) : "");
 		}
@@ -281,8 +268,7 @@ const MesaExamenPage: React.FC = () => {
 
 	const planesDisponibles = useMemo(() => {
 		if (!selectedCarreraId) return [];
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const carrera = carreras.find(
+				const carrera = carreras.find(
 			(c: any) => String(c.profesorado_id) === selectedCarreraId,
 		);
 		return carrera ? carrera.planes : [];
@@ -345,8 +331,7 @@ const MesaExamenPage: React.FC = () => {
 					setErr(null);
 					setMesas(data || []);
 				}
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			} catch (error: any) {
+							} catch (error: any) {
 				if (!cancelled) {
 					// Solo mostrar error si no estamos esperando selección (usamos ref para valor actual)
 					const cur = contextRef.current;
@@ -377,7 +362,7 @@ const MesaExamenPage: React.FC = () => {
 		ventanaId,
 		canGestionar,
 		dniBusqueda,
-	]); // eslint-disable-line react-hooks/exhaustive-deps
+	]);  
 
 	const fetchTrayectoria = async () => {
 		if (canGestionar && !dniBusqueda.trim()) {
@@ -474,11 +459,11 @@ const MesaExamenPage: React.FC = () => {
 				void 0;
 			}
 		})();
-	}, [dniBusqueda, canGestionar]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dniBusqueda, canGestionar]);  
 
 	useEffect(() => {
 		fetchSolicitables();
-	}, [dniBusqueda, modalidad, selectedPlanIdNum]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [dniBusqueda, modalidad, selectedPlanIdNum]);  
 
 	const agruparPorLlamado = (lista: MesaListadoItemDTO[]) => {
 		const fechasUnicas = [...new Set(lista.map((m) => m.fecha))].sort();
@@ -547,8 +532,7 @@ const MesaExamenPage: React.FC = () => {
 			setErr(null);
 			setPendingInscripcion(null);
 			await fetchTrayectoria();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			const data = e?.response?.data;
 			let message =
 				typeof data === "string"
@@ -581,8 +565,7 @@ const MesaExamenPage: React.FC = () => {
 			setErr(null);
 			setPendingBaja(null);
 			await fetchTrayectoria();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			setErr(e?.response?.data?.message || "No se pudo anular la inscripción.");
 		} finally {
 			setInscribiendoId(null);
@@ -605,8 +588,7 @@ const MesaExamenPage: React.FC = () => {
 			setPendingSolicitud(null);
 			await fetchSolicitudes();
 			setActiveTab(1);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			setErr(e?.response?.data?.message || "No se pudo enviar la solicitud.");
 		} finally {
 			setSolicitando(false);
@@ -623,8 +605,7 @@ const MesaExamenPage: React.FC = () => {
 			setPendingCancelSolicitudId(null);
 			await fetchSolicitudes();
 			await fetchSolicitables();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			setErr(e?.response?.data?.message || "No se pudo cancelar la solicitud.");
 		} finally {
 			setSolicitando(false);

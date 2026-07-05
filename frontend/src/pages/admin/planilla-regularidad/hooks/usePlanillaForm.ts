@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-pass-live-state-to-parent, react-doctor/no-pass-data-to-parent, react-doctor/client-localstorage-no-version, react-doctor/no-event-handler */
-
 import { enqueueSnackbar } from "notistack";
 import React, { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -364,8 +362,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 
 	const handleInsertRow = (index: number) => {
 		const newRow = buildDefaultRow(0);
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(replaceFilas as any)([
+				(replaceFilas as any)([
 			...getValues("filas").slice(0, index + 1),
 			newRow,
 			...getValues("filas").slice(index + 1),

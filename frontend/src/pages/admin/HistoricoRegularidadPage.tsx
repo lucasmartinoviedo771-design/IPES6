@@ -1,9 +1,6 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/query-mutation-missing-invalidation, react-doctor/jsx-key, react-doctor/exhaustive-deps */
-
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Checkbox from "@mui/material/Checkbox";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -11,7 +8,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Grid from "@mui/material/Grid";
 import MenuItem from "@mui/material/MenuItem";
@@ -91,7 +87,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 	const selectedProfesorado = metadata?.profesorados.find(
 		(p) => p.id === selectedProfesoradoId,
 	);
-	const planes = selectedProfesorado?.planes || []; // eslint-disable-line react-hooks/exhaustive-deps
+	const planes = selectedProfesorado?.planes || [];  
 
 	const selectedPlanId = watch("plan_id");
 
@@ -103,7 +99,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 	}, [planes, setValue]);
 
 	const selectedPlan = planes.find((p) => p.id === selectedPlanId);
-	const materias = selectedPlan?.materias || []; // eslint-disable-line react-hooks/exhaustive-deps
+	const materias = selectedPlan?.materias || [];  
 
 	// Auto-select Materia details (dictado)
 	React.useEffect(() => {
@@ -137,8 +133,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 			});
 			setOverwriteConfirm(null);
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			const msg = error.response?.data?.message || "Error al guardar.";
 			if (msg.startsWith("PREVENTION:OVERWRITE|")) {
 				setOverwriteConfirm({
@@ -243,8 +238,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 											}
 										}}
 										renderOption={(props, option) => {
-											// eslint-disable-next-line @typescript-eslint/no-explicit-any
-											const { key, ...restProps } = props as any;
+																						const { key, ...restProps } = props as any;
 											return (
 												<li key={option.dni} {...restProps}>
 													<Box>
@@ -413,8 +407,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 											"2C": "2° Cuatrimestre",
 										};
 										const formatKey = (mat.formato as string) || "";
-										// eslint-disable-next-line @typescript-eslint/no-explicit-any
-										const dictKey = ((mat as any).dictado as string) || "";
+																				const dictKey = ((mat as any).dictado as string) || "";
 										const label = `${FORMAT_MAP[formatKey] || formatKey} | ${DICT_LABELS[dictKey] || dictKey}`;
 										return (
 											<Typography variant="caption" color="text.secondary">
@@ -489,8 +482,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 								<Controller
 									name="docente_nombre"
 									control={control}
-									// eslint-disable-next-line @typescript-eslint/no-unused-vars
-									render={({ field: controllerField, fieldState }) => (
+																		render={({ field: controllerField, fieldState }) => (
 										<Autocomplete
 											freeSolo
 											options={metadata?.docentes || []}
@@ -534,8 +526,7 @@ const HistoricoRegularidadPage: React.FC = () => {
 												}
 											}}
 											renderOption={(props, option) => {
-												// eslint-disable-next-line @typescript-eslint/no-explicit-any
-												const { key, ...restProps } = props as any;
+																								const { key, ...restProps } = props as any;
 												return (
 													<li key={option.dni} {...restProps}>
 														<Box>

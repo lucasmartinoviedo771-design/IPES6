@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-cascading-set-state, react-doctor/prefer-useReducer */
-
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import Box from "@mui/material/Box";
@@ -270,8 +268,7 @@ export default function CargarMateriasPage() {
 			reset();
 			toast.success("Materia creada exitosamente");
 		},
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		onError: (error: Error) => {
+				onError: (error: Error) => {
 			void 0;
 			toast.error("Error al crear la materia");
 		},
@@ -291,8 +288,7 @@ export default function CargarMateriasPage() {
 			reset();
 			toast.success("Materia actualizada exitosamente");
 		},
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		onError: (error: Error) => {
+				onError: (error: Error) => {
 			void 0;
 			toast.error("Error al actualizar la materia");
 		},
@@ -306,8 +302,7 @@ export default function CargarMateriasPage() {
 			queryClient.invalidateQueries({ queryKey: ["materias", currentPlanId] });
 			toast.success("Materia eliminada exitosamente");
 		},
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		onError: (error: Error) => {
+				onError: (error: Error) => {
 			void 0;
 			toast.error("Error al eliminar la materia");
 		},

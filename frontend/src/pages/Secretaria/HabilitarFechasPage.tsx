@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/exhaustive-deps, react-doctor/rerender-state-only-in-handlers, react-doctor/no-chain-state-updates */
-
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
@@ -66,7 +64,7 @@ export default function HabilitarFechasPage() {
 
 	useEffect(() => {
 		loadVentanas();
-	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	}, []);  
 
 	const upsertVentana = async (ventana: Ventana) => {
 		setSaving((state) => ({ ...state, [ventana.tipo]: true }));

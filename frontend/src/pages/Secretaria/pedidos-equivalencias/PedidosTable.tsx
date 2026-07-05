@@ -1,6 +1,5 @@
 import DownloadIcon from "@mui/icons-material/Download";
 import Alert from "@mui/material/Alert";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";

@@ -12,8 +12,7 @@ export default class ErrorBoundary extends React.Component<
 		return { error };
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	componentDidCatch(error: Error, info: React.ErrorInfo) {
+		componentDidCatch(error: Error, info: React.ErrorInfo) {
 		console.group(
 			"%c[ErrorBoundary] UI crash",
 			"color:#d32f2f;font-weight:bold;",

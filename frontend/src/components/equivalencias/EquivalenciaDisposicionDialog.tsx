@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/jsx-key, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
-
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SearchIcon from "@mui/icons-material/Search";

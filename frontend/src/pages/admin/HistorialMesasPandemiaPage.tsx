@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component */
-
 import AssignmentLateIcon from "@mui/icons-material/AssignmentLate";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -44,13 +42,10 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 	const { user } = useAuth();
 	const canEdit = hasCapability(user, "carga_finales");
 	const queryClient = useQueryClient();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [selectedMesa, setSelectedMesa] = useState<any>(null);
+		const [selectedMesa, setSelectedMesa] = useState<any>(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [editData, setEditData] = useState<any[]>([]);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [condiciones, setCondiciones] = useState<any[]>([]);
+		const [editData, setEditData] = useState<any[]>([]);
+		const [condiciones, setCondiciones] = useState<any[]>([]);
 	const [loadingPlanilla, setLoadingPlanilla] = useState(false);
 	const [ordering, setOrdering] = useState<string>("-fecha");
 
@@ -70,8 +65,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 	});
 
 	const mutation = useMutation({
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		mutationFn: (data: { id: number; payload: any }) =>
+				mutationFn: (data: { id: number; payload: any }) =>
 			actualizarMesaPlanilla(data.id, data.payload),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["historial-mesas-pandemia"] });
@@ -83,8 +77,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 		},
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleOpenPlanilla = async (mesa: any) => {
+		const handleOpenPlanilla = async (mesa: any) => {
 		setSelectedMesa(mesa);
 		setIsModalOpen(true);
 		setLoadingPlanilla(true);
@@ -100,8 +93,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 		}
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleUpdateGrade = (
+		const handleUpdateGrade = (
 		inscripcionId: number,
 		field: string,
 		value: any,
@@ -373,7 +365,7 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 									</TableRow>
 								</TableHead>
 								<TableBody>
-									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									{ }
 									{editData.map((est: any) => (
 										<TableRow key={est.inscripcion_id}>
 											<TableCell>{est.dni}</TableCell>

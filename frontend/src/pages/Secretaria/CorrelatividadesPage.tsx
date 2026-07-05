@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/async-await-in-loop, react-doctor/no-fetch-in-effect, react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
-
 import Alert from "@mui/material/Alert";
 import Grid from "@mui/material/Grid";
 import type React from "react";
@@ -124,8 +122,7 @@ export default function CorrelatividadesPage() {
 		} else {
 			setVersionId("");
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [planId]);
+			}, [planId]);
 
 	// Reset pending when version changes
 	useEffect(() => {

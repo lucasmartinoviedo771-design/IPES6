@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import Box from "@mui/material/Box";

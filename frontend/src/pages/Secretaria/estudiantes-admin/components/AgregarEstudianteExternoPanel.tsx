@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import AddIcon from "@mui/icons-material/Add";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import Box from "@mui/material/Box";
@@ -75,8 +73,7 @@ export function AgregarEstudianteExternoPanel() {
 			});
 			setBusqueda("");
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			const msg =
 				error?.response?.data?.message || "No se pudo agregar el estudiante";
 			enqueueSnackbar(msg, { variant: "error" });

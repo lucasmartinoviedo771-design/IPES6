@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/no-many-boolean-props */
-
 import ArticleIcon from "@mui/icons-material/Article";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import BarChartIcon from "@mui/icons-material/BarChart";
@@ -43,8 +41,7 @@ import { drawerWidth, navButtonSx } from "./constants";
 interface AppSidebarProps {
 	open: boolean;
 	current: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	user: any;
+		user: any;
 	canUseMessages: boolean;
 	unreadMessages: number;
 	badgeColor: "default" | "error" | "warning" | "primary";

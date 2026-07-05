@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/query-mutation-missing-invalidation, react-doctor/prefer-module-scope-pure-function, react-doctor/no-array-index-as-key */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -144,8 +142,7 @@ export default function PlanillaCursadaFormPage() {
 				queryKey: ["planillas-cursada", comisionId],
 			});
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg =
 				err?.response?.data?.message ?? "Error al guardar el borrador.";
 			enqueueSnackbar(msg, { variant: "error" });
@@ -169,8 +166,7 @@ export default function PlanillaCursadaFormPage() {
 				variant: "success",
 			});
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg =
 				err?.response?.data?.message ?? "Error al sincronizar la planilla.";
 			enqueueSnackbar(msg, { variant: "error" });
@@ -197,8 +193,7 @@ export default function PlanillaCursadaFormPage() {
 				queryKey: ["planillas-cursada", comisionId],
 			});
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg =
 				err?.response?.data?.message ?? "Error al cerrar la planilla.";
 			enqueueSnackbar(msg, { variant: "error" });
@@ -295,7 +290,7 @@ export default function PlanillaCursadaFormPage() {
 
 				{isError && (
 					<Alert severity="error">
-						{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+						{ }
 						{(error as any)?.response?.data?.message ??
 							"No se pudo cargar la planilla. Verificá tus permisos."}
 					</Alert>

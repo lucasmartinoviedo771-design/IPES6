@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import ClearIcon from "@mui/icons-material/Clear";
 import DownloadIcon from "@mui/icons-material/Download";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
@@ -78,8 +76,7 @@ export default function AuditoriaInconsistenciasPage() {
 		}
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleFilterChange = (field: keyof AuditoriaFilters, value: any) => {
+		const handleFilterChange = (field: keyof AuditoriaFilters, value: any) => {
 		setFilters((prev) => ({ ...prev, [field]: value }));
 	};
 
@@ -313,7 +310,7 @@ export default function AuditoriaInconsistenciasPage() {
 
 						{isError && (
 							<Alert severity="error" sx={{ mb: 2 }}>
-								{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+								{ }
 								Error al cargar la auditoría:{" "}
 								{(error as any)?.message || "Error desconocido"}
 							</Alert>

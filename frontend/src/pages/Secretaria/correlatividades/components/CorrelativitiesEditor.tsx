@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/server-dedup-props */
-
 import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";

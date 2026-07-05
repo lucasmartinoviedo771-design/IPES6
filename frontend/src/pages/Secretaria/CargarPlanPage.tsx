@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component */
-
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -77,8 +75,7 @@ export default function CargarPlanPage() {
 		},
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const { data: profesorados, isLoading: isLoadingProfesorados } = useQuery<
+		const { data: profesorados, isLoading: isLoadingProfesorados } = useQuery<
 		Profesorado[]
 	>({
 		queryKey: ["profesorados-list"],
@@ -116,7 +113,7 @@ export default function CargarPlanPage() {
 			});
 			reset();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+		 
 		onError: (error: any) => {
 			void 0;
 			toast.error("Error al guardar el plan");
@@ -135,7 +132,7 @@ export default function CargarPlanPage() {
 			setEditingPlan(null);
 			reset();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+		 
 		onError: (error: any) => {
 			void 0;
 			toast.error("Error al actualizar el plan");

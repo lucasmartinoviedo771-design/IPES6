@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-pass-live-state-to-parent, react-doctor/no-array-index-as-key, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-pure-function, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/no-fetch-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps */
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { client as axios } from "@/api/client";
@@ -137,8 +136,7 @@ interface TimetableGridProps {
 
 const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 	const {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		profesoradoId,
+				profesoradoId,
 		planId,
 		anioCarrera,
 		cuatrimestre,
@@ -229,7 +227,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 			setMaterias([]);
 			onMateriaChange(null);
 		}
-	}, [planId, anioCarrera, cuatrimestre]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [planId, anioCarrera, cuatrimestre]);  
 
 	useEffect(() => {
 		if (anioCarrera && turnoId) {
@@ -317,8 +315,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 	// Si el backend envía `bloques`, seguimos usándolos; si no, generamos la grilla del turno
 	const hasRealBloques = bloquesReady && bloques.length > 0;
 	const canUseFallback = bloquesReady && !hasRealBloques && turnoKey;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const isLoading = !bloquesReady && turnoId;
+		const isLoading = !bloquesReady && turnoId;
 
 	// L–V (usa grilla del turno M/T/V si no hay datos del backend)
 	let timeSlotsLV: string[] = [];
@@ -361,16 +358,14 @@ const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
 		const meta = GRILLAS.sabado;
 		let cur = parseHM(meta.start);
 		const end = parseHM(meta.end);
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const brks = meta.breaks;
+				const brks = meta.breaks;
 		const acc: string[] = [];
 		while (cur < end) {
 			const nx = Math.min(cur + BLOCK_MIN, end);
 			acc.push(`${fmtHM(cur)}-${fmtHM(nx)}`);
 			cur = nx;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		timeSlotsSab = acc;
+				timeSlotsSab = acc;
 	}
 
 	// Sábado visible (independiente del turno seleccionado)

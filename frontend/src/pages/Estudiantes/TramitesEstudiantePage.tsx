@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/no-event-handler, react-doctor/jsx-no-jsx-as-prop, react-doctor/no-chain-state-updates */
-
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
@@ -51,8 +49,7 @@ const TAB_SX = {
 
 // ── Tab 0: Mi Analítico ─────────────────────────────────────────────────────
 const MiAnaliticoTab: React.FC = () => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { user } = (useAuth?.() ?? { user: null }) as any;
+		const { user } = (useAuth?.() ?? { user: null }) as any;
 	const canGestionar =
 		!!user &&
 		(user.is_superuser ||
@@ -179,8 +176,7 @@ const MiAnaliticoTab: React.FC = () => {
 			});
 			setMessage(res.message);
 			setError(null);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setError(
 				err.response?.data?.message ||
 					"Error al solicitar pedido de analítico.",
@@ -264,7 +260,7 @@ const MiAnaliticoTab: React.FC = () => {
 						</Select>
 					</FormControl>
 				)}
-				{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+				{ }
 				<TextField
 					select
 					label="Motivo"
@@ -325,16 +321,13 @@ const MiAnaliticoTab: React.FC = () => {
 };
 
 // ── Tab 2: Equivalencias otorgadas ──────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EquivalenciasOtorgadasTab: React.FC<{ pedidos: any[] }> = ({
 	pedidos,
 }) => {
 	const otorgadas = useMemo(() => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const list: any[] = [];
+				const list: any[] = [];
 		pedidos.forEach((p) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			p.materias.forEach((m: any) => {
+						p.materias.forEach((m: any) => {
 				if (m.resultado === "otorgada") {
 					list.push({
 						...m,
@@ -424,8 +417,7 @@ const TramitesEstudiantePage: React.FC = () => {
 		form,
 		setForm,
 		materias,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		tipoSeleccionado,
+				tipoSeleccionado,
 		esAnexoA,
 		esAnexoB,
 		datosDeshabilitados,

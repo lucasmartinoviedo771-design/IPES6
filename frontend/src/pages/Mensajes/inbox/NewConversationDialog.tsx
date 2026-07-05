@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-reset-all-state-on-prop-change, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
-
 import SearchIcon from "@mui/icons-material/Search";
 import SendIcon from "@mui/icons-material/Send";
 import Alert from "@mui/material/Alert";
@@ -190,14 +188,12 @@ export const NewConversationDialog: React.FC<NewConversationDialogProps> = ({
 		const err = mutation.error;
 		if (!err) return null;
 		if (isAxiosError(err)) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const data = err.response?.data as any;
+						const data = err.response?.data as any;
 			if (data?.detail) {
 				if (Array.isArray(data.detail)) {
 					return (
 						data.detail
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							.map((item: any) => {
+														.map((item: any) => {
 								const path = Array.isArray(item.loc)
 									? item.loc.filter(Boolean).join(" \u203A ")
 									: "";

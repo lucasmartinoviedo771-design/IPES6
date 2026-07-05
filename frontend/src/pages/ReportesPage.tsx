@@ -1,7 +1,4 @@
-/* eslint-disable react-doctor/prefer-dynamic-import, react-doctor/no-array-index-as-key */
-
 import Box from "@mui/material/Box";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Grid from "@mui/material/Grid";

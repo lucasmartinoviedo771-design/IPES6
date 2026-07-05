@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/js-flatmap-filter */
 /**
  * @module Utils/Roles
  * @description Utilidades para la gestión de Roles y Permisos en el lado del cliente (RBAC).

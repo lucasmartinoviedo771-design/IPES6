@@ -50,14 +50,12 @@ import {
 import { formatDate } from "@/utils/date";
 import { getIpesHeaderHtml, IPES_HEADER_CSS } from "@/utils/printActaHtml";
 
-// eslint-disable-next-line react-doctor/no-giant-component
 export const SolicitudesList: React.FC = () => {
 	const [solicitudes, setSolicitudes] = useState<SolicitudMesaAdminDTO[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [selectedSolicitud, setSelectedSolicitud] =
 		useState<SolicitudMesaAdminDTO | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [mesasCompatibles, setMesasCompatibles] = useState<any[]>([]);
+		const [mesasCompatibles, setMesasCompatibles] = useState<any[]>([]);
 	const [loadingMesas, setLoadingMesas] = useState(false);
 	const [openDialog, setOpenDialog] = useState(false);
 	const [docentes, setDocentes] = useState<DocenteDTO[]>([]);
@@ -116,8 +114,7 @@ export const SolicitudesList: React.FC = () => {
 			setOpenEditMesaDialog(false);
 			setSelectedSolicitud(null);
 			await load();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			alert(e.response?.data?.message || "Error al actualizar la mesa");
 		}
 	};
@@ -158,8 +155,7 @@ export const SolicitudesList: React.FC = () => {
 			// Buscamos mesas extraordinarias de la misma materia
 			const data = await listarMesas({ materia_id: s.materia_id });
 			// Filtramos solo las EXT o las que correspondan al período
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			setMesasCompatibles((data as any[]).filter((m) => m.tipo === "EXT"));
+						setMesasCompatibles((data as any[]).filter((m) => m.tipo === "EXT"));
 		} catch (_e) {
 			void 0;
 		} finally {
@@ -202,8 +198,7 @@ export const SolicitudesList: React.FC = () => {
 			setSelectedSolicitud(null);
 			await load();
 			alert("Mesa creada y alumnos vinculados correctamente.");
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			void 0;
 			alert(e.response?.data?.message || "Error al crear la mesa");
 		}
@@ -243,8 +238,7 @@ export const SolicitudesList: React.FC = () => {
 		}
 	};
 
-	// eslint-disable-next-line react-doctor/prefer-module-scope-pure-function
-	const imprimirPlanilla = async (planilla: MesaPlanillaDTO) => {
+		const imprimirPlanilla = async (planilla: MesaPlanillaDTO) => {
 		const parseFecha = (s: string | null | undefined): string => {
 			if (!s) return "-";
 			const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -309,8 +303,7 @@ export const SolicitudesList: React.FC = () => {
 				e.condicion === "APR" ||
 				(e.nota !== null && e.nota !== undefined && Number(e.nota) >= 4),
 		).length;
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const desaprobados = total - ausentes - aprobados;
+				const desaprobados = total - ausentes - aprobados;
 
 		// Solo filas reales — sin relleno
 		const estudiantesRows = sorted
@@ -327,8 +320,7 @@ export const SolicitudesList: React.FC = () => {
 			)
 			.join("");
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const vocales = [planilla.tribunal_vocal1, planilla.tribunal_vocal2]
+				const vocales = [planilla.tribunal_vocal1, planilla.tribunal_vocal2]
 			.filter(Boolean)
 			.map((v) => v!.toUpperCase())
 			.join(" / ");
@@ -406,8 +398,7 @@ export const SolicitudesList: React.FC = () => {
     </body></html>`;
 		const w = window.open("", "_blank");
 		if (w) {
-			// eslint-disable-next-line react-doctor/dangerous-html-sink
-			w.document.write(DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }));
+						w.document.write(DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }));
 			w.document.close();
 			w.focus();
 			w.onload = () => w.print();

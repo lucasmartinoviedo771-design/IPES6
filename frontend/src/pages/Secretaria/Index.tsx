@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/jsx-key */
-
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DateRangeIcon from "@mui/icons-material/DateRange";
@@ -14,7 +12,6 @@ import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 import SectionCard, {
 	type SectionCardProps,
 } from "@/components/secretaria/SectionCard";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";

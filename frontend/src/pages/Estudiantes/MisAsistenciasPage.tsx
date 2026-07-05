@@ -27,7 +27,6 @@ import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import React, { useMemo } from "react";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	EstudianteAsistenciaItem,
 	fetchMisAsistencias,

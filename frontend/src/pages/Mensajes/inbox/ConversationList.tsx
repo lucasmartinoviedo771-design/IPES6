@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/jsx-no-jsx-as-prop */
-
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
 import SearchIcon from "@mui/icons-material/Search";

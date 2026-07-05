@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-static-value */
-
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/DeleteOutline";
@@ -12,11 +10,9 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormGroup from "@mui/material/FormGroup";
 import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
@@ -59,8 +55,7 @@ function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
 		borrador: "default",
 	};
 	const label = activa === false ? "Borrada" : estado;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const color = (activa === false ? "error" : (map[norm] ?? "default")) as any;
+		const color = (activa === false ? "error" : (map[norm] ?? "default")) as any;
 	return (
 		<Chip
 			label={label}
@@ -124,8 +119,7 @@ export default function PreinscripcionesPage() {
 
 	// Unificación: formalizar en esta misma vista
 	const [codigoSel, setCodigoSel] = React.useState<string | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [docs, setDocs] = React.useState<{ [k: string]: boolean }>({
+		const [docs, setDocs] = React.useState<{ [k: string]: boolean }>({
 		dni: false,
 		titulo_secundario: false,
 		partida_nacimiento: false,
@@ -136,8 +130,7 @@ export default function PreinscripcionesPage() {
 	const [msgOk, setMsgOk] = React.useState<string | null>(null);
 	const [msgErr, setMsgErr] = React.useState<string | null>(null);
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	async function confirmarFormalizacion() {
+		async function confirmarFormalizacion() {
 		if (!codigoSel) return;
 		try {
 			await apiConfirmarPreinscripcion(codigoSel, {
@@ -147,8 +140,7 @@ export default function PreinscripcionesPage() {
 			setMsgOk("Preinscripción confirmada");
 			setMsgErr(null);
 			await refetch();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (e: any) {
+					} catch (e: any) {
 			setMsgErr(e?.response?.data?.message || "No se pudo confirmar");
 			setMsgOk(null);
 		}
@@ -370,7 +362,7 @@ export default function PreinscripcionesPage() {
 											{dayjs(p.fecha).format("DD/MM/YYYY HH:mm")}
 										</TableCell>
 										<TableCell>
-											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+											{ }
 											<EstadoChip
 												estado={p.estado as any}
 												activa={(p as any).activa as any}
@@ -388,7 +380,7 @@ export default function PreinscripcionesPage() {
 												>
 													Ver / Editar
 												</Button>
-												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+												{ }
 												{(p as any).activa === false ? (
 													<Button
 														size="small"

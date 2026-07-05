@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/rendering-hydration-mismatch-time */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -151,7 +149,7 @@ export default function ActaPrintPage() {
 					</TableRow>
 				</TableHead>
 				<TableBody>
-					{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+					{ }
 					{acta.estudiantes?.map((estudiante: any) => (
 						<TableRow key={estudiante.dni}>
 							<TableCell

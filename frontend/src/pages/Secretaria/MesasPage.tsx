@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/async-await-in-loop */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
@@ -84,8 +82,7 @@ export default function MesasPage() {
 		const modalidadesAcrear = state.modalidadesSeleccionadas.length
 			? state.modalidadesSeleccionadas
 			: ["REG"];
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const payloadBase: any = {
+				const payloadBase: any = {
 			materia_id: state.form.materia_id,
 			fecha: state.form.fecha,
 			hora_desde: state.form.hora_desde || null,
@@ -195,8 +192,7 @@ export default function MesasPage() {
 
 	const updatePlanillaEstudiante = (
 		inscripcionId: number,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		updater: (prev: any) => any,
+				updater: (prev: any) => any,
 	) => {
 		state.setPlanillaEstudiantes((prev) =>
 			prev.map((estudiante) =>

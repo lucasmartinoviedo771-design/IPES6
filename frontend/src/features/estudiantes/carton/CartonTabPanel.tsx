@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/exhaustive-deps */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -260,7 +258,7 @@ export const CartonTabPanel = ({
 	selectedPlanId: controlledSelectedId,
 	onSelectPlan,
 }: CartonTabPanelProps) => {
-	const planes = trayectoria.carton ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const planes = trayectoria.carton ?? [];  
 	const [internalSelectedId, setInternalSelectedId] = useState(() => {
 		if (!planes.length) return "";
 		const initialId = planes[0] ? String(planes[0].plan_id) : "";

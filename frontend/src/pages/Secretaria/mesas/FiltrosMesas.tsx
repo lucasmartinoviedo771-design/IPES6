@@ -1,7 +1,6 @@
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Typography from "@mui/material/Typography";
 import React from "react";
 import type { PlanDTO } from "@/api/cargaNotas";

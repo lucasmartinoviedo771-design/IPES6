@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-render-in-render, react-doctor/no-derived-state */
-
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Box from "@mui/material/Box";

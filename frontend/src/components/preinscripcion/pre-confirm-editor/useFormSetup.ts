@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/no-pass-data-to-parent */
 import { useEffect } from "react";
 import type { UseFormReset, UseFormSetValue } from "react-hook-form";
 import type { ChecklistDTO, PreinscripcionDTO } from "@/api/preinscripciones";
@@ -144,8 +143,7 @@ export function useFormReset(
 		sanitized.fotoW = Number.isFinite(parsedW) ? parsedW : undefined;
 		sanitized.fotoH = Number.isFinite(parsedH) ? parsedH : undefined;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		reset(sanitized as any);
+				reset(sanitized as any);
 	}, [data, reset]);
 }
 

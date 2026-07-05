@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/prefer-module-scope-pure-function */
-
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Alert from "@mui/material/Alert";

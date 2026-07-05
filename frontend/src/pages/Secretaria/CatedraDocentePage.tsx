@@ -1,9 +1,6 @@
-/* eslint-disable react-doctor/rerender-state-only-in-handlers, react-doctor/no-array-index-as-key, react-doctor/no-direct-state-mutation, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-pure-function, react-doctor/async-await-in-loop, react-doctor/no-giant-component, react-doctor/no-fetch-in-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 import EditIcon from "@mui/icons-material/Edit";
 import InfoIcon from "@mui/icons-material/Info";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -138,10 +135,9 @@ export default function CatedraDocentePage() {
 		filters.cuatrimestre,
 		filters.anioLectivo,
 		filters.turnoId,
-	]); // eslint-disable-line react-hooks/exhaustive-deps
+	]);  
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleFilterChange = (nf: any) => setFilters(nf);
+		const handleFilterChange = (nf: any) => setFilters(nf);
 
 	const openGestion = (m: Materia) => {
 		setDlgMateria(m);
@@ -431,7 +427,7 @@ export default function CatedraDocentePage() {
 										</Select>
 									</Grid>
 									<Grid item xs={12} md={2}>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										{ }
 										<Select
 											fullWidth
 											size="small"
@@ -446,7 +442,7 @@ export default function CatedraDocentePage() {
 										</Select>
 									</Grid>
 									<Grid item xs={12} md={2}>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										{ }
 										<Select
 											fullWidth
 											size="small"

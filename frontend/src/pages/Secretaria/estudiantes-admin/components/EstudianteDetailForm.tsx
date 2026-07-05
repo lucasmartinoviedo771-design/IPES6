@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/no-derived-state, react-doctor/no-event-handler, react-doctor/js-combine-iterations */
-
 import AddIcon from "@mui/icons-material/Add";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import Box from "@mui/material/Box";
@@ -46,8 +44,7 @@ type Props = {
 	control: Control<DetailFormValues>;
 	handleSubmit: UseFormHandleSubmit<DetailFormValues>;
 	watch: UseFormWatch<DetailFormValues>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	setValue: (name: any, value: any, options?: any) => void;
+		setValue: (name: any, value: any, options?: any) => void;
 	onSubmit: (values: DetailFormValues) => void;
 	anioIngresoOptions: string[];
 	docValues: DetailDocumentacionForm;
@@ -70,8 +67,7 @@ type Props = {
 	autorizarRendirIsPending?: boolean;
 	onAgregarCarrera?: (profesorado_id: number, anio_ingreso?: number) => void;
 	agregarCarreraIsPending?: boolean;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	detailData?: any;
+		detailData?: any;
 	isAdmin?: boolean;
 	isAttp?: boolean;
 	isRectorado?: boolean;
@@ -120,8 +116,7 @@ export function EstudianteDetailForm({
 		enabled: agregarCarreraOpen,
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const carrerasActualesIds = new Set(
+		const carrerasActualesIds = new Set(
 		(watch("carreras_situacion") || []).map((c: any) => c.profesorado_id),
 	);
 	const profesoradosDisponibles = profesorados.filter((p) => {
@@ -1081,7 +1076,7 @@ export function EstudianteDetailForm({
 													}}
 												>
 													<Stack spacing={0.5}>
-														{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+														{ }
 														{detailData?.regularidades
 															?.filter((r: any) => !r.aprobada)
 															.map((reg: any) => (
@@ -1108,7 +1103,7 @@ export function EstudianteDetailForm({
 																	}
 																/>
 															))}
-														{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+														{ }
 														{(!detailData?.regularidades ||
 															detailData.regularidades.filter(
 																(r: any) => !r.nota_final,

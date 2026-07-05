@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/rerender-state-only-in-handlers, react-doctor/no-giant-component, react-doctor/no-derived-state-effect, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
-
 import Box from "@mui/material/Box";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -77,8 +75,7 @@ export default function EstudiantesAdminPage() {
 		useState<DetailFormValues | null>(null);
 
 	// Nuevo estado para el modal de advertencia de materias
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [activeEnrollmentsWarning, setActiveEnrollmentsWarning] = useState<
+		const [activeEnrollmentsWarning, setActiveEnrollmentsWarning] = useState<
 		any[] | null
 	>(null);
 
@@ -188,8 +185,7 @@ export default function EstudiantesAdminPage() {
 				onSuccess: () => {
 					setPendingDetailValues(null);
 				},
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				onError: (error: any) => {
+								onError: (error: any) => {
 					const apiResponse = error?.response?.data?.data;
 					if (apiResponse?.code === "ACTIVE_ENROLLMENTS") {
 						setActiveEnrollmentsWarning(apiResponse.inscripciones || []);

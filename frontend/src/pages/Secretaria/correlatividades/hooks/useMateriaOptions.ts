@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/prefer-module-scope-pure-function */
 import { useMemo } from "react";
 import type { MateriaOption, MatrixRow } from "../types";
 

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/jsx-key */
-
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Alert from "@mui/material/Alert";
@@ -229,8 +227,7 @@ export function ResultadosTable({
 											}}
 											forcePopupIcon={false}
 											renderOption={(props, option) => {
-												// eslint-disable-next-line @typescript-eslint/no-explicit-any
-												const { key, ...restProps } = props as any;
+																								const { key, ...restProps } = props as any;
 												return (
 													<li key={option.dni} {...restProps}>
 														<Box>

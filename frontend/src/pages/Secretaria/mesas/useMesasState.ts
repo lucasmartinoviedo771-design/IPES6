@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
 import { useEffect, useMemo, useState } from "react";
 import { listarPlanes, type PlanDTO } from "@/api/cargaNotas";
 import { client as api } from "@/api/client";
@@ -346,7 +345,7 @@ export function useMesasState() {
 		anioFiltro,
 		cuatrimestreFiltro,
 		codigoFiltro,
-	]); // eslint-disable-line react-hooks/exhaustive-deps
+	]);  
 
 	const resetTribunalDocentes = () => {
 		setTribunalDocentes({ presidente: null, vocal1: null, vocal2: null });

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/rerender-memo-with-default-value */
-
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PrintIcon from "@mui/icons-material/Print";
 import Alert from "@mui/material/Alert";

@@ -1,13 +1,9 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-array-index-as-key */
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import AccessTime from "@mui/icons-material/AccessTime";
 import Assignment from "@mui/icons-material/Assignment";
 import CalendarMonth from "@mui/icons-material/CalendarMonth";
 import CompareArrows from "@mui/icons-material/CompareArrows";
 import Event from "@mui/icons-material/Event";
 import EventNote from "@mui/icons-material/EventNote";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import ManageAccounts from "@mui/icons-material/ManageAccounts";
 import School from "@mui/icons-material/School";
 import TrendingUp from "@mui/icons-material/TrendingUp";
@@ -31,16 +27,12 @@ import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 import {
 	ICON_GRADIENT,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	INSTITUTIONAL_GREEN,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	INSTITUTIONAL_GREEN_DARK,
+		INSTITUTIONAL_GREEN,
+		INSTITUTIONAL_GREEN_DARK,
 	INSTITUTIONAL_TERRACOTTA,
 } from "@/styles/institutionalColors";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { hasAnyRole, hasRole } from "@/utils/roles";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type EventCard = {
 	title: string;
 	date: string;
@@ -262,7 +254,6 @@ const iconWrapperStyles = {
 	boxShadow: "0 10px 25px rgba(183,105,78,0.35)",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const eventCardStyles = {
 	width: "100%",
 	minHeight: 140,
@@ -303,8 +294,7 @@ export default function EstudiantesIndex() {
 
 	const dynamicEvents = useMemo(() => {
 		// 1. Iniciamos el mapa con todos los tipos configurados como "sin fecha"
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const byTipo = new Map<string, any>();
+				const byTipo = new Map<string, any>();
 		Object.keys(WINDOW_TYPE_CONFIG).forEach((tipo) => {
 			byTipo.set(tipo, {
 				tipo,
@@ -427,7 +417,7 @@ export default function EstudiantesIndex() {
 				items: [...section.items, cursoIntroCard],
 			};
 		});
-	}, [cursoIntroEstado, isStudent]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [cursoIntroEstado, isStudent]);  
 
 	return (
 		<Box>
@@ -486,8 +476,7 @@ export default function EstudiantesIndex() {
 						dynamicEvents.map((event) => {
 							const isActive = event.status === "active";
 							const isFuture = event.status === "future";
-							// eslint-disable-next-line @typescript-eslint/no-unused-vars
-							const isClosed = event.status === "closed";
+														const isClosed = event.status === "closed";
 							const isUnscheduled = event.status === "unscheduled";
 
 							const VIBRANT_GREEN = "#2D8C3C";

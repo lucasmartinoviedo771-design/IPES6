@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-adjust-state-on-prop-change, react-doctor/no-derived-state, react-doctor/control-has-associated-label, react-doctor/no-giant-component, react-doctor/no-event-handler */
-
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -19,7 +17,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
@@ -27,7 +24,6 @@ import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Switch from "@mui/material/Switch";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -517,8 +513,7 @@ const DetalleActaDialog: React.FC<{
 			queryClient.invalidateQueries({ queryKey: ["acta-detalle", actaId] });
 			queryClient.invalidateQueries({ queryKey: ["actas-historial"] });
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg = err.response?.data.message || "Error al reabrir la planilla.";
 			enqueueSnackbar(msg, { variant: "error" });
 		},
@@ -534,8 +529,7 @@ const DetalleActaDialog: React.FC<{
 			queryClient.invalidateQueries({ queryKey: ["acta-detalle", actaId] });
 			queryClient.invalidateQueries({ queryKey: ["actas-historial"] });
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg = err.response?.data.message || "Error al cerrar la planilla.";
 			enqueueSnackbar(msg, { variant: "error" });
 		},
@@ -563,8 +557,7 @@ const DetalleActaDialog: React.FC<{
 			queryClient.invalidateQueries({ queryKey: ["actas-historial"] });
 			setIsEditingHeader(false);
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			const msg =
 				err.response?.data.message || "Error al actualizar encabezado.";
 			enqueueSnackbar(msg, { variant: "error" });
@@ -857,8 +850,7 @@ const TribunalDialog: React.FC<{
 			queryClient.invalidateQueries({ queryKey: ["acta-detalle", actaId] });
 			onSaved();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			enqueueSnackbar(
 				err?.response?.data?.message || "Error al guardar el tribunal.",
 				{ variant: "error" },

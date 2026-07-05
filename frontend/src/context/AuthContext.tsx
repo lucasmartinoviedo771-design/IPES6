@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/rerender-state-only-in-handlers, react-doctor/rerender-lazy-ref-init, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/jsx-no-constructed-context-values, react-doctor/no-chain-state-updates */
 /**
  * @module Context/Auth
  * @description Proveedor central de Autenticación y Autorización (RBAC).
@@ -139,7 +138,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 		if (!isPublic) {
 			navigate("/login", { replace: true });
 		}
-	}, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [navigate]);  
 
 	/**
 	 * Obtiene el perfil del usuario actual.
@@ -149,13 +148,11 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 		try {
 			const { data } = await client.get(`auth/profile/?_t=${Date.now()}`, {
 				suppressErrorToast: true,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			} as any);
+							} as any);
 			const normalized = normalizeUserPayload(data);
 			setUser(normalized);
 			return normalized;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setUser(null);
 			throw err;
 		}
@@ -225,8 +222,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 		const intervalId = window.setInterval(async () => {
 			if (Date.now() - activityRef.current > ACTIVITY_WINDOW_MS) return;
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				await client.post("auth/refresh/", undefined, {
+								await client.post("auth/refresh/", undefined, {
 					suppressErrorToast: true,
 				} as any);
 			} catch (_err) {
@@ -255,8 +251,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 				);
 			setUser(u);
 			return u;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			if (err.message && (err.status || err.code)) throw err;
 			const status = err?.response?.status;
 			const msg =
@@ -274,7 +269,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 	const logout = async () => {
 		try {
 			await client.post("auth/logout/");
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+			 
 		} catch (err: any) {
 			void 0;
 		} finally {

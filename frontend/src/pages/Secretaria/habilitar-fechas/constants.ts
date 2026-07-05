@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations */
 import dayjs from "dayjs";
 import type { VentanaDto } from "@/api/ventanas";
 

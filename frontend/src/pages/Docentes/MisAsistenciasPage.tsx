@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/prefer-module-scope-pure-function */
-
 import type { ChipProps } from "@mui/material";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";

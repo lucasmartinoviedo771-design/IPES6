@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component */
-
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";

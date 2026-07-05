@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/no-initialize-state, react-doctor/exhaustive-deps */
-
 import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -133,8 +131,7 @@ export const usePedidosEquivalencias = () => {
 			}));
 		}
 		setFiltersHydrated(true);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+			}, []);
 
 	useEffect(() => {
 		if (!filtersHydrated) return;

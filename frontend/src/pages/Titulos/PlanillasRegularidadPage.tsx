@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-effect-chain, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
-
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -133,7 +131,7 @@ export default function PlanillasRegularidadPage() {
 		anioCursada,
 		cuatrimestre,
 		materiaLookup,
-	]); // eslint-disable-line react-hooks/exhaustive-deps
+	]);  
 
 	const filteredMateriasOptions = useMemo(() => {
 		return materias.filter((m) => {

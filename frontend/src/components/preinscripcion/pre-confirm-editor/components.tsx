@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-adjust-state-on-prop-change, react-doctor/prefer-module-scope-static-value, react-doctor/no-derived-state-effect, react-doctor/no-reset-all-state-on-prop-change */
-
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";

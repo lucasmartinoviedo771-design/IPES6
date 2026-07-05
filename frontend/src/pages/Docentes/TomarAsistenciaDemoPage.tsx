@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/prefer-module-scope-pure-function */
-
 import ArrowBack from "@mui/icons-material/ArrowBack";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import Person from "@mui/icons-material/Person";

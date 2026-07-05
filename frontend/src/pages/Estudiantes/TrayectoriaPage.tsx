@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
-
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import HistoryEduIcon from "@mui/icons-material/HistoryEdu";
@@ -42,8 +40,7 @@ import TabVigencias from "./trayectoria/TabVigencias";
 import { a11yProps, formatDate } from "./trayectoria/utils";
 
 const TrayectoriaPage: React.FC = () => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { user } = (useAuth?.() ?? { user: null }) as any;
+		const { user } = (useAuth?.() ?? { user: null }) as any;
 	const canGestionar = hasAnyRole(user, [
 		"admin",
 		"secretaria",
@@ -101,7 +98,7 @@ const TrayectoriaPage: React.FC = () => {
 	const trayectoria = trayectoriaData;
 	const eventos = trayectoria?.historial ?? [];
 	const regularidades = trayectoria?.regularidades ?? [];
-	const planesCarton = trayectoria?.carton ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const planesCarton = trayectoria?.carton ?? [];  
 	const mesas = trayectoria?.mesas ?? [];
 
 	const vigencias = useMemo<RegularidadVigenciaDTO[]>(() => {
@@ -119,8 +116,7 @@ const TrayectoriaPage: React.FC = () => {
 			return;
 		}
 		setSelectedPlanId((prev) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			if (
+						if (
 				prev &&
 				planesCarton.some((plan: any) => String(plan.plan_id) === prev)
 			) {
@@ -139,8 +135,7 @@ const TrayectoriaPage: React.FC = () => {
 		}> = [];
 		const usedNombres = new Set<string>();
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		planesCarton.forEach((plan: any) => {
+				planesCarton.forEach((plan: any) => {
 			chips.push({
 				id: String(plan.plan_id),
 				label: plan.profesorado_nombre,

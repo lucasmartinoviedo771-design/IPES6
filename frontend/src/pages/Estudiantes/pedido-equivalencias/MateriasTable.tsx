@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import Button from "@mui/material/Button";

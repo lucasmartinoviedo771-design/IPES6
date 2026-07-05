@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/rerender-state-only-in-handlers, react-doctor/prefer-module-scope-pure-function, react-doctor/async-await-in-loop, react-doctor/no-giant-component, react-doctor/prefer-useReducer */
-
 import Box from "@mui/material/Box";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -42,12 +40,10 @@ const CargarHorarioPage: React.FC = () => {
 	const [horasRequeridas, setHorasRequeridas] = useState<number>(0);
 	const [horasAsignadas, setHorasAsignadas] = useState<number>(0);
 	const [selectedBlocks, setSelectedBlocks] = useState<Set<number>>(new Set());
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [horarioCatedra, setHorarioCatedra] =
+		const [horarioCatedra, setHorarioCatedra] =
 		useState<HorarioCatedraDTO | null>(null);
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleFilterChange = useCallback((newFilters: any) => {
+		const handleFilterChange = useCallback((newFilters: any) => {
 		setFilters(newFilters);
 		setSelectedMateriaId(null);
 		setHorasRequeridas(0);
@@ -86,8 +82,7 @@ const CargarHorarioPage: React.FC = () => {
 					materiaResponse.data.regimen || ""
 				).toUpperCase();
 
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const params: any = {
+								const params: any = {
 					espacio_id: selectedMateriaId,
 					turno_id: filters.turnoId,
 					anio_cursada: filters.anioLectivo,
@@ -280,8 +275,7 @@ const CargarHorarioPage: React.FC = () => {
 							{ suppressErrorToast: true } as AppAxiosRequestConfig,
 						);
 					} catch (error) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						const err = error as any;
+												const err = error as any;
 						const responseData =
 							err.original?.response?.data || err.response?.data;
 						const dataVal = responseData?.data;
@@ -330,8 +324,7 @@ const CargarHorarioPage: React.FC = () => {
 			alert("Horario guardado exitosamente!");
 			fetchHorario(); // Recargar el horario
 		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const err = error as any;
+						const err = error as any;
 			if (err?.isCancel) {
 				alert(
 					"Guardado cancelado por el usuario. Se restablecerán los horarios previos.",

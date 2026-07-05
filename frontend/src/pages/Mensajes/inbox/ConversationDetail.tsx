@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/control-has-associated-label */
-
 import AttachmentIcon from "@mui/icons-material/Attachment";
 import CloseIcon from "@mui/icons-material/Close";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -31,16 +29,12 @@ interface ConversationDetailProps {
 	replyBody: string;
 	replyAttachment: File | null;
 	userId: number | undefined;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	sendMutation: UseMutationResult<any, any, void, any>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	closeConversationMutation: UseMutationResult<any, any, void, any>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	requestCloseMutation: UseMutationResult<any, any, void, any>;
+		sendMutation: UseMutationResult<any, any, void, any>;
+		closeConversationMutation: UseMutationResult<any, any, void, any>;
+		requestCloseMutation: UseMutationResult<any, any, void, any>;
 	onReplyBodyChange: (value: string) => void;
 	onReplyAttachmentChange: (file: File | null) => void;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	reopenMutation: UseMutationResult<any, any, void, any>;
+		reopenMutation: UseMutationResult<any, any, void, any>;
 }
 
 export const ConversationDetail: React.FC<ConversationDetailProps> = ({

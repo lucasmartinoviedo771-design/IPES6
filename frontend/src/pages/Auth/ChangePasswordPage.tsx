@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import Alert from "@mui/material/Alert";
@@ -23,11 +21,9 @@ const ChangePasswordPage: React.FC = () => {
 	const { refreshProfile, user } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const rawFrom = (location.state as any)?.from?.pathname;
+		const rawFrom = (location.state as any)?.from?.pathname;
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const defaultHome = useMemo(() => getDefaultHomeRoute(user), [user]);
+		const defaultHome = useMemo(() => getDefaultHomeRoute(user), [user]);
 
 	const resolveDestination = (
 		candidate: string | undefined,
@@ -81,8 +77,7 @@ const ChangePasswordPage: React.FC = () => {
 			});
 			const destination = resolveDestination(rawFrom, refreshed);
 			navigate(destination, { replace: true });
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			const message =
 				err?.response?.data?.message ||
 				err?.response?.data?.detail ||

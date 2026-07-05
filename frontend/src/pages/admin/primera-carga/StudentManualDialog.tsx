@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/query-mutation-missing-invalidation, react-doctor/no-event-handler */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -116,8 +114,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({
 			enqueueSnackbar(response.message, { variant: "success" });
 			reset(defaultStudentValues);
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			enqueueSnackbar(
 				error?.response?.data?.message || "No se pudo registrar al estudiante.",
 				{
@@ -152,8 +149,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({
 		try {
 			await fetchEstudianteAdminDetail(dni, { suppressErrorToast: true });
 			dniExiste = true;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (error: any) {
+					} catch (error: any) {
 			const status = error.status || error?.response?.status;
 			if (status === 404) {
 				dniExiste = false;
@@ -484,7 +480,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({
 
 					{mutation.isError && (
 						<Alert severity="error">
-							{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+							{ }
 							{(mutation.error as any)?.response?.data?.message ||
 								"No se pudo guardar el estudiante."}
 						</Alert>

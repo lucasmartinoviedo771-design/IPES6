@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps, react-doctor/prefer-module-scope-static-value */
-
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -177,7 +175,7 @@ export function useDocumentacionSideEffects(
 				shouldValidate: true,
 			});
 		}
-	}, [JSON.stringify(docValues), setValue, getValues]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [JSON.stringify(docValues), setValue, getValues]);  
 
 	const handleMainDocChange =
 		(target: (typeof mainDocKeys)[number]) =>
@@ -353,13 +351,10 @@ export function usePopulateFormFromDetail(
 				),
 				email: toStringOrEmpty(detail.email),
 				carreras_situacion: detail.carreras_detalle?.map((c) => ({
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					profesorado_id: (c as any).profesorado_id || 0,
+										profesorado_id: (c as any).profesorado_id || 0,
 					nombre: c.nombre,
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					estado_academico: c.estado_academico as any,
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					condicion: (c as any).condicion ?? "",
+										estado_academico: c.estado_academico as any,
+										condicion: (c as any).condicion ?? "",
 				})),
 			};
 			reset(formValues);

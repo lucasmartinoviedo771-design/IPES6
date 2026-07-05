@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/no-chain-state-updates */
-
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -26,11 +24,9 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	listarPlanes,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	listarProfesorados,
+		listarProfesorados,
 	type PlanDTO,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ProfesoradoDTO,
+		ProfesoradoDTO,
 } from "@/api/cargaNotas";
 import {
 	type ComisionDTO,
@@ -40,11 +36,9 @@ import {
 	type MateriaDTO,
 } from "@/api/comisiones";
 import BackButton from "@/components/ui/BackButton";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useCarreras } from "@/hooks/useCarreras";
 import { useTurnos } from "@/hooks/useTurnos";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
 
 type FiltersState = {
@@ -233,8 +227,7 @@ const ComisionesPage: React.FC = () => {
 				estado: filters.estado || null,
 			});
 			setComisiones(data);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (error: any) {
+					} catch (error: any) {
 			const message =
 				error?.response?.data?.message ||
 				error?.response?.data?.detail ||

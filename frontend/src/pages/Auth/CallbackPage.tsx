@@ -7,8 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getDefaultHomeRoute } from "@/utils/roles";
 
 export default function AuthCallbackPage() {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const { user, loading, refreshProfile } = useAuth();
+		const { user, loading, refreshProfile } = useAuth();
 	const navigate = useNavigate();
 
 	useEffect(() => {

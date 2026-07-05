@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key */
-
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";

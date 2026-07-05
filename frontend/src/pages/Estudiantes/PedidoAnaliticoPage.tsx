@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/no-derived-state, react-doctor/no-chain-state-updates */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -24,8 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 const PedidoAnaliticoPage: React.FC = () => {
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { user } = (useAuth?.() ?? { user: null }) as any;
+		const { user } = (useAuth?.() ?? { user: null }) as any;
 	const canGestionar =
 		!!user &&
 		(user.is_superuser ||
@@ -157,8 +154,7 @@ const PedidoAnaliticoPage: React.FC = () => {
 		!requiereSeleccionPlan &&
 		!(canGestionar && !dni.trim());
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleCarreraChange = (event: any) => {
+		const handleCarreraChange = (event: any) => {
 		const value = String(event.target.value ?? "");
 		setSelectedCarreraId(value);
 		setSelectedPlanId("");
@@ -166,8 +162,7 @@ const PedidoAnaliticoPage: React.FC = () => {
 		setMessage(null);
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handlePlanChange = (event: any) => {
+		const handlePlanChange = (event: any) => {
 		setSelectedPlanId(String(event.target.value ?? ""));
 		setError(null);
 		setMessage(null);
@@ -188,8 +183,7 @@ const PedidoAnaliticoPage: React.FC = () => {
 			});
 			setMessage(response.message);
 			setError(null);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setError(
 				err.response?.data?.message ||
 					"Error al solicitar pedido de analítico.",
@@ -282,7 +276,7 @@ const PedidoAnaliticoPage: React.FC = () => {
 						</Select>
 					</FormControl>
 				)}
-				{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+				{ }
 				<TextField
 					select
 					label="Motivo"

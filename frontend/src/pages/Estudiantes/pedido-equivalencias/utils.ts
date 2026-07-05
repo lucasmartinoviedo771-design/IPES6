@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations */
-
 import type {
 	PedidoEquivalenciaMateriaPayload,
 	PedidoEquivalenciaPayload,

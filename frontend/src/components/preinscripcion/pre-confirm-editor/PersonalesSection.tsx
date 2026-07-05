@@ -18,8 +18,7 @@ interface PersonalesSectionProps {
 	control: Control<PreinscripcionForm>;
 	condicionSaludActiva: boolean;
 	carreras: Carrera[];
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	validationErrors: any;
+		validationErrors: any;
 }
 
 export default function PersonalesSection({

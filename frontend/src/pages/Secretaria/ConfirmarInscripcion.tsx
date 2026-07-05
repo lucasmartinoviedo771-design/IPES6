@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/no-cascading-set-state, react-doctor/jsx-no-jsx-as-prop, react-doctor/exhaustive-deps */
-
 import SearchIcon from "@mui/icons-material/Search";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -22,11 +20,9 @@ import { useSearchParams } from "react-router-dom";
 import { listarPreinscripciones } from "@/api/preinscripciones";
 import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import BackButton from "@/components/ui/BackButton";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const formatName = (p: any) => {
 	const apellido = p.estudiante.apellido || "";
 	const nombre = p.estudiante.nombres ?? p.estudiante.nombre ?? "";
@@ -102,7 +98,7 @@ export default function ConfirmarInscripcionSecretaria() {
 		if (currentSpCodigo !== codigo) setCodigo(currentSpCodigo);
 		if (currentSpDni !== dni) setDni(currentSpDni);
 		if (currentSpNombre !== nombre) setNombre(currentSpNombre);
-	}, [currentSpCodigo, currentSpDni, currentSpNombre]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [currentSpCodigo, currentSpDni, currentSpNombre]);  
 
 	const query = (currentSpCodigo || currentSpDni || currentSpNombre).trim();
 	const { data } = useQuery({
@@ -117,7 +113,7 @@ export default function ConfirmarInscripcionSecretaria() {
 	});
 
 	const { user } = useAuth();
-	const myProfIds = user?.profesorado_ids || []; // eslint-disable-line react-hooks/exhaustive-deps
+	const myProfIds = user?.profesorado_ids || [];  
 
 	const results = useMemo(() => {
 		if (!data?.results) return [];
@@ -147,7 +143,7 @@ export default function ConfirmarInscripcionSecretaria() {
 				setSp({ codigo: results[0].codigo }, { replace: true });
 			}
 		}
-	}, [results, currentSpCodigo, currentSpDni, myProfIds]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [results, currentSpCodigo, currentSpDni, myProfIds]);  
 
 	// La confirmación y el manejo de documentación se realizan dentro de PreConfirmEditor
 
@@ -228,7 +224,7 @@ export default function ConfirmarInscripcionSecretaria() {
 										}}
 										disabled={results.length === 0}
 									>
-										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										{ }
 										{results.map((p: any) => (
 											<MenuItem
 												key={p.id}
@@ -246,7 +242,7 @@ export default function ConfirmarInscripcionSecretaria() {
 							</Grid>
 						</Grid>
 						<List>
-							{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+							{ }
 							{results.map((p: any) => {
 								const isMine = myProfIds.includes(p.carrera?.id);
 								return (

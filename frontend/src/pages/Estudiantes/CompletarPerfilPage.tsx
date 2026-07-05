@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/rerender-state-only-in-handlers, react-doctor/prefer-module-scope-static-value */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -153,12 +151,9 @@ export default function CompletarPerfilPage() {
 	];
 
 	const redirectTo =
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(location.state as any)?.from?.pathname &&
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(location.state as any)?.from?.pathname !== "/estudiantes/completar-perfil"
-			? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(location.state as any)?.from?.pathname
+				(location.state as any)?.from?.pathname &&
+				(location.state as any)?.from?.pathname !== "/estudiantes/completar-perfil"
+			? 				(location.state as any)?.from?.pathname
 			: "/estudiantes";
 
 	const form = useForm<PerfilFormValues>({

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/no-initialize-state, react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/no-giant-component, react-doctor/no-fetch-in-effect, react-doctor/no-chain-state-updates */
-
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";

@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
-
 import type { SelectChangeEvent } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -16,8 +14,7 @@ import {
 	obtenerMateriasPlanEstudiante,
 	obtenerVentanaMaterias,
 	solicitarInscripcionMateria,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	TrayectoriaCarreraDetalleDTO,
+		TrayectoriaCarreraDetalleDTO,
 	type VentanaInscripcion,
 } from "@/api/estudiantes";
 import { useAuth } from "@/context/AuthContext";
@@ -35,8 +32,7 @@ import {
 
 export const useInscripcionMateria = () => {
 	const qc = useQueryClient();
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { user } = (useAuth?.() ?? { user: null }) as any;
+		const { user } = (useAuth?.() ?? { user: null }) as any;
 	const puedeGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
 	const [dniInput, setDniInput] = useState<string>("");
@@ -129,7 +125,7 @@ export const useInscripcionMateria = () => {
 		retry: false,
 	});
 
-	const carrerasDisponibles = carrerasQData?.carreras ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const carrerasDisponibles = carrerasQData?.carreras ?? [];  
 	const selectedCarreraIdNum = selectedCarreraId
 		? Number(selectedCarreraId)
 		: undefined;
@@ -182,7 +178,7 @@ export const useInscripcionMateria = () => {
 			const preferido = unica.planes.find((p) => p.vigente) ?? unica.planes[0];
 			setSelectedPlanId(preferido ? String(preferido.id) : "");
 		}
-	}, [carrerasDisponibles, selectedCarreraId, selectedPlanId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [carrerasDisponibles, selectedCarreraId, selectedPlanId]);  
 
 	const {
 		data: materiasQData,
@@ -216,8 +212,7 @@ export const useInscripcionMateria = () => {
 
 	useEffect(() => {
 		if (materiasQError) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const error = materiasQError2 as any;
+						const error = materiasQError2 as any;
 			setErr(
 				error?.response?.data?.message ||
 					"No se pudieron obtener las materias del plan.",
@@ -293,8 +288,7 @@ export const useInscripcionMateria = () => {
 			setErr(null);
 			qc.invalidateQueries();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any, materiaId) => {
+				onError: (error: any, materiaId) => {
 			setSeleccionadas((prev) => prev.filter((id) => id !== materiaId));
 			setErr(error?.response?.data?.message || "No se pudo inscribir");
 			setInfo(null);
@@ -302,14 +296,12 @@ export const useInscripcionMateria = () => {
 	});
 	const pendingMateriaId = mInscribir.variables as number | undefined;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const mCancelar = useMutation<
+		const mCancelar = useMutation<
 		ApiResponseDTO,
 		any,
 		{ inscripcionId: number; materiaId: number }
 	>({
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		mutationFn: ({ inscripcionId, materiaId }) =>
+				mutationFn: ({ inscripcionId, materiaId }) =>
 			cancelarInscripcionMateria({
 				inscripcion_id: inscripcionId,
 				dni: normalizedDni ? normalizedDni : undefined,
@@ -323,8 +315,7 @@ export const useInscripcionMateria = () => {
 			);
 			qc.invalidateQueries();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			setErr(
 				error?.response?.data?.message || "No se pudo cancelar la inscripción",
 			);
@@ -333,8 +324,7 @@ export const useInscripcionMateria = () => {
 	});
 	const cancelarVars = mCancelar.variables;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const mBaja = useMutation<
+		const mBaja = useMutation<
 		ApiResponseDTO,
 		any,
 		{ inscripcionId: number; motivo: string }
@@ -350,8 +340,7 @@ export const useInscripcionMateria = () => {
 			setErr(null);
 			qc.invalidateQueries();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (error: any) => {
+				onError: (error: any) => {
 			setErr(error?.response?.data?.message || "No se pudo registrar la baja.");
 			setInfo(null);
 		},
@@ -362,7 +351,7 @@ export const useInscripcionMateria = () => {
 		mBaja.mutate({ inscripcionId, motivo });
 	};
 
-	const materias = materiasQData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const materias = materiasQData ?? [];  
 	const historialRaw = historialQData ?? EMPTY_HISTORIAL;
 	const historial = {
 		aprobadas: historialRaw.aprobadas ?? [],
@@ -383,7 +372,7 @@ export const useInscripcionMateria = () => {
 	}, [ventana]);
 	const puedeInscribirse = ventanaActiva || puedeGestionar;
 	const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
-	const inscripcionesData = inscripcionesQData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const inscripcionesData = inscripcionesQData ?? [];  
 
 	const yaInscriptas = new Set<number>([
 		...(historial.inscriptasActuales || []),
@@ -668,7 +657,7 @@ export const useInscripcionMateria = () => {
 			inscripcionesConHorario,
 			materiaById,
 		],
-	); // eslint-disable-line react-hooks/exhaustive-deps
+	);  
 
 	const materiasHabilitadas = materiasEvaluadas.filter(
 		(m) => m.status === "habilitada",

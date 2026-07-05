@@ -22,7 +22,6 @@ import {
 	fetchEstudiantesAdmin,
 } from "@/api/estudiantes/admin";
 import type { EstudianteAdminListItemDTO } from "@/api/estudiantes/types";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import BackButton from "@/components/ui/BackButton";
 import { formatDate } from "@/utils/date";
 

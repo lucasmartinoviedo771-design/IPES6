@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/rerender-lazy-state-init, react-doctor/prefer-module-scope-pure-function, react-doctor/rerender-memo-with-default-value */
-
 import AddIcon from "@mui/icons-material/Add";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -59,15 +57,12 @@ type QuickAction = {
 
 const TERRACOTTA = INSTITUTIONAL_TERRACOTTA;
 const TERRACOTTA_DARK = INSTITUTIONAL_TERRACOTTA_DARK;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OLIVE = INSTITUTIONAL_GREEN;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const OLIVE_TINT = "rgba(125,127,110,0.25)";
 const TERRACOTTA_TINT = "rgba(183,105,78,0.15)";
 const STAT_PURPLE_GRADIENT = "linear-gradient(135deg,#7c3aed,#a855f7)";
 const STAT_GREEN_GRADIENT = "linear-gradient(135deg,#22c55e,#4ade80)";
 const STAT_AMBER_GRADIENT = "linear-gradient(135deg,#f59e0b,#f97316)";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const STAT_PINK_GRADIENT = "linear-gradient(135deg,#fb7185,#f43f5e)";
 
 const CardBox = ({
@@ -102,7 +97,6 @@ type StatCardProps = {
 	borderColor: string;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const StatCard = ({
 	title,
 	value,
@@ -272,8 +266,7 @@ export default function DashboardPage() {
 	const recientes = useMemo(() => {
 		const data: PreinscripcionDTO[] = Array.isArray(preinscripcionesRaw)
 			? preinscripcionesRaw
-			: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(preinscripcionesRaw as any)?.results || [];
+			: 				(preinscripcionesRaw as any)?.results || [];
 		return data.slice(0, 5); // Mostramos las últimas 5
 	}, [preinscripcionesRaw]);
 

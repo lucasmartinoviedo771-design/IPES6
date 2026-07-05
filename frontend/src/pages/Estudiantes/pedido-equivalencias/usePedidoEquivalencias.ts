@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-derived-state, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/no-chain-state-updates */
-
 import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { listarPlanes } from "@/api/carreras";
@@ -47,8 +45,7 @@ export function usePedidoEquivalencias() {
 	const [saving, setSaving] = useState(false);
 	const [descargando, setDescargando] = useState(false);
 	const [eliminandoId, setEliminandoId] = useState<number | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const [planesDestino, setPlanesDestino] = useState<any[]>([]);
+		const [planesDestino, setPlanesDestino] = useState<any[]>([]);
 	const [carrerasEstudiante, setCarrerasEstudiante] = useState<
 		TrayectoriaCarreraDetalleDTO[]
 	>([]);
@@ -95,7 +92,7 @@ export function usePedidoEquivalencias() {
 			),
 		[carrerasEstudiante, form.profesoradoOrigenId],
 	);
-	const planesOrigenDisponibles = carreraOrigenSeleccionada?.planes ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const planesOrigenDisponibles = carreraOrigenSeleccionada?.planes ?? [];  
 
 	useEffect(() => {
 		fetchVentanas({ tipo: "EQUIVALENCIAS" })
@@ -286,7 +283,7 @@ export function usePedidoEquivalencias() {
 		return () => {
 			cancelado = true;
 		};
-	}, [form.profesoradoDestinoId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [form.profesoradoDestinoId]);  
 
 	useEffect(() => {
 		if (!esAnexoA) {

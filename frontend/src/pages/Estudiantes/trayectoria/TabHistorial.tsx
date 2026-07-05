@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/prefer-useReducer */
-
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";

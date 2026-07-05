@@ -35,11 +35,9 @@ interface TrayectoFormPanelProps {
 	carrerasDestino: { id: number; nombre: string }[];
 	carrerasEstudiante: TrayectoriaCarreraDetalleDTO[];
 	carrerasLoading: boolean;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	planesOrigenDisponibles: any[];
+		planesOrigenDisponibles: any[];
 	trayectoriaLoading: boolean;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	selectedPedido: any;
+		selectedPedido: any;
 	onMateriaChange: (
 		index: number,
 		field: keyof MateriaRow,

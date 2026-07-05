@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations */
-
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
 import Alert from "@mui/material/Alert";
@@ -41,14 +39,12 @@ const FinalExamMesasGrid: React.FC<Props> = ({
 				</Grid>
 			) : finalMesas.length ? (
 				finalMesas
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					.filter((mesa: any) => {
+										.filter((mesa: any) => {
 						if (estadoPlanilla === "ABIERTAS") return !mesa.esta_cerrada;
 						if (estadoPlanilla === "CERRADAS") return mesa.esta_cerrada;
 						return true;
 					})
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					.map((mesa: any) => {
+										.map((mesa: any) => {
 						const fecha = mesa.fecha
 							? mesa.fecha.split("-").reverse().join("/")
 							: "-";

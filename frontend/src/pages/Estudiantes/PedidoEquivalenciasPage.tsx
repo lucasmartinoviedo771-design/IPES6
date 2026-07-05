@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/jsx-no-jsx-as-prop */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -42,8 +40,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
 		form,
 		setForm,
 		materias,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		tipoSeleccionado,
+				tipoSeleccionado,
 		esAnexoA,
 		esAnexoB,
 		datosDeshabilitados,
@@ -79,8 +76,7 @@ const PedidoEquivalenciasPage: React.FC = () => {
 	};
 
 	const otorgadas = useMemo(() => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const list: any[] = [];
+				const list: any[] = [];
 		pedidos.forEach((p) => {
 			p.materias.forEach((m) => {
 				if (m.resultado === "otorgada") {

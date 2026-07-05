@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-derived-state, react-doctor/rerender-state-only-in-handlers, react-doctor/no-giant-component, react-doctor/no-effect-chain, react-doctor/no-event-handler, react-doctor/prefer-useReducer */
-
 import AccessTime from "@mui/icons-material/AccessTime";
 import CalendarToday from "@mui/icons-material/CalendarToday";
 import type { ChipProps } from "@mui/material";

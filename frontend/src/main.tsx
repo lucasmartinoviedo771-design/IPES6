@@ -26,11 +26,9 @@ dayjs.locale("es");
 import { SnackbarProvider } from "notistack";
 import { ErrorBoundary } from "react-error-boundary";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 window.addEventListener("error", (e) => {
 	void 0;
 });
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 window.addEventListener("unhandledrejection", (e) => {
 	void 0;
 });

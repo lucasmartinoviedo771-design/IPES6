@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/rendering-hydration-mismatch-time */
-
 import Download from "@mui/icons-material/Download";
 import Print from "@mui/icons-material/Print";
 import Box from "@mui/material/Box";

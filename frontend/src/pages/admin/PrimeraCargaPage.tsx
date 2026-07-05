@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/prefer-module-scope-pure-function */
-
 import Box from "@mui/material/Box";
 import type React from "react";
 import { useState } from "react";

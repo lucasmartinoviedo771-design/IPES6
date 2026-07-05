@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-derived-state, react-doctor/no-array-index-as-key, react-doctor/prefer-module-scope-pure-function, react-doctor/async-await-in-loop, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/no-event-handler, react-doctor/prefer-useReducer, react-doctor/no-chain-state-updates */
-
 import DownloadIcon from "@mui/icons-material/Download";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import type { SelectChangeEvent } from "@mui/material";
@@ -21,7 +19,6 @@ import { useSnackbar } from "notistack";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	listarPlanes,
 	listarProfesorados,
@@ -29,8 +26,7 @@ import {
 	type ProfesoradoDTO,
 } from "@/api/cargaNotas";
 import {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	CarrerasActivasDTO,
+		CarrerasActivasDTO,
 	type HorarioTablaDTO,
 	obtenerCarrerasActivas,
 	obtenerHorarioEstudiante,
@@ -38,14 +34,11 @@ import {
 } from "@/api/estudiantes";
 import { fetchVentanas, type VentanaDto } from "@/api/ventanas";
 import BackButton from "@/components/ui/BackButton";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 import InstitutionalScheduleFormat from "@/features/estudiantes/horario/InstitutionalScheduleFormat";
 import { useCarreras } from "@/hooks/useCarreras";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { INSTITUTIONAL_TERRACOTTA } from "@/styles/institutionalColors";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	getDefaultHomeRoute,
 	hasAnyRole,
@@ -71,7 +64,6 @@ const CUATRIMESTRE_LABEL: Record<string, string> = {
 	"2C": "2.do Cuatrimestre",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AÑO_LABELS: Record<number, string> = {
 	1: "1er Año",
 	2: "2do Año",
@@ -210,7 +202,7 @@ const HorarioPage: React.FC = () => {
 		}
 	}, [horarioError, enqueueSnackbar]);
 
-	const tablas = horarioData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const tablas = horarioData ?? [];  
 
 	const turnosDisponibles = useMemo(() => {
 		const map = new Map<number, string>();
@@ -345,8 +337,7 @@ const HorarioPage: React.FC = () => {
 			const margin = 5;
 			const contentWidth = pageWidth - margin * 2;
 
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const maxContentHeight = 210 - margin * 2;
+						const maxContentHeight = 210 - margin * 2;
 
 			// Temporarily force a wide aspect ratio to match A4 landscape
 			const originalWidth = exportRef.current.style.width;

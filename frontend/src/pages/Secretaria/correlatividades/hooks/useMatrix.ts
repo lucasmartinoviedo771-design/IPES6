@@ -1,4 +1,3 @@
-/* eslint-disable react-doctor/no-event-handler, react-doctor/no-derived-state-effect, react-doctor/no-adjust-state-on-prop-change, react-doctor/exhaustive-deps */
 import { useEffect, useState } from "react";
 import { client as axios } from "@/api/client";
 import type { MatrixRow } from "../types";
@@ -64,12 +63,11 @@ export function useMatrix(planId: number | "", versionId: number | "") {
 		if (typeof versionId === "number") {
 			loadAllMaterias();
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [versionId, planId]);
+			}, [versionId, planId]);
 
 	useEffect(() => {
 		loadMatrix();
-	}, [planId, anio, regimen, formato, filter, versionId]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [planId, anio, regimen, formato, filter, versionId]);  
 
 	// Limpiar fuente completa al cambiar plan o versión
 	useEffect(() => {

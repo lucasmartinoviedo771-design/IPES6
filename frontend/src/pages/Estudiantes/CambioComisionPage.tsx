@@ -1,11 +1,8 @@
-/* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-array-index-as-key, react-doctor/no-giant-component, react-doctor/no-derived-state-effect, react-doctor/exhaustive-deps, react-doctor/no-chain-state-updates */
-
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Collapse from "@mui/material/Collapse";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
@@ -122,8 +119,7 @@ const formatHorarios = (horarios: Horario[]) =>
 	horarios.map((h) => `${h.dia} ${h.desde}-${h.hasta}`).join("  ");
 
 const mensajeError = (error: unknown) => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const err = error as any;
+		const err = error as any;
 	return (
 		err?.response?.data?.message ||
 		err?.message ||
@@ -146,7 +142,6 @@ const mapMateria = (dto: MateriaPlanDTO): Materia => ({
 });
 
 // Función para filtrar alternativas que cumplen con la compatibilidad académica
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const esCompatible = (a: Materia, b: MateriaPlanDTO | ComisionResumenDTO) => {
 	// Nota: Si es ComisionResumenDTO, no tenemos horas_semana/formato directamente aquí,
 	// pero el backend /equivalencias ya filtró esto.
@@ -178,8 +173,7 @@ const defaultHistorial: HistorialEstudianteDTO = {
 };
 
 const CambioComisionPage: React.FC = () => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { user } = (useAuth?.() ?? { user: null }) as any;
+		const { user } = (useAuth?.() ?? { user: null }) as any;
 	const canGestionar = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
 	const [dniFiltro, setDniFiltro] = React.useState<string>("");
@@ -266,8 +260,7 @@ const CambioComisionPage: React.FC = () => {
 			motivo_cambio: "OVERLAP" | "WORK";
 			horario_laboral?: HorarioLaboral[];
 		}) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const fullPayload: any = { ...payload };
+						const fullPayload: any = { ...payload };
 			if (canGestionar && normalizedDni) {
 				fullPayload.dni = normalizedDni;
 			}
@@ -294,10 +287,10 @@ const CambioComisionPage: React.FC = () => {
 		},
 	});
 
-	const materias = materiasData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const materias = materiasData ?? [];  
 	const historial = historialData ?? defaultHistorial;
 	const ventana = ventanaData ?? null;
-	const inscripciones = inscriptasData ?? []; // eslint-disable-line react-hooks/exhaustive-deps
+	const inscripciones = inscriptasData ?? [];  
 
 	const materiaById = React.useMemo(() => {
 		const map = new Map<number, Materia>();
@@ -814,7 +807,7 @@ function Alternativas({
 		return () => {
 			mounted = false;
 		};
-	}, [base.materia.id, base.cuatrimestre, otrosKey]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [base.materia.id, base.cuatrimestre, otrosKey]);  
 
 	return (
 		<Box sx={{ mt: 1, pl: 1 }}>

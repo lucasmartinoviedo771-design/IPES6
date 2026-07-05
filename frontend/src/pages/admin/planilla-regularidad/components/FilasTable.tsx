@@ -1,11 +1,8 @@
-/* eslint-disable react-doctor/no-giant-component, react-doctor/jsx-key, react-doctor/no-array-index-as-key */
-
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -43,14 +40,10 @@ interface FilasTableProps {
 	isReadOnly: boolean;
 	filaFields: FieldArrayWithId<PlanillaFormValues, "filas", "id">[];
 	removeFila: (index: number) => void;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	columnasDinamicas: any[];
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	situacionesDisponibles: any[];
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	estudiantesMetadata: any[];
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	selectedMateria?: any;
+		columnasDinamicas: any[];
+		situacionesDisponibles: any[];
+		estudiantesMetadata: any[];
+		selectedMateria?: any;
 	handleStudentDniBlur: (index: number, rawValue: string) => void;
 	handleAsistenciaBlur: (
 		index: number,
@@ -117,8 +110,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
 							let currentSpan = 0;
 
 							// Agrupar columnas
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							columnasDinamicas.forEach((col: any) => {
+														columnasDinamicas.forEach((col: any) => {
 								// Usar un espacio si no hay grupo para evitar problemas
 								const gName = col.group || "";
 								if (gName !== currentGroup) {
@@ -272,8 +264,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
 												);
 											}}
 											renderOption={(props, option) => {
-												// eslint-disable-next-line @typescript-eslint/no-explicit-any
-												const { key, ...restProps } = props as any;
+																								const { key, ...restProps } = props as any;
 												return (
 													<li key={option.dni} {...restProps}>
 														<Box>
@@ -290,8 +281,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
 													</li>
 												);
 											}}
-											// eslint-disable-next-line @typescript-eslint/no-explicit-any
-											renderInput={(params: any) => (
+																						renderInput={(params: any) => (
 												<TextField
 													{...params}
 													size="small"
@@ -368,8 +358,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
 												}
 											}
 
-											// eslint-disable-next-line @typescript-eslint/no-unused-vars
-											const isBlocked = disabled || softDisabled;
+																						const isBlocked = disabled || softDisabled;
 
 											return (
 												<TextField
@@ -597,8 +586,7 @@ export const FilasTable: React.FC<FilasTableProps> = ({
 													option?.label || option?.codigo || ""
 												}
 												renderOption={(props, option) => {
-													// eslint-disable-next-line @typescript-eslint/no-explicit-any
-													const { key, ...restProps } = props as any;
+																										const { key, ...restProps } = props as any;
 													return (
 														<li key={option.codigo} {...restProps}>
 															<Box

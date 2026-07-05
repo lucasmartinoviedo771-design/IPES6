@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-giant-component */
-
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -17,7 +15,6 @@ import {
 
 const formatProfesoradoHeader = (name: string): string => name.toUpperCase();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_COLOR = "#F2F2F2";
 
 type InstitutionalScheduleFormatProps = {
@@ -44,8 +41,7 @@ const InstitutionalScheduleFormat: React.FC<
 	);
 
 	const celdas = useMemo(() => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const map = new Map<string, any>();
+				const map = new Map<string, any>();
 		tabla.celdas.forEach((celda) => {
 			map.set(cellKey(celda.dia_numero, celda.franja_posicion), celda);
 		});

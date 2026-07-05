@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/async-defer-await, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/exhaustive-deps, react-doctor/prefer-useReducer */
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import PrintIcon from "@mui/icons-material/Print";
 import Alert from "@mui/material/Alert";
@@ -27,7 +25,6 @@ import dayjs from "dayjs";
 import React, { useEffect, useState } from "react";
 
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	FieldErrors,
 	FormProvider,
@@ -58,8 +55,7 @@ async function fetchVentanaActivaPublica(): Promise<VentanaPublicaDto | null> {
 	try {
 		const { data } = await client.get("/preinscripciones/ventana-activa", {
 			validateStatus: () => true,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} as any);
+					} as any);
 		if (data?.ok && data?.data) return data.data as VentanaPublicaDto;
 		return null;
 	} catch {
@@ -139,8 +135,7 @@ export default function PreinscripcionWizard() {
 	};
 
 	const form = useForm<PreinscripcionForm>({
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		resolver: zodResolver(preinscripcionSchema) as any,
+				resolver: zodResolver(preinscripcionSchema) as any,
 		defaultValues: (() => {
 			try {
 				const saved = localStorage.getItem(STORAGE_KEY);
@@ -153,8 +148,7 @@ export default function PreinscripcionWizard() {
 	});
 
 	useEffect(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const subscription = form.watch((value, { name, type }) => {
+				const subscription = form.watch((value, { name, type }) => {
 			try {
 				localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
 			} catch (_e) {
@@ -201,15 +195,14 @@ export default function PreinscripcionWizard() {
 		return () => {
 			alive = false;
 		};
-	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	}, []);  
 
 	// pdfDownloaded was removed since download is automatic on submission
 
 	const handleNext = async () => {
 		if (activeStep === 3) {
 			const consentGiven = form.getValues("consentimiento_datos");
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const valid = await form.trigger(
+						const valid = await form.trigger(
 				["condicion_salud_detalle", "consentimiento_datos"] as any,
 				{ shouldFocus: true },
 			);
@@ -246,7 +239,7 @@ export default function PreinscripcionWizard() {
 						setDuplicatePdfUrl(res.data.pdf_url);
 						return;
 					}
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+					 
 				} catch (err: any) {
 					setSubmit({ status: "idle" });
 					form.clearErrors("carrera_id");
@@ -304,8 +297,7 @@ export default function PreinscripcionWizard() {
 			}
 
 			setSubmit({ status: "ok", data: response });
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setSubmit({
 				status: "error",
 				message: err.message || "Error desconocido",
@@ -903,8 +895,7 @@ function RecuperarPreinscripcionDialog({
 			} else {
 				setError(res.message || "Error al verificar los datos.");
 			}
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} catch (err: any) {
+					} catch (err: any) {
 			setError(err?.message || "Ocurrió un error al verificar.");
 		} finally {
 			setLoading(false);

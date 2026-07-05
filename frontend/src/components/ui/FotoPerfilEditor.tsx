@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/control-has-associated-label, react-doctor/no-initialize-state, react-doctor/rerender-state-only-in-handlers */
-
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CloseIcon from "@mui/icons-material/Close";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";

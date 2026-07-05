@@ -1,5 +1,3 @@
-/* eslint-disable react-doctor/no-cascading-set-state, react-doctor/query-mutation-missing-invalidation, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-array-index-as-key, react-doctor/no-giant-component, react-doctor/no-reset-all-state-on-prop-change, react-doctor/no-event-handler, react-doctor/prefer-useReducer */
-
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -288,8 +286,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
 				);
 			}
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		onError: (err: any) => {
+				onError: (err: any) => {
 			enqueueSnackbar(
 				err?.response?.data?.message || "Error al registrar las notas.",
 				{ variant: "error" },
@@ -607,8 +604,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
 												getOptionLabel={(e) =>
 													`${e.apellido_nombre} (DNI ${e.dni})`
 												}
-												// eslint-disable-next-line @typescript-eslint/no-explicit-any
-												value={
+																								value={
 													estudiantes.find((e) => e.dni === fila.dni) ||
 													(null as any)
 												}
