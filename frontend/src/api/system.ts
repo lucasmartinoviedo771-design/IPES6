@@ -1,24 +1,31 @@
 import { api } from "./client";
 
 export interface SystemLog {
-    id: number;
-    tipo: string;
-    mensaje: string;
-    metadata: Record<string, unknown>;
-    resuelto: boolean;
-    created_at: string;
+	id: number;
+	tipo: string;
+	mensaje: string;
+	metadata: Record<string, unknown>;
+	resuelto: boolean;
+	created_at: string;
 }
 
-export const getSystemLogs = async (resuelto: boolean = false): Promise<SystemLog[]> => {
-    const { data } = await api.get<SystemLog[]>("/system/logs", { params: { resuelto } });
-    return data;
+export const getSystemLogs = async (
+	resuelto: boolean = false,
+): Promise<SystemLog[]> => {
+	const { data } = await api.get<SystemLog[]>("/system/logs", {
+		params: { resuelto },
+	});
+	return data;
 };
 
 export const resolveSystemLog = async (id: number): Promise<void> => {
-    await api.post(`/system/logs/${id}/resolve`);
+	await api.post(`/system/logs/${id}/resolve`);
 };
 
-export const syncRepairSystem = async (): Promise<{ ok: boolean; message: string }> => {
-    const { data } = await api.post("/system/logs/sync-repair");
-    return data;
+export const syncRepairSystem = async (): Promise<{
+	ok: boolean;
+	message: string;
+}> => {
+	const { data } = await api.post("/system/logs/sync-repair");
+	return data;
 };

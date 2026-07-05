@@ -8,11 +8,11 @@ type Carrera = { id: number; nombre: string };
  * Utiliza React Query para cachear los resultados y evitar múltiples llamadas.
  */
 export function useCarreras() {
-  return useQuery({
-    queryKey: ["catalog", "profesorados"],
-    queryFn: listarProfesorados,
-    staleTime: 1000 * 60 * 10, // 10 minutos de cache fresca
-  });
+	return useQuery({
+		queryKey: ["catalog", "profesorados"],
+		queryFn: listarProfesorados,
+		staleTime: 1000 * 60 * 10, // 10 minutos de cache fresca
+	});
 }
 
 // Alias para compatibilidad si es necesario

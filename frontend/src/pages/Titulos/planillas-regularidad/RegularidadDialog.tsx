@@ -1,4 +1,3 @@
-import DOMPurify from "dompurify";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -16,83 +15,109 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
+import DOMPurify from "dompurify";
 
-import {
-  type ComisionOptionDTO,
-  type MateriaOptionDTO,
-  type RegularidadPlanillaDTO,
+import type {
+	ComisionOptionDTO,
+	MateriaOptionDTO,
+	RegularidadPlanillaDTO,
 } from "@/api/cargaNotas";
 import logoMinisterio from "@/assets/escudo_ministerio_tdf.png";
 import logoIpes from "@/assets/logo_ipes.png";
 import {
-  formatNumber,
-  formatPercentage,
-  formatFormato,
-  formatDictado,
+	formatDictado,
+	formatFormato,
+	formatNumber,
+	formatPercentage,
 } from "./utils";
 
 type Props = {
-  open: boolean;
-  planilla: RegularidadPlanillaDTO | null;
-  loading: boolean;
-  onClose: () => void;
-  comisionInfo: ComisionOptionDTO | null;
-  materiaInfo: MateriaOptionDTO | null;
+	open: boolean;
+	planilla: RegularidadPlanillaDTO | null;
+	loading: boolean;
+	onClose: () => void;
+	comisionInfo: ComisionOptionDTO | null;
+	materiaInfo: MateriaOptionDTO | null;
 };
 
 // eslint-disable-next-line react-doctor/no-giant-component
-function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, materiaInfo }: Props) {
-  const handlePrint = () => {
-    if (!planilla) return;
-    const materiaAnio = planilla.materia_anio ?? materiaInfo?.anio ?? null;
-    const headerMateria = materiaAnio ? `${planilla.materia_nombre} · ${materiaAnio}º año` : planilla.materia_nombre;
-    const formatoTexto = formatFormato(planilla.formato);
-    const dictadoTexto = formatDictado(planilla.regimen || materiaInfo?.cuatrimestre || comisionInfo?.cuatrimestre || null);
-    const fechaTexto = planilla.fecha_cierre ? dayjs(planilla.fecha_cierre).format("DD/MM/YYYY") : "-";
-    const resolucion = planilla.plan_resolucion || comisionInfo?.plan_resolucion || "-";
-    const folioCodigo =
-      planilla.comision_codigo && planilla.comision_codigo !== "Sin comision" ? planilla.comision_codigo : "";
-    const docentesTexto = planilla.docentes?.length ? planilla.docentes.join(" / ") : "Sin docente";
-    const profesoradoNombre = planilla.profesorado_nombre || comisionInfo?.profesorado_nombre || "-";
-    const metaLeft = [
-      { label: "UNIDAD CURRICULAR", value: headerMateria },
-      { label: "FORMATO", value: formatoTexto },
-      { label: "FOLIO Nº", value: folioCodigo || "................................" },
-      { label: "PROFESOR/A", value: docentesTexto },
-    ];
-    const metaRight = [
-      { label: "AÑO", value: materiaAnio ? `${materiaAnio}º` : "-" },
-      { label: "RESOLUCIÓN Nº", value: resolucion || "-" },
-      { label: "DICTADO", value: dictadoTexto || "-" },
-      { label: "FECHA", value: fechaTexto },
-    ];
-    const metaRows = metaLeft
-      .map((item, idx) => {
-        const counterpart = metaRight[idx];
-        return `
+function RegularidadDialog({
+	open,
+	planilla,
+	loading,
+	onClose,
+	comisionInfo,
+	materiaInfo,
+}: Props) {
+	const handlePrint = () => {
+		if (!planilla) return;
+		const materiaAnio = planilla.materia_anio ?? materiaInfo?.anio ?? null;
+		const headerMateria = materiaAnio
+			? `${planilla.materia_nombre} · ${materiaAnio}º año`
+			: planilla.materia_nombre;
+		const formatoTexto = formatFormato(planilla.formato);
+		const dictadoTexto = formatDictado(
+			planilla.regimen ||
+				materiaInfo?.cuatrimestre ||
+				comisionInfo?.cuatrimestre ||
+				null,
+		);
+		const fechaTexto = planilla.fecha_cierre
+			? dayjs(planilla.fecha_cierre).format("DD/MM/YYYY")
+			: "-";
+		const resolucion =
+			planilla.plan_resolucion || comisionInfo?.plan_resolucion || "-";
+		const folioCodigo =
+			planilla.comision_codigo && planilla.comision_codigo !== "Sin comision"
+				? planilla.comision_codigo
+				: "";
+		const docentesTexto = planilla.docentes?.length
+			? planilla.docentes.join(" / ")
+			: "Sin docente";
+		const profesoradoNombre =
+			planilla.profesorado_nombre || comisionInfo?.profesorado_nombre || "-";
+		const metaLeft = [
+			{ label: "UNIDAD CURRICULAR", value: headerMateria },
+			{ label: "FORMATO", value: formatoTexto },
+			{
+				label: "FOLIO Nº",
+				value: folioCodigo || "................................",
+			},
+			{ label: "PROFESOR/A", value: docentesTexto },
+		];
+		const metaRight = [
+			{ label: "AÑO", value: materiaAnio ? `${materiaAnio}º` : "-" },
+			{ label: "RESOLUCIÓN Nº", value: resolucion || "-" },
+			{ label: "DICTADO", value: dictadoTexto || "-" },
+			{ label: "FECHA", value: fechaTexto },
+		];
+		const metaRows = metaLeft
+			.map((item, idx) => {
+				const counterpart = metaRight[idx];
+				return `
           <tr>
             <td><strong>${item.label}:</strong> ${item.value ?? ""}</td>
             <td><strong>${counterpart.label}:</strong> ${counterpart.value ?? ""}</td>
           </tr>
         `;
-      })
-      .join("");
-    const situacionRefs =
-      planilla.situaciones.length > 0
-        ? planilla.situaciones
-          .map(
-            (ref) => `
+			})
+			.join("");
+		const situacionRefs =
+			planilla.situaciones.length > 0
+				? planilla.situaciones
+						.map(
+							(ref) => `
                 <tr>
                   <td>${ref.alias}</td>
                   <td>${ref.descripcion || "-"}</td>
                 </tr>
               `,
-          )
-          .join("")
-        : "";
-    const estudiantesRows = planilla.estudiantes
-      .map(
-        (estudiante) => `
+						)
+						.join("")
+				: "";
+		const estudiantesRows = planilla.estudiantes
+			.map(
+				(estudiante) => `
         <tr>
           <td>${estudiante.orden ?? "-"}</td>
           <td>${estudiante.apellido_nombre}</td>
@@ -105,9 +130,9 @@ function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, mat
           <td>${estudiante.observaciones || "-"}</td>
         </tr>
       `,
-      )
-      .join("");
-    const html = `
+			)
+			.join("");
+		const html = `
     <html>
       <head>
         <title>Planilla de regularidad</title>
@@ -261,8 +286,9 @@ function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, mat
             <div><span>Firma docente</span></div>
             <div><span>Firma Bedelía / Secretaría</span></div>
           </div>
-          ${situacionRefs
-        ? `<table class="refs-table">
+          ${
+						situacionRefs
+							? `<table class="refs-table">
                   <thead>
                     <tr>
                       <th colspan="2">Referencias - Situación Académica</th>
@@ -276,124 +302,146 @@ function RegularidadDialog({ open, planilla, loading, onClose, comisionInfo, mat
                     ${situacionRefs}
                   </tbody>
                 </table>`
-        : ""
-      }
+							: ""
+					}
         </div>
       </body>
     </html>
     `;
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      // eslint-disable-next-line react-doctor/dangerous-html-sink
-      printWindow.document.write(DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }));
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-    }
-  };
+		const printWindow = window.open("", "_blank");
+		if (printWindow) {
+			// eslint-disable-next-line react-doctor/dangerous-html-sink
+			printWindow.document.write(
+				DOMPurify.sanitize(html, { WHOLE_DOCUMENT: true }),
+			);
+			printWindow.document.close();
+			printWindow.focus();
+			printWindow.print();
+		}
+	};
 
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
-      <DialogTitle>Planilla de regularidad</DialogTitle>
-      <DialogContent dividers>
-        {loading ? (
-          <Box display="flex" justifyContent="center" py={4}>
-            <CircularProgress />
-          </Box>
-        ) : planilla ? (
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={3} flexWrap="wrap">
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Profesorado
-                </Typography>
-                <Typography>{planilla.profesorado_nombre ?? comisionInfo?.profesorado_nombre ?? "-"}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Año lectivo
-                </Typography>
-                <Typography>{planilla.anio}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Materia
-                </Typography>
-                <Typography>
-                  {planilla.materia_nombre}
-                  {planilla.materia_anio
-                    ? ` · ${planilla.materia_anio}º año`
-                    : materiaInfo?.anio
-                      ? ` · ${materiaInfo.anio}º año`
-                      : ""}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Docente/s
-                </Typography>
-                <Typography>{planilla.docentes?.length ? planilla.docentes.join(" / ") : "Sin docente"}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Resolución
-                </Typography>
-                <Typography>{planilla.plan_resolucion || comisionInfo?.plan_resolucion || "-"}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Fecha de cierre
-                </Typography>
-                <Typography>
-                  {planilla.fecha_cierre ? dayjs(planilla.fecha_cierre).format("DD/MM/YYYY") : "Sin registrar"}
-                </Typography>
-              </Box>
-            </Stack>
+	return (
+		<Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
+			<DialogTitle>Planilla de regularidad</DialogTitle>
+			<DialogContent dividers>
+				{loading ? (
+					<Box display="flex" justifyContent="center" py={4}>
+						<CircularProgress />
+					</Box>
+				) : planilla ? (
+					<Stack spacing={2}>
+						<Stack direction="row" spacing={3} flexWrap="wrap">
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Profesorado
+								</Typography>
+								<Typography>
+									{planilla.profesorado_nombre ??
+										comisionInfo?.profesorado_nombre ??
+										"-"}
+								</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Año lectivo
+								</Typography>
+								<Typography>{planilla.anio}</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Materia
+								</Typography>
+								<Typography>
+									{planilla.materia_nombre}
+									{planilla.materia_anio
+										? ` · ${planilla.materia_anio}º año`
+										: materiaInfo?.anio
+											? ` · ${materiaInfo.anio}º año`
+											: ""}
+								</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Docente/s
+								</Typography>
+								<Typography>
+									{planilla.docentes?.length
+										? planilla.docentes.join(" / ")
+										: "Sin docente"}
+								</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Resolución
+								</Typography>
+								<Typography>
+									{planilla.plan_resolucion ||
+										comisionInfo?.plan_resolucion ||
+										"-"}
+								</Typography>
+							</Box>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Fecha de cierre
+								</Typography>
+								<Typography>
+									{planilla.fecha_cierre
+										? dayjs(planilla.fecha_cierre).format("DD/MM/YYYY")
+										: "Sin registrar"}
+								</Typography>
+							</Box>
+						</Stack>
 
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Orden</TableCell>
-                    <TableCell>DNI</TableCell>
-                    <TableCell>Apellido y nombre</TableCell>
-                    <TableCell align="right">Nota TP</TableCell>
-                    <TableCell align="right">Nota final</TableCell>
-                    <TableCell align="right">Asistencia</TableCell>
-                    <TableCell>Situación</TableCell>
-                    <TableCell>Observaciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {planilla.estudiantes.map((estudiante: any) => (
-                    <TableRow key={estudiante.inscripcion_id}>
-                      <TableCell>{estudiante.orden ?? "-"}</TableCell>
-                      <TableCell>{estudiante.dni}</TableCell>
-                      <TableCell>{estudiante.apellido_nombre}</TableCell>
-                      <TableCell align="right">{formatNumber(estudiante.nota_tp)}</TableCell>
-                      <TableCell align="right">{formatNumber(estudiante.nota_final)}</TableCell>
-                      <TableCell align="right">{formatPercentage(estudiante.asistencia)}</TableCell>
-                      <TableCell>{estudiante.situacion || "-"}</TableCell>
-                      <TableCell>{estudiante.observaciones || "-"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Stack>
-        ) : (
-          <Typography>No se pudo cargar la planilla.</Typography>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handlePrint} disabled={!planilla}>
-          Imprimir
-        </Button>
-        <Button onClick={onClose}>Cerrar</Button>
-      </DialogActions>
-    </Dialog>
-  );
+						<TableContainer component={Paper} variant="outlined">
+							<Table size="small">
+								<TableHead>
+									<TableRow>
+										<TableCell>Orden</TableCell>
+										<TableCell>DNI</TableCell>
+										<TableCell>Apellido y nombre</TableCell>
+										<TableCell align="right">Nota TP</TableCell>
+										<TableCell align="right">Nota final</TableCell>
+										<TableCell align="right">Asistencia</TableCell>
+										<TableCell>Situación</TableCell>
+										<TableCell>Observaciones</TableCell>
+									</TableRow>
+								</TableHead>
+								<TableBody>
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									{planilla.estudiantes.map((estudiante: any) => (
+										<TableRow key={estudiante.inscripcion_id}>
+											<TableCell>{estudiante.orden ?? "-"}</TableCell>
+											<TableCell>{estudiante.dni}</TableCell>
+											<TableCell>{estudiante.apellido_nombre}</TableCell>
+											<TableCell align="right">
+												{formatNumber(estudiante.nota_tp)}
+											</TableCell>
+											<TableCell align="right">
+												{formatNumber(estudiante.nota_final)}
+											</TableCell>
+											<TableCell align="right">
+												{formatPercentage(estudiante.asistencia)}
+											</TableCell>
+											<TableCell>{estudiante.situacion || "-"}</TableCell>
+											<TableCell>{estudiante.observaciones || "-"}</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</TableContainer>
+					</Stack>
+				) : (
+					<Typography>No se pudo cargar la planilla.</Typography>
+				)}
+			</DialogContent>
+			<DialogActions>
+				<Button onClick={handlePrint} disabled={!planilla}>
+					Imprimir
+				</Button>
+				<Button onClick={onClose}>Cerrar</Button>
+			</DialogActions>
+		</Dialog>
+	);
 }
 
 export default RegularidadDialog;

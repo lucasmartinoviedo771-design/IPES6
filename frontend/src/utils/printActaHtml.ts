@@ -2,26 +2,31 @@ import logoMinisterio from "@/assets/escudo_ministerio_tdf.png";
 import logoIpes from "@/assets/logo_ipes.png";
 
 async function toBase64(src: string): Promise<string> {
-  if (src.startsWith('data:')) return src;
-  const absUrl = src.startsWith('http') ? src : `${window.location.origin}${src}`;
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth || 200;
-      canvas.height = img.naturalHeight || 200;
-      canvas.getContext('2d')!.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => resolve('');
-    img.src = absUrl;
-  });
+	if (src.startsWith("data:")) return src;
+	const absUrl = src.startsWith("http")
+		? src
+		: `${window.location.origin}${src}`;
+	return new Promise((resolve) => {
+		const img = new Image();
+		img.onload = () => {
+			const canvas = document.createElement("canvas");
+			canvas.width = img.naturalWidth || 200;
+			canvas.height = img.naturalHeight || 200;
+			canvas.getContext("2d")!.drawImage(img, 0, 0);
+			resolve(canvas.toDataURL("image/png"));
+		};
+		img.onerror = () => resolve("");
+		img.src = absUrl;
+	});
 }
 
 /** HTML del encabezado institucional IPES — mismo formato que pdf_header.html */
 export async function getIpesHeaderHtml(): Promise<string> {
-  const [min, ipes] = await Promise.all([toBase64(logoMinisterio), toBase64(logoIpes)]);
-  return `
+	const [min, ipes] = await Promise.all([
+		toBase64(logoMinisterio),
+		toBase64(logoIpes),
+	]);
+	return `
     <div id="pdf-header-wrapper" style="width:100%; margin-bottom:15px; padding-bottom:10px; border-bottom:3px solid #c24b17;">
       <table style="width:100%; border-collapse:collapse; border:none;">
         <tr>

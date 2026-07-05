@@ -1,115 +1,118 @@
-import { PlanillaDocenteFormValues, PlanillaFilaFormValues } from './types';
+import type {
+	PlanillaDocenteFormValues,
+	PlanillaFilaFormValues,
+} from "./types";
 
 export const DEFAULT_DOCENTE: PlanillaDocenteFormValues = {
-  docente_id: null,
-  nombre: '',
-  dni: '',
-  rol: 'profesor',
-  orden: null,
+	docente_id: null,
+	nombre: "",
+	dni: "",
+	rol: "profesor",
+	orden: null,
 };
 
 export const DEFAULT_DOCENTE_BEDEL: PlanillaDocenteFormValues = {
-  docente_id: null,
-  nombre: '',
-  dni: '',
-  rol: 'bedel',
-  orden: null,
+	docente_id: null,
+	nombre: "",
+	dni: "",
+	rol: "bedel",
+	orden: null,
 };
 
 export const buildDefaultRow = (index: number): PlanillaFilaFormValues => ({
-  orden: index + 1,
-  dni: '',
-  apellido_nombre: '',
-  nota_final: '', // Permitirá números 0-10 o '---'
-  asistencia: '',
-  situacion: '',
-  excepcion: false,
-  datos: {},
+	orden: index + 1,
+	dni: "",
+	apellido_nombre: "",
+	nota_final: "", // Permitirá números 0-10 o '---'
+	asistencia: "",
+	situacion: "",
+	excepcion: false,
+	datos: {},
 });
 
 export const buildDefaultRows = (count = 1): PlanillaFilaFormValues[] =>
-  Array.from({ length: count }, (_, idx) => buildDefaultRow(idx));
+	Array.from({ length: count }, (_, idx) => buildDefaultRow(idx));
 
 export const regimenToDictado: Record<string, string> = {
-  ANU: 'ANUAL',
-  ANUAL: 'ANUAL',
-  PCU: '1C',
-  SCU: '2C',
-  '1C': '1C',
-  '2C': '2C',
+	ANU: "ANUAL",
+	ANUAL: "ANUAL",
+	PCU: "1C",
+	SCU: "2C",
+	"1C": "1C",
+	"2C": "2C",
 };
 
 export const REGIMEN_LABELS: Record<string, string> = {
-  ANU: 'Anual',
-  ANUAL: 'Anual',
-  PCU: '1° cuatrimestre',
-  SCU: '2° cuatrimestre',
-  '1C': '1° cuatrimestre',
-  '2C': '2° cuatrimestre',
+	ANU: "Anual",
+	ANUAL: "Anual",
+	PCU: "1° cuatrimestre",
+	SCU: "2° cuatrimestre",
+	"1C": "1° cuatrimestre",
+	"2C": "2° cuatrimestre",
 };
 
 export const DICTADO_LABELS: Record<string, string> = {
-  ANUAL: 'Anual',
-  '1C': '1° cuatrimestre',
-  '2C': '2° cuatrimestre',
+	ANUAL: "Anual",
+	"1C": "1° cuatrimestre",
+	"2C": "2° cuatrimestre",
 };
 
 export const SITUACION_DESCRIPTIONS: Record<string, string> = {
-  PRO: "Promocionado",
-  REG: "Regular",
-  APR: "Aprobado (sin final)",
-  DPA: "Desaprobado por Parciales",
-  DTP: "Desaprobado por Trabajos Prácticos",
-  LBI: "Libre por Inasistencias",
-  LAT: "Libre Antes de Tiempo",
-  AUJ: "JUS",
+	PRO: "Promocionado",
+	REG: "Regular",
+	APR: "Aprobado (sin final)",
+	DPA: "Desaprobado por Parciales",
+	DTP: "Desaprobado por Trabajos Prácticos",
+	LBI: "Libre por Inasistencias",
+	LAT: "Libre Antes de Tiempo",
+	AUJ: "JUS",
 };
 
 export const FORMATO_SLUG_MAP: Record<string, string> = {
-  ASI: 'asignatura',
-  MOD: 'modulo',
-  TAL: 'taller',
-  PRA: 'taller',
-  LAB: 'taller',
-  SEM: 'taller', // Seminario ahora usa el formato Taller para compartir formulario
+	ASI: "asignatura",
+	MOD: "modulo",
+	TAL: "taller",
+	PRA: "taller",
+	LAB: "taller",
+	SEM: "taller", // Seminario ahora usa el formato Taller para compartir formulario
 };
 
 export const FORMATO_LABELS: Record<string, string> = {
-  ASI: 'Asignatura',
-  MOD: 'Módulo',
-  TAL: 'Taller',
-  PRA: 'Práctica',
-  LAB: 'Laboratorio',
-  SEM: 'Seminario',
+	ASI: "Asignatura",
+	MOD: "Módulo",
+	TAL: "Taller",
+	PRA: "Práctica",
+	LAB: "Laboratorio",
+	SEM: "Seminario",
 };
 
-export const SITUACION_PLACEHOLDER = 'Seleccionar';
+export const SITUACION_PLACEHOLDER = "Seleccionar";
 
 export const todayIso = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = String(now.getMonth() + 1).padStart(2, "0");
+	const day = String(now.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 };
 
 export const formatColumnLabel = (label?: string) => {
-  if (!label) {
-    return '';
-  }
-  const normalized = label.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-  return normalized.replace(/º|°/g, '').replace(/\s+/g, ' ').trim();
+	if (!label) {
+		return "";
+	}
+	const normalized = label.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+	return normalized.replace(/º|°/g, "").replace(/\s+/g, " ").trim();
 };
 
 export const getSituacionColor = (situacion?: string) => {
-  const s = (situacion || '').toUpperCase();
-  if (s === 'PRO' || s.includes('PROM')) return '#c6e0b4';           // Verde claro (Promocionado)
-  if (s === 'REGULAR' || s === 'REG') return '#ffff00';              // Amarillo
-  if (s.includes('DESAPROBADO_TP') || s === 'DTP') return '#f4a636'; // Naranja (Desaprobado TP)
-  if (s.includes('DESAPROBADO_PA') || s === 'DPA') return '#f4a636'; // Naranja (Desaprobado PA)
-  if (s.includes('DESAPROBADO')) return '#ff0000';                   // Rojo (Desaprobado general)
-  if (s === 'APR' || s.includes('APRO')) return '#70ad47';           // Verde medio (Aprobado)
-  if (s === 'LIBRE-I' || s === 'LBI') return '#5b9bd5';              // Azul/Cyan
-  if (s === 'LIBRE-AT' || s === 'LAT') return '#5b9bd5';             // Azul/Cyan
-  return 'transparent';
+	const s = (situacion || "").toUpperCase();
+	if (s === "PRO" || s.includes("PROM")) return "#c6e0b4"; // Verde claro (Promocionado)
+	if (s === "REGULAR" || s === "REG") return "#ffff00"; // Amarillo
+	if (s.includes("DESAPROBADO_TP") || s === "DTP") return "#f4a636"; // Naranja (Desaprobado TP)
+	if (s.includes("DESAPROBADO_PA") || s === "DPA") return "#f4a636"; // Naranja (Desaprobado PA)
+	if (s.includes("DESAPROBADO")) return "#ff0000"; // Rojo (Desaprobado general)
+	if (s === "APR" || s.includes("APRO")) return "#70ad47"; // Verde medio (Aprobado)
+	if (s === "LIBRE-I" || s === "LBI") return "#5b9bd5"; // Azul/Cyan
+	if (s === "LIBRE-AT" || s === "LAT") return "#5b9bd5"; // Azul/Cyan
+	return "transparent";
 };

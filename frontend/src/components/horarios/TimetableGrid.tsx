@@ -1,46 +1,47 @@
 /* eslint-disable react-doctor/js-combine-iterations, react-doctor/no-cascading-set-state, react-doctor/no-adjust-state-on-prop-change, react-doctor/no-pass-live-state-to-parent, react-doctor/no-array-index-as-key, react-doctor/control-has-associated-label, react-doctor/prefer-module-scope-pure-function, react-doctor/prefer-module-scope-static-value, react-doctor/no-giant-component, react-doctor/no-fetch-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/exhaustive-deps */
-import React, { useEffect, useMemo, useState } from 'react';
-import { client as axios } from '@/api/client';
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { client as axios } from "@/api/client";
 
 // ---- Port de "GRILLAS" del horarios_pack (40 min + recreos) ----
 type Grilla = {
-  start: string;  // "HH:MM"
-  end: string;    // "HH:MM"
-  breaks: Array<{ from: string; to: string }>;
+	start: string; // "HH:MM"
+	end: string; // "HH:MM"
+	breaks: Array<{ from: string; to: string }>;
 };
 const GRILLAS: Record<string, Grilla> = {
-  manana: {
-    start: "07:45",
-    end:   "12:45",
-    breaks: [
-      { from: "09:05", to: "09:15" },
-      { from: "10:35", to: "10:40" },
-    ],
-  },
-  tarde: {
-    start: "13:00",
-    end:   "18:00",
-    breaks: [
-      { from: "14:20", to: "14:30" },
-      { from: "15:50", to: "16:00" },
-    ],
-  },
-  vespertino: {
-    start: "18:10",
-    end:   "23:10",
-    breaks: [
-      { from: "19:30", to: "19:40" },
-      { from: "21:00", to: "21:10" },
-    ],
-  },
-  sabado: {
-    start: "09:00",
-    end:   "14:00",
-    breaks: [
-      { from: "10:20", to: "10:30" },
-      { from: "11:50", to: "12:00" },
-    ],
-  },
+	manana: {
+		start: "07:45",
+		end: "12:45",
+		breaks: [
+			{ from: "09:05", to: "09:15" },
+			{ from: "10:35", to: "10:40" },
+		],
+	},
+	tarde: {
+		start: "13:00",
+		end: "18:00",
+		breaks: [
+			{ from: "14:20", to: "14:30" },
+			{ from: "15:50", to: "16:00" },
+		],
+	},
+	vespertino: {
+		start: "18:10",
+		end: "23:10",
+		breaks: [
+			{ from: "19:30", to: "19:40" },
+			{ from: "21:00", to: "21:10" },
+		],
+	},
+	sabado: {
+		start: "09:00",
+		end: "14:00",
+		breaks: [
+			{ from: "10:20", to: "10:30" },
+			{ from: "11:50", to: "12:00" },
+		],
+	},
 };
 
 const BLOCK_MIN = 40;
@@ -48,478 +49,591 @@ const BLOCK_MIN = 40;
 type TurnoKey = "manana" | "tarde" | "vespertino";
 
 const normalizeTurnoNombre = (value?: string | null) =>
-  (value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+	(value || "")
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase();
 
-const turnoKeyFromMeta = (tid: number | null | undefined, nombre?: string | null): TurnoKey | null => {
-  const normalized = normalizeTurnoNombre(nombre);
-  if (normalized.includes("manan") || normalized.includes("man")) return "manana";
-  if (normalized.includes("tard")) return "tarde";
-  if (normalized.includes("vesp") || normalized.includes("noch")) return "vespertino";
-  if (tid === 1) return "manana";
-  if (tid === 2) return "tarde";
-  if (tid === 3) return "vespertino";
-  return null;
+const turnoKeyFromMeta = (
+	tid: number | null | undefined,
+	nombre?: string | null,
+): TurnoKey | null => {
+	const normalized = normalizeTurnoNombre(nombre);
+	if (normalized.includes("manan") || normalized.includes("man"))
+		return "manana";
+	if (normalized.includes("tard")) return "tarde";
+	if (normalized.includes("vesp") || normalized.includes("noch"))
+		return "vespertino";
+	if (tid === 1) return "manana";
+	if (tid === 2) return "tarde";
+	if (tid === 3) return "vespertino";
+	return null;
 };
 
 function parseHM(hhmm: string): number {
-  const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + m;
+	const [h, m] = hhmm.split(":").map(Number);
+	return h * 60 + m;
 }
 function fmtHM(mins: number): string {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+	const h = Math.floor(mins / 60);
+	const m = mins % 60;
+	return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 // Normaliza strings de hora del backend ("HH:MM[:SS]") a "HH:MM"
 function toHMString(t: string): string {
-  const m = /^(\d{1,2}):(\d{2})/.exec(t);
-  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : t;
+	const m = /^(\d{1,2}):(\d{2})/.exec(t);
+	return m ? `${m[1].padStart(2, "0")}:${m[2]}` : t;
 }
-function inBreak(startMin: number, endMin: number, brks: {from: string; to: string}[]) {
-  return brks.some(b => {
-    const s = parseHM(b.from);
-    const e = parseHM(b.to);
-    return startMin >= s && endMin <= e;
-  });
+function inBreak(
+	startMin: number,
+	endMin: number,
+	brks: { from: string; to: string }[],
+) {
+	return brks.some((b) => {
+		const s = parseHM(b.from);
+		const e = parseHM(b.to);
+		return startMin >= s && endMin <= e;
+	});
 }
 
 interface Bloque {
-  id: number;
-  dia: number;
-  hora_desde: string;
-  hora_hasta: string;
-  es_recreo: boolean;
-  turno_id: number;
-  dia_display: string;
-  turno_nombre: string;
+	id: number;
+	dia: number;
+	hora_desde: string;
+	hora_hasta: string;
+	es_recreo: boolean;
+	turno_id: number;
+	dia_display: string;
+	turno_nombre: string;
 }
 
 interface Materia {
-  id: number;
-  nombre: string;
-  horas_semana: number;
-  regimen: string;
-  formato?: string | null;
+	id: number;
+	nombre: string;
+	horas_semana: number;
+	regimen: string;
+	formato?: string | null;
 }
 
 interface TimetableGridProps {
-  profesoradoId: number | null;
-  planId: number | null;
-  anioCarrera: number | null;
-  cuatrimestre: 1 | 2 | null;
-  turnoId: number | null;
-  turnoNombre?: string | null;
-  onMateriaChange: (materiaId: number | null) => void;
-  selectedMateriaId: number | null;
-  onBlocksSelected: (count: number, blocks: Set<number>) => void;
-  selectedBlocks: Set<number>;
-  onClear: () => void;
-  onDuplicar: () => void;
-  onGuardar: () => void;
-  onExportar: () => void;
-  setHorasRequeridas: (horas: number) => void;
-  onBloquesChange?: (bloques: Bloque[]) => void;
-  anioLectivo: number | null;
+	profesoradoId: number | null;
+	planId: number | null;
+	anioCarrera: number | null;
+	cuatrimestre: 1 | 2 | null;
+	turnoId: number | null;
+	turnoNombre?: string | null;
+	onMateriaChange: (materiaId: number | null) => void;
+	selectedMateriaId: number | null;
+	onBlocksSelected: (count: number, blocks: Set<number>) => void;
+	selectedBlocks: Set<number>;
+	onClear: () => void;
+	onDuplicar: () => void;
+	onGuardar: () => void;
+	onExportar: () => void;
+	setHorasRequeridas: (horas: number) => void;
+	onBloquesChange?: (bloques: Bloque[]) => void;
+	anioLectivo: number | null;
 }
 
 const TimetableGrid: React.FC<TimetableGridProps> = (props) => {
-  const {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    profesoradoId, planId, anioCarrera, cuatrimestre, turnoId, turnoNombre,
-    onMateriaChange, selectedMateriaId, onBlocksSelected,
-    selectedBlocks, setHorasRequeridas, onClear, onDuplicar, onGuardar, onExportar, onBloquesChange,
-    anioLectivo
-  } = props;
+	const {
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		profesoradoId,
+		planId,
+		anioCarrera,
+		cuatrimestre,
+		turnoId,
+		turnoNombre,
+		onMateriaChange,
+		selectedMateriaId,
+		onBlocksSelected,
+		selectedBlocks,
+		setHorasRequeridas,
+		onClear,
+		onDuplicar,
+		onGuardar,
+		onExportar,
+		onBloquesChange,
+		anioLectivo,
+	} = props;
 
-  const [bloques, setBloques] = useState<Bloque[]>([]);
-  const [bloquesReady, setBloquesReady] = useState(false);
-  const [materias, setMaterias] = useState<Materia[]>([]);
-  const [occupiedBlocks, setOccupiedBlocks] = useState<Set<number>>(new Set());
+	const [bloques, setBloques] = useState<Bloque[]>([]);
+	const [bloquesReady, setBloquesReady] = useState(false);
+	const [materias, setMaterias] = useState<Materia[]>([]);
+	const [occupiedBlocks, setOccupiedBlocks] = useState<Set<number>>(new Set());
 
-  const daysOfWeek = [
-    { id: 1, name: 'Lunes' },
-    { id: 2, name: 'Martes' },
-    { id: 3, name: 'Miércoles' },
-    { id: 4, name: 'Jueves' },
-    { id: 5, name: 'Viernes' },
-  ];
+	const daysOfWeek = [
+		{ id: 1, name: "Lunes" },
+		{ id: 2, name: "Martes" },
+		{ id: 3, name: "Miércoles" },
+		{ id: 4, name: "Jueves" },
+		{ id: 5, name: "Viernes" },
+	];
 
-  const sabadoBloques = useMemo(() => bloques.filter((b) => b.dia === 6), [bloques]);
+	const sabadoBloques = useMemo(
+		() => bloques.filter((b) => b.dia === 6),
+		[bloques],
+	);
 
-  useEffect(() => {
-    if (turnoId) {
-      setBloquesReady(false);
-      axios
-        .get<Bloque[]>(`/turnos/${turnoId}/bloques`)
-        .then((response) => {
-          setBloques(response.data);
-          onBloquesChange?.(response.data);
-        })
-        .catch((_error) => {
-          void 0;
-          setBloques([]);
-          onBloquesChange?.([]);
-        })
-        .finally(() => setBloquesReady(true));
-    } else {
-      setBloques([]);
-      onBloquesChange?.([]);
-      setBloquesReady(false);
-    }
-  }, [turnoId, onBloquesChange]);
+	useEffect(() => {
+		if (turnoId) {
+			setBloquesReady(false);
+			axios
+				.get<Bloque[]>(`/turnos/${turnoId}/bloques`)
+				.then((response) => {
+					setBloques(response.data);
+					onBloquesChange?.(response.data);
+				})
+				.catch((_error) => {
+					void 0;
+					setBloques([]);
+					onBloquesChange?.([]);
+				})
+				.finally(() => setBloquesReady(true));
+		} else {
+			setBloques([]);
+			onBloquesChange?.([]);
+			setBloquesReady(false);
+		}
+	}, [turnoId, onBloquesChange]);
 
-  useEffect(() => {
-    if (planId && anioCarrera) {
-      // 1. Fetch all materias for the given plan and year.
-      axios.get<Materia[]>(`/planes/${planId}/materias`, { params: { anio_cursada: anioCarrera } })
-        .then(({ data }) => {
+	useEffect(() => {
+		if (planId && anioCarrera) {
+			// 1. Fetch all materias for the given plan and year.
+			axios
+				.get<Materia[]>(`/planes/${planId}/materias`, {
+					params: { anio_cursada: anioCarrera },
+				})
+				.then(({ data }) => {
+					// 2. Filter on the client-side based on the selected cuatrimestre.
+					const normalizeRegimen = (s: string) =>
+						(s || "").toUpperCase().trim();
 
+					const filteredMaterias = cuatrimestre
+						? data.filter((materia) => {
+								const regimen = normalizeRegimen(materia.regimen);
+								// Corregir los valores de regimen para que coincidan con el backend ('ANU', 'PCU', 'SCU')
+								const regimenCuatrimestre = cuatrimestre === 1 ? "PCU" : "SCU";
+								return regimen === "ANU" || regimen === regimenCuatrimestre;
+							})
+						: data; // If no cuatrimestre is selected, show all.
 
-          // 2. Filter on the client-side based on the selected cuatrimestre.
-          const normalizeRegimen = (s: string) => (s || '').toUpperCase().trim();
-          
-          const filteredMaterias = cuatrimestre
-            ? data.filter(materia => {
-                const regimen = normalizeRegimen(materia.regimen);
-                // Corregir los valores de regimen para que coincidan con el backend ('ANU', 'PCU', 'SCU')
-                const regimenCuatrimestre = cuatrimestre === 1 ? 'PCU' : 'SCU';
-                return regimen === 'ANU' || regimen === regimenCuatrimestre;
-              })
-            : data; // If no cuatrimestre is selected, show all.
-          
+					setMaterias(filteredMaterias);
+				})
+				.catch((_e) => {
+					void 0;
+					setMaterias([]);
+				});
+		} else {
+			// If required filters are not set, clear the list.
+			setMaterias([]);
+			onMateriaChange(null);
+		}
+	}, [planId, anioCarrera, cuatrimestre]); // eslint-disable-line react-hooks/exhaustive-deps
 
-          setMaterias(filteredMaterias);
-        })
-        .catch(_e => {
-          void 0;
-          setMaterias([]);
-        });
-    } else {
-      // If required filters are not set, clear the list.
-      setMaterias([]);
-      onMateriaChange(null);
-    }
-  }, [planId, anioCarrera, cuatrimestre]);  // eslint-disable-line react-hooks/exhaustive-deps
+	useEffect(() => {
+		if (anioCarrera && turnoId) {
+			axios
+				.get<Bloque[]>(`/horarios/ocupacion`, {
+					params: {
+						anio_cursada: anioCarrera,
+						turno_id: turnoId,
+						cuatrimestre,
+						anio_academico: anioLectivo,
+					},
+				})
+				.then(({ data }) => setOccupiedBlocks(new Set(data.map((b) => b.id))))
+				.catch((_e) => void 0);
+		} else {
+			setOccupiedBlocks(new Set());
+		}
+	}, [anioCarrera, turnoId, cuatrimestre, anioLectivo]);
 
-  useEffect(() => {
-    if (anioCarrera && turnoId) {
-      axios
-        .get<Bloque[]>(`/horarios/ocupacion`, {
-          params: { 
-            anio_cursada: anioCarrera, 
-            turno_id: turnoId, 
-            cuatrimestre,
-            anio_academico: anioLectivo 
-          },
-        })
-        .then(({ data }) => setOccupiedBlocks(new Set(data.map((b) => b.id))))
-        .catch((_e) => void 0);
-    } else {
-      setOccupiedBlocks(new Set());
-    }
-  }, [anioCarrera, turnoId, cuatrimestre, anioLectivo]);
+	const selectedMateria =
+		materias.find((m) => m.id === selectedMateriaId) || null;
+	const selectedCount = selectedBlocks.size;
+	const horasRequeridas = selectedMateria?.horas_semana ?? 0;
+	const nombreNormalizado = selectedMateria
+		? selectedMateria.nombre
+				.toLowerCase()
+				.normalize("NFD")
+				.replace(/[\u0300-\u036f]/g, "")
+		: "";
+	const formatoNormalizado = (selectedMateria?.formato || "").toUpperCase();
+	const esTallerCuarto =
+		nombreNormalizado.includes("taller") && anioCarrera === 4;
+	const esTallerResidencia =
+		nombreNormalizado.includes("taller") &&
+		nombreNormalizado.includes("residencia");
+	const esMateriaFlexible =
+		!!selectedMateria &&
+		(formatoNormalizado === "PRA" ||
+			formatoNormalizado === "TAL" ||
+			formatoNormalizado === "TALLER" ||
+			nombreNormalizado.includes("practica") ||
+			nombreNormalizado.includes("residencia") ||
+			nombreNormalizado.includes("campo de la practica") ||
+			nombreNormalizado.includes("taller integrador") ||
+			esTallerCuarto ||
+			esTallerResidencia);
+	const botonDeshabilitado =
+		!selectedMateria ||
+		(selectedCount > 0 &&
+			!esMateriaFlexible &&
+			selectedCount !== horasRequeridas) ||
+		(esMateriaFlexible && selectedCount > horasRequeridas);
 
-  const selectedMateria = materias.find(m => m.id === selectedMateriaId) || null;
-  const selectedCount = selectedBlocks.size;
-  const horasRequeridas = selectedMateria?.horas_semana ?? 0;
-  const nombreNormalizado = selectedMateria
-    ? selectedMateria.nombre
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-    : '';
-  const formatoNormalizado = (selectedMateria?.formato || '').toUpperCase();
-  const esTallerCuarto = nombreNormalizado.includes('taller') && anioCarrera === 4;
-  const esTallerResidencia = nombreNormalizado.includes('taller') && nombreNormalizado.includes('residencia');
-  const esMateriaFlexible = !!selectedMateria && (
-    formatoNormalizado === 'PRA' ||
-    formatoNormalizado === 'TAL' ||
-    formatoNormalizado === 'TALLER' ||
-    nombreNormalizado.includes('practica') ||
-    nombreNormalizado.includes('residencia') ||
-    nombreNormalizado.includes('campo de la practica') ||
-    nombreNormalizado.includes('taller integrador') ||
-    esTallerCuarto ||
-    esTallerResidencia
-  );
-  const botonDeshabilitado =
-    !selectedMateria ||
-    (selectedCount > 0 && !esMateriaFlexible && selectedCount !== horasRequeridas) ||
-    (esMateriaFlexible && selectedCount > horasRequeridas);
+	useEffect(() => {
+		setHorasRequeridas(horasRequeridas);
+	}, [horasRequeridas, setHorasRequeridas]);
 
-  useEffect(() => {
-    setHorasRequeridas(horasRequeridas);
-  }, [horasRequeridas, setHorasRequeridas]);
+	const handleBlockClick = (bloqueId: number) => {
+		if (!selectedMateriaId) {
+			alert("Por favor, selecciona una materia primero.");
+			return;
+		}
+		const newSelection = new Set(selectedBlocks);
+		if (newSelection.has(bloqueId)) {
+			newSelection.delete(bloqueId);
+		} else {
+			if (selectedCount < (selectedMateria?.horas_semana ?? 0)) {
+				newSelection.add(bloqueId);
+			} else {
+				alert("Ya has asignado el número requerido de horas.");
+			}
+		}
+		onBlocksSelected(newSelection.size, newSelection);
+	};
 
-  const handleBlockClick = (bloqueId: number) => {
-    if (!selectedMateriaId) {
-      alert('Por favor, selecciona una materia primero.');
-      return;
-    }
-    const newSelection = new Set(selectedBlocks);
-    if (newSelection.has(bloqueId)) {
-      newSelection.delete(bloqueId);
-    } else {
-      if (selectedCount < (selectedMateria?.horas_semana ?? 0)) {
-        newSelection.add(bloqueId);
-      } else {
-        alert('Ya has asignado el número requerido de horas.');
-      }
-    }
-    onBlocksSelected(newSelection.size, newSelection);
-  };
+	const handleVirtualBlockClick = () => {
+		alert(
+			"Este turno no tiene los bloques horarios inicializados en el sistema. Por favor, contacte al administrador para configurar los horarios de este turno o verifique si existe otro turno similar con el nombre correcto.",
+		);
+	};
 
-  const handleVirtualBlockClick = () => {
-    alert('Este turno no tiene los bloques horarios inicializados en el sistema. Por favor, contacte al administrador para configurar los horarios de este turno o verifique si existe otro turno similar con el nombre correcto.');
-  };
+	const turnoNombreEfectivo = bloques[0]?.turno_nombre ?? turnoNombre ?? null;
+	const turnoKey = turnoKeyFromMeta(turnoId, turnoNombreEfectivo);
 
-  const turnoNombreEfectivo = bloques[0]?.turno_nombre ?? turnoNombre ?? null;
-  const turnoKey = turnoKeyFromMeta(turnoId, turnoNombreEfectivo);
+	// Si el backend envía `bloques`, seguimos usándolos; si no, generamos la grilla del turno
+	const hasRealBloques = bloquesReady && bloques.length > 0;
+	const canUseFallback = bloquesReady && !hasRealBloques && turnoKey;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const isLoading = !bloquesReady && turnoId;
 
-// Si el backend envía `bloques`, seguimos usándolos; si no, generamos la grilla del turno
-const hasRealBloques = bloquesReady && bloques.length > 0;
-const canUseFallback = bloquesReady && !hasRealBloques && turnoKey;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const isLoading = !bloquesReady && turnoId;
+	// L–V (usa grilla del turno M/T/V si no hay datos del backend)
+	let timeSlotsLV: string[] = [];
+	if (hasRealBloques) {
+		timeSlotsLV = Array.from(
+			new Set(
+				bloques
+					.filter((b) => b.dia >= 1 && b.dia <= 5)
+					.map(
+						(b) => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`,
+					),
+			),
+		).sort();
+	} else if (canUseFallback && turnoKey && GRILLAS[turnoKey]) {
+		const meta = GRILLAS[turnoKey];
+		let cur = parseHM(meta.start);
+		const end = parseHM(meta.end);
+		const brks = meta.breaks;
+		const acc: string[] = [];
+		while (cur < end) {
+			const nx = Math.min(cur + BLOCK_MIN, end);
+			const isBreak = inBreak(cur, nx, brks);
+			acc.push(`${fmtHM(cur)}-${fmtHM(nx)}${isBreak ? "" : ""}`);
+			cur = nx;
+		}
+		timeSlotsLV = acc;
+	}
 
-// L–V (usa grilla del turno M/T/V si no hay datos del backend)
-let timeSlotsLV: string[] = [];
-if (hasRealBloques) {
-  timeSlotsLV = Array.from(new Set(
-    bloques
-      .filter(b => b.dia >= 1 && b.dia <= 5)
-      .map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
-  )).sort();
-} else if (canUseFallback && turnoKey && GRILLAS[turnoKey]) {
-  const meta = GRILLAS[turnoKey];
-  let cur = parseHM(meta.start);
-  const end = parseHM(meta.end);
-  const brks = meta.breaks;
-  const acc: string[] = [];
-  while (cur < end) {
-    const nx = Math.min(cur + BLOCK_MIN, end);
-    const isBreak = inBreak(cur, nx, brks);
-    acc.push(`${fmtHM(cur)}-${fmtHM(nx)}${isBreak ? "" : ""}`);
-    cur = nx;
-  }
-  timeSlotsLV = acc;
-}
+	// Sábado (si no hay backend, usamos su propia grilla)
+	let timeSlotsSab: string[] = [];
+	if (hasRealBloques) {
+		timeSlotsSab = Array.from(
+			new Set(
+				sabadoBloques.map(
+					(b) => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`,
+				),
+			),
+		).sort();
+	} else if (canUseFallback) {
+		const meta = GRILLAS.sabado;
+		let cur = parseHM(meta.start);
+		const end = parseHM(meta.end);
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const brks = meta.breaks;
+		const acc: string[] = [];
+		while (cur < end) {
+			const nx = Math.min(cur + BLOCK_MIN, end);
+			acc.push(`${fmtHM(cur)}-${fmtHM(nx)}`);
+			cur = nx;
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		timeSlotsSab = acc;
+	}
 
-// Sábado (si no hay backend, usamos su propia grilla)
-let timeSlotsSab: string[] = [];
-if (hasRealBloques) {
-  timeSlotsSab = Array.from(new Set(
-    sabadoBloques.map(b => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)
-  )).sort();
-} else if (canUseFallback) {
-  const meta = GRILLAS.sabado;
-  let cur = parseHM(meta.start);
-  const end = parseHM(meta.end);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const brks = meta.breaks;
-  const acc: string[] = [];
-  while (cur < end) {
-    const nx = Math.min(cur + BLOCK_MIN, end);
-    acc.push(`${fmtHM(cur)}-${fmtHM(nx)}`);
-    cur = nx;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  timeSlotsSab = acc;
-}
+	// Sábado visible (independiente del turno seleccionado)
+	const timeSlotsSabDisplay: string[] =
+		sabadoBloques.length > 0
+			? Array.from(
+					new Set(
+						sabadoBloques.map(
+							(b) => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`,
+						),
+					),
+				).sort()
+			: canUseFallback
+				? (() => {
+						const meta = GRILLAS.sabado;
+						let cur = parseHM(meta.start);
+						const end = parseHM(meta.end);
+						const acc: string[] = [];
+						while (cur < end) {
+							const nx = Math.min(cur + BLOCK_MIN, end);
+							acc.push(`${fmtHM(cur)}-${fmtHM(nx)}`);
+							cur = nx;
+						}
+						return acc;
+					})()
+				: [];
 
-  // Sábado visible (independiente del turno seleccionado)
-  const timeSlotsSabDisplay: string[] = sabadoBloques.length > 0
-    ? Array.from(
-        new Set(sabadoBloques.map((b) => `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}`)),
-      ).sort()
-    : canUseFallback
-    ? (() => {
-        const meta = GRILLAS.sabado;
-        let cur = parseHM(meta.start);
-        const end = parseHM(meta.end);
-        const acc: string[] = [];
-        while (cur < end) {
-          const nx = Math.min(cur + BLOCK_MIN, end);
-          acc.push(`${fmtHM(cur)}-${fmtHM(nx)}`);
-          cur = nx;
-        }
-        return acc;
-      })()
-    : [];
+	return (
+		<div>
+			{/* Selector de Materia movido a Filtros */}
 
-  return (
-    <div>
-      {/* Selector de Materia movido a Filtros */}
+			{canUseFallback && (
+				<div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 text-amber-700 text-sm">
+					<p className="font-bold">Advertencia:</p>
+					<p>
+						La grilla que se muestra es referencial. Este turno no tiene bloques
+						horarios configurados en el sistema y no permitirá guardar cambios.
+					</p>
+				</div>
+			)}
 
-      {canUseFallback && (
-        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 text-amber-700 text-sm">
-          <p className="font-bold">Advertencia:</p>
-          <p>La grilla que se muestra es referencial. Este turno no tiene bloques horarios configurados en el sistema y no permitirá guardar cambios.</p>
-        </div>
-      )}
+			<div className="overflow-x-auto">
+				<table className="timetable w-full">
+					<thead>
+						<tr>
+							<th className="w-28">Hora (L–V)</th>
+							{daysOfWeek.map((d) => (
+								<th key={d.id}>{d.name}</th>
+							))}
+							<th>Sábado</th>
+							<th className="w-28">Hora (Sábado)</th>
+						</tr>
+					</thead>
+					<tbody>
+						{Array.from(
+							{
+								length: Math.max(
+									timeSlotsLV.length,
+									timeSlotsSabDisplay.length,
+								),
+							},
+							(_, idx) => {
+								const slot = timeSlotsLV[idx] ?? "";
+								const slotSab = timeSlotsSabDisplay[idx] ?? "";
+								const [from, to] = slot ? slot.split("-") : ["", ""];
 
-      <div className="overflow-x-auto">
-        <table className="timetable w-full">
-          <thead>
-            <tr>
-              <th className="w-28">Hora (L–V)</th>
-              {daysOfWeek.map(d => <th key={d.id}>{d.name}</th>)}
-              <th>Sábado</th>
-              <th className="w-28">Hora (Sábado)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from(
-              { length: Math.max(timeSlotsLV.length, timeSlotsSabDisplay.length) },
-              (_, idx) => {
-                const slot = timeSlotsLV[idx] ?? "";
-                const slotSab = timeSlotsSabDisplay[idx] ?? "";
-                const [from, to] = slot ? slot.split("-") : ["", ""];
+								return (
+									<tr key={`${slot || "row"}-${idx}`}>
+										<td className="timetable__hour">{slot}</td>
+										{daysOfWeek.map((d) => {
+											if (!slot) {
+												return (
+													<td
+														key={`empty-${idx}-${d.id}`}
+														className="timetable__cell timetable__cell--empty"
+													/>
+												);
+											}
 
-                return (
-                  <tr key={`${slot || "row"}-${idx}`}>
-                    <td className="timetable__hour">{slot}</td>
-                    {daysOfWeek.map((d) => {
-                      if (!slot) {
-                        return (
-                          <td
-                            key={`empty-${idx}-${d.id}`}
-                            className="timetable__cell timetable__cell--empty"
-                          />
-                        );
-                      }
+											const bloque = bloques.find(
+												(b) =>
+													b.dia === d.id &&
+													`${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` ===
+														slot,
+											);
 
-                      const bloque = bloques.find(
-                        (b) =>
-                          b.dia === d.id &&
-                          `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` === slot,
-                      );
+											const recreoRanges =
+												turnoKey && GRILLAS[turnoKey]
+													? GRILLAS[turnoKey].breaks
+													: [];
+											const isBreakByTime = inBreak(
+												parseHM(from),
+												parseHM(to),
+												recreoRanges,
+											);
+											const isRecreo = !!bloque?.es_recreo || isBreakByTime;
 
-                      const recreoRanges =
-                        turnoKey && GRILLAS[turnoKey] ? GRILLAS[turnoKey].breaks : [];
-                      const isBreakByTime = inBreak(parseHM(from), parseHM(to), recreoRanges);
-                      const isRecreo = !!bloque?.es_recreo || isBreakByTime;
+											const isOccupied = bloque
+												? occupiedBlocks.has(bloque.id)
+												: false;
+											const isSelected = bloque
+												? selectedBlocks.has(bloque.id)
+												: false;
 
-                      const isOccupied = bloque ? occupiedBlocks.has(bloque.id) : false;
-                      const isSelected = bloque ? selectedBlocks.has(bloque.id) : false;
+											const className = [
+												"timetable__cell",
+												isRecreo ? "timetable__cell--recreo" : "",
+												isOccupied ? "timetable__cell--ocupado" : "",
+												isSelected ? "timetable__cell--selected" : "",
+											].join(" ");
 
-                      const className = [
-                        "timetable__cell",
-                        isRecreo ? "timetable__cell--recreo" : "",
-                        isOccupied ? "timetable__cell--ocupado" : "",
-                        isSelected ? "timetable__cell--selected" : "",
-                      ].join(" ");
+											return (
+												<td
+													key={`${slot}-${d.id}`}
+													className={className}
+													onClick={() => {
+														if (!bloque) {
+															handleVirtualBlockClick();
+															return;
+														}
+														if (isRecreo || isOccupied) return;
+														handleBlockClick(bloque.id);
+													}}
+													title={
+														!bloque
+															? "Bloque no configurado"
+															: isRecreo
+																? "Recreo"
+																: isOccupied
+																	? "Ocupado"
+																	: "Disponible"
+													}
+													aria-disabled={!bloque || !!(isRecreo || isOccupied)}
+												>
+													{!bloque
+														? "?"
+														: isRecreo
+															? "Recreo"
+															: isOccupied
+																? "Ocupado"
+																: ""}
+												</td>
+											);
+										})}
 
-                      return (
-                        <td
-                          key={`${slot}-${d.id}`}
-                          className={className}
-                          onClick={() => {
-                            if (!bloque) {
-                              handleVirtualBlockClick();
-                              return;
-                            }
-                            if (isRecreo || isOccupied) return;
-                            handleBlockClick(bloque.id);
-                          }}
-                          title={!bloque ? "Bloque no configurado" : isRecreo ? "Recreo" : isOccupied ? "Ocupado" : "Disponible"}
-                          aria-disabled={!bloque || !!(isRecreo || isOccupied)}
-                        >
-                          {!bloque ? "?" : isRecreo ? "Recreo" : isOccupied ? "Ocupado" : ""}
-                        </td>
-                      );
-                    })}
+										{(() => {
+											if (!slotSab) {
+												return (
+													<td className="timetable__cell timetable__cell--empty" />
+												);
+											}
+											const bloqueSab = sabadoBloques.find(
+												(b) =>
+													b.dia === 6 &&
+													`${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` ===
+														slotSab,
+											);
+											const [fromS, toS] = slotSab.split("-");
+											const isBreakSab =
+												!!bloqueSab?.es_recreo ||
+												inBreak(
+													parseHM(fromS),
+													parseHM(toS),
+													GRILLAS.sabado.breaks,
+												);
+											const isOccupiedSab = bloqueSab
+												? occupiedBlocks.has(bloqueSab.id)
+												: false;
+											const isSelectedSab = bloqueSab
+												? selectedBlocks.has(bloqueSab.id)
+												: false;
+											const classNameSab = [
+												"timetable__cell",
+												isBreakSab ? "timetable__cell--recreo" : "",
+												isOccupiedSab ? "timetable__cell--ocupado" : "",
+												isSelectedSab ? "timetable__cell--selected" : "",
+											].join(" ");
+											return (
+												<td
+													className={classNameSab}
+													onClick={() => {
+														if (!bloqueSab) {
+															handleVirtualBlockClick();
+															return;
+														}
+														if (isBreakSab || isOccupiedSab) return;
+														handleBlockClick(bloqueSab.id);
+													}}
+													title={
+														!bloqueSab
+															? "Bloque no configurado"
+															: isBreakSab
+																? "Recreo"
+																: isOccupiedSab
+																	? "Ocupado"
+																	: "Disponible"
+													}
+													aria-disabled={
+														!bloqueSab || !!(isBreakSab || isOccupiedSab)
+													}
+												>
+													{!bloqueSab
+														? "?"
+														: isBreakSab
+															? "Recreo"
+															: isOccupiedSab
+																? "Ocupado"
+																: ""}
+												</td>
+											);
+										})()}
 
-                    {(() => {
-                      if (!slotSab) {
-                        return (
-                          <td className="timetable__cell timetable__cell--empty" />
-                        );
-                      }
-                      const bloqueSab = sabadoBloques.find(
-                        (b) =>
-                          b.dia === 6 &&
-                          `${toHMString(b.hora_desde)}-${toHMString(b.hora_hasta)}` === slotSab,
-                      );
-                      const [fromS, toS] = slotSab.split("-");
-                      const isBreakSab =
-                        !!bloqueSab?.es_recreo ||
-                        inBreak(parseHM(fromS), parseHM(toS), GRILLAS.sabado.breaks);
-                      const isOccupiedSab = bloqueSab ? occupiedBlocks.has(bloqueSab.id) : false;
-                      const isSelectedSab = bloqueSab ? selectedBlocks.has(bloqueSab.id) : false;
-                      const classNameSab = [
-                        "timetable__cell",
-                        isBreakSab ? "timetable__cell--recreo" : "",
-                        isOccupiedSab ? "timetable__cell--ocupado" : "",
-                        isSelectedSab ? "timetable__cell--selected" : "",
-                      ].join(" ");
-                      return (
-                        <td
-                          className={classNameSab}
-                          onClick={() => {
-                            if (!bloqueSab) {
-                              handleVirtualBlockClick();
-                              return;
-                            }
-                            if (isBreakSab || isOccupiedSab) return;
-                            handleBlockClick(bloqueSab.id);
-                          }}
-                          title={
-                            !bloqueSab ? "Bloque no configurado" : isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : "Disponible"
-                          }
-                          aria-disabled={!bloqueSab || !!(isBreakSab || isOccupiedSab)}
-                        >
-                          {!bloqueSab ? "?" : isBreakSab ? "Recreo" : isOccupiedSab ? "Ocupado" : ""}
-                        </td>
-                      );
-                    })()}
+										<td className="timetable__hour">{slotSab}</td>
+									</tr>
+								);
+							},
+						)}
+					</tbody>
+				</table>
+			</div>
 
-                    <td className="timetable__hour">{slotSab}</td>
-                  </tr>
-                );
-              },
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-3 flex items-center gap-2">
-        <div className="text-sm">
-          Horas asignadas: <b>{selectedCount}</b> / Horas requeridas:{" "}
-          <b>{horasRequeridas}</b>
-        </div>
-        <div className="ml-auto flex gap-8">
-          <button type="button" className="btn secondary" onClick={onClear}>Limpiar selección</button>
-          <button type="button" className="btn secondary" onClick={onDuplicar}>Duplicar al otro cuatr.</button>
-          <button
-            type="button"
-            className="btn"
-            disabled={selectedCount > 0 && botonDeshabilitado || !hasRealBloques}
-            onClick={onGuardar}
-            title={
-              !selectedMateria
-                ? "Seleccione materia"
-                : !hasRealBloques
-                ? "Este turno no tiene bloques configurados"
-                : botonDeshabilitado && selectedCount > 0
-                ? esMateriaFlexible
-                  ? "No puede exceder las horas requeridas para esta práctica/residencia."
-                  : "Debe asignar exactamente las horas requeridas."
-                : selectedCount === 0
-                ? "Eliminar horario"
-                : "Guardar"
-            }
-          >
-            {selectedCount === 0 ? "Eliminar" : "Guardar"}
-          </button>
-          <button type="button" className="btn secondary" onClick={onExportar}>Imprimir / Exportar</button>
-        </div>
-      </div>
-    </div>
-  );
+			<div className="mt-3 flex items-center gap-2">
+				<div className="text-sm">
+					Horas asignadas: <b>{selectedCount}</b> / Horas requeridas:{" "}
+					<b>{horasRequeridas}</b>
+				</div>
+				<div className="ml-auto flex gap-8">
+					<button type="button" className="btn secondary" onClick={onClear}>
+						Limpiar selección
+					</button>
+					<button type="button" className="btn secondary" onClick={onDuplicar}>
+						Duplicar al otro cuatr.
+					</button>
+					<button
+						type="button"
+						className="btn"
+						disabled={
+							(selectedCount > 0 && botonDeshabilitado) || !hasRealBloques
+						}
+						onClick={onGuardar}
+						title={
+							!selectedMateria
+								? "Seleccione materia"
+								: !hasRealBloques
+									? "Este turno no tiene bloques configurados"
+									: botonDeshabilitado && selectedCount > 0
+										? esMateriaFlexible
+											? "No puede exceder las horas requeridas para esta práctica/residencia."
+											: "Debe asignar exactamente las horas requeridas."
+										: selectedCount === 0
+											? "Eliminar horario"
+											: "Guardar"
+						}
+					>
+						{selectedCount === 0 ? "Eliminar" : "Guardar"}
+					</button>
+					<button type="button" className="btn secondary" onClick={onExportar}>
+						Imprimir / Exportar
+					</button>
+				</div>
+			</div>
+		</div>
+	);
 };
 
 export default TimetableGrid;

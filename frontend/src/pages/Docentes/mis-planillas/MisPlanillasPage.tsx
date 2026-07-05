@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -13,7 +12,8 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { listarComisiones, ComisionDTO } from "@/api/comisiones";
+import { useState } from "react";
+import { type ComisionDTO, listarComisiones } from "@/api/comisiones";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
 import PlanillaRegularidadDialog from "../../admin/PlanillaRegularidadDialog";
@@ -21,114 +21,129 @@ import PlanillaRegularidadDialog from "../../admin/PlanillaRegularidadDialog";
 const currentYear = new Date().getFullYear();
 
 const CUATRIMESTRE_ACTUAL = (): string => {
-  const mes = new Date().getMonth() + 1;
-  if (mes <= 7) return "1C";
-  return "2C";
+	const mes = new Date().getMonth() + 1;
+	if (mes <= 7) return "1C";
+	return "2C";
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "default"> = {
-  BORRADOR: "warning",
-  CERRADA: "default",
-  REABIERTA: "info",
-};
+const ESTADO_COLOR: Record<string, "warning" | "success" | "info" | "default"> =
+	{
+		BORRADOR: "warning",
+		CERRADA: "default",
+		REABIERTA: "info",
+	};
 
 export default function MisPlanillasPage() {
-  const [openPlanilla, setOpenPlanilla] = useState(false);
-  const [selectedComisionId, setSelectedComisionId] = useState<number | null>(null);
+	const [openPlanilla, setOpenPlanilla] = useState(false);
+	const [selectedComisionId, setSelectedComisionId] = useState<number | null>(
+		null,
+	);
 
-  const { data: comisiones, isLoading, isError } = useQuery<ComisionDTO[]>({
-    queryKey: ["docente", "comisiones", currentYear],
-    queryFn: () => listarComisiones({ anio_lectivo: currentYear }),
-  });
+	const {
+		data: comisiones,
+		isLoading,
+		isError,
+	} = useQuery<ComisionDTO[]>({
+		queryKey: ["docente", "comisiones", currentYear],
+		queryFn: () => listarComisiones({ anio_lectivo: currentYear }),
+	});
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Stack spacing={3}>
-        <BackButton fallbackPath="/docentes" />
-        <PageHero
-          title="Mis planillas de regularidad"
-          subtitle="Cargá y cerrá las planillas de tus materias del cuatrimestre actual."
-        />
+	return (
+		<Box sx={{ p: 3 }}>
+			<Stack spacing={3}>
+				<BackButton fallbackPath="/docentes" />
+				<PageHero
+					title="Mis planillas de regularidad"
+					subtitle="Cargá y cerrá las planillas de tus materias del cuatrimestre actual."
+				/>
 
-        <Typography variant="body2" color="text.secondary">
-          Período actual: <strong>{currentYear} — {CUATRIMESTRE_ACTUAL()}</strong>.
-          La asistencia se pre-carga desde el módulo de asistencia si hay clases
-          registradas; de lo contrario, la ingresás a mano antes de cerrar.
-        </Typography>
+				<Typography variant="body2" color="text.secondary">
+					Período actual:{" "}
+					<strong>
+						{currentYear} — {CUATRIMESTRE_ACTUAL()}
+					</strong>
+					. La asistencia se pre-carga desde el módulo de asistencia si hay
+					clases registradas; de lo contrario, la ingresás a mano antes de
+					cerrar.
+				</Typography>
 
-        {isLoading && (
-          <Stack direction="row" spacing={1} alignItems="center">
-            <CircularProgress size={18} />
-            <Typography variant="body2" color="text.secondary">
-              Cargando tus comisiones...
-            </Typography>
-          </Stack>
-        )}
+				{isLoading && (
+					<Stack direction="row" spacing={1} alignItems="center">
+						<CircularProgress size={18} />
+						<Typography variant="body2" color="text.secondary">
+							Cargando tus comisiones...
+						</Typography>
+					</Stack>
+				)}
 
-        {isError && (
-          <Alert severity="error">
-            No pudimos cargar tus comisiones. Verificá tus permisos e intentá nuevamente.
-          </Alert>
-        )}
+				{isError && (
+					<Alert severity="error">
+						No pudimos cargar tus comisiones. Verificá tus permisos e intentá
+						nuevamente.
+					</Alert>
+				)}
 
-        {!isLoading && !isError && (comisiones ?? []).length === 0 && (
-          <Alert severity="info">
-            No tenés comisiones asignadas para {currentYear}.
-          </Alert>
-        )}
+				{!isLoading && !isError && (comisiones ?? []).length === 0 && (
+					<Alert severity="info">
+						No tenés comisiones asignadas para {currentYear}.
+					</Alert>
+				)}
 
-        {!isLoading && !isError && (comisiones ?? []).length > 0 && (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Materia</TableCell>
-                  <TableCell>Profesorado</TableCell>
-                  <TableCell>Código comisión</TableCell>
-                  <TableCell>Cuatrimestre</TableCell>
-                  <TableCell align="right">Planilla</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(comisiones ?? []).map((comision) => (
-                  <TableRow key={comision.id} hover>
-                    <TableCell>{comision.materia_nombre}</TableCell>
-                    <TableCell>{comision.profesorado_nombre}</TableCell>
-                    <TableCell>
-                      <Chip label={comision.codigo || "Sin código"} size="small" />
-                    </TableCell>
-                    <TableCell>{CUATRIMESTRE_ACTUAL()}</TableCell>
-                    <TableCell align="right">
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={() => {
-                          setSelectedComisionId(comision.id);
-                          setOpenPlanilla(true);
-                        }}
-                      >
-                        Abrir planilla
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Stack>
+				{!isLoading && !isError && (comisiones ?? []).length > 0 && (
+					<TableContainer>
+						<Table size="small">
+							<TableHead>
+								<TableRow>
+									<TableCell>Materia</TableCell>
+									<TableCell>Profesorado</TableCell>
+									<TableCell>Código comisión</TableCell>
+									<TableCell>Cuatrimestre</TableCell>
+									<TableCell align="right">Planilla</TableCell>
+								</TableRow>
+							</TableHead>
+							<TableBody>
+								{(comisiones ?? []).map((comision) => (
+									<TableRow key={comision.id} hover>
+										<TableCell>{comision.materia_nombre}</TableCell>
+										<TableCell>{comision.profesorado_nombre}</TableCell>
+										<TableCell>
+											<Chip
+												label={comision.codigo || "Sin código"}
+												size="small"
+											/>
+										</TableCell>
+										<TableCell>{CUATRIMESTRE_ACTUAL()}</TableCell>
+										<TableCell align="right">
+											<Button
+												size="small"
+												variant="contained"
+												onClick={() => {
+													setSelectedComisionId(comision.id);
+													setOpenPlanilla(true);
+												}}
+											>
+												Abrir planilla
+											</Button>
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</TableContainer>
+				)}
+			</Stack>
 
-      <PlanillaRegularidadDialog
-        open={openPlanilla}
-        onClose={() => {
-          setOpenPlanilla(false);
-          setSelectedComisionId(null);
-        }}
-        comisionId={selectedComisionId || undefined}
-        scope="standard"
-        mode="edit"
-      />
-    </Box>
-  );
+			<PlanillaRegularidadDialog
+				open={openPlanilla}
+				onClose={() => {
+					setOpenPlanilla(false);
+					setSelectedComisionId(null);
+				}}
+				comisionId={selectedComisionId || undefined}
+				scope="standard"
+				mode="edit"
+			/>
+		</Box>
+	);
 }

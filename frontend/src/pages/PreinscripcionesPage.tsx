@@ -1,381 +1,498 @@
 /* eslint-disable react-doctor/no-giant-component, react-doctor/prefer-module-scope-static-value */
-import React from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/DeleteOutline";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import Divider from "@mui/material/Divider";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import FormGroup from "@mui/material/FormGroup";
+import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
+import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import IconButton from "@mui/material/IconButton";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Grid from "@mui/material/Grid";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import Divider from "@mui/material/Divider";
-import Alert from "@mui/material/Alert";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import FormGroup from "@mui/material/FormGroup";
-import Typography from "@mui/material/Typography";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
 import TablePagination from "@mui/material/TablePagination";
-import { listarPreinscripciones, PreinscripcionDTO, eliminarPreinscripcion, activarPreinscripcion, apiConfirmarPreinscripcion } from "@/api/preinscripciones";
-import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
-import DeleteIcon from '@mui/icons-material/DeleteOutline';
-import CloseIcon from '@mui/icons-material/Close';
-import AddIcon from '@mui/icons-material/Add';
+import TableRow from "@mui/material/TableRow";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import React from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { client as axios } from "@/api/client";
+import {
+	activarPreinscripcion,
+	apiConfirmarPreinscripcion,
+	eliminarPreinscripcion,
+	listarPreinscripciones,
+	type PreinscripcionDTO,
+} from "@/api/preinscripciones";
+import PreConfirmEditor from "@/components/preinscripcion/PreConfirmEditor";
 import { PageHero } from "@/components/ui/GradientTitles";
 
-import { client as axios } from "@/api/client";
-
 function EstadoChip({ estado, activa }: { estado: string; activa?: boolean }) {
-  const norm = (estado || '').toLowerCase();
-  const map: Record<string, "default" | "success" | "warning" | "error"> = {
-    enviada: "default",
-    observada: "warning",
-    confirmada: "success",
-    rechazada: "error",
-    borrador: "default",
-  };
-  const label = activa === false ? 'Borrada' : estado;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const color = (activa === false ? 'error' : (map[norm] ?? 'default')) as any;
-  return <Chip label={label} color={color} size="small" sx={{ borderRadius: 2, textTransform: "capitalize" }} />;
+	const norm = (estado || "").toLowerCase();
+	const map: Record<string, "default" | "success" | "warning" | "error"> = {
+		enviada: "default",
+		observada: "warning",
+		confirmada: "success",
+		rechazada: "error",
+		borrador: "default",
+	};
+	const label = activa === false ? "Borrada" : estado;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const color = (activa === false ? "error" : (map[norm] ?? "default")) as any;
+	return (
+		<Chip
+			label={label}
+			color={color}
+			size="small"
+			sx={{ borderRadius: 2, textTransform: "capitalize" }}
+		/>
+	);
 }
 
 export default function PreinscripcionesPage() {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [searchParams] = useSearchParams();
-  const initSearch = searchParams.get("search") || searchParams.get("q") || searchParams.get("dni") || "";
-  const [search, setSearch] = React.useState(initSearch);
-  const [inclInactivas, setInclInactivas] = React.useState(false);
-  const [profesoradoId, setProfesoradoId] = React.useState<number | "">("");
-  const [anio, setAnio] = React.useState<number | "">("");
-  const [fechaDesde, setFechaDesde] = React.useState<string>("");
-  const [fechaHasta, setFechaHasta] = React.useState<string>("");
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(10);
+	const navigate = useNavigate();
+	const qc = useQueryClient();
+	const [searchParams] = useSearchParams();
+	const initSearch =
+		searchParams.get("search") ||
+		searchParams.get("q") ||
+		searchParams.get("dni") ||
+		"";
+	const [search, setSearch] = React.useState(initSearch);
+	const [inclInactivas, setInclInactivas] = React.useState(false);
+	const [profesoradoId, setProfesoradoId] = React.useState<number | "">("");
+	const [anio, setAnio] = React.useState<number | "">("");
+	const [fechaDesde, setFechaDesde] = React.useState<string>("");
+	const [fechaHasta, setFechaHasta] = React.useState<string>("");
+	const [page, setPage] = React.useState(0);
+	const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
-  const { data: profesorados } = useQuery<{ id: number, nombre: string }[]>({
-    queryKey: ["profesorados-list"],
-    queryFn: () => axios.get("profesorados").then(r => r.data)
-  });
+	const { data: profesorados } = useQuery<{ id: number; nombre: string }[]>({
+		queryKey: ["profesorados-list"],
+		queryFn: () => axios.get("profesorados").then((r) => r.data),
+	});
 
-  const { data, isLoading, isError, refetch } = useQuery<{ count: number, results: PreinscripcionDTO[] }>({
-    queryKey: ["preinscripciones", search, inclInactivas, profesoradoId, anio, fechaDesde, fechaHasta, page, rowsPerPage],
-    queryFn: () => listarPreinscripciones({
-      search: search || undefined,
-      include_inactivas: inclInactivas,
-      profesorado_id: profesoradoId || undefined,
-      anio: anio || undefined,
-      fecha_desde: fechaDesde || undefined,
-      fecha_hasta: fechaHasta || undefined,
-      limit: rowsPerPage,
-      offset: page * rowsPerPage
-    }),
-  });
+	const { data, isLoading, isError, refetch } = useQuery<{
+		count: number;
+		results: PreinscripcionDTO[];
+	}>({
+		queryKey: [
+			"preinscripciones",
+			search,
+			inclInactivas,
+			profesoradoId,
+			anio,
+			fechaDesde,
+			fechaHasta,
+			page,
+			rowsPerPage,
+		],
+		queryFn: () =>
+			listarPreinscripciones({
+				search: search || undefined,
+				include_inactivas: inclInactivas,
+				profesorado_id: profesoradoId || undefined,
+				anio: anio || undefined,
+				fecha_desde: fechaDesde || undefined,
+				fecha_hasta: fechaHasta || undefined,
+				limit: rowsPerPage,
+				offset: page * rowsPerPage,
+			}),
+	});
 
-  // Unificación: formalizar en esta misma vista
-  const [codigoSel, setCodigoSel] = React.useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [docs, setDocs] = React.useState<{ [k: string]: boolean }>({
-    dni: false,
-    titulo_secundario: false,
-    partida_nacimiento: false,
-    certificado_salud: false,
-    fotos: false,
-  });
-  const allDocs = Object.values(docs).every(Boolean);
-  const [msgOk, setMsgOk] = React.useState<string | null>(null);
-  const [msgErr, setMsgErr] = React.useState<string | null>(null);
+	// Unificación: formalizar en esta misma vista
+	const [codigoSel, setCodigoSel] = React.useState<string | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	const [docs, setDocs] = React.useState<{ [k: string]: boolean }>({
+		dni: false,
+		titulo_secundario: false,
+		partida_nacimiento: false,
+		certificado_salud: false,
+		fotos: false,
+	});
+	const allDocs = Object.values(docs).every(Boolean);
+	const [msgOk, setMsgOk] = React.useState<string | null>(null);
+	const [msgErr, setMsgErr] = React.useState<string | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async function confirmarFormalizacion() {
-    if (!codigoSel) return;
-    try {
-      await apiConfirmarPreinscripcion(codigoSel, { documentos: docs, estado: allDocs ? "regular" : "condicional" });
-      setMsgOk("Preinscripción confirmada");
-      setMsgErr(null);
-      await refetch();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      setMsgErr(e?.response?.data?.message || "No se pudo confirmar");
-      setMsgOk(null);
-    }
-  }
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	async function confirmarFormalizacion() {
+		if (!codigoSel) return;
+		try {
+			await apiConfirmarPreinscripcion(codigoSel, {
+				documentos: docs,
+				estado: allDocs ? "regular" : "condicional",
+			});
+			setMsgOk("Preinscripción confirmada");
+			setMsgErr(null);
+			await refetch();
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} catch (e: any) {
+			setMsgErr(e?.response?.data?.message || "No se pudo confirmar");
+			setMsgOk(null);
+		}
+	}
 
-  const onDelete = async (id: number) => {
-    if (!confirm("¿Eliminar la Preinscripción seleccionada?")) return;
-    try {
-      await eliminarPreinscripcion(id);
-      await qc.invalidateQueries({ queryKey: ["preinscripciones"] });
-      refetch();
-    } catch (_e) {
-      alert("No se pudo eliminar");
-    }
-  };
+	const onDelete = async (id: number) => {
+		if (!confirm("¿Eliminar la Preinscripción seleccionada?")) return;
+		try {
+			await eliminarPreinscripcion(id);
+			await qc.invalidateQueries({ queryKey: ["preinscripciones"] });
+			refetch();
+		} catch (_e) {
+			alert("No se pudo eliminar");
+		}
+	};
 
-  return (
-    <Stack gap={3}>
-      <PageHero
-        title="Gestión de Preinscripciones"
-        subtitle="Seguimiento completo de solicitudes, documentación y estados"
-      />
+	return (
+		<Stack gap={3}>
+			<PageHero
+				title="Gestión de Preinscripciones"
+				subtitle="Seguimiento completo de solicitudes, documentación y estados"
+			/>
 
-      <Paper sx={{ p: 2, borderRadius: 10 }}>
-        <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Buscar (DNI, Apellido/Nombre, Código)"
-              size="small"
-              fullWidth
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              InputProps={{
-                sx: { borderRadius: 3 },
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Profesorado</InputLabel>
-              <Select
-                value={profesoradoId}
-                label="Profesorado"
-                onChange={(e) => { setProfesoradoId(e.target.value as number); setPage(0); }}
-                sx={{ borderRadius: 3 }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {profesorados?.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={6} md={2}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Año</InputLabel>
-              <Select
-                value={anio}
-                label="Año"
-                onChange={(e) => { setAnio(e.target.value as number); setPage(0); }}
-                sx={{ borderRadius: 3 }}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {[2022, 2023, 2024, 2025, 2026].map((y) => (
-                  <MenuItem key={y} value={y}>
-                    {y}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={6} md={3}>
-            <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end">
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={inclInactivas}
-                    onChange={(e) => { setInclInactivas(e.target.checked); setPage(0); }}
-                  />
-                }
-                label="Inactivas"
-              />
-              <Button
-                startIcon={<AddIcon />}
-                variant="contained"
-                sx={{ borderRadius: 3, whiteSpace: "nowrap" }}
-                onClick={() => navigate("/preinscripcion")}
-              >
-                Nueva
-              </Button>
-            </Stack>
-          </Grid>
-          
-          {/* Fila 2: Filtros por fecha (Desde / Hasta) */}
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              label="Desde fecha"
-              type="date"
-              size="small"
-              fullWidth
-              value={fechaDesde}
-              onChange={(e) => { setFechaDesde(e.target.value); setPage(0); }}
-              InputLabelProps={{ shrink: true }}
-              InputProps={{
-                sx: { borderRadius: 3 },
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              label="Hasta fecha"
-              type="date"
-              size="small"
-              fullWidth
-              value={fechaHasta}
-              onChange={(e) => { setFechaHasta(e.target.value); setPage(0); }}
-              InputLabelProps={{ shrink: true }}
-              InputProps={{
-                sx: { borderRadius: 3 },
-              }}
-            />
-          </Grid>
-          {(fechaDesde || fechaHasta) && (
-            <Grid item xs={12} md={6}>
-              <Button
-                variant="text"
-                color="secondary"
-                size="small"
-                onClick={() => {
-                  setFechaDesde("");
-                  setFechaHasta("");
-                  setPage(0);
-                }}
-                sx={{ textTransform: 'none', borderRadius: 3 }}
-              >
-                Limpiar fechas
-              </Button>
-            </Grid>
-          )}
-        </Grid>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Código</TableCell>
-                <TableCell>Nombre Completo</TableCell>
-                <TableCell>Profesorado</TableCell>
-                <TableCell>Fecha</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell align="right">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              )}
-              {isError && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Typography color="error">Error al cargar las preinscripciones.</Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-              {data?.results && data.results.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Typography color="text.secondary">No se encontraron preinscripciones.</Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-              {data?.results && data.results.map((p) => (
-                <TableRow key={p.id} hover>
-                  <TableCell>{p.codigo}</TableCell>
-                  <TableCell>
-                    {[
-                      p.estudiante.apellido,
-                      p.estudiante.nombres ?? p.estudiante.nombre ?? ""
-                    ].filter(Boolean).join(", ")}
-                  </TableCell>
-                  <TableCell>{p.carrera.nombre}</TableCell>
-                  <TableCell>{dayjs(p.fecha).format("DD/MM/YYYY HH:mm")}</TableCell>
-                  <TableCell>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    <EstadoChip estado={p.estado as any} activa={(p as any).activa as any} />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        onClick={() => setCodigoSel(p.codigo)}
-                      >
-                        Ver / Editar
-                      </Button>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(p as any).activa === false ? (
-                        <Button size="small" variant="outlined" onClick={async () => { await activarPreinscripcion(p.id); await qc.invalidateQueries({ queryKey: ["preinscripciones"] }); refetch(); }}>Activar</Button>
-                      ) : (
-                        <IconButton size="small" onClick={() => onDelete(p.id)} color="error" title="Eliminar">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[10, 25, 50, 100]}
-          component="div"
-          count={data?.count || 0}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={(_, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-          labelRowsPerPage="Filas por página"
-        />
-      </Paper>
+			<Paper sx={{ p: 2, borderRadius: 10 }}>
+				<Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
+					<Grid item xs={12} md={4}>
+						<TextField
+							label="Buscar (DNI, Apellido/Nombre, Código)"
+							size="small"
+							fullWidth
+							value={search}
+							onChange={(e) => {
+								setSearch(e.target.value);
+								setPage(0);
+							}}
+							InputProps={{
+								sx: { borderRadius: 3 },
+							}}
+						/>
+					</Grid>
+					<Grid item xs={12} md={3}>
+						<FormControl fullWidth size="small">
+							<InputLabel>Profesorado</InputLabel>
+							<Select
+								value={profesoradoId}
+								label="Profesorado"
+								onChange={(e) => {
+									setProfesoradoId(e.target.value as number);
+									setPage(0);
+								}}
+								sx={{ borderRadius: 3 }}
+							>
+								<MenuItem value="">Todos</MenuItem>
+								{profesorados?.map((p) => (
+									<MenuItem key={p.id} value={p.id}>
+										{p.nombre}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					</Grid>
+					<Grid item xs={6} md={2}>
+						<FormControl fullWidth size="small">
+							<InputLabel>Año</InputLabel>
+							<Select
+								value={anio}
+								label="Año"
+								onChange={(e) => {
+									setAnio(e.target.value as number);
+									setPage(0);
+								}}
+								sx={{ borderRadius: 3 }}
+							>
+								<MenuItem value="">Todos</MenuItem>
+								{[2022, 2023, 2024, 2025, 2026].map((y) => (
+									<MenuItem key={y} value={y}>
+										{y}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					</Grid>
+					<Grid item xs={6} md={3}>
+						<Stack
+							direction="row"
+							spacing={1}
+							alignItems="center"
+							justifyContent="flex-end"
+						>
+							<FormControlLabel
+								control={
+									<Checkbox
+										size="small"
+										checked={inclInactivas}
+										onChange={(e) => {
+											setInclInactivas(e.target.checked);
+											setPage(0);
+										}}
+									/>
+								}
+								label="Inactivas"
+							/>
+							<Button
+								startIcon={<AddIcon />}
+								variant="contained"
+								sx={{ borderRadius: 3, whiteSpace: "nowrap" }}
+								onClick={() => navigate("/preinscripcion")}
+							>
+								Nueva
+							</Button>
+						</Stack>
+					</Grid>
 
-      {/* Modal para Formalizar inscripción */}
-      <Dialog
-        open={!!codigoSel}
-        onClose={() => setCodigoSel(null)}
-        fullWidth
-        maxWidth="lg"
-        PaperProps={{
-          sx: { borderRadius: 5 }
-        }}
-      >
-        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#fafafa', borderBottom: '1px solid #eee' }}>
-          <Typography variant="h6" fontWeight={800}>
-            Formalizar inscripción — {codigoSel}
-          </Typography>
-          <IconButton
-            aria-label="close"
-            onClick={() => setCodigoSel(null)}
-            sx={{ color: (theme) => theme.palette.grey[500] }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: 2, pt: 3 }}>
-          {msgOk && <Alert severity="success" sx={{ mb: 2 }}>{msgOk}</Alert>}
-          {msgErr && <Alert severity="error" sx={{ mb: 2 }}>{msgErr}</Alert>}
-          {codigoSel && <PreConfirmEditor codigo={codigoSel} onActionSuccess={() => setCodigoSel(null)} />}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: '1px solid #eee', bgcolor: '#fafafa' }}>
-          <Button onClick={() => setCodigoSel(null)} color="inherit">Cerrar</Button>
-        </DialogActions>
-      </Dialog>
-    </Stack>
-  );
+					{/* Fila 2: Filtros por fecha (Desde / Hasta) */}
+					<Grid item xs={12} sm={6} md={3}>
+						<TextField
+							label="Desde fecha"
+							type="date"
+							size="small"
+							fullWidth
+							value={fechaDesde}
+							onChange={(e) => {
+								setFechaDesde(e.target.value);
+								setPage(0);
+							}}
+							InputLabelProps={{ shrink: true }}
+							InputProps={{
+								sx: { borderRadius: 3 },
+							}}
+						/>
+					</Grid>
+					<Grid item xs={12} sm={6} md={3}>
+						<TextField
+							label="Hasta fecha"
+							type="date"
+							size="small"
+							fullWidth
+							value={fechaHasta}
+							onChange={(e) => {
+								setFechaHasta(e.target.value);
+								setPage(0);
+							}}
+							InputLabelProps={{ shrink: true }}
+							InputProps={{
+								sx: { borderRadius: 3 },
+							}}
+						/>
+					</Grid>
+					{(fechaDesde || fechaHasta) && (
+						<Grid item xs={12} md={6}>
+							<Button
+								variant="text"
+								color="secondary"
+								size="small"
+								onClick={() => {
+									setFechaDesde("");
+									setFechaHasta("");
+									setPage(0);
+								}}
+								sx={{ textTransform: "none", borderRadius: 3 }}
+							>
+								Limpiar fechas
+							</Button>
+						</Grid>
+					)}
+				</Grid>
+				<TableContainer>
+					<Table>
+						<TableHead>
+							<TableRow>
+								<TableCell>Código</TableCell>
+								<TableCell>Nombre Completo</TableCell>
+								<TableCell>Profesorado</TableCell>
+								<TableCell>Fecha</TableCell>
+								<TableCell>Estado</TableCell>
+								<TableCell align="right">Acciones</TableCell>
+							</TableRow>
+						</TableHead>
+						<TableBody>
+							{isLoading && (
+								<TableRow>
+									<TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+										<CircularProgress />
+									</TableCell>
+								</TableRow>
+							)}
+							{isError && (
+								<TableRow>
+									<TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+										<Typography color="error">
+											Error al cargar las preinscripciones.
+										</Typography>
+									</TableCell>
+								</TableRow>
+							)}
+							{data?.results && data.results.length === 0 && (
+								<TableRow>
+									<TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+										<Typography color="text.secondary">
+											No se encontraron preinscripciones.
+										</Typography>
+									</TableCell>
+								</TableRow>
+							)}
+							{data?.results &&
+								data.results.map((p) => (
+									<TableRow key={p.id} hover>
+										<TableCell>{p.codigo}</TableCell>
+										<TableCell>
+											{[
+												p.estudiante.apellido,
+												p.estudiante.nombres ?? p.estudiante.nombre ?? "",
+											]
+												.filter(Boolean)
+												.join(", ")}
+										</TableCell>
+										<TableCell>{p.carrera.nombre}</TableCell>
+										<TableCell>
+											{dayjs(p.fecha).format("DD/MM/YYYY HH:mm")}
+										</TableCell>
+										<TableCell>
+											{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+											<EstadoChip
+												estado={p.estado as any}
+												activa={(p as any).activa as any}
+											/>
+										</TableCell>
+										<TableCell align="right">
+											<Stack
+												direction="row"
+												spacing={1}
+												justifyContent="flex-end"
+											>
+												<Button
+													size="small"
+													onClick={() => setCodigoSel(p.codigo)}
+												>
+													Ver / Editar
+												</Button>
+												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+												{(p as any).activa === false ? (
+													<Button
+														size="small"
+														variant="outlined"
+														onClick={async () => {
+															await activarPreinscripcion(p.id);
+															await qc.invalidateQueries({
+																queryKey: ["preinscripciones"],
+															});
+															refetch();
+														}}
+													>
+														Activar
+													</Button>
+												) : (
+													<IconButton
+														size="small"
+														onClick={() => onDelete(p.id)}
+														color="error"
+														title="Eliminar"
+													>
+														<DeleteIcon fontSize="small" />
+													</IconButton>
+												)}
+											</Stack>
+										</TableCell>
+									</TableRow>
+								))}
+						</TableBody>
+					</Table>
+				</TableContainer>
+				<TablePagination
+					rowsPerPageOptions={[10, 25, 50, 100]}
+					component="div"
+					count={data?.count || 0}
+					rowsPerPage={rowsPerPage}
+					page={page}
+					onPageChange={(_, newPage) => setPage(newPage)}
+					onRowsPerPageChange={(e) => {
+						setRowsPerPage(parseInt(e.target.value, 10));
+						setPage(0);
+					}}
+					labelRowsPerPage="Filas por página"
+				/>
+			</Paper>
+
+			{/* Modal para Formalizar inscripción */}
+			<Dialog
+				open={!!codigoSel}
+				onClose={() => setCodigoSel(null)}
+				fullWidth
+				maxWidth="lg"
+				PaperProps={{
+					sx: { borderRadius: 5 },
+				}}
+			>
+				<DialogTitle
+					sx={{
+						m: 0,
+						p: 2,
+						display: "flex",
+						justifyContent: "space-between",
+						alignItems: "center",
+						bgcolor: "#fafafa",
+						borderBottom: "1px solid #eee",
+					}}
+				>
+					<Typography variant="h6" fontWeight={800}>
+						Formalizar inscripción — {codigoSel}
+					</Typography>
+					<IconButton
+						aria-label="close"
+						onClick={() => setCodigoSel(null)}
+						sx={{ color: (theme) => theme.palette.grey[500] }}
+					>
+						<CloseIcon />
+					</IconButton>
+				</DialogTitle>
+				<DialogContent sx={{ p: 2, pt: 3 }}>
+					{msgOk && (
+						<Alert severity="success" sx={{ mb: 2 }}>
+							{msgOk}
+						</Alert>
+					)}
+					{msgErr && (
+						<Alert severity="error" sx={{ mb: 2 }}>
+							{msgErr}
+						</Alert>
+					)}
+					{codigoSel && (
+						<PreConfirmEditor
+							codigo={codigoSel}
+							onActionSuccess={() => setCodigoSel(null)}
+						/>
+					)}
+				</DialogContent>
+				<DialogActions
+					sx={{ p: 2, borderTop: "1px solid #eee", bgcolor: "#fafafa" }}
+				>
+					<Button onClick={() => setCodigoSel(null)} color="inherit">
+						Cerrar
+					</Button>
+				</DialogActions>
+			</Dialog>
+		</Stack>
+	);
 }

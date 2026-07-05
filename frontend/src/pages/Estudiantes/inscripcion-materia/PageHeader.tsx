@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useRef } from "react";
 import type { SelectChangeEvent } from "@mui/material";
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -12,280 +11,352 @@ import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import type {
+	TrayectoriaCarreraDetalleDTO,
+	VentanaInscripcion,
+} from "@/api/estudiantes";
+import {
+	fetchEstudianteAdminDetail,
+	fetchEstudiantesAdmin,
+} from "@/api/estudiantes/admin";
+import type { EstudianteAdminListItemDTO } from "@/api/estudiantes/types";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import BackButton from "@/components/ui/BackButton";
-import { TrayectoriaCarreraDetalleDTO, VentanaInscripcion } from "@/api/estudiantes";
-import { fetchEstudiantesAdmin, fetchEstudianteAdminDetail } from "@/api/estudiantes/admin";
-import { EstudianteAdminListItemDTO } from "@/api/estudiantes/types";
 import { formatDate } from "@/utils/date";
 
 interface PageHeaderProps {
-  profesoradoNombre: string;
-  periodoLabel: string;
-  ventana: VentanaInscripcion | null;
-  puedeInscribirse: boolean;
-  isVentanaLoading: boolean;
-  puedeGestionar: boolean;
-  dniInput: string;
-  dniFiltro: string;
-  setDniInput: React.Dispatch<React.SetStateAction<string>>;
-  setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
-  anioFiltro: number | "all";
-  aniosDisponibles: number[];
-  handleAnioChange: (event: SelectChangeEvent<string>) => void;
-  shouldFetchInscriptas: boolean;
-  carrerasDisponibles: TrayectoriaCarreraDetalleDTO[];
-  selectedCarreraId: string;
-  handleCarreraChange: (event: SelectChangeEvent<string>) => void;
-  planesDisponibles: Array<{ id: number; resolucion?: string | null; vigente?: boolean }>;
-  selectedPlanId: string;
-  handlePlanChange: (event: SelectChangeEvent<string>) => void;
+	profesoradoNombre: string;
+	periodoLabel: string;
+	ventana: VentanaInscripcion | null;
+	puedeInscribirse: boolean;
+	isVentanaLoading: boolean;
+	puedeGestionar: boolean;
+	dniInput: string;
+	dniFiltro: string;
+	setDniInput: React.Dispatch<React.SetStateAction<string>>;
+	setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
+	anioFiltro: number | "all";
+	aniosDisponibles: number[];
+	handleAnioChange: (event: SelectChangeEvent<string>) => void;
+	shouldFetchInscriptas: boolean;
+	carrerasDisponibles: TrayectoriaCarreraDetalleDTO[];
+	selectedCarreraId: string;
+	handleCarreraChange: (event: SelectChangeEvent<string>) => void;
+	planesDisponibles: Array<{
+		id: number;
+		resolucion?: string | null;
+		vigente?: boolean;
+	}>;
+	selectedPlanId: string;
+	handlePlanChange: (event: SelectChangeEvent<string>) => void;
 }
 
 interface EstudianteBuscadorProps {
-  dniInput: string;
-  dniFiltro: string;
-  setDniInput: React.Dispatch<React.SetStateAction<string>>;
-  setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
+	dniInput: string;
+	dniFiltro: string;
+	setDniInput: React.Dispatch<React.SetStateAction<string>>;
+	setDniFiltro: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({ dniInput, dniFiltro, setDniInput, setDniFiltro }) => {
-  const [inputValue, setInputValue] = useState("");
-  const [options, setOptions] = useState<EstudianteAdminListItemDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [estudianteActual, setEstudianteActual] = useState<{ apellido: string; nombre: string } | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastFetchedDni = useRef<string>("");
+const EstudianteBuscador: React.FC<EstudianteBuscadorProps> = ({
+	dniInput,
+	dniFiltro,
+	setDniInput,
+	setDniFiltro,
+}) => {
+	const [inputValue, setInputValue] = useState("");
+	const [options, setOptions] = useState<EstudianteAdminListItemDTO[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [estudianteActual, setEstudianteActual] = useState<{
+		apellido: string;
+		nombre: string;
+	} | null>(null);
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const lastFetchedDni = useRef<string>("");
 
-  // Cuando cambia el dniFiltro activo, traer el nombre del estudiante para mostrarlo
-  useEffect(() => {
-    if (!dniFiltro) { setEstudianteActual(null); return; }
-    if (dniFiltro === lastFetchedDni.current) return;
-    lastFetchedDni.current = dniFiltro;
-    fetchEstudianteAdminDetail(dniFiltro)
-      .then((est) => setEstudianteActual({ apellido: est.apellido, nombre: est.nombre }))
-      .catch(() => setEstudianteActual(null));
-  }, [dniFiltro]);
+	// Cuando cambia el dniFiltro activo, traer el nombre del estudiante para mostrarlo
+	useEffect(() => {
+		if (!dniFiltro) {
+			setEstudianteActual(null);
+			return;
+		}
+		if (dniFiltro === lastFetchedDni.current) return;
+		lastFetchedDni.current = dniFiltro;
+		fetchEstudianteAdminDetail(dniFiltro)
+			.then((est) =>
+				setEstudianteActual({ apellido: est.apellido, nombre: est.nombre }),
+			)
+			.catch(() => setEstudianteActual(null));
+	}, [dniFiltro]);
 
-  useEffect(() => {
-    const trimmed = inputValue.trim();
-    if (trimmed.length < 3) { setOptions([]); return; }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetchEstudiantesAdmin({ q: trimmed, limit: 10 });
-        setOptions(res.items);
-      } catch {
-        setOptions([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 350);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [inputValue]);
+	useEffect(() => {
+		const trimmed = inputValue.trim();
+		if (trimmed.length < 3) {
+			setOptions([]);
+			return;
+		}
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(async () => {
+			setLoading(true);
+			try {
+				const res = await fetchEstudiantesAdmin({ q: trimmed, limit: 10 });
+				setOptions(res.items);
+			} catch {
+				setOptions([]);
+			} finally {
+				setLoading(false);
+			}
+		}, 350);
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, [inputValue]);
 
-  return (
-    <Stack spacing={0.5}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-        <Autocomplete
-          size="small"
-          options={options}
-          loading={loading}
-          filterOptions={(x) => x}
-          getOptionLabel={(opt) => `${opt.apellido}, ${opt.nombre}`}
-          isOptionEqualToValue={(opt, val) => opt.dni === val.dni}
-          inputValue={inputValue}
-          onInputChange={(_, val, reason) => {
-            if (reason !== "reset") setInputValue(val);
-          }}
-          onChange={(_, selected) => {
-            if (selected) {
-              setDniInput(selected.dni);
-              setDniFiltro(selected.dni);
-              setEstudianteActual({ apellido: selected.apellido, nombre: selected.nombre });
-              lastFetchedDni.current = selected.dni;
-            }
-          }}
-          noOptionsText={inputValue.trim().length < 3 ? "Escribí al menos 3 caracteres" : "Sin resultados"}
-          renderOption={(props, opt) => (
-            <li {...props} key={opt.dni}>
-              <Box>
-                <Typography variant="body2" fontWeight={600}>{opt.apellido}, {opt.nombre}</Typography>
-                <Typography variant="caption" color="text.secondary">DNI: {opt.dni}</Typography>
-              </Box>
-            </li>
-          )}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Buscar por nombre"
-              sx={{ minWidth: 240, bgcolor: "#fff" }}
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>{loading && <CircularProgress size={16} />}{params.InputProps.endAdornment}</>
-                ),
-              }}
-            />
-          )}
-        />
-        <TextField
-          label="DNI del estudiante"
-          size="small"
-          value={dniInput}
-          onChange={(e) => {
-            const value = e.target.value.replace(/\D+/g, "");
-            if (value.length <= 8) setDniInput(value);
-          }}
-          sx={{ maxWidth: 180, bgcolor: "#fff" }}
-          inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
-        />
-        <Button
-          variant="contained"
-          onClick={() => setDniFiltro(dniInput.trim())}
-          disabled={dniInput.length < 7}
-        >
-          Buscar
-        </Button>
-        <Typography variant="caption" color="text.secondary">
-          Bedel/Secretaría/Admin: buscá por nombre o DNI.
-        </Typography>
-      </Stack>
-      {estudianteActual && (
-        <Typography variant="body2" sx={{ color: "primary.main", fontWeight: 600, pl: 0.5 }}>
-          Estudiante: {estudianteActual.apellido}, {estudianteActual.nombre}
-        </Typography>
-      )}
-    </Stack>
-  );
+	return (
+		<Stack spacing={0.5}>
+			<Stack
+				direction={{ xs: "column", sm: "row" }}
+				spacing={1}
+				alignItems={{ xs: "stretch", sm: "center" }}
+			>
+				<Autocomplete
+					size="small"
+					options={options}
+					loading={loading}
+					filterOptions={(x) => x}
+					getOptionLabel={(opt) => `${opt.apellido}, ${opt.nombre}`}
+					isOptionEqualToValue={(opt, val) => opt.dni === val.dni}
+					inputValue={inputValue}
+					onInputChange={(_, val, reason) => {
+						if (reason !== "reset") setInputValue(val);
+					}}
+					onChange={(_, selected) => {
+						if (selected) {
+							setDniInput(selected.dni);
+							setDniFiltro(selected.dni);
+							setEstudianteActual({
+								apellido: selected.apellido,
+								nombre: selected.nombre,
+							});
+							lastFetchedDni.current = selected.dni;
+						}
+					}}
+					noOptionsText={
+						inputValue.trim().length < 3
+							? "Escribí al menos 3 caracteres"
+							: "Sin resultados"
+					}
+					renderOption={(props, opt) => (
+						<li {...props} key={opt.dni}>
+							<Box>
+								<Typography variant="body2" fontWeight={600}>
+									{opt.apellido}, {opt.nombre}
+								</Typography>
+								<Typography variant="caption" color="text.secondary">
+									DNI: {opt.dni}
+								</Typography>
+							</Box>
+						</li>
+					)}
+					renderInput={(params) => (
+						<TextField
+							{...params}
+							label="Buscar por nombre"
+							sx={{ minWidth: 240, bgcolor: "#fff" }}
+							InputProps={{
+								...params.InputProps,
+								endAdornment: (
+									<>
+										{loading && <CircularProgress size={16} />}
+										{params.InputProps.endAdornment}
+									</>
+								),
+							}}
+						/>
+					)}
+				/>
+				<TextField
+					label="DNI del estudiante"
+					size="small"
+					value={dniInput}
+					onChange={(e) => {
+						const value = e.target.value.replace(/\D+/g, "");
+						if (value.length <= 8) setDniInput(value);
+					}}
+					sx={{ maxWidth: 180, bgcolor: "#fff" }}
+					inputProps={{ inputMode: "numeric", pattern: "[0-9]*", maxLength: 8 }}
+				/>
+				<Button
+					variant="contained"
+					onClick={() => setDniFiltro(dniInput.trim())}
+					disabled={dniInput.length < 7}
+				>
+					Buscar
+				</Button>
+				<Typography variant="caption" color="text.secondary">
+					Bedel/Secretaría/Admin: buscá por nombre o DNI.
+				</Typography>
+			</Stack>
+			{estudianteActual && (
+				<Typography
+					variant="body2"
+					sx={{ color: "primary.main", fontWeight: 600, pl: 0.5 }}
+				>
+					Estudiante: {estudianteActual.apellido}, {estudianteActual.nombre}
+				</Typography>
+			)}
+		</Stack>
+	);
 };
 
 const PageHeader: React.FC<PageHeaderProps> = ({
-  profesoradoNombre,
-  periodoLabel,
-  ventana,
-  puedeInscribirse,
-  isVentanaLoading,
-  puedeGestionar,
-  dniInput,
-  dniFiltro,
-  setDniInput,
-  setDniFiltro,
-  anioFiltro,
-  aniosDisponibles,
-  handleAnioChange,
-  shouldFetchInscriptas,
-  carrerasDisponibles,
-  selectedCarreraId,
-  handleCarreraChange,
-  planesDisponibles,
-  selectedPlanId,
-  handlePlanChange,
+	profesoradoNombre,
+	periodoLabel,
+	ventana,
+	puedeInscribirse,
+	isVentanaLoading,
+	puedeGestionar,
+	dniInput,
+	dniFiltro,
+	setDniInput,
+	setDniFiltro,
+	anioFiltro,
+	aniosDisponibles,
+	handleAnioChange,
+	shouldFetchInscriptas,
+	carrerasDisponibles,
+	selectedCarreraId,
+	handleCarreraChange,
+	planesDisponibles,
+	selectedPlanId,
+	handlePlanChange,
 }) => {
-  return (
-    <Stack
-      direction={{ xs: "column", lg: "row" }}
-      spacing={2}
-      justifyContent="space-between"
-      alignItems={{ xs: "flex-start", lg: "center" }}
-    >
-      <Box>
-        <Typography variant="h4" fontWeight={800}>Inscripción a Materias</Typography>
-        <Typography color="text.secondary">
-          {profesoradoNombre} • {periodoLabel}
-        </Typography>
-        {ventana?.desde && ventana?.hasta && (
-          <Typography variant="body2" color="text.secondary">
-            Ventana: {formatDate(ventana.desde)} - {formatDate(ventana.hasta)}
-          </Typography>
-        )}
-        {!puedeInscribirse && !isVentanaLoading && (
-          <Alert severity="warning" sx={{ mt: 1 }}>
-            No hay una ventana de inscripción activa. Cuando se habilite vas a poder inscribirte desde aquí.
-          </Alert>
-        )}
-      </Box>
+	return (
+		<Stack
+			direction={{ xs: "column", lg: "row" }}
+			spacing={2}
+			justifyContent="space-between"
+			alignItems={{ xs: "flex-start", lg: "center" }}
+		>
+			<Box>
+				<Typography variant="h4" fontWeight={800}>
+					Inscripción a Materias
+				</Typography>
+				<Typography color="text.secondary">
+					{profesoradoNombre} • {periodoLabel}
+				</Typography>
+				{ventana?.desde && ventana?.hasta && (
+					<Typography variant="body2" color="text.secondary">
+						Ventana: {formatDate(ventana.desde)} - {formatDate(ventana.hasta)}
+					</Typography>
+				)}
+				{!puedeInscribirse && !isVentanaLoading && (
+					<Alert severity="warning" sx={{ mt: 1 }}>
+						No hay una ventana de inscripción activa. Cuando se habilite vas a
+						poder inscribirte desde aquí.
+					</Alert>
+				)}
+			</Box>
 
-      <Stack spacing={1.5} sx={{ width: { xs: "100%", lg: "auto" } }}>
-        {puedeGestionar && (
-          <EstudianteBuscador
-            dniInput={dniInput}
-            dniFiltro={dniFiltro}
-            setDniInput={setDniInput}
-            setDniFiltro={setDniFiltro}
-          />
-        )}
+			<Stack spacing={1.5} sx={{ width: { xs: "100%", lg: "auto" } }}>
+				{puedeGestionar && (
+					<EstudianteBuscador
+						dniInput={dniInput}
+						dniFiltro={dniFiltro}
+						setDniInput={setDniInput}
+						setDniFiltro={setDniFiltro}
+					/>
+				)}
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-          <FormControl size="small" sx={{ minWidth: 150, bgcolor: "#fff" }}>
-            <InputLabel id="filtro-anio-label">Año</InputLabel>
-            <Select
-              labelId="filtro-anio-label"
-              value={anioFiltro === "all" ? "all" : String(anioFiltro)}
-              label="Año"
-              onChange={handleAnioChange}
-            >
-              <MenuItem value="all">Todos los años</MenuItem>
-              {aniosDisponibles.map((anio) => (
-                <MenuItem key={anio} value={String(anio)}>
-                  {`${anio}º año`}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+				<Stack
+					direction={{ xs: "column", sm: "row" }}
+					spacing={1}
+					alignItems={{ xs: "stretch", sm: "center" }}
+				>
+					<FormControl size="small" sx={{ minWidth: 150, bgcolor: "#fff" }}>
+						<InputLabel id="filtro-anio-label">Año</InputLabel>
+						<Select
+							labelId="filtro-anio-label"
+							value={anioFiltro === "all" ? "all" : String(anioFiltro)}
+							label="Año"
+							onChange={handleAnioChange}
+						>
+							<MenuItem value="all">Todos los años</MenuItem>
+							{aniosDisponibles.map((anio) => (
+								<MenuItem key={anio} value={String(anio)}>
+									{`${anio}º año`}
+								</MenuItem>
+							))}
+						</Select>
+					</FormControl>
 
-          {shouldFetchInscriptas && (
-            <FormControl size="small" sx={{ minWidth: 220, bgcolor: "#fff" }} disabled={carrerasDisponibles.length === 0}>
-              <InputLabel id="select-profesorado-label">Profesorado</InputLabel>
-              <Select
-                labelId="select-profesorado-label"
-                value={selectedCarreraId}
-                label="Profesorado"
-                onChange={handleCarreraChange}
-                displayEmpty
-              >
-                {carrerasDisponibles.length === 0 && (
-                  <MenuItem value="">
-                    {carrerasDisponibles.length === 0 ? "Sin profesorados" : "Cargando..."}
-                  </MenuItem>
-                )}
-                {carrerasDisponibles.map((carrera) => (
-                  <MenuItem key={carrera.profesorado_id} value={String(carrera.profesorado_id)}>
-                    {carrera.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+					{shouldFetchInscriptas && (
+						<FormControl
+							size="small"
+							sx={{ minWidth: 220, bgcolor: "#fff" }}
+							disabled={carrerasDisponibles.length === 0}
+						>
+							<InputLabel id="select-profesorado-label">Profesorado</InputLabel>
+							<Select
+								labelId="select-profesorado-label"
+								value={selectedCarreraId}
+								label="Profesorado"
+								onChange={handleCarreraChange}
+								displayEmpty
+							>
+								{carrerasDisponibles.length === 0 && (
+									<MenuItem value="">
+										{carrerasDisponibles.length === 0
+											? "Sin profesorados"
+											: "Cargando..."}
+									</MenuItem>
+								)}
+								{carrerasDisponibles.map((carrera) => (
+									<MenuItem
+										key={carrera.profesorado_id}
+										value={String(carrera.profesorado_id)}
+									>
+										{carrera.nombre}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					)}
 
-          {planesDisponibles.length > 1 && (
-            <FormControl size="small" sx={{ minWidth: 200, bgcolor: "#fff" }}>
-              <InputLabel id="select-plan-label">Plan</InputLabel>
-              <Select
-                labelId="select-plan-label"
-                value={selectedPlanId}
-                label="Plan"
-                onChange={handlePlanChange}
-                displayEmpty
-              >
-                {planesDisponibles.map((plan) => (
-                  <MenuItem key={plan.id} value={String(plan.id)}>
-                    {plan.resolucion ? `Plan ${plan.resolucion}` : `Plan ${plan.id}`}{plan.vigente ? " (vigente)" : ""}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        </Stack>
-        {shouldFetchInscriptas && carrerasDisponibles.length > 1 && !selectedCarreraId && (
-          <Typography variant="caption" color="error">
-            Seleccioná un profesorado para ver sus materias.
-          </Typography>
-        )}
-      </Stack>
-    </Stack>
-  );
+					{planesDisponibles.length > 1 && (
+						<FormControl size="small" sx={{ minWidth: 200, bgcolor: "#fff" }}>
+							<InputLabel id="select-plan-label">Plan</InputLabel>
+							<Select
+								labelId="select-plan-label"
+								value={selectedPlanId}
+								label="Plan"
+								onChange={handlePlanChange}
+								displayEmpty
+							>
+								{planesDisponibles.map((plan) => (
+									<MenuItem key={plan.id} value={String(plan.id)}>
+										{plan.resolucion
+											? `Plan ${plan.resolucion}`
+											: `Plan ${plan.id}`}
+										{plan.vigente ? " (vigente)" : ""}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					)}
+				</Stack>
+				{shouldFetchInscriptas &&
+					carrerasDisponibles.length > 1 &&
+					!selectedCarreraId && (
+						<Typography variant="caption" color="error">
+							Seleccioná un profesorado para ver sus materias.
+						</Typography>
+					)}
+			</Stack>
+		</Stack>
+	);
 };
 
 export default PageHeader;

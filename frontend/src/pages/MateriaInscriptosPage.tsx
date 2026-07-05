@@ -1,4 +1,4 @@
-import React from "react";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -13,275 +13,306 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-
+import React from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  listarInscriptosMateria,
-  MateriaDetalleDTO,
-  MateriaInscriptoDTO,
-  obtenerMateria,
-} from "@/api/comisiones";
-import {
-  CarreraDetalle,
-  PlanDetalle,
-  obtenerCarrera,
-  obtenerPlanCarrera,
+	type CarreraDetalle,
+	obtenerCarrera,
+	obtenerPlanCarrera,
+	type PlanDetalle,
 } from "@/api/carreras";
+import {
+	listarInscriptosMateria,
+	type MateriaDetalleDTO,
+	type MateriaInscriptoDTO,
+	obtenerMateria,
+} from "@/api/comisiones";
 import { SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 
 const regimenLabel: Record<string, string> = {
-  ANU: "Anual",
-  PCU: "1.º Cuatrimestre",
-  SCU: "2.º Cuatrimestre",
+	ANU: "Anual",
+	PCU: "1.º Cuatrimestre",
+	SCU: "2.º Cuatrimestre",
 };
 
 const formatoLabel: Record<string, string> = {
-  ASI: "Asignatura",
-  PRA: "Práctica",
-  MOD: "Módulo",
-  TAL: "Taller",
-  LAB: "Laboratorio",
-  SEM: "Seminario",
+	ASI: "Asignatura",
+	PRA: "Práctica",
+	MOD: "Módulo",
+	TAL: "Taller",
+	LAB: "Laboratorio",
+	SEM: "Seminario",
 };
 
 const tipoFormacionLabel: Record<string, string> = {
-  FGN: "Formación general",
-  FES: "Formación específica",
-  PDC: "Práctica docente",
+	FGN: "Formación general",
+	FES: "Formación específica",
+	PDC: "Práctica docente",
 };
 
 type LocationState = {
-  materiaNombre?: string | null;
-  planResolucion?: string | null;
-  profesoradoNombre?: string | null;
+	materiaNombre?: string | null;
+	planResolucion?: string | null;
+	profesoradoNombre?: string | null;
 };
 
 const InscriptosTable: React.FC<{
-  inscriptos: MateriaInscriptoDTO[];
-  loading: boolean;
+	inscriptos: MateriaInscriptoDTO[];
+	loading: boolean;
 }> = ({ inscriptos, loading }) => {
-  if (loading) {
-    return (
-      <Box>
-        <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
-        <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
-        <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
-      </Box>
-    );
-  }
+	if (loading) {
+		return (
+			<Box>
+				<Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
+				<Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
+				<Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
+			</Box>
+		);
+	}
 
-  if (!inscriptos.length) {
-    return (
-      <Alert severity="info" sx={{ mt: 1 }}>
-        No encontramos estudiantes inscriptos para esta materia.
-      </Alert>
-    );
-  }
+	if (!inscriptos.length) {
+		return (
+			<Alert severity="info" sx={{ mt: 1 }}>
+				No encontramos estudiantes inscriptos para esta materia.
+			</Alert>
+		);
+	}
 
-  return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>#</TableCell>
-            <TableCell>Estudiante</TableCell>
-            <TableCell>DNI</TableCell>
-            <TableCell>Año</TableCell>
-            <TableCell>Estado</TableCell>
-            <TableCell>Comisión</TableCell>
-            <TableCell>Asistencia (A/P/T %)</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {inscriptos.map((inscripto, index) => (
-            <TableRow key={inscripto.id} hover>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{inscripto.estudiante}</TableCell>
-              <TableCell>{inscripto.dni ?? "-"}</TableCell>
-              <TableCell>{inscripto.anio ?? "-"}</TableCell>
-              <TableCell>
-                {inscripto.estado ? <Chip label={inscripto.estado} size="small" /> : "-"}
-              </TableCell>
-              <TableCell>{inscripto.comision_codigo ?? "-"}</TableCell>
-              <TableCell>
-                {inscripto.asistencias_a}/{inscripto.asistencias_p}/{inscripto.asistencias_t} &nbsp; 
-                <Typography component="span" variant="body2" fontWeight="bold">
-                  {inscripto.asistencias_pct}
-                </Typography>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+	return (
+		<TableContainer component={Paper} variant="outlined">
+			<Table size="small">
+				<TableHead>
+					<TableRow>
+						<TableCell>#</TableCell>
+						<TableCell>Estudiante</TableCell>
+						<TableCell>DNI</TableCell>
+						<TableCell>Año</TableCell>
+						<TableCell>Estado</TableCell>
+						<TableCell>Comisión</TableCell>
+						<TableCell>Asistencia (A/P/T %)</TableCell>
+					</TableRow>
+				</TableHead>
+				<TableBody>
+					{inscriptos.map((inscripto, index) => (
+						<TableRow key={inscripto.id} hover>
+							<TableCell>{index + 1}</TableCell>
+							<TableCell>{inscripto.estudiante}</TableCell>
+							<TableCell>{inscripto.dni ?? "-"}</TableCell>
+							<TableCell>{inscripto.anio ?? "-"}</TableCell>
+							<TableCell>
+								{inscripto.estado ? (
+									<Chip label={inscripto.estado} size="small" />
+								) : (
+									"-"
+								)}
+							</TableCell>
+							<TableCell>{inscripto.comision_codigo ?? "-"}</TableCell>
+							<TableCell>
+								{inscripto.asistencias_a}/{inscripto.asistencias_p}/
+								{inscripto.asistencias_t} &nbsp;
+								<Typography component="span" variant="body2" fontWeight="bold">
+									{inscripto.asistencias_pct}
+								</Typography>
+							</TableCell>
+						</TableRow>
+					))}
+				</TableBody>
+			</Table>
+		</TableContainer>
+	);
 };
 
 export default function MateriaInscriptosPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { profesoradoId, planId, materiaId } = useParams();
-  const { user } = useAuth();
+	const navigate = useNavigate();
+	const location = useLocation();
+	const { profesoradoId, planId, materiaId } = useParams();
+	const { user } = useAuth();
 
-  const roles = React.useMemo(
-    () => new Set((user?.roles ?? []).map((r) => (r || "").toLowerCase().trim())),
-    [user],
-  );
-  const isDocente = roles.has("docente");
+	const roles = React.useMemo(
+		() =>
+			new Set((user?.roles ?? []).map((r) => (r || "").toLowerCase().trim())),
+		[user],
+	);
+	const isDocente = roles.has("docente");
 
-  const materiaIdNumber = Number(materiaId);
-  const planIdNumber = Number(planId);
-  const profesoradoIdNumber = Number(profesoradoId);
+	const materiaIdNumber = Number(materiaId);
+	const planIdNumber = Number(planId);
+	const profesoradoIdNumber = Number(profesoradoId);
 
-  const hasValidMateriaId = Number.isInteger(materiaIdNumber) && materiaIdNumber > 0;
-  const hasValidPlanId = Number.isInteger(planIdNumber) && planIdNumber > 0;
-  const hasValidProfesoradoId =
-    Number.isInteger(profesoradoIdNumber) && profesoradoIdNumber > 0;
+	const hasValidMateriaId =
+		Number.isInteger(materiaIdNumber) && materiaIdNumber > 0;
+	const hasValidPlanId = Number.isInteger(planIdNumber) && planIdNumber > 0;
+	const hasValidProfesoradoId =
+		Number.isInteger(profesoradoIdNumber) && profesoradoIdNumber > 0;
 
-  const state = (location.state ?? {}) as LocationState;
+	const state = (location.state ?? {}) as LocationState;
 
-  const { data: materiaData, isLoading: materiaIsLoading, isError: materiaIsError } = useQuery<MateriaDetalleDTO>({
-    queryKey: ["materias", "detalle", materiaIdNumber],
-    queryFn: () => obtenerMateria(materiaIdNumber),
-    enabled: hasValidMateriaId && !isDocente,
-  });
+	const {
+		data: materiaData,
+		isLoading: materiaIsLoading,
+		isError: materiaIsError,
+	} = useQuery<MateriaDetalleDTO>({
+		queryKey: ["materias", "detalle", materiaIdNumber],
+		queryFn: () => obtenerMateria(materiaIdNumber),
+		enabled: hasValidMateriaId && !isDocente,
+	});
 
-  const { data: planData, isLoading: planIsLoading, isError: planIsError } = useQuery<PlanDetalle>({
-    queryKey: ["carreras", "plan", planIdNumber],
-    queryFn: () => obtenerPlanCarrera(planIdNumber),
-    enabled: hasValidPlanId && !isDocente,
-  });
+	const {
+		data: planData,
+		isLoading: planIsLoading,
+		isError: planIsError,
+	} = useQuery<PlanDetalle>({
+		queryKey: ["carreras", "plan", planIdNumber],
+		queryFn: () => obtenerPlanCarrera(planIdNumber),
+		enabled: hasValidPlanId && !isDocente,
+	});
 
-  const profesorIdForQuery =
-    planData?.profesorado_id ??
-    (hasValidProfesoradoId ? profesoradoIdNumber : undefined);
+	const profesorIdForQuery =
+		planData?.profesorado_id ??
+		(hasValidProfesoradoId ? profesoradoIdNumber : undefined);
 
-  const { data: carreraData, isLoading: carreraIsLoading, isError: carreraIsError } = useQuery<CarreraDetalle>({
-    queryKey: ["carreras", "detalle", profesorIdForQuery],
-    queryFn: () => obtenerCarrera(profesorIdForQuery!),
-    enabled: Number.isInteger(profesorIdForQuery ?? NaN) && !isDocente,
-  });
+	const {
+		data: carreraData,
+		isLoading: carreraIsLoading,
+		isError: carreraIsError,
+	} = useQuery<CarreraDetalle>({
+		queryKey: ["carreras", "detalle", profesorIdForQuery],
+		queryFn: () => obtenerCarrera(profesorIdForQuery!),
+		enabled: Number.isInteger(profesorIdForQuery ?? NaN) && !isDocente,
+	});
 
-  const { data: inscriptosData, isLoading: inscriptosIsLoading, isFetching: inscriptosIsFetching, isError: inscriptosIsError } = useQuery<MateriaInscriptoDTO[]>({
-    queryKey: ["materias", "inscriptos", materiaIdNumber],
-    queryFn: () => listarInscriptosMateria(materiaIdNumber),
-    enabled: hasValidMateriaId,
-  });
+	const {
+		data: inscriptosData,
+		isLoading: inscriptosIsLoading,
+		isFetching: inscriptosIsFetching,
+		isError: inscriptosIsError,
+	} = useQuery<MateriaInscriptoDTO[]>({
+		queryKey: ["materias", "inscriptos", materiaIdNumber],
+		queryFn: () => listarInscriptosMateria(materiaIdNumber),
+		enabled: hasValidMateriaId,
+	});
 
-  const materiaDetalle = materiaData;
-  const planDetalle = planData;
-  const carreraDetalle = carreraData;
+	const materiaDetalle = materiaData;
+	const planDetalle = planData;
+	const carreraDetalle = carreraData;
 
-  const materiaNombre =
-    state.materiaNombre ?? materiaDetalle?.nombre ?? "Materia sin nombre";
-  const planLabel =
-    state.planResolucion ??
-    (planDetalle ? `Resolución ${planDetalle.resolucion}` : null);
-  const profesoradoNombre =
-    state.profesoradoNombre ?? carreraDetalle?.nombre ?? null;
+	const materiaNombre =
+		state.materiaNombre ?? materiaDetalle?.nombre ?? "Materia sin nombre";
+	const planLabel =
+		state.planResolucion ??
+		(planDetalle ? `Resolución ${planDetalle.resolucion}` : null);
+	const profesoradoNombre =
+		state.profesoradoNombre ?? carreraDetalle?.nombre ?? null;
 
-  const loadingSummary =
-    !isDocente && (materiaIsLoading || planIsLoading || carreraIsLoading);
+	const loadingSummary =
+		!isDocente && (materiaIsLoading || planIsLoading || carreraIsLoading);
 
-  const summaryError =
-    !isDocente && (materiaIsError || planIsError || carreraIsError);
+	const summaryError =
+		!isDocente && (materiaIsError || planIsError || carreraIsError);
 
-  if (!hasValidMateriaId || !hasValidPlanId) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          No pudimos interpretar la materia o el plan desde la URL proporcionada.
-        </Alert>
-        <Box mt={2}>
-          <Button onClick={() => navigate("/carreras")} variant="outlined">
-            Volver a Carreras
-          </Button>
-        </Box>
-      </Box>
-    );
-  }
+	if (!hasValidMateriaId || !hasValidPlanId) {
+		return (
+			<Box sx={{ p: 3 }}>
+				<Alert severity="error">
+					No pudimos interpretar la materia o el plan desde la URL
+					proporcionada.
+				</Alert>
+				<Box mt={2}>
+					<Button onClick={() => navigate("/carreras")} variant="outlined">
+						Volver a Carreras
+					</Button>
+				</Box>
+			</Box>
+		);
+	}
 
-  return (
-    <Box sx={{ p: 3, bgcolor: "#f7f4ea", minHeight: "100vh" }}>
-      <Stack spacing={3} maxWidth={1100} mx="auto">
-        <Button
-          variant="text"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          sx={{ alignSelf: "flex-start" }}
-        >
-          Volver
-        </Button>
+	return (
+		<Box sx={{ p: 3, bgcolor: "#f7f4ea", minHeight: "100vh" }}>
+			<Stack spacing={3} maxWidth={1100} mx="auto">
+				<Button
+					variant="text"
+					startIcon={<ArrowBackIcon />}
+					onClick={() => navigate(-1)}
+					sx={{ alignSelf: "flex-start" }}
+				>
+					Volver
+				</Button>
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-          {loadingSummary ? (
-            <Skeleton variant="text" width="60%" />
-          ) : summaryError ? (
-            <Alert severity="error">
-              No pudimos obtener toda la información de la materia o el plan. Verificá tus
-              permisos e intentá nuevamente.
-            </Alert>
-          ) : (
-            <Stack spacing={1}>
-              <SectionTitlePill title={materiaNombre ?? "Materia"} />
-              <Typography color="text.secondary">
-                {[profesoradoNombre, planLabel].filter(Boolean).join(" · ")}
-              </Typography>
-              {materiaDetalle && (
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Chip
-                    label={`Año ${materiaDetalle.anio_cursada ?? "-"}`}
-                    size="small"
-                    color="default"
-                  />
-                  <Chip
-                    label={regimenLabel[materiaDetalle.regimen] ?? materiaDetalle.regimen}
-                    size="small"
-                    color="default"
-                  />
-                  <Chip
-                    label={formatoLabel[materiaDetalle.formato] ?? materiaDetalle.formato}
-                    size="small"
-                    color="default"
-                  />
-                  <Chip
-                    label={
-                      tipoFormacionLabel[materiaDetalle.tipo_formacion] ??
-                      materiaDetalle.tipo_formacion
-                    }
-                    size="small"
-                    color="default"
-                  />
-                  <Chip
-                    label={`${materiaDetalle.horas_semana} h/sem`}
-                    size="small"
-                    color="default"
-                  />
-                </Stack>
-              )}
-            </Stack>
-          )}
-        </Paper>
+				<Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
+					{loadingSummary ? (
+						<Skeleton variant="text" width="60%" />
+					) : summaryError ? (
+						<Alert severity="error">
+							No pudimos obtener toda la información de la materia o el plan.
+							Verificá tus permisos e intentá nuevamente.
+						</Alert>
+					) : (
+						<Stack spacing={1}>
+							<SectionTitlePill title={materiaNombre ?? "Materia"} />
+							<Typography color="text.secondary">
+								{[profesoradoNombre, planLabel].filter(Boolean).join(" · ")}
+							</Typography>
+							{materiaDetalle && (
+								<Stack direction="row" spacing={1} flexWrap="wrap">
+									<Chip
+										label={`Año ${materiaDetalle.anio_cursada ?? "-"}`}
+										size="small"
+										color="default"
+									/>
+									<Chip
+										label={
+											regimenLabel[materiaDetalle.regimen] ??
+											materiaDetalle.regimen
+										}
+										size="small"
+										color="default"
+									/>
+									<Chip
+										label={
+											formatoLabel[materiaDetalle.formato] ??
+											materiaDetalle.formato
+										}
+										size="small"
+										color="default"
+									/>
+									<Chip
+										label={
+											tipoFormacionLabel[materiaDetalle.tipo_formacion] ??
+											materiaDetalle.tipo_formacion
+										}
+										size="small"
+										color="default"
+									/>
+									<Chip
+										label={`${materiaDetalle.horas_semana} h/sem`}
+										size="small"
+										color="default"
+									/>
+								</Stack>
+							)}
+						</Stack>
+					)}
+				</Paper>
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-          <Typography variant="h6" fontWeight={700} gutterBottom>
-            Estudiantes inscriptos
-          </Typography>
-          {inscriptosIsError ? (
-            <Alert severity="error">
-              No pudimos cargar los inscriptos de esta materia. Intentá nuevamente más tarde.
-            </Alert>
-          ) : (
-            <InscriptosTable
-              inscriptos={inscriptosData ?? []}
-              loading={inscriptosIsLoading || inscriptosIsFetching}
-            />
-          )}
-        </Paper>
-      </Stack>
-    </Box>
-  );
+				<Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
+					<Typography variant="h6" fontWeight={700} gutterBottom>
+						Estudiantes inscriptos
+					</Typography>
+					{inscriptosIsError ? (
+						<Alert severity="error">
+							No pudimos cargar los inscriptos de esta materia. Intentá
+							nuevamente más tarde.
+						</Alert>
+					) : (
+						<InscriptosTable
+							inscriptos={inscriptosData ?? []}
+							loading={inscriptosIsLoading || inscriptosIsFetching}
+						/>
+					)}
+				</Paper>
+			</Stack>
+		</Box>
+	);
 }

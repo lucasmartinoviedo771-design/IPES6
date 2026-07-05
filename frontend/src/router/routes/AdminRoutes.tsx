@@ -3,58 +3,100 @@ import AppShell from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/router/guards";
 import { lazyPage } from "@/utils/lazy";
 
-const PrimeraCargaPage = lazyPage(() => import("../../pages/admin/PrimeraCargaPage"));
-const ActaExamenPrimeraCargaPage = lazyPage(() => import("../../pages/admin/ActaExamenPrimeraCargaPage"));
-const HistorialActasPage = lazyPage(() => import("../../pages/admin/HistorialActasPage"));
-const HistorialMesasPandemiaPage = lazyPage(() => import("../../pages/admin/HistorialMesasPandemiaPage"));
-const HistorialRegularidadesPage = lazyPage(() => import("../../pages/admin/HistorialRegularidadesPage"));
-const HistoricoRegularidadPage = lazyPage(() => import("../../pages/admin/HistoricoRegularidadPage"));
-const HistorialEquivalenciasPage = lazyPage(() => import("../../pages/admin/HistorialEquivalenciasPage"));
+const PrimeraCargaPage = lazyPage(
+	() => import("../../pages/admin/PrimeraCargaPage"),
+);
+const ActaExamenPrimeraCargaPage = lazyPage(
+	() => import("../../pages/admin/ActaExamenPrimeraCargaPage"),
+);
+const HistorialActasPage = lazyPage(
+	() => import("../../pages/admin/HistorialActasPage"),
+);
+const HistorialMesasPandemiaPage = lazyPage(
+	() => import("../../pages/admin/HistorialMesasPandemiaPage"),
+);
+const HistorialRegularidadesPage = lazyPage(
+	() => import("../../pages/admin/HistorialRegularidadesPage"),
+);
+const HistoricoRegularidadPage = lazyPage(
+	() => import("../../pages/admin/HistoricoRegularidadPage"),
+);
+const HistorialEquivalenciasPage = lazyPage(
+	() => import("../../pages/admin/HistorialEquivalenciasPage"),
+);
 const SystemLogsPage = lazyPage(() => import("../../pages/SystemLogsPage"));
-const AuditoriaInconsistenciasPage = lazyPage(() => import("../../pages/Bedeles/AuditoriaInconsistenciasPage"));
-const ResguardoMateriasPage = lazyPage(() => import("../../pages/Bedeles/ResguardoMateriasPage"));
+const AuditoriaInconsistenciasPage = lazyPage(
+	() => import("../../pages/Bedeles/AuditoriaInconsistenciasPage"),
+);
+const ResguardoMateriasPage = lazyPage(
+	() => import("../../pages/Bedeles/ResguardoMateriasPage"),
+);
 
 const ActaPrintPage = lazyPage(() => import("../../pages/admin/ActaPrintPage"));
 
 export const buildAdminRoutes = () => (
-  <>
-    <Route
-      element={(
-        <ProtectedRoute capability="ver_actas">
-          <AppShell>
-            <Outlet />
-          </AppShell>
-        </ProtectedRoute>
-      )}
-    >
-      <Route path="/admin/primera-carga" element={<PrimeraCargaPage />} />
-      <Route path="/admin/primera-carga/actas-examen" element={<ActaExamenPrimeraCargaPage />} />
-      <Route path="/admin/primera-carga/historial-actas" element={<HistorialActasPage />} />
-      <Route path="/admin/primera-carga/historico-regularidad" element={<HistoricoRegularidadPage />} />
-      <Route path="/admin/primera-carga/historial-mesas-pandemia" element={<HistorialMesasPandemiaPage />} />
-      <Route path="/admin/primera-carga/historial-regularidades" element={<HistorialRegularidadesPage />} />
-      <Route path="/admin/primera-carga/historial-equivalencias" element={<HistorialEquivalenciasPage />} />
-      <Route path="/admin/auditoria-inconsistencias" element={<AuditoriaInconsistenciasPage />} />
-      <Route path="/admin/resguardo-materias" element={<ResguardoMateriasPage />} />
-    </Route>
+	<>
+		<Route
+			element={
+				<ProtectedRoute capability="ver_actas">
+					<AppShell>
+						<Outlet />
+					</AppShell>
+				</ProtectedRoute>
+			}
+		>
+			<Route path="/admin/primera-carga" element={<PrimeraCargaPage />} />
+			<Route
+				path="/admin/primera-carga/actas-examen"
+				element={<ActaExamenPrimeraCargaPage />}
+			/>
+			<Route
+				path="/admin/primera-carga/historial-actas"
+				element={<HistorialActasPage />}
+			/>
+			<Route
+				path="/admin/primera-carga/historico-regularidad"
+				element={<HistoricoRegularidadPage />}
+			/>
+			<Route
+				path="/admin/primera-carga/historial-mesas-pandemia"
+				element={<HistorialMesasPandemiaPage />}
+			/>
+			<Route
+				path="/admin/primera-carga/historial-regularidades"
+				element={<HistorialRegularidadesPage />}
+			/>
+			<Route
+				path="/admin/primera-carga/historial-equivalencias"
+				element={<HistorialEquivalenciasPage />}
+			/>
+			<Route
+				path="/admin/auditoria-inconsistencias"
+				element={<AuditoriaInconsistenciasPage />}
+			/>
+			<Route
+				path="/admin/resguardo-materias"
+				element={<ResguardoMateriasPage />}
+			/>
+		</Route>
 
-    <Route
-      path="/admin/actas/:actaId/print"
-      element={(
-        <ProtectedRoute capability="ver_actas">
-          <ActaPrintPage />
-        </ProtectedRoute>
-      )}
-    />
-    <Route
-      path="/system/logs"
-      element={(
-        <ProtectedRoute capability="admin_sistema">
-          <AppShell>
-            <SystemLogsPage />
-          </AppShell>
-        </ProtectedRoute>
-      )}
-    />
-  </>
+		<Route
+			path="/admin/actas/:actaId/print"
+			element={
+				<ProtectedRoute capability="ver_actas">
+					<ActaPrintPage />
+				</ProtectedRoute>
+			}
+		/>
+		<Route
+			path="/system/logs"
+			element={
+				<ProtectedRoute capability="admin_sistema">
+					<AppShell>
+						<SystemLogsPage />
+					</AppShell>
+				</ProtectedRoute>
+			}
+		/>
+	</>
 );

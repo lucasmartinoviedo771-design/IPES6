@@ -9,98 +9,127 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 
-import { TrayectoriaMesaDTO, RegularidadResumenDTO } from '@/api/estudiantes';
-import { formatDate, notaToString } from './utils';
+import type {
+	RegularidadResumenDTO,
+	TrayectoriaMesaDTO,
+} from "@/api/estudiantes";
+import { formatDate, notaToString } from "./utils";
 
 type Props = {
-  regularidades: RegularidadResumenDTO[];
-  mesas: TrayectoriaMesaDTO[];
+	regularidades: RegularidadResumenDTO[];
+	mesas: TrayectoriaMesaDTO[];
 };
 
 const TabMesasYRegularidades = ({ regularidades, mesas }: Props) => (
-  <Stack spacing={3}>
-    <Box>
-      <Typography variant="subtitle1" fontWeight={700} gutterBottom>Regularidades recientes</Typography>
-      {regularidades.length === 0 ? (
-        <Alert severity="info">Sin registros de regularidad.</Alert>
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Materia</TableCell>
-              <TableCell>Situacion</TableCell>
-              <TableCell>Fecha cierre</TableCell>
-              <TableCell>Vigencia</TableCell>
-              <TableCell>Nota</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {regularidades.map((reg) => (
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              <TableRow key={`reg-${reg.id}`} sx={(reg as any).en_resguardo ? { bgcolor: "#fff7ed" } : {}}>
-                <TableCell>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <span>{reg.materia_nombre}</span>
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(reg as any).en_resguardo && (
-                      <Chip label="En resguardo" size="small" sx={{ bgcolor: "#f97316", color: "#fff", fontWeight: 700, fontSize: "0.7rem" }} />
-                    )}
-                  </Stack>
-                </TableCell>
-                <TableCell>{reg.situacion_display}</TableCell>
-                <TableCell>{formatDate(reg.fecha_cierre)}</TableCell>
-                <TableCell>
-                  {reg.vigencia_hasta ? (
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2">{formatDate(reg.vigencia_hasta)}</Typography>
-                      {typeof reg.dias_restantes === 'number' && (
-                        <Chip label={`${reg.dias_restantes} días`} size="small" color={reg.dias_restantes >= 0 ? 'success' : 'error'} />
-                      )}
-                    </Stack>
-                  ) : '-'}
-                </TableCell>
-                <TableCell>
-                  {reg.nota_final !== undefined && reg.nota_final !== null
-                    ? notaToString(reg.nota_final)
-                    : (reg.nota_tp !== undefined && reg.nota_tp !== null ? notaToString(reg.nota_tp) : '-')}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </Box>
+	<Stack spacing={3}>
+		<Box>
+			<Typography variant="subtitle1" fontWeight={700} gutterBottom>
+				Regularidades recientes
+			</Typography>
+			{regularidades.length === 0 ? (
+				<Alert severity="info">Sin registros de regularidad.</Alert>
+			) : (
+				<Table size="small">
+					<TableHead>
+						<TableRow>
+							<TableCell>Materia</TableCell>
+							<TableCell>Situacion</TableCell>
+							<TableCell>Fecha cierre</TableCell>
+							<TableCell>Vigencia</TableCell>
+							<TableCell>Nota</TableCell>
+						</TableRow>
+					</TableHead>
+					<TableBody>
+						{regularidades.map((reg) => (
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							<TableRow
+								key={`reg-${reg.id}`}
+								sx={(reg as any).en_resguardo ? { bgcolor: "#fff7ed" } : {}}
+							>
+								<TableCell>
+									<Stack direction="row" spacing={1} alignItems="center">
+										<span>{reg.materia_nombre}</span>
+										{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+										{(reg as any).en_resguardo && (
+											<Chip
+												label="En resguardo"
+												size="small"
+												sx={{
+													bgcolor: "#f97316",
+													color: "#fff",
+													fontWeight: 700,
+													fontSize: "0.7rem",
+												}}
+											/>
+										)}
+									</Stack>
+								</TableCell>
+								<TableCell>{reg.situacion_display}</TableCell>
+								<TableCell>{formatDate(reg.fecha_cierre)}</TableCell>
+								<TableCell>
+									{reg.vigencia_hasta ? (
+										<Stack direction="row" spacing={1} alignItems="center">
+											<Typography variant="body2">
+												{formatDate(reg.vigencia_hasta)}
+											</Typography>
+											{typeof reg.dias_restantes === "number" && (
+												<Chip
+													label={`${reg.dias_restantes} días`}
+													size="small"
+													color={reg.dias_restantes >= 0 ? "success" : "error"}
+												/>
+											)}
+										</Stack>
+									) : (
+										"-"
+									)}
+								</TableCell>
+								<TableCell>
+									{reg.nota_final !== undefined && reg.nota_final !== null
+										? notaToString(reg.nota_final)
+										: reg.nota_tp !== undefined && reg.nota_tp !== null
+											? notaToString(reg.nota_tp)
+											: "-"}
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			)}
+		</Box>
 
-    <Box>
-      <Typography variant="subtitle1" fontWeight={700} gutterBottom>Mesas de examen</Typography>
-      {mesas.length === 0 ? (
-        <Alert severity="info">Sin inscripciones a mesas registradas.</Alert>
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Materia</TableCell>
-              <TableCell>Tipo</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Aula</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mesas.map((mesa) => (
-              <TableRow key={`mesa-${mesa.id}`}>
-                <TableCell>{formatDate(mesa.fecha)}</TableCell>
-                <TableCell>{mesa.materia_nombre}</TableCell>
-                <TableCell>{mesa.tipo_display}</TableCell>
-                <TableCell>{mesa.estado_display}</TableCell>
-                <TableCell>{mesa.aula || '-'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </Box>
-  </Stack>
+		<Box>
+			<Typography variant="subtitle1" fontWeight={700} gutterBottom>
+				Mesas de examen
+			</Typography>
+			{mesas.length === 0 ? (
+				<Alert severity="info">Sin inscripciones a mesas registradas.</Alert>
+			) : (
+				<Table size="small">
+					<TableHead>
+						<TableRow>
+							<TableCell>Fecha</TableCell>
+							<TableCell>Materia</TableCell>
+							<TableCell>Tipo</TableCell>
+							<TableCell>Estado</TableCell>
+							<TableCell>Aula</TableCell>
+						</TableRow>
+					</TableHead>
+					<TableBody>
+						{mesas.map((mesa) => (
+							<TableRow key={`mesa-${mesa.id}`}>
+								<TableCell>{formatDate(mesa.fecha)}</TableCell>
+								<TableCell>{mesa.materia_nombre}</TableCell>
+								<TableCell>{mesa.tipo_display}</TableCell>
+								<TableCell>{mesa.estado_display}</TableCell>
+								<TableCell>{mesa.aula || "-"}</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			)}
+		</Box>
+	</Stack>
 );
 
 export default TabMesasYRegularidades;

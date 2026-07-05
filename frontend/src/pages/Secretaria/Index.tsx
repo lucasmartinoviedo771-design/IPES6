@@ -1,156 +1,182 @@
 /* eslint-disable react-doctor/jsx-key */
+
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import DateRangeIcon from "@mui/icons-material/DateRange";
+import EventIcon from "@mui/icons-material/Event";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
-import EventIcon from "@mui/icons-material/Event";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
-import DateRangeIcon from "@mui/icons-material/DateRange";
-import { useAuth } from "@/context/AuthContext";
-import { hasAnyRole } from "@/utils/roles";
+import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
+import SectionCard, {
+	type SectionCardProps,
+} from "@/components/secretaria/SectionCard";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
-import SectionCard, {
-  SectionCardProps,
-} from "@/components/secretaria/SectionCard";
-import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
+import { useAuth } from "@/context/AuthContext";
+import { hasAnyRole } from "@/utils/roles";
 
 type Section = {
-  title: string;
-  items: SectionCardProps[];
+	title: string;
+	items: SectionCardProps[];
 };
 
 export default function SecretariaIndex() {
-  const { user } = useAuth();
+	const { user } = useAuth();
 
-  const canManageDocentes = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
-  const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]); // Solo ellos asignan roles
-  const canManageHorarios = hasAnyRole(user, ["admin", "secretaria"]);
-  const canManageMesas = hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado", "attp"]);
-  const canManageCatDoc = hasAnyRole(user, ["admin", "secretaria", "rectorado", "attp"]);
-  const canManageVentanas = hasAnyRole(user, [
-    "admin",
-    "secretaria",
-    "jefa_aaee",
-    "rectorado",
-    "attp"
-  ]);
-  const canManageNotas = hasAnyRole(user, ["admin", "secretaria", "bedel", "rectorado", "attp"]);
-  const canManagePreins = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+	const canManageDocentes = hasAnyRole(user, [
+		"admin",
+		"secretaria",
+		"rectorado",
+		"attp",
+	]);
+	const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]); // Solo ellos asignan roles
+	const canManageHorarios = hasAnyRole(user, ["admin", "secretaria"]);
+	const canManageMesas = hasAnyRole(user, [
+		"admin",
+		"secretaria",
+		"bedel",
+		"rectorado",
+		"attp",
+	]);
+	const canManageCatDoc = hasAnyRole(user, [
+		"admin",
+		"secretaria",
+		"rectorado",
+		"attp",
+	]);
+	const canManageVentanas = hasAnyRole(user, [
+		"admin",
+		"secretaria",
+		"jefa_aaee",
+		"rectorado",
+		"attp",
+	]);
+	const canManageNotas = hasAnyRole(user, [
+		"admin",
+		"secretaria",
+		"bedel",
+		"rectorado",
+		"attp",
+	]);
+	const canManagePreins = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
-  const sections: Section[] = [
-    {
-      title: "Usuarios y roles",
-      items: [
-        ...(canManageDocentes
-          ? [
-            {
-              title: "Cargar docentes",
-              subtitle: "Alta y edición de docentes del sistema.",
-              icon: <PersonAddIcon />,
-              path: "/secretaria/docentes",
-            },
-          ]
-          : []),
-        ...(canAssignRoles
-          ? [
-            {
-              title: "Asignar roles",
-              subtitle: "Gestioná permisos y roles de usuarios.",
-              icon: <AssignmentIndIcon />,
-              path: "/secretaria/asignar-rol",
-            },
-            DASHBOARD_ITEMS.STUDENT_DOCUMENTATION,
-          ]
-          : []),
-      ],
-    },
-    {
-      title: "Gestión académica - Secretaría",
-      items: [
-        ...(canManagePreins ? [DASHBOARD_ITEMS.PREINSCRIPCIONES] : []),
-        ...(canManageHorarios
-          ? [
-            {
-              title: "Armar Horarios de Cátedra",
-              subtitle: "Definí los bloques horarios que ocupará cada cátedra.",
-              icon: <EventIcon />,
-              path: "/secretaria/horarios",
-            },
-          ]
-          : []),
-        ...(canManageMesas
-          ? [
-            {
-              title: "Mesas de examen",
-              subtitle: "Crear y gestionar mesas según el período.",
-              icon: <CalendarMonthIcon />,
-              path: "/secretaria/mesas",
-            },
-          ]
-          : []),
-        ...(canManageCatDoc
-          ? [
-            {
-              title: "Cátedra - Docente",
-              subtitle: "Asignar docentes a cátedras y comisiones.",
-              icon: <RecordVoiceOverIcon />,
-              path: "/secretaria/catedra-docente",
-            },
-          ]
-          : []),
-        ...(canManageNotas
-          ? [
-            DASHBOARD_ITEMS.ACTAS_Y_NOTAS_GENERAL,
-            DASHBOARD_ITEMS.ACTA_MANUAL,
-            {
-              ...DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES,
-              subtitle: "Consulta comisiones asignadas (vista docente).",
-            },
-          ]
-          : []),
-        ...(canManageVentanas
-          ? [
-            {
-              title: "Habilitar fechas",
-              subtitle: "Configurar períodos y fechas clave.",
-              icon: <DateRangeIcon />,
-              path: "/secretaria/habilitar-fechas",
-            },
-          ]
-          : []),
-      ],
-    },
-    {
-      title: "Horarios",
-      items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
-    },
-  ];
+	const sections: Section[] = [
+		{
+			title: "Usuarios y roles",
+			items: [
+				...(canManageDocentes
+					? [
+							{
+								title: "Cargar docentes",
+								subtitle: "Alta y edición de docentes del sistema.",
+								icon: <PersonAddIcon />,
+								path: "/secretaria/docentes",
+							},
+						]
+					: []),
+				...(canAssignRoles
+					? [
+							{
+								title: "Asignar roles",
+								subtitle: "Gestioná permisos y roles de usuarios.",
+								icon: <AssignmentIndIcon />,
+								path: "/secretaria/asignar-rol",
+							},
+							DASHBOARD_ITEMS.STUDENT_DOCUMENTATION,
+						]
+					: []),
+			],
+		},
+		{
+			title: "Gestión académica - Secretaría",
+			items: [
+				...(canManagePreins ? [DASHBOARD_ITEMS.PREINSCRIPCIONES] : []),
+				...(canManageHorarios
+					? [
+							{
+								title: "Armar Horarios de Cátedra",
+								subtitle:
+									"Definí los bloques horarios que ocupará cada cátedra.",
+								icon: <EventIcon />,
+								path: "/secretaria/horarios",
+							},
+						]
+					: []),
+				...(canManageMesas
+					? [
+							{
+								title: "Mesas de examen",
+								subtitle: "Crear y gestionar mesas según el período.",
+								icon: <CalendarMonthIcon />,
+								path: "/secretaria/mesas",
+							},
+						]
+					: []),
+				...(canManageCatDoc
+					? [
+							{
+								title: "Cátedra - Docente",
+								subtitle: "Asignar docentes a cátedras y comisiones.",
+								icon: <RecordVoiceOverIcon />,
+								path: "/secretaria/catedra-docente",
+							},
+						]
+					: []),
+				...(canManageNotas
+					? [
+							DASHBOARD_ITEMS.ACTAS_Y_NOTAS_GENERAL,
+							DASHBOARD_ITEMS.ACTA_MANUAL,
+							{
+								...DASHBOARD_ITEMS.DOCENTE_MIS_COMISIONES,
+								subtitle: "Consulta comisiones asignadas (vista docente).",
+							},
+						]
+					: []),
+				...(canManageVentanas
+					? [
+							{
+								title: "Habilitar fechas",
+								subtitle: "Configurar períodos y fechas clave.",
+								icon: <DateRangeIcon />,
+								path: "/secretaria/habilitar-fechas",
+							},
+						]
+					: []),
+			],
+		},
+		{
+			title: "Horarios",
+			items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+		},
+	];
 
-  const visibleSections = sections.filter((section) => section.items.length > 0);
+	const visibleSections = sections.filter(
+		(section) => section.items.length > 0,
+	);
 
-  return (
-    <Stack gap={4}>
-      <PageHero
-        title="Secretaría"
-        subtitle="Centro de operaciones agrupado por módulos"
-      />
+	return (
+		<Stack gap={4}>
+			<PageHero
+				title="Secretaría"
+				subtitle="Centro de operaciones agrupado por módulos"
+			/>
 
-      {visibleSections.map((section) => (
-        <Box key={section.title}>
-          <Typography variant="h6" mb={2} fontWeight={600}>
-            {section.title}
-          </Typography>
-          <Grid container spacing={2}>
-            {section.items.map((item) => (
-              <SectionCard key={item.title} {...item} />
-            ))}
-          </Grid>
-        </Box>
-      ))}
-    </Stack>
-  );
+			{visibleSections.map((section) => (
+				<Box key={section.title}>
+					<Typography variant="h6" mb={2} fontWeight={600}>
+						{section.title}
+					</Typography>
+					<Grid container spacing={2}>
+						{section.items.map((item) => (
+							<SectionCard key={item.title} {...item} />
+						))}
+					</Grid>
+				</Box>
+			))}
+		</Stack>
+	);
 }
