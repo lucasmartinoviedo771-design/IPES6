@@ -232,9 +232,4 @@ export function useOralExamActa(
 	};
 }
 
-{
-	createTopicRow,
-		ensureTopicRowsFromApi,
-		mapActaOralDtoToFormValues,
-		mapFormValuesToOralPayload;
-}
+

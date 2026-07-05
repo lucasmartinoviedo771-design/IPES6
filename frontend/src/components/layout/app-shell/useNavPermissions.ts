@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { User } from "@/context/AuthContext";
+import type { User } from "@/types/auth";
 import { hasAnyRole, hasCapability } from "@/utils/roles";
 import { ROLE_NAV_MAP } from "./constants";
 
