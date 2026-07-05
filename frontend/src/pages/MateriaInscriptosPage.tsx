@@ -143,37 +143,37 @@ export default function MateriaInscriptosPage() {
 
   const state = (location.state ?? {}) as LocationState;
 
-  const materiaQuery = useQuery<MateriaDetalleDTO>({
+  const { data: materiaData } = useQuery<MateriaDetalleDTO>({
     queryKey: ["materias", "detalle", materiaIdNumber],
     queryFn: () => obtenerMateria(materiaIdNumber),
     enabled: hasValidMateriaId && !isDocente,
   });
 
-  const planQuery = useQuery<PlanDetalle>({
+  const { data: planData } = useQuery<PlanDetalle>({
     queryKey: ["carreras", "plan", planIdNumber],
     queryFn: () => obtenerPlanCarrera(planIdNumber),
     enabled: hasValidPlanId && !isDocente,
   });
 
   const profesorIdForQuery =
-    planQuery.data?.profesorado_id ??
+    planData?.profesorado_id ??
     (hasValidProfesoradoId ? profesoradoIdNumber : undefined);
 
-  const carreraQuery = useQuery<CarreraDetalle>({
+  const { data: carreraData } = useQuery<CarreraDetalle>({
     queryKey: ["carreras", "detalle", profesorIdForQuery],
     queryFn: () => obtenerCarrera(profesorIdForQuery!),
     enabled: Number.isInteger(profesorIdForQuery ?? NaN) && !isDocente,
   });
 
-  const inscriptosQuery = useQuery<MateriaInscriptoDTO[]>({
+  const { data: inscriptosData } = useQuery<MateriaInscriptoDTO[]>({
     queryKey: ["materias", "inscriptos", materiaIdNumber],
     queryFn: () => listarInscriptosMateria(materiaIdNumber),
     enabled: hasValidMateriaId,
   });
 
-  const materiaDetalle = materiaQuery.data;
-  const planDetalle = planQuery.data;
-  const carreraDetalle = carreraQuery.data;
+  const materiaDetalle = materiaData;
+  const planDetalle = planData;
+  const carreraDetalle = carreraData;
 
   const materiaNombre =
     state.materiaNombre ?? materiaDetalle?.nombre ?? "Materia sin nombre";
@@ -276,7 +276,7 @@ export default function MateriaInscriptosPage() {
             </Alert>
           ) : (
             <InscriptosTable
-              inscriptos={inscriptosQuery.data ?? []}
+              inscriptos={inscriptosData ?? []}
               loading={inscriptosQuery.isLoading || inscriptosQuery.isFetching}
             />
           )}

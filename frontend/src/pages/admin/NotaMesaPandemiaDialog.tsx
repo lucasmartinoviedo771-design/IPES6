@@ -186,7 +186,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
   const [resultado, setResultado] = useState<MesaPandemiaResult | null>(null);
 
   // — Metadata —
-  const metadataQuery = useQuery({
+  const { data: metadataData, isLoading: metadataLoading, isError: metadataError } = useQuery({
     queryKey: ['primera-carga-metadata-all'],
     queryFn: () => fetchRegularidadMetadata(false), // false = Respeta el filtro de bedel de la API
     enabled: open,
@@ -211,8 +211,8 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
 
   // Profesorados
   const profesorados = useMemo(
-    () => metadataQuery.data?.profesorados ?? [],
-    [metadataQuery.data]
+    () => metadataData?.profesorados ?? [],
+    [metadataData]
   );
 
   // Materias filtradas
@@ -236,14 +236,14 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
   }, [profesoradoId, profesorados]);
 
   // Listas de docentes y estudiantes desde la metadata
-  const docentes = useMemo(() => metadataQuery.data?.docentes ?? [], [metadataQuery.data]);
+  const docentes = useMemo(() => metadataData?.docentes ?? [], [metadataData]);
   const estudiantes = useMemo(() => {
-    const todos = metadataQuery.data?.estudiantes ?? [];
+    const todos = metadataData?.estudiantes ?? [];
     if (!profesoradoId) return todos;
     // Si se eligió profesorado, filtramos los que pertenezcan a ese profesorado para facilitar la búsqueda
     const profIdNum = Number(profesoradoId);
     return todos.filter(e => e.profesorados.includes(profIdNum));
-  }, [metadataQuery.data, profesoradoId]);
+  }, [metadataData, profesoradoId]);
 
   // Mutation
   const mutation = useMutation({
@@ -316,7 +316,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
     mutation.mutate(payload);
   };
 
-  const isBusy = mutation.isPending || metadataQuery.isLoading;
+  const isBusy = mutation.isPending || metadataLoading;
 
   // ---------------------------------------------------------------------------
   return (
@@ -342,7 +342,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
       </DialogTitle>
 
       <DialogContent dividers sx={{ p: { xs: 2, md: 3 } }}>
-        {metadataQuery.isError && (
+        {metadataError && (
           <Alert severity="error" sx={{ mb: 2 }}>
             No se pudo cargar el listado de profesorados y materias.
           </Alert>
@@ -365,7 +365,7 @@ const NotaMesaPandemiaDialog: React.FC<Props> = ({ open, onClose }) => {
                 setProfesId(e.target.value);
                 setMateriaId('');
               }}
-              disabled={isBusy || metadataQuery.isLoading}
+              disabled={isBusy || metadataLoading}
               size="small"
             >
               {profesorados.map((p) => (

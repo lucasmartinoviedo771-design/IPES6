@@ -88,19 +88,19 @@ export default function EstudiantesAdminPage() {
 
   const queryClient = useQueryClient();
 
-  const carrerasQuery = useQuery({
+  const { data: carrerasData } = useQuery({
     queryKey: ["carreras", "admin"],
     queryFn: () => fetchCarreras(),
     staleTime: 1000 * 60 * 5,
   });
 
-  const listQuery = useQuery<EstudianteAdminListResponseDTO>({
+  const { data: listData } = useQuery<EstudianteAdminListResponseDTO>({
     queryKey: ["admin-estudiantes", filters],
     queryFn: () => fetchEstudiantesAdmin(filters),
     placeholderData: (previousData) => previousData,
   });
 
-  const detailQuery = useQuery<EstudianteAdminDetailDTO>({
+  const { data: detailData } = useQuery<EstudianteAdminDetailDTO>({
     queryKey: ["admin-estudiante", selectedDni],
     queryFn: () => fetchEstudianteAdminDetail(selectedDni || ""),
     enabled: Boolean(selectedDni),
@@ -132,7 +132,7 @@ export default function EstudiantesAdminPage() {
   const { anyMainSelected, handleMainDocChange, handleAdeudaChange, handleEstudianteRegularChange } =
     useDocumentacionSideEffects(docValues, setValue, getValues);
 
-  usePopulateFormFromDetail(detailQuery.data, reset);
+  usePopulateFormFromDetail(detailData, reset);
 
   const onSubmit = (values: DetailFormValues) => {
     if (!selectedDni) return;
@@ -212,11 +212,11 @@ export default function EstudiantesAdminPage() {
   };
 
   const isListLoading = listQuery.isLoading || listQuery.isFetching;
-  const estudiantes = listQuery.data?.items ?? [];
-  const total = listQuery.data?.total ?? 0;
+  const estudiantes = listData?.items ?? [];
+  const total = listData?.total ?? 0;
 
-  const detailNombre = detailQuery.data
-    ? `${detailQuery.data.apellido ?? ""} ${detailQuery.data.nombre ?? ""}`.trim() || detailQuery.data.dni
+  const detailNombre = detailData
+    ? `${detailData.apellido ?? ""} ${detailData.nombre ?? ""}`.trim() || detailData.dni
     : null;
   const confirmContextText = detailNombre
     ? `actualización de los datos del estudiante ${detailNombre}`
@@ -225,7 +225,7 @@ export default function EstudiantesAdminPage() {
     ? `eliminación PERMANENTE del estudiante ${detailNombre} y todo su historial relacionado (inscripciones, notas, etc.)`
     : "eliminación permanente de este estudiante";
 
-  const condicionCalculada = detailQuery.data?.condicion_calculada ?? "";
+  const condicionCalculada = detailData?.condicion_calculada ?? "";
 
   return (
     <Box p={2} display="flex" flexDirection="column" gap={2}>
@@ -245,7 +245,7 @@ export default function EstudiantesAdminPage() {
         anioIngreso={anioIngreso}
         onAnioIngresoChange={setAnioIngreso}
         anioIngresoOptions={anioIngresoOptions}
-        carreras={carrerasQuery.data ?? []}
+        carreras={carrerasData ?? []}
         isListLoading={isListLoading}
         onRefresh={() => {
           setPage(0);

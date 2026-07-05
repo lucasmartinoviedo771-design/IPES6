@@ -90,7 +90,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
   }, [open, reset]);
 
   const [checkingDni, setCheckingDni] = useState(false);
-  const profesoradosQuery = useQuery({
+  const { data: profesoradosData, isLoading: profesoradosLoading, isError: profesoradosError } = useQuery({
     queryKey: ['primera-carga', 'profesorados'],
     queryFn: listarProfesorados,
     enabled: open,
@@ -112,8 +112,8 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
   });
 
   const profesorados = useMemo<ProfesoradoDTO[]>(
-    () => profesoradosQuery.data ?? [],
-    [profesoradosQuery.data],
+    () => profesoradosData ?? [],
+    [profesoradosData],
   );
 
   const onSubmit = async (values: StudentFormValues) => {
@@ -204,7 +204,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
           <Typography variant="body2" color="text.secondary">
             Los campos marcados con * son obligatorios.
           </Typography>
-          {profesoradosQuery.isError && (
+          {profesoradosError && (
             <Alert severity="error">No se pudo obtener la lista de profesorados.</Alert>
           )}
 
@@ -269,7 +269,7 @@ const StudentManualDialog: React.FC<StudentDialogProps> = ({ open, onClose }) =>
                       select
                       label="Profesorado *"
                       fullWidth
-                      disabled={profesoradosQuery.isLoading || profesoradosQuery.isError}
+                      disabled={profesoradosLoading || profesoradosError}
                       error={!!errors.profesoradoId}
                       helperText={errors.profesoradoId?.message}
                     >

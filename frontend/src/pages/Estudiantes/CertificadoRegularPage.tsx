@@ -85,7 +85,7 @@ const CertificadoRegularPage: React.FC = () => {
 
   const puedeCambiarDni = canGestionar;
 
-  const anioQuery = useQuery({
+  const { data: anioData } = useQuery({
     queryKey: ["estudiantes", "anio-estudio", dniObjetivo, profesoradoId, planId],
     queryFn: () => obtenerAnioEstudio({
       profesorado_id: Number(profesoradoId),
@@ -95,7 +95,7 @@ const CertificadoRegularPage: React.FC = () => {
     enabled: Boolean(profesoradoId) && Boolean(planId) && Boolean(dniObjetivo),
   });
 
-  const anioMax = anioQuery.data?.anio_estudio ?? 4;
+  const anioMax = anioData?.anio_estudio ?? 4;
 
   useEffect(() => {
     setAnioOverride(String(anioMax));

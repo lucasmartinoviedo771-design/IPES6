@@ -152,7 +152,7 @@ const HorarioPage: React.FC = () => {
     }
   }, [planesDisponibles, planId]);
 
-  const horarioQuery = useQuery({
+  const { data: horarioData, error: horarioError, isLoading: horarioLoading, isFetching: horarioFetching } = useQuery({
     queryKey: ["estudiantes", "horarios", profesoradoId, planId, targetDni, cuatrFilter],
     queryFn: () =>
       obtenerHorarioEstudiante({
@@ -166,7 +166,7 @@ const HorarioPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const error = horarioQuery.error;
+    const error = horarioError;
     if (!error) return;
     if (isAxiosError(error)) {
       const message =
@@ -178,9 +178,9 @@ const HorarioPage: React.FC = () => {
         variant: "error",
       });
     }
-  }, [horarioQuery.error, enqueueSnackbar]);
+  }, [horarioError, enqueueSnackbar]);
 
-  const tablas = horarioQuery.data ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
+  const tablas = horarioData ?? [];  // eslint-disable-line react-hooks/exhaustive-deps
 
   const turnosDisponibles = useMemo(() => {
     const map = new Map<number, string>();
@@ -424,7 +424,7 @@ const HorarioPage: React.FC = () => {
     (!!targetDni && carrerasQuery.isLoading) ||
     profesoradosQuery.isLoading ||
     planesAdminQuery.isLoading ||
-    horarioQuery.isLoading;
+    horarioLoading;
   const sinCarreras =
     !!targetDni && !loading && (!carrerasData || carrerasData.carreras.length === 0);
 
@@ -490,7 +490,7 @@ const HorarioPage: React.FC = () => {
               size="small"
               startIcon={<RefreshIcon />}
               onClick={handleRefresh}
-              disabled={!profesoradoId || !planId || horarioQuery.isFetching}
+              disabled={!profesoradoId || !planId || horarioFetching}
               sx={{ minWidth: "110px" }}
             >
               Actualizar
