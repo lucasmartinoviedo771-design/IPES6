@@ -686,7 +686,9 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
     tipo_original = acta.tipo
     mesa_modalidad = MesaExamen.Modalidad.LIBRE if acta.tipo == ActaExamen.Tipo.LIBRE else MesaExamen.Modalidad.REGULAR
     mesa_vieja = MesaExamen.objects.filter(
-        materia_id=acta.materia_id, fecha=fecha_original, modalidad=mesa_modalidad  # type: ignore
+        materia_id=acta.materia_id,
+        fecha=fecha_original,
+        modalidad=mesa_modalidad,  # type: ignore
     ).first()
 
     # Si cambió materia, fecha o tipo, buscar/crear la mesa correspondiente a los nuevos valores
