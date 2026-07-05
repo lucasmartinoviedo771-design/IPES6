@@ -88,7 +88,7 @@ export type RegularidadPlanillaDTO = {
   estudiantes: RegularidadEstudianteDTO[];
 };
 
-export type RegularidadEstudiantePayload = {
+type RegularidadEstudiantePayload = {
   inscripcion_id: number;
   nota_tp?: number | null;
   nota_final?: number | null;
@@ -132,7 +132,7 @@ export type MesaResumenDTO = {
   docentes?: MesaTribunalDocenteDTO[];
 };
 
-export type MesaTribunalDocenteDTO = {
+type MesaTribunalDocenteDTO = {
   rol: "PRES" | "VOC1" | "VOC2";
   docente_id: number | null;
   nombre: string | null;
@@ -223,12 +223,12 @@ export async function buscarMesaPorCodigo(codigo: string) {
   return data?.[0] ?? null;
 }
 
-export type ActaNotaOption = {
+type ActaNotaOption = {
   value: string;
   label: string;
 };
 
-export type ActaMetadataMateria = {
+type ActaMetadataMateria = {
   id: number;
   nombre: string;
   anio_cursada: number | null;
@@ -236,19 +236,19 @@ export type ActaMetadataMateria = {
   plan_resolucion: string;
 };
 
-export type ActaMetadataPlan = {
+type ActaMetadataPlan = {
   id: number;
   resolucion: string;
   materias: ActaMetadataMateria[];
 };
 
-export type ActaMetadataProfesorado = {
+type ActaMetadataProfesorado = {
   id: number;
   nombre: string;
   planes: ActaMetadataPlan[];
 };
 
-export type ActaMetadataDocente = {
+type ActaMetadataDocente = {
   id: number;
   nombre: string;
   dni?: string | null;
@@ -395,7 +395,7 @@ export async function actualizarCabeceraActa(
   return data;
 }
 
-export type OralTopicDTO = {
+type OralTopicDTO = {
   tema: string;
   score?: string | null;
 };

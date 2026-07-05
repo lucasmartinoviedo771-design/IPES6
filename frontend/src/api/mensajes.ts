@@ -9,7 +9,7 @@ export interface MessageTopicDTO {
   description?: string | null;
 }
 
-export interface ParticipantDTO {
+interface ParticipantDTO {
   id: number;
   user_id: number;
   name: string;

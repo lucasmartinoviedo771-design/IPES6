@@ -194,4 +194,4 @@ export function useOralExamActa(
   };
 }
 
-export { createTopicRow, ensureTopicRowsFromApi, mapActaOralDtoToFormValues, mapFormValuesToOralPayload };
+{ createTopicRow, ensureTopicRowsFromApi, mapActaOralDtoToFormValues, mapFormValuesToOralPayload };

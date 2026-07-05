@@ -152,5 +152,5 @@ export const preinscripcionSchema = baseSchema.superRefine((values, ctx) => {
 });
 
 export type PreinscripcionForm = z.infer<typeof preinscripcionSchema>;
-export type PreinscripcionSchema = PreinscripcionForm;
+type PreinscripcionSchema = PreinscripcionForm;
 

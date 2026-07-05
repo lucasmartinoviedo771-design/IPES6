@@ -67,22 +67,22 @@ const crearPreinscripcion = (formData: FormData) =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-export const obtenerPreinscripcion = (id: number) =>
+const obtenerPreinscripcion = (id: number) =>
   client.get(`/preinscripciones/${id}`).then(r => r.data);
 
 const obtenerPorCodigo = (codigo: string) =>
   client.get(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`).then(r => r.data);
 
-export const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
+const patchPreByCodigo = (codigo: string, values: PreinscripcionForm) =>
   client.patch(`/preinscripciones/by-code/${encodeURIComponent(codigo)}`, mapFormToPayload(values)).then(r => r.data);
 
-export const confirmarPreinscripcionById = (id: number, data: Record<string, unknown>) =>
+const confirmarPreinscripcionById = (id: number, data: Record<string, unknown>) =>
   client.post(`/preinscripciones/${id}/confirmar`, data).then(r => r.data);
 
-export const crearInscripcion = (preId: number, carreraId: number, periodo = "2025") =>
+const crearInscripcion = (preId: number, carreraId: number, periodo = "2025") =>
   client.post(`/inscripciones`, { preinscripcion: preId, carrera: carreraId, periodo }).then(r => r.data);
 
-export const listarCarreras = () =>
+const listarCarreras = () =>
   client.get(`/carreras/`).then(r => r.data);
 
 export const listarPreinscripciones = (params: {
@@ -134,7 +134,7 @@ const apiPreviewPdf = (v: PreinscripcionForm) =>
 
 // New types and functions for PreConfirmEditor
 
-export type PreEstado = "borrador" | "enviada" | "observada" | "confirmada" | "rechazada";
+type PreEstado = "borrador" | "enviada" | "observada" | "confirmada" | "rechazada";
 
 export interface PreinscripcionDTO {
   id: number;

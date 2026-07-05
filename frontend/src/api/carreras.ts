@@ -48,7 +48,7 @@ async function listarPlanesVigentes(): Promise<PlanDetalle[]> {
   return allPlans.flat();
 }
 
-export interface RequisitoDocumentacion {
+interface RequisitoDocumentacion {
   id: number;
   codigo: string;
   titulo: string;

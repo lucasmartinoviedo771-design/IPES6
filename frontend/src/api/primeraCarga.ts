@@ -92,7 +92,7 @@ export interface RegularidadMetadataMateria {
   fecha_fin?: string | null;
 }
 
-export interface RegularidadMetadataPlan {
+interface RegularidadMetadataPlan {
   id: number;
   resolucion: string;
   anio_inicio: number | null;
@@ -160,7 +160,7 @@ export const fetchRegularidadMetadata = async (include_all = false): Promise<Reg
   return data.data;
 };
 
-export interface PlanillaRegularidadDocentePayload {
+interface PlanillaRegularidadDocentePayload {
   docente_id?: number | null;
   nombre: string;
   dni?: string | null;
@@ -339,7 +339,7 @@ export interface MesaPandemiaPayload {
   dry_run?: boolean;
 }
 
-export interface MesaPandemiaFilaResult {
+interface MesaPandemiaFilaResult {
   fila: number;
   dni?: string;
   apellido_nombre?: string;

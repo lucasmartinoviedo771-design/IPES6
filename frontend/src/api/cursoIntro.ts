@@ -66,7 +66,7 @@ export type CursoIntroPendienteDTO = {
   anio_ingreso?: number | null;
 };
 
-export type CursoIntroVentanaDTO = {
+type CursoIntroVentanaDTO = {
   id: number;
   desde: string;
   hasta: string;

@@ -1,11 +1,11 @@
 import { api } from "./client";
 
-export interface DashboardPreinsEstado {
+interface DashboardPreinsEstado {
     estado: string;
     total: number;
 }
 
-export interface DashboardPreinsDetalle {
+interface DashboardPreinsDetalle {
     id: number;
     codigo: string;
     estudiante: string;
@@ -13,7 +13,7 @@ export interface DashboardPreinsDetalle {
     fecha: string | null;
 }
 
-export interface DashboardPreinscripciones {
+interface DashboardPreinscripciones {
     total: number;
     por_estado: DashboardPreinsEstado[];
     recientes: DashboardPreinsDetalle[];

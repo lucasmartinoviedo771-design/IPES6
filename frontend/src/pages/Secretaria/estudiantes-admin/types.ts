@@ -1,7 +1,7 @@
 import { EstudianteAdminDocumentacionDTO } from "@/api/estudiantes";
 
 export type EstadoLegajo = "COM" | "INC" | "PEN" | "";
-export type Condicion = "Regular" | "Condicional" | "Pendiente" | "";
+type Condicion = "Regular" | "Condicional" | "Pendiente" | "";
 
 export const ESTADO_OPTIONS: Array<{ value: string; label: string; color: "success" | "warning" | "default" }> = [
   { value: "", label: "Todos", color: "default" },
@@ -39,7 +39,7 @@ export type DetailDocumentacionForm = {
   articulo_7: boolean;
 };
 
-export type CarreraUpdateForm = {
+type CarreraUpdateForm = {
   profesorado_id: number;
   nombre: string;
   estado_academico: EstadoAcademico;

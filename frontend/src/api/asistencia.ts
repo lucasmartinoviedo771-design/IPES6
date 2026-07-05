@@ -202,7 +202,7 @@ export async function desactivarCalendarioEvento(eventoId: number): Promise<void
   await client.delete(`/asistencia/calendario/${eventoId}`);
 }
 
-export interface EstudianteResumen {
+interface EstudianteResumen {
   estudiante_id: number;
   dni: string;
   nombre: string;
@@ -212,7 +212,7 @@ export interface EstudianteResumen {
   porcentaje_asistencia: number;
 }
 
-export interface ClaseNavegacion {
+interface ClaseNavegacion {
   id: number;
   fecha: string;
   descripcion: string;
@@ -268,7 +268,7 @@ export async function registrarAsistenciaPin(payload: RegistrarAsistenciaPinPayl
   await client.post(`/asistencia/estudiantes/registrar-pin`, payload);
 }
 
-export interface CrearJustificacionPayload {
+interface CrearJustificacionPayload {
   tipo: "estudiante" | "docente";
   motivo: string;
   vigencia_desde: string;
@@ -281,12 +281,12 @@ export interface CrearJustificacionPayload {
   archivo_url?: string;
 }
 
-export async function crearJustificacion(payload: CrearJustificacionPayload) {
+async function crearJustificacion(payload: CrearJustificacionPayload) {
   const { data } = await client.post(`/asistencia/estudiantes/justificaciones`, payload);
   return data;
 }
 
-export async function aprobarJustificacion(justificacionId: number) {
+async function aprobarJustificacion(justificacionId: number) {
   const { data } = await client.post(`/asistencia/estudiantes/justificaciones/${justificacionId}/aprobar`);
   return data;
 }

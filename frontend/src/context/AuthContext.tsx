@@ -12,7 +12,7 @@ import { client, setUnauthorizedHandler } from "@/api/client";
 import { setGlobalRoleOverride } from "@/utils/roles";
 
 import { RoleAssignment, User } from "@/types/auth";
-export type { RoleAssignment, User };
+type { RoleAssignment, User };
 interface AuthContextType {
   /** Usuario actualmente autenticado */
   user: User;

@@ -26,7 +26,7 @@ export interface SituacionDisponible {
 }
 
 /** Docente tal como lo devuelve el detalle de planilla (ambos scopes). */
-export interface PlanillaDetalleDocente {
+interface PlanillaDetalleDocente {
   docente_id?: number | null;
   nombre: string;
   dni?: string | null;
@@ -35,7 +35,7 @@ export interface PlanillaDetalleDocente {
 }
 
 /** Fila/estudiante tal como lo devuelve el detalle de planilla (ambos scopes). */
-export interface PlanillaDetalleFila {
+interface PlanillaDetalleFila {
   orden?: number | null;
   dni: string;
   apellido_nombre: string;

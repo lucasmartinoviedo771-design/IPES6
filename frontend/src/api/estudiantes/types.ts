@@ -78,7 +78,7 @@ export type PedidoEquivalenciaPayload = {
   materias: PedidoEquivalenciaMateriaPayload[];
 };
 
-export type PedidoEquivalenciaMateriaDTO = {
+type PedidoEquivalenciaMateriaDTO = {
   id: number;
   nombre: string;
   formato?: string | null;
@@ -146,7 +146,7 @@ export type EquivalenciaMateriaPendienteDTO = {
   plan_id: number;
 };
 
-export type EquivalenciaDisposicionDetalleDTO = {
+type EquivalenciaDisposicionDetalleDTO = {
   id: number;
   materia_id: number;
   materia_nombre: string;
@@ -260,7 +260,7 @@ export type RegularidadResumenDTO = {
   dias_restantes?: number | null;
 };
 
-export type MateriaSugeridaDTO = {
+type MateriaSugeridaDTO = {
   materia_id: number;
   materia_nombre: string;
   anio: number;
@@ -269,7 +269,7 @@ export type MateriaSugeridaDTO = {
   alertas: string[];
 };
 
-export type FinalHabilitadoDTO = {
+type FinalHabilitadoDTO = {
   materia_id: number;
   materia_nombre: string;
   regularidad_fecha: string;
@@ -293,13 +293,13 @@ export type RegularidadVigenciaDTO = {
   en_resguardo: boolean;
 };
 
-export type RecomendacionesTrayectoriaDTO = {
+type RecomendacionesTrayectoriaDTO = {
   materias_sugeridas: MateriaSugeridaDTO[];
   finales_habilitados: FinalHabilitadoDTO[];
   alertas: string[];
 };
 
-export type TrayectoriaEstudianteDTO = {
+type TrayectoriaEstudianteDTO = {
   dni: string;
   legajo?: string | null;
   apellido_nombre: string;
@@ -338,7 +338,7 @@ export interface CarrerasActivasDTO {
   carreras: TrayectoriaCarreraDetalleDTO[];
 }
 
-export type CartonEventoDTO = {
+type CartonEventoDTO = {
   fecha?: string | null;
   fecha_iso?: string | null;
   condicion?: string | null;
@@ -397,12 +397,12 @@ export type HorarioMateriaCeldaDTO = {
   es_cuatrimestral: boolean;
 };
 
-export type HorarioDiaDTO = {
+type HorarioDiaDTO = {
   numero: number;
   nombre: string;
 };
 
-export type HorarioFranjaDTO = {
+type HorarioFranjaDTO = {
   orden: number;
   posicion: number;
   desde: string;
@@ -412,7 +412,7 @@ export type HorarioFranjaDTO = {
   hasta_sec?: string;
 };
 
-export type HorarioCeldaDTO = {
+type HorarioCeldaDTO = {
   dia_numero: number;
   franja_orden: number;
   franja_posicion: number;
@@ -539,7 +539,7 @@ export type MesaPlanillaDTO = {
   acta_id?: number | null;
 };
 
-export type MesaMateriaResumenDTO = {
+type MesaMateriaResumenDTO = {
   id: number;
   nombre: string;
 };

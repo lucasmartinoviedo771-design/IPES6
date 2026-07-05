@@ -64,7 +64,7 @@ export type ComisionDTO = {
   observaciones: string | null;
 };
 
-export type ComisionPayload = {
+type ComisionPayload = {
   materia_id: number;
   anio_lectivo: number;
   codigo: string;

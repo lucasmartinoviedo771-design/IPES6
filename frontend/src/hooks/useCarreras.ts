@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { listarProfesorados } from "@/api/cargaNotas";
 
-export type Carrera = { id: number; nombre: string };
+type Carrera = { id: number; nombre: string };
 
 /**
  * Hook para obtener el listado de profesorados (carreras) vigentes.

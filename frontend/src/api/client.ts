@@ -17,7 +17,7 @@ const REFRESH_ENDPOINT = "auth/refresh/";
 /**
  * Estructura de error estandarizada del backend Django Ninja.
  */
-export interface ErrorResponse {
+interface ErrorResponse {
   error_code: string;
   message: string;
   details?: unknown;
@@ -194,7 +194,7 @@ client.interceptors.response.use(
 export const api = client;
 export default client;
 
-export function getCookie(name: string) {
+function getCookie(name: string) {
   const value = document.cookie
     .split(";")
     .map((c) => c.trim())

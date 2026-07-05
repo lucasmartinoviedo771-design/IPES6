@@ -248,4 +248,4 @@ export const DASHBOARD_ITEMS = {
   },
 } satisfies Record<string, SectionCardProps>;
 
-export type DashboardItemKey = keyof typeof DASHBOARD_ITEMS;
+type DashboardItemKey = keyof typeof DASHBOARD_ITEMS;
