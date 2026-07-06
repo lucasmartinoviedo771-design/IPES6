@@ -3,6 +3,7 @@ from collections import defaultdict
 from django.db.models import Max, Q
 from django.utils import timezone
 
+from apps.estudiantes.api.notas_utils import docente_from_user
 from apps.estudiantes.schemas.trayectoria import (
     HorarioCelda,
     HorarioDia,
@@ -10,11 +11,11 @@ from apps.estudiantes.schemas.trayectoria import (
     HorarioMateriaCelda,
     HorarioTabla,
 )
-from core.models import Bloque, Comision, Docente, HorarioCatedra, Turno
+from core.models import Bloque, Comision, HorarioCatedra, Turno
 
 
 def get_mis_horarios(request):
-    docente = Docente.objects.filter(persona__dni=request.user.username).select_related("persona").first()
+    docente = docente_from_user(request.user)
     if not docente:
         return []
 

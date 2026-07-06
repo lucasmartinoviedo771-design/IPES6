@@ -16,6 +16,15 @@ from core.permissions import (
 from .schemas import DocenteIn, DocenteOut, DocenteRoleAssignIn, DocenteRoleAssignOut
 from .services.docente_service import DocenteService
 
+
+def _ensure_structure_view(user):
+    require(user, "ver_estructura")
+
+
+def _ensure_structure_edit(user):
+    require(user, "editar_estructura")
+
+
 router = Router(tags=["Docentes"])
 
 from apps.estudiantes.schemas.trayectoria import HorarioTabla
@@ -30,14 +39,6 @@ from .horarios_api import get_mis_horarios
 # quedara antes matchea "mis-horarios" como si fuera un docente_id y
 # responde 422 en vez de resolver la ruta correcta.
 router.get("/mis-horarios", response=list[HorarioTabla], auth=JWTAuth())(get_mis_horarios)
-
-
-def _ensure_structure_view(user):
-    require(user, "ver_estructura")
-
-
-def _ensure_structure_edit(user):
-    require(user, "editar_estructura")
 
 
 @router.get("/", response=list[DocenteOut], auth=JWTAuth())
