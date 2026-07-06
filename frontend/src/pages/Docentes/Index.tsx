@@ -16,7 +16,15 @@ const sections: RoleDashboardSection[] = [
 	},
 	{
 		title: "Horarios",
-		items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+		items: [
+			{
+				...DASHBOARD_ITEMS.HORARIO_CURSADA,
+				title: "Mi Horario",
+				subtitle: "Consulta tu horario semanal de clases asignadas en todos los turnos.",
+				path: "/docentes/mi-horario",
+			},
+			DASHBOARD_ITEMS.HORARIO_CURSADA,
+		],
 	},
 	{
 		title: "Operativa diaria",
