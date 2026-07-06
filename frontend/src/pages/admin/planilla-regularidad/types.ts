@@ -63,6 +63,7 @@ export interface PlanillaDetalleData {
 	plantilla_id?: number | string;
 	fecha: string;
 	folio?: string | null;
+	planilla_id?: number | null;
 	plan_resolucion?: string | null;
 	observaciones?: string | null;
 	docentes: PlanillaDetalleDocente[];

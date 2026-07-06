@@ -422,27 +422,53 @@ const PlanillaRegularidadDialog: React.FC<PlanillaRegularidadDialogProps> = ({
 						/>
 					)}
 				</Stack>
-				<Box>
+				<Box sx={{ display: "flex", alignItems: "center" }}>
 					<Button onClick={onClose} sx={{ mr: 1 }}>
 						{mode === "view" ? "Cerrar" : "Cancelar"}
 					</Button>
-					{mode !== "view" && (
-						<Button
-							onClick={form.handleSubmit(form.onSubmit)}
-							variant="contained"
-							disabled={
-								form.mutation.isPending || metadata.metadataQuery.isLoading
-							}
-						>
-							{form.mutation.isPending
-								? mode === "edit"
-									? "Guardando..."
-									: "Generando..."
-								: mode === "edit"
-									? "Guardar Cambios"
-									: "Generar planilla"}
-						</Button>
-					)}
+					<Box sx={{ display: "flex", gap: 1 }}>
+						{scope === "standard" && form.detailQuery.data?.data?.planilla_id && (
+							<Button
+								variant="outlined"
+								onClick={() =>
+									window.open(
+										`/api/admin/primera-carga/regularidades/planillas/${form.detailQuery.data?.data?.planilla_id}/pdf`,
+										"_blank",
+									)
+								}
+							>
+								Descargar Planilla PDF
+							</Button>
+						)}
+						{scope === "primera_carga" && mode !== "view" && (
+							<Button
+								onClick={form.handleSubmit(form.onSubmit)}
+								variant="contained"
+								disabled={
+									form.mutation.isPending || metadata.metadataQuery.isLoading
+								}
+							>
+								{form.mutation.isPending
+									? mode === "edit"
+										? "Guardando..."
+										: "Generando..."
+									: mode === "edit"
+										? "Guardar Cambios"
+										: "Generar planilla"}
+							</Button>
+						)}
+						{scope === "standard" && mode !== "view" && (
+							<Button
+								onClick={form.handleSubmit(form.onSubmit)}
+								variant="contained"
+								disabled={
+									form.mutation.isPending || metadata.metadataQuery.isLoading
+								}
+							>
+								{form.mutation.isPending ? "Guardando..." : "Guardar Cambios"}
+							</Button>
+						)}
+					</Box>
 				</Box>
 			</DialogActions>
 		</Dialog>

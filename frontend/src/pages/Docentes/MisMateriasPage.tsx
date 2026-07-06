@@ -23,6 +23,7 @@ import { type ComisionDTO, listarComisiones } from "@/api/comisiones";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
+import PlanillaRegularidadDialog from "../admin/PlanillaRegularidadDialog";
 
 const currentYear = new Date().getFullYear();
 
@@ -32,6 +33,11 @@ export default function DocentesMisMateriasPage() {
 
 	const [filterProfesora, setFilterProfesorado] = useState("");
 	const [filterMateria, setFilterMateria] = useState("");
+
+	const [openPlanilla, setOpenPlanilla] = useState(false);
+	const [selectedComisionId, setSelectedComisionId] = useState<number | null>(
+		null,
+	);
 
 	const {
 		data: comisiones,
@@ -78,8 +84,8 @@ export default function DocentesMisMateriasPage() {
 			<Stack spacing={3}>
 				<BackButton fallbackPath="/docentes" />
 				<PageHero
-					title="Mis comisiones"
-					subtitle="Consulta las materias en las que sos docente y accede al listado de inscriptos."
+					title="Mis espacios curriculares"
+					subtitle="Consultá tus comisiones asignadas, tus inscriptos y cargá calificaciones."
 				/>
 
 				{isLoading && (
@@ -235,7 +241,10 @@ export default function DocentesMisMateriasPage() {
 														variant="contained"
 														color="success"
 														sx={{ ml: 1 }}
-														onClick={() => navigate(`/docentes/regularidad/${comision.id}`)}
+														onClick={() => {
+															setSelectedComisionId(comision.id);
+															setOpenPlanilla(true);
+														}}
 													>
 														Cargar Regularidad
 													</Button>
@@ -249,6 +258,17 @@ export default function DocentesMisMateriasPage() {
 					</Stack>
 				)}
 			</Stack>
+
+			<PlanillaRegularidadDialog
+				open={openPlanilla}
+				onClose={() => {
+					setOpenPlanilla(false);
+					setSelectedComisionId(null);
+				}}
+				comisionId={selectedComisionId || undefined}
+				scope="standard"
+				mode="edit"
+			/>
 		</Box>
 	);
 }

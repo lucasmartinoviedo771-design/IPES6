@@ -12,11 +12,6 @@ const sections: RoleDashboardSection[] = [
 				subtitle:
 					"Carga las notas finales de la mesa en la que integrás el tribunal.",
 			},
-			{
-				...DASHBOARD_ITEMS.REGULARIDAD_CARGA,
-				path: "/docentes/mis-materias",
-				subtitle: "Cargá y descargá la Planilla de Regularidad de tus materias (Bedelía).",
-			},
 		],
 	},
 	{
@@ -41,11 +36,7 @@ const sections: RoleDashboardSection[] = [
 				path: "/docentes/mis-asistencias",
 			},
 			{
-				...DASHBOARD_ITEMS.MENSAJES,
-				subtitle: "Comunicate con Secretaría o con tus estudiantes.",
-			},
-			{
-				title: "Mis comisiones",
+				title: "Mis espacios curriculares",
 				subtitle: "Consulta las materias asignadas y los inscriptos.",
 				icon: DASHBOARD_ITEMS.MATERIAS_ABM.icon,
 				path: "/docentes/mis-materias",

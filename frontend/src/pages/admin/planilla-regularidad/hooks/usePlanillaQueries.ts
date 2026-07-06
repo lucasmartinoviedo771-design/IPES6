@@ -119,6 +119,7 @@ export function usePlanillaQueries({
 						formato: data.formato || "",
 						regimen: data.regimen || "",
 						plantilla_id: 1,
+						planilla_id: data.planilla_id || null,
 						fecha: data.fecha_cierre || todayIso(),
 						folio: "",
 						plan_resolucion: data.plan_resolucion || "",
