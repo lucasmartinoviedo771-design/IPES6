@@ -18,6 +18,9 @@ from .services.docente_service import DocenteService
 
 router = Router(tags=["Docentes"])
 
+from .horarios_api import router as horarios_router
+router.add_router("", horarios_router)
+
 
 def _ensure_structure_view(user):
     require(user, "ver_estructura")

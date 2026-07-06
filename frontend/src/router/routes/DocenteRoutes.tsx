@@ -16,6 +16,9 @@ const PlanillaCursadaFormPage = lazyPage(
 const MisAsistenciasPage = lazyPage(
 	() => import("../../pages/Docentes/MisAsistenciasPage"),
 );
+const MiHorarioPage = lazyPage(
+	() => import("../../pages/Docentes/MiHorarioPage"),
+);
 
 export const buildDocenteRoutes = () => (
 	<>
@@ -56,6 +59,7 @@ export const buildDocenteRoutes = () => (
 				path="/docentes/mis-asistencias"
 				element={<MisAsistenciasPage />}
 			/>
+			<Route path="/docentes/mi-horario" element={<MiHorarioPage />} />
 		</Route>
 	</>
 );
