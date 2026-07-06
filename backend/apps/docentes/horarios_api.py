@@ -143,12 +143,8 @@ def get_mis_horarios(request):
 
             es_recreo = es_recreo_lv or es_recreo_sab
 
-            if str_desde_sab and str_desde_lv != str_desde_sab:
-                desde_val = f"{str_desde_lv} / {str_desde_sab}"
-                hasta_val = f"{hasta_lv_str} / {hasta_sab_str}"
-            else:
-                desde_val = str_desde_lv or str_desde_sab
-                hasta_val = hasta_lv_str or hasta_sab_str
+            desde_val = str_desde_lv if str_desde_lv else (str_desde_sab if str_desde_sab else "-")
+            hasta_val = hasta_lv_str if hasta_lv_str else (hasta_sab_str if hasta_sab_str else "-")
 
             franjas.append(
                 HorarioFranja(
