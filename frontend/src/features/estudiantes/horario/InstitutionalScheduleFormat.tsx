@@ -21,13 +21,14 @@ type InstitutionalScheduleFormatProps = {
 	tabla: HorarioTablaDTO;
 	salon?: string;
 	cuatrimestre?: string;
+	variant?: "student" | "teacher";
 };
 
 const cellKey = (dia: number, posicion: number) => `${dia}-${posicion}`;
 
 const InstitutionalScheduleFormat: React.FC<
 	InstitutionalScheduleFormatProps
-> = ({ tabla, salon = "---", cuatrimestre }) => {
+> = ({ tabla, salon = "---", cuatrimestre, variant = "student" }) => {
 	const bgColor = getProfessoradoColor(tabla.profesorado_nombre);
 	const headerTextColor = getTextColorForBackground(bgColor);
 
@@ -111,9 +112,9 @@ const InstitutionalScheduleFormat: React.FC<
 							width: "100%",
 						}}
 					>
-						{materia.docentes.length
-							? materia.docentes.join("; ")
-							: "Sin Docente"}
+						{variant === "teacher" 
+							? (materia.comisiones?.length ? materia.comisiones.join("; ") : "Sin Comisión")
+							: (materia.docentes?.length ? materia.docentes.join("; ") : "Sin Docente")}
 					</Typography>
 					{/* Indicador de cuatrimestre/anual centrado */}
 					<Typography
@@ -145,9 +146,9 @@ const InstitutionalScheduleFormat: React.FC<
 		// Combinar nombres de materias
 		const nombres = materiasList.map((m) => m.materia_nombre).join(" / ");
 
-		// Combinar docentes únicos
-		const todosDocentes = Array.from(
-			new Set(materiasList.flatMap((m) => m.docentes)),
+		// Combinar subtitulos (docentes o comisiones)
+		const todosSubtitulos = Array.from(
+			new Set(materiasList.flatMap((m) => variant === "teacher" ? m.comisiones : m.docentes)),
 		).filter(Boolean);
 
 		// Combinar regímenes únicos
@@ -205,7 +206,9 @@ const InstitutionalScheduleFormat: React.FC<
 							width: "100%",
 						}}
 					>
-						{todosDocentes.length ? todosDocentes.join("; ") : "Sin Docente"}
+						{todosSubtitulos.length 
+							? todosSubtitulos.join("; ") 
+							: (variant === "teacher" ? "Sin Comisión" : "Sin Docente")}
 					</Typography>
 					<Typography
 						component="div"

@@ -6,7 +6,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { toJpeg } from "html-to-image";
 import jsPDF from "jspdf";
 import { useSnackbar } from "notistack";
@@ -20,6 +20,7 @@ import type { HorarioTablaDTO } from "@/api/estudiantes";
 export default function MiHorarioPage() {
 	const { enqueueSnackbar } = useSnackbar();
 	const exportRef = useRef<HTMLDivElement>(null);
+	const [cuatrimestre, setCuatrimestre] = useState<string>("1C");
 
 	const { data: tablas, isLoading, refetch } = useQuery({
 		queryKey: ["docente-horarios"],
@@ -170,17 +171,47 @@ export default function MiHorarioPage() {
 					</Typography>
 				</Box>
 			) : (
-				<Stack spacing={4} ref={exportRef}>
+				<Box>
+					<Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2, display: "flex", justifyContent: "center" }}>
+						<Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+							<Button
+								variant={cuatrimestre === "1C" ? "contained" : "outlined"}
+								onClick={() => setCuatrimestre("1C")}
+								sx={{
+									...(cuatrimestre === "1C" && {
+										backgroundColor: INSTITUTIONAL_TERRACOTTA,
+										"&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA },
+									}),
+								}}
+							>
+								1° Cuatrimestre / Anuales
+							</Button>
+							<Button
+								variant={cuatrimestre === "2C" ? "contained" : "outlined"}
+								onClick={() => setCuatrimestre("2C")}
+								sx={{
+									...(cuatrimestre === "2C" && {
+										backgroundColor: INSTITUTIONAL_TERRACOTTA,
+										"&:hover": { backgroundColor: INSTITUTIONAL_TERRACOTTA },
+									}),
+								}}
+							>
+								2° Cuatrimestre / Anuales
+							</Button>
+						</Stack>
+					</Box>
+					<Stack spacing={4} ref={exportRef}>
 					{tablas.map((tabla: HorarioTablaDTO) => (
 						<Box
 							key={tabla.key}
 							id={`horario-tabla-${tabla.key}`}
 							sx={{ backgroundColor: "#fff", p: 2, borderRadius: 2 }}
 						>
-							<InstitutionalScheduleFormat tabla={tabla} />
+							<InstitutionalScheduleFormat tabla={tabla} cuatrimestre={cuatrimestre} variant="teacher" />
 						</Box>
 					))}
 				</Stack>
+			</Box>
 			)}
 		</Stack>
 	);
