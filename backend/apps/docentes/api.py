@@ -18,9 +18,18 @@ from .services.docente_service import DocenteService
 
 router = Router(tags=["Docentes"])
 
-from .horarios_api import router as horarios_router
+from apps.estudiantes.schemas.trayectoria import HorarioTabla
 
-router.add_router("", horarios_router)
+from .horarios_api import get_mis_horarios
+
+# Registrada como operacion nativa del router (no via add_router) y antes de
+# "/{docente_id}": Ninja arma primero las rutas propias del router y recien
+# despues las de sub-routers agregados con add_router, sin importar el orden
+# en que aparezcan en el archivo. Como "/{docente_id}" no tiene un converter
+# de tipo en la URL de Django (Ninja valida el tipo recien con Pydantic), si
+# quedara antes matchea "mis-horarios" como si fuera un docente_id y
+# responde 422 en vez de resolver la ruta correcta.
+router.get("/mis-horarios", response=list[HorarioTabla], auth=JWTAuth())(get_mis_horarios)
 
 
 def _ensure_structure_view(user):

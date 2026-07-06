@@ -1,8 +1,7 @@
 from collections import defaultdict
 
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.utils import timezone
-from ninja import Router
 
 from apps.estudiantes.schemas.trayectoria import (
     HorarioCelda,
@@ -11,26 +10,39 @@ from apps.estudiantes.schemas.trayectoria import (
     HorarioMateriaCelda,
     HorarioTabla,
 )
-from core.auth_ninja import JWTAuth
-from core.models import Bloque, Docente, HorarioCatedra, Turno
-
-router = Router(tags=["Docentes Horarios"])
+from core.models import Bloque, Comision, Docente, HorarioCatedra, Turno
 
 
-@router.get("/mis-horarios", response=list[HorarioTabla], auth=JWTAuth())
 def get_mis_horarios(request):
-    try:
-        docente = request.user.persona.docente_perfil
-    except Exception:
+    docente = Docente.objects.filter(persona__dni=request.user.username).select_related("persona").first()
+    if not docente:
         return []
 
     current_year = timezone.now().year
 
-    # We fetch HorarioCatedra that have Comisiones assigned to this docente
+    # Comision.horario casi nunca esta poblado (solo se completa al crear un
+    # HorarioCatedra nuevo, no cuando ya existia), asi que no podemos ubicar
+    # el horario del docente via esa FK. En cambio, buscamos el HorarioCatedra
+    # que corresponde a cada una de sus comisiones activas por materia+turno+anio.
+    comisiones_docente = list(
+        Comision.objects.filter(docente=docente).exclude(estado="LIC").select_related("materia", "turno")
+    )
+    if not comisiones_docente:
+        return []
+
+    claves = {(c.materia_id, c.turno_id, c.anio_lectivo) for c in comisiones_docente}
+    comisiones_por_clave = defaultdict(list)
+    for c in comisiones_docente:
+        comisiones_por_clave[(c.materia_id, c.turno_id, c.anio_lectivo)].append(c)
+
+    filtro = Q()
+    for materia_id, turno_id, anio_lectivo in claves:
+        filtro |= Q(espacio_id=materia_id, turno_id=turno_id, anio_academico=anio_lectivo)
+
     horarios_qs = (
-        HorarioCatedra.objects.filter(comisiones__docente=docente)
+        HorarioCatedra.objects.filter(filtro)
         .select_related("espacio", "turno")
-        .prefetch_related("detalles__bloque", "comisiones__docente")
+        .prefetch_related("detalles__bloque")
         .distinct()
     )
 
@@ -151,9 +163,9 @@ def get_mis_horarios(request):
         for horario in items:
             materia_obj = horario.espacio
             detalles = list(horario.detalles.all())
-            comisiones = list(horario.comisiones.all())
+            comisiones = comisiones_por_clave.get((horario.espacio_id, horario.turno_id, horario.anio_academico), [])
 
-            nombres_com = [c.codigo for c in comisiones if c.docente_id == docente.id]
+            nombres_com = [c.codigo for c in comisiones]
             docentes_names = [f"{docente.persona.apellido}, {docente.persona.nombre}"]
 
             materia_celda = HorarioMateriaCelda(
