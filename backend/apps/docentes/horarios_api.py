@@ -26,7 +26,7 @@ def get_mis_horarios(request):
     # el horario del docente via esa FK. En cambio, buscamos el HorarioCatedra
     # que corresponde a cada una de sus comisiones activas por materia+turno+anio.
     comisiones_docente = list(
-        Comision.objects.filter(docente=docente).exclude(estado="LIC").select_related("materia", "turno")
+        Comision.objects.filter(docente=docente).exclude(estado="LIC").select_related("materia__plan_de_estudio__profesorado", "turno")
     )
     if not comisiones_docente:
         return []
@@ -64,14 +64,16 @@ def get_mis_horarios(request):
     for horario in horarios:
         turno_key = horario.turno_id or 0
 
-        # Determine cuatrimestre logic similar to _construir_tablas_horario
-        cuatr = horario.cuatrimestre or horario.espacio.regimen
-        if not cuatr or cuatr == "ANU":
+        if horario.espacio.regimen == "ANU":
             cuatr = "ANUAL"
-        elif cuatr == "PCU":
-            cuatr = "1C"
-        elif cuatr == "SCU":
-            cuatr = "2C"
+        else:
+            cuatr = horario.cuatrimestre or horario.espacio.regimen
+            if not cuatr or cuatr == "ANU":
+                cuatr = "ANUAL"
+            elif cuatr == "PCU":
+                cuatr = "1C"
+            elif cuatr == "SCU":
+                cuatr = "2C"
 
         grupos[(turno_key, cuatr)].append(horario)
 
@@ -166,7 +168,10 @@ def get_mis_horarios(request):
             detalles = list(horario.detalles.all())
             comisiones = comisiones_por_clave.get((horario.espacio_id, horario.turno_id, horario.anio_academico), [])
 
-            nombres_com = [c.codigo for c in comisiones]
+            nombres_com = []
+            for c in comisiones:
+                prof_nombre = c.materia.plan_de_estudio.profesorado.nombre
+                nombres_com.append(f"{prof_nombre} - {c.materia.anio_cursada}º")
             docentes_names = [f"{docente.persona.apellido}, {docente.persona.nombre}"]
 
             materia_celda = HorarioMateriaCelda(

@@ -262,12 +262,6 @@ const InstitutionalScheduleFormat: React.FC<
 				>
 					{formatProfesoradoHeader(tabla.profesorado_nombre)}
 				</Typography>
-				<Typography
-					variant="caption"
-					sx={{ fontWeight: "bold", color: headerTextColor }}
-				>
-					Plan Nº {tabla.plan_resolucion || "---"}
-				</Typography>
 			</Box>
 
 			{/* SUB-HEADER (TURNO, AÑO, SALON) */}
