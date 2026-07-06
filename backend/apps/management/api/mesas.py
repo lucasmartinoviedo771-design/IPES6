@@ -98,7 +98,7 @@ def list_mesas(
     from core.permissions import can, get_user_roles, require
 
     user_roles = get_user_roles(request.user)
-    
+
     active_role = request.headers.get("X-Active-Role", "").split(":")[0].lower()
     if active_role == "docente":
         is_docente_only = True
