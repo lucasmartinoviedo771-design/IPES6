@@ -59,6 +59,7 @@ from .notas_utils import (
 class RegularidadPlanillaOut(Schema):
     """Representa la estructura completa de una planilla de cátedra para el frontend."""
 
+    planilla_id: int | None = None
     materia_id: int
     materia_nombre: str
     materia_anio: int | None = None
@@ -433,7 +434,12 @@ def obtener_planilla_regularidad(request, comision_id: int):
         lock = regularidad_lock_for_scope(comision=comision)
         esta_cerrada = lock is not None
 
+        from core.models import PlanillaRegularidad
+        planilla_obj = PlanillaRegularidad.objects.filter(comision_id=comision.id).first()
+        planilla_id = planilla_obj.id if planilla_obj else None
+
         return RegularidadPlanillaOut(
+            planilla_id=planilla_id,
             materia_id=materia.id,
             materia_nombre=materia.nombre,
             materia_anio=materia.anio_cursada,
@@ -475,7 +481,12 @@ def obtener_planilla_regularidad(request, comision_id: int):
     lock = regularidad_lock_for_scope(materia=materia, anio_virtual=anio_virtual if anio_virtual is not None else 0)
     esta_cerrada = lock is not None
 
+    from core.models import PlanillaRegularidad
+    planilla_obj = PlanillaRegularidad.objects.filter(materia=materia, anio_virtual=anio_virtual, comision__isnull=True).first()
+    planilla_id = planilla_obj.id if planilla_obj else None
+
     return RegularidadPlanillaOut(
+        planilla_id=planilla_id,
         materia_id=materia.id,
         materia_nombre=materia.nombre,
         materia_anio=materia.anio_cursada,

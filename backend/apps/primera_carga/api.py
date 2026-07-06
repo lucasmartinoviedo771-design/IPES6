@@ -344,7 +344,7 @@ def listar_historial_regularidades(
     "/regularidades/planillas/{planilla_id}/pdf",
     response={200: Any, 403: ApiResponse, 404: ApiResponse},
 )
-@requires("primera_carga")
+@requires("carga_regularidades")
 def descargar_planilla_pdf(request, planilla_id: int):
     planilla = PlanillaRegularidad.objects.filter(id=planilla_id).first()
     if not planilla:

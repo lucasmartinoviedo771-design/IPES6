@@ -12,6 +12,11 @@ const sections: RoleDashboardSection[] = [
 				subtitle:
 					"Carga las notas finales de la mesa en la que integrás el tribunal.",
 			},
+			{
+				...DASHBOARD_ITEMS.REGULARIDAD_CARGA,
+				path: "/docentes/mis-materias",
+				subtitle: "Cargá y descargá la Planilla de Regularidad de tus materias (Bedelía).",
+			},
 		],
 	},
 	{

@@ -63,6 +63,7 @@ export type SituacionOptionDTO = {
 };
 
 export type RegularidadPlanillaDTO = {
+	planilla_id?: number | null;
 	materia_id: number;
 	materia_nombre: string;
 	materia_anio?: number | null;

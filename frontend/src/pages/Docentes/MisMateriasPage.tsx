@@ -230,6 +230,15 @@ export default function DocentesMisMateriasPage() {
 													>
 														Tomar Asistencia
 													</Button>
+													<Button
+														size="small"
+														variant="contained"
+														color="success"
+														sx={{ ml: 1 }}
+														onClick={() => navigate(`/docentes/regularidad/${comision.id}`)}
+													>
+														Cargar Regularidad
+													</Button>
 												</TableCell>
 											</TableRow>
 										))
