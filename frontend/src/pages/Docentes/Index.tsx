@@ -8,13 +8,6 @@ const sections: RoleDashboardSection[] = [
 		title: "Actas y calificaciones",
 		items: [
 			{
-				title: "Mis planillas de regularidad",
-				subtitle:
-					"Cargá y cerrá las planillas de tus materias del cuatrimestre actual.",
-				icon: DASHBOARD_ITEMS.REGULARIDAD_CARGA.icon,
-				path: "/docentes/mis-planillas",
-			},
-			{
 				...DASHBOARD_ITEMS.ACTAS_FINALES,
 				subtitle:
 					"Carga las notas finales de la mesa en la que integrás el tribunal.",
@@ -43,12 +36,6 @@ const sections: RoleDashboardSection[] = [
 				subtitle: "Consulta las materias asignadas y los inscriptos.",
 				icon: DASHBOARD_ITEMS.MATERIAS_ABM.icon,
 				path: "/docentes/mis-materias",
-			},
-			{
-				title: "Demo Tomar Asistencia",
-				subtitle: "Vista previa de la pantalla de toma de asistencia.",
-				icon: DASHBOARD_ITEMS.DOCENTE_ASISTENCIA.icon,
-				path: "/docentes/demo-asistencia",
 			},
 		],
 	},
