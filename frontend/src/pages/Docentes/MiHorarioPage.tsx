@@ -31,8 +31,21 @@ export default function MiHorarioPage() {
 		staleTime: 1000 * 60 * 5, // 5 minutos
 	});
 
+	const filteredTablas = tablas
+		? tablas.filter((tabla) => {
+				return tabla.celdas.some((celda) =>
+					celda.materias.some(
+						(materia) =>
+							materia.cuatrimestre === cuatrimestre ||
+							materia.cuatrimestre === "ANUAL" ||
+							materia.regimen === "ANUAL"
+					)
+				);
+		  })
+		: [];
+
 	const downloadPDF = async () => {
-		if (!exportRef.current || !tablas || tablas.length === 0) return;
+		if (!exportRef.current || filteredTablas.length === 0) return;
 
 		try {
 			enqueueSnackbar("Generando PDF, por favor espere...", {
@@ -52,16 +65,18 @@ export default function MiHorarioPage() {
 			const contentWidth = pdfWidth - margin * 2;
 			const contentHeight = pdfHeight - margin * 2;
 
-			for (let i = 0; i < tablas.length; i++) {
-				const tabla = tablas[i];
+			let pagesAdded = 0;
+			for (let i = 0; i < filteredTablas.length; i++) {
+				const tabla = filteredTablas[i];
 				const elementId = `horario-tabla-${tabla.key}`;
 				const element = document.getElementById(elementId);
 
 				if (!element) continue;
 
-				if (i > 0) {
+				if (pagesAdded > 0) {
 					pdf.addPage();
 				}
+				pagesAdded++;
 
 				const dataUrl = await toJpeg(element, {
 					quality: 0.95,
@@ -155,7 +170,7 @@ export default function MiHorarioPage() {
 				>
 					<CircularProgress sx={{ color: INSTITUTIONAL_TERRACOTTA }} />
 				</Box>
-			) : !tablas || tablas.length === 0 ? (
+			) : filteredTablas.length === 0 ? (
 				<Box
 					textAlign="center"
 					py={8}
@@ -201,7 +216,7 @@ export default function MiHorarioPage() {
 						</Stack>
 					</Box>
 					<Stack spacing={4} ref={exportRef}>
-					{tablas.map((tabla: HorarioTablaDTO) => (
+					{filteredTablas.map((tabla: HorarioTablaDTO) => (
 						<Box
 							key={tabla.key}
 							id={`horario-tabla-${tabla.key}`}
