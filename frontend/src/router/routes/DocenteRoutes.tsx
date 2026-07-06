@@ -6,9 +6,7 @@ import { lazyPage } from "@/utils/lazy";
 const TomarAsistenciaPage = lazyPage(
 	() => import("../../pages/Docentes/TomarAsistenciaPage"),
 );
-const TomarAsistenciaDemoPage = lazyPage(
-	() => import("../../pages/Docentes/TomarAsistenciaDemoPage"),
-);
+
 const MisPlanillasPage = lazyPage(
 	() => import("../../pages/Docentes/mis-planillas/MisPlanillasPage"),
 );
@@ -32,10 +30,7 @@ export const buildDocenteRoutes = () => (
 				path="/docentes/clases/:claseId/asistencia"
 				element={<TomarAsistenciaPage />}
 			/>
-			<Route
-				path="/docentes/demo-asistencia"
-				element={<TomarAsistenciaDemoPage />}
-			/>
+
 		</Route>
 		<Route
 			element={
