@@ -98,10 +98,15 @@ def list_mesas(
     from core.permissions import can, get_user_roles, require
 
     user_roles = get_user_roles(request.user)
-    is_docente_only = "docente" in user_roles and not can(request.user, "ver_estructura")
+    
+    active_role = request.headers.get("X-Active-Role", "").split(":")[0].lower()
+    if active_role == "docente":
+        is_docente_only = True
+    else:
+        is_docente_only = "docente" in user_roles and not can(request.user, "ver_estructura")
 
     if is_docente_only:
-        require(request.user, "carga_notas")
+        require(request.user, "carga_finales")
     else:
         require(request.user, "ver_estructura")
 
