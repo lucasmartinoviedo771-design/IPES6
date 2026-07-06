@@ -16,11 +16,6 @@ from core.permissions import (
 from .schemas import DocenteIn, DocenteOut, DocenteRoleAssignIn, DocenteRoleAssignOut
 from .services.docente_service import DocenteService
 
-router = Router(tags=["Docentes"])
-
-from .horarios_api import router as horarios_router
-
-router.add_router("", horarios_router)
 
 
 def _ensure_structure_view(user):
@@ -29,6 +24,12 @@ def _ensure_structure_view(user):
 
 def _ensure_structure_edit(user):
     require(user, "editar_estructura")
+
+
+router = Router(tags=["Docentes"])
+
+from .horarios_api import router as horarios_router
+router.add_router("", horarios_router)
 
 
 @router.get("/", response=list[DocenteOut], auth=JWTAuth())
