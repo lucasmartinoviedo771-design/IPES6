@@ -15,6 +15,7 @@ import dayjs from "dayjs";
 import { useSnackbar } from "notistack";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import {
 	autoInscribirCursoIntro,
 	type CursoIntroCohorteDTO,
@@ -97,12 +98,17 @@ const CohorteCard: React.FC<{
 const CursoIntroductorioEstudiantePage: React.FC = () => {
 	const { enqueueSnackbar } = useSnackbar();
 	const queryClient = useQueryClient();
+	const { activeRole } = useAuth();
 	const [loadingCohorteId, setLoadingCohorteId] = useState<number | null>(null);
+
+	const isStudent = activeRole === "estudiante";
 
 	const { data, isLoading, isError } = useQuery({
 		queryKey: ["curso-intro", "estado"],
 		queryFn: fetchCursoIntroEstado,
 		staleTime: 60_000,
+		enabled: isStudent,
+		retry: false,
 	});
 
 	const mutation = useMutation({
@@ -150,7 +156,12 @@ const CursoIntroductorioEstudiantePage: React.FC = () => {
 				subtitle="Inscribite al curso introductorio institucional y consultá el estado de tu aprobación."
 			/>
 
-			{isLoading ? (
+			{!isStudent ? (
+				<Alert severity="warning" sx={{ mt: 3 }}>
+					Esta página es de uso exclusivo para estudiantes. Si sos administrador,
+					por favor utilizá el panel de control correspondiente en Secretaría.
+				</Alert>
+			) : isLoading ? (
 				<Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
 					<CircularProgress />
 				</Box>
