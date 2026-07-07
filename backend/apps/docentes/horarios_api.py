@@ -26,7 +26,9 @@ def get_mis_horarios(request):
     # el horario del docente via esa FK. En cambio, buscamos el HorarioCatedra
     # que corresponde a cada una de sus comisiones activas por materia+turno+anio.
     comisiones_docente = list(
-        Comision.objects.filter(docente=docente).exclude(estado="LIC").select_related("materia__plan_de_estudio__profesorado", "turno")
+        Comision.objects.filter(docente=docente)
+        .exclude(estado="LIC")
+        .select_related("materia__plan_de_estudio__profesorado", "turno")
     )
     if not comisiones_docente:
         return []

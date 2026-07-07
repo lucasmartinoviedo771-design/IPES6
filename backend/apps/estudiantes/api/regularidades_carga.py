@@ -435,6 +435,7 @@ def obtener_planilla_regularidad(request, comision_id: int):
         esta_cerrada = lock is not None
 
         from core.models import PlanillaRegularidad
+
         planilla_obj = PlanillaRegularidad.objects.filter(comision_id=comision.id).first()
         planilla_id = planilla_obj.id if planilla_obj else None
 
@@ -482,7 +483,10 @@ def obtener_planilla_regularidad(request, comision_id: int):
     esta_cerrada = lock is not None
 
     from core.models import PlanillaRegularidad
-    planilla_obj = PlanillaRegularidad.objects.filter(materia=materia, anio_virtual=anio_virtual, comision__isnull=True).first()
+
+    planilla_obj = PlanillaRegularidad.objects.filter(
+        materia=materia, anio_virtual=anio_virtual, comision__isnull=True
+    ).first()
     planilla_id = planilla_obj.id if planilla_obj else None
 
     return RegularidadPlanillaOut(
