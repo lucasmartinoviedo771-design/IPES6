@@ -148,7 +148,7 @@ export default function DocentesMisMateriasPage() {
 										<TableCell>Código comisión</TableCell>
 										<TableCell>Año lectivo</TableCell>
 										<TableCell>Turno</TableCell>
-										<TableCell align="right">Inscriptos</TableCell>
+										<TableCell align="right">Acciones</TableCell>
 									</TableRow>
 								</TableHead>
 								<TableBody>
@@ -179,75 +179,80 @@ export default function DocentesMisMateriasPage() {
 												<TableCell>{comision.anio_lectivo}</TableCell>
 												<TableCell>{comision.turno_nombre || "-"}</TableCell>
 												<TableCell align="right">
-													<Button
-														size="small"
-														variant="outlined"
-														onClick={() =>
-															navigate(
-																`/carreras/${comision.profesorado_id}/planes/${comision.plan_id}/materias/${comision.materia_id}/inscriptos`,
-																{
-																	state: {
-																		materiaNombre: comision.materia_nombre,
-																		planResolucion: comision.plan_resolucion,
-																		profesoradoNombre:
-																			comision.profesorado_nombre,
+													<Stack
+														direction="row"
+														spacing={1}
+														justifyContent="flex-end"
+														sx={{ whiteSpace: "nowrap" }}
+													>
+														<Button
+															size="small"
+															variant="outlined"
+															onClick={() =>
+																navigate(
+																	`/carreras/${comision.profesorado_id}/planes/${comision.plan_id}/materias/${comision.materia_id}/inscriptos`,
+																	{
+																		state: {
+																			materiaNombre: comision.materia_nombre,
+																			planResolucion: comision.plan_resolucion,
+																			profesoradoNombre:
+																				comision.profesorado_nombre,
+																		},
 																	},
-																},
-															)
-														}
-													>
-														Ver inscriptos
-													</Button>
-													<Button
-														size="small"
-														variant="contained"
-														color="primary"
-														sx={{ ml: 1 }}
-														onClick={async () => {
-															if (!user?.dni) return;
-															try {
-																const d = new Date();
-																const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-																const { fetchDocenteClases } = await import(
-																	"@/api/asistencia"
-																);
-																const data = await fetchDocenteClases(
-																	user.dni,
-																	{ fecha: today },
-																);
-																const claseHoy = data.clases.find(
-																	(c) => c.comision_id === comision.id,
-																);
-
-																if (claseHoy) {
-																	navigate(
-																		`/docentes/clases/${claseHoy.id}/asistencia`,
-																	);
-																} else {
-																	alert(
-																		"No tenés clases programadas para hoy en esta comisión.",
-																	);
-																}
-															} catch (_e) {
-																void 0;
-																alert("Error al buscar la clase de hoy.");
+																)
 															}
-														}}
-													>
-														Tomar Asistencia
-													</Button>
-													<Button
-														size="small"
-														variant="contained"
-														color="success"
-														sx={{ ml: 1 }}
-														onClick={() => {
-															setSelectedComisionId(comision.id);
-															setOpenPlanilla(true);
-														}}
-													>
-														Cargar Regularidad
-													</Button>
+														>
+															Ver inscriptos
+														</Button>
+														<Button
+															size="small"
+															variant="contained"
+															color="primary"
+															onClick={async () => {
+																if (!user?.dni) return;
+																try {
+																	const d = new Date();
+																	const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+																	const { fetchDocenteClases } = await import(
+																		"@/api/asistencia"
+																	);
+																	const data = await fetchDocenteClases(
+																		user.dni,
+																		{ fecha: today },
+																	);
+																	const claseHoy = data.clases.find(
+																		(c) => c.comision_id === comision.id,
+																	);
+
+																	if (claseHoy) {
+																		navigate(
+																			`/docentes/clases/${claseHoy.id}/asistencia`,
+																		);
+																	} else {
+																		alert(
+																			"No tenés clases programadas para hoy en esta comisión.",
+																		);
+																	}
+																} catch (_e) {
+																	void 0;
+																	alert("Error al buscar la clase de hoy.");
+																}
+															}}
+														>
+															Tomar Asistencia
+														</Button>
+														<Button
+															size="small"
+															variant="contained"
+															color="success"
+															onClick={() => {
+																setSelectedComisionId(comision.id);
+																setOpenPlanilla(true);
+															}}
+														>
+															Cargar Regularidad
+														</Button>
+													</Stack>
 												</TableCell>
 											</TableRow>
 										))
