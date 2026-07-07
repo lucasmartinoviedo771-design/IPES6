@@ -60,9 +60,8 @@ const baseSchema = z.object({
 	// Contacto
 	email: z
 		.string()
-		.regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "Email inválido")
-		.optional()
-		.or(z.literal("")),
+		.min(1, "Ingresá un correo electrónico")
+		.regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "Email inválido"),
 	tel_movil: z.string().optional().or(z.literal("")),
 	tel_fijo: z.string().optional().or(z.literal("")),
 

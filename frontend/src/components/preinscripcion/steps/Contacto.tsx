@@ -23,6 +23,7 @@ export default function Contacto() {
 								{...field}
 								label="Email"
 								fullWidth
+								required
 								error={!!fieldState.error}
 								helperText={fieldState.error?.message}
 							/>

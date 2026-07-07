@@ -17,7 +17,7 @@ class EstudianteIn(Schema):
     apellido: str
     cuil: str | None = None
     fecha_nacimiento: date
-    email: str | None = None
+    email: str
     telefono: str | None = None
     domicilio: str | None = None
 
