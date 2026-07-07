@@ -444,8 +444,8 @@ const TramitesEstudiantePage: React.FC = () => {
 		<Box sx={{ p: 3, bgcolor: "#fdfcf9", minHeight: "100vh" }}>
 			<BackButton fallbackPath="/estudiantes" />
 			<PageHero
-				title="Mis Trámites"
-				subtitle="Gestioná tus pedidos de analítico, equivalencias y consultá tus resultados."
+				title="Analíticos y Equivalencias"
+				subtitle="Solicitá Analítico o iniciá y seguí tu pedidos de equivalencia."
 			/>
 
 			<Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3, mt: 2 }}>

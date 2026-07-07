@@ -190,9 +190,9 @@ const baseSections: Section[] = [
 				path: "/estudiantes/cambio-comision",
 			},
 			{
-				title: "Mis Trámites",
+				title: "Analíticos y Equivalencias",
 				subtitle:
-					"Solicitá tu analítico, tramitá equivalencias y consultá tus resultados.",
+					"Solicitá Analítico o iniciá y seguí tu pedidos de equivalencia.",
 				icon: <School />,
 				path: "/estudiantes/tramites",
 			},
