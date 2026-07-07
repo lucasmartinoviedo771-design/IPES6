@@ -357,12 +357,12 @@ export default function EstudiantesIndex() {
 			};
 		});
 
-		// 4. Ordenar: activos primero, luego futuros, luego sin fecha (unscheduled), al final cerrados
+		// 4. Ordenar: activos primero, luego futuros, luego cerrados (vencidos), al final sin fecha
 		const displayOrder: Record<string, number> = {
 			active: 1,
 			future: 2,
-			unscheduled: 3,
-			closed: 4,
+			closed: 3,
+			unscheduled: 4,
 		};
 		return result.sort((a, b) => {
 			if (displayOrder[a.status] !== displayOrder[b.status]) {
