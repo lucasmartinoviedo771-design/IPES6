@@ -459,24 +459,40 @@ export default function EstudiantesIndex() {
 				<Typography variant="body2" color="text.secondary">
 					Mantenete al día con las fechas importantes del ciclo académico.
 				</Typography>
-				<Grid container spacing={2} sx={{ mt: 1 }}>
+				{/* --- INICIO DEL CARRUSEL HORIZONTAL --- */}
+				<Box
+					sx={{
+						display: "flex",
+						gap: 2,
+						overflowX: "auto",
+						pb: 2, // Espacio inferior para que la barra de scroll no pise las tarjetas
+						pt: 1,
+						scrollSnapType: "x mandatory", // Efecto de imán al deslizar
+						"&::-webkit-scrollbar": {
+							height: 6, // Barra de scroll bien sutil
+						},
+						"&::-webkit-scrollbar-thumb": {
+							backgroundColor: "rgba(0,0,0,0.15)",
+							borderRadius: 4,
+						},
+						"&::-webkit-scrollbar-track": {
+							backgroundColor: "rgba(0,0,0,0.03)",
+						},
+					}}
+				>
 					{!ventanas ? (
-						<Grid item xs={12}>
-							<Typography variant="body2" color="text.secondary">
-								Cargando eventos...
-							</Typography>
-						</Grid>
+						<Typography variant="body2" color="text.secondary">
+							Cargando eventos...
+						</Typography>
 					) : dynamicEvents.length === 0 ? (
-						<Grid item xs={12}>
-							<Typography variant="body2" color="text.secondary">
-								No hay eventos próximos.
-							</Typography>
-						</Grid>
+						<Typography variant="body2" color="text.secondary">
+							No hay eventos próximos.
+						</Typography>
 					) : (
 						dynamicEvents.map((event) => {
 							const isActive = event.status === "active";
 							const isFuture = event.status === "future";
-														const isClosed = event.status === "closed";
+							const isClosed = event.status === "closed";
 							const isUnscheduled = event.status === "unscheduled";
 
 							const VIBRANT_GREEN = "#2D8C3C";
@@ -484,7 +500,15 @@ export default function EstudiantesIndex() {
 							const UNSCHEDULED_COLOR = "#7d7f6e";
 
 							return (
-								<Grid item xs={12} sm={6} md={4} key={event.id || event.title}>
+								<Box
+									key={event.id || event.title}
+									sx={{
+										// Definimos un ancho fijo cómodo para las tarjetas en la fila
+										minWidth: { xs: "290px", sm: "340px" },
+										maxWidth: { xs: "290px", sm: "340px" },
+										scrollSnapAlign: "start",
+									}}
+								>
 									<Box
 										sx={{
 											position: "relative",
@@ -492,6 +516,8 @@ export default function EstudiantesIndex() {
 											alignItems: "center",
 											p: 1.5,
 											borderRadius: 2,
+											height: "100%", // Asegura que todas midan lo mismo si crecen por texto
+											boxSizing: "border-box",
 											border: isActive
 												? `1.5px solid ${VIBRANT_GREEN}`
 												: isFuture
@@ -556,11 +582,11 @@ export default function EstudiantesIndex() {
 											})}
 										</Box>
 
-										<Box sx={{ flexGrow: 1, pr: 8 }}>
+										<Box sx={{ flexGrow: 1, pr: 7 }}>
 											<Typography
 												variant="subtitle2"
 												fontWeight={800}
-												sx={{ lineHeight: 1.1, mb: 0.2, fontSize: "1rem" }}
+												sx={{ lineHeight: 1.1, mb: 0.2, fontSize: "0.95rem" }}
 											>
 												{event.title}
 											</Typography>
@@ -638,11 +664,12 @@ export default function EstudiantesIndex() {
 											</Stack>
 										</Box>
 									</Box>
-								</Grid>
+								</Box>
 							);
 						})
 					)}
-				</Grid>
+				</Box>
+				{/* --- FIN DEL CARRUSEL --- */}
 			</Stack>
 
 			{sections.map((section) => (
