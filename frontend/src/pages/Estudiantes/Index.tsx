@@ -198,8 +198,7 @@ const baseSections: Section[] = [
 			},
 			{
 				title: "Mesa de Examen",
-				subtitle:
-					"Inscríbete a mesas de examen (plan tabla, finales, libres, ortográficas).",
+				subtitle: "Inscribite a mesas de examen.",
 				icon: <CalendarMonth />,
 				path: "/estudiantes/mesa-examen",
 			},
