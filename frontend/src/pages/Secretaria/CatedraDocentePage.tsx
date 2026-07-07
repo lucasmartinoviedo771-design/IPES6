@@ -200,9 +200,45 @@ export default function CatedraDocentePage() {
 		try {
 			const existing = comisiones.filter((c) => c.materia_id === dlgMateria.id);
 
+			// Reemplazo de docente 1 a 1: si una fila existente pasa a "En Licencia"/"Cerrada"
+			// y se agregó exactamente una fila nueva, fusionamos ambas en la comisión existente
+			// (mismo id) en vez de crear una comisión nueva. Los estudiantes ya inscriptos están
+			// atados al id de la comisión existente, así que crear una comisión aparte para el
+			// docente entrante los deja separados del resto del grupo.
+			const nuevas = dlgAsignaciones.filter((a) => !a.id && a.docenteId !== 0);
+			const saliente = dlgAsignaciones.find((a) => {
+				if (!a.id) return false;
+				const original = existing.find((ex) => ex.id === a.id);
+				return (
+					!!original &&
+					original.estado !== a.estado &&
+					(a.estado === "LIC" || a.estado === "CER")
+				);
+			});
+
+			let asignaciones = dlgAsignaciones;
+			if (nuevas.length === 1 && saliente) {
+				const entrante = nuevas[0];
+				asignaciones = dlgAsignaciones
+					.filter((a) => a !== entrante)
+					.map((a) =>
+						a === saliente
+							? {
+									...a,
+									docenteId: entrante.docenteId,
+									rol: entrante.rol,
+									estado: entrante.estado,
+								}
+							: a,
+					);
+				toast.success(
+					"Reemplazo de docente detectado: se mantiene la misma comisión para no separar a los estudiantes ya inscriptos.",
+				);
+			}
+
 			// Mapear los ids que se conservan en la edición
 			const preservedIds = new Set(
-				dlgAsignaciones
+				asignaciones
 					.map((a) => a.id)
 					.filter((id): id is number => typeof id === "number"),
 			);
@@ -229,7 +265,7 @@ export default function CatedraDocentePage() {
 			}
 
 			// 2. Procesar las asignaciones actuales (crear o actualizar)
-			for (const asig of dlgAsignaciones) {
+			for (const asig of asignaciones) {
 				if (asig.docenteId === 0) continue;
 
 				const payload = {
