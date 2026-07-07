@@ -143,7 +143,14 @@ def list_comisiones(
 
 @router.post("/", response=ComisionOut, auth=JWTAuth())
 def create_comision(request, payload: ComisionIn):
-    """Crea manualmente una comisión para una materia específica."""
+    """Crea manualmente una comisión para una materia específica.
+
+    Si ya existe una única comisión "vacante" (En Licencia o Cerrada) para la
+    misma materia/año/código, se reutiliza ese registro en vez de crear uno
+    nuevo: los estudiantes ya inscriptos están atados al id de la comisión, y
+    crear una fila aparte para el docente entrante los dejaría separados del
+    resto del grupo (ver reemplazos de docente por licencia).
+    """
     _require_manage(request.user)
     materia = get_object_or_404(Materia, id=payload.materia_id)
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
@@ -157,6 +164,31 @@ def create_comision(request, payload: ComisionIn):
         hc = HorarioCatedra.objects.filter(espacio=materia, turno_id=payload.turno_id).first()
         if hc:
             horario_id = hc.id
+
+    vacantes = list(
+        Comision.objects.filter(
+            materia=materia,
+            anio_lectivo=payload.anio_lectivo,
+            codigo=payload.codigo,
+            estado__in=[Comision.Estado.LICENCIA, Comision.Estado.CERRADA],
+        )
+    )
+    if len(vacantes) == 1:
+        comision = vacantes[0]
+        docente_anterior = str(comision.docente) if comision.docente_id else None
+        comision.docente_id = payload.docente_id
+        comision.turno_id = payload.turno_id
+        comision.horario_id = horario_id
+        comision.cupo_maximo = payload.cupo_maximo
+        comision.estado = estado
+        comision.rol = (payload.rol or Comision.Rol.TITULAR).upper()
+        if payload.observaciones:
+            comision.observaciones = payload.observaciones
+        elif docente_anterior:
+            nota = f"Reemplazo de docente: sucede a {docente_anterior}."
+            comision.observaciones = f"{comision.observaciones}\n{nota}".strip() if comision.observaciones else nota
+        comision.save()
+        return _serialize_comision(comision)
 
     comision = Comision.objects.create(
         materia=materia,
