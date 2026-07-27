@@ -48,10 +48,10 @@ if [ -z "$DB_ROOT_PASSWORD" ]; then
 fi
 
 # 4. Configurar nombres y rutas
-TIMESTAMP=$(date +%Y%m%d_%H%M)
+TIMESTAMP=$(date +%Y%m%d)
 BACKUP_DIR="/home/ipesrg/sistema-gestion/backups"
-TEMP_DIR="${BACKUP_DIR}/backup_IPES6_${TIMESTAMP}"
-TARBALL_FILE="${BACKUP_DIR}/backup_IPES6_${TIMESTAMP}.tar.gz"
+TEMP_DIR="${BACKUP_DIR}/backup_IPES6_COMPLETO_${TIMESTAMP}"
+TARBALL_FILE="${BACKUP_DIR}/backup_IPES6_COMPLETO_${TIMESTAMP}.tar.gz"
 
 echo "📂 Creando directorios de trabajo..."
 mkdir -p "$BACKUP_DIR"
@@ -108,7 +108,7 @@ fi
 
 # 9. Comprimir carpeta de backup completa
 echo "🤐 Comprimiendo todo en $TARBALL_FILE..."
-tar -czf "$TARBALL_FILE" -C "$BACKUP_DIR" "backup_IPES6_${TIMESTAMP}"
+tar -czf "$TARBALL_FILE" -C "$BACKUP_DIR" "backup_IPES6_COMPLETO_${TIMESTAMP}"
 
 # 10. Limpieza
 echo "🧹 Limpiando archivos temporales..."
