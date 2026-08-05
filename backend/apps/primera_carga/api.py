@@ -484,7 +484,11 @@ def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | No
                 InscripcionMateriaEstudiante.Estado.CONDICIONAL,
             ],
         )
-        .select_related("estudiante__persona")
+        .exclude(
+            estudiante__planillas_regularidad__planilla__materia_id=materia_id,
+            estudiante__planillas_regularidad__planilla__estado=PlanillaRegularidad.Estado.FINAL,
+        )
+        .select_related("estudiante__persona", "materia_origen__plan_de_estudio__profesorado")
         .order_by("estudiante__persona__apellido", "estudiante__persona__nombre")
     )
 
@@ -492,6 +496,7 @@ def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | No
         {
             "dni": insc.estudiante.dni,
             "apellido_nombre": f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}".strip(", "),
+            "profesorado_origen": insc.materia_origen.plan_de_estudio.profesorado.nombre if insc.materia_origen_id else None,
         }
         for insc in inscripciones
     ]

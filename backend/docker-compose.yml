@@ -32,7 +32,7 @@ services:
     restart: always
     env_file:
       - .env
-    command: /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile - --reload
+    command: /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile /app/logs/gunicorn_access.log --error-logfile /app/logs/gunicorn_error.log --reload
     depends_on:
       db:
         condition: service_healthy
@@ -57,6 +57,7 @@ services:
       - ./manage.py:/app/manage.py
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - ../logs/backend:/app/logs
     ports:
       - "127.0.0.1:8000:8000"
 
@@ -74,6 +75,7 @@ services:
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - ../logs/frontend:/var/log/nginx
       # - /home/admin486321/ssl:/etc/nginx/ssl:ro  # SSL will be handled by Hestia reverse proxy
 
 volumes:

@@ -83,6 +83,7 @@ class EstudianteDocumentacionListItem(Schema):
     apellido: str
     nombre: str
     email: str
+    fecha_inscripcion: str | None = None
     condicion_administrativa: str
     curso_introductorio_aprobado: bool
     libreta_entregada: bool

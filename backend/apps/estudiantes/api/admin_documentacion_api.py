@@ -54,21 +54,26 @@ def admin_list_estudiantes_documentacion(
     q: str | None = None,
     carrera_id: int | None = None,
     estado_academico: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
-    """
-    Obtiene la nómina de estudiantes con el estado de su documentación física.
-    Esencial para el seguimiento de legajos incompletos o pendientes de entrega.
-    """
-    require(request.user, "ver_estudiantes")
-    total, items = _get_estudiantes_documentacion_raw(
-        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico, limit=limit, offset=offset
-    )
-    return EstudianteDocumentacionListResponse(total=total, items=items)
+    try:
+        require(request.user, "ver_estudiantes")
+        total, items = _get_estudiantes_documentacion_raw(
+            request, q=q, carrera_id=carrera_id, estado_academico=estado_academico,
+            fecha_desde=fecha_desde, fecha_hasta=fecha_hasta, limit=limit, offset=offset
+        )
+        return EstudianteDocumentacionListResponse(total=total, items=items)
+    except Exception as e:
+        import sys, traceback
+        print("ERROR IN admin_list_estudiantes_documentacion:", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise e
 
 
-def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_academico=None, limit=None, offset=0):
+def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_academico=None, fecha_desde=None, fecha_hasta=None, limit=None, offset=0):
     """
     Lógica interna para consolidar datos de documentación de múltiples fuentes.
     Integra información de Estudiante, PreinscripcionChecklist y datos_extra.
@@ -95,6 +100,11 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
                 | Q(persona__nombre__icontains=q_clean)
                 | Q(persona__apellido__icontains=q_clean)
             )
+
+    if fecha_desde:
+        qs = qs.filter(user__date_joined__date__gte=fecha_desde)
+    if fecha_hasta:
+        qs = qs.filter(user__date_joined__date__lte=fecha_hasta)
 
     if carrera_id:
         if allowed_ids is not None and int(carrera_id) not in allowed_ids:
@@ -208,6 +218,7 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
                 apellido=persona.apellido if persona else "",
                 nombre=persona.nombre if persona else "",
                 email=user.email if user else "",
+                fecha_inscripcion=user.date_joined.strftime("%Y-%m-%d") if user and user.date_joined else None,
                 condicion_administrativa=condicion,
                 curso_introductorio_aprobado=est.curso_introductorio_aprobado,
                 libreta_entregada=est.libreta_entregada,
@@ -224,12 +235,14 @@ def _get_estudiantes_documentacion_raw(request, q=None, carrera_id=None, estado_
 
 @router.get("/admin/estudiantes-documentacion/export/excel")
 def admin_export_estudiantes_documentacion_excel(
-    request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None
+    request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None,
+    fecha_desde: str | None = None, fecha_hasta: str | None = None
 ):
     """Genera exportación Excel de la nómina de documentación para auditoría interna."""
     require(request.user, "ver_estudiantes")
     _total, items = _get_estudiantes_documentacion_raw(
-        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico
+        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico,
+        fecha_desde=fecha_desde, fecha_hasta=fecha_hasta
     )
 
     from io import BytesIO
@@ -247,6 +260,7 @@ def admin_export_estudiantes_documentacion_excel(
         "Apellido",
         "Nombre",
         "Correo",
+        "Fecha Insc.",
         "Condición",
         "CI",
         "Libreta",
@@ -294,12 +308,14 @@ def admin_export_estudiantes_documentacion_excel(
 
 @router.get("/admin/estudiantes-documentacion/export/pdf")
 def admin_export_estudiantes_documentacion_pdf(
-    request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None
+    request, q: str | None = None, carrera_id: int | None = None, estado_academico: str | None = None,
+    fecha_desde: str | None = None, fecha_hasta: str | None = None
 ):
-    """Genera exportación PDF de la nómina de documentación (formato imprimible)."""
+    """Genera exportación en PDF de la nómina de documentación para impresión rápida."""
     require(request.user, "ver_estudiantes")
     _total, items = _get_estudiantes_documentacion_raw(
-        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico
+        request, q=q, carrera_id=carrera_id, estado_academico=estado_academico,
+        fecha_desde=fecha_desde, fecha_hasta=fecha_hasta
     )
 
     import datetime

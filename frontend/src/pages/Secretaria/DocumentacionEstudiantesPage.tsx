@@ -134,6 +134,8 @@ export default function DocumentacionEstudiantesPage() {
 	const debouncedSearch = useDebouncedValue(search);
 	const [carreraId, setCarreraId] = useState<number | "">("");
 	const [estadoAcademico, setEstadoAcademico] = useState<string>("ACT");
+	const [fechaDesde, setFechaDesde] = useState<string>("");
+	const [fechaHasta, setFechaHasta] = useState<string>("");
 	const [sortConfig, setSortConfig] = useState<{
 		key: SortKey;
 		direction: "asc" | "desc";
@@ -159,7 +161,7 @@ export default function DocumentacionEstudiantesPage() {
 	// Resetear página al cambiar filtros
 	useEffect(() => {
 		setPage(0);
-	}, [debouncedSearch, carreraId]);
+	}, [debouncedSearch, carreraId, estadoAcademico, fechaDesde, fechaHasta]);
 
 	// Auto-selección de profesorado para Bedeles con una sola carrera
 	useEffect(() => {
@@ -173,9 +175,11 @@ export default function DocumentacionEstudiantesPage() {
 			q: debouncedSearch || undefined,
 			carrera_id: typeof carreraId === "number" ? carreraId : undefined,
 			estado_academico: estadoAcademico || undefined,
+			fecha_desde: fechaDesde || undefined,
+			fecha_hasta: fechaHasta || undefined,
 			limit: 2000,
 		}),
-		[debouncedSearch, carreraId, estadoAcademico],
+		[debouncedSearch, carreraId, estadoAcademico, fechaDesde, fechaHasta],
 	);
 
 	const { data, isLoading, isFetching, isError, error } = useQuery({
@@ -188,8 +192,8 @@ export default function DocumentacionEstudiantesPage() {
 	const sortedStudents = useMemo(() => {
 		const items = [...(data?.items ?? [])];
 		items.sort((a, b) => {
-			const aVal = a[sortConfig.key];
-			const bVal = b[sortConfig.key];
+			const aVal = a[sortConfig.key] ?? "";
+			const bVal = b[sortConfig.key] ?? "";
 			if (aVal === bVal) return 0;
 			const result = aVal < bVal ? -1 : 1;
 			return sortConfig.direction === "asc" ? result : -result;
@@ -441,6 +445,24 @@ export default function DocumentacionEstudiantesPage() {
 							))}
 						</Select>
 					</FormControl>
+
+					<TextField
+						label="Desde"
+						type="date"
+						size="small"
+						InputLabelProps={{ shrink: true }}
+						value={fechaDesde}
+						onChange={(e) => setFechaDesde(e.target.value)}
+					/>
+					
+					<TextField
+						label="Hasta"
+						type="date"
+						size="small"
+						InputLabelProps={{ shrink: true }}
+						value={fechaHasta}
+						onChange={(e) => setFechaHasta(e.target.value)}
+					/>
 				</Paper>
 
 				<Paper
@@ -495,6 +517,10 @@ export default function DocumentacionEstudiantesPage() {
 								<TableRow>
 									<SortLabel label="DNI" sortKey="dni" />
 									<SortLabel label="Apellido y Nombre" sortKey="apellido" />
+									<SortLabel
+										label="Fecha Insc."
+										sortKey="fecha_inscripcion"
+									/>
 									<SortLabel
 										label="Condición Admin."
 										sortKey="condicion_administrativa"
@@ -571,6 +597,13 @@ export default function DocumentacionEstudiantesPage() {
 												<TableCell
 													sx={{ fontWeight: 600 }}
 												>{`${est.apellido.toUpperCase()}, ${est.nombre}`}</TableCell>
+												
+												<TableCell>
+													<Typography variant="body2">
+														{est.fecha_inscripcion || "-"}
+													</Typography>
+												</TableCell>
+
 												<TableCell align="center">
 													<Chip
 														label={est.condicion_administrativa}

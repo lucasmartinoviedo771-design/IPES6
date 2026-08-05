@@ -3,6 +3,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
+import Chip from "@mui/material/Chip";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -216,85 +217,106 @@ export const FilasTable: React.FC<FilasTableProps> = ({
 								/>
 							</TableCell>
 							<TableCell sx={{ ...bodyCellSx, minWidth: 320 }}>
-								<Controller
-									control={control}
-									name={`filas.${index}.apellido_nombre`}
-									render={({ field: controllerField }) => (
-										<Autocomplete
-											freeSolo
-											disabled={isReadOnly}
-											options={estudiantesMetadata}
-											getOptionLabel={(option) => {
-												if (typeof option === "string") return option;
-												return `${option.apellido_nombre} (${option.dni})`;
-											}}
-											value={
-												estudiantesMetadata.find(
-													(e) =>
-														e.apellido_nombre === controllerField.value &&
-														e.dni === watch(`filas.${index}.dni`),
-												) || controllerField.value
-											}
-											onChange={(_, value) => {
-												if (typeof value === "string") {
-													// Intentar extraer DNI si viene formateado como "Nombre (DNI)"
-													const match = value.match(/(.*) \((\d+)\)$/);
-													if (match) {
-														controllerField.onChange(match[1].trim());
-														setValue(`filas.${index}.dni`, match[2], {
-															shouldDirty: true,
-														});
-													} else {
-														controllerField.onChange(value);
+								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+									<Box sx={{ flex: 1 }}>
+										<Controller
+											control={control}
+											name={`filas.${index}.apellido_nombre`}
+											render={({ field: controllerField }) => (
+												<Autocomplete
+													freeSolo
+													disabled={isReadOnly}
+													options={estudiantesMetadata}
+													getOptionLabel={(option) => {
+														if (typeof option === "string") return option;
+														return `${option.apellido_nombre} (${option.dni})`;
+													}}
+													value={
+														estudiantesMetadata.find(
+															(e) =>
+																e.apellido_nombre === controllerField.value &&
+																e.dni === watch(`filas.${index}.dni`),
+														) || controllerField.value
 													}
-												} else if (value) {
-													controllerField.onChange(value.apellido_nombre);
-													setValue(`filas.${index}.dni`, value.dni, {
-														shouldDirty: true,
-													});
-												} else {
-													controllerField.onChange("");
-												}
-											}}
-											onInputChange={(_, value) => {
-												// Eliminar el (DNI) de la visualización al escribir si es necesario
-												const match = value.match(/(.*) \((\d+)\)$/);
-												controllerField.onChange(
-													match ? match[1].trim() : value,
-												);
-											}}
-											renderOption={(props, option) => {
-																								const { key, ...restProps } = props as any;
-												return (
-													<li key={option.dni} {...restProps}>
-														<Box>
-															<Typography variant="body2">
-																{option.apellido_nombre}
-															</Typography>
-															<Typography
-																variant="caption"
-																color="text.secondary"
-															>
-																DNI: {option.dni}
-															</Typography>
-														</Box>
-													</li>
-												);
-											}}
-																						renderInput={(params: any) => (
-												<TextField
-													{...params}
-													size="small"
-													fullWidth
-													placeholder="Apellido y nombre"
-													required
-													autoComplete="off"
+													onChange={(_, value) => {
+														if (typeof value === "string") {
+															// Intentar extraer DNI si viene formateado como "Nombre (DNI)"
+															const match = value.match(/(.*) \((\d+)\)$/);
+															if (match) {
+																controllerField.onChange(match[1].trim());
+																setValue(`filas.${index}.dni`, match[2], {
+																	shouldDirty: true,
+																});
+															} else {
+																controllerField.onChange(value);
+															}
+														} else if (value) {
+															controllerField.onChange(value.apellido_nombre);
+															setValue(`filas.${index}.dni`, value.dni, {
+																shouldDirty: true,
+															});
+															if (value.profesorado_origen) {
+																setValue(`filas.${index}.profesorado_origen`, value.profesorado_origen, { shouldDirty: true });
+															}
+														} else {
+															controllerField.onChange("");
+														}
+													}}
+													onInputChange={(_, value) => {
+														// Eliminar el (DNI) de la visualización al escribir si es necesario
+														const match = value.match(/(.*) \((\d+)\)$/);
+														controllerField.onChange(
+															match ? match[1].trim() : value,
+														);
+													}}
+													renderOption={(props, option) => {
+														const { key, ...restProps } = props as any;
+														return (
+															<li key={option.dni} {...restProps}>
+																<Box>
+																	<Typography variant="body2">
+																		{option.apellido_nombre}
+																	</Typography>
+																	<Typography
+																		variant="caption"
+																		color="text.secondary"
+																	>
+																		DNI: {option.dni}
+																	</Typography>
+																	{option.profesorado_origen && (
+																		<Typography variant="caption" color="primary" sx={{ display: 'block' }}>
+																			Comisionado: {option.profesorado_origen}
+																		</Typography>
+																	)}
+																</Box>
+															</li>
+														);
+													}}
+													renderInput={(params: any) => (
+														<TextField
+															{...params}
+															size="small"
+															fullWidth
+															placeholder="Apellido y nombre"
+															required
+															autoComplete="off"
+														/>
+													)}
+													noOptionsText="No se encontraron estudiantes"
 												/>
 											)}
-											noOptionsText="No se encontraron estudiantes"
+										/>
+									</Box>
+									{watch(`filas.${index}.profesorado_origen`) && (
+										<Chip
+											label={watch(`filas.${index}.profesorado_origen`)}
+											color="info"
+											size="small"
+											variant="outlined"
+											sx={{ maxWidth: 150 }}
 										/>
 									)}
-								/>
+								</Box>
 							</TableCell>
 							<TableCell sx={{ ...bodyCellSx, width: 100 }}>
 								<Controller

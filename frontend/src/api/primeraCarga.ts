@@ -413,9 +413,9 @@ export const listarHistoricoMesasPandemia = async (params?: {
 export const obtenerInscriptosActivos = async (
 	materiaId: number,
 	anio?: number,
-): Promise<Array<{ dni: string; apellido_nombre: string }>> => {
+): Promise<Array<{ dni: string; apellido_nombre: string; profesorado_origen?: string | null }>> => {
 	const { data } = await api.get<
-		Array<{ dni: string; apellido_nombre: string }>
+		Array<{ dni: string; apellido_nombre: string; profesorado_origen?: string | null }>
 	>(
 		`/admin/primera-carga/regularidades/materias/${materiaId}/inscriptos-activos`,
 		{ params: { anio } },

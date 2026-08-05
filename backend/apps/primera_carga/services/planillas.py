@@ -309,6 +309,10 @@ def crear_planilla_regularidad(
             excepcion = fila_data.get("excepcion")
             excepcion_bool = _to_bool(str(excepcion)) if isinstance(excepcion, str) else bool(excepcion)
             datos_extra = _limpiar_datos_fila(fila_data.get("datos"), columnas)
+            
+            prof_origen = fila_data.get("profesorado_origen")
+            if prof_origen:
+                datos_extra["profesorado_origen"] = prof_origen
 
             fila_obj = PlanillaRegularidadFila.objects.create(
                 planilla=planilla,
@@ -449,6 +453,7 @@ def obtener_planilla_regularidad_detalle(planilla_id: int) -> dict:
                 "situacion": alias_desde_situacion(f.situacion) or f.situacion,
                 "excepcion": f.excepcion,
                 "datos": f.datos,
+                "profesorado_origen": f.datos.get("profesorado_origen") if f.datos else None,
             }
         )
     return {
@@ -647,6 +652,10 @@ def actualizar_planilla_regularidad(
                     pass
 
                 datos_extra_limpios = _limpiar_datos_fila(f_data.get("datos"), columnas)
+                prof_origen = f_data.get("profesorado_origen")
+                if prof_origen:
+                    datos_extra_limpios["profesorado_origen"] = prof_origen
+                
                 fila_obj = PlanillaRegularidadFila.objects.create(
                     planilla=planilla,
                     orden=orden,

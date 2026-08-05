@@ -697,6 +697,7 @@ export interface EstudianteDocumentacionListItemDTO {
 	dni: string;
 	apellido: string;
 	nombre: string;
+	fecha_inscripcion?: string;
 	condicion_administrativa: string;
 	curso_introductorio_aprobado: boolean;
 	libreta_entregada: boolean;

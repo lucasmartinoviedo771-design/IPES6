@@ -93,6 +93,9 @@ const DocumentacionEstudiantesPage = lazyPage(
 const AnalisisMateriaPage = lazyPage(
 	() => import("../../pages/Secretaria/AnalisisMateriaPage"),
 );
+const ReimprimirPreinscripcionPage = lazyPage(
+	() => import("../../pages/Secretaria/ReimprimirPreinscripcionPage"),
+);
 
 export const buildSecretariaRoutes = () => (
 	<>
@@ -193,6 +196,10 @@ export const buildSecretariaRoutes = () => (
 			<Route
 				path="/secretaria/estudiantes-documentacion"
 				element={<DocumentacionEstudiantesPage />}
+			/>
+			<Route
+				path="/secretaria/reimprimir-preinscripcion"
+				element={<ReimprimirPreinscripcionPage />}
 			/>
 			<Route
 				path="/secretaria/cambio-comision"

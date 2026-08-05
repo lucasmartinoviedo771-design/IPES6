@@ -30,6 +30,7 @@ export default function BedelesIndex() {
 					? [
 							DASHBOARD_ITEMS.STUDENT_MANAGEMENT,
 							DASHBOARD_ITEMS.STUDENT_DOCUMENTATION,
+							DASHBOARD_ITEMS.PREINSCRIPCION_REPRINT,
 						]
 					: [],
 			},

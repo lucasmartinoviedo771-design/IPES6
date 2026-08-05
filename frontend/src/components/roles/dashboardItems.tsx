@@ -20,6 +20,7 @@ import SummarizeIcon from "@mui/icons-material/Summarize";
 import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
+import PrintIcon from "@mui/icons-material/Print";
 
 import type { SectionCardProps } from "@/components/secretaria/SectionCard";
 
@@ -249,6 +250,13 @@ export const DASHBOARD_ITEMS = {
 			"Listado completo y gestión de solicitudes de preinscripción recibidas.",
 		icon: <ChecklistIcon />,
 		path: "/preinscripciones",
+	},
+	PREINSCRIPCION_REPRINT: {
+		title: "Reimprimir preinscripción",
+		subtitle:
+			"Descargar comprobante en PDF de estudiantes preinscriptos.",
+		icon: <PrintIcon />,
+		path: "/secretaria/reimprimir-preinscripcion",
 	},
 } satisfies Record<string, SectionCardProps>;
 

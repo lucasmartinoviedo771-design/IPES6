@@ -307,3 +307,49 @@ else:
     SESSION_COOKIE_SAMESITE = "Lax"
     CSRF_COOKIE_SAMESITE = "Lax"
     RECAPTCHA_MIN_SCORE = 0.3  # En dev permitimos un umbral más bajo para pruebas
+
+
+# === Logging Configuration ===================================================
+LOG_DIR = Path("/app/logs")
+if not LOG_DIR.exists() or not os.access(LOG_DIR, os.W_OK):
+    LOG_DIR = BASE_DIR / "logs"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} (pid {process:d}): {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.handlers.WatchedFileHandler",
+            "filename": str(LOG_DIR / "django.log"),
+            "formatter": "verbose",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "": {
+            "handlers": ["file", "console"] if not IS_PROD else ["file"],
+            "level": os.getenv("LOG_LEVEL", "INFO"),
+            "propagate": True,
+        },
+        "django": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

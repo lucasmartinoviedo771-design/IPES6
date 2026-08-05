@@ -39,8 +39,12 @@ type StudentEligibility = {
 	dni: string;
 	nombre: string;
 	apellido: string;
-	habilitado: boolean;
-	motivos: string[];
+	habilitado?: boolean;
+	habilitado_cursar: boolean;
+	habilitado_rendir: boolean;
+	motivos?: string[];
+	motivos_cursar: string[];
+	motivos_rendir: string[];
 	situacion: "APROBADA" | "REGULAR" | "EN_CURSO" | "PENDIENTE";
 	cohorte?: number | null;
 };
@@ -172,7 +176,7 @@ export default function AnalisisMateriaPage() {
 		if (showOnlyEnabled) {
 			// "En condiciones" means enabled AND not yet approved
 			list = list.filter(
-				(est) => est.habilitado && est.situacion !== "APROBADA",
+				(est) => (est.habilitado_cursar || est.habilitado_rendir) && est.situacion !== "APROBADA",
 			);
 		}
 
@@ -248,7 +252,8 @@ export default function AnalisisMateriaPage() {
 			"Nombre",
 			"Cohorte",
 			"Situación",
-			"¿Habilitado?",
+			"¿Hab. Cursar?",
+			"¿Hab. Rendir?",
 			"Observaciones",
 		];
 		const rows = dataToExport.map((s) => [
@@ -260,8 +265,9 @@ export default function AnalisisMateriaPage() {
 			s.nombre,
 			s.cohorte || "",
 			s.situacion,
-			s.habilitado ? "SI" : "NO",
-			s.motivos.join(" | "),
+			s.habilitado_cursar ? "SI" : "NO",
+			s.habilitado_rendir ? "SI" : "NO",
+			(s.motivos_rendir || s.motivos || []).join(" | "),
 		]);
 
 		const csvContent =
@@ -492,16 +498,8 @@ export default function AnalisisMateriaPage() {
 												Situación
 											</TableSortLabel>
 										</TableCell>
-										<TableCell align="center">
-											<TableSortLabel
-												active={orderBy === "habilitado"}
-												direction={orderBy === "habilitado" ? order : "asc"}
-												onClick={() => handleRequestSort("habilitado")}
-											>
-												¿Habilitado?
-											</TableSortLabel>
-										</TableCell>
-										<TableCell>Motivos / Faltantes</TableCell>
+										<TableCell align="center">¿Hab. Cursar?</TableCell>
+										<TableCell align="center">¿Hab. Rendir?</TableCell>
 									</TableRow>
 								</TableHead>
 								<TableBody>
@@ -537,39 +535,80 @@ export default function AnalisisMateriaPage() {
 												<TableCell align="center">
 													{getStatusChip(est.situacion)}
 												</TableCell>
-												<TableCell align="center">
-													{est.habilitado ? (
-														<Tooltip title="Cumple las correlatividades">
-															<CheckCircleOutlineIcon color="success" />
-														</Tooltip>
+												<TableCell align="center" sx={{ verticalAlign: "top" }}>
+													<Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center" sx={{ mb: 0.5 }}>
+														{est.habilitado_cursar ? (
+															<Tooltip title="Puede cursar esta materia">
+																<CheckCircleOutlineIcon color="success" />
+															</Tooltip>
+														) : (
+															<Tooltip title="Faltan correlativas para cursar">
+																<HighlightOffIcon color="error" />
+															</Tooltip>
+														)}
+													</Stack>
+													{est.habilitado_cursar ? (
+														<Typography variant="caption" color="success.main" sx={{ fontWeight: 500, display: "block" }}>
+															Sin novedades
+														</Typography>
 													) : (
-														<Tooltip title="No cumple las correlatividades">
-															<HighlightOffIcon color="error" />
-														</Tooltip>
+														(est.motivos_cursar || []).length > 0 && (
+															<Stack spacing={0.5} textAlign="left">
+																{(est.motivos_cursar || []).map((m, idx) => (
+																	<Typography
+																		key={idx}
+																		variant="caption"
+																		sx={{
+																			display: "block",
+																			pl: 1,
+																			borderLeft: "2px solid",
+																			borderColor: "error.main",
+																			color: "error.main",
+																		}}
+																	>
+																		• {m}
+																	</Typography>
+																))}
+															</Stack>
+														)
 													)}
 												</TableCell>
-												<TableCell>
-													{est.motivos.length > 0 ? (
-														<Stack gap={0.5}>
-															{est.motivos.map((m, i) => (
-																<Typography
-																	key={i}
-																	variant="caption"
-																	sx={{
-																		display: "block",
-																		color: est.habilitado
-																			? "text.secondary"
-																			: "error.main",
-																	}}
-																>
-																	• {m}
-																</Typography>
-															))}
-														</Stack>
-													) : (
-														<Typography variant="caption" color="text.disabled">
-															Sin observaciones
+												<TableCell align="center" sx={{ verticalAlign: "top" }}>
+													<Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center" sx={{ mb: 0.5 }}>
+														{est.habilitado_rendir ? (
+															<Tooltip title="Puede rendir esta materia">
+																<CheckCircleOutlineIcon color="success" />
+															</Tooltip>
+														) : (
+															<Tooltip title="Faltan correlativas para rendir">
+																<HighlightOffIcon color="error" />
+															</Tooltip>
+														)}
+													</Stack>
+													{est.habilitado_rendir ? (
+														<Typography variant="caption" color="success.main" sx={{ fontWeight: 500, display: "block" }}>
+															Sin novedades
 														</Typography>
+													) : (
+														(est.motivos_rendir || []).length > 0 && (
+															<Stack spacing={0.5} textAlign="left">
+																{(est.motivos_rendir || []).map((m, idx) => (
+																	<Typography
+																		key={idx}
+																		variant="caption"
+																		sx={{
+																			display: "block",
+																			pl: 1,
+																			borderLeft: "2px solid",
+																			borderColor: "error.main",
+																			color: "error.main",
+																		}}
+																	>
+																		• {m}
+																	</Typography>
+																))}
+															</Stack>
+														)
 													)}
 												</TableCell>
 											</TableRow>

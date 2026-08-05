@@ -45,6 +45,7 @@ interface PlanillaDetalleFila {
 	excepcion?: boolean;
 	datos?: Record<string, string | number | null | undefined>;
 	inscripcion_id?: number;
+	profesorado_origen?: string | null;
 }
 
 /**
@@ -109,6 +110,7 @@ export type PlanillaFilaFormValues = {
 	excepcion: boolean;
 	datos: Record<string, string>;
 	inscripcion_id?: number;
+	profesorado_origen?: string | null;
 };
 
 export type PlanillaFormValues = {

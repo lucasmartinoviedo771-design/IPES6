@@ -33,6 +33,7 @@
         <tr>
             <th>DNI</th>
             <th>Apellido y Nombre</th>
+            <th>Fecha Insc.</th>
             <th>Condición</th>
             <th>CI</th>
             <th>Libreta</th>
@@ -49,6 +50,7 @@
         <tr>
             <td>{{ item.dni }}</td>
             <td style="text-align: left;">{{ item.apellido }}, {{ item.nombre }}</td>
+            <td>{{ item.fecha_inscripcion|default:"-" }}</td>
             <td>{{ item.condicion_administrativa }}</td>
             <td>{% if item.curso_introductorio_aprobado %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>
             <td>{% if item.libreta_entregada %}<span class="yes">SI</span>{% else %}<span class="no">NO</span>{% endif %}</td>

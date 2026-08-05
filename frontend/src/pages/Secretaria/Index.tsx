@@ -84,6 +84,7 @@ export default function SecretariaIndex() {
 								path: "/secretaria/asignar-rol",
 							},
 							DASHBOARD_ITEMS.STUDENT_DOCUMENTATION,
+							DASHBOARD_ITEMS.PREINSCRIPCION_REPRINT,
 						]
 					: []),
 			],

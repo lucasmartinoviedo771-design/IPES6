@@ -183,6 +183,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 				dni: student.dni,
 				apellido_nombre: student.apellido_nombre,
 				orden: idx + 1,
+				profesorado_origen: student.profesorado_origen || null,
 			}));
 			replaceFilas(nuevasFilas);
 			enqueueSnackbar(
@@ -290,6 +291,7 @@ export function usePlanillaForm(options: UsePlanillaFormOptions) {
 						]),
 					) as Record<string, string>,
 					inscripcion_id: f.inscripcion_id,
+					profesorado_origen: f.profesorado_origen || null,
 				})),
 				dry_run: false,
 				force_upgrade: d.force_upgrade ?? false,

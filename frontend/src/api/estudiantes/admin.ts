@@ -37,6 +37,8 @@ export async function fetchEstudiantesDocumentacion(
 		q?: string;
 		carrera_id?: number;
 		estado_academico?: string;
+		fecha_desde?: string;
+		fecha_hasta?: string;
 		limit?: number;
 		offset?: number;
 	} = {},
@@ -139,6 +141,8 @@ export function getExportDocumentacionExcelUrl(
 		q?: string;
 		carrera_id?: number;
 		estado_academico?: string;
+		fecha_desde?: string;
+		fecha_hasta?: string;
 		limit?: number;
 	} = {},
 ): string {
@@ -156,6 +160,8 @@ export function getExportDocumentacionPdfUrl(
 		q?: string;
 		carrera_id?: number;
 		estado_academico?: string;
+		fecha_desde?: string;
+		fecha_hasta?: string;
 		limit?: number;
 	} = {},
 ): string {

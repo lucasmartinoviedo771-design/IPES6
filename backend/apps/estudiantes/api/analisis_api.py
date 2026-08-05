@@ -28,8 +28,10 @@ class StudentEligibilityDetail(Schema):
     dni: str
     nombre: str
     apellido: str
-    habilitado: bool
-    motivos: list[str]
+    habilitado_cursar: bool
+    habilitado_rendir: bool
+    motivos_cursar: list[str]
+    motivos_rendir: list[str]
     situacion: str  # "APROBADA", "REGULAR", "EN_CURSO", "PENDIENTE"
     cohorte: int | None = None
 
@@ -171,13 +173,29 @@ def analizar_habilitados_materia(request, materia_id: int):
             situacion = "REGULAR"
 
         # Chequeo de correlativas (específicas para este estudiante)
-        habilitado = True
-        motivos = []
+        habilitado_cursar = True
+        habilitado_rendir = True
+        motivos_cursar = []
+        motivos_rendir = []
 
         if situacion == "APROBADA":
-            habilitado = False
-            motivos.append("Ya aprobó esta materia.")
-        else:
+            habilitado_cursar = False
+            habilitado_rendir = False
+            motivos_cursar.append("Materia ya aprobada.")
+            motivos_rendir.append("Materia ya aprobada.")
+        elif situacion == "EN_CURSO":
+            habilitado_cursar = False
+            habilitado_rendir = False
+            motivos_cursar.append("Materia actualmente en cursado.")
+            motivos_rendir.append("Materia actualmente en cursado (requiere regularizar).")
+        elif situacion == "REGULAR":
+            habilitado_cursar = False
+            motivos_cursar.append("Materia ya regularizada.")
+        elif situacion == "PENDIENTE":
+            habilitado_rendir = False
+            motivos_rendir.append("Falta regularizar la materia.")
+
+        if situacion != "APROBADA":
             # Consultamos la versión de correlatividades vigente para este estudiante
             from core.models import CorrelatividadVersion
 
@@ -198,25 +216,30 @@ def analizar_habilitados_materia(request, materia_id: int):
             for corr in correlativas_qs:
                 if corr.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR:
                     if corr.materia_correlativa_id not in state["aprobadas"]:
-                        habilitado = False
-                        motivos.append(f"Falta aprobar {corr.materia_correlativa.nombre}")
+                        if situacion == "PENDIENTE":
+                            habilitado_cursar = False
+                            motivos_cursar.append(f"Falta aprobar {corr.materia_correlativa.nombre}")
                 elif corr.tipo == Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR:
                     es_reg = corr.materia_correlativa_id in state["regulares"]
                     es_aprob = corr.materia_correlativa_id in state["aprobadas"]
                     if not (es_reg or es_aprob):
-                        habilitado = False
-                        motivos.append(f"Falta regularizar {corr.materia_correlativa.nombre}")
+                        if situacion == "PENDIENTE":
+                            habilitado_cursar = False
+                            motivos_cursar.append(f"Falta regularizar {corr.materia_correlativa.nombre}")
                 elif corr.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR:
                     if corr.materia_correlativa_id not in state["aprobadas"]:
-                        motivos.append(f"Falta aprobar {corr.materia_correlativa.nombre} (requerida para rendir final)")
+                        habilitado_rendir = False
+                        motivos_rendir.append(f"Falta aprobar {corr.materia_correlativa.nombre}")
 
         results.append(
             {
                 "dni": sdni,
                 "nombre": est.persona.nombre,
                 "apellido": est.persona.apellido,
-                "habilitado": habilitado,
-                "motivos": motivos,
+                "habilitado_cursar": habilitado_cursar,
+                "habilitado_rendir": habilitado_rendir,
+                "motivos_cursar": motivos_cursar,
+                "motivos_rendir": motivos_rendir,
                 "situacion": situacion,
                 "cohorte": cohorte,
             }
