@@ -144,7 +144,7 @@ def crear_planilla_regularidad(
                 planilla_conflicto = solapados.first().planilla
                 nombres = ", ".join(s.apellido_nombre for s in solapados[:3])
                 raise ValueError(
-                    f"Los siguientes alumnos ya tienen regularidad en la planilla {planilla_conflicto.codigo} "
+                    f"Los siguientes alumnos ya están cargados en la planilla {planilla_conflicto.codigo} "
                     f"para esta materia en la fecha {fecha.strftime('%d/%m/%Y')}: {nombres}..."
                     f" Si son alumnos comisionados, verifique que no estén duplicados."
                 )
