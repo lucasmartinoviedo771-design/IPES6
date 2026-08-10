@@ -4,9 +4,9 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
 import {
+	HERO_GRADIENT,
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
-	TITLE_GRADIENT,
 } from "@/styles/institutionalColors";
 
 type PageHeroProps = {
@@ -18,12 +18,14 @@ type PageHeroProps = {
 
 export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
 	const baseSx: SxProps<Theme> = {
-		p: { xs: 2, md: 3 },
-		borderRadius: 3,
-		background: `linear-gradient(120deg, #7D7F6E 0%, #B7694E 100%)`,
-		color: "#fff",
-		boxShadow: "0 25px 50px rgba(0,0,0,0.12)",
-		mb: { xs: 2, md: 3 },
+		p: { xs: 2.5, md: 3.5 },
+		borderRadius: "16px",
+		background: HERO_GRADIENT,
+		color: "#ffffff",
+		boxShadow: "0 10px 25px rgba(110, 50, 33, 0.25)",
+		mb: { xs: 3, md: 4 },
+		position: "relative",
+		overflow: "hidden",
 	};
 	const combinedSx: SxProps<Theme> = sx
 		? Array.isArray(sx)
@@ -39,14 +41,14 @@ export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
 			spacing={2}
 			sx={combinedSx}
 		>
-			<Box sx={{ textAlign: "left" }}>
+			<Box sx={{ textAlign: "left", zIndex: 1 }}>
 				<Typography
-					variant="h5"
+					variant="h4"
 					sx={{
 						fontWeight: 800,
-						letterSpacing: 1,
-						textTransform: "uppercase",
-						color: "#fff",
+						fontSize: { xs: "1.3rem", md: "1.65rem" },
+						color: "#ffffff",
+						letterSpacing: "-0.01em",
 					}}
 				>
 					{title}
@@ -54,9 +56,10 @@ export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
 				{subtitle && (
 					<Typography
 						sx={{
-							color: "rgba(255,255,255,0.9)",
-							fontSize: { xs: "0.95rem", md: "1rem" },
-							fontWeight: 400,
+							color: "rgba(255, 255, 255, 0.85)",
+							fontSize: { xs: "0.85rem", md: "0.95rem" },
+							fontWeight: 500,
+							mt: 0.5,
 						}}
 					>
 						{subtitle}
@@ -70,6 +73,7 @@ export function PageHero({ title, subtitle, actions, sx }: PageHeroProps) {
 						gap: 1,
 						flexWrap: "wrap",
 						width: { xs: "100%", md: "auto" },
+						zIndex: 1,
 						"& .MuiButton-root": {
 							borderRadius: 999,
 							textTransform: "none",
@@ -97,13 +101,16 @@ export function SectionTitlePill({ title, sx }: SectionTitleProps) {
 		display: "inline-flex",
 		alignSelf: "flex-start",
 		alignItems: "center",
-		px: 3,
-		py: 1,
+		px: 2.5,
+		py: 0.8,
 		borderRadius: 999,
-		background: TITLE_GRADIENT,
-		boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
-		mt: 0,
-		mb: 2,
+		backgroundColor: INSTITUTIONAL_TERRACOTTA,
+		backgroundImage: `linear-gradient(135deg, ${INSTITUTIONAL_TERRACOTTA}, ${INSTITUTIONAL_TERRACOTTA_DARK})`,
+		boxShadow: "0 4px 12px rgba(156, 78, 53, 0.3)",
+		position: "absolute",
+		top: "-16px",
+		left: "20px",
+		zIndex: 2,
 	};
 	const combinedSx: SxProps<Theme> = sx
 		? Array.isArray(sx)
@@ -114,12 +121,13 @@ export function SectionTitlePill({ title, sx }: SectionTitleProps) {
 	return (
 		<Box sx={combinedSx}>
 			<Typography
-				variant="subtitle1"
+				variant="subtitle2"
 				sx={{
-					fontWeight: 700,
-					letterSpacing: 1,
+					fontWeight: 800,
+					letterSpacing: "0.05em",
 					textTransform: "uppercase",
-					color: "#fff",
+					color: "#ffffff",
+					fontSize: "0.78rem",
 				}}
 			>
 				{title}
