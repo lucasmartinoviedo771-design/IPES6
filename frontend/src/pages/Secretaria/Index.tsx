@@ -4,22 +4,12 @@ import DateRangeIcon from "@mui/icons-material/DateRange";
 import EventIcon from "@mui/icons-material/Event";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
-import Box from "@mui/material/Box";
-import Grid from "@mui/material/Grid";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
-import SectionCard, {
-	type SectionCardProps,
-} from "@/components/secretaria/SectionCard";
-import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import RoleDashboard, {
+	type RoleDashboardSection,
+} from "@/components/roles/RoleDashboard";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
-
-type Section = {
-	title: string;
-	items: SectionCardProps[];
-};
 
 export default function SecretariaIndex() {
 	const { user } = useAuth();
@@ -30,7 +20,7 @@ export default function SecretariaIndex() {
 		"rectorado",
 		"attp",
 	]);
-	const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]); // Solo ellos asignan roles
+	const canAssignRoles = hasAnyRole(user, ["admin", "secretaria"]);
 	const canManageHorarios = hasAnyRole(user, ["admin", "secretaria"]);
 	const canManageMesas = hasAnyRole(user, [
 		"admin",
@@ -61,7 +51,7 @@ export default function SecretariaIndex() {
 	]);
 	const canManagePreins = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
 
-	const sections: Section[] = [
+	const sections: RoleDashboardSection[] = [
 		{
 			title: "Usuarios y roles",
 			items: [
@@ -152,29 +142,11 @@ export default function SecretariaIndex() {
 		},
 	];
 
-	const visibleSections = sections.filter(
-		(section) => section.items.length > 0,
-	);
-
 	return (
-		<Stack gap={4}>
-			<PageHero
-				title="Secretaría"
-				subtitle="Centro de operaciones agrupado por módulos"
-			/>
-
-			{visibleSections.map((section) => (
-				<Box key={section.title}>
-					<Typography variant="h6" mb={2} fontWeight={600}>
-						{section.title}
-					</Typography>
-					<Grid container spacing={2}>
-						{section.items.map((item) => (
-							<SectionCard key={item.title} {...item} />
-						))}
-					</Grid>
-				</Box>
-			))}
-		</Stack>
+		<RoleDashboard
+			title="Secretaría"
+			subtitle="Centro de operaciones agrupado por módulos"
+			sections={sections}
+		/>
 	);
 }
