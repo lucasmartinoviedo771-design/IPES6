@@ -51,6 +51,7 @@ export function useCursoIntroductorio() {
 
 	const [pendientesProfesoradoId, setPendientesProfesoradoId] = useState("");
 	const [pendientesSoloActivos, setPendientesSoloActivos] = useState(true);
+	const [pendientesSoloConfirmados, setPendientesSoloConfirmados] = useState(true);
 	const [pendientesAnioIngreso, setPendientesAnioIngreso] = useState<string>(
 		new Date().getFullYear().toString(),
 	);
@@ -136,6 +137,7 @@ export function useCursoIntroductorio() {
 				pendientesProfesoradoId ? Number(pendientesProfesoradoId) : undefined,
 				pendientesSoloActivos,
 				pendientesAnioIngreso ? Number(pendientesAnioIngreso) : undefined,
+				pendientesSoloConfirmados,
 			);
 			setPendientes(data);
 		} catch (error) {
@@ -150,6 +152,7 @@ export function useCursoIntroductorio() {
 		enqueueSnackbar,
 		pendientesProfesoradoId,
 		pendientesSoloActivos,
+		pendientesSoloConfirmados,
 		pendientesAnioIngreso,
 	]);
 
@@ -540,6 +543,8 @@ export function useCursoIntroductorio() {
 		setPendientesProfesoradoId,
 		pendientesSoloActivos,
 		setPendientesSoloActivos,
+		pendientesSoloConfirmados,
+		setPendientesSoloConfirmados,
 		pendientesAnioIngreso,
 		setPendientesAnioIngreso,
 		registros,

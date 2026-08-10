@@ -25,11 +25,13 @@ type Props = {
 	pendientesLoading: boolean;
 	pendientesProfesoradoId: string;
 	pendientesSoloActivos: boolean;
+	pendientesSoloConfirmados: boolean;
 	pendientesAnioIngreso: string;
 	puedeGestionarRegistros: boolean;
 	cohortesDisponibles: boolean;
 	onChangePendientesProfesorado: (value: string) => void;
 	onChangePendientesSoloActivos: (value: boolean) => void;
+	onChangePendientesSoloConfirmados: (value: boolean) => void;
 	onChangePendientesAnioIngreso: (value: string) => void;
 	onInscribir: (pendiente: CursoIntroPendienteDTO) => void;
 };
@@ -40,11 +42,13 @@ const PendientesTable: React.FC<Props> = ({
 	pendientesLoading,
 	pendientesProfesoradoId,
 	pendientesSoloActivos,
+	pendientesSoloConfirmados,
 	pendientesAnioIngreso,
 	puedeGestionarRegistros,
 	cohortesDisponibles,
 	onChangePendientesProfesorado,
 	onChangePendientesSoloActivos,
+	onChangePendientesSoloConfirmados,
 	onChangePendientesAnioIngreso,
 	onInscribir,
 }) => {
@@ -56,7 +60,7 @@ const PendientesTable: React.FC<Props> = ({
 			<Card variant="outlined" sx={{ mb: 3 }}>
 				<CardContent>
 					<Grid container spacing={2} sx={{ mb: 2, alignItems: "center" }}>
-						<Grid item xs={12} md={4}>
+						<Grid item xs={12} md={3}>
 							<TextField
 								select
 								label="Profesorado"
@@ -75,7 +79,7 @@ const PendientesTable: React.FC<Props> = ({
 								))}
 							</TextField>
 						</Grid>
-						<Grid item xs={12} md={4}>
+						<Grid item xs={12} md={3}>
 							<TextField
 								label="Año de ingreso"
 								size="small"
@@ -88,7 +92,7 @@ const PendientesTable: React.FC<Props> = ({
 								placeholder="Ej: 2026"
 							/>
 						</Grid>
-						<Grid item xs={12} md={4}>
+						<Grid item xs={12} md={3}>
 							<FormControlLabel
 								control={
 									<Switch
@@ -99,7 +103,21 @@ const PendientesTable: React.FC<Props> = ({
 										color="primary"
 									/>
 								}
-								label="Solo estudiantes activos"
+								label="Solo activos"
+							/>
+						</Grid>
+						<Grid item xs={12} md={3}>
+							<FormControlLabel
+								control={
+									<Switch
+										checked={pendientesSoloConfirmados}
+										onChange={(event) =>
+											onChangePendientesSoloConfirmados(event.target.checked)
+										}
+										color="primary"
+									/>
+								}
+								label="Solo inscripciones confirmadas"
 							/>
 						</Grid>
 					</Grid>

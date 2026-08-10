@@ -404,7 +404,8 @@ def curso_intro_listar_registros(
 def curso_intro_listar_pendientes(
     request,
     profesorado_id: int | None = None,
-    solo_activos: bool = False,
+    solo_activos: bool = True,
+    solo_confirmados: bool = True,
     anio_ingreso: int | None = None,
 ):
     require(request.user, "gestionar_ci")
@@ -415,7 +416,7 @@ def curso_intro_listar_pendientes(
 
     # Generar clave de caché basada en permisos y filtro
     cache_key = (
-        f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_anio{anio_ingreso or 'all'}"
+        f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_conf{solo_confirmados}_anio{anio_ingreso or 'all'}"
     )
     if allowed is not None:
         cache_key += f"_a{'-'.join(map(str, sorted(list(allowed))))}"
@@ -439,6 +440,8 @@ def curso_intro_listar_pendientes(
 
     if solo_activos:
         qs = qs.filter(carreras_detalle__estado_academico="ACT")
+    if solo_confirmados:
+        qs = qs.filter(carreras_detalle__estado_legajo__in=["COM", "INC"])
     if anio_ingreso:
         qs = qs.filter(carreras_detalle__anio_ingreso=anio_ingreso)
 
@@ -451,9 +454,6 @@ def curso_intro_listar_pendientes(
             return []
         qs = qs.filter(carreras__id__in=allowed)
 
-    # Limitar resultados para evitar explosión de memoria si hay miles (opcional, pero recomendado)
-    # Por ahora lo dejamos ilimitado como pidió el usuario, pero con la query optimizada.
-
     pendientes: list[CursoIntroPendienteOut] = []
     for est in qs:
         profesorados = []
@@ -463,6 +463,8 @@ def curso_intro_listar_pendientes(
             if profesorado_id and detalle.profesorado_id != profesorado_id:
                 continue
             if solo_activos and detalle.estado_academico != "ACT":
+                continue
+            if solo_confirmados and detalle.estado_legajo not in ("COM", "INC"):
                 continue
 
             from apps.estudiantes.api.helpers.estudiante_admin import es_carrera_visible
