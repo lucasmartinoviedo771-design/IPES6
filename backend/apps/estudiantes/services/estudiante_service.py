@@ -22,7 +22,7 @@ CHECKLIST_DOC_FIELDS = [
 
 def _calcular_condicion_estudiante(est: Estudiante, checklist_map: dict) -> str:
     """Calcula la condición documental del estudiante fusionando datos del modelo y del checklist."""
-    ec = est.carreras_detalle.first()
+    ec = est.carreras_detalle.filter(estado_academico="ACT").first() or est.carreras_detalle.first()
     doc_data = _extract_documentacion_from_ec(ec) if ec else _extract_documentacion(est)
     checklist = checklist_map.get(est.pk)
     if checklist:
@@ -176,13 +176,22 @@ class EstudianteService:
                 if not es_carrera_visible(est, cd.profesorado_id, cd.anio_ingreso, cd.estado_legajo):
                     continue
 
+                # Calcular la condición específica para esta carrera
+                doc_data_carrera = _extract_documentacion_from_ec(cd)
+                checklist = checklist_map.get(est.pk)
+                if checklist:
+                    for k in CHECKLIST_DOC_FIELDS:
+                        if doc_data_carrera.get(k) in (None, False, 0, ""):
+                            doc_data_carrera[k] = getattr(checklist, k, None)
+                condicion_carrera = _determine_condicion(doc_data_carrera)
+
                 carreras_det.append(
                     {
                         "profesorado_id": cd.profesorado_id,
                         "nombre": cd.profesorado.nombre,
                         "estado_academico": cd.estado_academico,
                         "estado_academico_display": cd.get_estado_academico_display(),
-                        "condicion": condicion,
+                        "condicion": condicion_carrera,
                     }
                 )
                 carreras_nombres.append(cd.profesorado.nombre)
