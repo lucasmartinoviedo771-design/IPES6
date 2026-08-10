@@ -67,7 +67,8 @@ def admin_list_estudiantes_documentacion(
         )
         return EstudianteDocumentacionListResponse(total=total, items=items)
     except Exception as e:
-        import sys, traceback
+        import sys
+        import traceback
         print("ERROR IN admin_list_estudiantes_documentacion:", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         raise e

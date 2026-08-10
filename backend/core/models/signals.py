@@ -19,17 +19,17 @@ def sync_user_from_persona(sender, instance, **kwargs):
 
     if user:
         update_fields = []
-        
+
         # Sincronizar Username (DNI)
         if user.username != instance.dni:
             user.username = instance.dni
             update_fields.append("username")
-            
+
         # Sincronizar Email para permitir Login con Google
         if (user.email or "") != (instance.email or ""):
             user.email = instance.email or ""
             update_fields.append("email")
-            
+
         if update_fields:
             user.save(update_fields=update_fields)
 

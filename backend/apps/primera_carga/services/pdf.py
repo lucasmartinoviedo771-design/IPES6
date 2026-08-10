@@ -269,10 +269,11 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         return None
 
     filas_qs = planilla.filas.all().order_by("orden", "id")
-    
+
     from collections import defaultdict
+
     from reportlab.platypus import PageBreak
-    
+
     grupos = defaultdict(list)
     for fila in filas_qs:
         prof_origen = (fila.datos or {}).get("profesorado_origen") or planilla.profesorado.nombre
