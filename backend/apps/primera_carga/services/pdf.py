@@ -544,7 +544,8 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
                         ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8),
                     ),
                     Paragraph(
-                        "<b>DNI: _______________________</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)
+                        "<b>DNI: _______________________</b>",
+                        ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8),
                     ),
                 ]
             )
@@ -553,7 +554,9 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         b_dni = bedel_docente.dni if bedel_docente else "_______________________"
         firmas_table_rows.append(
             [
-                Paragraph(f"<b>Bedel: {escape(b_nom)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
+                Paragraph(
+                    f"<b>Bedel: {escape(b_nom)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)
+                ),
                 Paragraph(f"<b>DNI: {escape(b_dni)}</b>", ParagraphStyle("Firma", parent=styles["Normal"], fontSize=8)),
             ]
         )
@@ -579,7 +582,10 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
                 cod = ref.get("codigo") or ref.get("label") or "-"
                 desc = ref.get("descripcion") or ""
                 ref_data.append(
-                    [Paragraph(f"<b>{escape(str(cod))}</b>", header_style), Paragraph(escape(str(desc)), body_left_style)]
+                    [
+                        Paragraph(f"<b>{escape(str(cod))}</b>", header_style),
+                        Paragraph(escape(str(desc)), body_left_style),
+                    ]
                 )
 
             ref_table = Table(ref_data, colWidths=[80, 460])

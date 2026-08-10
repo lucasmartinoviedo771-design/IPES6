@@ -496,7 +496,9 @@ def obtener_inscriptos_activos_endpoint(request, materia_id: int, anio: int | No
         {
             "dni": insc.estudiante.dni,
             "apellido_nombre": f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}".strip(", "),
-            "profesorado_origen": insc.materia_origen.plan_de_estudio.profesorado.nombre if insc.materia_origen_id else None,
+            "profesorado_origen": insc.materia_origen.plan_de_estudio.profesorado.nombre
+            if insc.materia_origen_id
+            else None,
         }
         for insc in inscripciones
     ]
