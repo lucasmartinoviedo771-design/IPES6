@@ -23,12 +23,12 @@ import { useNavigate } from "react-router-dom";
 import { fetchCursoIntroEstado } from "@/api/cursoIntro";
 import { type CorrelativaCaidaItem, getMisAlertas } from "@/api/reportes";
 import { fetchVentanas, type VentanaDto } from "@/api/ventanas";
+import SectionCard from "@/components/secretaria/SectionCard";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 import {
 	ICON_GRADIENT,
-		INSTITUTIONAL_GREEN,
-		INSTITUTIONAL_GREEN_DARK,
+	INSTITUTIONAL_GREEN,
 	INSTITUTIONAL_TERRACOTTA,
 } from "@/styles/institutionalColors";
 import { hasAnyRole, hasRole } from "@/utils/roles";
@@ -40,7 +40,7 @@ type EventCard = {
 	path?: string;
 };
 
-type SectionCard = {
+type SectionCardData = {
 	title: string;
 	subtitle: string;
 	icon: React.ReactNode;
@@ -52,7 +52,7 @@ type SectionCard = {
 type Section = {
 	title: string;
 	subtitle: string;
-	items: SectionCard[];
+	items: SectionCardData[];
 };
 
 const WINDOW_TYPE_CONFIG: Record<
@@ -101,104 +101,71 @@ const WINDOW_TYPE_CONFIG: Record<
 		icon: <VerifiedUser />,
 		path: "/estudiantes/curso-introductorio",
 	},
-	PREINSCRIPCION: {
-		title: "Preinscripción",
-		subtitle: "Registro de aspirantes",
-		icon: <Assignment />,
-	},
-	CARRERAS: {
-		title: "Inscripción a Carreras",
-		subtitle: "Cambio o alta de plan de estudio",
-		icon: <School />,
-	},
-	INSCRIPCION: {
-		title: "Inscripción General",
-		subtitle: "Gestión administrativa",
-		icon: <Assignment />,
-	},
-	CALENDARIO_CUATRIMESTRE: {
-		title: "Calendario Académico",
-		subtitle: "Fechas clave del cuatrimestre",
-		icon: <EventNote />,
-	},
 };
 
-const formatDateShort = (dateStr: string) => {
-	const d = new Date(dateStr + "T12:00:00");
-	return `${d.getDate()} de ${d.toLocaleString("es-AR", { month: "long" })}`;
-};
-
-const getWindowStatus = (ventana: VentanaDto) => {
-	const now = new Date();
-	const from = new Date(ventana.desde + "T00:00:00");
-	const to = new Date(ventana.hasta + "T23:59:59");
-
-	if (!ventana.activo) return "closed";
-	if (now >= from && now <= to) return "active";
-	if (now < from) return "future";
-	return "closed";
+const formatDateShort = (dStr?: string) => {
+	if (!dStr) return null;
+	const d = new Date(dStr);
+	if (isNaN(d.getTime())) return dStr;
+	return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
 };
 
 const baseSections: Section[] = [
 	{
-		title: "Trayectoria",
-		subtitle:
-			"Explora tu historial de cursada, materias y seguimiento de inscripciones.",
+		title: "Inscripciones",
+		subtitle: "Mantenete al día con las fechas importantes del ciclo académico.",
 		items: [
 			{
 				title: "Dar el Presente",
 				subtitle: "Registrá tu asistencia a clase usando el PIN del docente.",
 				icon: <VerifiedUser />,
-				path: "/estudiantes/presente",
+				path: "/estudiantes/tomar-asistencia",
 			},
 			{
 				title: "Trayectoria del Estudiante",
-				subtitle:
-					"Historial completo, materias y seguimiento de inscripciones.",
+				subtitle: "Historial completo, materias y seguimiento de inscripciones.",
 				icon: <TrendingUp />,
 				path: "/estudiantes/trayectoria",
 			},
 			{
 				title: "Mis Asistencias",
 				subtitle: "Consultá tu historial de presentismo por materia.",
-				icon: <EventNote />,
-				path: "/estudiantes/mis-asistencias",
+				icon: <CalendarMonth />,
+				path: "/estudiantes/asistencia",
 			},
 		],
 	},
 	{
-		title: "Inscripciones",
-		subtitle:
-			"Accesos rápidos para inscribirte y gestionar tus trámites académicos.",
+		title: "Trámites",
+		subtitle: "Accesos rápidos para inscribirte y gestionar tus trámites académicos.",
 		items: [
 			{
 				title: "Inscripción a Materias",
-				subtitle: "Inscríbete a las materias de tu plan de estudio.",
+				subtitle: "Inscribite a las materias de tu plan de estudio.",
 				icon: <Assignment />,
 				path: "/estudiantes/inscripcion-materia",
 			},
 			{
 				title: "Horario de Cursada",
-				subtitle: "Consulta tu horario (comisión) y descárgalo en PDF.",
-				icon: <Event />,
-				path: "/estudiantes/horarios",
+				subtitle: "Consultá tu horario (comisión) y descargalo en PDF.",
+				icon: <AccessTime />,
+				path: "/estudiantes/horario",
 			},
 			{
 				title: "Cambio de Comisión",
-				subtitle: "Solicita tu cambio de comisión a otra materia.",
+				subtitle: "Solicitá tu cambio de comisión a otra materia.",
 				icon: <CompareArrows />,
 				path: "/estudiantes/cambio-comision",
 			},
 			{
 				title: "Analíticos y Equivalencias",
-				subtitle:
-					"Solicitá Analítico o iniciá y seguí tu pedidos de equivalencia.",
+				subtitle: "Solicitá Analítico o inicia y seguí tus pedidos de equivalencias.",
 				icon: <School />,
 				path: "/estudiantes/tramites",
 			},
 			{
 				title: "Mesa de Examen",
-				subtitle: "Inscribite a mesas de examen.",
+				subtitle: "Inscribite a mesas de examen",
 				icon: <CalendarMonth />,
 				path: "/estudiantes/mesa-examen",
 			},
@@ -206,7 +173,7 @@ const baseSections: Section[] = [
 	},
 	{
 		title: "Certificados",
-		subtitle: "Genera tus títulos oficiales para tramitar donde lo necesites.",
+		subtitle: "Generá tus títulos oficiales para tramitar donde lo necesites.",
 		items: [
 			{
 				title: "Constancia de Estudiante Regular",
@@ -223,45 +190,6 @@ const baseSections: Section[] = [
 		],
 	},
 ];
-
-const squareCardStyles = {
-	width: "100%",
-	minHeight: 130,
-	border: "1px solid rgba(125,127,110,0.5)",
-	boxShadow: "0px 2px 8px rgba(0,0,0,0.04)",
-	display: "flex",
-	flexDirection: "column",
-	transition: "all 0.2s ease",
-	borderRadius: 10,
-	"&:hover": {
-		boxShadow: 6,
-		transform: "translateY(-3px)",
-		borderColor: INSTITUTIONAL_TERRACOTTA,
-	},
-};
-
-const iconWrapperStyles = {
-	width: 48,
-	height: 48,
-	borderRadius: 8,
-	backgroundImage: ICON_GRADIENT,
-	color: "common.white",
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	fontSize: 24,
-	boxShadow: "0 10px 25px rgba(183,105,78,0.35)",
-};
-
-const eventCardStyles = {
-	width: "100%",
-	minHeight: 140,
-	borderRadius: 10,
-	border: "1px solid rgba(255,255,255,0.4)",
-	display: "flex",
-	flexDirection: "column",
-	transition: "all 0.2s ease",
-};
 
 export default function EstudiantesIndex() {
 	const navigate = useNavigate();
@@ -292,60 +220,41 @@ export default function EstudiantesIndex() {
 	});
 
 	const dynamicEvents = useMemo(() => {
-		// 1. Iniciamos el mapa con todos los tipos configurados como "sin fecha"
-				const byTipo = new Map<string, any>();
+		const byTipo = new Map<string, any>();
 		Object.keys(WINDOW_TYPE_CONFIG).forEach((tipo) => {
 			byTipo.set(tipo, {
 				tipo,
 				status: "unscheduled",
 				desde: null,
 				hasta: null,
-				id: `empty-${tipo}`,
 			});
 		});
 
-		// 2. Si hay datos de ventanas, actualizamos con la mejor ventana disponible para cada tipo
-		if (ventanas && ventanas.length > 0) {
-			for (const v of ventanas) {
-				const status = getWindowStatus(v);
-				const enriched = { ...v, status };
-				const existing = byTipo.get(v.tipo);
-
-				// Si el tipo no estaba en nuestro config (raro), lo agregamos ahora
-				if (!existing || existing.status === "unscheduled") {
-					byTipo.set(v.tipo, enriched);
-					continue;
+		if (ventanas && Array.isArray(ventanas)) {
+			ventanas.forEach((v: VentanaDto) => {
+				const curr = byTipo.get(v.tipo);
+				if (!curr) return;
+				const status = (v as any).status;
+				if (status === "active") {
+					byTipo.set(v.tipo, v);
+				} else if (status === "future" && curr.status !== "active") {
+					byTipo.set(v.tipo, v);
+				} else if (
+					status === "closed" &&
+					curr.status !== "active" &&
+					curr.status !== "future"
+				) {
+					byTipo.set(v.tipo, v);
 				}
-
-				// Prioridad de visualización: active > future > closed
-				const orderWeight: Record<string, number> = {
-					active: 1,
-					future: 2,
-					closed: 3,
-				};
-				const existingWeight = orderWeight[existing.status] || 99;
-				const newWeight = orderWeight[status] || 99;
-
-				if (newWeight < existingWeight) {
-					byTipo.set(v.tipo, enriched);
-				} else if (newWeight === existingWeight && status === "future") {
-					if (new Date(v.desde) < new Date(existing.desde)) {
-						byTipo.set(v.tipo, enriched);
-					}
-				} else if (newWeight === existingWeight && status === "closed") {
-					if (new Date(v.hasta) > new Date(existing.hasta)) {
-						byTipo.set(v.tipo, enriched);
-					}
-				}
-			}
+			});
 		}
 
-		// 3. Mapeamos a la estructura final uniendo con WINDOW_TYPE_CONFIG
 		const result = Array.from(byTipo.values()).map((v) => {
 			const config = WINDOW_TYPE_CONFIG[v.tipo] || {
-				title: v.tipo,
-				subtitle: "Gestión institucional",
-				icon: <EventNote />,
+				title: v.nombre || v.tipo,
+				subtitle: "Información de la ventana",
+				icon: <Event />,
+				path: undefined,
 			};
 			return {
 				...v,
@@ -356,7 +265,6 @@ export default function EstudiantesIndex() {
 			};
 		});
 
-		// 4. Ordenar: activos primero, luego futuros, luego cerrados (vencidos), al final sin fecha
 		const displayOrder: Record<string, number> = {
 			active: 1,
 			future: 2,
@@ -375,12 +283,9 @@ export default function EstudiantesIndex() {
 	}, [ventanas]);
 
 	const sections = useMemo<Section[]>(() => {
-		// 1. Filtrar las secciones base según el rol
 		let filteredSections = baseSections;
 
 		if (!isStudent && !isAdmin) {
-			// Solo para personal que NO es admin/bedel/sec y NO es estudiante (ej: Tutor)
-			// Ocultamos Inscripciones y Certificados
 			filteredSections = baseSections.filter((s) => s.title === "Trayectoria");
 		}
 
@@ -398,7 +303,7 @@ export default function EstudiantesIndex() {
 						: "Consultá el estado e inscribite."
 			: "Consultá el curso introductorio.";
 
-		const cursoIntroCard: SectionCard = {
+		const cursoIntroCard: SectionCardData = {
 			title: "Curso Introductorio",
 			subtitle,
 			icon: <VerifiedUser />,
@@ -416,18 +321,23 @@ export default function EstudiantesIndex() {
 				items: [...section.items, cursoIntroCard],
 			};
 		});
-	}, [cursoIntroEstado, isStudent]);  
+	}, [cursoIntroEstado, isStudent]);
+
+	const userName = user?.name || user?.dni || "";
+	const heroTitle = userName
+		? `Bienvenido a Estudiantes, ${userName}`
+		: `Bienvenido a Estudiantes`;
 
 	return (
 		<Box>
 			<PageHero
-				title="Estudiantes"
+				title={heroTitle}
 				subtitle="Acá podés gestionar tus solicitudes y trámites del sistema."
 			/>
 
 			{alertas && alertas.length > 0 && (
 				<Stack spacing={2} sx={{ mb: 4, mt: 2 }}>
-					<Alert severity="error" variant="filled" sx={{ borderRadius: 2 }}>
+					<Alert severity="error" variant="filled" sx={{ borderRadius: 3 }}>
 						<AlertTitle>Atención: Problemas con correlatividades</AlertTitle>
 						Tenés materias cursando con regularidades de correlativas vencidas o
 						inválidas.
@@ -453,287 +363,256 @@ export default function EstudiantesIndex() {
 				</Stack>
 			)}
 
-			<Stack spacing={1.5} sx={{ mb: 4 }}>
-				<SectionTitlePill title="Próximos eventos" sx={{ mt: 3 }} />
-				<Typography variant="body2" color="text.secondary">
-					Mantenete al día con las fechas importantes del ciclo académico.
-				</Typography>
-				{/* --- INICIO DEL CARRUSEL HORIZONTAL --- */}
+			<Stack spacing={4}>
+				{/* Contenedor del Carrusel de Próximos Eventos */}
 				<Box
 					sx={{
-						display: "flex",
-						gap: 2,
-						overflowX: "auto",
-						pb: 2, // Espacio inferior para que la barra de scroll no pise las tarjetas
-						pt: 1,
-						scrollSnapType: "x mandatory", // Efecto de imán al deslizar
-						"&::-webkit-scrollbar": {
-							height: 6, // Barra de scroll bien sutil
-						},
-						"&::-webkit-scrollbar-thumb": {
-							backgroundColor: "rgba(0,0,0,0.15)",
-							borderRadius: 4,
-						},
-						"&::-webkit-scrollbar-track": {
-							backgroundColor: "rgba(0,0,0,0.03)",
-						},
+						position: "relative",
+						backgroundColor: "#E8DFD3",
+						border: "1px solid #D6CAA",
+						borderRadius: "20px",
+						p: { xs: 2, md: 3 },
+						pt: { xs: 3.5, md: 4 },
+						boxShadow: "0 4px 15px rgba(0, 0, 0, 0.03)",
 					}}
 				>
-					{!ventanas ? (
-						<Typography variant="body2" color="text.secondary">
-							Cargando eventos...
-						</Typography>
-					) : dynamicEvents.length === 0 ? (
-						<Typography variant="body2" color="text.secondary">
-							No hay eventos próximos.
-						</Typography>
-					) : (
-						dynamicEvents.map((event) => {
-							const isActive = event.status === "active";
-							const isFuture = event.status === "future";
-							const isClosed = event.status === "closed";
-							const isUnscheduled = event.status === "unscheduled";
+					<SectionTitlePill title="Próximos eventos" />
+					<Box
+						sx={{
+							display: "flex",
+							gap: 2,
+							overflowX: "auto",
+							pb: 1,
+							pt: 1,
+							scrollSnapType: "x mandatory",
+							"&::-webkit-scrollbar": {
+								height: 6,
+							},
+							"&::-webkit-scrollbar-thumb": {
+								backgroundColor: "rgba(140, 67, 46, 0.3)",
+								borderRadius: 4,
+							},
+						}}
+					>
+						{!ventanas ? (
+							<Typography variant="body2" color="text.secondary">
+								Cargando eventos...
+							</Typography>
+						) : dynamicEvents.length === 0 ? (
+							<Typography variant="body2" color="text.secondary">
+								No hay eventos próximos.
+							</Typography>
+						) : (
+							dynamicEvents.map((event) => {
+								const isActive = event.status === "active";
+								const isFuture = event.status === "future";
+								const isUnscheduled = event.status === "unscheduled";
 
-							const VIBRANT_GREEN = "#2D8C3C";
-							const CLOSED_COLOR = "#9e9e9e";
-							const UNSCHEDULED_COLOR = "#7d7f6e";
+								const VIBRANT_GREEN = "#2D8C3C";
+								const CLOSED_COLOR = "#9e9e9e";
+								const UNSCHEDULED_COLOR = "#7d7f6e";
 
-							return (
-								<Box
-									key={event.id || event.title}
-									sx={{
-										// Definimos un ancho fijo cómodo para las tarjetas en la fila
-										minWidth: { xs: "290px", sm: "340px" },
-										maxWidth: { xs: "290px", sm: "340px" },
-										scrollSnapAlign: "start",
-									}}
-								>
+								return (
 									<Box
+										key={event.id || event.title}
 										sx={{
-											position: "relative",
-											display: "flex",
-											alignItems: "center",
-											p: 1.5,
-											borderRadius: 2,
-											height: "100%", // Asegura que todas midan lo mismo si crecen por texto
-											boxSizing: "border-box",
-											border: isActive
-												? `1.5px solid ${VIBRANT_GREEN}`
-												: isFuture
-													? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
-													: `1px solid rgba(158,158,158,0.35)`,
-											cursor: "default",
-											backgroundColor: isUnscheduled
-												? "rgba(125,127,110,0.05)"
-												: "#fff",
+											minWidth: { xs: "280px", sm: "320px" },
+											maxWidth: { xs: "280px", sm: "320px" },
+											scrollSnapAlign: "start",
 										}}
 									>
-										{/* Badge superior derecho */}
-										<Box
-											component="span"
-											sx={{
-												position: "absolute",
-												top: 10,
-												right: 10,
-												bgcolor: isActive
-													? VIBRANT_GREEN
-													: isFuture
-														? INSTITUTIONAL_TERRACOTTA
-														: isUnscheduled
-															? UNSCHEDULED_COLOR
-															: CLOSED_COLOR,
-												color: "white",
-												fontSize: "0.7rem",
-												fontWeight: 800,
-												px: 1,
-												py: 0.4,
-												borderRadius: "5px",
-												textTransform: "uppercase",
-												letterSpacing: "0.04em",
-											}}
-										>
-											{isActive
-												? "Abierto"
-												: isFuture
-													? "Próximamente"
-													: isUnscheduled
-														? "Sin fecha"
-														: "Vencido"}
-										</Box>
-
 										<Box
 											sx={{
-												mr: 2,
-												width: 48,
-												height: 48,
-												borderRadius: 2,
-												backgroundImage: ICON_GRADIENT,
-												color: "common.white",
+												position: "relative",
 												display: "flex",
 												alignItems: "center",
-												justifyContent: "center",
-												flexShrink: 0,
-												boxShadow: "0 6px 16px rgba(183,105,78,0.3)",
+												p: 2,
+												borderRadius: "14px",
+												height: "100%",
+												boxSizing: "border-box",
+												border: isActive
+													? `1.5px solid ${VIBRANT_GREEN}`
+													: isFuture
+														? `1.5px solid ${INSTITUTIONAL_TERRACOTTA}`
+														: `1px solid #D6CAA`,
+												cursor: "default",
+												backgroundColor: "#ffffff",
+												boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
 											}}
 										>
-											{React.cloneElement(event.icon as React.ReactElement, {
-												sx: { fontSize: 26 },
-											})}
-										</Box>
-
-										<Box sx={{ flexGrow: 1, pr: 7 }}>
-											<Typography
-												variant="subtitle2"
-												fontWeight={800}
-												sx={{ lineHeight: 1.1, mb: 0.2, fontSize: "0.95rem" }}
+											<Box
+												component="span"
+												sx={{
+													position: "absolute",
+													top: 10,
+													right: 10,
+													bgcolor: isActive
+														? VIBRANT_GREEN
+														: isFuture
+															? INSTITUTIONAL_TERRACOTTA
+															: isUnscheduled
+																? UNSCHEDULED_COLOR
+																: CLOSED_COLOR,
+													color: "white",
+													fontSize: "0.68rem",
+													fontWeight: 800,
+													px: 1,
+													py: 0.3,
+													borderRadius: "4px",
+													textTransform: "uppercase",
+													letterSpacing: "0.04em",
+												}}
 											>
-												{event.title}
-											</Typography>
-											<Typography
-												variant="caption"
-												color="text.secondary"
-												sx={{ display: "block", mb: 1 }}
+												{isActive
+													? "Abierto"
+													: isFuture
+														? "Próximamente"
+														: isUnscheduled
+															? "Sin fecha"
+															: "Vencido"}
+											</Box>
+
+											<Box
+												sx={{
+													mr: 1.8,
+													width: 44,
+													height: 44,
+													borderRadius: "12px",
+													backgroundColor: INSTITUTIONAL_TERRACOTTA,
+													color: "common.white",
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+													flexShrink: 0,
+													boxShadow: "0 4px 10px rgba(156, 78, 53, 0.3)",
+												}}
 											>
-												{event.subtitle}
-											</Typography>
+												{React.cloneElement(event.icon as React.ReactElement, {
+													sx: { fontSize: 24 },
+												})}
+											</Box>
 
-											<Stack
-												direction="row"
-												spacing={1.5}
-												alignItems="center"
-												flexWrap="wrap"
-											>
-												{isUnscheduled ? (
-													<Typography
-														variant="caption"
-														color="text.secondary"
-														fontStyle="italic"
-													>
-														Fecha no definida.
-													</Typography>
-												) : (
-													<>
-														<Stack
-															direction="row"
-															spacing={0.5}
-															alignItems="center"
-														>
-															<CalendarMonth
-																sx={{
-																	fontSize: 14,
-																	color: "text.secondary",
-																	opacity: 0.7,
-																}}
-															/>
-															<Typography
-																variant="caption"
-																sx={{ fontSize: "0.65rem" }}
-															>
-																<Box component="span" color="text.secondary">
-																	Desde:
-																</Box>{" "}
-																{formatDateShort(event.desde)}
-															</Typography>
-														</Stack>
+											<Box sx={{ flexGrow: 1, pr: 5 }}>
+												<Typography
+													variant="subtitle2"
+													fontWeight={700}
+													sx={{ lineHeight: 1.2, mb: 0.3, fontSize: "0.9rem" }}
+												>
+													{event.title}
+												</Typography>
+												<Typography
+													variant="caption"
+													color="text.secondary"
+													sx={{ display: "block", mb: 0.8, fontSize: "0.75rem" }}
+												>
+													{event.subtitle}
+												</Typography>
 
-														<Stack
-															direction="row"
-															spacing={0.5}
-															alignItems="center"
-														>
-															<Assignment
-																sx={{
-																	fontSize: 14,
-																	color: "text.secondary",
-																	opacity: 0.7,
-																}}
-															/>
-															<Typography
-																variant="caption"
-																sx={{ fontSize: "0.65rem" }}
-															>
-																<Box component="span" color="text.secondary">
-																	Hasta:
-																</Box>{" "}
-																{formatDateShort(event.hasta)}
-															</Typography>
-														</Stack>
-													</>
-												)}
-											</Stack>
-										</Box>
-									</Box>
-								</Box>
-							);
-						})
-					)}
-				</Box>
-				{/* --- FIN DEL CARRUSEL --- */}
-			</Stack>
-
-			{sections.map((section) => (
-				<Box key={section.title} sx={{ mb: 4 }}>
-					<SectionTitlePill title={section.title} />
-					<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-						{section.subtitle}
-					</Typography>
-					<Grid container spacing={2}>
-						{section.items.map((item) => {
-							const isDisabled = Boolean(item.disabled);
-							const cardSx = {
-								...squareCardStyles,
-								...(item.status === "success"
-									? {
-											borderColor: "rgba(46,125,50,0.6)",
-											backgroundColor: "#e8f5e9",
-										}
-									: {}),
-								cursor: item.path && !isDisabled ? "pointer" : "default",
-								opacity: isDisabled ? 0.85 : 1,
-							};
-							return (
-								<Grid
-									item
-									xs={12}
-									sm={6}
-									md={4}
-									lg={3}
-									key={item.title}
-									sx={{ display: "flex" }}
-								>
-									<Card
-										variant="outlined"
-										onClick={() => {
-											if (!isDisabled) {
-												navigate(item.path);
-											}
-										}}
-										sx={cardSx}
-									>
-										<CardContent sx={{ flexGrow: 1 }}>
-											<Stack spacing={1.5}>
 												<Stack
 													direction="row"
 													spacing={1.5}
 													alignItems="center"
+													flexWrap="wrap"
 												>
-													<Box sx={iconWrapperStyles}>{item.icon}</Box>
-													<Typography variant="subtitle2" fontWeight={600}>
-														{item.title}
-													</Typography>
+													{isUnscheduled ? (
+														<Typography
+															variant="caption"
+															color="text.secondary"
+															fontStyle="italic"
+															sx={{ fontSize: "0.7rem" }}
+														>
+															Fecha no definida.
+														</Typography>
+													) : (
+														<>
+															<Stack
+																direction="row"
+																spacing={0.5}
+																alignItems="center"
+															>
+																<CalendarMonth
+																	sx={{
+																		fontSize: 13,
+																		color: "text.secondary",
+																		opacity: 0.7,
+																	}}
+																/>
+																<Typography
+																	variant="caption"
+																	sx={{ fontSize: "0.68rem" }}
+																>
+																	<Box component="span" color="text.secondary">
+																		Desde:
+																	</Box>{" "}
+																	{formatDateShort(event.desde)}
+																</Typography>
+															</Stack>
+
+															<Stack
+																direction="row"
+																spacing={0.5}
+																alignItems="center"
+															>
+																<Assignment
+																	sx={{
+																		fontSize: 13,
+																		color: "text.secondary",
+																		opacity: 0.7,
+																	}}
+																/>
+																<Typography
+																	variant="caption"
+																	sx={{ fontSize: "0.68rem" }}
+																>
+																	<Box component="span" color="text.secondary">
+																		Hasta:
+																	</Box>{" "}
+																	{formatDateShort(event.hasta)}
+																</Typography>
+															</Stack>
+														</>
+													)}
 												</Stack>
-												<Typography variant="caption" color="text.secondary">
-													{item.subtitle}
-												</Typography>
-											</Stack>
-										</CardContent>
-									</Card>
-								</Grid>
-							);
-						})}
-					</Grid>
+											</Box>
+										</Box>
+									</Box>
+								);
+							})
+						)}
+					</Box>
 				</Box>
-			))}
+
+				{/* Secciones de Tarjetas en Cajas Beiges Agrupadoras */}
+				{sections.map((section) => (
+					<Box
+						key={section.title}
+						sx={{
+							position: "relative",
+							backgroundColor: "#E8DFD3",
+							border: "1px solid #D6CAA",
+							borderRadius: "20px",
+							p: { xs: 2, md: 3 },
+							pt: { xs: 3.5, md: 4 },
+							boxShadow: "0 4px 15px rgba(0, 0, 0, 0.03)",
+						}}
+					>
+						<SectionTitlePill title={section.title} />
+						<Grid container spacing={2}>
+							{section.items.map((item) => (
+								<SectionCard
+									key={`${section.title}-${item.title}`}
+									title={item.title}
+									subtitle={item.subtitle}
+									icon={item.icon}
+									path={item.path}
+									disabled={item.disabled}
+									status={item.status}
+								/>
+							))}
+						</Grid>
+					</Box>
+				))}
+			</Stack>
 		</Box>
 	);
 }

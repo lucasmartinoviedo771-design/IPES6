@@ -7,9 +7,8 @@ import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-	ICON_GRADIENT,
-	INSTITUTIONAL_GREEN,
 	INSTITUTIONAL_TERRACOTTA,
+	INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
 
 export type SectionCardProps = {
@@ -17,6 +16,8 @@ export type SectionCardProps = {
 	subtitle: string;
 	icon: ReactNode;
 	path: string;
+	disabled?: boolean;
+	status?: "success" | "info" | "warning";
 };
 
 export default function SectionCard({
@@ -24,64 +25,81 @@ export default function SectionCard({
 	subtitle,
 	icon,
 	path,
+	disabled = false,
 }: SectionCardProps) {
 	const navigate = useNavigate();
 
 	return (
-		<Grid item xs={12} sm={6} md={4} lg={3} sx={{ display: "flex" }}>
+		<Grid item xs={12} sm={6} md={4} sx={{ display: "flex" }}>
 			<Card
-				onClick={() => navigate(path)}
+				onClick={() => !disabled && navigate(path)}
 				sx={{
 					width: "100%",
-					minHeight: 110,
-					cursor: "pointer",
-					borderRadius: 10,
-					border: `1px solid ${INSTITUTIONAL_GREEN}55`,
-					backgroundColor: "#fff",
-					boxShadow: "0 10px 20px rgba(125,127,110,0.15)",
-					transition: "all 0.2s ease",
-					"&:hover": {
-						borderColor: INSTITUTIONAL_TERRACOTTA,
-						boxShadow: "0 15px 35px rgba(183,105,78,0.35)",
-						transform: "translateY(-4px)",
-					},
+					minHeight: 115,
+					cursor: disabled ? "not-allowed" : "pointer",
+					opacity: disabled ? 0.6 : 1,
+					borderRadius: "14px",
+					border: "1px solid #D6CAA",
+					backgroundColor: "#ffffff",
+					boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+					transition: "all 0.2s ease-in-out",
+					position: "relative",
+					overflow: "hidden",
+					"&:hover": disabled
+						? {}
+						: {
+								borderColor: INSTITUTIONAL_TERRACOTTA,
+								boxShadow: "0 8px 20px rgba(140, 67, 46, 0.18)",
+								transform: "translateY(-3px)",
+							},
 				}}
 			>
-				<CardContent sx={{ height: "100%", display: "flex" }}>
-					<Stack spacing={1.5} sx={{ width: "100%" }}>
-						<Stack direction="row" spacing={1.5} alignItems="center">
-							<Box
-								sx={{
-									width: 56,
-									height: 56,
-									borderRadius: 8,
-									backgroundImage: ICON_GRADIENT,
-									color: "common.white",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									fontSize: 30,
-									boxShadow: "0 10px 20px rgba(183,105,78,0.55)",
-									flexShrink: 0,
-								}}
-							>
-								{icon}
-							</Box>
+				<CardContent sx={{ height: "100%", p: 2, "&:last-child": { pb: 2 } }}>
+					<Stack direction="row" spacing={2} alignItems="flex-start" sx={{ height: "100%" }}>
+						<Box
+							sx={{
+								width: 46,
+								height: 46,
+								borderRadius: "12px",
+								backgroundColor: INSTITUTIONAL_TERRACOTTA,
+								backgroundImage: `linear-gradient(135deg, ${INSTITUTIONAL_TERRACOTTA}, ${INSTITUTIONAL_TERRACOTTA_DARK})`,
+								color: "#ffffff",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								fontSize: 24,
+								boxShadow: "0 4px 10px rgba(156, 78, 53, 0.3)",
+								flexShrink: 0,
+								mt: 0.2,
+							}}
+						>
+							{icon}
+						</Box>
+
+						<Stack spacing={0.5} sx={{ flexGrow: 1 }}>
 							<Typography
 								variant="subtitle1"
-								fontWeight={600}
-								sx={{ lineHeight: 1.2, wordBreak: "break-word" }}
+								fontWeight={700}
+								sx={{
+									fontSize: "0.95rem",
+									lineHeight: 1.25,
+									color: "#26211d",
+									wordBreak: "break-word",
+								}}
 							>
 								{title}
 							</Typography>
+							<Typography
+								variant="body2"
+								sx={{
+									fontSize: "0.78rem",
+									color: "#6b625b",
+									lineHeight: 1.35,
+								}}
+							>
+								{subtitle}
+							</Typography>
 						</Stack>
-						<Typography
-							variant="body2"
-							color="text.secondary"
-							sx={{ whiteSpace: "normal" }}
-						>
-							{subtitle}
-						</Typography>
 					</Stack>
 				</CardContent>
 			</Card>
