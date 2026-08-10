@@ -47,6 +47,7 @@ def descargar_certificado_estudiante_regular(
     plan_id: int,
     dni: str | None = None,
     anio_override: int | None = None,
+    destinatario: str | None = None,
 ):
     """Genera y descarga la constancia de estudiante regular en formato PDF."""
     _ensure_estudiante_access(request, dni)
@@ -65,6 +66,22 @@ def descargar_certificado_estudiante_regular(
     anio_calculado = _calcular_anio_estudio(est, plan)
     anio_estudio = anio_override if (anio_override and anio_override <= anio_calculado) else anio_calculado
 
+    # Determinar el destinatario según el estado del legajo o parámetro explícito
+    if not destinatario:
+        carrera_det = est.carreras_detalle.filter(profesorado_id=profesorado_id).first()
+        if carrera_det and carrera_det.estado_legajo == "COM":
+            destinatario_text = "quien corresponda"
+        else:
+            destinatario_text = "las autoridades de la SUBE"
+    else:
+        dest_clean = destinatario.strip()
+        if "sube" in dest_clean.lower():
+            destinatario_text = "las autoridades de la SUBE"
+        elif "corresponda" in dest_clean.lower():
+            destinatario_text = "quien corresponda"
+        else:
+            destinatario_text = dest_clean
+
     import os
 
     from django.conf import settings
@@ -82,6 +99,7 @@ def descargar_certificado_estudiante_regular(
         "plan": plan,
         "resolucion_plan": plan.resolucion,
         "anio_estudio": anio_estudio,
+        "destinatario": destinatario_text,
         "fecha": datetime.now(),
         "base_dir": str(settings.BASE_DIR),
         "logo_left_path": logo_left_path,

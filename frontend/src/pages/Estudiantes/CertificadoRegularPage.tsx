@@ -45,6 +45,7 @@ const CertificadoRegularPage: React.FC = () => {
 	const [planId, setPlanId] = useState<SelectValue>("");
 	const [dniManual, setDniManual] = useState<string>("");
 	const [anioOverride, setAnioOverride] = useState<SelectValue>("");
+	const [destinatario, setDestinatario] = useState<string>("quien corresponda");
 	const [descargando, setDescargando] = useState(false);
 
 	const dniObjetivo = isOnlyStudent ? (user?.dni ?? "") : dniManual.trim();
@@ -58,7 +59,7 @@ const CertificadoRegularPage: React.FC = () => {
 			(canGestionar || isOnlyStudent),
 	});
 
-	const carreras = carrerasData?.carreras ?? [];  
+	const carreras = carrerasData?.carreras ?? [];
 
 	useEffect(() => {
 		if (!carreras.length) {
@@ -73,12 +74,25 @@ const CertificadoRegularPage: React.FC = () => {
 		}
 	}, [carreras, profesoradoId]);
 
-	const planesDisponibles = useMemo(() => {
-		const carrera = carreras.find(
-			(item) => item.profesorado_id === Number(profesoradoId),
+	const carreraSeleccionada = useMemo(() => {
+		return carreras.find(
+			(item) => String(item.profesorado_id) === profesoradoId,
 		);
-		return carrera?.planes ?? [];
 	}, [carreras, profesoradoId]);
+
+	useEffect(() => {
+		if (carreraSeleccionada) {
+			if (carreraSeleccionada.estado_legajo === "COM") {
+				setDestinatario("quien corresponda");
+			} else {
+				setDestinatario("las autoridades de la SUBE");
+			}
+		}
+	}, [carreraSeleccionada]);
+
+	const planesDisponibles = useMemo(() => {
+		return carreraSeleccionada?.planes ?? [];
+	}, [carreraSeleccionada]);
 
 	useEffect(() => {
 		if (!planesDisponibles.length) {
@@ -117,6 +131,7 @@ const CertificadoRegularPage: React.FC = () => {
 	useEffect(() => {
 		setAnioOverride(String(anioMax));
 	}, [anioMax]);
+
 	const handleDescargar = async () => {
 		if (!profesoradoId || !planId) {
 			enqueueSnackbar("Selecciona un profesorado y un plan de estudio.", {
@@ -136,6 +151,7 @@ const CertificadoRegularPage: React.FC = () => {
 				plan_id: Number(planId),
 				dni: puedeCambiarDni ? dniObjetivo : undefined,
 				anio_override: anioOverride ? Number(anioOverride) : undefined,
+				destinatario: destinatario,
 			});
 
 			if (blob.type && blob.type.includes("application/json")) {
@@ -175,8 +191,8 @@ const CertificadoRegularPage: React.FC = () => {
 					}
 				} else {
 					mensaje =
-												(error.response?.data as any)?.message ||
-												(error.response?.data as any)?.detail ||
+						(error.response?.data as any)?.message ||
+						(error.response?.data as any)?.detail ||
 						error.message ||
 						mensaje;
 				}
@@ -202,7 +218,7 @@ const CertificadoRegularPage: React.FC = () => {
 			</Alert>
 
 			<Grid container spacing={2} sx={{ mb: 2 }}>
-				<Grid item xs={12} md={4}>
+				<Grid item xs={12} md={canGestionar ? 3 : 4}>
 					<FormControl fullWidth size="small">
 						<InputLabel id="profesorado-select-label">Profesorado</InputLabel>
 						<Select
@@ -229,7 +245,7 @@ const CertificadoRegularPage: React.FC = () => {
 						</Select>
 					</FormControl>
 				</Grid>
-				<Grid item xs={12} md={4}>
+				<Grid item xs={12} md={canGestionar ? 3 : 4}>
 					<FormControl
 						fullWidth
 						size="small"
@@ -257,7 +273,7 @@ const CertificadoRegularPage: React.FC = () => {
 						</Select>
 					</FormControl>
 				</Grid>
-				<Grid item xs={12} md={4}>
+				<Grid item xs={12} md={canGestionar ? 3 : 4}>
 					<FormControl
 						fullWidth
 						size="small"
@@ -280,6 +296,26 @@ const CertificadoRegularPage: React.FC = () => {
 						</Select>
 					</FormControl>
 				</Grid>
+				{canGestionar && (
+					<Grid item xs={12} md={3}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="destinatario-select-label">Presentar ante</InputLabel>
+							<Select
+								labelId="destinatario-select-label"
+								label="Presentar ante"
+								value={destinatario}
+								onChange={(event: SelectChangeEvent<string>) =>
+									setDestinatario(event.target.value)
+								}
+							>
+								<MenuItem value="quien corresponda">A quien corresponda</MenuItem>
+								<MenuItem value="las autoridades de la SUBE">
+									Ante las autoridades de la SUBE
+								</MenuItem>
+							</Select>
+						</FormControl>
+					</Grid>
+				)}
 				<Grid item xs={12}>
 					<Stack direction="row" spacing={1} justifyContent="flex-end">
 						<Button

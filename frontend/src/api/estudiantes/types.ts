@@ -335,6 +335,7 @@ type TrayectoriaEstudianteDTO = {
 export type TrayectoriaCarreraDetalleDTO = {
 	profesorado_id: number;
 	nombre: string;
+	estado_legajo?: string | null;
 	planes: {
 		id: number;
 		resolucion?: string | null;

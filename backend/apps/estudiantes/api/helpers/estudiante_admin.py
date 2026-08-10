@@ -124,10 +124,12 @@ def _listar_carreras_detalle(est: Estudiante, carreras: Iterable[Profesorado] | 
     detalle: list[dict] = []
     for prof in carreras_list:
         planes = planes_por_prof.get(prof.id, [])
+        ec = ecs_by_prof.get(prof.id)
         detalle.append(
             {
                 "profesorado_id": prof.id,
                 "nombre": prof.nombre,
+                "estado_legajo": ec.estado_legajo if ec else None,
                 "planes": [
                     {
                         "id": plan.id,

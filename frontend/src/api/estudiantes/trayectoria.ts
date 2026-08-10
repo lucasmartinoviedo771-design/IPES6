@@ -110,6 +110,7 @@ export async function descargarCertificadoRegular(params: {
 	plan_id: number;
 	dni?: string;
 	anio_override?: number;
+	destinatario?: string;
 }): Promise<Blob> {
 	const response = await client.get(
 		`/estudiantes/certificados/estudiante-regular`,

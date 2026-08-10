@@ -23,6 +23,7 @@ def carreras_activas(request, dni: str | None = None):
         CarreraDetalleResumen(
             profesorado_id=item["profesorado_id"],
             nombre=item["nombre"],
+            estado_legajo=item.get("estado_legajo"),
             planes=[
                 CarreraPlanResumen(
                     id=plan["id"],

@@ -86,6 +86,7 @@ class CarreraDetalleResumen(Schema):
     profesorado_id: int
     nombre: str
     planes: list[CarreraPlanResumen] = Field(default_factory=list)
+    estado_legajo: str | None = None
 
 
 class CarrerasActivasOut(Schema):
