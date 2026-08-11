@@ -16,10 +16,12 @@ from ninja.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
+from apps.common.audit import log_action, snapshot
 from apps.common.constants import AppErrorCode
 from apps.common.errors import AppError
 from core.auth_ninja import JWTAuth
 from core.models import (
+    AuditLog,
     Comision,
     InscripcionMateriaEstudiante,
     Materia,
@@ -147,6 +149,16 @@ def crear_profesorado(request, payload: ProfesoradoIn):
     """Crea una nueva oferta académica (Profesorado / Carrera)."""
     _require_edit(request.user)
     profesorado = Profesorado.objects.create(**payload.dict())
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.CREATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Creación de profesorado {profesorado.nombre} (ID: {profesorado.id})",
+        entidad="Profesorado",
+        entidad_id=profesorado.id,
+        after=snapshot(profesorado),
+    )
     return profesorado
 
 
@@ -155,9 +167,21 @@ def actualizar_profesorado(request, profesorado_id: int, payload: ProfesoradoIn)
     """Actualiza la configuración de una carrera existente."""
     _require_edit(request.user, profesorado_id)
     profesorado = get_object_or_404(Profesorado, id=profesorado_id)
+    before_snap = snapshot(profesorado)
     for attr, value in payload.dict().items():
         setattr(profesorado, attr, value)
     profesorado.save()
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Actualización de profesorado {profesorado.nombre} (ID: {profesorado.id})",
+        entidad="Profesorado",
+        entidad_id=profesorado.id,
+        before=before_snap,
+        after=snapshot(profesorado),
+    )
     return profesorado
 
 
@@ -169,8 +193,21 @@ def eliminar_profesorado(request, profesorado_id: int):
     """
     _require_edit(request.user, profesorado_id)
     profesorado = get_object_or_404(Profesorado, id=profesorado_id)
+    before_snap = snapshot(profesorado)
+    prof_nombre = profesorado.nombre
+    prof_id_str = str(profesorado.id)
     try:
         profesorado.delete()
+        log_action(
+            user=request.user,
+            roles=get_user_roles(request.user),
+            accion=AuditLog.Accion.DELETE,
+            tipo_accion=AuditLog.TipoAccion.CRUD,
+            detalle_accion=f"Eliminación de profesorado {prof_nombre} (ID: {prof_id_str})",
+            entidad="Profesorado",
+            entidad_id=prof_id_str,
+            before=before_snap,
+        )
         return 200, {"success": True}
     except ProtectedError:
         raise HttpError(400, "No se puede eliminar la carrera: existen planes o alumnos asociados.")
@@ -193,6 +230,16 @@ def create_plan_for_profesorado(request, profesorado_id: int, payload: PlanDeEst
     _require_edit(request.user, profesorado_id)
     profesorado = get_object_or_404(Profesorado, id=profesorado_id)
     plan = PlanDeEstudio.objects.create(profesorado=profesorado, **payload.dict())
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.CREATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Creación de plan de estudio {plan.resolucion} (ID: {plan.id})",
+        entidad="PlanDeEstudio",
+        entidad_id=plan.id,
+        after=snapshot(plan),
+    )
     return plan
 
 
@@ -228,9 +275,21 @@ def update_plan(request, plan_id: int, payload: PlanDeEstudioIn):
     """Modifica la configuración de un plan de estudio."""
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
     _require_edit(request.user, plan.profesorado_id)
+    before_snap = snapshot(plan)
     for attr, value in payload.dict().items():
         setattr(plan, attr, value)
     plan.save()
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Modificación de plan de estudio {plan.resolucion} (ID: {plan.id})",
+        entidad="PlanDeEstudio",
+        entidad_id=plan.id,
+        before=before_snap,
+        after=snapshot(plan),
+    )
     return plan
 
 
@@ -239,8 +298,20 @@ def delete_plan(request, plan_id: int):
     """Eliminación lógica (vigente=False) de un plan de estudio."""
     plan = get_object_or_404(PlanDeEstudio, id=plan_id)
     _require_edit(request.user, plan.profesorado_id)
+    before_snap = snapshot(plan)
     plan.vigente = False
     plan.save(update_fields=["vigente"])
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.DELETE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Baja lógica de plan de estudio {plan.resolucion} (ID: {plan.id})",
+        entidad="PlanDeEstudio",
+        entidad_id=plan.id,
+        before=before_snap,
+        after=snapshot(plan),
+    )
     return 204, None
 
 
@@ -295,6 +366,16 @@ def create_materia_for_plan(request, plan_id: int, payload: MateriaIn):
     if payload.plan_de_estudio_id != plan_id:
         raise HttpError(400, "Inconsistencia: el ID del plan en el payload no coincide con la URL.")
     materia = Materia.objects.create(plan_de_estudio=plan, **payload.dict())
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.CREATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Creación de materia {materia.nombre} (ID: {materia.id})",
+        entidad="Materia",
+        entidad_id=materia.id,
+        after=snapshot(materia),
+    )
     return materia
 
 
@@ -358,9 +439,21 @@ def update_materia(request, materia_id: int, payload: MateriaIn):
     """Modifica la configuración de una materia (Carga horaria, régimen, etc)."""
     materia = get_object_or_404(Materia, id=materia_id)
     _require_edit(request.user, materia.plan_de_estudio.profesorado_id)
+    before_snap = snapshot(materia)
     for attr, value in payload.dict().items():
         setattr(materia, attr, value)
     materia.save()
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Modificación de materia {materia.nombre} (ID: {materia.id})",
+        entidad="Materia",
+        entidad_id=materia.id,
+        before=before_snap,
+        after=snapshot(materia),
+    )
     return materia
 
 
@@ -369,7 +462,20 @@ def delete_materia(request, materia_id: int):
     """Elimina una materia del plan (Solo permitido si no hay actas/inscriptos)."""
     materia = get_object_or_404(Materia, id=materia_id)
     _require_edit(request.user, materia.plan_de_estudio.profesorado_id)
+    before_snap = snapshot(materia)
+    materia_nombre = materia.nombre
+    materia_id_str = str(materia.id)
     materia.delete()
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.DELETE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Eliminación de materia {materia_nombre} (ID: {materia_id_str})",
+        entidad="Materia",
+        entidad_id=materia_id_str,
+        before=before_snap,
+    )
     return 204, None
 
 
@@ -400,6 +506,8 @@ def cerrar_edi(request, materia_id: int, payload: CerrarEDIIn):
     except ValueError:
         raise HttpError(400, "Formato de fecha inválido. Use YYYY-MM-DD")
 
+    before_vieja = snapshot(materia_vieja)
+
     # Cerrar EDI viejo
     materia_vieja.fecha_fin = fecha_fin
     materia_vieja.save()
@@ -422,6 +530,29 @@ def cerrar_edi(request, materia_id: int, payload: CerrarEDIIn):
         tipo_formacion=materia_vieja.tipo_formacion,
         is_edi=True,
         fecha_fin=None,  # El nuevo está activo
+    )
+
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Cierre de EDI {materia_vieja.nombre} (ID: {materia_vieja.id})",
+        entidad="Materia",
+        entidad_id=materia_vieja.id,
+        before=before_vieja,
+        after=snapshot(materia_vieja),
+    )
+
+    log_action(
+        user=request.user,
+        roles=get_user_roles(request.user),
+        accion=AuditLog.Accion.CREATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Creación de EDI {materia_nueva.nombre} (ID: {materia_nueva.id}) por renovación",
+        entidad="Materia",
+        entidad_id=materia_nueva.id,
+        after=snapshot(materia_nueva),
     )
 
     logger.info(f"EDI #{materia_vieja.id} cerrado. EDI #{materia_nueva.id} creado")
