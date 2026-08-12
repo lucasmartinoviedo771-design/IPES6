@@ -311,6 +311,12 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                         and dia == d.bloque.dia
                         and not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)
                     ):
+                        # Omitir si son de cuatrimestres distintos
+                        mat_regimen = mat.regimen
+                        d_regimen = d.horario_catedra.espacio.regimen
+                        if (mat_regimen == "PCU" and d_regimen == "SCU") or (mat_regimen == "SCU" and d_regimen == "PCU"):
+                            continue
+                        
                         # Omitir si ambas materias permiten superposición (talleres/práctica 4 del 2C)
                         if _permite_superposicion_residencia(mat, d.horario_catedra.espacio):
                             continue

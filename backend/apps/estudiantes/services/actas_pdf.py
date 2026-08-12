@@ -180,6 +180,12 @@ def generar_acta_examen_pdf(
     elements.append(Spacer(1, 10))
 
     elements.append(Paragraph("ACTA DE EXAMEN", doc_title_style))
+    
+    condition_style = ParagraphStyle(
+        "ConditionStyle", parent=styles["Normal"], fontSize=10, alignment=TA_RIGHT, fontName="Helvetica-Bold"
+    )
+    elements.append(Paragraph(f"CONDICIÓN: {acta.get_tipo_display().upper()}", condition_style))
+    
     elements.append(Spacer(1, 5))
 
     # General Info Layout
@@ -275,11 +281,6 @@ def generar_acta_examen_pdf(
                 Paragraph(ae.calificacion_definitiva, table_body_style),
             ]
         )
-
-    # Fill at least 15 rows to look like a form
-    while len(table_data) < 16:
-        table_data.append(["", "", "", "", "", ""])
-
     table_students = Table(table_data, colWidths=[25, 65, 230, 65, 65, 65], repeatRows=1)
     table_students.setStyle(
         TableStyle(
