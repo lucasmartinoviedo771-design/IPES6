@@ -77,7 +77,7 @@ def get_historial_regularidades(
     return data, None
 
 
-def get_historico_mesas_pandemia(user, ordering="-fecha") -> list:
+def get_historico_mesas_pandemia(user, ordering="-fecha", materia=None, fecha=None) -> list:
     """Returns list of mesa dicts."""
     from core.models import MesaExamen
 
@@ -91,6 +91,12 @@ def get_historico_mesas_pandemia(user, ordering="-fecha") -> list:
         if not allowed:
             return []
         qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
+
+    if materia:
+        qs = qs.filter(materia__nombre__icontains=materia)
+    
+    if fecha:
+        qs = qs.filter(fecha=fecha)
 
     allowed_ordering = [
         "id",

@@ -402,6 +402,8 @@ export interface MesaPandemiaHistoricoItem {
 
 export const listarHistoricoMesasPandemia = async (params?: {
 	ordering?: string;
+	materia?: string;
+	fecha?: string;
 }): Promise<MesaPandemiaHistoricoItem[]> => {
 	const { data } = await api.get<ApiResponse<MesaPandemiaHistoricoItem[]>>(
 		"/admin/primera-carga/mesas-pandemia",

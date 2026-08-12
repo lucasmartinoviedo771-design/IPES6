@@ -456,9 +456,14 @@ def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
     response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 401: ApiResponse},
 )
 @requires("primera_carga")
-def listar_historico_mesas_pandemia(request, ordering: str = "-fecha"):
+def listar_historico_mesas_pandemia(
+    request, 
+    ordering: str = "-fecha", 
+    materia: str | None = None, 
+    fecha: date | None = None
+):
     """Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'."""
-    data = get_historico_mesas_pandemia(request.user, ordering=ordering)
+    data = get_historico_mesas_pandemia(request.user, ordering=ordering, materia=materia, fecha=fecha)
     return ApiResponse(ok=True, message="Listado histórico.", data=data)
 
 

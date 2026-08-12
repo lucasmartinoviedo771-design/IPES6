@@ -48,6 +48,8 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 		const [condiciones, setCondiciones] = useState<any[]>([]);
 	const [loadingPlanilla, setLoadingPlanilla] = useState(false);
 	const [ordering, setOrdering] = useState<string>("-fecha");
+	const [materiaFilter, setMateriaFilter] = useState<string>("");
+	const [fechaFilter, setFechaFilter] = useState<string>("");
 
 	const handleRequestSort = (property: string) => {
 		const isAsc = ordering === property;
@@ -60,8 +62,12 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 		isLoading: queryLoading,
 		isError: queryError,
 	} = useQuery({
-		queryKey: ["historial-mesas-pandemia", ordering],
-		queryFn: () => listarHistoricoMesasPandemia({ ordering }),
+		queryKey: ["historial-mesas-pandemia", ordering, materiaFilter, fechaFilter],
+		queryFn: () => listarHistoricoMesasPandemia({ 
+			ordering, 
+			materia: materiaFilter || undefined, 
+			fecha: fechaFilter || undefined 
+		}),
 	});
 
 	const mutation = useMutation({
@@ -174,8 +180,27 @@ const HistorialMesasPandemiaPage: React.FC = () => {
 					</Stack>
 				</Box>
 
-				{/* FILTROS DE ORDENAMIENTO */}
-				<Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+				{/* FILTROS DE BÚSQUEDA Y ORDENAMIENTO */}
+				<Box sx={{ display: "flex", justifyContent: "space-between", mb: 1, gap: 2, flexWrap: "wrap" }}>
+					<Box sx={{ display: "flex", gap: 2 }}>
+						<TextField
+							label="Filtrar por Materia"
+							size="small"
+							value={materiaFilter}
+							onChange={(e) => setMateriaFilter(e.target.value)}
+							sx={{ width: 250 }}
+							placeholder="Nombre de la materia..."
+						/>
+						<TextField
+							label="Fecha"
+							size="small"
+							type="date"
+							value={fechaFilter}
+							onChange={(e) => setFechaFilter(e.target.value)}
+							InputLabelProps={{ shrink: true }}
+							sx={{ width: 180 }}
+						/>
+					</Box>
 					<TextField
 						select
 						label="Ordenar por"
