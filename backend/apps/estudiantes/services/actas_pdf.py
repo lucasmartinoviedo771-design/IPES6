@@ -224,8 +224,11 @@ def generar_acta_examen_pdf(
             Paragraph(f"<b>PLAN:</b> {escape(acta.plan.resolucion or '-').upper()}", header_value_style),
         ]
     ]
-    table_row3 = Table(row3_data, colWidths=[340, 60, 120])
-    table_row3.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+    table_row3 = Table(row3_data, colWidths=[300, 60, 160])
+    table_row3.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
     elements.append(table_row3)
     elements.append(Spacer(1, 4))
 

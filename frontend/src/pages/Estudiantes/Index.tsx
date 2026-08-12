@@ -133,10 +133,10 @@ const getWindowStatus = (ventana: VentanaDto) => {
 	const from = new Date(ventana.desde + "T00:00:00");
 	const to = new Date(ventana.hasta + "T23:59:59");
 
-	if (!ventana.activo) return "closed";
-	if (now >= from && now <= to) return "active";
+	if (now > to) return "closed";
 	if (now < from) return "future";
-	return "closed";
+	if (!ventana.activo) return "closed";
+	return "active";
 };
 
 const baseSections: Section[] = [
