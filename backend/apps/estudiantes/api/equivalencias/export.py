@@ -69,6 +69,8 @@ def equivalencias_para_materia(request, materia_id: int):
                 materias_equivalentes.append(mm)
     else:
         # Fallback: buscar materias con el mismo nombre, FGN, misma carga horaria y mismo formato
+        # Nota: NO excluimos la materia original (m.id) para que el frontend pueda ofrecer cambios
+        # a otras comisiones dentro de la MISMA materia y profesorado.
         candidates = (
             Materia.objects.select_related("plan_de_estudio__profesorado")
             .filter(
@@ -77,9 +79,12 @@ def equivalencias_para_materia(request, materia_id: int):
                 horas_semana=m.horas_semana,
                 formato=m.formato,
             )
-            .exclude(id=m.id)
         )
         materias_equivalentes = list(candidates)
+        
+    # Si había grupos formales (if anterior) igual debemos asegurarnos de que m esté en la lista
+    if m not in materias_equivalentes:
+        materias_equivalentes.append(m)
 
     def map_cuat(regimen: str) -> str:
         return (

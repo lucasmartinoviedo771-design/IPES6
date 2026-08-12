@@ -812,7 +812,7 @@ function Alternativas({
 	return (
 		<Box sx={{ mt: 1, pl: 1 }}>
 			<Typography variant="subtitle2">
-				Alternativas en otros profesorados:
+				Alternativas disponibles:
 			</Typography>
 			{loading && <CircularProgress size={18} sx={{ ml: 1, mt: 1 }} />}
 			{!loading && error && (
@@ -866,7 +866,7 @@ function filtrarAlternativas(
 
 	equivalencias.forEach((eq) => {
 		if (!mismasEtapas(base.cuatrimestre, eq.cuatrimestre)) return;
-		if (profesorActual && eq.profesorado === profesorActual) return;
+		// Se remueve el filtro de profesorActual para permitir ver otras comisiones del MISMO profesorado
 
 		eq.comisiones.forEach((com) => {
 			const horarios =

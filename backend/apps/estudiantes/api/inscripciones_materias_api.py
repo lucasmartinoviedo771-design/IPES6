@@ -85,10 +85,24 @@ def _es_taller_o_practica_4_residencia(materia) -> bool:
     return any(nombre_norm.startswith(nv) for nv in nombres_validos)
 
 
+# TODO: BORRAR ESTO - Código temporal agregado para pruebas. Permitir superposición con CI Acompañamiento a las Trayectorias.
+def _es_ci_acompanamiento(materia) -> bool:
+    """Retorna True si la materia es CI Acompañamiento a las Trayectorias."""
+    nombre = getattr(materia, "nombre", "") or ""
+    nombre_norm = (
+        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").replace("Ñ", "N").strip()
+    )
+    return "ACOMPANAMIENTO A LAS TRAYECTORIAS" in nombre_norm
+
+
 def _permite_superposicion_residencia(m1, m2) -> bool:
     """
     Permite superponer talleres de residencia y práctica 4 del 4° año entre sí.
+    También permite superponer cualquier materia con 'CI Acompañamiento a las Trayectorias'.
     """
+    # TODO: BORRAR ESTO - Condición temporal para pruebas
+    if _es_ci_acompanamiento(m1) or _es_ci_acompanamiento(m2):
+        return True
     return _es_taller_o_practica_4_residencia(m1) and _es_taller_o_practica_4_residencia(m2)
 
 

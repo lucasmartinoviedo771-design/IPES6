@@ -96,6 +96,13 @@ const AnalisisMateriaPage = lazyPage(
 const ReimprimirPreinscripcionPage = lazyPage(
 	() => import("../../pages/Secretaria/ReimprimirPreinscripcionPage"),
 );
+const GestionCargosPage = lazyPage(
+	() => import("../../pages/asistencia/GestionCargosPage"),
+);
+const CargosAsistenciaPage = lazyPage(
+	() => import("../../pages/asistencia/CargosAsistenciaPage"),
+);
+
 
 export const buildSecretariaRoutes = () => (
 	<>
@@ -263,6 +270,7 @@ export const buildSecretariaRoutes = () => (
 			}
 		>
 			<Route path="/asistencia/reportes" element={<AsistenciaReportesPage />} />
+			<Route path="/asistencia/cargos" element={<CargosAsistenciaPage />} />
 		</Route>
 
 		{/* ── Inscripciones ── */}
@@ -293,6 +301,7 @@ export const buildSecretariaRoutes = () => (
 				path="/secretaria/catedra-docente"
 				element={<CatedraDocentePage />}
 			/>
+			<Route path="/secretaria/cargos" element={<GestionCargosPage />} />
 		</Route>
 
 		{/* ── Horarios ── */}

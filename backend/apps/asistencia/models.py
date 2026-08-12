@@ -1,3 +1,4 @@
+from apps.asistencia.cargos_models import Cargo, CargoDocente, HorarioCargo, AsistenciaCargoDocente, validar_solapamiento_horario_docente
 import datetime
 
 from django.conf import settings
