@@ -1,5 +1,7 @@
 import AccessTime from "@mui/icons-material/AccessTime";
 import CalendarToday from "@mui/icons-material/CalendarToday";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import type { ChipProps } from "@mui/material";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
@@ -11,6 +13,8 @@ import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -129,6 +133,7 @@ const DocenteAsistenciaPage = () => {
 		password: "",
 	});
 	const [attemptingLogin, setAttemptingLogin] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
 
 	const isDocenteSession = useMemo(() => {
 		if (!user) return false;
@@ -523,7 +528,7 @@ const DocenteAsistenciaPage = () => {
 								/>
 								<TextField
 									label="Contraseña"
-									type="password"
+									type={showPassword ? "text" : "password"}
 									value={credentials.password}
 									onChange={(event) =>
 										setCredentials((prev) => ({
@@ -532,6 +537,20 @@ const DocenteAsistenciaPage = () => {
 										}))
 									}
 									required
+									InputProps={{
+										endAdornment: (
+											<InputAdornment position="end">
+												<IconButton
+													aria-label="mostrar u ocultar contraseña"
+													onClick={() => setShowPassword((show) => !show)}
+													onMouseDown={(e) => e.preventDefault()}
+													edge="end"
+												>
+													{showPassword ? <VisibilityOff /> : <Visibility />}
+												</IconButton>
+											</InputAdornment>
+										),
+									}}
 								/>
 								{loginError && <Alert severity="error">{loginError}</Alert>}
 								<Stack direction="row" spacing={1} justifyContent="flex-end">
