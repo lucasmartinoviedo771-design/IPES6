@@ -174,21 +174,26 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     if not mat:
         return 404, ApiResponse(ok=False, message="Materia no encontrada.")
 
-    # --- 0. VALIDACIÓN DE ESTADO ACTIVO ---
+    # --- 0. VALIDACIÓN DE ESTADO ACTIVO Y PROFESORADO ÚNICO ---
     from core.models.estudiantes import EstudianteCarrera
 
     profesorado_id = mat.plan_de_estudio.profesorado_id if mat.plan_de_estudio else None
-    if profesorado_id:
-        carrera_estado = (
-            EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=profesorado_id)
-            .values_list("estado_academico", flat=True)
-            .first()
+    if not profesorado_id:
+        return 400, ApiResponse(
+            ok=False,
+            message="La materia no tiene un profesorado asociado válido.",
         )
-        if carrera_estado != "ACT":
-            return 400, ApiResponse(
-                ok=False,
-                message="El alumno debe encontrarse en estado 'Activo' en el profesorado correspondiente para poder inscribirse a materias.",
-            )
+
+    carrera_estado = (
+        EstudianteCarrera.objects.filter(estudiante=est, profesorado_id=profesorado_id)
+        .values_list("estado_academico", flat=True)
+        .first()
+    )
+    if carrera_estado != "ACT":
+        return 400, ApiResponse(
+            ok=False,
+            message="El alumno debe encontrarse en estado 'Activo' en el profesorado correspondiente para poder inscribirse a materias.",
+        )
 
     anio_actual = datetime.now().year
 
@@ -300,7 +305,10 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         return 400, ApiResponse(ok=False, message="No cumple correlatividades exigidas.", data={"faltantes": faltan})
 
     # --- 4. DETECCIÓN DE SUPERPOSICIÓN HORARIA ---
-    # 5. Validar superposición horaria (solo contra inscripciones activas)
+    # Ahora solo AVISA pero no bloquea la inscripción.
+    # El estudiante puede continuar inscribiéndose a otras materias sin conflicto.
+    # Luego irá a "Cambio de Comisión" para resolver las superposiciones.
+    superposicion_detectada = None
     cand_qs = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mat)
     if cand_qs.exists():
         cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in cand_qs]
@@ -329,10 +337,19 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                         if _permite_superposicion_residencia(mat, d.horario_catedra.espacio):
                             continue
                         colision_nombre = d.horario_catedra.espacio.nombre
-                        return 400, ApiResponse(
-                            ok=False,
-                            message=f"Existe una superposición horaria con la materia '{colision_nombre}' del ciclo actual.",
-                        )
+                        superposicion_detectada = colision_nombre
+                        break
+                if superposicion_detectada:
+                    break
+
+        # Si detectamos superposición, retornamos código 409 (Conflict) pero NO bloqueamos
+        if superposicion_detectada:
+            return 409, ApiResponse(
+                ok=False,
+                message=f"Existe una superposición horaria con la materia '{superposicion_detectada}' del ciclo actual. "
+                        f"Continúa inscribiéndote a otras materias sin conflicto. "
+                        f"Luego ve a 'Cambio de Comisión' para resolver esta superposición.",
+            )
 
     # --- 4. ASIGNACIÓN DE COMISIÓN (AUTO-ASSIGNMENT) ---
     comision_id = getattr(payload, "comision_id", None)
@@ -406,6 +423,8 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
     if not est:
         return 400, ApiResponse(ok=False, message="Estudiante no encontrado.")
 
+    anio_actual = datetime.now().year
+
     qs = (
         InscripcionMateriaEstudiante.objects.filter(estudiante=est)
         .select_related(
@@ -421,6 +440,17 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
     )
     if anio:
         qs = qs.filter(anio=anio)
+    else:
+        # Si no especifica año, traer solo del año actual y excluir canceladas/rechazadas
+        qs = qs.filter(
+            anio=anio_actual
+        ).exclude(
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.ANULADA,
+                InscripcionMateriaEstudiante.Estado.RECHAZADA,
+                InscripcionMateriaEstudiante.Estado.BAJA,
+            ]
+        )
 
     items: list[MateriaInscriptaItem] = []
     for ins in qs:
@@ -443,6 +473,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 horarios=obtener_horarios_materia(materia),
                 comision_actual=_comision_to_resumen(comision_visible),
                 comision_solicitada=_comision_to_resumen(ins.comision_solicitada),
+                motivo_cambio=ins.motivo_cambio,
                 fecha_creacion=format_datetime(ins.created_at),
                 fecha_actualizacion=format_datetime(ins.updated_at or ins.created_at),
             )
@@ -500,7 +531,8 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
     inscripcion.estado = InscripcionMateriaEstudiante.Estado.ANULADA
     inscripcion.comision = None
     inscripcion.comision_solicitada = None
-    inscripcion.save(update_fields=["estado", "comision", "comision_solicitada", "updated_at"])
+    inscripcion.motivo_cambio = None
+    inscripcion.save(update_fields=["estado", "comision", "comision_solicitada", "motivo_cambio", "updated_at"])
 
     # Registro de auditoría
     InscripcionMateriaMovimiento.objects.create(
@@ -593,22 +625,26 @@ def cambio_comision(request, payload: CambioComisionIn):
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado.")
 
     # 1. VALIDAR ESTUDIANTE REGULAR / ACTIVO
-    # Verificamos si tiene al menos una carrera activa
-    es_regular = EstudianteCarrera.objects.filter(
+    # Verificamos que tenga exactamente una carrera activa
+    carreras_activas = EstudianteCarrera.objects.filter(
         estudiante=est, estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
-    ).exists()
+    )
 
-    if not es_regular:
+    if not carreras_activas.exists():
         return 400, ApiResponse(
             ok=False, message="El alumno debe ser estudiante regular para solicitar cambios de comisión."
         )
 
+    # Obtener profesorado activo único
+    profesorado_activo = carreras_activas.first().profesorado
+
     # 2. VALIDAR COMISIÓN DESTINO Y MATERIA
-    com_dest = Comision.objects.select_related("materia").filter(id=payload.comision_id).first()
+    com_dest = Comision.objects.select_related("materia__plan_de_estudio").filter(id=payload.comision_id).first()
     if not com_dest:
         return 404, ApiResponse(ok=False, message="Comisión de destino no encontrada.")
 
     mat = com_dest.materia
+
     anio_actual = datetime.now().year
 
     # 3. REGLA: Solo Formación General
@@ -617,43 +653,127 @@ def cambio_comision(request, payload: CambioComisionIn):
             ok=False, message="Solo se permiten cambios de comisión para materias de Formación General."
         )
 
-    # 4. RESOLVER INSCRIPCIÓN PREVIA O NUEVA (CASO LABORAL)
+    # 4. RESOLVER INSCRIPCIÓN PREVIA O NUEVA (CASO LABORAL/SUPERPOSICIÓN)
     ins = None
+    m_orig = None  # Materia original para validar equivalencias
+
     if payload.inscripcion_id:
         ins = InscripcionMateriaEstudiante.objects.filter(id=payload.inscripcion_id, estudiante=est).first()
+        if ins:
+            m_orig = ins.materia
     else:
-        # Caso Trabajo: si no está inscripto, buscamos si existe una para la materia en el año
+        # Caso Superposición/Trabajo: si no está inscripto por ID exacto, buscamos por nombre de materia en el año
         ins = (
-            InscripcionMateriaEstudiante.objects.filter(estudiante=est, materia=mat, anio=anio_actual)
-            .exclude(estado__in=[InscripcionMateriaEstudiante.Estado.ANULADA, InscripcionMateriaEstudiante.Estado.BAJA])
+            InscripcionMateriaEstudiante.objects.filter(
+                estudiante=est,
+                materia__nombre=mat.nombre,
+                anio=anio_actual,
+            )
+            .exclude(
+                estado__in=[
+                    InscripcionMateriaEstudiante.Estado.ANULADA,
+                    InscripcionMateriaEstudiante.Estado.RECHAZADA,
+                    InscripcionMateriaEstudiante.Estado.BAJA,
+                ]
+            )
             .first()
         )
-
-    # Si es inscripción nueva (Laboral), verificamos compatibilidades de la materia base (si la hubiera)
-    # o simplemente validamos que sea FGN (ya validado arriba).
-
-    if ins:
-        # Si ya estaba inscripto, validar que sea la misma materia (por las dudas)
-        if ins.materia_id != mat.id:
-            # En cambio de comisión riguroso, solo permitimos cambiar si mm.id == ins.materia_id
-            # (o si son equivalentes y tienen mismo formato/carga)
+        if ins:
             m_orig = ins.materia
-            if m_orig.horas_semana != mat.horas_semana or m_orig.formato != mat.formato:
-                return 400, ApiResponse(
-                    ok=False,
-                    message="La materia de destino no tiene la misma carga horaria o formato que su inscripción actual.",
-                )
-    else:
-        # Es una solicitud de inscripción "de cero" por motivos laborales
-        if payload.motivo_cambio != "WORK":
+
+    # VALIDAR: No duplicar materias con el mismo nombre en diferentes profesorados (excluyendo la inscripción a cambiar)
+    ya_inscripta_similar = InscripcionMateriaEstudiante.objects.filter(
+        estudiante=est,
+        materia__nombre=mat.nombre,
+        anio=anio_actual,
+    ).exclude(
+        estado__in=[
+            InscripcionMateriaEstudiante.Estado.ANULADA,
+            InscripcionMateriaEstudiante.Estado.RECHAZADA,
+            InscripcionMateriaEstudiante.Estado.BAJA,
+        ]
+    )
+    if ins and ins.id:
+        ya_inscripta_similar = ya_inscripta_similar.exclude(id=ins.id)
+
+    if ya_inscripta_similar.exists():
+        return 400, ApiResponse(
+            ok=False,
+            message=f"Ya tienes otra inscripción activa de '{mat.nombre}' en otro profesorado. No puedes estar inscripto en la misma materia en múltiples profesorados."
+        )
+
+    # 4.5 VALIDACIÓN DE EQUIVALENCIAS
+    # Si tenemos inscripción original, validamos que destino sea equivalente
+    if m_orig and m_orig.id != mat.id:
+        # Validar: misma carga horaria
+        if m_orig.horas_semana != mat.horas_semana:
+            return 400, ApiResponse(
+                ok=False,
+                message=f"La materia de destino tiene {mat.horas_semana}h/semana, "
+                        f"pero su inscripción actual tiene {m_orig.horas_semana}h/semana. "
+                        f"Solo se permiten cambios a materias con idéntica carga horaria.",
+            )
+
+        # Validar: mismo formato
+        if m_orig.formato != mat.formato:
+            return 400, ApiResponse(
+                ok=False,
+                message=f"La materia de destino es {mat.formato}, "
+                        f"pero su inscripción actual es {m_orig.formato}. "
+                        f"Solo se permiten cambios a materias con idéntico formato.",
+            )
+
+        # Validar: mismo régimen/cuatrimestre (CRÍTICO)
+        if m_orig.regimen != mat.regimen:
+            return 400, ApiResponse(
+                ok=False,
+                message=f"La materia de destino es {mat.get_regimen_display()}, "
+                        f"pero su inscripción actual es {m_orig.get_regimen_display()}. "
+                        f"Solo se permiten cambios a materias del mismo régimen.",
+            )
+
+    if not ins:
+        # Es una solicitud de inscripción "de cero" por superposición o motivos laborales
+        # Ahora aceptamos OVERLAP (superposición) además de WORK (motivos laborales)
+        if payload.motivo_cambio not in ["WORK", "OVERLAP"]:
             return 400, ApiResponse(ok=False, message="No se encontró una inscripción previa para realizar el cambio.")
 
-        # Creamos la inscripción como CONDICIONAL (Solicitud)
+        # Creamos la inscripción
         ins = InscripcionMateriaEstudiante(estudiante=est, materia=mat, anio=anio_actual)
 
-    # 5. ACTUALIZAR A ESTADO CONDICIONAL Y GUARDAR METADATOS
-    ins.estado = InscripcionMateriaEstudiante.Estado.CONDICIONAL
-    ins.comision_solicitada = com_dest
+    # 5. ACTUALIZAR ESTADO Y GUARDAR METADATOS
+    # Limpiar registros históricos inactivos de la materia de destino para evitar error de clave única duplicada (estudiante, materia, anio)
+    InscripcionMateriaEstudiante.objects.filter(
+        estudiante=est,
+        materia=mat,
+        anio=anio_actual,
+    ).exclude(
+        id=ins.id if ins and ins.id else -1
+    ).filter(
+        estado__in=[
+            InscripcionMateriaEstudiante.Estado.ANULADA,
+            InscripcionMateriaEstudiante.Estado.RECHAZADA,
+            InscripcionMateriaEstudiante.Estado.BAJA,
+        ]
+    ).delete()
+
+    # - Por superposición horaria (OVERLAP): Autogestionado / Automático.
+    #   Asigna la comisión directamente (ins.comision = com_dest) y confirma la inscripción.
+    #   NO pasa por aprobación de tutora/bedel.
+    # - Por motivos laborales (WORK): Requiere revisión y aprobación de tutora/bedel.
+    #   Queda como comision_solicitada y estado CONDICIONAL para ser gestionado en administración.
+    if payload.motivo_cambio == "OVERLAP":
+        ins.materia = mat
+        ins.comision = com_dest
+        ins.comision_solicitada = None
+        ins.estado = InscripcionMateriaEstudiante.Estado.CONFIRMADA
+        mensaje = f"Cambio de comisión a {com_dest.codigo} registrado correctamente. La superposición horaria ha sido resuelta."
+    else:  # WORK
+        ins.materia = mat
+        ins.comision_solicitada = com_dest
+        ins.estado = InscripcionMateriaEstudiante.Estado.CONDICIONAL
+        mensaje = "Solicitud registrada en carácter CONDICIONAL. Será revisada por un tutor o bedel al presentar la constancia de trabajo."
+
     ins.motivo_cambio = payload.motivo_cambio
     ins.horario_laboral_metadata = payload.horario_laboral
     ins.save()
@@ -666,7 +786,7 @@ def cambio_comision(request, payload: CambioComisionIn):
         motivo_detalle=f"Solicitud de cambio a comisión {com_dest.codigo} ({payload.motivo_cambio}).",
     )
 
-    return {"message": "Solicitud registrada en carácter CONDICIONAL. Será revisada por un tutor o bedel."}
+    return {"message": mensaje}
 
 
 @estudiantes_router.post(

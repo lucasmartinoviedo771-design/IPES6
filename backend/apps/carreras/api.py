@@ -466,6 +466,14 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
         inscripciones = inscripciones.filter(anio=anio)
     if estado:
         inscripciones = inscripciones.filter(estado=estado)
+    else:
+        # Excluir inscripciones anuladas y rechazadas por defecto (no mostrar en listado de inscritos)
+        inscripciones = inscripciones.exclude(
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.ANULADA,
+                InscripcionMateriaEstudiante.Estado.RECHAZADA,
+            ]
+        )
 
     # Formateo del resultado para la UI
     from django.db.models import Count, Q

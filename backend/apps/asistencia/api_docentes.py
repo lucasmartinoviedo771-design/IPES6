@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.http import HttpRequest
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
@@ -20,6 +21,11 @@ from .models import (
     ClaseProgramada,
     DocenteMarcacionLog,
 )
+from .cargos_models import (
+    CargoDocente,
+    HorarioCargo,
+    AsistenciaCargoDocente,
+)
 from .schemas import (
     DocenteClaseOut,
     DocenteClasesResponse,
@@ -30,13 +36,22 @@ from .schemas import (
     DocenteMarcarPresenteOut,
     DocenteMisAsistenciasOut,
     IniciarPinResponse,
+    KioskBulkMarcarIn,
+    KioskBulkMarcarOut,
 )
 from .services import (
     generate_classes_for_range,
+    propagar_asistencia_docente_turno,
     registrar_log_docente,
+    TOLERANCIA_ANTERIOR_MINUTOS,
+    TOLERANCIA_TARDE_MINUTOS,
 )
 
 router = Router(tags=["asistencia-docentes"], auth=JWTAuth())
+
+
+def _docente_nombre(docente):
+    return f"{docente.apellido}, {docente.nombre}"
 
 
 @router.get("/mis-asistencias", response=list[DocenteMisAsistenciasOut])
@@ -73,9 +88,6 @@ def listar_mis_asistencias(
         asistencias = asistencias.filter(clase__comision__materia_id=materia_id)
 
     if estado:
-        # normal, tarde -> from AsistenciaDocente.categoria ?
-        # wait, AsistenciaDocente has 'estado' (presente, ausente, justificada) and 'marcacion_categoria' (normal, tarde)
-        # We can map the frontend's concept of 'tarde' to marcacion_categoria='tarde'
         if estado.lower() == "tarde":
             asistencias = asistencias.filter(
                 estado=AsistenciaDocente.Estado.PRESENTE, marcacion_categoria=AsistenciaDocente.MarcacionCategoria.TARDE
@@ -139,7 +151,6 @@ def listar_clases_docente(
 
     is_admin_staff = can(request.user, "asistencia_docentes_editar")
 
-    # El docente solo puede verse a sí mismo, a menos que sea staff
     if not is_admin_staff and request.user.username != dni:
         raise HttpError(403, "No tenés permisos para consultar el horario de otro docente.")
 
@@ -150,6 +161,8 @@ def listar_clases_docente(
     comision_ids = list(docente.comisiones.values_list("id", flat=True))
     if comision_ids:
         generate_classes_for_range(desde, hasta, comision_ids=comision_ids)
+
+    fechas = [desde + timedelta(days=i) for i in range((hasta - desde).days + 1)]
 
     clases_qs = (
         ClaseProgramada.objects.filter(docente=docente, fecha__range=(desde, hasta))
@@ -177,8 +190,7 @@ def listar_clases_docente(
     puede_editar_staff = can(request.user, "asistencia_docentes_editar")
 
     now = timezone.now()
-    if settings.USE_TZ:
-        now = timezone.localtime(now)
+    current_time = timezone.localtime(now) if settings.USE_TZ else now
     clases_out: list[DocenteClaseOut] = []
     for clase in clases:
         ventana_inicio, umbral_tarde, ventana_fin, turno_nombre = _calcular_ventanas(clase)
@@ -187,7 +199,7 @@ def listar_clases_docente(
         asistencia = asistencias.get(clase.id)
         puede_marcar = clase.estado != ClaseProgramada.Estado.CANCELADA
         if puede_marcar and not puede_editar_staff and ventana_inicio and ventana_fin:
-            puede_marcar = ventana_inicio <= now <= ventana_fin
+            puede_marcar = ventana_inicio <= current_time <= ventana_fin
         materia = clase.comision.materia
         plan = getattr(materia, "plan_de_estudio", None)
         profesorado = getattr(plan, "profesorado", None) if plan else None
@@ -216,26 +228,104 @@ def listar_clases_docente(
             )
         )
 
+    historial = []
     historial_qs = (
         AsistenciaDocente.objects.filter(docente=docente)
         .select_related("clase__comision__turno")
         .order_by("-registrado_en")[:20]
     )
 
-    historial = [
-        DocenteHistorialOut(
-            fecha=format_date(registro.clase.fecha),
-            turno=registro.clase.comision.turno.nombre if registro.clase.comision.turno_id else "",
-            estado=registro.get_estado_display(),
-            observacion=registro.observaciones or None,
+    for a in historial_qs:
+        historial.append(
+            DocenteHistorialOut(
+                fecha=format_date(a.clase.fecha),
+                turno=a.clase.comision.turno.nombre if a.clase.comision and a.clase.comision.turno_id else "N/A",
+                estado=a.get_estado_display(),
+                observacion=a.observaciones,
+            )
         )
-        for registro in historial_qs
-    ]
+
+    # --- Agregar Horarios de Cargo ---
+    if fechas:
+        cargos_docente = CargoDocente.objects.filter(
+            docente=docente, 
+            activo=True,
+            cargo__activo=True
+        ).select_related("cargo")
+
+        for cd in cargos_docente:
+            horarios_cargo = HorarioCargo.objects.filter(cargo=cd.cargo)
+            for hc in horarios_cargo:
+                for f in fechas:
+                    db_dia = f.weekday()
+                    if hc.dia_semana == db_dia:
+                        if dia_semana is not None and hc.dia_semana != dia_semana:
+                            continue
+                        
+                        asistencia_cargo = AsistenciaCargoDocente.objects.filter(
+                            cargo_docente=cd,
+                            fecha=f
+                        ).first()
+                        
+                        ya_registrada = bool(asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE)
+                        
+                        base_inicio = datetime.combine(f, hc.hora_inicio)
+                        base_fin = datetime.combine(f, hc.hora_fin)
+                        if settings.USE_TZ:
+                            tz = timezone.get_current_timezone()
+                            ventana_inicio = timezone.make_aware(base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS), tz)
+                            umbral_tarde = timezone.make_aware(base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz)
+                            ventana_fin = timezone.make_aware(base_fin, tz)
+                        else:
+                            ventana_inicio = base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS)
+                            umbral_tarde = base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS)
+                            ventana_fin = base_fin
+                            
+                        puede_marcar = False
+                        if current_time and not ya_registrada:
+                            puede_marcar = ventana_inicio <= current_time <= ventana_fin
+
+                        clases_out.append(
+                            DocenteClaseOut(
+                                id=hc.id,
+                                es_cargo=True,
+                                cargo_docente_id=cd.id,
+                                fecha=format_date(f),
+                                comision_id=None,
+                                materia=hc.cargo.nombre,
+                                materia_id=0,
+                                comision=hc.cargo.codigo_cargo,
+                                turno="Cargo",
+                                horario=_build_horario(hc.hora_inicio, hc.hora_fin),
+                                aula="",
+                                puede_marcar=puede_marcar,
+                                editable_staff=True,
+                                ya_registrada=ya_registrada,
+                                registrada_en=format_datetime(asistencia_cargo.registrado_en) if asistencia_cargo and asistencia_cargo.registrado_en else None,
+                                ventana_inicio=ventana_inicio.strftime("%H:%M") if ventana_inicio else None,
+                                ventana_fin=ventana_fin.strftime("%H:%M") if ventana_fin else None,
+                                umbral_tarde=umbral_tarde.strftime("%H:%M") if umbral_tarde else None,
+                                plan_id=None,
+                                plan_resolucion="",
+                                profesorado_id=None,
+                                profesorado_nombre="",
+                            )
+                        )
+                        
+                        if asistencia_cargo:
+                            historial.append(
+                                DocenteHistorialOut(
+                                    fecha=format_date(asistencia_cargo.fecha),
+                                    turno="Cargo",
+                                    estado=asistencia_cargo.get_estado_display(),
+                                    observacion=asistencia_cargo.observaciones,
+                                )
+                            )
 
     return DocenteClasesResponse(
-        docente=DocenteInfoOut(nombre=f"{docente.apellido}, {docente.nombre}", dni=docente.dni),
+        docente=DocenteInfoOut(nombre=_docente_nombre(docente), dni=docente.dni),
         clases=clases_out,
-        historial=historial,
+        historial=sorted(historial, key=lambda x: x.fecha, reverse=True),
     )
 
 
@@ -368,8 +458,6 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     )
 
     if payload.propagar_turno:
-        from .services import propagar_asistencia_docente_turno
-
         propagar_asistencia_docente_turno(
             clase_origen=clase,
             docente=docente,
@@ -382,16 +470,169 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
             alerta_motivo=asistencia.alerta_motivo,
         )
 
+    mensaje = alerta_motivo or None
+
     return DocenteMarcarPresenteOut(
         clase_id=clase.id,
         estado=asistencia.estado,
-        registrada_en=format_datetime(asistencia.registrado_en),
+        registrada_en=format_datetime(asistencia.registrado_en) if asistencia.registrado_en else "",
         categoria=asistencia.marcacion_categoria,
         alerta=alerta,
         alerta_tipo=alerta_tipo or None,
         alerta_motivo=alerta_motivo or None,
-        mensaje=alerta_motivo or None,
+        mensaje=mensaje,
         turno=turno_nombre or None,
+    )
+
+
+@router.post("/kiosk-marcar-bulk", response=KioskBulkMarcarOut)
+def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
+    """
+    Registra asistencia (masivamente) para las clases y cargos enviados en el payload.
+    Pensado para el Kiosco, cuando el docente ingresa su DNI y se marcan múltiples ítems a la vez.
+    """
+    docente = get_object_or_404(Docente, persona__dni=payload.dni)
+    user = getattr(request, "user", None)
+    registrado_por = user if (user and user.is_authenticated) else None
+
+    # Normalizar tz
+    current_time = timezone.now()
+    if settings.USE_TZ:
+        current_time = timezone.localtime(current_time)
+        
+    fecha_hoy = current_time.date()
+
+    hubo_alerta = False
+    mensajes = []
+
+    for item in payload.items:
+        if item.es_cargo:
+            horario = get_object_or_404(HorarioCargo, id=item.id)
+            cargo_docente = get_object_or_404(
+                CargoDocente, 
+                docente=docente, 
+                cargo=horario.cargo, 
+                activo=True
+            )
+            
+            # Chequear ventanas de tiempo
+            base_inicio = datetime.combine(fecha_hoy, horario.hora_inicio)
+            base_fin = datetime.combine(fecha_hoy, horario.hora_fin)
+            if settings.USE_TZ:
+                tz = timezone.get_current_timezone()
+                umbral_tarde = timezone.make_aware(base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz)
+            else:
+                umbral_tarde = base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS)
+                
+            estado = AsistenciaCargoDocente.Estado.PRESENTE
+            alerta = False
+            
+            if current_time > umbral_tarde:
+                estado = AsistenciaCargoDocente.Estado.TARDE
+                hubo_alerta = True
+                alerta = True
+                mensajes.append(f"Llegada tarde en {horario.cargo.nombre}.")
+            else:
+                mensajes.append(f"Presente en {horario.cargo.nombre}.")
+                
+            # Registrar
+            AsistenciaCargoDocente.objects.update_or_create(
+                cargo_docente=cargo_docente,
+                fecha=fecha_hoy,
+                defaults={
+                    "estado": estado,
+                    "horario": horario,
+                    "observaciones": payload.observaciones or "",
+                    "registrado_por": registrado_por,
+                },
+            )
+            
+            registrar_log_docente(
+                dni=payload.dni,
+                resultado=DocenteMarcacionLog.Resultado.ACEPTADO,
+                docente=docente,
+                clase=None,
+                detalle=f"Cargo {horario.cargo.codigo_cargo}",
+                alerta=alerta,
+                origen="kiosk",
+            )
+            
+        else:
+            # Es ClaseProgramada
+            clase = get_object_or_404(ClaseProgramada, id=item.id)
+            if clase.docente_id != docente.id:
+                mensajes.append(f"Error: La clase {clase.id} no pertenece al docente.")
+                continue
+                
+            ventana_inicio, umbral_tarde, ventana_fin, turno_nombre = _calcular_ventanas(clase)
+            
+            estado = AsistenciaDocente.Estado.PRESENTE
+            categoria = AsistenciaDocente.MarcacionCategoria.NORMAL
+            alerta = False
+            alerta_tipo = ""
+            alerta_motivo = ""
+            
+            if umbral_tarde and current_time > umbral_tarde:
+                estado = AsistenciaDocente.Estado.TARDE
+                categoria = AsistenciaDocente.MarcacionCategoria.TARDE
+                alerta = True
+                alerta_tipo = "llegada_tarde"
+                alerta_motivo = f"Llegada tarde ({current_time.strftime('%H:%M')})"
+                hubo_alerta = True
+                mensajes.append(f"Llegada tarde en {clase.comision.materia.nombre}.")
+            else:
+                mensajes.append(f"Presente en {clase.comision.materia.nombre}.")
+                
+            asistencia, _ = AsistenciaDocente.objects.get_or_create(
+                clase=clase,
+                docente=docente,
+                defaults={
+                    "estado": estado,
+                    "registrado_via": AsistenciaDocente.RegistradoVia.SISTEMA if payload.via == "staff" else AsistenciaDocente.RegistradoVia.APP_DOCENTE,
+                },
+            )
+            asistencia.estado = estado
+            asistencia.observaciones = payload.observaciones or ""
+            asistencia.registrado_via = (
+                AsistenciaDocente.RegistradoVia.SISTEMA
+                if payload.via == "staff"
+                else AsistenciaDocente.RegistradoVia.APP_DOCENTE
+            )
+            asistencia.registrado_por = registrado_por
+            asistencia.registrado_en = current_time
+            asistencia.marcacion_categoria = categoria
+            asistencia.alerta = alerta
+            asistencia.alerta_tipo = alerta_tipo
+            asistencia.alerta_motivo = alerta_motivo
+            asistencia.save()
+            
+            registrar_log_docente(
+                dni=payload.dni,
+                resultado=DocenteMarcacionLog.Resultado.ACEPTADO,
+                docente=docente,
+                clase=clase,
+                detalle=f"Clase: {clase.id}",
+                alerta=alerta,
+                origen="kiosk",
+            )
+            
+            # Propagamos si la primer clase es ok
+            propagar_asistencia_docente_turno(
+                clase_origen=clase,
+                docente=docente,
+                estado_origen=estado,
+                registrado_por=registrado_por,
+                observaciones=payload.observaciones or "",
+                marcacion_categoria=categoria,
+                alerta=alerta,
+                alerta_tipo=alerta_tipo,
+                alerta_motivo=alerta_motivo,
+            )
+
+    return KioskBulkMarcarOut(
+        estado_general="TARDE" if hubo_alerta else "PRESENTE",
+        alerta=hubo_alerta,
+        mensajes=mensajes
     )
 
 

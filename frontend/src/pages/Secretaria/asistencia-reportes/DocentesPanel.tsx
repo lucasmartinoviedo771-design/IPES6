@@ -293,11 +293,22 @@ export const DocentesPanel: React.FC<DocentesPanelProps> = ({
 						{docenteClasesFiltradas.map((clase) => (
 							<Paper key={clase.id} variant="outlined" sx={{ p: 1.5 }}>
 								<Stack spacing={0.5}>
-									<Typography variant="subtitle2" fontWeight={600}>
-										{clase.materia} - {clase.comision}
-									</Typography>
+									<Stack direction="row" alignItems="center" justifyContent="space-between">
+										<Typography variant="subtitle2" fontWeight={600}>
+											{clase.materia} - {clase.comision}
+										</Typography>
+										{clase.ya_registrada ? (
+											<Typography variant="caption" sx={{ color: "success.main", fontWeight: "bold" }}>
+												{clase.registrada_en ? `Presente (${clase.registrada_en})` : "Presente"}
+											</Typography>
+										) : (
+											<Typography variant="caption" sx={{ color: "error.main", fontWeight: "bold" }}>
+												Ausente
+											</Typography>
+										)}
+									</Stack>
 									<Typography variant="body2" color="text.secondary">
-										{dayjs(clase.fecha).format("dddd DD/MM/YYYY")} - Turno{" "}
+										{dayjs(clase.fecha, "DD/MM/YYYY").format("dddd DD/MM/YYYY")} - Turno{" "}
 										{clase.turno || "-"} - {clase.horario ?? "Sin horario"}
 									</Typography>
 									<Typography variant="caption" color="text.secondary">

@@ -27,9 +27,11 @@ from apps.estudiantes.api.equivalencias.pdf_helpers import (
 )
 from apps.estudiantes.api.router import estudiantes_router
 from apps.estudiantes.schemas import EquivalenciaItem, Horario
+from apps.estudiantes.schemas.inscripciones import ComisionResumen
 from core.auth_ninja import JWTAuth
 from core.models import (
     EquivalenciaCurricular,
+    HorarioCatedra,
     HorarioCatedraDetalle,
     Materia,
     PedidoEquivalencia,
@@ -116,6 +118,68 @@ def equivalencias_para_materia(request, materia_id: int):
             )
             for d in detalles
         ]
+
+        # Obtener comisiones (clases) de esta materia
+        from core.models import Comision
+        comisiones = Comision.objects.filter(materia=mm).select_related("turno", "docente").order_by("codigo")
+
+        comisiones_list = []
+        for comision in comisiones:
+            # Obtener horarios de esta comisión
+            # Los horarios están vinculados a través de HorarioCatedra que tiene FK a Materia y Turno
+            com_hs = []
+            if comision.horario:
+                # Si la comisión tiene horario asignado, usarlo
+                com_detalles = HorarioCatedraDetalle.objects.filter(
+                    horario_catedra=comision.horario
+                ).select_related("bloque")
+                com_hs = [
+                    Horario(
+                        dia=d.bloque.get_dia_display(),
+                        desde=str(d.bloque.hora_desde)[:5],
+                        hasta=str(d.bloque.hora_hasta)[:5],
+                    )
+                    for d in com_detalles
+                ]
+            else:
+                # Si no, buscar los horarios de la materia que correspondan al turno de la comisión
+                hc = HorarioCatedra.objects.filter(
+                    espacio=mm,
+                    turno=comision.turno
+                ).first()
+                if hc:
+                    com_detalles = HorarioCatedraDetalle.objects.filter(
+                        horario_catedra=hc
+                    ).select_related("bloque")
+                    com_hs = [
+                        Horario(
+                            dia=d.bloque.get_dia_display(),
+                            desde=str(d.bloque.hora_desde)[:5],
+                            hasta=str(d.bloque.hora_hasta)[:5],
+                        )
+                        for d in com_detalles
+                    ]
+
+            # Crear ComisionResumen
+            comisiones_list.append(
+                ComisionResumen(
+                    id=comision.id,
+                    codigo=comision.codigo,
+                    anio_lectivo=comision.anio_lectivo,
+                    turno_id=comision.turno_id,
+                    turno=comision.turno.nombre if comision.turno else "Turno no especificado",
+                    materia_id=comision.materia_id,
+                    materia_nombre=comision.materia.nombre,
+                    plan_id=plan_id,
+                    profesorado_id=profesorado_id,
+                    profesorado_nombre=profesorado_nombre,
+                    docente=comision.docente.persona.nombre if comision.docente and comision.docente.persona else None,
+                    cupo_maximo=None,  # Si existe este campo
+                    estado=comision.estado,
+                    horarios=com_hs,
+                )
+            )
+
         items.append(
             EquivalenciaItem(
                 materia_id=mm.id,
@@ -125,6 +189,7 @@ def equivalencias_para_materia(request, materia_id: int):
                 profesorado=profesorado_nombre,
                 cuatrimestre=map_cuat(mm.regimen),
                 horarios=hs,
+                comisiones=comisiones_list,
             )
         )
     return items

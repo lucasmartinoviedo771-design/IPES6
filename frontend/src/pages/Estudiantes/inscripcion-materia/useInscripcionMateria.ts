@@ -706,7 +706,7 @@ export const useInscripcionMateria = () => {
 		},
 	);
 
-	const inscriptasDetalle = (historial.inscriptasActuales || [])
+	const inscriptasDelPlan = (historial.inscriptasActuales || [])
 		.map((id) => {
 			const materia = materiaById.get(id);
 			if (!materia) return null;
@@ -723,7 +723,51 @@ export const useInscripcionMateria = () => {
 				inscripcion: MateriaInscriptaItemDTO | null;
 			} => Boolean(item),
 		)
-		.filter(({ materia }) => matchesFilters(materia));
+		.filter(({ materia, inscripcion }) => {
+			// Mostrar comisionados sin importar profesorado
+			if (inscripcion?.motivo_cambio) return true;
+			// Otros, filtrar por profesorado
+			return matchesFilters(materia);
+		});
+
+	// Agrupar comisionadas por nombre de materia y tomar la última
+	const comisionadasPorMateria = new Map<
+		string,
+		(typeof inscripcionesData)[0]
+	>();
+	inscripcionesData
+		.filter((ins) => ins.motivo_cambio && (ins.estado === "CONF" || ins.estado === "PEND"))
+		.forEach((ins) => {
+			const existing = comisionadasPorMateria.get(ins.materia_nombre);
+			// Mantener la más reciente (por fecha de actualización)
+			if (!existing || new Date(ins.fecha_actualizacion) > new Date(existing.fecha_actualizacion)) {
+				comisionadasPorMateria.set(ins.materia_nombre, ins);
+			}
+		});
+
+	const inscriptasComisionadas = Array.from(comisionadasPorMateria.values())
+		.filter(
+			(ins) =>
+				!inscriptasDelPlan.some((d) => d.materia.nombre === ins.materia_nombre),
+		)
+		.map((ins) => ({
+			materia: {
+				id: ins.materia_id,
+				nombre: ins.materia_nombre,
+				anio: ins.anio_plan,
+				cuatrimestre: "ANUAL" as const,
+				horarios: ins.horarios,
+				correlativasRegular: [],
+				correlativasAprob: [],
+				profesoradoId: ins.profesorado_id || 0,
+				profesorado: ins.profesorado_nombre || "",
+				planId: ins.plan_id || 0,
+				vigente: true,
+			},
+			inscripcion: ins,
+		}));
+
+	const inscriptasDetalle = [...inscriptasDelPlan, ...inscriptasComisionadas];
 
 	const profesoradoNombre = useMemo(() => {
 		if (selectedCarreraId) {

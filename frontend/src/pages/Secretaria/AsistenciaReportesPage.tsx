@@ -12,10 +12,16 @@ import { PageHero } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
 import { DocentesPanel } from "./asistencia-reportes/DocentesPanel";
+import { DocentesPorFechaPanel } from "./asistencia-reportes/DocentesPorFechaPanel";
 import { EstudiantesPanel } from "./asistencia-reportes/EstudiantesPanel";
+import { EstudiantesPorMateriaPanel } from "./asistencia-reportes/EstudiantesPorMateriaPanel";
 import { type Option, ordenarPorLabel } from "./asistencia-reportes/types";
 import { useDocentesAsistencia } from "./asistencia-reportes/useDocentesAsistencia";
 import { useEstudiantesAsistencia } from "./asistencia-reportes/useEstudiantesAsistencia";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Paper from "@mui/material/Paper";
+import { useState } from "react";
 
 dayjs.locale("es");
 

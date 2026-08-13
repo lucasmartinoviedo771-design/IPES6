@@ -481,6 +481,7 @@ export type MateriaInscriptaItemDTO = {
 	horarios: HorarioDTO[];
 	comision_actual?: ComisionResumenDTO | null;
 	comision_solicitada?: ComisionResumenDTO | null;
+	motivo_cambio?: string | null;
 	fecha_creacion: string;
 	fecha_actualizacion: string;
 };

@@ -13,6 +13,8 @@ from apps.asistencia.cargos_models import (
     validar_solapamiento_horario_docente,
 )
 from core.models import Docente
+from core.auth_ninja import JWTAuth
+from core.permissions import require
 
 router = Router(tags=["Cargos y Asistencia de Cargos"])
 
@@ -75,6 +77,7 @@ class AsignarDocenteSchema(Schema):
     fecha_inicio: Optional[str] = None
     fecha_fin: Optional[str] = None
     resolucion: Optional[str] = ""
+    activo: Optional[bool] = None
 
 
 class PlanillaCargoItemSchema(Schema):
@@ -101,7 +104,11 @@ class MarcarAsistenciaCargoSchema(Schema):
 
 # --- Endpoints ---
 
-@router.get("/cargos", response=List[CargoSchema])
+def _require_edit(user):
+    require(user, "editar_estructura")
+
+
+@router.get("/cargos", response=List[CargoSchema], auth=JWTAuth())
 def listar_cargos(request):
     """Lista todos los cargos registrados con sus horarios y docentes asignados."""
     cargos = Cargo.objects.prefetch_related("horarios", "asignaciones_docentes__docente").all()
@@ -150,9 +157,10 @@ def listar_cargos(request):
     return resultado
 
 
-@router.post("/cargos", response={201: CargoSchema, 400: dict})
+@router.post("/cargos", response={201: CargoSchema, 400: dict}, auth=JWTAuth())
 def crear_cargo(request, payload: CargoCreateSchema):
     """Crea un nuevo cargo institucional."""
+    _require_edit(request.user)
     if Cargo.objects.filter(codigo_cargo=payload.codigo_cargo).exists():
         return 400, {"message": f"El código de cargo '{payload.codigo_cargo}' ya existe."}
 
@@ -180,9 +188,76 @@ def crear_cargo(request, payload: CargoCreateSchema):
     )
 
 
-@router.post("/cargos/{cargo_id}/asignar", response={200: dict, 400: dict})
+@router.put("/cargos/{cargo_id}", response={200: CargoSchema, 400: dict}, auth=JWTAuth())
+def actualizar_cargo(request, cargo_id: int, payload: CargoCreateSchema):
+    """Actualiza un cargo institucional."""
+    _require_edit(request.user)
+    cargo = get_object_or_404(Cargo, id=cargo_id)
+    if Cargo.objects.filter(codigo_cargo=payload.codigo_cargo).exclude(id=cargo_id).exists():
+        return 400, {"message": f"El código de cargo '{payload.codigo_cargo}' ya existe."}
+    
+    cargo.codigo_cargo = payload.codigo_cargo
+    cargo.codigo_salarial = payload.codigo_salarial or ""
+    cargo.nombre = payload.nombre
+    cargo.tipo_cargo = payload.tipo_cargo or "horas_reloj"
+    cargo.duracion_minutos = payload.duracion_minutos or 260
+    cargo.descripcion = payload.descripcion or ""
+    cargo.save()
+    
+    horarios = [
+        HorarioCargoSchema(
+            id=h.id,
+            dia_semana=h.dia_semana,
+            dia_nombre=h.get_dia_semana_display(),
+            hora_inicio=h.hora_inicio.strftime("%H:%M"),
+            hora_fin=h.hora_fin.strftime("%H:%M"),
+        )
+        for h in cargo.horarios.all()
+    ]
+    asignaciones = [
+        AsignacionDocenteSchema(
+            id=a.id,
+            docente_id=a.docente.id,
+            docente_nombre=f"{a.docente.nombre} {a.docente.apellido}",
+            docente_dni=a.docente.dni,
+            sit_revista=a.sit_revista,
+            sit_revista_display=a.get_sit_revista_display(),
+            fecha_inicio=str(a.fecha_inicio),
+            fecha_fin=str(a.fecha_fin) if a.fecha_fin else None,
+            resolucion=a.resolucion or "",
+            activo=a.activo,
+        )
+        for a in cargo.asignaciones_docentes.all()
+    ]
+    
+    return 200, CargoSchema(
+        id=cargo.id,
+        codigo_cargo=cargo.codigo_cargo,
+        codigo_salarial=cargo.codigo_salarial or "",
+        nombre=cargo.nombre,
+        tipo_cargo=cargo.tipo_cargo,
+        tipo_cargo_display=cargo.get_tipo_cargo_display(),
+        duracion_minutos=cargo.duracion_minutos,
+        descripcion=cargo.descripcion or "",
+        activo=cargo.activo,
+        horarios=horarios,
+        asignaciones=asignaciones,
+    )
+
+
+@router.delete("/cargos/{cargo_id}", response={204: None}, auth=JWTAuth())
+def eliminar_cargo(request, cargo_id: int):
+    """Elimina un cargo por completo."""
+    _require_edit(request.user)
+    cargo = get_object_or_404(Cargo, id=cargo_id)
+    cargo.delete()
+    return 204, None
+
+
+@router.post("/cargos/{cargo_id}/asignar", response={200: dict, 400: dict}, auth=JWTAuth())
 def asignar_docente_a_cargo(request, cargo_id: int, payload: AsignarDocenteSchema):
     """Asigna una persona/docente a un cargo con su Situación de Revista."""
+    _require_edit(request.user)
     cargo = get_object_or_404(Cargo, id=cargo_id)
     docente = get_object_or_404(Docente, id=payload.docente_id)
 
@@ -196,6 +271,11 @@ def asignar_docente_a_cargo(request, cargo_id: int, payload: AsignarDocenteSchem
         )
         if solapado:
             return 400, {"message": f"No se puede asignar el cargo: {error_msg}"}
+
+    activo_nuevo = payload.activo if payload.activo is not None else True
+    if activo_nuevo:
+        if cargo.asignaciones_docentes.filter(activo=True).exists():
+            return 400, {"message": "El cargo ya tiene un docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de agregar uno nuevo activo."}
 
     fecha_inicio = (
         datetime.datetime.strptime(payload.fecha_inicio, "%Y-%m-%d").date()
@@ -215,7 +295,7 @@ def asignar_docente_a_cargo(request, cargo_id: int, payload: AsignarDocenteSchem
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         resolucion=payload.resolucion or "",
-        activo=True,
+        activo=activo_nuevo,
     )
 
     return 200, {
@@ -224,9 +304,62 @@ def asignar_docente_a_cargo(request, cargo_id: int, payload: AsignarDocenteSchem
     }
 
 
-@router.post("/cargos/{cargo_id}/horarios", response={201: HorarioCargoSchema, 400: dict})
+@router.put("/cargos/asignaciones/{asignacion_id}", response={200: AsignacionDocenteSchema, 400: dict}, auth=JWTAuth())
+def actualizar_asignacion_cargo(request, asignacion_id: int, payload: AsignarDocenteSchema):
+    """Actualiza una asignación de cargo docente (para cambiar situación de revista, fechas o desactivar)."""
+    _require_edit(request.user)
+    asignacion = get_object_or_404(CargoDocente, id=asignacion_id)
+    
+    if payload.docente_id != asignacion.docente_id:
+        docente = get_object_or_404(Docente, id=payload.docente_id)
+        asignacion.docente = docente
+
+    asignacion.sit_revista = payload.sit_revista
+    asignacion.fecha_inicio = (
+        datetime.datetime.strptime(payload.fecha_inicio, "%Y-%m-%d").date()
+        if payload.fecha_inicio
+        else datetime.date.today()
+    )
+    asignacion.fecha_fin = (
+        datetime.datetime.strptime(payload.fecha_fin, "%Y-%m-%d").date()
+        if payload.fecha_fin
+        else None
+    )
+    asignacion.resolucion = payload.resolucion or ""
+    if payload.activo is not None:
+        if payload.activo and not asignacion.activo:
+            if asignacion.cargo.asignaciones_docentes.filter(activo=True).exclude(id=asignacion.id).exists():
+                return 400, {"message": "El cargo ya tiene otro docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de reactivar a este."}
+        asignacion.activo = payload.activo
+    asignacion.save()
+    
+    return 200, AsignacionDocenteSchema(
+        id=asignacion.id,
+        docente_id=asignacion.docente.id,
+        docente_nombre=f"{asignacion.docente.nombre} {asignacion.docente.apellido}",
+        docente_dni=asignacion.docente.dni,
+        sit_revista=asignacion.sit_revista,
+        sit_revista_display=asignacion.get_sit_revista_display(),
+        fecha_inicio=str(asignacion.fecha_inicio),
+        fecha_fin=str(asignacion.fecha_fin) if asignacion.fecha_fin else None,
+        resolucion=asignacion.resolucion or "",
+        activo=asignacion.activo,
+    )
+
+
+@router.delete("/cargos/asignaciones/{asignacion_id}", response={204: None}, auth=JWTAuth())
+def eliminar_asignacion_cargo(request, asignacion_id: int):
+    """Elimina permanentemente una asignación de docente."""
+    _require_edit(request.user)
+    asignacion = get_object_or_404(CargoDocente, id=asignacion_id)
+    asignacion.delete()
+    return 204, None
+
+
+@router.post("/cargos/{cargo_id}/horarios", response={201: HorarioCargoSchema, 400: dict}, auth=JWTAuth())
 def agregar_horario_a_cargo(request, cargo_id: int, payload: HorarioCargoCreateSchema):
     """Agrega un bloque de horario a un cargo con validación de solapamientos."""
+    _require_edit(request.user)
     cargo = get_object_or_404(Cargo, id=cargo_id)
 
     try:
@@ -256,13 +389,64 @@ def agregar_horario_a_cargo(request, cargo_id: int, payload: HorarioCargoCreateS
         hora_fin=h_fin,
     )
 
-    return 210, HorarioCargoSchema(
+    return 201, HorarioCargoSchema(
         id=horario.id,
         dia_semana=horario.dia_semana,
         dia_nombre=horario.get_dia_semana_display(),
         hora_inicio=horario.hora_inicio.strftime("%H:%M"),
         hora_fin=horario.hora_fin.strftime("%H:%M"),
     )
+
+
+@router.put("/cargos/horarios/{horario_id}", response={200: HorarioCargoSchema, 400: dict}, auth=JWTAuth())
+def actualizar_horario_cargo(request, horario_id: int, payload: HorarioCargoCreateSchema):
+    """Actualiza un bloque de horario existente con validación de solapamientos."""
+    _require_edit(request.user)
+    horario = get_object_or_404(HorarioCargo, id=horario_id)
+    cargo = horario.cargo
+
+    try:
+        h_inicio = datetime.datetime.strptime(payload.hora_inicio, "%H:%M").time()
+        h_fin = datetime.datetime.strptime(payload.hora_fin, "%H:%M").time()
+    except ValueError:
+        return 400, {"message": "Formato de hora inválido. Use HH:MM."}
+
+    if h_fin <= h_inicio:
+        return 400, {"message": "La hora de fin debe ser posterior a la hora de inicio."}
+
+    # Validar solapamiento contra docentes actualmente asignados a este cargo, EXCLUYENDO el horario actual
+    for a in cargo.asignaciones_docentes.filter(activo=True):
+        solapado, error_msg = validar_solapamiento_horario_docente(
+            docente_id=a.docente_id,
+            dia_semana=payload.dia_semana,
+            hora_inicio=h_inicio,
+            hora_fin=h_fin,
+            exclude_horario_cargo_id=horario.id,
+        )
+        if solapado:
+            return 400, {"message": f"No se puede actualizar el horario: {error_msg}"}
+
+    horario.dia_semana = payload.dia_semana
+    horario.hora_inicio = h_inicio
+    horario.hora_fin = h_fin
+    horario.save()
+
+    return 200, HorarioCargoSchema(
+        id=horario.id,
+        dia_semana=horario.dia_semana,
+        dia_nombre=horario.get_dia_semana_display(),
+        hora_inicio=horario.hora_inicio.strftime("%H:%M"),
+        hora_fin=horario.hora_fin.strftime("%H:%M"),
+    )
+
+
+@router.delete("/cargos/horarios/{horario_id}", response={204: None}, auth=JWTAuth())
+def eliminar_horario_cargo(request, horario_id: int):
+    """Elimina un horario de cargo."""
+    _require_edit(request.user)
+    horario = get_object_or_404(HorarioCargo, id=horario_id)
+    horario.delete()
+    return 204, None
 
 
 @router.get("/cargos/planilla", response=List[PlanillaCargoItemSchema])
@@ -275,7 +459,7 @@ def obtener_planilla_asistencia_cargos(request, fecha: Optional[str] = None):
     )
     # Python weekday(): Mon=0..Sun=6 -> DB: Sun=0..Sat=6
     py_weekday = fecha_obj.weekday()
-    db_dia_semana = (py_weekday + 1) % 7
+    db_dia_semana = py_weekday
 
     horarios = HorarioCargo.objects.filter(dia_semana=db_dia_semana).select_related("cargo")
     planilla = []

@@ -1,6 +1,7 @@
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Collapse from "@mui/material/Collapse";
 import Divider from "@mui/material/Divider";
@@ -20,6 +21,7 @@ import {
 	type HorarioDTO,
 	type MateriaInscriptaItemDTO,
 	type MateriaPlanDTO,
+	cancelarInscripcionMateria,
 	obtenerEquivalencias,
 	obtenerHistorialEstudiante,
 	obtenerMateriasInscriptas,
@@ -287,6 +289,24 @@ const CambioComisionPage: React.FC = () => {
 		},
 	});
 
+	const mCancelar = useMutation({
+		mutationFn: (inscripcion_id: number) =>
+			cancelarInscripcionMateria({
+				inscripcion_id,
+				...(canGestionar && normalizedDni ? { dni: normalizedDni } : {}),
+			}),
+		onSuccess: () => {
+			setInfo("Inscripción cancelada correctamente.");
+			setErr(null);
+			queryClient.invalidateQueries({
+				queryKey: ["cc-inscriptas", normalizedDni],
+			});
+		},
+		onError: (error) => {
+			setErr(mensajeError(error));
+		},
+	});
+
 	const materias = materiasData ?? [];  
 	const historial = historialData ?? defaultHistorial;
 	const ventana = ventanaData ?? null;
@@ -315,7 +335,7 @@ const CambioComisionPage: React.FC = () => {
 			const baseCuatrimestre: Cuatrimestre =
 				materiaRef?.cuatrimestre ?? "ANUAL";
 			const baseHorarios = materiaRef?.horarios ?? [];
-			const comision = ins.comision_actual ?? ins.comision_solicitada ?? null;
+			const comision = ins.comision_solicitada ?? ins.comision_actual ?? null;
 			const horarios = comision?.horarios?.length
 				? comision.horarios
 				: baseHorarios;
@@ -358,6 +378,11 @@ const CambioComisionPage: React.FC = () => {
 		[inscripcionesActivas, resolveInscripcion],
 	);
 
+	const solicitudesEnTramite = React.useMemo(
+		() => inscripciones.filter((ins) => Boolean(ins.comision_solicitada)),
+		[inscripciones],
+	);
+
 	const materiasConBloqueo = React.useMemo(() => {
 		if (!shouldFetch) return [] as MateriaBloqueada[];
 
@@ -365,6 +390,12 @@ const CambioComisionPage: React.FC = () => {
 		const regularizadas = new Set(historial.regularizadas ?? []);
 		const inscriptasIds = new Set(
 			inscripcionesActivas.map((ins) => ins.materia_id),
+		);
+		// Excluir materias que ya tienen un cambio de comisión pendiente o aprobado
+		const materiasConCambio = new Set(
+			inscripcionesActivas
+				.filter((ins) => ins.comision_solicitada || ins.comision_actual !== ins.comision_solicitada)
+				.map((ins) => ins.materia_id),
 		);
 		const resultado: MateriaBloqueada[] = [];
 
@@ -374,6 +405,9 @@ const CambioComisionPage: React.FC = () => {
 
 			if (!materia.horarios.length) return;
 			if (!ventanaPermiteMateria(ventana, materia)) return;
+
+			// No mostrar si ya tiene un cambio de comisión en trámite
+			if (materiasConCambio.has(materia.id)) return;
 
 			const faltanReg = materia.correlativasRegular.filter(
 				(mid) => !regularizadas.has(mid) && !aprobadas.has(mid),
@@ -496,13 +530,23 @@ const CambioComisionPage: React.FC = () => {
 
 	const confirmarSolicitud = React.useCallback(() => {
 		if (!solicitudPendiente) return;
-		mSolicitar.mutate({
-			inscripcion_id: solicitudPendiente.inscripcionId,
+		const payload: any = {
 			materia_id: solicitudPendiente.materiaId,
 			comision_id: solicitudPendiente.comisionId,
 			motivo_cambio: tab === 0 ? "OVERLAP" : "WORK",
-			horario_laboral: tab === 1 ? horarioLab : undefined,
-		});
+		};
+
+		// Incluir inscripcion_id solo si existe (no es undefined)
+		if (solicitudPendiente.inscripcionId !== undefined) {
+			payload.inscripcion_id = solicitudPendiente.inscripcionId;
+		}
+
+		// Incluir horario_laboral solo si es por motivos laborales
+		if (tab === 1) {
+			payload.horario_laboral = horarioLab;
+		}
+
+		mSolicitar.mutate(payload);
 	}, [mSolicitar, solicitudPendiente, tab, horarioLab]);
 
 	const queryError =
@@ -603,6 +647,46 @@ const CambioComisionPage: React.FC = () => {
 					</Alert>
 				)}
 
+				{shouldFetch && solicitudesEnTramite.length > 0 && (
+					<Paper sx={{ p: 2, mt: 2, bgcolor: "info.50", borderColor: "info.main", borderWidth: 1, borderStyle: "solid" }}>
+						<Typography variant="subtitle1" fontWeight={700} color="info.main" gutterBottom>
+							Solicitudes de Cambio de Comisión en Trámite ({solicitudesEnTramite.length})
+						</Typography>
+						<Stack gap={1}>
+							{solicitudesEnTramite.map((ins) => (
+								<Paper key={ins.inscripcion_id} variant="outlined" sx={{ p: 1.5, bgcolor: "background.paper" }}>
+									<Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} gap={1}>
+										<Box flex={1}>
+											<Typography variant="subtitle2" fontWeight={700}>
+												{ins.materia_nombre}
+											</Typography>
+											<Typography variant="body2" color="text.secondary">
+												Comisión actual: {ins.comision_actual?.codigo || "Sin comisión asignada"} → Comisión solicitada: <strong>{ins.comision_solicitada?.codigo} ({ins.comision_solicitada?.turno})</strong>
+											</Typography>
+										</Box>
+										<Stack direction={{ xs: "column", sm: "row" }} alignItems="center" gap={1}>
+											<Chip
+												label={ins.estado_display || ins.estado || "CONDICIONAL"}
+												color={ins.estado === "CONF" ? "success" : "warning"}
+												size="small"
+												variant="filled"
+											/>
+											<Button
+												size="small"
+												color="error"
+												onClick={() => mCancelar.mutate(ins.inscripcion_id)}
+												disabled={mCancelar.isPending}
+											>
+												Dar de baja
+											</Button>
+										</Stack>
+									</Stack>
+								</Paper>
+							))}
+						</Stack>
+					</Paper>
+				)}
+
 				{shouldFetch && materiasConBloqueo.length === 0 ? (
 					<Alert severity="info" sx={{ mt: 2 }}>
 						No se detectaron materias con bloqueo para este motivo.
@@ -612,10 +696,12 @@ const CambioComisionPage: React.FC = () => {
 					</Alert>
 				) : shouldFetch ? (
 					<Stack gap={2} sx={{ mt: 2 }}>
-						<Alert severity="warning">
-							Las solicitudes se registran bajo carácter <b>CONDICIONAL</b> y
-							deben ser aprobadas por un tutor o bedel.
-						</Alert>
+						{tab === 1 && (
+							<Alert severity="warning">
+								Las solicitudes se registran bajo carácter <b>CONDICIONAL</b> y
+								deben ser aprobadas por un tutor o bedel.
+							</Alert>
+						)}
 						{materiasConBloqueo.map((entrada) => {
 							const { materia, horarios, conflictos } = entrada;
 							const isExpanded = !!expandedMap[materia.id];
@@ -668,7 +754,7 @@ const CambioComisionPage: React.FC = () => {
 											<Alternativas
 												base={entrada}
 												otros={inscripcionesConHorario}
-												disabled={mSolicitar.isPending || !ventanaActiva}
+												disabled={mSolicitar.isPending}
 												onSolicitar={(alt) =>
 													abrirConfirmacionSolicitud(entrada, alt)
 												}

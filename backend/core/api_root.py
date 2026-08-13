@@ -102,6 +102,9 @@ if "api" not in locals():
     safe_add_router("/mensajes", mensajeria_router)
     safe_add_router("/asistencia/docentes", asistencia_docentes_router)
     safe_add_router("/asistencia/estudiantes", asistencia_estudiantes_router)
+    
+    from apps.asistencia.api_reportes import router as asistencia_reportes_router
+    safe_add_router("/asistencia/reportes", asistencia_reportes_router)
     safe_add_router("/asistencia/calendario", asistencia_calendario_router)
     safe_add_router("/asistencia", asistencia_cargos_router)
     safe_add_router("/", guias_router)

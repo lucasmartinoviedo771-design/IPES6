@@ -231,20 +231,42 @@ export default function EstudiantesIndex() {
 		});
 
 		if (ventanas && Array.isArray(ventanas)) {
+			const now = new Date();
+			const hoy = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
 			ventanas.forEach((v: VentanaDto) => {
 				const curr = byTipo.get(v.tipo);
 				if (!curr) return;
-				const status = (v as any).status;
+
+				let status = (v as any).status;
+				if (!status && v.desde && v.hasta) {
+					const dParts = String(v.desde).split("T")[0].split("-").map(Number);
+					const hParts = String(v.hasta).split("T")[0].split("-").map(Number);
+					if (dParts.length === 3 && hParts.length === 3) {
+						const desde = new Date(dParts[0], dParts[1] - 1, dParts[2]).getTime();
+						const hasta = new Date(hParts[0], hParts[1] - 1, hParts[2], 23, 59, 59, 999).getTime();
+						if (v.activo && hoy >= desde && hoy <= hasta) {
+							status = "active";
+						} else if (v.activo && hoy < desde) {
+							status = "future";
+						} else {
+							status = "closed";
+						}
+					}
+				}
+
+				const vWithStatus = { ...v, status };
+
 				if (status === "active") {
-					byTipo.set(v.tipo, v);
+					byTipo.set(v.tipo, vWithStatus);
 				} else if (status === "future" && curr.status !== "active") {
-					byTipo.set(v.tipo, v);
+					byTipo.set(v.tipo, vWithStatus);
 				} else if (
 					status === "closed" &&
 					curr.status !== "active" &&
 					curr.status !== "future"
 				) {
-					byTipo.set(v.tipo, v);
+					byTipo.set(v.tipo, vWithStatus);
 				}
 			});
 		}

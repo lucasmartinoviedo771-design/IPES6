@@ -12,7 +12,7 @@ class DocenteInfoOut(Schema):
 class DocenteClaseOut(Schema):
     id: int
     fecha: str
-    comision_id: int
+    comision_id: int | None
     materia: str
     materia_id: int
     comision: str
@@ -30,6 +30,9 @@ class DocenteClaseOut(Schema):
     plan_resolucion: str | None
     profesorado_id: int | None
     profesorado_nombre: str | None
+    es_cargo: bool = False
+    cargo_docente_id: int | None = None
+
 
 
 class DocenteHistorialOut(Schema):
@@ -62,6 +65,25 @@ class DocenteMarcarPresenteIn(Schema):
     observaciones: str | None = None
     via: str = "docente"  # docente | staff
     propagar_turno: bool = False
+
+
+class KioskBulkItemIn(Schema):
+    id: int
+    es_cargo: bool
+
+
+class KioskBulkMarcarIn(Schema):
+    dni: str
+    items: list[KioskBulkItemIn]
+    observaciones: str | None = None
+    via: str = "docente"
+
+
+class KioskBulkMarcarOut(Schema):
+    estado_general: str
+    alerta: bool
+    mensajes: list[str]
+
 
 
 class DocenteMarcarPresenteOut(Schema):

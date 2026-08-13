@@ -4,6 +4,7 @@ import DateRangeIcon from "@mui/icons-material/DateRange";
 import EventIcon from "@mui/icons-material/Event";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
+import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 import RoleDashboard, {
 	type RoleDashboardSection,
@@ -62,6 +63,12 @@ export default function SecretariaIndex() {
 								subtitle: "Alta y edición de docentes del sistema.",
 								icon: <PersonAddIcon />,
 								path: "/secretaria/docentes",
+							},
+							{
+								title: "Gestión de Cargos",
+								subtitle: "Administrar cargos y asignar horarios a docentes.",
+								icon: <BusinessCenterIcon />,
+								path: "/secretaria/cargos",
 							},
 						]
 					: []),
