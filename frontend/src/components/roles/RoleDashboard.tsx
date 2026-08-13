@@ -33,7 +33,7 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({
 	const userName = user?.name || user?.dni || "";
 
 	const heroTitle = userName
-		? `Bienvenido a la Operatoria Diaria, ${userName}`
+		? `Bienvenido, ${userName}`
 		: `Bienvenido a ${title}`;
 
 	const heroSubtitle = `IPES Paulo Freire / ${title}`;
