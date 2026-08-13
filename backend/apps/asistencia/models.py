@@ -120,6 +120,11 @@ class ClaseProgramada(models.Model):
         blank=True,
         help_text="PIN numérico generado para la asistencia de los estudiantes.",
     )
+    pin_expira_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha y hora de expiración del PIN de asistencia (5 minutos de validez).",
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

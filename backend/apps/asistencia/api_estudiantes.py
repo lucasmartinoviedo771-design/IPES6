@@ -358,6 +358,9 @@ def registrar_asistencia_estudiante_pin(request: HttpRequest, payload: Registrar
     if clase.pin_asistencia != payload.pin:
         raise HttpError(400, "El PIN ingresado es incorrecto.")
 
+    if clase.pin_expira_en and timezone.now() > clase.pin_expira_en:
+        raise HttpError(400, "El PIN ha expirado (duración: 5 minutos). Pedile al docente que genere uno nuevo.")
+
     if payload.latitud is None or payload.longitud is None:
         raise HttpError(400, "Se requiere la ubicación GPS para registrar la asistencia.")
 

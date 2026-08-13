@@ -346,9 +346,14 @@ def iniciar_pin_asistencia(request: HttpRequest, clase_id: int):
 
     pin = str(random.randint(1000, 9999))
     clase.pin_asistencia = pin
-    clase.save(update_fields=["pin_asistencia", "actualizado_en"])
+    clase.pin_expira_en = timezone.now() + timedelta(minutes=5)
+    clase.save(update_fields=["pin_asistencia", "pin_expira_en", "actualizado_en"])
 
-    return IniciarPinResponse(pin=pin)
+    return IniciarPinResponse(
+        pin=pin,
+        expira_en=clase.pin_expira_en,
+        duracion_minutos=5,
+    )
 
 
 @router.post("/clases/{clase_id}/marcar-presente", response=DocenteMarcarPresenteOut)

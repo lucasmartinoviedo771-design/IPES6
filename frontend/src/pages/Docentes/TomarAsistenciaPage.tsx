@@ -357,7 +357,7 @@ export default function TomarAsistenciaPage() {
 														color="success.main"
 														fontWeight="bold"
 													>
-														PIN ACTIVO
+														PIN ACTIVO (Vence en 5 min)
 													</Typography>
 													<Typography
 														variant="h4"
