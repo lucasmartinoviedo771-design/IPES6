@@ -149,7 +149,13 @@ def _comision_to_resumen(comision):
 
 @estudiantes_router.post(
     "/inscripcion-materia",
-    response={200: InscripcionMateriaOut, 202: ResidenciaCondicionalPropuestaOut, 400: ApiResponse, 404: ApiResponse},
+    response={
+        200: InscripcionMateriaOut,
+        202: ResidenciaCondicionalPropuestaOut,
+        400: ApiResponse,
+        404: ApiResponse,
+        409: ApiResponse,
+    },
 )
 def inscripcion_materia(request, payload: InscripcionMateriaIn):
     """
@@ -310,8 +316,20 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     # Luego irá a "Cambio de Comisión" para resolver las superposiciones.
     superposicion_detectada = None
     cand_qs = HorarioCatedraDetalle.objects.filter(horario_catedra__espacio=mat)
+    if cand_qs.filter(horario_catedra__anio_academico=anio_actual).exists():
+        cand_qs = cand_qs.filter(horario_catedra__anio_academico=anio_actual)
+
     if cand_qs.exists():
-        cand = [(d.horario_catedra.turno_id, d.bloque.dia, d.bloque.hora_desde, d.bloque.hora_hasta) for d in cand_qs]
+        cand = [
+            (
+                d.horario_catedra.turno_id,
+                d.bloque.dia,
+                d.bloque.hora_desde,
+                d.bloque.hora_hasta,
+                d.horario_catedra.cuatrimestre or (mat.regimen if mat.regimen in ["PCU", "SCU"] else None),
+            )
+            for d in cand_qs
+        ]
 
         # Solo chocamos contra inscripciones que no estén anuladas, rechazadas o de baja
         actuales = InscripcionMateriaEstudiante.objects.filter(estudiante=est, anio=anio_actual).exclude(
@@ -325,8 +343,14 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             det_act = HorarioCatedraDetalle.objects.select_related(
                 "horario_catedra__turno", "horario_catedra__espacio", "bloque"
             ).filter(horario_catedra__espacio_id__in=list(actuales.values_list("materia_id", flat=True)))
+            if det_act.filter(horario_catedra__anio_academico=anio_actual).exists():
+                det_act = det_act.filter(horario_catedra__anio_academico=anio_actual)
+
             for d in det_act:
-                for t, dia, desde, hasta in cand:
+                d_cuat = d.horario_catedra.cuatrimestre or (
+                    d.horario_catedra.espacio.regimen if d.horario_catedra.espacio.regimen in ["PCU", "SCU"] else None
+                )
+                for t, dia, desde, hasta, cand_cuat in cand:
                     # Si coinciden en Turno y Día, verificamos solapamiento de horas
                     if (
                         t == d.horario_catedra.turno_id
@@ -334,9 +358,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                         and not (hasta <= d.bloque.hora_desde or desde >= d.bloque.hora_hasta)
                     ):
                         # Omitir si son de cuatrimestres distintos
-                        mat_regimen = mat.regimen
-                        d_regimen = d.horario_catedra.espacio.regimen
-                        if (mat_regimen == "PCU" and d_regimen == "SCU") or (mat_regimen == "SCU" and d_regimen == "PCU"):
+                        if (cand_cuat == "PCU" and d_cuat == "SCU") or (cand_cuat == "SCU" and d_cuat == "PCU"):
                             continue
                         
                         # Omitir si ambas materias permiten superposición (talleres/práctica 4 del 2C)

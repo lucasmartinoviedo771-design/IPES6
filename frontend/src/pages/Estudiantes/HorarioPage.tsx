@@ -121,10 +121,10 @@ const HorarioPage: React.FC = () => {
 
 	useEffect(() => {
 		if (!profesoradoId) {
-			if (targetDni && carrerasData && carrerasData.carreras.length > 0) {
-				setProfesoradoId(String(carrerasData.carreras[0].profesorado_id));
-			}
-			if (profesoradosData && profesoradosData.length > 0 && !profesoradoId) {
+			const carrerasList = carrerasData?.carreras || [];
+			if (targetDni && carrerasList.length > 0) {
+				setProfesoradoId(String(carrerasList[0].profesorado_id));
+			} else if (Array.isArray(profesoradosData) && profesoradosData.length > 0) {
 				setProfesoradoId(String(profesoradosData[0].id));
 			}
 		}
@@ -133,7 +133,8 @@ const HorarioPage: React.FC = () => {
 	const planesDisponibles = useMemo<PlanOption[]>(() => {
 		if (targetDni) {
 			if (!carrerasData) return [];
-			const selected = carrerasData.carreras.find(
+			const carrerasList = carrerasData.carreras || [];
+			const selected = carrerasList.find(
 				(item) => item.profesorado_id === Number(profesoradoId),
 			);
 			return selected?.planes ?? [];
@@ -202,12 +203,17 @@ const HorarioPage: React.FC = () => {
 		}
 	}, [horarioError, enqueueSnackbar]);
 
-	const tablas = horarioData ?? [];  
+	const tablas = useMemo(
+		() => (Array.isArray(horarioData) ? horarioData : []),
+		[horarioData],
+	);
 
 	const turnosDisponibles = useMemo(() => {
 		const map = new Map<number, string>();
 		tablas.forEach((tabla) => {
-			map.set(tabla.turno_id, tabla.turno_nombre || "Sin turno");
+			if (tabla && tabla.turno_id !== undefined) {
+				map.set(tabla.turno_id, tabla.turno_nombre || "Sin turno");
+			}
 		});
 		return Array.from(map.entries()).map(([id, nombre]) => ({
 			id: String(id),
@@ -218,7 +224,9 @@ const HorarioPage: React.FC = () => {
 	const aniosDisponibles = useMemo(() => {
 		const map = new Map<number, string>();
 		tablas.forEach((tabla) => {
-			map.set(tabla.anio_plan, tabla.anio_plan_label);
+			if (tabla && tabla.anio_plan !== undefined) {
+				map.set(tabla.anio_plan, tabla.anio_plan_label || `${tabla.anio_plan}° Año`);
+			}
 		});
 		return Array.from(map.entries()).map(([id, label]) => ({
 			id: String(id),
@@ -229,7 +237,9 @@ const HorarioPage: React.FC = () => {
 	const cuatrDisponibles = useMemo(() => {
 		const set = new Set<string>();
 		tablas.forEach((tabla) => {
-			tabla.cuatrimestres.forEach((c) => set.add(c));
+			if (tabla && Array.isArray(tabla.cuatrimestres)) {
+				tabla.cuatrimestres.forEach((c) => set.add(c));
+			}
 		});
 		return Array.from(set.values());
 	}, [tablas]);
@@ -485,7 +495,7 @@ const HorarioPage: React.FC = () => {
 	const sinCarreras =
 		!!targetDni &&
 		!loading &&
-		(!carrerasData || carrerasData.carreras.length === 0);
+		(!carrerasData || !carrerasData.carreras || carrerasData.carreras.length === 0);
 
 	return (
 		<Box sx={{ p: 3 }}>
@@ -509,7 +519,7 @@ const HorarioPage: React.FC = () => {
 							disabled={carrerasIsLoading}
 						>
 							{targetDni
-								? carrerasData?.carreras.map(
+								? (carrerasData?.carreras || []).map(
 										(carrera: TrayectoriaCarreraDetalleDTO) => (
 											<MenuItem
 												key={carrera.profesorado_id}
@@ -519,7 +529,7 @@ const HorarioPage: React.FC = () => {
 											</MenuItem>
 										),
 									)
-								: profesoradosData?.map((profesorado: ProfesoradoDTO) => (
+								: (profesoradosData || []).map((profesorado: ProfesoradoDTO) => (
 										<MenuItem
 											key={profesorado.id}
 											value={String(profesorado.id)}

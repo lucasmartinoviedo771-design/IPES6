@@ -114,6 +114,7 @@ export const buildEstudianteRoutes = () => (
 			}
 		>
 			<Route path="/estudiantes/horarios" element={<HorarioPage />} />
+			<Route path="/estudiantes/horario" element={<HorarioPage />} />
 		</Route>
 		<Route
 			element={

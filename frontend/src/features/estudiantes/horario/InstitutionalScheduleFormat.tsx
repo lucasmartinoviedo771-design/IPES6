@@ -33,21 +33,29 @@ const InstitutionalScheduleFormat: React.FC<
 	const headerTextColor = getTextColorForBackground(bgColor);
 
 	const dias = useMemo(
-		() => [...tabla.dias].sort((a, b) => a.numero - b.numero),
-		[tabla.dias],
+		() =>
+			Array.isArray(tabla?.dias)
+				? [...tabla.dias].sort((a, b) => a.numero - b.numero)
+				: [],
+		[tabla?.dias],
 	);
 	const franjas = useMemo(
-		() => [...tabla.franjas].sort((a, b) => a.posicion - b.posicion),
-		[tabla.franjas],
+		() =>
+			Array.isArray(tabla?.franjas)
+				? [...tabla.franjas].sort((a, b) => a.posicion - b.posicion)
+				: [],
+		[tabla?.franjas],
 	);
 
 	const celdas = useMemo(() => {
-				const map = new Map<string, any>();
-		tabla.celdas.forEach((celda) => {
-			map.set(cellKey(celda.dia_numero, celda.franja_posicion), celda);
-		});
+		const map = new Map<string, any>();
+		if (Array.isArray(tabla?.celdas)) {
+			tabla.celdas.forEach((celda) => {
+				map.set(cellKey(celda.dia_numero, celda.franja_posicion), celda);
+			});
+		}
 		return map;
-	}, [tabla.celdas]);
+	}, [tabla?.celdas]);
 
 	const renderMateria = (materia: HorarioMateriaCeldaDTO, isMulti: boolean) => {
 		// Si queremos filtrar por cuatrimestre, pero las ANUALES siempre pasan

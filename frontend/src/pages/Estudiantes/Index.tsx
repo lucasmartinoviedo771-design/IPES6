@@ -347,14 +347,15 @@ export default function EstudiantesIndex() {
 
 	const userName = user?.name || user?.dni || "";
 	const heroTitle = userName
-		? `Bienvenido a Estudiantes, ${userName}`
+		? `Bienvenido, ${userName}`
 		: `Bienvenido a Estudiantes`;
+	const heroSubtitle = `IPES Paulo Freire / Estudiantes`;
 
 	return (
 		<Box>
 			<PageHero
 				title={heroTitle}
-				subtitle="Acá podés gestionar tus solicitudes y trámites del sistema."
+				subtitle={heroSubtitle}
 			/>
 
 			{alertas && alertas.length > 0 && (
