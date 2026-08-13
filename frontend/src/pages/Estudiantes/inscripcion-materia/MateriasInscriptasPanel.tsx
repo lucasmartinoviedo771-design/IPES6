@@ -134,7 +134,7 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 												size="small"
 											/>
 										) : (
-											<Chip label="Inscripta" color="success" size="small" />
+											<Chip label={inscripcion?.motivo_cambio ? `Comisionado en ${inscripcion.profesorado_nombre || "otro profesorado"}` : "Inscripta"} color={inscripcion?.motivo_cambio ? "info" : "success"} size="small" variant={inscripcion?.motivo_cambio ? "outlined" : undefined} />
 										)}
 
 										{/* Cancelar: solo durante ventana abierta y sin baja */}
@@ -156,7 +156,7 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 											</Button>
 										)}
 
-										{/* Dar de baja: Solo disponible una vez cerrada la ventana de inscripción */}
+										{/* Dar de baja: Solo después de cerrada la ventana */}
 										{!isBaja && !ventanaActiva && inscripcion && (
 											<Button
 												variant="outlined"

@@ -3,24 +3,26 @@ import client from "@/api/client";
 export interface DocenteClase {
 	id: number;
 	fecha: string;
-	comision_id: number;
+	comision_id: number | null;
 	materia: string;
 	materia_id: number;
 	comision: string;
 	turno: string;
-	horario?: string | null;
-	aula?: string | null;
+	horario: string | null;
+	aula: string | null;
 	puede_marcar: boolean;
 	editable_staff: boolean;
 	ya_registrada: boolean;
-	registrada_en?: string | null;
-	ventana_inicio?: string | null;
-	ventana_fin?: string | null;
-	umbral_tarde?: string | null;
-	plan_id?: number | null;
-	plan_resolucion?: string | null;
-	profesorado_id?: number | null;
-	profesorado_nombre?: string | null;
+	registrada_en: string | null;
+	ventana_inicio: string | null;
+	ventana_fin: string | null;
+	umbral_tarde: string | null;
+	plan_id: number | null;
+	plan_resolucion: string | null;
+	profesorado_id: number | null;
+	profesorado_nombre: string | null;
+	es_cargo?: boolean;
+	cargo_docente_id?: number | null;
 }
 
 export interface DocenteClasesResponse {
@@ -109,9 +111,40 @@ export async function marcarDocentePresente(
 	return data;
 }
 
-export async function registrarDocenteDni(dni: string, origen = "kiosk") {
-	await client.post(`/asistencia/docentes/dni-log`, { dni, origen });
+export const registrarDocenteDni = async (
+	dni: string,
+	origen = "kiosk",
+): Promise<void> => {
+	await client.post("/asistencia/docentes/dni-log", { dni, origen });
+};
+
+export interface KioskBulkItem {
+	id: number;
+	es_cargo: boolean;
 }
+
+export interface KioskBulkMarcarResponse {
+	estado_general: string;
+	alerta: boolean;
+	mensajes: string[];
+}
+
+export const marcarAsistenciaKioskBulk = async (
+	dni: string,
+	items: KioskBulkItem[],
+	observaciones?: string,
+): Promise<KioskBulkMarcarResponse> => {
+	const response = await client.post<KioskBulkMarcarResponse>(
+		"/asistencia/docentes/kiosk-marcar-bulk",
+		{
+			dni,
+			items,
+			observaciones,
+			via: "docente",
+		},
+	);
+	return response.data;
+};
 
 export interface EstudianteClaseListado {
 	clase_id: number;
@@ -360,3 +393,39 @@ export async function fetchMisAsistencias(
 	);
 	return data;
 }
+
+export interface ReporteDiarioDocenteItem {
+	docente_id: number;
+	docente_nombre: string;
+	docente_dni: string;
+	es_cargo: boolean;
+	clase_id: number | null;
+	cargo_id: number | null;
+	materia_o_cargo: string;
+	comision: string | null;
+	horario: string;
+	estado: string;
+	registrado_en: string | null;
+	observaciones: string | null;
+}
+
+export interface ReporteMateriaEstudianteItem {
+	estudiante_id: number;
+	estudiante_nombre: string;
+	estudiante_dni: string;
+	clase_id: number;
+	fecha: string;
+	estado: string;
+	justificado: boolean;
+	observaciones: string | null;
+}
+
+export const fetchReporteDiarioDocentes = async (fecha: string): Promise<ReporteDiarioDocenteItem[]> => {
+	const response = await client.get(`/asistencia/reportes/docentes/diario?fecha=${fecha}`);
+	return response.data;
+};
+
+export const fetchReporteMateriaEstudiantes = async (comision_id: number): Promise<ReporteMateriaEstudianteItem[]> => {
+	const response = await client.get(`/asistencia/reportes/estudiantes/materia?comision_id=${comision_id}`);
+	return response.data;
+};

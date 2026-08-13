@@ -102,8 +102,8 @@ export const useDocentesAsistencia = ({
 			filtered = filtered.filter((c) => c.materia_id === docenteMateria.id);
 		return filtered
 			.map((clase) => ({
-				id: clase.comision_id,
-				label: `${clase.comision} - ${dayjs(clase.fecha).format("DD/MM")}`,
+				id: clase.comision_id || 0,
+				label: `${clase.comision} - ${dayjs(clase.fecha, "DD/MM/YYYY").format("DD/MM")}`,
 			}))
 			.sort(ordenarPorLabel);
 	}, [docenteClases, docenteProfesorado, docentePlan, docenteMateria]);
@@ -127,7 +127,7 @@ export const useDocentesAsistencia = ({
 				seen.add(clase.fecha);
 				options.push({
 					id: clase.fecha,
-					label: dayjs(clase.fecha).format("dddd DD/MM/YYYY"),
+					label: dayjs(clase.fecha, "DD/MM/YYYY").format("dddd DD/MM/YYYY"),
 				});
 			}
 		}

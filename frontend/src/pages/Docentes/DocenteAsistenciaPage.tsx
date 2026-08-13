@@ -1,5 +1,7 @@
 import AccessTime from "@mui/icons-material/AccessTime";
 import CalendarToday from "@mui/icons-material/CalendarToday";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import type { ChipProps } from "@mui/material";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
@@ -11,6 +13,8 @@ import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -28,6 +32,7 @@ import {
 	type DocenteClase,
 	type DocenteClasesResponse,
 	fetchDocenteClases,
+	marcarAsistenciaKioskBulk,
 	marcarDocentePresente,
 	registrarDocenteDni,
 } from "@/api/asistencia";
@@ -128,6 +133,7 @@ const DocenteAsistenciaPage = () => {
 		password: "",
 	});
 	const [attemptingLogin, setAttemptingLogin] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
 
 	const isDocenteSession = useMemo(() => {
 		if (!user) return false;
@@ -326,18 +332,18 @@ const DocenteAsistenciaPage = () => {
 				return;
 			}
 
-			const clasePendiente = data.clases.find(
+			const pendientes = data.clases.filter(
 				(c) => c.puede_marcar && !c.ya_registrada,
 			);
-			if (clasePendiente) {
+			
+			if (pendientes.length > 0) {
 				setSaving(true);
 				try {
-					const response = await marcarDocentePresente(clasePendiente.id, {
-						dni: data.docente.dni,
-						observaciones: observaciones || undefined,
-						via: "docente",
-						propagar_turno: true,
-					});
+					const response = await marcarAsistenciaKioskBulk(
+					    data.docente.dni, 
+					    pendientes.map(p => ({id: p.id, es_cargo: !!p.es_cargo})),
+					    observaciones || undefined
+					);
 
 					const updatedData = await fetchDocenteClases(trimmed);
 					setClases(updatedData.clases);
@@ -349,11 +355,7 @@ const DocenteAsistenciaPage = () => {
 						),
 					);
 
-					const message =
-						response.mensaje ||
-						(response.alerta
-							? "Llegada tarde registrada. Se notificará a Secretaría."
-							: "Asistencia registrada correctamente para el turno.");
+					const message = response.mensajes.join(" | ");
 					mostrarFeedback(
 						{ severity: response.alerta ? "warning" : "success", message },
 						true,
@@ -410,36 +412,29 @@ const DocenteAsistenciaPage = () => {
 		}
 	};
 
-	const _marcarAsistencia = async (claseId: number) => {
+	const _marcarAsistencia = async (clase: DocenteClase) => {
 		if (!docente) return;
 		setSaving(true);
 		try {
-			const response = await marcarDocentePresente(claseId, {
-				dni: docente.dni,
-				observaciones: observaciones || undefined,
-				via: "docente",
-				propagar_turno: true,
-			});
-			setMarcadas((prev) => new Set(prev).add(claseId));
-			setClases((prev) =>
-				prev.map((clase) =>
-					clase.id === claseId
-						? {
-								...clase,
-								ya_registrada: true,
-								registrada_en: response.registrada_en,
-							}
-						: clase,
+			const response = await marcarAsistenciaKioskBulk(
+			    docente.dni,
+			    [{ id: clase.id, es_cargo: !!clase.es_cargo }],
+			    observaciones || undefined
+			);
+			const updatedData = await fetchDocenteClases(docente.dni);
+			setClases(updatedData.clases);
+			setMarcadas(
+				new Set(
+					updatedData.clases
+						.filter((c) => c.ya_registrada)
+						.map((c) => c.id),
 				),
 			);
-			const message =
-				response.mensaje ||
-				(response.alerta
-					? "Llegada tarde registrada. Se notificará a Secretaría."
-					: "Asistencia registrada correctamente.");
+			const message = response.mensajes.join(" | ");
 			mostrarFeedback(
 				{ severity: response.alerta ? "warning" : "success", message },
 				true,
+				8000,
 			);
 		} catch (err) {
 			const message =
@@ -533,7 +528,7 @@ const DocenteAsistenciaPage = () => {
 								/>
 								<TextField
 									label="Contraseña"
-									type="password"
+									type={showPassword ? "text" : "password"}
 									value={credentials.password}
 									onChange={(event) =>
 										setCredentials((prev) => ({
@@ -542,6 +537,20 @@ const DocenteAsistenciaPage = () => {
 										}))
 									}
 									required
+									InputProps={{
+										endAdornment: (
+											<InputAdornment position="end">
+												<IconButton
+													aria-label="mostrar u ocultar contraseña"
+													onClick={() => setShowPassword((show) => !show)}
+													onMouseDown={(e) => e.preventDefault()}
+													edge="end"
+												>
+													{showPassword ? <VisibilityOff /> : <Visibility />}
+												</IconButton>
+											</InputAdornment>
+										),
+									}}
 								/>
 								{loginError && <Alert severity="error">{loginError}</Alert>}
 								<Stack direction="row" spacing={1} justifyContent="flex-end">

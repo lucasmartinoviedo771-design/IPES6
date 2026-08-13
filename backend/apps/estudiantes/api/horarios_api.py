@@ -13,6 +13,7 @@ from core.models import (
     PlanDeEstudio,
     Profesorado,
 )
+from core.models.inscripciones import InscripcionMateriaEstudiante
 from core.permissions import ensure_profesorado_access, require
 
 from ..schemas import Horario, HorarioTabla, MateriaPlan
@@ -129,9 +130,34 @@ def materias_plan(
     if not plan:
         return []
 
+    # Obtener materias con cambio de comisión en trámite (para excluirlas)
+    # Excluir solo inscripciones activas (CONF/PEND) con cambio de comisión
+    # También excluir cualquier materia que tenga el MISMO NOMBRE que una comisionada
+    materias_comisionadas = set()
+    nombres_comisionados = set()
+    if est:
+        comisionadas = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est,
+            motivo_cambio__isnull=False,
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                InscripcionMateriaEstudiante.Estado.PENDIENTE,
+            ],
+        ).select_related("materia")
+
+        for ins in comisionadas:
+            materias_comisionadas.add(ins.materia_id)
+            nombres_comisionados.add(ins.materia.nombre)
+
     hoy = timezone.now().date()
     for m in plan.materias.all().order_by("anio_cursada", "nombre"):
         if m.fecha_inicio and m.fecha_inicio > hoy:
+            continue
+        # Excluir si ya tiene cambio de comisión en trámite (mismo ID)
+        if m.id in materias_comisionadas:
+            continue
+        # Excluir si ya tiene una materia con el mismo nombre comisionada (otro profesorado)
+        if m.nombre in nombres_comisionados:
             continue
         es_vigente = not (m.fecha_fin and m.fecha_fin < hoy)
         materias.append(

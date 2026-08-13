@@ -134,7 +134,6 @@ def historial_estudiante(request, dni: str | None = None):
             estudiante=est,
             estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
         )
-        .exclude(materia__nombre__startswith="CI:")
         .values_list("materia_id", flat=True)
     )
     inscriptas_actuales_set.update(inscriptas_actuales)

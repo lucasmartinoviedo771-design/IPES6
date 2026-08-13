@@ -21,6 +21,7 @@ from apps.asistencia.api import (
 from apps.asistencia.api import (
     estudiantes_router as asistencia_estudiantes_router,
 )
+from apps.asistencia.cargos_api import router as asistencia_cargos_router
 from apps.calendario.api import router as calendario_router
 from apps.carreras.api import materias_router, planes_router, profesorados_router
 from apps.carreras.comisiones_api import router as comisiones_router
@@ -101,7 +102,11 @@ if "api" not in locals():
     safe_add_router("/mensajes", mensajeria_router)
     safe_add_router("/asistencia/docentes", asistencia_docentes_router)
     safe_add_router("/asistencia/estudiantes", asistencia_estudiantes_router)
+    
+    from apps.asistencia.api_reportes import router as asistencia_reportes_router
+    safe_add_router("/asistencia/reportes", asistencia_reportes_router)
     safe_add_router("/asistencia/calendario", asistencia_calendario_router)
+    safe_add_router("/asistencia", asistencia_cargos_router)
     safe_add_router("/", guias_router)
 
     # Reportes y Dashboards

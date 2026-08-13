@@ -6,6 +6,7 @@ import SectionCard, {
 	type SectionCardProps,
 } from "@/components/secretaria/SectionCard";
 import { PageHero, SectionTitlePill } from "@/components/ui/GradientTitles";
+import { useAuth } from "@/context/AuthContext";
 
 export type RoleDashboardSection = {
 	title: string;
@@ -23,32 +24,58 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({
 	subtitle,
 	sections,
 }) => {
+	const { user } = useAuth();
+
 	const visibleSections = sections.filter(
 		(section) => section.items.length > 0,
 	);
 
+	const userName = user?.name || user?.dni || "";
+
+	const heroTitle = userName
+		? `Bienvenido a la Operatoria Diaria, ${userName}`
+		: `Bienvenido a ${title}`;
+
+	const heroSubtitle = `IPES Paulo Freire / ${title}`;
+
 	return (
-		<Stack gap={4}>
-			<PageHero title={title} subtitle={subtitle} />
+		<Stack spacing={3.5}>
+			<PageHero title={heroTitle} subtitle={heroSubtitle} />
 
 			{visibleSections.length === 0 ? (
-				<Box>
+				<Box sx={{ p: 3, textAlign: "center" }}>
 					<Typography variant="body1" color="text.secondary">
 						Aún no hay accesos habilitados para este rol. Contactate con
 						Secretaría si necesitás permisos adicionales.
 					</Typography>
 				</Box>
 			) : (
-				visibleSections.map((section) => (
-					<Box key={section.title}>
-						<SectionTitlePill title={section.title} />
-						<Grid container spacing={2}>
-							{section.items.map((item) => (
-								<SectionCard key={`${section.title}-${item.title}`} {...item} />
-							))}
-						</Grid>
-					</Box>
-				))
+				<Stack spacing={4.5}>
+					{visibleSections.map((section) => (
+						<Box
+							key={section.title}
+							sx={{
+								position: "relative",
+								backgroundColor: "#E8DFD3",
+								border: "1px solid #D6CAA",
+								borderRadius: "20px",
+								p: { xs: 2, md: 3 },
+								pt: { xs: 3.5, md: 4 },
+								boxShadow: "0 4px 15px rgba(0, 0, 0, 0.03)",
+							}}
+						>
+							<SectionTitlePill title={section.title} />
+							<Grid container spacing={2}>
+								{section.items.map((item) => (
+									<SectionCard
+										key={`${section.title}-${item.title}`}
+										{...item}
+									/>
+								))}
+							</Grid>
+						</Box>
+					))}
+				</Stack>
 			)}
 		</Stack>
 	);

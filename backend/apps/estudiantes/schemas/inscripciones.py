@@ -139,6 +139,7 @@ class MateriaInscriptaItem(Schema):
     horarios: list[Horario] = Field(default_factory=list)
     comision_actual: ComisionResumen | None = None
     comision_solicitada: ComisionResumen | None = None
+    motivo_cambio: str | None = None
     fecha_creacion: str
     fecha_actualizacion: str
 
