@@ -100,6 +100,8 @@ class DocenteMarcarPresenteOut(Schema):
 
 class IniciarPinResponse(Schema):
     pin: str
+    expira_en: datetime | None = None
+    duracion_minutos: int = 5
 
 
 class EstudianteResumenOut(Schema):
