@@ -133,7 +133,7 @@ const openCreateCargo = () => {
 setIsEditingCargo(false);
 setEditingCargoId(null);
 setNewCargo({
-codigo_cargo: "",
+codigo_cargo: `CARG-${Date.now()}`,
 nombre: "",
 tipo_cargo: "horas_reloj",
 duracion_minutos: 260,
@@ -244,18 +244,28 @@ enqueueSnackbar("Error al eliminar asignación", { variant: "error" });
 }
 };
 
-// --- Handlers para Agregar/Editar Horario ---
-const openAgregarHorario = (cargoId: number) => {
-setIsEditingHorario(false);
-setEditingHorarioId(null);
-setSelectedCargoId(cargoId);
-setHorarioData({
-dia_semana: -1,
-hora_inicio: "14:00",
-hora_fin: "18:00",
-});
-setOpenHorarioModal(true);
-};
+	// --- Helper function para calcular hora_fin ---
+	const addMinutesToTime = (timeStr: string, minutesToAdd: number) => {
+		if (!timeStr) return "";
+		const [hours, mins] = timeStr.split(":").map(Number);
+		const date = new Date();
+		date.setHours(hours, mins, 0, 0);
+		date.setMinutes(date.getMinutes() + minutesToAdd);
+		return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+	};
+
+	// --- Handlers para Agregar/Editar Horario ---
+	const openAgregarHorario = (cargo: Cargo) => {
+		setIsEditingHorario(false);
+		setEditingHorarioId(null);
+		setSelectedCargoId(cargo.id);
+		setHorarioData({
+			dia_semana: -1,
+			hora_inicio: "14:00",
+			hora_fin: addMinutesToTime("14:00", cargo.duracion_minutos),
+		});
+		setOpenHorarioModal(true);
+	};
 
 const openEditHorario = (horario: any) => {
 setIsEditingHorario(true);
@@ -365,7 +375,9 @@ No hay cargos registrados.
 {cargo.nombre}
 </Typography>
 <Box sx={{ display: "flex", gap: 1 }}>
-<Chip size="small" label={`Cod: ${cargo.codigo_cargo}`} color="primary" variant="outlined" />
+{cargo.codigo_salarial && (
+<Chip size="small" label={`Cod. Salarial: ${cargo.codigo_salarial}`} color="primary" variant="outlined" />
+)}
 <Chip size="small" label={cargo.tipo_cargo_display} color="secondary" variant="outlined" />
 </Box>
 </Box>
@@ -434,7 +446,11 @@ secondary={`${asig.sit_revista_display} | Desde: ${asig.fecha_inicio}`}
 Eliminar ({cargo.horarios.filter(h => selectedHorarios.includes(h.id)).length})
 </Button>
 )}
-<Button size="small" startIcon={<ScheduleIcon />} onClick={() => openAgregarHorario(cargo.id)}>
+									<Button
+										size="small"
+										startIcon={<ScheduleIcon />}
+										onClick={() => openAgregarHorario(cargo)}
+									>
 Agregar
 </Button>
 </Box>
@@ -486,24 +502,24 @@ secondary={`${h.hora_inicio} a ${h.hora_fin}`}
 <DialogTitle>{isEditingCargo ? "Editar Cargo" : "Crear Nuevo Cargo"}</DialogTitle>
 <DialogContent dividers>
 <Grid container spacing={2}>
-<Grid item xs={12} sm={6}>
-<TextField
-label="Código de Cargo"
-fullWidth
-required
-value={newCargo.codigo_cargo}
-onChange={(e) => setNewCargo({ ...newCargo, codigo_cargo: e.target.value })}
-/>
-</Grid>
-<Grid item xs={12} sm={6}>
-<TextField
-label="Nombre"
-fullWidth
-required
-value={newCargo.nombre}
-onChange={(e) => setNewCargo({ ...newCargo, nombre: e.target.value })}
-/>
-</Grid>
+								<Grid item xs={12} sm={6}>
+									<TextField
+										label="Código Salarial"
+										fullWidth
+										value={newCargo.codigo_salarial || ""}
+										onChange={(e) => setNewCargo({ ...newCargo, codigo_salarial: e.target.value })}
+										helperText="Puede repetirse (ej: 903)"
+									/>
+								</Grid>
+								<Grid item xs={12} sm={6}>
+									<TextField
+										label="Nombre *"
+										fullWidth
+										required
+										value={newCargo.nombre}
+										onChange={(e) => setNewCargo({ ...newCargo, nombre: e.target.value })}
+									/>
+								</Grid>
 <Grid item xs={12}>
 <TextField
 label="Descripción"
@@ -512,6 +528,36 @@ multiline
 rows={2}
 value={newCargo.descripcion || ""}
 onChange={(e) => setNewCargo({ ...newCargo, descripcion: e.target.value })}
+/>
+</Grid>
+<Grid item xs={12} sm={6}>
+<TextField
+select
+label="Tipo de Cargo"
+fullWidth
+required
+value={newCargo.tipo_cargo}
+onChange={(e) => {
+const tipo = e.target.value;
+setNewCargo({
+...newCargo,
+tipo_cargo: tipo,
+duracion_minutos: tipo === "horas_catedra" ? 40 : 260
+});
+}}
+>
+<MenuItem value="horas_reloj">Horas Reloj (Cargo)</MenuItem>
+<MenuItem value="horas_catedra">Horas Cátedra</MenuItem>
+</TextField>
+</Grid>
+<Grid item xs={12} sm={6}>
+<TextField
+label="Duración (Minutos)"
+type="number"
+fullWidth
+required
+value={newCargo.duracion_minutos}
+onChange={(e) => setNewCargo({ ...newCargo, duracion_minutos: Number(e.target.value) })}
 />
 </Grid>
 </Grid>
@@ -628,8 +674,13 @@ type="time"
 fullWidth
 required
 InputLabelProps={{ shrink: true }}
-value={horarioData.hora_inicio}
-onChange={(e) => setHorarioData({ ...horarioData, hora_inicio: e.target.value })}
+										value={horarioData.hora_inicio}
+										onChange={(e) => {
+											const newInicio = e.target.value;
+											const cargoInfo = cargos.find(c => c.id === selectedCargoId);
+											const newFin = cargoInfo ? addMinutesToTime(newInicio, cargoInfo.duracion_minutos) : horarioData.hora_fin;
+											setHorarioData({ ...horarioData, hora_inicio: newInicio, hora_fin: newFin });
+										}}
 />
 </Grid>
 <Grid item xs={12} sm={6}>

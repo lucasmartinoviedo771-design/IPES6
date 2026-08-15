@@ -105,6 +105,12 @@ const WINDOW_TYPE_CONFIG: Record<
 
 const formatDateShort = (dStr?: string) => {
 	if (!dStr) return null;
+	const clean = String(dStr).split("T")[0];
+	if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+		const [y, m, d] = clean.split("-").map(Number);
+		const dateObj = new Date(y, m - 1, d);
+		return dateObj.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+	}
 	const d = new Date(dStr);
 	if (isNaN(d.getTime())) return dStr;
 	return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });

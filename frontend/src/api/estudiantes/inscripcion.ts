@@ -1,5 +1,6 @@
 import { type AppAxiosRequestConfig, client } from "@/api/client";
 import { fetchVentanas } from "@/api/ventanas";
+import { isVentanaActiva } from "@/utils/date";
 import type {
 	ApiResponseDTO,
 	CambioComisionPayload,
@@ -155,11 +156,17 @@ const solicitarMesaExamen = (payload: MesaExamenPayload) =>
 export async function obtenerVentanaMaterias(): Promise<VentanaInscripcion | null> {
 	try {
 		const data = await fetchVentanas({ tipo: "MATERIAS" });
-		const hoy = new Date();
-		const activa = (data || []).find(
-			(v) => v.activo && new Date(v.desde) <= hoy && new Date(v.hasta) >= hoy,
-		);
-		return activa || (data && data[0]) || null;
+		if (!data || data.length === 0) return null;
+		const activa = data.find((v) => isVentanaActiva(v));
+		if (activa) return activa;
+		
+		// Fallback to the most recent window if none are currently active
+		const sortedData = [...data].sort((a, b) => {
+			const dateA = a.desde ? new Date(a.desde).getTime() : 0;
+			const dateB = b.desde ? new Date(b.desde).getTime() : 0;
+			return dateB - dateA;
+		});
+		return sortedData[0] || null;
 	} catch {
 		return null;
 	}

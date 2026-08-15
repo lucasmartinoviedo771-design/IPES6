@@ -1,8 +1,12 @@
 import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import "dayjs/locale/es";
 
 // Configurar español por defecto
 dayjs.locale("es");
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 /**
  * Verifica si un string tiene el formato DD/MM/YYYY
@@ -77,3 +81,25 @@ export const formatDateToDDMMYY = (date: string | Date | null | undefined) =>
 export const formatDateTimeToDDMMYYYY = (
 	date: string | Date | null | undefined,
 ) => formatDateTime(date);
+
+/**
+ * Determina si una ventana de habilitación se encuentra activa considerando
+ * el rango de fechas por día calendario completo (hasta las 23:59:59 del día de cierre).
+ */
+export const isVentanaActiva = (
+	ventana: {
+		activo?: boolean;
+		desde?: string | Date | null;
+		hasta?: string | Date | null;
+	} | null | undefined,
+): boolean => {
+	if (!ventana || !ventana.activo || !ventana.desde || !ventana.hasta) {
+		return false;
+	}
+	const now = dayjs();
+	const desde = dayjs(ventana.desde);
+	const hasta = dayjs(ventana.hasta);
+	if (!desde.isValid() || !hasta.isValid()) return false;
+	return now.isSameOrAfter(desde, "day") && now.isSameOrBefore(hasta, "day");
+};
+

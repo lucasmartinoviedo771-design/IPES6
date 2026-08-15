@@ -18,6 +18,7 @@ import {
 	type VentanaInscripcion,
 } from "@/api/estudiantes";
 import { useAuth } from "@/context/AuthContext";
+import { isVentanaActiva } from "@/utils/date";
 import { hasAnyRole } from "@/utils/roles";
 import {
 	cuatrimestreCompatible,
@@ -359,17 +360,7 @@ export const useInscripcionMateria = () => {
 		inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
 	};
 	const ventana = ventanaQData ?? null;
-	const ventanaActiva = useMemo(() => {
-		if (!ventana) return false;
-		try {
-			const desde = new Date(ventana.desde);
-			const hasta = new Date(ventana.hasta);
-			const hoy = new Date();
-			return Boolean(ventana.activo) && hoy >= desde && hoy <= hasta;
-		} catch {
-			return Boolean(ventana?.activo);
-		}
-	}, [ventana]);
+	const ventanaActiva = useMemo(() => isVentanaActiva(ventana), [ventana]);
 	const puedeInscribirse = ventanaActiva || puedeGestionar;
 	const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
 	const inscripcionesData = inscripcionesQData ?? [];  

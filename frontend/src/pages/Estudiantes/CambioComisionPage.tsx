@@ -12,6 +12,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import MenuItem from "@mui/material/MenuItem";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import {
@@ -22,6 +23,7 @@ import {
 	type MateriaInscriptaItemDTO,
 	type MateriaPlanDTO,
 	cancelarInscripcionMateria,
+	obtenerCarrerasActivas,
 	obtenerEquivalencias,
 	obtenerHistorialEstudiante,
 	obtenerMateriasInscriptas,
@@ -33,6 +35,7 @@ import {
 import BackButton from "@/components/ui/BackButton";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import { useAuth } from "@/context/AuthContext";
+import { isVentanaActiva } from "@/utils/date";
 import { hasAnyRole } from "@/utils/roles";
 
 type Horario = HorarioDTO;
@@ -204,19 +207,47 @@ const CambioComisionPage: React.FC = () => {
 	const isEstudiante = !canGestionar;
 	const shouldFetch = isEstudiante || normalizedDni.length > 0;
 
+	const [selectedPlanId, setSelectedPlanId] = React.useState<string>("");
+
+	const { data: carrerasData } = useQuery({
+		queryKey: ["carreras-activas", normalizedDni],
+		queryFn: () =>
+			obtenerCarrerasActivas(normalizedDni ? { dni: normalizedDni } : undefined),
+		enabled: shouldFetch,
+	});
+
+	React.useEffect(() => {
+		if (carrerasData?.carreras && carrerasData.carreras.length > 0 && !selectedPlanId) {
+			const primerPlanVigente = carrerasData.carreras.find((c) => c.planes && c.planes.length > 0 && c.planes.some(p => p.vigente))?.planes?.find(p => p.vigente)?.id;
+			const primerPlanFallback = carrerasData.carreras[0].planes?.[0]?.id;
+			const pId = primerPlanVigente || primerPlanFallback;
+			if (pId) {
+				setSelectedPlanId(String(pId));
+			}
+		}
+	}, [carrerasData, selectedPlanId]);
+
+	// Cuando cambia el DNI, limpiamos el plan seleccionado para que se recalcule
+	React.useEffect(() => {
+		setSelectedPlanId("");
+	}, [normalizedDni]);
+
 	const {
 		data: materiasData,
 		isError: materiasError,
 		isLoading: materiasLoading,
 	} = useQuery({
-		queryKey: ["cc-materias", normalizedDni],
-		queryFn: async () =>
-			(
-				await obtenerMateriasPlanEstudiante(
-					normalizedDni ? { dni: normalizedDni } : undefined,
-				)
-			).map(mapMateria),
-		enabled: shouldFetch,
+		queryKey: ["cc-materias", normalizedDni, selectedPlanId],
+		queryFn: async () => {
+			if (!selectedPlanId) return [];
+			return (
+				await obtenerMateriasPlanEstudiante({
+					plan_id: Number(selectedPlanId),
+					...(normalizedDni ? { dni: normalizedDni } : {}),
+				})
+			).map(mapMateria);
+		},
+		enabled: shouldFetch && !!selectedPlanId,
 	});
 
 	const {
@@ -489,11 +520,7 @@ const CambioComisionPage: React.FC = () => {
 		horarioLab,
 	]);
 
-	const ventanaActiva =
-		!!ventana &&
-		ventana.activo &&
-		(!ventana.desde || new Date(ventana.desde) <= new Date()) &&
-		(!ventana.hasta || new Date(ventana.hasta) >= new Date());
+	const ventanaActiva = isVentanaActiva(ventana);
 
 	const [solicitudPendiente, setSolicitudPendiente] = React.useState<{
 		inscripcionId?: number;
@@ -595,6 +622,27 @@ const CambioComisionPage: React.FC = () => {
 							sx={{ maxWidth: 260 }}
 						/>
 					</Stack>
+				)}
+
+				{carrerasData?.carreras && carrerasData.carreras.length > 1 && (
+					<Box sx={{ mt: 2, mb: 1 }}>
+						<TextField
+							select
+							label="Profesorado"
+							value={selectedPlanId}
+							onChange={(e) => setSelectedPlanId(e.target.value)}
+							size="small"
+							sx={{ minWidth: 300 }}
+						>
+							{carrerasData.carreras.flatMap((c) =>
+								c.planes.map((p) => (
+									<MenuItem key={p.id} value={String(p.id)}>
+										{c.nombre} {p.resolucion ? `(Res ${p.resolucion})` : ""}
+									</MenuItem>
+								))
+							)}
+						</TextField>
+					</Box>
 				)}
 
 				{shouldFetch && (
