@@ -247,11 +247,9 @@ def listar_clases_docente(
 
     # --- Agregar Horarios de Cargo ---
     if fechas:
-        cargos_docente = CargoDocente.objects.filter(
-            docente=docente,
-            activo=True,
-            cargo__activo=True
-        ).select_related("cargo")
+        cargos_docente = CargoDocente.objects.filter(docente=docente, activo=True, cargo__activo=True).select_related(
+            "cargo"
+        )
 
         for cd in cargos_docente:
             horarios_cargo = HorarioCargo.objects.filter(cargo=cd.cargo)
@@ -262,19 +260,22 @@ def listar_clases_docente(
                         if dia_semana is not None and hc.dia_semana != dia_semana:
                             continue
 
-                        asistencia_cargo = AsistenciaCargoDocente.objects.filter(
-                            cargo_docente=cd,
-                            fecha=f
-                        ).first()
+                        asistencia_cargo = AsistenciaCargoDocente.objects.filter(cargo_docente=cd, fecha=f).first()
 
-                        ya_registrada = bool(asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE)
+                        ya_registrada = bool(
+                            asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE
+                        )
 
                         base_inicio = datetime.combine(f, hc.hora_inicio)
                         base_fin = datetime.combine(f, hc.hora_fin)
                         if settings.USE_TZ:
                             tz = timezone.get_current_timezone()
-                            ventana_inicio = timezone.make_aware(base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS), tz)
-                            umbral_tarde = timezone.make_aware(base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz)
+                            ventana_inicio = timezone.make_aware(
+                                base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS), tz
+                            )
+                            umbral_tarde = timezone.make_aware(
+                                base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz
+                            )
                             ventana_fin = timezone.make_aware(base_fin, tz)
                         else:
                             ventana_inicio = base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS)
@@ -301,7 +302,9 @@ def listar_clases_docente(
                                 puede_marcar=puede_marcar,
                                 editable_staff=True,
                                 ya_registrada=ya_registrada,
-                                registrada_en=format_datetime(asistencia_cargo.registrado_en) if asistencia_cargo and asistencia_cargo.registrado_en else None,
+                                registrada_en=format_datetime(asistencia_cargo.registrado_en)
+                                if asistencia_cargo and asistencia_cargo.registrado_en
+                                else None,
                                 ventana_inicio=ventana_inicio.strftime("%H:%M") if ventana_inicio else None,
                                 ventana_fin=ventana_fin.strftime("%H:%M") if ventana_fin else None,
                                 umbral_tarde=umbral_tarde.strftime("%H:%M") if umbral_tarde else None,
@@ -513,12 +516,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
     for item in payload.items:
         if item.es_cargo:
             horario = get_object_or_404(HorarioCargo, id=item.id)
-            cargo_docente = get_object_or_404(
-                CargoDocente,
-                docente=docente,
-                cargo=horario.cargo,
-                activo=True
-            )
+            cargo_docente = get_object_or_404(CargoDocente, docente=docente, cargo=horario.cargo, activo=True)
 
             # Chequear ventanas de tiempo
             base_inicio = datetime.combine(fecha_hoy, horario.hora_inicio)
@@ -593,7 +591,9 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 docente=docente,
                 defaults={
                     "estado": estado,
-                    "registrado_via": AsistenciaDocente.RegistradoVia.SISTEMA if payload.via == "staff" else AsistenciaDocente.RegistradoVia.APP_DOCENTE,
+                    "registrado_via": AsistenciaDocente.RegistradoVia.SISTEMA
+                    if payload.via == "staff"
+                    else AsistenciaDocente.RegistradoVia.APP_DOCENTE,
                 },
             )
             asistencia.estado = estado
@@ -635,9 +635,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
             )
 
     return KioskBulkMarcarOut(
-        estado_general="TARDE" if hubo_alerta else "PRESENTE",
-        alerta=hubo_alerta,
-        mensajes=mensajes
+        estado_general="TARDE" if hubo_alerta else "PRESENTE", alerta=hubo_alerta, mensajes=mensajes
     )
 
 

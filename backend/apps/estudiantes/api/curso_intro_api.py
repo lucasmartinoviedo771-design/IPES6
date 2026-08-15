@@ -415,9 +415,7 @@ def curso_intro_listar_pendientes(
     allowed = _ci_allowed_profesorados(request.user)
 
     # Generar clave de caché basada en permisos y filtro
-    cache_key = (
-        f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_conf{solo_confirmados}_anio{anio_ingreso or 'all'}"
-    )
+    cache_key = f"ci_pendientes_u{request.user.id}_p{profesorado_id or 'all'}_act{solo_activos}_conf{solo_confirmados}_anio{anio_ingreso or 'all'}"
     if allowed is not None:
         cache_key += f"_a{'-'.join(map(str, sorted(list(allowed))))}"
 

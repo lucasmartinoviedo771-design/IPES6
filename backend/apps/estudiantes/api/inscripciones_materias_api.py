@@ -90,7 +90,14 @@ def _es_ci_acompanamiento(materia) -> bool:
     """Retorna True si la materia es CI Acompañamiento a las Trayectorias."""
     nombre = getattr(materia, "nombre", "") or ""
     nombre_norm = (
-        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").replace("Ñ", "N").strip()
+        nombre.upper()
+        .replace("Á", "A")
+        .replace("É", "E")
+        .replace("Í", "I")
+        .replace("Ó", "O")
+        .replace("Ú", "U")
+        .replace("Ñ", "N")
+        .strip()
     )
     return "ACOMPANAMIENTO A LAS TRAYECTORIAS" in nombre_norm
 
@@ -375,8 +382,8 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             return 409, ApiResponse(
                 ok=False,
                 message=f"Existe una superposición horaria con la materia '{superposicion_detectada}' del ciclo actual. "
-                        f"Continúa inscribiéndote a otras materias sin conflicto. "
-                        f"Luego ve a 'Cambio de Comisión' para resolver esta superposición.",
+                f"Continúa inscribiéndote a otras materias sin conflicto. "
+                f"Luego ve a 'Cambio de Comisión' para resolver esta superposición.",
             )
 
     # --- 4. ASIGNACIÓN DE COMISIÓN (AUTO-ASSIGNMENT) ---
@@ -470,9 +477,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         qs = qs.filter(anio=anio)
     else:
         # Si no especifica año, traer solo del año actual y excluir canceladas/rechazadas
-        qs = qs.filter(
-            anio=anio_actual
-        ).exclude(
+        qs = qs.filter(anio=anio_actual).exclude(
             estado__in=[
                 InscripcionMateriaEstudiante.Estado.ANULADA,
                 InscripcionMateriaEstudiante.Estado.RECHAZADA,
@@ -727,7 +732,7 @@ def cambio_comision(request, payload: CambioComisionIn):
     if ya_inscripta_similar.exists():
         return 400, ApiResponse(
             ok=False,
-            message=f"Ya tienes otra inscripción activa de '{mat.nombre}' en otro profesorado. No puedes estar inscripto en la misma materia en múltiples profesorados."
+            message=f"Ya tienes otra inscripción activa de '{mat.nombre}' en otro profesorado. No puedes estar inscripto en la misma materia en múltiples profesorados.",
         )
 
     # 4.5 VALIDACIÓN DE EQUIVALENCIAS
@@ -738,8 +743,8 @@ def cambio_comision(request, payload: CambioComisionIn):
             return 400, ApiResponse(
                 ok=False,
                 message=f"La materia de destino tiene {mat.horas_semana}h/semana, "
-                        f"pero su inscripción actual tiene {m_orig.horas_semana}h/semana. "
-                        f"Solo se permiten cambios a materias con idéntica carga horaria.",
+                f"pero su inscripción actual tiene {m_orig.horas_semana}h/semana. "
+                f"Solo se permiten cambios a materias con idéntica carga horaria.",
             )
 
         # Validar: mismo formato
@@ -747,8 +752,8 @@ def cambio_comision(request, payload: CambioComisionIn):
             return 400, ApiResponse(
                 ok=False,
                 message=f"La materia de destino es {mat.formato}, "
-                        f"pero su inscripción actual es {m_orig.formato}. "
-                        f"Solo se permiten cambios a materias con idéntico formato.",
+                f"pero su inscripción actual es {m_orig.formato}. "
+                f"Solo se permiten cambios a materias con idéntico formato.",
             )
 
         # Validar: mismo régimen/cuatrimestre (CRÍTICO)
@@ -756,8 +761,8 @@ def cambio_comision(request, payload: CambioComisionIn):
             return 400, ApiResponse(
                 ok=False,
                 message=f"La materia de destino es {mat.get_regimen_display()}, "
-                        f"pero su inscripción actual es {m_orig.get_regimen_display()}. "
-                        f"Solo se permiten cambios a materias del mismo régimen.",
+                f"pero su inscripción actual es {m_orig.get_regimen_display()}. "
+                f"Solo se permiten cambios a materias del mismo régimen.",
             )
 
     if not ins:
@@ -775,9 +780,7 @@ def cambio_comision(request, payload: CambioComisionIn):
         estudiante=est,
         materia=mat,
         anio=anio_actual,
-    ).exclude(
-        id=ins.id if ins and ins.id else -1
-    ).filter(
+    ).exclude(id=ins.id if ins and ins.id else -1).filter(
         estado__in=[
             InscripcionMateriaEstudiante.Estado.ANULADA,
             InscripcionMateriaEstudiante.Estado.RECHAZADA,

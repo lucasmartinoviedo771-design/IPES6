@@ -457,10 +457,7 @@ def registrar_mesa_pandemia_endpoint(request, payload: MesaPandemiaIn):
 )
 @requires("primera_carga")
 def listar_historico_mesas_pandemia(
-    request,
-    ordering: str = "-fecha",
-    materia: str | None = None,
-    fecha: date | None = None
+    request, ordering: str = "-fecha", materia: str | None = None, fecha: date | None = None
 ):
     """Lista las mesas de examen registradas bajo protocolo de 'PANDEMIA'."""
     data = get_historico_mesas_pandemia(request.user, ordering=ordering, materia=materia, fecha=fecha)

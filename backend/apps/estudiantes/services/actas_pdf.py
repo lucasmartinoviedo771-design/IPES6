@@ -225,10 +225,14 @@ def generar_acta_examen_pdf(
         ]
     ]
     table_row3 = Table(row3_data, colWidths=[300, 60, 160])
-    table_row3.setStyle(TableStyle([
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
+    table_row3.setStyle(
+        TableStyle(
+            [
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
     elements.append(table_row3)
     elements.append(Spacer(1, 4))
 

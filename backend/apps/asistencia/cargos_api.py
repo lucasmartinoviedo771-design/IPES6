@@ -21,6 +21,7 @@ router = Router(tags=["Cargos y Asistencia de Cargos"])
 
 # --- Schemas ---
 
+
 class HorarioCargoSchema(Schema):
     id: int
     dia_semana: int
@@ -32,7 +33,7 @@ class HorarioCargoSchema(Schema):
 class HorarioCargoCreateSchema(Schema):
     dia_semana: int
     hora_inicio: str  # "HH:MM"
-    hora_fin: str     # "HH:MM"
+    hora_fin: str  # "HH:MM"
 
 
 class AsignacionDocenteSchema(Schema):
@@ -103,6 +104,7 @@ class MarcarAsistenciaCargoSchema(Schema):
 
 
 # --- Endpoints ---
+
 
 def _require_edit(user):
     require(user, "editar_estructura")
@@ -275,18 +277,16 @@ def asignar_docente_a_cargo(request, cargo_id: int, payload: AsignarDocenteSchem
     activo_nuevo = payload.activo if payload.activo is not None else True
     if activo_nuevo:
         if cargo.asignaciones_docentes.filter(activo=True).exists():
-            return 400, {"message": "El cargo ya tiene un docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de agregar uno nuevo activo."}
+            return 400, {
+                "message": "El cargo ya tiene un docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de agregar uno nuevo activo."
+            }
 
     fecha_inicio = (
         datetime.datetime.strptime(payload.fecha_inicio, "%Y-%m-%d").date()
         if payload.fecha_inicio
         else datetime.date.today()
     )
-    fecha_fin = (
-        datetime.datetime.strptime(payload.fecha_fin, "%Y-%m-%d").date()
-        if payload.fecha_fin
-        else None
-    )
+    fecha_fin = datetime.datetime.strptime(payload.fecha_fin, "%Y-%m-%d").date() if payload.fecha_fin else None
 
     asignacion = CargoDocente.objects.create(
         cargo=cargo,
@@ -321,15 +321,15 @@ def actualizar_asignacion_cargo(request, asignacion_id: int, payload: AsignarDoc
         else datetime.date.today()
     )
     asignacion.fecha_fin = (
-        datetime.datetime.strptime(payload.fecha_fin, "%Y-%m-%d").date()
-        if payload.fecha_fin
-        else None
+        datetime.datetime.strptime(payload.fecha_fin, "%Y-%m-%d").date() if payload.fecha_fin else None
     )
     asignacion.resolucion = payload.resolucion or ""
     if payload.activo is not None:
         if payload.activo and not asignacion.activo:
             if asignacion.cargo.asignaciones_docentes.filter(activo=True).exclude(id=asignacion.id).exists():
-                return 400, {"message": "El cargo ya tiene otro docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de reactivar a este."}
+                return 400, {
+                    "message": "El cargo ya tiene otro docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de reactivar a este."
+                }
         asignacion.activo = payload.activo
     asignacion.save()
 
@@ -452,11 +452,7 @@ def eliminar_horario_cargo(request, horario_id: int):
 @router.get("/cargos/planilla", response=list[PlanillaCargoItemSchema])
 def obtener_planilla_asistencia_cargos(request, fecha: str | None = None):
     """Obtiene la planilla diaria de cargos para registrar la asistencia."""
-    fecha_obj = (
-        datetime.datetime.strptime(fecha, "%Y-%m-%d").date()
-        if fecha
-        else datetime.date.today()
-    )
+    fecha_obj = datetime.datetime.strptime(fecha, "%Y-%m-%d").date() if fecha else datetime.date.today()
     # Python weekday(): Mon=0..Sun=6 -> DB: Sun=0..Sat=6
     py_weekday = fecha_obj.weekday()
     db_dia_semana = py_weekday

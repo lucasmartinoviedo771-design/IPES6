@@ -98,7 +98,14 @@ def _es_ci_acompanamiento(materia) -> bool:
     """Retorna True si la materia es CI Acompañamiento a las Trayectorias."""
     nombre = getattr(materia, "nombre", "") or ""
     nombre_norm = (
-        nombre.upper().replace("Á", "A").replace("É", "E").replace("Í", "I").replace("Ó", "O").replace("Ú", "U").replace("Ñ", "N").strip()
+        nombre.upper()
+        .replace("Á", "A")
+        .replace("É", "E")
+        .replace("Í", "I")
+        .replace("Ó", "O")
+        .replace("Ú", "U")
+        .replace("Ñ", "N")
+        .strip()
     )
     return "ACOMPANAMIENTO A LAS TRAYECTORIAS" in nombre_norm
 

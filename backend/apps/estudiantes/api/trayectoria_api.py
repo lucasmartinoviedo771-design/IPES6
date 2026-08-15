@@ -129,13 +129,10 @@ def historial_estudiante(request, dni: str | None = None):
             aprobadas_set.add(insc.mesa.materia_id)
 
     # 4. Inscripciones Activas (A cursar)
-    inscriptas_actuales = (
-        InscripcionMateriaEstudiante.objects.filter(
-            estudiante=est,
-            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
-        )
-        .values_list("materia_id", flat=True)
-    )
+    inscriptas_actuales = InscripcionMateriaEstudiante.objects.filter(
+        estudiante=est,
+        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
+    ).values_list("materia_id", flat=True)
     inscriptas_actuales_set.update(inscriptas_actuales)
 
     return HistorialEstudiante(

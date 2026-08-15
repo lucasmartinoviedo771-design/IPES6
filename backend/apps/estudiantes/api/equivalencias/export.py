@@ -73,14 +73,11 @@ def equivalencias_para_materia(request, materia_id: int):
         # Fallback: buscar materias con el mismo nombre, FGN, misma carga horaria y mismo formato
         # Nota: NO excluimos la materia original (m.id) para que el frontend pueda ofrecer cambios
         # a otras comisiones dentro de la MISMA materia y profesorado.
-        candidates = (
-            Materia.objects.select_related("plan_de_estudio__profesorado")
-            .filter(
-                nombre__iexact=m.nombre,
-                tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
-                horas_semana=m.horas_semana,
-                formato=m.formato,
-            )
+        candidates = Materia.objects.select_related("plan_de_estudio__profesorado").filter(
+            nombre__iexact=m.nombre,
+            tipo_formacion=Materia.TipoFormacion.FORMACION_GENERAL,
+            horas_semana=m.horas_semana,
+            formato=m.formato,
         )
         materias_equivalentes = list(candidates)
 
@@ -121,6 +118,7 @@ def equivalencias_para_materia(request, materia_id: int):
 
         # Obtener comisiones (clases) de esta materia
         from core.models import Comision
+
         comisiones = Comision.objects.filter(materia=mm).select_related("turno", "docente").order_by("codigo")
 
         comisiones_list = []
@@ -130,9 +128,9 @@ def equivalencias_para_materia(request, materia_id: int):
             com_hs = []
             if comision.horario:
                 # Si la comisión tiene horario asignado, usarlo
-                com_detalles = HorarioCatedraDetalle.objects.filter(
-                    horario_catedra=comision.horario
-                ).select_related("bloque")
+                com_detalles = HorarioCatedraDetalle.objects.filter(horario_catedra=comision.horario).select_related(
+                    "bloque"
+                )
                 com_hs = [
                     Horario(
                         dia=d.bloque.get_dia_display(),
@@ -143,14 +141,9 @@ def equivalencias_para_materia(request, materia_id: int):
                 ]
             else:
                 # Si no, buscar los horarios de la materia que correspondan al turno de la comisión
-                hc = HorarioCatedra.objects.filter(
-                    espacio=mm,
-                    turno=comision.turno
-                ).first()
+                hc = HorarioCatedra.objects.filter(espacio=mm, turno=comision.turno).first()
                 if hc:
-                    com_detalles = HorarioCatedraDetalle.objects.filter(
-                        horario_catedra=hc
-                    ).select_related("bloque")
+                    com_detalles = HorarioCatedraDetalle.objects.filter(horario_catedra=hc).select_related("bloque")
                     com_hs = [
                         Horario(
                             dia=d.bloque.get_dia_display(),

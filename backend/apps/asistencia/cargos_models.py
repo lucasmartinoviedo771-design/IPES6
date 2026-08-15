@@ -201,7 +201,9 @@ def validar_solapamiento_horario_docente(
 
     if clases_solapadas.exists():
         clase = clases_solapadas.first()
-        materia_nombre = clase.comision.materia.nombre if clase.comision and clase.comision.materia else "Clase asignada"
+        materia_nombre = (
+            clase.comision.materia.nombre if clase.comision and clase.comision.materia else "Clase asignada"
+        )
         return (
             True,
             f"El docente ya tiene una clase asignada ('{materia_nombre}', {clase.get_dia_semana_display()} {clase.hora_inicio.strftime('%H:%M')}-{clase.hora_fin.strftime('%H:%M')}) en ese horario.",

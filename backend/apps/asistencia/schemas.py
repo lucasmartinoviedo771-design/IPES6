@@ -34,7 +34,6 @@ class DocenteClaseOut(Schema):
     cargo_docente_id: int | None = None
 
 
-
 class DocenteHistorialOut(Schema):
     fecha: str
     turno: str
@@ -83,7 +82,6 @@ class KioskBulkMarcarOut(Schema):
     estado_general: str
     alerta: bool
     mensajes: list[str]
-
 
 
 class DocenteMarcarPresenteOut(Schema):
