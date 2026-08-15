@@ -360,7 +360,7 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
                         # Omitir si son de cuatrimestres distintos
                         if (cand_cuat == "PCU" and d_cuat == "SCU") or (cand_cuat == "SCU" and d_cuat == "PCU"):
                             continue
-                        
+
                         # Omitir si ambas materias permiten superposición (talleres/práctica 4 del 2C)
                         if _permite_superposicion_residencia(mat, d.horario_catedra.espacio):
                             continue

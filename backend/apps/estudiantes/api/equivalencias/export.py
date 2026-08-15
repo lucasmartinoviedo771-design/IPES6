@@ -83,7 +83,7 @@ def equivalencias_para_materia(request, materia_id: int):
             )
         )
         materias_equivalentes = list(candidates)
-        
+
     # Si había grupos formales (if anterior) igual debemos asegurarnos de que m esté en la lista
     if m not in materias_equivalentes:
         materias_equivalentes.append(m)

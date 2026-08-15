@@ -16,15 +16,15 @@ from .api_helpers import (
     _build_horario,
     _calcular_ventanas,
 )
+from .cargos_models import (
+    AsistenciaCargoDocente,
+    CargoDocente,
+    HorarioCargo,
+)
 from .models import (
     AsistenciaDocente,
     ClaseProgramada,
     DocenteMarcacionLog,
-)
-from .cargos_models import (
-    CargoDocente,
-    HorarioCargo,
-    AsistenciaCargoDocente,
 )
 from .schemas import (
     DocenteClaseOut,
@@ -40,11 +40,11 @@ from .schemas import (
     KioskBulkMarcarOut,
 )
 from .services import (
+    TOLERANCIA_ANTERIOR_MINUTOS,
+    TOLERANCIA_TARDE_MINUTOS,
     generate_classes_for_range,
     propagar_asistencia_docente_turno,
     registrar_log_docente,
-    TOLERANCIA_ANTERIOR_MINUTOS,
-    TOLERANCIA_TARDE_MINUTOS,
 )
 
 router = Router(tags=["asistencia-docentes"], auth=JWTAuth())
@@ -248,7 +248,7 @@ def listar_clases_docente(
     # --- Agregar Horarios de Cargo ---
     if fechas:
         cargos_docente = CargoDocente.objects.filter(
-            docente=docente, 
+            docente=docente,
             activo=True,
             cargo__activo=True
         ).select_related("cargo")
@@ -261,14 +261,14 @@ def listar_clases_docente(
                     if hc.dia_semana == db_dia:
                         if dia_semana is not None and hc.dia_semana != dia_semana:
                             continue
-                        
+
                         asistencia_cargo = AsistenciaCargoDocente.objects.filter(
                             cargo_docente=cd,
                             fecha=f
                         ).first()
-                        
+
                         ya_registrada = bool(asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE)
-                        
+
                         base_inicio = datetime.combine(f, hc.hora_inicio)
                         base_fin = datetime.combine(f, hc.hora_fin)
                         if settings.USE_TZ:
@@ -280,7 +280,7 @@ def listar_clases_docente(
                             ventana_inicio = base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS)
                             umbral_tarde = base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS)
                             ventana_fin = base_fin
-                            
+
                         puede_marcar = False
                         if current_time and not ya_registrada:
                             puede_marcar = ventana_inicio <= current_time <= ventana_fin
@@ -311,7 +311,7 @@ def listar_clases_docente(
                                 profesorado_nombre="",
                             )
                         )
-                        
+
                         if asistencia_cargo:
                             historial.append(
                                 DocenteHistorialOut(
@@ -504,7 +504,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
     current_time = timezone.now()
     if settings.USE_TZ:
         current_time = timezone.localtime(current_time)
-        
+
     fecha_hoy = current_time.date()
 
     hubo_alerta = False
@@ -514,12 +514,12 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
         if item.es_cargo:
             horario = get_object_or_404(HorarioCargo, id=item.id)
             cargo_docente = get_object_or_404(
-                CargoDocente, 
-                docente=docente, 
-                cargo=horario.cargo, 
+                CargoDocente,
+                docente=docente,
+                cargo=horario.cargo,
                 activo=True
             )
-            
+
             # Chequear ventanas de tiempo
             base_inicio = datetime.combine(fecha_hoy, horario.hora_inicio)
             base_fin = datetime.combine(fecha_hoy, horario.hora_fin)
@@ -528,10 +528,10 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 umbral_tarde = timezone.make_aware(base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz)
             else:
                 umbral_tarde = base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS)
-                
+
             estado = AsistenciaCargoDocente.Estado.PRESENTE
             alerta = False
-            
+
             if current_time > umbral_tarde:
                 estado = AsistenciaCargoDocente.Estado.TARDE
                 hubo_alerta = True
@@ -539,7 +539,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 mensajes.append(f"Llegada tarde en {horario.cargo.nombre}.")
             else:
                 mensajes.append(f"Presente en {horario.cargo.nombre}.")
-                
+
             # Registrar
             AsistenciaCargoDocente.objects.update_or_create(
                 cargo_docente=cargo_docente,
@@ -551,7 +551,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                     "registrado_por": registrado_por,
                 },
             )
-            
+
             registrar_log_docente(
                 dni=payload.dni,
                 resultado=DocenteMarcacionLog.Resultado.ACEPTADO,
@@ -561,22 +561,22 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 alerta=alerta,
                 origen="kiosk",
             )
-            
+
         else:
             # Es ClaseProgramada
             clase = get_object_or_404(ClaseProgramada, id=item.id)
             if clase.docente_id != docente.id:
                 mensajes.append(f"Error: La clase {clase.id} no pertenece al docente.")
                 continue
-                
+
             ventana_inicio, umbral_tarde, ventana_fin, turno_nombre = _calcular_ventanas(clase)
-            
+
             estado = AsistenciaDocente.Estado.PRESENTE
             categoria = AsistenciaDocente.MarcacionCategoria.NORMAL
             alerta = False
             alerta_tipo = ""
             alerta_motivo = ""
-            
+
             if umbral_tarde and current_time > umbral_tarde:
                 estado = AsistenciaDocente.Estado.TARDE
                 categoria = AsistenciaDocente.MarcacionCategoria.TARDE
@@ -587,7 +587,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 mensajes.append(f"Llegada tarde en {clase.comision.materia.nombre}.")
             else:
                 mensajes.append(f"Presente en {clase.comision.materia.nombre}.")
-                
+
             asistencia, _ = AsistenciaDocente.objects.get_or_create(
                 clase=clase,
                 docente=docente,
@@ -610,7 +610,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
             asistencia.alerta_tipo = alerta_tipo
             asistencia.alerta_motivo = alerta_motivo
             asistencia.save()
-            
+
             registrar_log_docente(
                 dni=payload.dni,
                 resultado=DocenteMarcacionLog.Resultado.ACEPTADO,
@@ -620,7 +620,7 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 alerta=alerta,
                 origen="kiosk",
             )
-            
+
             # Propagamos si la primer clase es ok
             propagar_asistencia_docente_turno(
                 clase_origen=clase,

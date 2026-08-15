@@ -94,7 +94,7 @@ def get_historico_mesas_pandemia(user, ordering="-fecha", materia=None, fecha=No
 
     if materia:
         qs = qs.filter(materia__nombre__icontains=materia)
-    
+
     if fecha:
         qs = qs.filter(fecha=fecha)
 

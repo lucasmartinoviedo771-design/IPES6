@@ -12,8 +12,8 @@ from apps.asistencia.cargos_models import (
     HorarioCargo,
     validar_solapamiento_horario_docente,
 )
-from core.models import Docente
 from core.auth_ninja import JWTAuth
+from core.models import Docente
 from core.permissions import require
 
 router = Router(tags=["Cargos y Asistencia de Cargos"])
@@ -43,8 +43,8 @@ class AsignacionDocenteSchema(Schema):
     sit_revista: str
     sit_revista_display: str
     fecha_inicio: str
-    fecha_fin: Optional[str] = None
-    resolucion: Optional[str] = ""
+    fecha_fin: str | None = None
+    resolucion: str | None = ""
     activo: bool
 
 
@@ -58,26 +58,26 @@ class CargoSchema(Schema):
     duracion_minutos: int
     descripcion: str
     activo: bool
-    horarios: List[HorarioCargoSchema]
-    asignaciones: List[AsignacionDocenteSchema]
+    horarios: list[HorarioCargoSchema]
+    asignaciones: list[AsignacionDocenteSchema]
 
 
 class CargoCreateSchema(Schema):
     codigo_cargo: str
-    codigo_salarial: Optional[str] = ""
+    codigo_salarial: str | None = ""
     nombre: str
-    tipo_cargo: Optional[str] = "horas_reloj"
-    duracion_minutos: Optional[int] = 260
-    descripcion: Optional[str] = ""
+    tipo_cargo: str | None = "horas_reloj"
+    duracion_minutos: int | None = 260
+    descripcion: str | None = ""
 
 
 class AsignarDocenteSchema(Schema):
     docente_id: int
     sit_revista: str  # "titular", "interino", "suplente"
-    fecha_inicio: Optional[str] = None
-    fecha_fin: Optional[str] = None
-    resolucion: Optional[str] = ""
-    activo: Optional[bool] = None
+    fecha_inicio: str | None = None
+    fecha_fin: str | None = None
+    resolucion: str | None = ""
+    activo: bool | None = None
 
 
 class PlanillaCargoItemSchema(Schema):
@@ -91,15 +91,15 @@ class PlanillaCargoItemSchema(Schema):
     sit_revista: str
     hora_inicio: str
     hora_fin: str
-    estado_asistencia: Optional[str] = None
-    observaciones: Optional[str] = ""
+    estado_asistencia: str | None = None
+    observaciones: str | None = ""
 
 
 class MarcarAsistenciaCargoSchema(Schema):
     cargo_docente_id: int
     fecha: str  # "YYYY-MM-DD"
     estado: str  # "presente", "ausente", "tarde", "justificada"
-    observaciones: Optional[str] = ""
+    observaciones: str | None = ""
 
 
 # --- Endpoints ---
@@ -108,7 +108,7 @@ def _require_edit(user):
     require(user, "editar_estructura")
 
 
-@router.get("/cargos", response=List[CargoSchema], auth=JWTAuth())
+@router.get("/cargos", response=list[CargoSchema], auth=JWTAuth())
 def listar_cargos(request):
     """Lista todos los cargos registrados con sus horarios y docentes asignados."""
     cargos = Cargo.objects.prefetch_related("horarios", "asignaciones_docentes__docente").all()
@@ -195,7 +195,7 @@ def actualizar_cargo(request, cargo_id: int, payload: CargoCreateSchema):
     cargo = get_object_or_404(Cargo, id=cargo_id)
     if Cargo.objects.filter(codigo_cargo=payload.codigo_cargo).exclude(id=cargo_id).exists():
         return 400, {"message": f"El código de cargo '{payload.codigo_cargo}' ya existe."}
-    
+
     cargo.codigo_cargo = payload.codigo_cargo
     cargo.codigo_salarial = payload.codigo_salarial or ""
     cargo.nombre = payload.nombre
@@ -203,7 +203,7 @@ def actualizar_cargo(request, cargo_id: int, payload: CargoCreateSchema):
     cargo.duracion_minutos = payload.duracion_minutos or 260
     cargo.descripcion = payload.descripcion or ""
     cargo.save()
-    
+
     horarios = [
         HorarioCargoSchema(
             id=h.id,
@@ -229,7 +229,7 @@ def actualizar_cargo(request, cargo_id: int, payload: CargoCreateSchema):
         )
         for a in cargo.asignaciones_docentes.all()
     ]
-    
+
     return 200, CargoSchema(
         id=cargo.id,
         codigo_cargo=cargo.codigo_cargo,
@@ -309,7 +309,7 @@ def actualizar_asignacion_cargo(request, asignacion_id: int, payload: AsignarDoc
     """Actualiza una asignación de cargo docente (para cambiar situación de revista, fechas o desactivar)."""
     _require_edit(request.user)
     asignacion = get_object_or_404(CargoDocente, id=asignacion_id)
-    
+
     if payload.docente_id != asignacion.docente_id:
         docente = get_object_or_404(Docente, id=payload.docente_id)
         asignacion.docente = docente
@@ -332,7 +332,7 @@ def actualizar_asignacion_cargo(request, asignacion_id: int, payload: AsignarDoc
                 return 400, {"message": "El cargo ya tiene otro docente activo. Modifique al docente actual (quitándole la 'Asignación Activa') antes de reactivar a este."}
         asignacion.activo = payload.activo
     asignacion.save()
-    
+
     return 200, AsignacionDocenteSchema(
         id=asignacion.id,
         docente_id=asignacion.docente.id,
@@ -449,8 +449,8 @@ def eliminar_horario_cargo(request, horario_id: int):
     return 204, None
 
 
-@router.get("/cargos/planilla", response=List[PlanillaCargoItemSchema])
-def obtener_planilla_asistencia_cargos(request, fecha: Optional[str] = None):
+@router.get("/cargos/planilla", response=list[PlanillaCargoItemSchema])
+def obtener_planilla_asistencia_cargos(request, fecha: str | None = None):
     """Obtiene la planilla diaria de cargos para registrar la asistencia."""
     fecha_obj = (
         datetime.datetime.strptime(fecha, "%Y-%m-%d").date()

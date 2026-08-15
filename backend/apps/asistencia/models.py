@@ -1,4 +1,3 @@
-from apps.asistencia.cargos_models import Cargo, CargoDocente, HorarioCargo, AsistenciaCargoDocente, validar_solapamiento_horario_docente
 import datetime
 
 from django.conf import settings
@@ -6,6 +5,13 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from apps.asistencia.cargos_models import (
+    AsistenciaCargoDocente,
+    Cargo,
+    CargoDocente,
+    HorarioCargo,
+    validar_solapamiento_horario_docente,
+)
 from core.models import Comision, Docente, Estudiante, PlanDeEstudio, Profesorado, Turno
 
 
