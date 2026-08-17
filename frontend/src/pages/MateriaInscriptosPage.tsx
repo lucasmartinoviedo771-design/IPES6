@@ -1,4 +1,5 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -297,9 +298,74 @@ export default function MateriaInscriptosPage() {
 				</Paper>
 
 				<Paper variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-					<Typography variant="h6" fontWeight={700} gutterBottom>
-						Estudiantes inscriptos
-					</Typography>
+					<Stack
+						direction="row"
+						justifyContent="space-between"
+						alignItems="center"
+						flexWrap="wrap"
+						gap={2}
+						sx={{ mb: 2 }}
+					>
+						<Typography variant="h6" fontWeight={700}>
+							Estudiantes inscriptos
+						</Typography>
+						{inscriptosData && inscriptosData.length > 0 && (
+							<Button
+								variant="outlined"
+								color="primary"
+								startIcon={<FileDownloadIcon />}
+								onClick={() => {
+									const BOM = "\uFEFF";
+									const headers = [
+										"#",
+										"Estudiante",
+										"DNI",
+										"Año",
+										"Estado",
+										"Comisión",
+										"Asistencias Ausente",
+										"Asistencias Presente",
+										"Asistencias Total",
+										"Porcentaje Asistencia",
+									];
+									const rows = (inscriptosData ?? []).map((ins, idx) => [
+										idx + 1,
+										ins.estudiante,
+										ins.dni ?? "",
+										ins.anio ?? "",
+										ins.estado ?? "",
+										ins.comision_codigo ?? "",
+										ins.asistencias_a ?? 0,
+										ins.asistencias_p ?? 0,
+										ins.asistencias_t ?? 0,
+										ins.asistencias_pct ?? "0%",
+									]);
+
+									const csvContent =
+										BOM +
+										[headers, ...rows]
+											.map((e) => e.map((val) => `"${val}"`).join(";"))
+											.join("\n");
+
+									const blob = new Blob([csvContent], {
+										type: "text/csv;charset=utf-8;",
+									});
+									const url = URL.createObjectURL(blob);
+									const link = document.createElement("a");
+									link.setAttribute("href", url);
+									const safeName = (materiaNombre || "Inscriptos")
+										.replace(/\s+/g, "_")
+										.replace(/[^a-zA-Z0-9_-]/g, "");
+									link.setAttribute("download", `Inscriptos_${safeName}.csv`);
+									document.body.appendChild(link);
+									link.click();
+									document.body.removeChild(link);
+								}}
+							>
+								Exportar a Excel / CSV
+							</Button>
+						)}
+					</Stack>
 					{inscriptosIsError ? (
 						<Alert severity="error">
 							No pudimos cargar los inscriptos de esta materia. Intentá

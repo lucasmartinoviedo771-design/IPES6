@@ -336,8 +336,8 @@ def list_materias_for_plan(
     if not incluir_historial:
         # Excluir los que aún no empezaron
         materias = materias.exclude(fecha_inicio__gt=hoy)
-        # Excluir materias no-EDI que ya vencieron; los EDIs cerrados se muestran marcados
-        materias = materias.exclude(fecha_fin__lt=hoy, is_edi=False)
+        # Excluir materias y EDIs que ya vencieron/cerraron
+        materias = materias.exclude(fecha_fin__lt=hoy)
 
     # Aplicación de filtros según metadata de la materia
     if anio_cursada is not None:

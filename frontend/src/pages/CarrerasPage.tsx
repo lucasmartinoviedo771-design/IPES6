@@ -60,6 +60,11 @@ type MateriasTableProps = {
 	onVerInscriptos: (materia: MateriaDTO) => void;
 };
 
+import InputAdornment from "@mui/material/InputAdornment";
+import TextField from "@mui/material/TextField";
+import SearchIcon from "@mui/icons-material/Search";
+import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
+
 const MateriasTable: React.FC<MateriasTableProps> = ({
 	materias,
 	loading,
@@ -74,8 +79,61 @@ const MateriasTable: React.FC<MateriasTableProps> = ({
 	const [orderBy, setOrderBy] = useState<MateriaSortKey>("anio");
 	const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("asc");
 
+	// Filtros
+	const [filtroNombre, setFiltroNombre] = useState<string>("");
+	const [filtroCuatrimestre, setFiltroCuatrimestre] = useState<string>("");
+	const [filtroFormato, setFiltroFormato] = useState<string>("");
+	const [filtroTipoFormacion, setFiltroTipoFormacion] = useState<string>("");
+	const [filtroAnio, setFiltroAnio] = useState<string>("");
+
+	const hayFiltrosActivos =
+		filtroNombre !== "" ||
+		filtroCuatrimestre !== "" ||
+		filtroFormato !== "" ||
+		filtroTipoFormacion !== "" ||
+		filtroAnio !== "";
+
+	const limpiarFiltros = () => {
+		setFiltroNombre("");
+		setFiltroCuatrimestre("");
+		setFiltroFormato("");
+		setFiltroTipoFormacion("");
+		setFiltroAnio("");
+	};
+
+	const filteredMaterias = useMemo(() => {
+		return materias.filter((m) => {
+			if (
+				filtroNombre &&
+				!m.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+			) {
+				return false;
+			}
+			if (filtroAnio && String(m.anio_cursada) !== filtroAnio) {
+				return false;
+			}
+			if (filtroCuatrimestre && m.regimen !== filtroCuatrimestre) {
+				return false;
+			}
+			if (filtroFormato && m.formato !== filtroFormato) {
+				return false;
+			}
+			if (filtroTipoFormacion && m.tipo_formacion !== filtroTipoFormacion) {
+				return false;
+			}
+			return true;
+		});
+	}, [
+		materias,
+		filtroNombre,
+		filtroAnio,
+		filtroCuatrimestre,
+		filtroFormato,
+		filtroTipoFormacion,
+	]);
+
 	const sortedMaterias = useMemo(() => {
-		const copy = [...materias];
+		const copy = [...filteredMaterias];
 		copy.sort((a, b) => {
 			const getValue = (m: MateriaDTO): string | number => {
 				switch (orderBy) {
@@ -107,7 +165,7 @@ const MateriasTable: React.FC<MateriasTableProps> = ({
 			return orderDirection === "asc" ? comp : -comp;
 		});
 		return copy;
-	}, [materias, orderBy, orderDirection]);
+	}, [filteredMaterias, orderBy, orderDirection]);
 
 	const handleSort = (column: MateriaSortKey) => {
 		setOrderBy(column);
@@ -135,106 +193,235 @@ const MateriasTable: React.FC<MateriasTableProps> = ({
 	}
 
 	return (
-		<TableContainer component={Paper} variant="outlined">
-			<Table size="small">
-				<TableHead>
-					<TableRow>
-						<TableCell
-							sortDirection={orderBy === "anio" ? orderDirection : false}
-						>
-							<TableSortLabel
-								active={orderBy === "anio"}
-								direction={orderBy === "anio" ? orderDirection : "asc"}
-								onClick={() => handleSort("anio")}
+		<Stack spacing={2}>
+			{/* Barra de Filtros */}
+			<Paper variant="outlined" sx={{ p: 2, bgcolor: "background.paper" }}>
+				<Grid container spacing={1.5} alignItems="center">
+					<Grid item xs={12} sm={6} md={3}>
+						<TextField
+							size="small"
+							fullWidth
+							placeholder="Buscar por nombre..."
+							label="Nombre"
+							value={filtroNombre}
+							onChange={(e) => setFiltroNombre(e.target.value)}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start">
+										<SearchIcon fontSize="small" color="action" />
+									</InputAdornment>
+								),
+							}}
+						/>
+					</Grid>
+					<Grid item xs={6} sm={3} md={2}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="filtro-anio-label">Año</InputLabel>
+							<Select
+								labelId="filtro-anio-label"
+								label="Año"
+								value={filtroAnio}
+								onChange={(e) => setFiltroAnio(e.target.value)}
 							>
-								Año
-							</TableSortLabel>
-						</TableCell>
-						<TableCell
-							sortDirection={orderBy === "nombre" ? orderDirection : false}
-						>
-							<TableSortLabel
-								active={orderBy === "nombre"}
-								direction={orderBy === "nombre" ? orderDirection : "asc"}
-								onClick={() => handleSort("nombre")}
+								<MenuItem value="">Todos</MenuItem>
+								<MenuItem value="1">1.º Año</MenuItem>
+								<MenuItem value="2">2.º Año</MenuItem>
+								<MenuItem value="3">3.º Año</MenuItem>
+								<MenuItem value="4">4.º Año</MenuItem>
+								<MenuItem value="5">5.º Año</MenuItem>
+							</Select>
+						</FormControl>
+					</Grid>
+					<Grid item xs={6} sm={3} md={2.5}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="filtro-cuatrimestre-label">Cuatrimestre</InputLabel>
+							<Select
+								labelId="filtro-cuatrimestre-label"
+								label="Cuatrimestre"
+								value={filtroCuatrimestre}
+								onChange={(e) => setFiltroCuatrimestre(e.target.value)}
 							>
-								Materia
-							</TableSortLabel>
-						</TableCell>
-						<TableCell
-							sortDirection={
-								orderBy === "cuatrimestre" ? orderDirection : false
-							}
-						>
-							<TableSortLabel
-								active={orderBy === "cuatrimestre"}
-								direction={orderBy === "cuatrimestre" ? orderDirection : "asc"}
-								onClick={() => handleSort("cuatrimestre")}
+								<MenuItem value="">Todos</MenuItem>
+								{Object.entries(regimenLabel).map(([key, label]) => (
+									<MenuItem key={key} value={key}>
+										{label}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					</Grid>
+					<Grid item xs={6} sm={3} md={2}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="filtro-formato-label">Formato</InputLabel>
+							<Select
+								labelId="filtro-formato-label"
+								label="Formato"
+								value={filtroFormato}
+								onChange={(e) => setFiltroFormato(e.target.value)}
 							>
-								Cuatrimestre
-							</TableSortLabel>
-						</TableCell>
-						<TableCell
-							sortDirection={orderBy === "formato" ? orderDirection : false}
-						>
-							<TableSortLabel
-								active={orderBy === "formato"}
-								direction={orderBy === "formato" ? orderDirection : "asc"}
-								onClick={() => handleSort("formato")}
+								<MenuItem value="">Todos</MenuItem>
+								{Object.entries(formatoLabel).map(([key, label]) => (
+									<MenuItem key={key} value={key}>
+										{label}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					</Grid>
+					<Grid item xs={6} sm={3} md={2.5}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="filtro-tipo-label">Tipo Formación</InputLabel>
+							<Select
+								labelId="filtro-tipo-label"
+								label="Tipo Formación"
+								value={filtroTipoFormacion}
+								onChange={(e) => setFiltroTipoFormacion(e.target.value)}
 							>
-								Formato
-							</TableSortLabel>
-						</TableCell>
-						<TableCell
-							sortDirection={
-								orderBy === "tipo_formacion" ? orderDirection : false
-							}
+								<MenuItem value="">Todos</MenuItem>
+								{Object.entries(tipoFormacionLabel).map(([key, label]) => (
+									<MenuItem key={key} value={key}>
+										{label}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					</Grid>
+				</Grid>
+
+				{hayFiltrosActivos && (
+					<Box
+						display="flex"
+						justifyContent="space-between"
+						alignItems="center"
+						mt={1.5}
+						pt={1}
+						borderTop="1px dashed"
+						borderColor="divider"
+					>
+						<Typography variant="caption" color="text.secondary">
+							Mostrando <b>{filteredMaterias.length}</b> de <b>{materias.length}</b> materias
+						</Typography>
+						<Button
+							size="small"
+							variant="text"
+							color="inherit"
+							startIcon={<FilterAltOffIcon fontSize="small" />}
+							onClick={limpiarFiltros}
+							sx={{ textTransform: "none" }}
 						>
-							<TableSortLabel
-								active={orderBy === "tipo_formacion"}
-								direction={
-									orderBy === "tipo_formacion" ? orderDirection : "asc"
-								}
-								onClick={() => handleSort("tipo_formacion")}
-							>
-								Tipo de formación
-							</TableSortLabel>
-						</TableCell>
-						<TableCell align="right">Inscriptos</TableCell>
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{sortedMaterias.map((materia) => (
-						<TableRow key={materia.id} hover>
-							<TableCell>{materia.anio_cursada ?? "-"}</TableCell>
-							<TableCell>{materia.nombre}</TableCell>
-							<TableCell>
-								{regimenLabel[materia.regimen] ?? materia.regimen}
-							</TableCell>
-							<TableCell>
-								{formatoLabel[materia.formato] ?? materia.formato}
-							</TableCell>
-							<TableCell>
-								{tipoFormacionLabel[materia.tipo_formacion] ??
-									materia.tipo_formacion}
-							</TableCell>
-							<TableCell align="right">
-								<Button
-									size="small"
-									variant="outlined"
-									onClick={(event) => {
-										event.stopPropagation();
-										onVerInscriptos(materia);
-									}}
+							Limpiar filtros
+						</Button>
+					</Box>
+				)}
+			</Paper>
+
+			{filteredMaterias.length === 0 ? (
+				<Alert severity="warning" sx={{ mt: 1 }}>
+					No se encontraron materias que coincidan con los filtros aplicados.
+				</Alert>
+			) : (
+				<TableContainer component={Paper} variant="outlined">
+					<Table size="small">
+						<TableHead>
+							<TableRow>
+								<TableCell
+									sortDirection={orderBy === "anio" ? orderDirection : false}
 								>
-									Ver inscriptos
-								</Button>
-							</TableCell>
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-		</TableContainer>
+									<TableSortLabel
+										active={orderBy === "anio"}
+										direction={orderBy === "anio" ? orderDirection : "asc"}
+										onClick={() => handleSort("anio")}
+									>
+										Año
+									</TableSortLabel>
+								</TableCell>
+								<TableCell
+									sortDirection={orderBy === "nombre" ? orderDirection : false}
+								>
+									<TableSortLabel
+										active={orderBy === "nombre"}
+										direction={orderBy === "nombre" ? orderDirection : "asc"}
+										onClick={() => handleSort("nombre")}
+									>
+										Materia
+									</TableSortLabel>
+								</TableCell>
+								<TableCell
+									sortDirection={
+										orderBy === "cuatrimestre" ? orderDirection : false
+									}
+								>
+									<TableSortLabel
+										active={orderBy === "cuatrimestre"}
+										direction={orderBy === "cuatrimestre" ? orderDirection : "asc"}
+										onClick={() => handleSort("cuatrimestre")}
+									>
+										Cuatrimestre
+									</TableSortLabel>
+								</TableCell>
+								<TableCell
+									sortDirection={orderBy === "formato" ? orderDirection : false}
+								>
+									<TableSortLabel
+										active={orderBy === "formato"}
+										direction={orderBy === "formato" ? orderDirection : "asc"}
+										onClick={() => handleSort("formato")}
+									>
+										Formato
+									</TableSortLabel>
+								</TableCell>
+								<TableCell
+									sortDirection={
+										orderBy === "tipo_formacion" ? orderDirection : false
+									}
+								>
+									<TableSortLabel
+										active={orderBy === "tipo_formacion"}
+										direction={
+											orderBy === "tipo_formacion" ? orderDirection : "asc"
+										}
+										onClick={() => handleSort("tipo_formacion")}
+									>
+										Tipo de formación
+									</TableSortLabel>
+								</TableCell>
+								<TableCell align="right">Inscriptos</TableCell>
+							</TableRow>
+						</TableHead>
+						<TableBody>
+							{sortedMaterias.map((materia) => (
+								<TableRow key={materia.id} hover>
+									<TableCell>{materia.anio_cursada ?? "-"}</TableCell>
+									<TableCell>{materia.nombre}</TableCell>
+									<TableCell>
+										{regimenLabel[materia.regimen] ?? materia.regimen}
+									</TableCell>
+									<TableCell>
+										{formatoLabel[materia.formato] ?? materia.formato}
+									</TableCell>
+									<TableCell>
+										{tipoFormacionLabel[materia.tipo_formacion] ??
+											materia.tipo_formacion}
+									</TableCell>
+									<TableCell align="right">
+										<Button
+											size="small"
+											variant="outlined"
+											onClick={(event) => {
+												event.stopPropagation();
+												onVerInscriptos(materia);
+											}}
+										>
+											Ver inscriptos
+										</Button>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				</TableContainer>
+			)}
+		</Stack>
 	);
 };
 

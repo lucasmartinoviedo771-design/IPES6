@@ -14,6 +14,10 @@ export type MateriaDTO = {
 	tipo_formacion: string;
 	permite_mesa_libre: boolean;
 	plan_resolucion?: string;
+	is_edi?: boolean;
+	esta_cerrada?: boolean;
+	fecha_inicio?: string | null;
+	fecha_fin?: string | null;
 };
 
 export type MateriaDetalleDTO = {
