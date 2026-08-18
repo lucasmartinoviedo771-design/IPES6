@@ -191,6 +191,7 @@ class CorrelatividadSetIn(Schema):
 
     regular_para_cursar: list[int] = []
     aprobada_para_cursar: list[int] = []
+    simultanea_para_cursar: list[int] = []
     aprobada_para_rendir: list[int] = []
 
 
@@ -199,6 +200,7 @@ class CorrelatividadSetOut(Schema):
 
     regular_para_cursar: list[int]
     aprobada_para_cursar: list[int]
+    simultanea_para_cursar: list[int]
     aprobada_para_rendir: list[int]
 
 
@@ -252,4 +254,5 @@ class MateriaCorrelatividadRow(Schema):
     formato: str
     regular_para_cursar: list[int]
     aprobada_para_cursar: list[int]
+    simultanea_para_cursar: list[int]
     aprobada_para_rendir: list[int]

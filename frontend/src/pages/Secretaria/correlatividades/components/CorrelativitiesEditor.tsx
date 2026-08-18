@@ -79,6 +79,24 @@ export function CorrelativitiesEditor({
 						value={materiaOptions.filter(
 							(o) =>
 								typeof o.id === "number" &&
+								editSet.simultanea_para_cursar.includes(o.id),
+						)}
+						onChange={handleFieldChange("simultanea_para_cursar")}
+						getOptionDisabled={(o) =>
+							!!rowEdit &&
+							(o.id === rowEdit.id || o.anio_cursada > rowEdit.anio_cursada)
+						}
+						renderInput={(p) => (
+							<TextField {...p} size="small" label="Para cursar: Simultánea" />
+						)}
+					/>
+
+					<Autocomplete
+						multiple
+						options={materiaOptions}
+						value={materiaOptions.filter(
+							(o) =>
+								typeof o.id === "number" &&
 								editSet.aprobada_para_rendir.includes(o.id),
 						)}
 						onChange={handleFieldChange("aprobada_para_rendir")}

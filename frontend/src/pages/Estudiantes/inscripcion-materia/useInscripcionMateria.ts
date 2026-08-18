@@ -721,7 +721,7 @@ export const useInscripcionMateria = () => {
 			return matchesFilters(materia);
 		});
 
-	// Agrupar comisionadas por nombre de materia y tomar la última
+	// Agrupar comisionadas por nombre + profesorado y tomar la última
 	const comisionadasPorMateria = new Map<
 		string,
 		(typeof inscripcionesData)[0]
@@ -729,10 +729,12 @@ export const useInscripcionMateria = () => {
 	inscripcionesData
 		.filter((ins) => ins.motivo_cambio && (ins.estado === "CONF" || ins.estado === "PEND"))
 		.forEach((ins) => {
-			const existing = comisionadasPorMateria.get(ins.materia_nombre);
+			// Usar nombre + profesorado como clave para no mezclar materias iguales de profesorados diferentes
+			const key = `${ins.materia_nombre}|${ins.profesorado_id}`;
+			const existing = comisionadasPorMateria.get(key);
 			// Mantener la más reciente (por fecha de actualización)
 			if (!existing || new Date(ins.fecha_actualizacion) > new Date(existing.fecha_actualizacion)) {
-				comisionadasPorMateria.set(ins.materia_nombre, ins);
+				comisionadasPorMateria.set(key, ins);
 			}
 		});
 

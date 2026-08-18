@@ -36,6 +36,7 @@ export default function CorrelatividadesPage() {
 	const [editSet, setEditSet] = useState<CorrSet>({
 		regular_para_cursar: [],
 		aprobada_para_cursar: [],
+		simultanea_para_cursar: [],
 		aprobada_para_rendir: [],
 	});
 
@@ -141,6 +142,7 @@ export default function CorrelatividadesPage() {
 		setEditSet({
 			regular_para_cursar: row.regular_para_cursar || [],
 			aprobada_para_cursar: row.aprobada_para_cursar || [],
+			simultanea_para_cursar: row.simultanea_para_cursar || [],
 			aprobada_para_rendir: row.aprobada_para_rendir || [],
 		});
 
@@ -175,6 +177,7 @@ export default function CorrelatividadesPage() {
 							...m,
 							regular_para_cursar: [...editSet.regular_para_cursar],
 							aprobada_para_cursar: [...editSet.aprobada_para_cursar],
+							simultanea_para_cursar: [...editSet.simultanea_para_cursar],
 							aprobada_para_rendir: [...editSet.aprobada_para_rendir],
 						}
 					: m,

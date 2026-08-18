@@ -132,9 +132,9 @@ def materias_plan(
 
     # Obtener materias con cambio de comisión en trámite (para excluirlas)
     # Excluir solo inscripciones activas (CONF/PEND) con cambio de comisión
-    # También excluir cualquier materia que tenga el MISMO NOMBRE que una comisionada
+    # También excluir cualquier materia que tenga el MISMO NOMBRE+PROFESORADO que una comisionada
     materias_comisionadas = set()
-    nombres_comisionados = set()
+    comisionadas_nombre_prof = set()  # (nombre, profesorado_id)
     if est:
         comisionadas = InscripcionMateriaEstudiante.objects.filter(
             estudiante=est,
@@ -143,15 +143,19 @@ def materias_plan(
                 InscripcionMateriaEstudiante.Estado.CONFIRMADA,
                 InscripcionMateriaEstudiante.Estado.PENDIENTE,
             ],
-        ).select_related("materia")
+        ).select_related("materia__plan_de_estudio__profesorado")
 
         for ins in comisionadas:
             materias_comisionadas.add(ins.materia_id)
-            nombres_comisionados.add(ins.materia.nombre)
+            prof_id = ins.materia.plan_de_estudio.profesorado_id if ins.materia.plan_de_estudio else None
+            comisionadas_nombre_prof.add((ins.materia.nombre, prof_id))
 
     hoy = timezone.now().date()
     for m in plan.materias.all().order_by("anio_cursada", "nombre"):
         if m.fecha_inicio and m.fecha_inicio > hoy:
+            continue
+        # Excluir si ya vencida (fecha_fin < hoy)
+        if m.fecha_fin and m.fecha_fin < hoy:
             continue
         # Excluir si ya tiene cambio de comisión en trámite (mismo ID)
         if m.id in materias_comisionadas:

@@ -43,12 +43,14 @@ def _ensure_edit(user, profesorado_id: int | None = None):
 
 def _to_set_out(qs) -> dict[str, list[int]]:
     """Transforma un queryset de correlatividades en un diccionario categorizado por tipo."""
-    out = {"regular_para_cursar": [], "aprobada_para_cursar": [], "aprobada_para_rendir": []}
+    out = {"regular_para_cursar": [], "aprobada_para_cursar": [], "simultanea_para_cursar": [], "aprobada_para_rendir": []}
     for c in qs:
         if c.tipo == Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR:
             out["regular_para_cursar"].append(c.materia_correlativa_id)
         elif c.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR:
             out["aprobada_para_cursar"].append(c.materia_correlativa_id)
+        elif c.tipo == Correlatividad.TipoCorrelatividad.SIMULTANEA_PARA_CURSAR:
+            out["simultanea_para_cursar"].append(c.materia_correlativa_id)
         elif c.tipo == Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR:
             out["aprobada_para_rendir"].append(c.materia_correlativa_id)
     return out
@@ -220,7 +222,7 @@ def set_correlatividades(request, materia_id: int, payload: CorrelatividadSetIn,
     version = _resolve_version_for_plan(plan=materia.plan_de_estudio, version_id=version_id)
 
     # Validación de perímetro (materias correlativas deben ser del mismo plan)
-    all_ids = set(payload.regular_para_cursar + payload.aprobada_para_cursar + payload.aprobada_para_rendir)
+    all_ids = set(payload.regular_para_cursar + payload.aprobada_para_cursar + payload.simultanea_para_cursar + payload.aprobada_para_rendir)
     if all_ids:
         count = Materia.objects.filter(id__in=all_ids, plan_de_estudio=materia.plan_de_estudio).count()
         if count != len(all_ids):
@@ -235,6 +237,7 @@ def set_correlatividades(request, materia_id: int, payload: CorrelatividadSetIn,
         for tipo, ids in [
             (Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, payload.regular_para_cursar),
             (Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, payload.aprobada_para_cursar),
+            (Correlatividad.TipoCorrelatividad.SIMULTANEA_PARA_CURSAR, payload.simultanea_para_cursar),
             (Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, payload.aprobada_para_rendir),
         ]:
             if ids:
@@ -252,6 +255,7 @@ def _set_correlatividades_for_version(materia, version, payload):
     for tipo, ids in [
         (Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, payload.regular_para_cursar),
         (Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, payload.aprobada_para_cursar),
+        (Correlatividad.TipoCorrelatividad.SIMULTANEA_PARA_CURSAR, payload.simultanea_para_cursar),
         (Correlatividad.TipoCorrelatividad.APROBADA_PARA_RENDIR, payload.aprobada_para_rendir),
     ]:
         for mid in ids:
@@ -307,6 +311,7 @@ def correlatividades_matrix(request, plan_id: int, version_id: int | None = None
                 formato=m.formato,
                 regular_para_cursar=v["regular_para_cursar"],
                 aprobada_para_cursar=v["aprobada_para_cursar"],
+                simultanea_para_cursar=v["simultanea_para_cursar"],
                 aprobada_para_rendir=v["aprobada_para_rendir"],
             )
         )

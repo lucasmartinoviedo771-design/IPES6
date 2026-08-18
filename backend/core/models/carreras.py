@@ -159,6 +159,7 @@ class Correlatividad(models.Model):
     class TipoCorrelatividad(models.TextChoices):
         REGULAR_PARA_CURSAR = "RPC", "Regular para Cursar"
         APROBADA_PARA_CURSAR = "APC", "Aprobada para Cursar"
+        SIMULTANEA_PARA_CURSAR = "SPC", "Simultánea para Cursar"
         APROBADA_PARA_RENDIR = "APR", "Aprobada para Rendir Final"
 
     materia_origen = models.ForeignKey(

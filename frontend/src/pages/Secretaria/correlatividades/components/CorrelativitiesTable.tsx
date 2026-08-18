@@ -92,6 +92,7 @@ export function CorrelativitiesTable({
 						<TableCell>Formato</TableCell>
 						<TableCell>Para cursar: Regular</TableCell>
 						<TableCell>Para cursar: Aprobada</TableCell>
+						<TableCell>Para cursar: Simultánea</TableCell>
 						<TableCell>Para rendir: Aprobada</TableCell>
 						<TableCell>Acciones</TableCell>
 					</TableRow>
@@ -164,6 +165,16 @@ export function CorrelativitiesTable({
 									<TableCell>
 										{r.aprobada_para_cursar?.length ? (
 											r.aprobada_para_cursar
+												.map((id) => resolveMateriaNombre(id))
+												.join(", ")
+										) : (
+											<em>Ninguna</em>
+										)}
+									</TableCell>
+
+									<TableCell>
+										{r.simultanea_para_cursar?.length ? (
+											r.simultanea_para_cursar
 												.map((id) => resolveMateriaNombre(id))
 												.join(", ")
 										) : (

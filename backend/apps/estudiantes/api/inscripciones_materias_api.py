@@ -260,6 +260,11 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             "materia_correlativa_id", flat=True
         )
     )
+    req_sim = list(
+        _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.SIMULTANEA_PARA_CURSAR, est).values_list(
+            "materia_correlativa_id", flat=True
+        )
+    )
 
     autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
     faltan = []
@@ -289,6 +294,33 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         nombre = m_corr.nombre if m_corr else str(mid)
         if not m_corr or not _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids):
             faltan.append(f"Aprobada {nombre}")
+            if mid not in faltan_ids:
+                faltan_ids.append(mid)
+
+    for mid in req_sim:
+        if mid in autorizadas_ids:
+            continue
+        m_corr = Materia.objects.filter(id=mid).first()
+        nombre = m_corr.nombre if m_corr else str(mid)
+        
+        tiene_regular = Regularidad.objects.filter(
+            estudiante=est,
+            materia_id=mid,
+            situacion=Regularidad.Situacion.REGULAR,
+            en_resguardo=False,
+        ).exists()
+        
+        tiene_aprobacion = m_corr and _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids)
+        
+        esta_cursando = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est,
+            materia_id=mid,
+            anio=anio_actual,
+            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE, InscripcionMateriaEstudiante.Estado.CONDICIONAL]
+        ).exists()
+
+        if not (tiene_regular or tiene_aprobacion or esta_cursando):
+            faltan.append(f"Cursar simultáneamente {nombre}")
             if mid not in faltan_ids:
                 faltan_ids.append(mid)
 

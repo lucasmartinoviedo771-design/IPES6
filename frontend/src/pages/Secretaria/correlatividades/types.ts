@@ -10,12 +10,14 @@ export type MatrixRow = {
 	formato: string;
 	regular_para_cursar: number[];
 	aprobada_para_cursar: number[];
+	simultanea_para_cursar: number[];
 	aprobada_para_rendir: number[];
 };
 
 export type CorrSet = {
 	regular_para_cursar: number[];
 	aprobada_para_cursar: number[];
+	simultanea_para_cursar: number[];
 	aprobada_para_rendir: number[];
 };
 
