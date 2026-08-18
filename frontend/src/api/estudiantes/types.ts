@@ -480,6 +480,8 @@ export type MateriaInscriptaItemDTO = {
 	anio_academico: number;
 	estado: "CONF" | "PEND" | "RECH" | "ANUL" | "BAJA" | "COND";
 	estado_display: string;
+	regimen?: string;
+	estado_regularidad?: string;
 	horarios: HorarioDTO[];
 	comision_actual?: ComisionResumenDTO | null;
 	comision_solicitada?: ComisionResumenDTO | null;

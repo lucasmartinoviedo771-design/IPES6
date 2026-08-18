@@ -136,12 +136,14 @@ class MateriaInscriptaItem(Schema):
     status: InscripcionEstadoType | None = None  # alias for estado if needed
     estado: InscripcionEstadoType
     estado_display: str
+    regimen: str | None = None
+    estado_regularidad: str | None = None
     horarios: list[Horario] = Field(default_factory=list)
     comision_actual: ComisionResumen | None = None
     comision_solicitada: ComisionResumen | None = None
     motivo_cambio: str | None = None
-    fecha_creacion: str
-    fecha_actualizacion: str
+    fecha_creacion: str | None = None
+    fecha_actualizacion: str | None = None
 
 
 class InscripcionMateriaOut(Schema):

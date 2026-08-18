@@ -203,9 +203,8 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
     comision = get_object_or_404(Comision, id=comision_id)
     ensure_profesorado_access(request.user, comision.materia.plan_de_estudio.profesorado_id)
 
-    for attr, value in payload.dict().items():
-        if value is not None:
-            setattr(comision, attr, value)
+    for attr, value in payload.dict(exclude_unset=True).items():
+        setattr(comision, attr, value)
 
     if not comision.horario_id:
         from core.models import HorarioCatedra

@@ -516,6 +516,15 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 InscripcionMateriaEstudiante.Estado.BAJA,
             ]
         )
+        
+        # Ya no filtramos materias por cuatrimestre activo acá, porque el frontend las mostrará con su nota final/estado.
+        pass
+
+    # Fetch regularidades for the student for the subjects in this query
+    from core.models import Regularidad
+    materia_ids = [ins.materia_id for ins in qs]
+    regularidades = Regularidad.objects.filter(estudiante=est, materia_id__in=materia_ids)
+    reg_dict = {reg.materia_id: reg.get_situacion_display() for reg in regularidades}
 
     items: list[MateriaInscriptaItem] = []
     for ins in qs:
@@ -523,6 +532,13 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         plan = materia.plan_de_estudio
         profesorado = plan.profesorado if plan else None
         comision_visible = ins.comision or ins.comision_solicitada
+        
+        profesorado_destino = profesorado.nombre if profesorado else None
+        if comision_visible and comision_visible.materia.plan_de_estudio:
+            prof_comision = comision_visible.materia.plan_de_estudio.profesorado
+            if prof_comision and prof_comision != profesorado:
+                profesorado_destino = prof_comision.nombre
+
         items.append(
             MateriaInscriptaItem(
                 inscripcion_id=ins.id,
@@ -530,11 +546,13 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 materia_nombre=materia.nombre,
                 plan_id=plan.id if plan else None,
                 profesorado_id=profesorado.id if profesorado else None,
-                profesorado_nombre=profesorado.nombre if profesorado else None,
+                profesorado_nombre=profesorado_destino,
                 anio_plan=materia.anio_cursada,
                 anio_academico=ins.anio,
                 estado=ins.estado,
                 estado_display=ins.get_estado_display(),
+                regimen=materia.get_regimen_display(),
+                estado_regularidad=reg_dict.get(materia.id),
                 horarios=obtener_horarios_materia(materia),
                 comision_actual=_comision_to_resumen(comision_visible),
                 comision_solicitada=_comision_to_resumen(ins.comision_solicitada),

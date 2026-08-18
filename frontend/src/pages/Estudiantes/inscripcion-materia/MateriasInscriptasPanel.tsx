@@ -133,45 +133,81 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 												color="error"
 												size="small"
 											/>
+										) : inscripcion?.estado_regularidad ? (
+											<Chip
+												label={inscripcion.estado_regularidad}
+												color="secondary"
+												size="small"
+											/>
 										) : (
-											<Chip label={inscripcion?.motivo_cambio ? `Comisionado en ${inscripcion.profesorado_nombre || "otro profesorado"}` : "Inscripta"} color={inscripcion?.motivo_cambio ? "info" : "success"} size="small" variant={inscripcion?.motivo_cambio ? "outlined" : undefined} />
+											<Chip
+												label={
+													inscripcion?.motivo_cambio
+														? `Comisionado en ${
+																inscripcion.profesorado_nombre ||
+																"otro profesorado"
+														  }`
+														: "Inscripta"
+												}
+												color={
+													inscripcion?.motivo_cambio ? "info" : "success"
+												}
+												size="small"
+												variant={
+													inscripcion?.motivo_cambio ? "outlined" : undefined
+												}
+											/>
 										)}
 
-										{/* Cancelar: solo durante ventana abierta y sin baja */}
-										{!isBaja && ventanaActiva && inscripcion && (
-											<Button
-												variant="outlined"
-												color="error"
+										{inscripcion?.regimen && (
+											<Chip
+												label={inscripcion.regimen}
 												size="small"
-												disabled={canceling}
-												onClick={() =>
-													onCancelar(materia.id, inscripcion.inscripcion_id)
-												}
-											>
-												{canceling ? (
-													<CircularProgress size={16} />
-												) : (
-													"Cancelar inscripción"
-												)}
-											</Button>
+												variant="outlined"
+											/>
 										)}
 
-										{/* Dar de baja: Solo después de cerrada la ventana */}
-										{!isBaja && !ventanaActiva && inscripcion && (
-											<Button
-												variant="outlined"
-												color="warning"
-												size="small"
-												onClick={() =>
-													handleOpenBaja(
-														inscripcion.inscripcion_id,
-														materia.nombre,
-													)
-												}
-											>
-												Dar de baja
-											</Button>
-										)}
+										{/* Cancelar: solo durante ventana abierta, sin baja, y sin notas finales */}
+										{!isBaja &&
+											!inscripcion?.estado_regularidad &&
+											ventanaActiva &&
+											inscripcion && (
+												<Button
+													variant="outlined"
+													color="error"
+													size="small"
+													disabled={canceling}
+													onClick={() =>
+														onCancelar(materia.id, inscripcion.inscripcion_id)
+													}
+												>
+													{canceling ? (
+														<CircularProgress size={16} />
+													) : (
+														"Cancelar inscripción"
+													)}
+												</Button>
+											)}
+
+										{/* Dar de baja: Solo después de cerrada la ventana y sin notas finales */}
+										{!isBaja &&
+											!inscripcion?.estado_regularidad &&
+											!ventanaActiva &&
+											inscripcion && (
+												<Button
+													variant="outlined"
+													color="warning"
+													size="small"
+													onClick={() =>
+														handleOpenBaja(
+															inscripcion.inscripcion_id,
+															materia.nombre,
+														)
+													}
+												>
+													Dar de baja
+												</Button>
+											)}
 									</Stack>
 								</Box>
 							);
