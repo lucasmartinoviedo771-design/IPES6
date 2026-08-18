@@ -49,6 +49,18 @@ type Comision = {
 	turno_id: number;
 	docente_id: number | null;
 	docente_nombre?: string;
+	suplente_id: number | null;
+	suplente_nombre?: string;
+	estado_suplente: string;
+	suplente_2_id: number | null;
+	suplente_2_nombre?: string;
+	estado_suplente_2: string;
+	suplente_3_id: number | null;
+	suplente_3_nombre?: string;
+	estado_suplente_3: string;
+	suplente_4_id: number | null;
+	suplente_4_nombre?: string;
+	estado_suplente_4: string;
 	rol: string;
 	estado: string;
 	orden: number;
@@ -56,6 +68,14 @@ type Comision = {
 
 type Asignacion = {
 	docenteId: number;
+	suplenteId: number | null;
+	estadoSuplente: string;
+	suplente2Id: number | null;
+	estadoSuplente2: string;
+	suplente3Id: number | null;
+	estadoSuplente3: string;
+	suplente4Id: number | null;
+	estadoSuplente4: string;
 	rol: string;
 	estado: string;
 	orden: number;
@@ -146,12 +166,20 @@ export default function CatedraDocentePage() {
 			existing.length > 0
 				? existing.map((c) => ({
 						docenteId: c.docente_id || 0,
+						suplenteId: c.suplente_id || null,
+						estadoSuplente: c.estado_suplente || "ABI",
+						suplente2Id: c.suplente_2_id || null,
+						estadoSuplente2: c.estado_suplente_2 || "ABI",
+						suplente3Id: c.suplente_3_id || null,
+						estadoSuplente3: c.estado_suplente_3 || "ABI",
+						suplente4Id: c.suplente_4_id || null,
+						estadoSuplente4: c.estado_suplente_4 || "ABI",
 						rol: c.rol,
 						estado: c.estado,
 						orden: c.orden,
 						id: c.id,
 					}))
-				: [{ docenteId: 0, rol: "TIT", estado: "ABI", orden: 1 }],
+				: [{ docenteId: 0, suplenteId: null, estadoSuplente: "ABI", suplente2Id: null, estadoSuplente2: "ABI", suplente3Id: null, estadoSuplente3: "ABI", suplente4Id: null, estadoSuplente4: "ABI", rol: "TIT", estado: "ABI", orden: 1 }],
 		);
 		setDlgOpen(true);
 	};
@@ -163,7 +191,7 @@ export default function CatedraDocentePage() {
 		);
 		setDlgAsignaciones((prev) => [
 			...prev,
-			{ docenteId: 0, rol: "SUP", estado: "ABI", orden: maxOrder + 1 },
+			{ docenteId: 0, suplenteId: null, estadoSuplente: "ABI", suplente2Id: null, estadoSuplente2: "ABI", suplente3Id: null, estadoSuplente3: "ABI", suplente4Id: null, estadoSuplente4: "ABI", rol: "TIT", estado: "ABI", orden: maxOrder + 1 },
 		]);
 	};
 
@@ -240,6 +268,14 @@ export default function CatedraDocentePage() {
 					codigo: "A", // Código de comisión por defecto
 					turno_id: filters.turnoId,
 					docente_id: asig.docenteId,
+					suplente_id: asig.suplenteId,
+					estado_suplente: asig.estadoSuplente,
+					suplente_2_id: asig.suplente2Id,
+					estado_suplente_2: asig.estadoSuplente2,
+					suplente_3_id: asig.suplente3Id,
+					estado_suplente_3: asig.estadoSuplente3,
+					suplente_4_id: asig.suplente4Id,
+					estado_suplente_4: asig.estadoSuplente4,
 					rol: asig.rol,
 					estado: asig.estado,
 					orden: asig.orden,
@@ -274,26 +310,53 @@ export default function CatedraDocentePage() {
 			return <span className="text-gray-400">Sin asignaciones</span>;
 		return (
 			<Stack direction="row" flexWrap="wrap" gap={0.5}>
-				{list.map((c) => (
+				{list.map((c) => {
+					let finalDocente = c.docente_nombre;
+					let stateForColor = c.estado;
+					let detailLabel = `${c.docente_nombre} (${c.rol})`;
+					
+					if (c.estado === "LIC") {
+						if (c.suplente_id && c.estado_suplente !== "LIC") {
+							finalDocente = c.suplente_nombre;
+							stateForColor = c.estado_suplente || "ABI";
+							detailLabel = `${c.suplente_nombre} (SUP de ${c.docente_nombre})`;
+						} else if (c.suplente_id && c.estado_suplente === "LIC" && c.suplente_2_id && c.estado_suplente_2 !== "LIC") {
+							finalDocente = c.suplente_2_nombre;
+							stateForColor = c.estado_suplente_2 || "ABI";
+							detailLabel = `${c.suplente_2_nombre} (SUP 2)`;
+						} else if (c.suplente_id && c.estado_suplente === "LIC" && c.suplente_2_id && c.estado_suplente_2 === "LIC" && c.suplente_3_id && c.estado_suplente_3 !== "LIC") {
+							finalDocente = c.suplente_3_nombre;
+							stateForColor = c.estado_suplente_3 || "ABI";
+							detailLabel = `${c.suplente_3_nombre} (SUP 3)`;
+						} else if (c.suplente_id && c.estado_suplente === "LIC" && c.suplente_2_id && c.estado_suplente_2 === "LIC" && c.suplente_3_id && c.estado_suplente_3 === "LIC" && c.suplente_4_id) {
+							finalDocente = c.suplente_4_nombre;
+							stateForColor = c.estado_suplente_4 || "ABI";
+							detailLabel = `${c.suplente_4_nombre} (SUP 4)`;
+						}
+					}
+					
+					return (
 					<Tooltip
 						key={c.id}
-						title={c.estado === "LIC" ? "En Licencia" : "Activo"}
+						title={stateForColor === "LIC" ? "En Licencia" : "Activo"}
 					>
 						<Chip
-							label={`${c.docente_nombre} (${c.rol})`}
+							label={detailLabel}
 							size="small"
-							variant={c.estado === "LIC" ? "outlined" : "filled"}
+							variant={stateForColor === "LIC" ? "outlined" : "filled"}
 							color={
-								c.rol === "TIT"
-									? "primary"
-									: c.rol === "INT"
-										? "info"
-										: "default"
+								stateForColor === "LIC"
+									? "warning"
+									: c.rol === "TIT"
+										? "primary"
+										: c.rol === "INT"
+											? "info"
+											: "default"
 							}
-							sx={{ opacity: c.estado === "LIC" ? 0.6 : 1 }}
+							sx={{ opacity: stateForColor === "LIC" ? 0.6 : 1 }}
 						/>
 					</Tooltip>
-				))}
+				)})}
 			</Stack>
 		);
 	};
@@ -440,7 +503,6 @@ export default function CatedraDocentePage() {
 										>
 											<MenuItem value="TIT">Titular</MenuItem>
 											<MenuItem value="INT">Interino</MenuItem>
-											<MenuItem value="SUP">Suplente</MenuItem>
 										</Select>
 									</Grid>
 									<Grid item xs={12} md={2}>
@@ -479,6 +541,198 @@ export default function CatedraDocentePage() {
 											</Button>
 										</Stack>
 									</Grid>
+									{a.estado === "LIC" && (
+										<Grid item xs={12} sx={{ pl: { md: 10 } }}>
+											<Box sx={{ p: 2, bgcolor: "#fff3e0", borderRadius: 1, border: "1px solid #ffe0b2" }}>
+												<Typography variant="body2" color="warning.dark" sx={{ mb: 1 }}>
+													Docente en licencia. Asignar suplente:
+												</Typography>
+												<Grid container spacing={2} alignItems="center">
+													<Grid item xs={12} md={8}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.suplenteId ? String(a.suplenteId) : ""}
+															onChange={(e) =>
+																updAsignacion(idx, {
+																	suplenteId:
+																		e.target.value === "" ? null : Number(e.target.value),
+																})
+															}
+															displayEmpty
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="">Sin suplente asignado</MenuItem>
+															{docentes.map((d) => (
+																<MenuItem key={d.id} value={String(d.id)}>
+																	{d.apellido ? `${d.apellido}, ${d.nombre}` : d.dni}
+																</MenuItem>
+															))}
+														</Select>
+													</Grid>
+													<Grid item xs={12} md={4}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.estadoSuplente}
+															onChange={(e) =>
+																updAsignacion(idx, { estadoSuplente: e.target.value as any })
+															}
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="ABI">Activo</MenuItem>
+															<MenuItem value="LIC">En Licencia</MenuItem>
+															<MenuItem value="CER">Cerrada</MenuItem>
+														</Select>
+													</Grid>
+												</Grid>
+											</Box>
+										</Grid>
+									)}
+									{a.estado === "LIC" && a.estadoSuplente === "LIC" && (
+										<Grid item xs={12} sx={{ pl: { md: 15 } }}>
+											<Box sx={{ p: 2, bgcolor: "#fff3e0", borderRadius: 1, border: "1px solid #ffe0b2" }}>
+												<Typography variant="body2" color="warning.dark" sx={{ mb: 1 }}>
+													Suplente 1 en licencia. Asignar Suplente 2:
+												</Typography>
+												<Grid container spacing={2} alignItems="center">
+													<Grid item xs={12} md={8}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.suplente2Id ? String(a.suplente2Id) : ""}
+															onChange={(e) =>
+																updAsignacion(idx, {
+																	suplente2Id:
+																		e.target.value === "" ? null : Number(e.target.value),
+																})
+															}
+															displayEmpty
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="">Sin suplente 2 asignado</MenuItem>
+															{docentes.map((d) => (
+																<MenuItem key={d.id} value={String(d.id)}>
+																	{d.apellido ? `${d.apellido}, ${d.nombre}` : d.dni}
+																</MenuItem>
+															))}
+														</Select>
+													</Grid>
+													<Grid item xs={12} md={4}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.estadoSuplente2}
+															onChange={(e) =>
+																updAsignacion(idx, { estadoSuplente2: e.target.value as any })
+															}
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="ABI">Activo</MenuItem>
+															<MenuItem value="LIC">En Licencia</MenuItem>
+															<MenuItem value="CER">Cerrada</MenuItem>
+														</Select>
+													</Grid>
+												</Grid>
+											</Box>
+										</Grid>
+									)}
+									{a.estado === "LIC" && a.estadoSuplente === "LIC" && a.estadoSuplente2 === "LIC" && (
+										<Grid item xs={12} sx={{ pl: { md: 20 } }}>
+											<Box sx={{ p: 2, bgcolor: "#fff3e0", borderRadius: 1, border: "1px solid #ffe0b2" }}>
+												<Typography variant="body2" color="warning.dark" sx={{ mb: 1 }}>
+													Suplente 2 en licencia. Asignar Suplente 3:
+												</Typography>
+												<Grid container spacing={2} alignItems="center">
+													<Grid item xs={12} md={8}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.suplente3Id ? String(a.suplente3Id) : ""}
+															onChange={(e) =>
+																updAsignacion(idx, {
+																	suplente3Id:
+																		e.target.value === "" ? null : Number(e.target.value),
+																})
+															}
+															displayEmpty
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="">Sin suplente 3 asignado</MenuItem>
+															{docentes.map((d) => (
+																<MenuItem key={d.id} value={String(d.id)}>
+																	{d.apellido ? `${d.apellido}, ${d.nombre}` : d.dni}
+																</MenuItem>
+															))}
+														</Select>
+													</Grid>
+													<Grid item xs={12} md={4}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.estadoSuplente3}
+															onChange={(e) =>
+																updAsignacion(idx, { estadoSuplente3: e.target.value as any })
+															}
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="ABI">Activo</MenuItem>
+															<MenuItem value="LIC">En Licencia</MenuItem>
+															<MenuItem value="CER">Cerrada</MenuItem>
+														</Select>
+													</Grid>
+												</Grid>
+											</Box>
+										</Grid>
+									)}
+									{a.estado === "LIC" && a.estadoSuplente === "LIC" && a.estadoSuplente2 === "LIC" && a.estadoSuplente3 === "LIC" && (
+										<Grid item xs={12} sx={{ pl: { md: 25 } }}>
+											<Box sx={{ p: 2, bgcolor: "#fff3e0", borderRadius: 1, border: "1px solid #ffe0b2" }}>
+												<Typography variant="body2" color="warning.dark" sx={{ mb: 1 }}>
+													Suplente 3 en licencia. Asignar Suplente 4:
+												</Typography>
+												<Grid container spacing={2} alignItems="center">
+													<Grid item xs={12} md={8}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.suplente4Id ? String(a.suplente4Id) : ""}
+															onChange={(e) =>
+																updAsignacion(idx, {
+																	suplente4Id:
+																		e.target.value === "" ? null : Number(e.target.value),
+																})
+															}
+															displayEmpty
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="">Sin suplente 4 asignado</MenuItem>
+															{docentes.map((d) => (
+																<MenuItem key={d.id} value={String(d.id)}>
+																	{d.apellido ? `${d.apellido}, ${d.nombre}` : d.dni}
+																</MenuItem>
+															))}
+														</Select>
+													</Grid>
+													<Grid item xs={12} md={4}>
+														<Select
+															fullWidth
+															size="small"
+															value={a.estadoSuplente4}
+															onChange={(e) =>
+																updAsignacion(idx, { estadoSuplente4: e.target.value as any })
+															}
+															sx={{ bgcolor: "white" }}
+														>
+															<MenuItem value="ABI">Activo</MenuItem>
+															<MenuItem value="LIC">En Licencia</MenuItem>
+															<MenuItem value="CER">Cerrada</MenuItem>
+														</Select>
+													</Grid>
+												</Grid>
+											</Box>
+										</Grid>
+									)}
 								</Grid>
 							))}
 						<Button
@@ -486,7 +740,7 @@ export default function CatedraDocentePage() {
 							disabled={saving}
 							onClick={addAsignacion}
 						>
-							Agregar Suplente / Otro
+							Agregar Otro Docente (Cátedra Compartida)
 						</Button>
 					</Stack>
 				</DialogContent>

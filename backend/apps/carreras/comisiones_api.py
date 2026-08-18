@@ -5,6 +5,9 @@ incluyendo la asignación de docentes, turnos y cupos por ciclo lectivo.
 """
 
 import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404
@@ -57,6 +60,18 @@ def _serialize_comision(comision: Comision) -> ComisionOut:
         turno_nombre=comision.turno.nombre if comision.turno else None,
         docente_id=comision.docente_id,
         docente_nombre=str(comision.docente) if comision.docente else None,
+        suplente_id=comision.suplente_id,
+        suplente_nombre=str(comision.suplente) if comision.suplente else None,
+        estado_suplente=comision.estado_suplente,
+        suplente_2_id=comision.suplente_2_id,
+        suplente_2_nombre=str(comision.suplente_2) if comision.suplente_2 else None,
+        estado_suplente_2=comision.estado_suplente_2,
+        suplente_3_id=comision.suplente_3_id,
+        suplente_3_nombre=str(comision.suplente_3) if comision.suplente_3 else None,
+        estado_suplente_3=comision.estado_suplente_3,
+        suplente_4_id=comision.suplente_4_id,
+        suplente_4_nombre=str(comision.suplente_4) if comision.suplente_4 else None,
+        estado_suplente_4=comision.estado_suplente_4,
         horario_id=comision.horario_id,
         cupo_maximo=comision.cupo_maximo,
         observaciones=comision.observaciones,
@@ -165,31 +180,6 @@ def create_comision(request, payload: ComisionIn):
         if hc:
             horario_id = hc.id
 
-    vacantes = list(
-        Comision.objects.filter(
-            materia=materia,
-            anio_lectivo=payload.anio_lectivo,
-            codigo=payload.codigo,
-            estado__in=[Comision.Estado.LICENCIA, Comision.Estado.CERRADA],
-        )
-    )
-    if len(vacantes) == 1:
-        comision = vacantes[0]
-        docente_anterior = str(comision.docente) if comision.docente_id else None
-        comision.docente_id = payload.docente_id
-        comision.turno_id = payload.turno_id
-        comision.horario_id = horario_id
-        comision.cupo_maximo = payload.cupo_maximo
-        comision.estado = estado
-        comision.rol = (payload.rol or Comision.Rol.TITULAR).upper()
-        if payload.observaciones:
-            comision.observaciones = payload.observaciones
-        elif docente_anterior:
-            nota = f"Reemplazo de docente: sucede a {docente_anterior}."
-            comision.observaciones = f"{comision.observaciones}\n{nota}".strip() if comision.observaciones else nota
-        comision.save()
-        return _serialize_comision(comision)
-
     comision = Comision.objects.create(
         materia=materia,
         anio_lectivo=payload.anio_lectivo,
@@ -223,6 +213,17 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
         hc = HorarioCatedra.objects.filter(espacio=comision.materia_id, turno_id=comision.turno_id).first()
         if hc:
             comision.horario = hc
+
+    # Loguear cambios (Auditoría)
+    cambios = []
+    for field in comision.get_dirty_fields(check_relationship=True).keys() if hasattr(comision, 'get_dirty_fields') else payload.dict().keys():
+        if field.startswith("suplente") or field.startswith("estado"):
+            cambios.append(field)
+            
+    if cambios:
+        logger.info(
+            f"Usuario {request.user.username} (ID: {request.user.id}) modificó la jerarquía de la comisión {comision.id} ({comision.materia.nombre}). Campos alterados: {', '.join(cambios)}"
+        )
 
     comision.save()
     return _serialize_comision(comision)

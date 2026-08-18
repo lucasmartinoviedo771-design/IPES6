@@ -10,6 +10,7 @@ export type Materia = {
 	horarios: Horario[];
 	correlativasRegular: number[];
 	correlativasAprob: number[];
+	correlativasSimultanea: number[];
 	profesorado?: string;
 	profesoradoId?: number | null;
 	planId?: number | null;
@@ -55,6 +56,7 @@ export function mapMateria(dto: MateriaPlanDTO): Materia {
 		horarios: dto.horarios,
 		correlativasRegular: dto.correlativas_regular || [],
 		correlativasAprob: dto.correlativas_aprob || [],
+		correlativasSimultanea: dto.correlativas_simultanea || [],
 		profesorado: dto.profesorado,
 		profesoradoId: dto.profesorado_id ?? null,
 		planId: dto.plan_id ?? null,

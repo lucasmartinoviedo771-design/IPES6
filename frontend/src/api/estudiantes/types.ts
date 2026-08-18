@@ -196,6 +196,7 @@ export type MateriaPlanDTO = {
 	horarios: HorarioDTO[];
 	correlativas_regular?: number[];
 	correlativas_aprob?: number[];
+	correlativas_simultanea?: number[];
 	profesorado?: string;
 	profesorado_id?: number;
 	plan_id?: number;

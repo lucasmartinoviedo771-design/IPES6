@@ -98,9 +98,9 @@ const InstitutionalScheduleFormat: React.FC<
 					<Typography
 						component="div"
 						sx={{
-							fontWeight: "500",
-							fontSize: "0.95rem",
-							lineHeight: "1.3em",
+							fontWeight: "600",
+							fontSize: "1.15rem",
+							lineHeight: "1.25em",
 							color: "black",
 							mb: 0.5,
 							display: "block",
@@ -112,7 +112,7 @@ const InstitutionalScheduleFormat: React.FC<
 					<Typography
 						component="div"
 						sx={{
-							fontSize: "0.7rem",
+							fontSize: "0.8rem",
 							fontStyle: "italic",
 							color: "#333",
 							mb: 0.5,
@@ -192,9 +192,9 @@ const InstitutionalScheduleFormat: React.FC<
 					<Typography
 						component="div"
 						sx={{
-							fontWeight: "500",
-							fontSize: "0.95rem",
-							lineHeight: "1.3em",
+							fontWeight: "600",
+							fontSize: "1.15rem",
+							lineHeight: "1.25em",
 							color: "black",
 							mb: 0.5,
 							display: "block",
@@ -206,7 +206,7 @@ const InstitutionalScheduleFormat: React.FC<
 					<Typography
 						component="div"
 						sx={{
-							fontSize: "0.7rem",
+							fontSize: "0.8rem",
 							fontStyle: "italic",
 							color: "#333",
 							mb: 0.5,

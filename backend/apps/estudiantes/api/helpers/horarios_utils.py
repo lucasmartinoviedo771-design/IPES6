@@ -213,23 +213,55 @@ def _construir_tablas_horario(
                         horario.espacio.comisiones.filter(anio_lectivo__in=[2025, 2026]).select_related("docente")
                     )
 
-            comisiones_validas = [c for c in comisiones if c.estado != "LIC"]
-
-            docentes = sorted(
-                {
-                    (
-                        f"{c.docente.apellido}, {c.docente.nombre[0]}."
-                        if c.docente and c.docente.apellido and c.docente.nombre
-                        else (
-                            c.docente.apellido
-                            if c.docente and c.docente.apellido
-                            else (c.docente.nombre if c.docente else "")
-                        )
-                    )
-                    for c in comisiones_validas
-                    if c.docente_id
-                }
-            )
+            docentes_list = []
+            for c in comisiones:
+                if c.estado == "CER":
+                    continue
+                
+                doc_obj = c.docente
+                estado_actual = c.estado
+                
+                # Suplente 1
+                if estado_actual == "LIC":
+                    if c.suplente_id:
+                        doc_obj = c.suplente
+                        estado_actual = c.estado_suplente
+                    else:
+                        continue
+                        
+                # Suplente 2
+                if estado_actual == "LIC":
+                    if c.suplente_2_id:
+                        doc_obj = c.suplente_2
+                        estado_actual = c.estado_suplente_2
+                    else:
+                        continue
+                        
+                # Suplente 3
+                if estado_actual == "LIC":
+                    if c.suplente_3_id:
+                        doc_obj = c.suplente_3
+                        estado_actual = c.estado_suplente_3
+                    else:
+                        continue
+                        
+                # Suplente 4
+                if estado_actual == "LIC":
+                    if c.suplente_4_id:
+                        doc_obj = c.suplente_4
+                        estado_actual = c.estado_suplente_4
+                    else:
+                        continue
+                
+                if doc_obj and estado_actual != "LIC":
+                    if doc_obj.apellido and doc_obj.nombre:
+                        docentes_list.append(f"{doc_obj.apellido}, {doc_obj.nombre[0]}.")
+                    elif doc_obj.apellido:
+                        docentes_list.append(doc_obj.apellido)
+                    elif doc_obj.nombre:
+                        docentes_list.append(doc_obj.nombre)
+                        
+            docentes = sorted(set(docentes_list))
             docentes = [doc.upper() for doc in docentes if doc]
             comision_codigos = sorted({c.codigo for c in comisiones if c.codigo})
             observaciones_text = "; ".join(sorted({c.observaciones for c in comisiones if c.observaciones})) or None

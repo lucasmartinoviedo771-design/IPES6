@@ -24,6 +24,7 @@ class MateriaPlan(Schema):
     horarios: list[Horario] = Field(default_factory=list)
     correlativas_regular: list[int] = Field(default_factory=list)
     correlativas_aprob: list[int] = Field(default_factory=list)
+    correlativas_simultanea: list[int] = Field(default_factory=list)
     profesorado: str | None = None
     profesorado_id: int | None = None
     plan_id: int | None = None

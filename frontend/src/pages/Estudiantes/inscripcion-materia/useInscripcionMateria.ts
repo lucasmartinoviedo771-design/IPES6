@@ -508,6 +508,12 @@ export const useInscripcionMateria = () => {
 				const faltasApr = materia.correlativasAprob.filter(
 					(id) => !historial.aprobadas.includes(id),
 				);
+				const faltasSim = materia.correlativasSimultanea.filter(
+					(id) =>
+						!historial.regularizadas.includes(id) &&
+						!historial.aprobadas.includes(id) &&
+						!yaInscriptas.has(id),
+				);
 				const faltasRegNombres = Array.from(
 					new Set(
 						faltasReg.map(
@@ -522,10 +528,17 @@ export const useInscripcionMateria = () => {
 						),
 					),
 				);
+				const faltasSimNombres = Array.from(
+					new Set(
+						faltasSim.map(
+							(id) => materiaById.get(id)?.nombre || `Materia ${id}`,
+						),
+					),
+				);
 
-				if (faltasReg.length || faltasApr.length) {
+				if (faltasReg.length || faltasApr.length || faltasSim.length) {
 					// Caso especial: Residencia con exactamente 1 materia faltante → inscripción condicional
-					const totalFaltantes = [...new Set([...faltasReg, ...faltasApr])];
+					const totalFaltantes = [...new Set([...faltasReg, ...faltasApr, ...faltasSim])];
 					if (
 						esResidencia(materia.nombre, materia.anio) &&
 						totalFaltantes.length === 1
@@ -550,6 +563,8 @@ export const useInscripcionMateria = () => {
 						motivos.push(`Regularizar: ${faltasRegNombres.join(", ")}`);
 					if (faltasAprNombres.length)
 						motivos.push(`Aprobar: ${faltasAprNombres.join(", ")}`);
+					if (faltasSimNombres.length)
+						motivos.push(`Cursar simultáneamente: ${faltasSimNombres.join(", ")}`);
 					return {
 						...materia,
 						status: "bloqueada",
@@ -752,6 +767,7 @@ export const useInscripcionMateria = () => {
 				horarios: ins.horarios,
 				correlativasRegular: [],
 				correlativasAprob: [],
+				correlativasSimultanea: [],
 				profesoradoId: ins.profesorado_id || 0,
 				profesorado: ins.profesorado_nombre || "",
 				planId: ins.plan_id || 0,

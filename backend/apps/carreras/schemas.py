@@ -141,6 +141,14 @@ class ComisionIn(Schema):
     codigo: str
     turno_id: int
     docente_id: int | None = None
+    suplente_id: int | None = None
+    estado_suplente: str | None = "ABI"
+    suplente_2_id: int | None = None
+    estado_suplente_2: str | None = "ABI"
+    suplente_3_id: int | None = None
+    estado_suplente_3: str | None = "ABI"
+    suplente_4_id: int | None = None
+    estado_suplente_4: str | None = "ABI"
     horario_id: int | None = None
     cupo_maximo: int | None = None
     observaciones: str | None = None
@@ -165,6 +173,18 @@ class ComisionOut(Schema):
     turno_nombre: str | None = None
     docente_id: int | None = None
     docente_nombre: str | None = None
+    suplente_id: int | None = None
+    suplente_nombre: str | None = None
+    estado_suplente: str | None = "ABI"
+    suplente_2_id: int | None = None
+    suplente_2_nombre: str | None = None
+    estado_suplente_2: str | None = "ABI"
+    suplente_3_id: int | None = None
+    suplente_3_nombre: str | None = None
+    estado_suplente_3: str | None = "ABI"
+    suplente_4_id: int | None = None
+    suplente_4_nombre: str | None = None
+    estado_suplente_4: str | None = "ABI"
     horario_id: int | None = None
     cupo_maximo: int | None = None
     observaciones: str | None = None

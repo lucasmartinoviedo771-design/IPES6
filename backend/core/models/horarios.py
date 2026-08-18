@@ -113,6 +113,62 @@ class Comision(models.Model):
         blank=True,
         related_name="comisiones",
     )
+    suplente = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suplencias",
+        help_text="Docente suplente asignado cuando el estado es LICENCIA",
+    )
+    estado_suplente = models.CharField(
+        max_length=3,
+        choices=Estado.choices,
+        default=Estado.ABIERTA,
+        help_text="Estado del Suplente 1",
+    )
+    suplente_2 = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suplencias_2",
+        help_text="Suplente 2 asignado cuando el Suplente 1 está en LICENCIA",
+    )
+    estado_suplente_2 = models.CharField(
+        max_length=3,
+        choices=Estado.choices,
+        default=Estado.ABIERTA,
+        help_text="Estado del Suplente 2",
+    )
+    suplente_3 = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suplencias_3",
+        help_text="Suplente 3 asignado cuando el Suplente 2 está en LICENCIA",
+    )
+    estado_suplente_3 = models.CharField(
+        max_length=3,
+        choices=Estado.choices,
+        default=Estado.ABIERTA,
+        help_text="Estado del Suplente 3",
+    )
+    suplente_4 = models.ForeignKey(
+        Docente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="suplencias_4",
+        help_text="Suplente 4 asignado cuando el Suplente 3 está en LICENCIA",
+    )
+    estado_suplente_4 = models.CharField(
+        max_length=3,
+        choices=Estado.choices,
+        default=Estado.ABIERTA,
+        help_text="Estado del Suplente 4",
+    )
     horario = models.ForeignKey(
         "HorarioCatedra",
         on_delete=models.SET_NULL,
