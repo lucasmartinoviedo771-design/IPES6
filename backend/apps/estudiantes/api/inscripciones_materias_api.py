@@ -302,16 +302,16 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             continue
         m_corr = Materia.objects.filter(id=mid).first()
         nombre = m_corr.nombre if m_corr else str(mid)
-        
+
         tiene_regular = Regularidad.objects.filter(
             estudiante=est,
             materia_id=mid,
             situacion=Regularidad.Situacion.REGULAR,
             en_resguardo=False,
         ).exists()
-        
+
         tiene_aprobacion = m_corr and _tiene_aprobacion_valida(est, m_corr, autorizadas_ids=autorizadas_ids)
-        
+
         esta_cursando = InscripcionMateriaEstudiante.objects.filter(
             estudiante=est,
             materia_id=mid,
@@ -516,7 +516,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 InscripcionMateriaEstudiante.Estado.BAJA,
             ]
         )
-        
+
         # Ya no filtramos materias por cuatrimestre activo acá, porque el frontend las mostrará con su nota final/estado.
         pass
 
@@ -532,7 +532,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         plan = materia.plan_de_estudio
         profesorado = plan.profesorado if plan else None
         comision_visible = ins.comision or ins.comision_solicitada
-        
+
         profesorado_destino = profesorado.nombre if profesorado else None
         if comision_visible and comision_visible.materia.plan_de_estudio:
             prof_comision = comision_visible.materia.plan_de_estudio.profesorado

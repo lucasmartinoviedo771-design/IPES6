@@ -4,8 +4,8 @@ Permite la creación, edición y generación masiva de comisiones para materias,
 incluyendo la asignación de docentes, turnos y cupos por ciclo lectivo.
 """
 
-import string
 import logging
+import string
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
     for field in comision.get_dirty_fields(check_relationship=True).keys() if hasattr(comision, 'get_dirty_fields') else payload.dict().keys():
         if field.startswith("suplente") or field.startswith("estado"):
             cambios.append(field)
-            
+
     if cambios:
         logger.info(
             f"Usuario {request.user.username} (ID: {request.user.id}) modificó la jerarquía de la comisión {comision.id} ({comision.materia.nombre}). Campos alterados: {', '.join(cambios)}"

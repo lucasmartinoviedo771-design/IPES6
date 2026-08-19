@@ -17,12 +17,14 @@ type RoleDashboardProps = {
 	title: string;
 	subtitle: string;
 	sections: RoleDashboardSection[];
+	children?: React.ReactNode;
 };
 
 const RoleDashboard: React.FC<RoleDashboardProps> = ({
 	title,
 	subtitle,
 	sections,
+	children,
 }) => {
 	const { user } = useAuth();
 
@@ -41,6 +43,8 @@ const RoleDashboard: React.FC<RoleDashboardProps> = ({
 	return (
 		<Stack spacing={3.5}>
 			<PageHero title={heroTitle} subtitle={heroSubtitle} />
+
+			{children}
 
 			{visibleSections.length === 0 ? (
 				<Box sx={{ p: 3, textAlign: "center" }}>

@@ -217,10 +217,10 @@ def _construir_tablas_horario(
             for c in comisiones:
                 if c.estado == "CER":
                     continue
-                
+
                 doc_obj = c.docente
                 estado_actual = c.estado
-                
+
                 # Suplente 1
                 if estado_actual == "LIC":
                     if c.suplente_id:
@@ -228,7 +228,7 @@ def _construir_tablas_horario(
                         estado_actual = c.estado_suplente
                     else:
                         continue
-                        
+
                 # Suplente 2
                 if estado_actual == "LIC":
                     if c.suplente_2_id:
@@ -236,7 +236,7 @@ def _construir_tablas_horario(
                         estado_actual = c.estado_suplente_2
                     else:
                         continue
-                        
+
                 # Suplente 3
                 if estado_actual == "LIC":
                     if c.suplente_3_id:
@@ -244,7 +244,7 @@ def _construir_tablas_horario(
                         estado_actual = c.estado_suplente_3
                     else:
                         continue
-                        
+
                 # Suplente 4
                 if estado_actual == "LIC":
                     if c.suplente_4_id:
@@ -252,7 +252,7 @@ def _construir_tablas_horario(
                         estado_actual = c.estado_suplente_4
                     else:
                         continue
-                
+
                 if doc_obj and estado_actual != "LIC":
                     if doc_obj.apellido and doc_obj.nombre:
                         docentes_list.append(f"{doc_obj.apellido}, {doc_obj.nombre[0]}.")
@@ -260,7 +260,7 @@ def _construir_tablas_horario(
                         docentes_list.append(doc_obj.apellido)
                     elif doc_obj.nombre:
                         docentes_list.append(doc_obj.nombre)
-                        
+
             docentes = sorted(set(docentes_list))
             docentes = [doc.upper() for doc in docentes if doc]
             comision_codigos = sorted({c.codigo for c in comisiones if c.codigo})

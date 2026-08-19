@@ -574,9 +574,15 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
 
 										let rowSpan = 1;
 										if (isFirstInGroup) {
-											rowSpan = data.registros.filter(
-												(r) => r.espacioCurricular === record.espacioCurricular,
-											).length;
+											let count = 1;
+											for (let i = index + 1; i < data.registros.length; i++) {
+												if (data.registros[i].espacioCurricular === record.espacioCurricular) {
+													count++;
+												} else {
+													break;
+												}
+											}
+											rowSpan = count;
 										}
 
 										const commonCellSx = {

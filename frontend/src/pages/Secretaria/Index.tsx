@@ -5,12 +5,14 @@ import EventIcon from "@mui/icons-material/Event";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
+import { ForcedResetWidget } from "@/components/dashboard/ForcedResetWidget";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 import RoleDashboard, {
 	type RoleDashboardSection,
 } from "@/components/roles/RoleDashboard";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyRole } from "@/utils/roles";
+import Grid from "@mui/material/Grid";
 
 export default function SecretariaIndex() {
 	const { user } = useAuth();
@@ -154,6 +156,14 @@ export default function SecretariaIndex() {
 			title="Secretaría"
 			subtitle="Centro de operaciones agrupado por módulos"
 			sections={sections}
-		/>
+		>
+			{canAssignRoles && (
+				<Grid container spacing={3} mb={1}>
+					<Grid item xs={12} md={6} lg={4}>
+						<ForcedResetWidget />
+					</Grid>
+				</Grid>
+			)}
+		</RoleDashboard>
 	);
 }
