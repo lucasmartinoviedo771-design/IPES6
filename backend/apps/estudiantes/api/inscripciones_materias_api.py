@@ -316,7 +316,11 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             estudiante=est,
             materia_id=mid,
             anio=anio_actual,
-            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE, InscripcionMateriaEstudiante.Estado.CONDICIONAL]
+            estado__in=[
+                InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                InscripcionMateriaEstudiante.Estado.PENDIENTE,
+                InscripcionMateriaEstudiante.Estado.CONDICIONAL,
+            ],
         ).exists()
 
         if not (tiene_regular or tiene_aprobacion or esta_cursando):
@@ -522,6 +526,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
 
     # Fetch regularidades for the student for the subjects in this query
     from core.models import Regularidad
+
     materia_ids = [ins.materia_id for ins in qs]
     regularidades = Regularidad.objects.filter(estudiante=est, materia_id__in=materia_ids)
     reg_dict = {reg.materia_id: reg.get_situacion_display() for reg in regularidades}

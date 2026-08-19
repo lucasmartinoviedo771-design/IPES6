@@ -160,8 +160,10 @@ def materias_plan(
                     InscripcionMateriaEstudiante.Estado.CONFIRMADA,
                     InscripcionMateriaEstudiante.Estado.PENDIENTE,
                     InscripcionMateriaEstudiante.Estado.CONDICIONAL,
-                ]
-            ).filter(motivo_cambio__isnull=True).values_list("materia_id", flat=True)
+                ],
+            )
+            .filter(motivo_cambio__isnull=True)
+            .values_list("materia_id", flat=True)
         )
 
     hoy = timezone.now().date()
@@ -188,7 +190,9 @@ def materias_plan(
                 horarios=horarios_para(m),
                 correlativas_regular=correlativas_ids(m, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est),
                 correlativas_aprob=correlativas_ids(m, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, est),
-                correlativas_simultanea=correlativas_ids(m, Correlatividad.TipoCorrelatividad.SIMULTANEA_PARA_CURSAR, est),
+                correlativas_simultanea=correlativas_ids(
+                    m, Correlatividad.TipoCorrelatividad.SIMULTANEA_PARA_CURSAR, est
+                ),
                 profesorado=plan_profesorado.nombre,
                 profesorado_id=plan_profesorado.id,
                 plan_id=plan.id,
@@ -284,7 +288,14 @@ def horarios_profesorado(
     horarios_qs = (
         HorarioCatedra.objects.filter(espacio__plan_de_estudio=plan)
         .select_related("espacio", "espacio__plan_de_estudio", "turno")
-        .prefetch_related("detalles__bloque", "comisiones__docente", "comisiones__suplente", "comisiones__suplente_2", "comisiones__suplente_3", "comisiones__suplente_4")
+        .prefetch_related(
+            "detalles__bloque",
+            "comisiones__docente",
+            "comisiones__suplente",
+            "comisiones__suplente_2",
+            "comisiones__suplente_3",
+            "comisiones__suplente_4",
+        )
     )
 
     # Filtrar por el año académico activo (por defecto el año calendario actual)

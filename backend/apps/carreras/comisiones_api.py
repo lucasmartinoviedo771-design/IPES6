@@ -215,7 +215,11 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
 
     # Loguear cambios (Auditoría)
     cambios = []
-    for field in comision.get_dirty_fields(check_relationship=True).keys() if hasattr(comision, 'get_dirty_fields') else payload.dict().keys():
+    for field in (
+        comision.get_dirty_fields(check_relationship=True).keys()
+        if hasattr(comision, "get_dirty_fields")
+        else payload.dict().keys()
+    ):
         if field.startswith("suplente") or field.startswith("estado"):
             cambios.append(field)
 
