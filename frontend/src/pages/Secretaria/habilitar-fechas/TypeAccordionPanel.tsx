@@ -67,9 +67,17 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
 	const reference = list.find((ventana) => ventana.activo) ?? list[0];
 	const state = classifyVentana(reference);
 
+	const isGestion =
+		typeKey === "MATERIAS_GESTION" || typeKey === "COMISION_GESTION";
+
 	const accordionSx = {
-		border: "1px solid",
-		borderColor: expandedPanel === typeKey ? "primary.main" : "divider",
+		border: "1.5px solid",
+		borderColor: isGestion
+			? "#ea580c"
+			: expandedPanel === typeKey
+				? "primary.main"
+				: "divider",
+		backgroundColor: isGestion ? "#fffaf5" : "#ffffff",
 		borderRadius: 2,
 		"&:not(:last-of-type)": {
 			mb: 2,
@@ -79,9 +87,28 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
 	const accordionSummaryContent = (
 		<AccordionSummary expandIcon={<ExpandMoreIcon />}>
 			<Box sx={{ flex: 1, minWidth: 0 }}>
-				<Typography variant="subtitle1" fontWeight={700}>
-					{config.label}
-				</Typography>
+				<Stack direction="row" alignItems="center" spacing={1}>
+					<Typography
+						variant="subtitle1"
+						fontWeight={800}
+						sx={{ color: isGestion ? "#c2410c" : "inherit" }}
+					>
+						{config.label}
+					</Typography>
+					{isGestion && (
+						<Chip
+							size="small"
+							label="EXCLUSIVO GESTIÓN / BEDELÍA"
+							sx={{
+								backgroundColor: "#ea580c",
+								color: "#ffffff",
+								fontWeight: 700,
+								fontSize: "0.72rem",
+								height: 22,
+							}}
+						/>
+					)}
+				</Stack>
 				<Typography variant="body2" color="text.secondary" noWrap>
 					{reference ? formatRange(reference) : "Sin períodos configurados"}
 				</Typography>
