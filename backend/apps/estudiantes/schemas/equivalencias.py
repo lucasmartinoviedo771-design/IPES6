@@ -17,6 +17,7 @@ class EquivalenciaItem(Schema):
     plan_id: int | None = None
     profesorado_id: int | None = None
     profesorado: str
+    anio: int | None = None
     cuatrimestre: Cuatrimestre
     horarios: list[Horario] = Field(default_factory=list)
     comisiones: list[ComisionResumen] = Field(default_factory=list)

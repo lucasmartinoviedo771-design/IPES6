@@ -65,6 +65,8 @@ class MateriaInscriptoOut(Schema):
     asistencias_a: int = 0
     asistencias_t: int = 0
     asistencias_pct: str = "0%"
+    es_comisionado: bool = False
+    profesorado_origen: str | None = None
 
 
 def _require_view(user, profesorado_id: int | None = None) -> None:
@@ -628,6 +630,21 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
         for stat in stats_query:
             asistencias_stats[(stat["estudiante_id"], stat["clase__comision_id"])] = stat
 
+    # Mapeo de carreras de los estudiantes para detectar comisionados
+    carreras_estudiantes = {}
+    from core.models import EstudianteCarrera
+    for ec in EstudianteCarrera.objects.filter(
+        estudiante_id__in=estudiante_ids,
+        estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
+    ).select_related("profesorado"):
+        carreras_estudiantes.setdefault(ec.estudiante_id, []).append(ec.profesorado.nombre)
+
+    materia_profesorado = (
+        materia.plan_de_estudio.profesorado.nombre
+        if (materia.plan_de_estudio and materia.plan_de_estudio.profesorado)
+        else None
+    )
+
     resultado: list[MateriaInscriptoOut] = []
     for ins in inscripciones.order_by("estudiante__persona__apellido", "estudiante__persona__nombre"):
         est = ins.estudiante
@@ -645,6 +662,13 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
         t = stat.get("total", 0)
         pct = f"{int((p / t) * 100)}%" if t > 0 else "0%"
 
+        profesorados_alumno = carreras_estudiantes.get(est.id, [])
+        es_comisionado = False
+        profesorado_origen = None
+        if materia_profesorado and profesorados_alumno and materia_profesorado not in profesorados_alumno:
+            es_comisionado = True
+            profesorado_origen = ", ".join(profesorados_alumno)
+
         resultado.append(
             MateriaInscriptoOut(
                 id=ins.id,
@@ -660,6 +684,8 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
                 asistencias_a=a,
                 asistencias_t=t,
                 asistencias_pct=pct,
+                es_comisionado=es_comisionado,
+                profesorado_origen=profesorado_origen,
             )
         )
     return resultado

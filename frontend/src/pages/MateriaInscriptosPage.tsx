@@ -99,7 +99,20 @@ const InscriptosTable: React.FC<{
 					{inscriptos.map((inscripto, index) => (
 						<TableRow key={inscripto.id} hover>
 							<TableCell>{index + 1}</TableCell>
-							<TableCell>{inscripto.estudiante}</TableCell>
+							<TableCell>
+								<Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+									<Typography variant="body2">{inscripto.estudiante}</Typography>
+									{inscripto.es_comisionado && (
+										<Chip
+											label={`Comisionado/a: ${inscripto.profesorado_origen || "Otro profesorado"}`}
+											size="small"
+											color="warning"
+											variant="outlined"
+											sx={{ fontWeight: 600, fontSize: "0.75rem", height: 22 }}
+										/>
+									)}
+								</Stack>
+							</TableCell>
 							<TableCell>{inscripto.dni ?? "-"}</TableCell>
 							<TableCell>{inscripto.anio ?? "-"}</TableCell>
 							<TableCell>
@@ -323,6 +336,7 @@ export default function MateriaInscriptosPage() {
 										"Año",
 										"Estado",
 										"Comisión",
+										"Condición / Origen",
 										"Asistencias Ausente",
 										"Asistencias Presente",
 										"Asistencias Total",
@@ -335,6 +349,9 @@ export default function MateriaInscriptosPage() {
 										ins.anio ?? "",
 										ins.estado ?? "",
 										ins.comision_codigo ?? "",
+										ins.es_comisionado
+											? `Comisionado (${ins.profesorado_origen ?? "Otro profesorado"})`
+											: "Regular",
 										ins.asistencias_a ?? 0,
 										ins.asistencias_p ?? 0,
 										ins.asistencias_t ?? 0,

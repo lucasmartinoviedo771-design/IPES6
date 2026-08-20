@@ -70,10 +70,11 @@ type MateriaBloqueada = {
 	inscripcion_id?: number;
 };
 
-type AlternativaItem = {
+interface AlternativaItem {
 	comision: ComisionResumenDTO;
 	horarios: Horario[];
 	profesorado: string;
+	anio: number | null;
 };
 
 type HorarioLaboral = {
@@ -218,8 +219,9 @@ const CambioComisionPage: React.FC = () => {
 
 	React.useEffect(() => {
 		if (carrerasData?.carreras && carrerasData.carreras.length > 0 && !selectedPlanId) {
-			const primerPlanVigente = carrerasData.carreras.find((c) => c.planes && c.planes.length > 0 && c.planes.some(p => p.vigente))?.planes?.find(p => p.vigente)?.id;
-			const primerPlanFallback = carrerasData.carreras[0].planes?.[0]?.id;
+			const carrera = carrerasData.carreras[0];
+			const primerPlanVigente = carrera.planes?.find(p => p.vigente)?.id;
+			const primerPlanFallback = carrera.planes?.[0]?.id;
 			const pId = primerPlanVigente || primerPlanFallback;
 			if (pId) {
 				setSelectedPlanId(String(pId));
@@ -414,11 +416,13 @@ const CambioComisionPage: React.FC = () => {
 		[inscripciones],
 	);
 
+	const aprobadas = React.useMemo(() => new Set(historial.aprobadas ?? []), [historial.aprobadas]);
+	const regularizadas = React.useMemo(() => new Set(historial.regularizadas ?? []), [historial.regularizadas]);
+
 	const materiasConBloqueo = React.useMemo(() => {
 		if (!shouldFetch) return [] as MateriaBloqueada[];
 
-		const aprobadas = new Set(historial.aprobadas ?? []);
-		const regularizadas = new Set(historial.regularizadas ?? []);
+
 		const inscriptasIds = new Set(
 			inscripcionesActivas.map((ins) => ins.materia_id),
 		);
@@ -431,22 +435,25 @@ const CambioComisionPage: React.FC = () => {
 		const resultado: MateriaBloqueada[] = [];
 
 		materias.forEach((materia) => {
-			// REGLA: Solo Formación General para cambios de comisión entre profesorados
-			if (materia.tipo_formacion !== "FGN") return;
+			// REGLA: Formación General o EDIs para cambios de comisión entre profesorados
+			const esEDI = materia.tipo_formacion === "ESPACIO_DEFINICION_INSTITUCIONAL" || materia.nombre.toUpperCase().includes("EDI:");
+			if (materia.tipo_formacion !== "FGN" && !esEDI) return;
 
 			if (!materia.horarios.length) return;
-			if (!ventanaPermiteMateria(ventana, materia)) return;
+			if (!ventanaPermiteMateria(ventana, materia) && !esEDI) return;
 
 			// No mostrar si ya tiene un cambio de comisión en trámite
 			if (materiasConCambio.has(materia.id)) return;
 
+			// REGLA: No debe tenerla regularizada o aprobada (no deberia estar en la lista si lo esta, pero por las dudas)
+			if ((regularizadas.has(materia.id) || aprobadas.has(materia.id)) && !esEDI) return;
 			const faltanReg = materia.correlativasRegular.filter(
 				(mid) => !regularizadas.has(mid) && !aprobadas.has(mid),
 			);
 			const faltanApr = materia.correlativasAprob.filter(
 				(mid) => !aprobadas.has(mid),
 			);
-			if (faltanReg.length || faltanApr.length) return;
+			if ((faltanReg.length || faltanApr.length) && !esEDI) return;
 
 			if (tab === 0) {
 				// MODO SUPERPOSICIÓN:
@@ -458,7 +465,7 @@ const CambioComisionPage: React.FC = () => {
 					return hayChoque(materia.horarios, ins.horarios);
 				});
 
-				if (!tieneChoque) return;
+				if (!tieneChoque && !esEDI) return;
 
 				const conflictos = inscripcionesConHorario
 					.filter((otro) => otro.inscripcion.materia_id !== materia.id)
@@ -802,6 +809,7 @@ const CambioComisionPage: React.FC = () => {
 											<Alternativas
 												base={entrada}
 												otros={inscripcionesConHorario}
+												aprobadas={aprobadas}
 												disabled={mSolicitar.isPending}
 												onSolicitar={(alt) =>
 													abrirConfirmacionSolicitud(entrada, alt)
@@ -901,11 +909,13 @@ function HorarioLaboralForm({
 function Alternativas({
 	base,
 	otros,
+	aprobadas,
 	disabled,
 	onSolicitar,
 }: {
 	base: MateriaBloqueada;
 	otros: InscripcionConHorario[];
+	aprobadas: Set<number>;
 	disabled: boolean;
 	onSolicitar: (alternativa: AlternativaItem) => void;
 }) {
@@ -929,7 +939,7 @@ function Alternativas({
 		obtenerEquivalencias(base.materia.id)
 			.then((res) => {
 				if (!mounted) return;
-				const disponibles = filtrarAlternativas(res, base, otros);
+				const disponibles = filtrarAlternativas(res, base, otros, aprobadas);
 				setItems(disponibles);
 			})
 			.catch((err) => {
@@ -965,10 +975,13 @@ function Alternativas({
 						<Paper variant="outlined" sx={{ p: 1.5 }}>
 							<Stack gap={0.5}>
 								<Typography variant="subtitle2" color="primary">
+									{alt.comision.materia_nombre || alt.profesorado}
+								</Typography>
+								<Typography variant="body2" sx={{ fontWeight: 'bold' }}>
 									{alt.profesorado}
 								</Typography>
 								<Typography variant="body2">
-									Comisión {alt.comision.codigo} ({alt.comision.turno})
+									{alt.anio ? `Año ${alt.anio} - ` : ""}Comisión {alt.comision.codigo} ({alt.comision.turno})
 								</Typography>
 								<Typography variant="caption" color="text.secondary">
 									{formatHorarios(alt.horarios)}
@@ -994,13 +1007,13 @@ function filtrarAlternativas(
 	equivalencias: EquivalenciaItemDTO[],
 	base: MateriaBloqueada,
 	otros: InscripcionConHorario[],
+	aprobadas: Set<number>,
 ): AlternativaItem[] {
 	const resultado = new Map<number, AlternativaItem>();
-	const profesorActual = base.materia.profesorado ?? null;
 
 	equivalencias.forEach((eq) => {
+		if (aprobadas.has(eq.materia_id)) return;
 		if (!mismasEtapas(base.cuatrimestre, eq.cuatrimestre)) return;
-		// Se remueve el filtro de profesorActual para permitir ver otras comisiones del MISMO profesorado
 
 		eq.comisiones.forEach((com) => {
 			const horarios =
@@ -1021,14 +1034,19 @@ function filtrarAlternativas(
 					comision: com,
 					horarios,
 					profesorado: eq.profesorado,
+					anio: eq.anio ?? null,
 				});
 			}
 		});
 	});
 
-	return Array.from(resultado.values()).sort((a, b) =>
-		a.profesorado.localeCompare(b.profesorado),
-	);
+	return Array.from(resultado.values()).sort((a, b) => {
+		const profCmp = a.profesorado.localeCompare(b.profesorado);
+		if (profCmp !== 0) return profCmp;
+		const anioA = a.anio ?? 99;
+		const anioB = b.anio ?? 99;
+		return anioA - anioB;
+	});
 }
 
 export default CambioComisionPage;

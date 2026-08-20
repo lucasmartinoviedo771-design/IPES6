@@ -735,11 +735,22 @@ def cambio_comision(request, payload: CambioComisionIn):
 
     anio_actual = datetime.now().year
 
-    # 3. REGLA: Solo Formación General
-    if mat.tipo_formacion != Materia.TipoFormacion.FORMACION_GENERAL:
+    # 3. REGLA: Formación General o EDI
+    is_edi = "EDI" in mat.nombre.upper()
+    if mat.tipo_formacion != Materia.TipoFormacion.FORMACION_GENERAL and not is_edi:
         return 400, ApiResponse(
-            ok=False, message="Solo se permiten cambios de comisión para materias de Formación General."
+            ok=False, message="Solo se permiten cambios de comisión para materias de Formación General o Espacios de Definición Institucional."
         )
+
+    # REGLA EDI: No tener aprobado otro EDI con el mismo nombre
+    if is_edi:
+        from .helpers import _tiene_aprobacion_valida
+        materias_mismo_nombre = Materia.objects.filter(nombre__iexact=mat.nombre)
+        for m_mn in materias_mismo_nombre:
+            if _tiene_aprobacion_valida(est, m_mn):
+                return 400, ApiResponse(
+                    ok=False, message=f"No puedes inscribirte a este EDI porque ya tienes aprobado un espacio con el nombre '{mat.nombre}'."
+                )
 
     # 4. RESOLVER INSCRIPCIÓN PREVIA O NUEVA (CASO LABORAL/SUPERPOSICIÓN)
     ins = None
@@ -793,32 +804,34 @@ def cambio_comision(request, payload: CambioComisionIn):
     # 4.5 VALIDACIÓN DE EQUIVALENCIAS
     # Si tenemos inscripción original, validamos que destino sea equivalente
     if m_orig and m_orig.id != mat.id:
-        # Validar: misma carga horaria
-        if m_orig.horas_semana != mat.horas_semana:
-            return 400, ApiResponse(
-                ok=False,
-                message=f"La materia de destino tiene {mat.horas_semana}h/semana, "
-                f"pero su inscripción actual tiene {m_orig.horas_semana}h/semana. "
-                f"Solo se permiten cambios a materias con idéntica carga horaria.",
-            )
+        # Excepción EDI: no requieren igualdad de carga horaria, formato ni régimen
+        if "EDI" not in mat.nombre.upper():
+            # Validar: misma carga horaria
+            if m_orig.horas_semana != mat.horas_semana:
+                return 400, ApiResponse(
+                    ok=False,
+                    message=f"La materia de destino tiene {mat.horas_semana}h/semana, "
+                    f"pero su inscripción actual tiene {m_orig.horas_semana}h/semana. "
+                    f"Solo se permiten cambios a materias con idéntica carga horaria.",
+                )
 
-        # Validar: mismo formato
-        if m_orig.formato != mat.formato:
-            return 400, ApiResponse(
-                ok=False,
-                message=f"La materia de destino es {mat.formato}, "
-                f"pero su inscripción actual es {m_orig.formato}. "
-                f"Solo se permiten cambios a materias con idéntico formato.",
-            )
+            # Validar: mismo formato
+            if m_orig.formato != mat.formato:
+                return 400, ApiResponse(
+                    ok=False,
+                    message=f"La materia de destino es {mat.formato}, "
+                    f"pero su inscripción actual es {m_orig.formato}. "
+                    f"Solo se permiten cambios a materias con idéntico formato.",
+                )
 
-        # Validar: mismo régimen/cuatrimestre (CRÍTICO)
-        if m_orig.regimen != mat.regimen:
-            return 400, ApiResponse(
-                ok=False,
-                message=f"La materia de destino es {mat.get_regimen_display()}, "
-                f"pero su inscripción actual es {m_orig.get_regimen_display()}. "
-                f"Solo se permiten cambios a materias del mismo régimen.",
-            )
+            # Validar: mismo régimen/cuatrimestre (CRÍTICO)
+            if m_orig.regimen != mat.regimen:
+                return 400, ApiResponse(
+                    ok=False,
+                    message=f"La materia de destino es {mat.get_regimen_display()}, "
+                    f"pero su inscripción actual es {m_orig.get_regimen_display()}. "
+                    f"Solo se permiten cambios a materias del mismo régimen.",
+                )
 
     if not ins:
         # Es una solicitud de inscripción "de cero" por superposición o motivos laborales

@@ -46,6 +46,8 @@ export type MateriaInscriptoDTO = {
 	asistencias_a: number;
 	asistencias_t: number;
 	asistencias_pct: string;
+	es_comisionado?: boolean;
+	profesorado_origen?: string | null;
 };
 
 export type ComisionDTO = {

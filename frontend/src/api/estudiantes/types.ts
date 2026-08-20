@@ -496,6 +496,7 @@ export type EquivalenciaItemDTO = {
 	plan_id?: number | null;
 	profesorado_id?: number | null;
 	profesorado: string;
+	anio?: number | null;
 	cuatrimestre: "ANUAL" | "1C" | "2C";
 	horarios: { dia: string; desde: string; hasta: string }[];
 	comisiones: ComisionResumenDTO[];
