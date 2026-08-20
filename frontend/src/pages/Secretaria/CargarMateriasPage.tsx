@@ -129,6 +129,7 @@ export default function CargarMateriasPage() {
 	const [filterFormato, setFilterFormato] = useState("");
 	const [filterRegimen, setFilterRegimen] = useState("");
 	const [filterTipoFormacion, setFilterTipoFormacion] = useState("");
+	const [filterIncluirHistorial, setFilterIncluirHistorial] = useState(false);
 
 	// Sorting states
 	const [sortBy, setSortBy] = useState<
@@ -142,6 +143,7 @@ export default function CargarMateriasPage() {
 		setFilterFormato("");
 		setFilterRegimen("");
 		setFilterTipoFormacion("");
+		setFilterIncluirHistorial(false);
 		try {
 			const key = `cm_filters_${currentPlanId ?? "any"}`;
 			localStorage.removeItem(key);
@@ -164,6 +166,7 @@ export default function CargarMateriasPage() {
 				setFilterTipoFormacion(
 					typeof f.tipo_formacion === "string" ? f.tipo_formacion : "",
 				);
+				setFilterIncluirHistorial(Boolean(f.incluir_historial));
 			}
 		} catch (_e) {
 			/* Ignored, localStorage operations can fail in some environments */
@@ -179,6 +182,7 @@ export default function CargarMateriasPage() {
 				formato: filterFormato,
 				regimen: filterRegimen,
 				tipo_formacion: filterTipoFormacion,
+				incluir_historial: filterIncluirHistorial,
 			};
 			localStorage.setItem(key, JSON.stringify(payload));
 		} catch (_e) {
@@ -191,6 +195,7 @@ export default function CargarMateriasPage() {
 		filterFormato,
 		filterRegimen,
 		filterTipoFormacion,
+		filterIncluirHistorial,
 	]);
 
 	const {
@@ -225,6 +230,7 @@ export default function CargarMateriasPage() {
 			filterFormato,
 			filterRegimen,
 			filterTipoFormacion,
+			filterIncluirHistorial,
 		],
 		queryFn: async () => {
 			if (!currentPlanId) return [];
@@ -235,6 +241,7 @@ export default function CargarMateriasPage() {
 			if (filterRegimen) params.append("regimen", filterRegimen);
 			if (filterTipoFormacion)
 				params.append("tipo_formacion", filterTipoFormacion);
+			if (filterIncluirHistorial) params.append("incluir_historial", "true");
 
 			const response = await api.get(
 				`/planes/${currentPlanId}/materias?${params.toString()}`,
@@ -644,6 +651,16 @@ export default function CargarMateriasPage() {
 							))}
 						</Select>
 					</FormControl>
+					<FormControlLabel
+						control={
+							<Checkbox
+								checked={filterIncluirHistorial}
+								onChange={(e) => setFilterIncluirHistorial(e.target.checked)}
+								color="primary"
+							/>
+						}
+						label="Mostrar EDIs cerrados / históricos"
+					/>
 					<Button variant="outlined" onClick={handleClearFilters}>
 						Limpiar filtros
 					</Button>

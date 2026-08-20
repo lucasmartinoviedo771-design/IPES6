@@ -528,8 +528,24 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
     from core.models import Regularidad
 
     materia_ids = [ins.materia_id for ins in qs]
-    regularidades = Regularidad.objects.filter(estudiante=est, materia_id__in=materia_ids)
-    reg_dict = {reg.materia_id: reg.get_situacion_display() for reg in regularidades}
+    inscripcion_ids = [ins.id for ins in qs]
+
+    # Traer regularidades asociadas directamente a las inscripciones actuales o con fecha_cierre en el año académico de la inscripción
+    regularidades = Regularidad.objects.filter(
+        estudiante=est,
+        materia_id__in=materia_ids,
+    ).order_by("-fecha_cierre")
+
+    # Mapeo prioritario: primero por inscripcion_id, luego por (materia_id, año de la inscripción)
+    reg_by_ins = {}
+    reg_by_mat_year = {}
+    for reg in regularidades:
+        if reg.inscripcion_id and reg.inscripcion_id not in reg_by_ins:
+            reg_by_ins[reg.inscripcion_id] = reg.get_situacion_display()
+        cierre_anio = reg.fecha_cierre.year if reg.fecha_cierre else None
+        key = (reg.materia_id, cierre_anio)
+        if key not in reg_by_mat_year:
+            reg_by_mat_year[key] = reg.get_situacion_display()
 
     items: list[MateriaInscriptaItem] = []
     for ins in qs:
@@ -544,6 +560,9 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
             if prof_comision and prof_comision != profesorado:
                 profesorado_destino = prof_comision.nombre
 
+        # Determinar el estado de regularidad de ESTA inscripción particular (mismo año / misma inscripción)
+        estado_reg = reg_by_ins.get(ins.id) or reg_by_mat_year.get((materia.id, ins.anio))
+
         items.append(
             MateriaInscriptaItem(
                 inscripcion_id=ins.id,
@@ -557,7 +576,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 estado=ins.estado,
                 estado_display=ins.get_estado_display(),
                 regimen=materia.get_regimen_display(),
-                estado_regularidad=reg_dict.get(materia.id),
+                estado_regularidad=estado_reg,
                 horarios=obtener_horarios_materia(materia),
                 comision_actual=_comision_to_resumen(comision_visible),
                 comision_solicitada=_comision_to_resumen(ins.comision_solicitada),

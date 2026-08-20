@@ -204,7 +204,6 @@ const CambioComisionPage: React.FC = () => {
 	}, [normalizedDni, tab]);
 
 	const queryClient = useQueryClient();
-
 	const isEstudiante = !canGestionar;
 	const shouldFetch = isEstudiante || normalizedDni.length > 0;
 
@@ -217,17 +216,17 @@ const CambioComisionPage: React.FC = () => {
 		enabled: shouldFetch,
 	});
 
-	React.useEffect(() => {
-		if (carrerasData?.carreras && carrerasData.carreras.length > 0 && !selectedPlanId) {
-			const carrera = carrerasData.carreras[0];
-			const primerPlanVigente = carrera.planes?.find(p => p.vigente)?.id;
-			const primerPlanFallback = carrera.planes?.[0]?.id;
-			const pId = primerPlanVigente || primerPlanFallback;
-			if (pId) {
-				setSelectedPlanId(String(pId));
-			}
-		}
-	}, [carrerasData, selectedPlanId]);
+	const carrerasList = carrerasData?.carreras ?? [];
+	const defaultPlanId = React.useMemo(() => {
+		if (!carrerasList.length) return "";
+		const carrera = carrerasList[0];
+		const primerPlanVigente = carrera.planes?.find((p: any) => p.vigente)?.id;
+		const primerPlanFallback = carrera.planes?.[0]?.id;
+		const pId = primerPlanVigente || primerPlanFallback;
+		return pId ? String(pId) : "";
+	}, [carrerasList]);
+
+	const activePlanId = selectedPlanId || defaultPlanId;
 
 	// Cuando cambia el DNI, limpiamos el plan seleccionado para que se recalcule
 	React.useEffect(() => {
@@ -239,17 +238,17 @@ const CambioComisionPage: React.FC = () => {
 		isError: materiasError,
 		isLoading: materiasLoading,
 	} = useQuery({
-		queryKey: ["cc-materias", normalizedDni, selectedPlanId],
+		queryKey: ["cc-materias", normalizedDni, activePlanId],
 		queryFn: async () => {
-			if (!selectedPlanId) return [];
+			if (!activePlanId) return [];
 			return (
 				await obtenerMateriasPlanEstudiante({
-					plan_id: Number(selectedPlanId),
+					plan_id: Number(activePlanId),
 					...(normalizedDni ? { dni: normalizedDni } : {}),
 				})
 			).map(mapMateria);
 		},
-		enabled: shouldFetch && !!selectedPlanId,
+		enabled: shouldFetch && !!activePlanId,
 	});
 
 	const {
@@ -302,17 +301,17 @@ const CambioComisionPage: React.FC = () => {
 			return solicitarCambioComision(fullPayload);
 		},
 		onSuccess: (res) => {
-			setInfo(res?.message || "Solicitud registrada en carácter CONDICIONAL.");
+			setInfo(res?.message || "Solicitud registrada correctamente.");
 			setErr(null);
 			setSolicitudPendiente(null);
 			queryClient.invalidateQueries({
-				queryKey: ["cc-inscriptas", normalizedDni],
+				queryKey: ["cc-inscriptas"],
 			});
 			queryClient.invalidateQueries({
-				queryKey: ["cc-materias", normalizedDni],
+				queryKey: ["cc-materias"],
 			});
 			queryClient.invalidateQueries({
-				queryKey: ["cc-historial", normalizedDni],
+				queryKey: ["cc-historial"],
 			});
 		},
 		onError: (error) => {
@@ -636,7 +635,7 @@ const CambioComisionPage: React.FC = () => {
 						<TextField
 							select
 							label="Profesorado"
-							value={selectedPlanId}
+							value={activePlanId}
 							onChange={(e) => setSelectedPlanId(e.target.value)}
 							size="small"
 							sx={{ minWidth: 300 }}

@@ -5,16 +5,19 @@ from ninja.errors import HttpError
 from apps.common.api_schemas import ApiResponse
 from apps.estudiantes.schemas import (
     EquivalenciaDisposicionCreateIn,
+    EquivalenciaDisposicionUpdateIn,
     EquivalenciaDisposicionOut,
     EquivalenciaMateriaPendiente,
 )
 from apps.estudiantes.services.equivalencias_disposicion import (
+    actualizar_disposicion_equivalencia,
+    eliminar_disposicion_equivalencia,
     materias_pendientes_para_equivalencia,
     registrar_disposicion_equivalencia,
     resolver_contexto_equivalencia,
     serialize_disposicion,
 )
-from core.permissions import require
+from core.permissions import require, get_user_roles
 
 from .router import estudiantes_router
 
@@ -79,6 +82,61 @@ def crear_disposicion_equivalencia(request, payload: EquivalenciaDisposicionCrea
             validar_correlatividades=True,
         )
         return _serialize_disposicion_schema(result.disposicion, result.detalles)
+    except ValueError as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
+
+
+@estudiantes_router.put(
+    "/equivalencias/disposiciones/{disposicion_id}",
+    response={200: EquivalenciaDisposicionOut, 400: ApiResponse, 403: ApiResponse},
+)
+def modificar_disposicion_equivalencia(
+    request,
+    disposicion_id: int,
+    payload: EquivalenciaDisposicionUpdateIn,
+):
+    require(request.user, "gestionar_equivalencias")
+    roles = get_user_roles(request.user)
+    if not (
+        request.user.is_superuser
+        or "admin" in roles
+        or "secretaria" in roles
+        or any(r.startswith("secretaria") for r in roles)
+        or "bedel" in roles
+        or any(r.startswith("bedel") for r in roles)
+    ):
+        return 403, ApiResponse(ok=False, message="No tienes permisos para modificar equivalencias.")
+
+    if not payload.detalles:
+        return 400, ApiResponse(ok=False, message="Debes mantener al menos una materia en la disposición.")
+    try:
+        result = actualizar_disposicion_equivalencia(
+            disposicion_id=disposicion_id,
+            numero_disposicion=payload.numero_disposicion.strip(),
+            fecha_disposicion=payload.fecha_disposicion,
+            observaciones=payload.observaciones or "",
+            detalles_payload=[detalle.dict() for detalle in payload.detalles],
+            usuario=request.user,
+            validar_correlatividades=True,
+        )
+        return _serialize_disposicion_schema(result.disposicion, result.detalles)
+    except ValueError as exc:
+        return 400, ApiResponse(ok=False, message=str(exc))
+
+
+@estudiantes_router.delete(
+    "/equivalencias/disposiciones/{disposicion_id}",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse},
+)
+def anular_disposicion_equivalencia(request, disposicion_id: int):
+    require(request.user, "gestionar_equivalencias")
+    roles = get_user_roles(request.user)
+    if not (request.user.is_superuser or "admin" in roles or "secretaria" in roles or any(r.startswith("secretaria") for r in roles)):
+        return 403, ApiResponse(ok=False, message="Solo Secretaría o Administradores pueden anular equivalencias.")
+
+    try:
+        eliminar_disposicion_equivalencia(disposicion_id=disposicion_id)
+        return ApiResponse(ok=True, message="Disposición de equivalencia anulada correctamente.")
     except ValueError as exc:
         return 400, ApiResponse(ok=False, message=str(exc))
 

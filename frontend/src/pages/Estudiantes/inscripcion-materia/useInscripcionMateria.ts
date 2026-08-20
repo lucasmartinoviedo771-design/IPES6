@@ -365,10 +365,28 @@ export const useInscripcionMateria = () => {
 	const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
 	const inscripcionesData = inscripcionesQData ?? [];  
 
-	const yaInscriptas = new Set<number>([
-		...(historial.inscriptasActuales || []),
-		...seleccionadas,
-	]);
+	const yaInscriptas = useMemo(() => {
+		const set = new Set<number>([
+			...(historial.inscriptasActuales || []),
+			...seleccionadas,
+		]);
+		inscripcionesData.forEach((ins) => {
+			if (ins.estado === "CONF" || ins.estado === "PEND" || ins.estado === "COND") {
+				set.add(ins.materia_id);
+			}
+		});
+		return set;
+	}, [historial.inscriptasActuales, seleccionadas, inscripcionesData]);
+
+	const yaInscriptasNombres = useMemo(() => {
+		const set = new Set<string>();
+		inscripcionesData.forEach((ins) => {
+			if (ins.estado === "CONF" || ins.estado === "PEND" || ins.estado === "COND") {
+				if (ins.materia_nombre) set.add(ins.materia_nombre.trim().toUpperCase());
+			}
+		});
+		return set;
+	}, [inscripcionesData]);
 	const esPeriodoHabilitado = (m: Materia) => {
 		if (!ventanaActiva || !periodo) return true;
 		if (periodo === "1C_ANUALES") {
@@ -488,8 +506,11 @@ export const useInscripcionMateria = () => {
 				}
 
 				// Chequear inscripción activa ANTES que correlativas para que materias
-				// ya inscriptas condicionalmente no aparezcan en el listado condicional
-				if (yaInscriptas.has(materia.id)) {
+				// ya inscriptas condicionalmente o comisionadas en otro profesorado no aparezcan
+				if (
+					yaInscriptas.has(materia.id) ||
+					(materia.nombre && yaInscriptasNombres.has(materia.nombre.trim().toUpperCase()))
+				) {
 					return {
 						...materia,
 						status: "bloqueada",

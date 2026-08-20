@@ -188,6 +188,13 @@ class EquivalenciaDisposicionCreateIn(Schema):
     detalles: list[EquivalenciaDisposicionDetalleIn] = Field(default_factory=list)
 
 
+class EquivalenciaDisposicionUpdateIn(Schema):
+    numero_disposicion: str
+    fecha_disposicion: date
+    observaciones: str | None = None
+    detalles: list[EquivalenciaDisposicionDetalleIn] = Field(default_factory=list)
+
+
 class EquivalenciaDisposicionOut(Schema):
     id: int
     origen: Literal["primera_carga", "secretaria"]

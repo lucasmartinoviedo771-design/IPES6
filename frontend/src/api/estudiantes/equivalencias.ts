@@ -182,3 +182,31 @@ export async function listarDisposicionesEquivalencia(
 	);
 	return data;
 }
+
+export async function modificarDisposicionEquivalencia(
+	disposicionId: number,
+	payload: {
+		numero_disposicion: string;
+		fecha_disposicion: string;
+		observaciones?: string | null;
+		detalles: Array<{
+			materia_id: number;
+			nota: string;
+		}>;
+	},
+): Promise<EquivalenciaDisposicionDTO> {
+	const { data } = await client.put<EquivalenciaDisposicionDTO>(
+		`/estudiantes/equivalencias/disposiciones/${disposicionId}`,
+		payload,
+	);
+	return data;
+}
+
+export async function anularDisposicionEquivalencia(
+	disposicionId: number,
+): Promise<{ ok: boolean; message: string }> {
+	const { data } = await client.delete<{ ok: boolean; message: string }>(
+		`/estudiantes/equivalencias/disposiciones/${disposicionId}`,
+	);
+	return data;
+}

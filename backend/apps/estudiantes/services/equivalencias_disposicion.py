@@ -278,6 +278,114 @@ def registrar_disposicion_equivalencia(
     return EquivalenciaDisposicionResult(disposicion=dispo, detalles=detalles)
 
 
+@transaction.atomic
+def actualizar_disposicion_equivalencia(
+    *,
+    disposicion_id: int,
+    numero_disposicion: str,
+    fecha_disposicion: date,
+    observaciones: str,
+    detalles_payload: list[dict],
+    usuario: User | None,
+    validar_correlatividades: bool = True,
+) -> EquivalenciaDisposicionResult:
+    dispo = EquivalenciaDisposicion.objects.select_related("estudiante__user", "profesorado", "plan").filter(id=disposicion_id).first()
+    if not dispo:
+        raise ValueError("No se encontró la disposición de equivalencia a modificar.")
+
+    estudiante = dispo.estudiante
+    profesorado = dispo.profesorado
+    plan = dispo.plan
+
+    antiguo_numero = dispo.numero_disposicion
+    numero_disposicion_limpio = numero_disposicion.strip()
+
+    dispo.numero_disposicion = numero_disposicion_limpio
+    dispo.fecha_disposicion = fecha_disposicion
+    dispo.observaciones = observaciones or ""
+    dispo.save()
+
+    from apps.estudiantes.api.helpers import _calcular_resguardo_equivalencia
+
+    # Materias actuales
+    detalles_existentes = {d.materia_id: d for d in dispo.detalles.all()}
+    nuevos_materia_ids = set()
+    detalles_actualizados: list[EquivalenciaDisposicionDetalle] = []
+
+    for item in detalles_payload:
+        materia_id = item["materia_id"]
+        nuevos_materia_ids.add(materia_id)
+        nota = (item.get("nota") or "").strip()
+        if not nota:
+            raise ValueError("Debe indicar la nota para todas las materias.")
+
+        materia = Materia.objects.filter(id=materia_id, plan_de_estudio=plan).first()
+        if not materia:
+            raise ValueError(f"La materia ID {materia_id} no pertenece al plan indicado.")
+
+        en_resguardo = _calcular_resguardo_equivalencia(estudiante, materia)
+
+        if materia_id in detalles_existentes:
+            detalle = detalles_existentes[materia_id]
+            detalle.nota = nota
+            detalle.en_resguardo = en_resguardo
+            detalle.save()
+        else:
+            if estudiante_tiene_materia_aprobada(estudiante, materia):
+                raise ValueError(f"La materia {materia.nombre} ya figura como aprobada en otra instancia.")
+            detalle = EquivalenciaDisposicionDetalle.objects.create(
+                disposicion=dispo,
+                materia=materia,
+                nota=nota,
+                en_resguardo=en_resguardo,
+            )
+        detalles_actualizados.append(detalle)
+
+        # Si cambió el número de disposición, limpiamos el acta vieja con el código anterior
+        if antiguo_numero != numero_disposicion_limpio:
+            codigo_viejo = f"EQUIV-{materia.id}-{estudiante.dni}-{antiguo_numero}"
+            ActaExamen.objects.filter(codigo=codigo_viejo).delete()
+
+        _crear_acta_equivalencia(
+            estudiante=estudiante,
+            materia=materia,
+            plan=plan,
+            profesorado=profesorado,
+            fecha=fecha_disposicion,
+            numero_disposicion=numero_disposicion_limpio,
+            nota=nota,
+            usuario=usuario,
+        )
+        verify_equivalencia_consistency(detalle)
+
+    # Eliminar materias que fueron quitadas en la edición
+    for materia_id, detalle in detalles_existentes.items():
+        if materia_id not in nuevos_materia_ids:
+            codigo_acta_vieja = f"EQUIV-{materia_id}-{estudiante.dni}-{antiguo_numero}"
+            ActaExamen.objects.filter(codigo=codigo_acta_vieja).delete()
+            codigo_acta_nueva = f"EQUIV-{materia_id}-{estudiante.dni}-{numero_disposicion_limpio}"
+            ActaExamen.objects.filter(codigo=codigo_acta_nueva).delete()
+            detalle.delete()
+
+    return EquivalenciaDisposicionResult(disposicion=dispo, detalles=detalles_actualizados)
+
+
+@transaction.atomic
+def eliminar_disposicion_equivalencia(*, disposicion_id: int) -> None:
+    dispo = EquivalenciaDisposicion.objects.select_related("estudiante").filter(id=disposicion_id).first()
+    if not dispo:
+        raise ValueError("No se encontró la disposición de equivalencia.")
+
+    estudiante = dispo.estudiante
+    numero_disposicion = dispo.numero_disposicion
+
+    for detalle in dispo.detalles.all():
+        codigo = f"EQUIV-{detalle.materia_id}-{estudiante.dni}-{numero_disposicion}"
+        ActaExamen.objects.filter(codigo=codigo).delete()
+
+    dispo.delete()
+
+
 def resolver_contexto_equivalencia(
     *,
     dni: str,

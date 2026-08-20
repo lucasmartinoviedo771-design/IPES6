@@ -29,6 +29,7 @@ from apps.estudiantes.schemas.curso_intro import (
 )
 from apps.estudiantes.schemas.equivalencias import (
     EquivalenciaDisposicionCreateIn,
+    EquivalenciaDisposicionUpdateIn,
     EquivalenciaDisposicionDetalleIn,
     EquivalenciaDisposicionDetalleOut,
     EquivalenciaDisposicionOut,
