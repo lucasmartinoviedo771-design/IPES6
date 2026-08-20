@@ -100,9 +100,36 @@ class ActaOralSchema(Schema):
     observaciones: str | None = None
     temas_estudiante: list[OralTopicSchema] = Field(default_factory=list)
     temas_docente: list[OralTopicSchema] = Field(default_factory=list)
+    estado_conformidad: str | None = None
+    notificado_en: str | None = None
+    respondido_en: str | None = None
+    observaciones_estudiante: str | None = None
 
 
 class ActaOralListItemSchema(ActaOralSchema):
     inscripcion_id: int
     estudiante: str
     dni: str
+
+
+class ActaOralPendienteConformidadSchema(Schema):
+    acta_id: int
+    inscripcion_id: int
+    mesa_id: int
+    materia_nombre: str
+    profesorado_nombre: str
+    fecha: date | None = None
+    curso: str | None = None
+    tribunal: list[str] = Field(default_factory=list)
+    nota_final: str | None = None
+    observaciones_docente: str | None = None
+    temas_estudiante: list[OralTopicSchema] = Field(default_factory=list)
+    temas_docente: list[OralTopicSchema] = Field(default_factory=list)
+    notificado_en: str
+    segundos_restantes: int
+
+
+class ResponderConformidadPayload(Schema):
+    conformidad: Literal["CON", "DIS"]
+    observaciones: str | None = None
+

@@ -12,8 +12,10 @@ from apps.estudiantes.schemas.actas import (
     ActaMetadataPlan,
     ActaMetadataProfesorado,
     ActaOralListItemSchema,
+    ActaOralPendienteConformidadSchema,
     ActaOralSchema,
     OralTopicSchema,
+    ResponderConformidadPayload,
 )
 from apps.estudiantes.schemas.curso_intro import (
     CursoIntroAsistenciaIn,

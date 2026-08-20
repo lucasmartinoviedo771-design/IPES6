@@ -29,6 +29,17 @@ def _get_inscripcion_mesa_or_404(mesa_id: int, inscripcion_id: int) -> Inscripci
     return inscripcion
 
 
+from datetime import timedelta
+from django.utils import timezone
+
+from apps.estudiantes.schemas import (
+    ActaOralListItemSchema,
+    ActaOralPendienteConformidadSchema,
+    ActaOralSchema,
+    ResponderConformidadPayload,
+)
+
+
 @router.get(
     "/mesas/{mesa_id}/oral-actas/{inscripcion_id}",
     response={200: ActaOralSchema, 400: ApiResponse, 404: ApiResponse},
@@ -53,6 +64,10 @@ def obtener_acta_oral(request, mesa_id: int, inscripcion_id: int):
         observaciones=acta.observaciones or None,
         temas_estudiante=acta.temas_alumno or [],
         temas_docente=acta.temas_docente or [],
+        estado_conformidad=acta.estado_conformidad,
+        notificado_en=acta.notificado_en.isoformat() if acta.notificado_en else None,
+        respondido_en=acta.respondido_en.isoformat() if acta.respondido_en else None,
+        observaciones_estudiante=acta.observaciones_estudiante or None,
     )
 
 
@@ -70,27 +85,236 @@ def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaO
     if inscripcion.estudiante.dni == getattr(request.user, "username", ""):
         return 403, ApiResponse(ok=False, message="No tienes permitido cargar o modificar tus propias actas orales.")
 
+    # Restringir carga de actas orales exclusivamente al Docente Presidente de la mesa (o administradores / secretaría)
+    from core.permissions import can, get_user_roles
+    from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+
+    es_admin_o_secretaria = can(request.user, "editar_estudiantes") or can(request.user, "gestionar_staff")
+    if not es_admin_o_secretaria:
+        if "docente" in get_user_roles(request.user):
+            docente_actual = _resolve_docente_from_user(request.user)
+            if not docente_actual or inscripcion.mesa.docente_presidente_id != docente_actual.id:
+                return 403, ApiResponse(
+                    ok=False,
+                    message="Solo el Docente Presidente del tribunal de la mesa tiene autorización para cargar y guardar el acta oral.",
+                )
+        else:
+            return 403, ApiResponse(ok=False, message="No tienes permisos para cargar actas orales.")
+
     temas_estudiante = [
         {"tema": item.tema, "score": item.score} for item in (payload.temas_estudiante or []) if item.tema
     ]
     temas_docente = [{"tema": item.tema, "score": item.score} for item in (payload.temas_docente or []) if item.tema]
 
-    MesaActaOral.objects.update_or_create(
-        inscripcion=inscripcion,
-        defaults={
+    acta_existente = MesaActaOral.objects.filter(inscripcion=inscripcion).first()
+    ahora = timezone.now()
+
+    nueva_nota = payload.nota_final or ""
+    nuevas_obs = payload.observaciones or ""
+
+    if not acta_existente:
+        # Creación inicial
+        MesaActaOral.objects.create(
+            inscripcion=inscripcion,
+            mesa=inscripcion.mesa,
+            acta_numero=payload.acta_numero or "",
+            folio_numero=payload.folio_numero or "",
+            fecha=payload.fecha,
+            curso=payload.curso or "",
+            nota_final=nueva_nota,
+            observaciones=nuevas_obs,
+            temas_alumno=temas_estudiante,
+            temas_docente=temas_docente,
+            estado_conformidad=MesaActaOral.EstadoConformidad.PENDIENTE,
+            notificado_en=ahora,
+            respondido_en=None,
+            observaciones_estudiante="",
+        )
+    else:
+        # Edición: Si el acta ya fue cerrada (CON, DIS, TIM), un docente no puede modificarla
+        # solo Secretaría / Administración puede autorizar o realizar modificaciones sobre actas cerradas
+        acta_esta_cerrada = acta_existente.estado_conformidad != MesaActaOral.EstadoConformidad.PENDIENTE
+        if acta_esta_cerrada and not es_admin_o_secretaria:
+            return 403, ApiResponse(
+                ok=False,
+                message="El acta oral ya se encuentra cerrada y asentada. No puede modificarse sin autorización expresa de Secretaría.",
+            )
+
+        # Edición: verificar si cambió contenido sustancial (nota, observaciones o temas_docente)
+        cambio_sustancial = (
+            (acta_existente.nota_final != nueva_nota)
+            or (acta_existente.observaciones != nuevas_obs)
+            or (acta_existente.temas_docente != temas_docente)
+        )
+
+        update_defaults = {
             "mesa": inscripcion.mesa,
             "acta_numero": payload.acta_numero or "",
             "folio_numero": payload.folio_numero or "",
             "fecha": payload.fecha,
             "curso": payload.curso or "",
-            "nota_final": payload.nota_final or "",
-            "observaciones": payload.observaciones or "",
+            "nota_final": nueva_nota,
+            "observaciones": nuevas_obs,
             "temas_alumno": temas_estudiante,
             "temas_docente": temas_docente,
-        },
-    )
+        }
+
+        # Si Secretaría/Admin modifica un acta cerrada con cambios sustanciales, se reabre la conformidad
+        if cambio_sustancial or not acta_existente.notificado_en:
+            update_defaults["estado_conformidad"] = MesaActaOral.EstadoConformidad.PENDIENTE
+            update_defaults["notificado_en"] = ahora
+            update_defaults["respondido_en"] = None
+            update_defaults["observaciones_estudiante"] = ""
+
+        for key, val in update_defaults.items():
+            setattr(acta_existente, key, val)
+        acta_existente.save()
 
     return ApiResponse(ok=True, message="Acta oral guardada correctamente.")
+
+
+@router.get(
+    "/conformidad/pendientes",
+    response={200: list[ActaOralPendienteConformidadSchema], 400: ApiResponse},
+    auth=JWTAuth(),
+)
+def listar_actas_pendientes_conformidad(request):
+    """
+    Lista las actas orales pendientes de conformidad para el estudiante autenticado.
+    Aplica cierre lazy de aquellas que hayan superado los 10 minutos.
+    """
+    user = request.user
+    dni = getattr(user, "username", "")
+    if not dni:
+        return []
+
+    ahora = timezone.now()
+    diez_minutos = timedelta(minutes=10)
+
+    actas_pendientes = (
+        MesaActaOral.objects.filter(
+            inscripcion__estudiante__persona__dni=dni,
+            estado_conformidad=MesaActaOral.EstadoConformidad.PENDIENTE,
+        )
+        .select_related(
+            "mesa__materia__plan_de_estudio__profesorado",
+            "mesa__docente_presidente__persona",
+            "mesa__docente_vocal1__persona",
+            "mesa__docente_vocal2__persona",
+            "inscripcion",
+        )
+        .order_by("notificado_en")
+    )
+
+    resultados: list[ActaOralPendienteConformidadSchema] = []
+
+    for acta in actas_pendientes:
+        if not acta.notificado_en:
+            # Fallback en caso excepcional
+            acta.notificado_en = ahora
+            acta.save(update_fields=["notificado_en"])
+
+        vencimiento = acta.notificado_en + diez_minutos
+        segundos_restantes = int((vencimiento - ahora).total_seconds())
+
+        if segundos_restantes <= 0:
+            # Cierre lazy automático por timeout
+            acta.estado_conformidad = MesaActaOral.EstadoConformidad.TIMEOUT
+            acta.respondido_en = vencimiento
+            acta.save(update_fields=["estado_conformidad", "respondido_en", "updated_at"])
+            continue
+
+        mesa = acta.mesa
+        materia = mesa.materia
+        profesorado = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
+
+        tribunal = []
+        for doc in [mesa.docente_presidente, mesa.docente_vocal1, mesa.docente_vocal2]:
+            if doc and doc.persona:
+                tribunal.append(f"{doc.persona.apellido}, {doc.persona.nombre}")
+
+        resultados.append(
+            ActaOralPendienteConformidadSchema(
+                acta_id=acta.id,
+                inscripcion_id=acta.inscripcion_id,
+                mesa_id=acta.mesa_id,
+                materia_nombre=materia.nombre if materia else "Materia",
+                profesorado_nombre=profesorado.nombre if profesorado else "",
+                fecha=acta.fecha,
+                curso=acta.curso or mesa.codigo or None,
+                tribunal=tribunal,
+                nota_final=acta.nota_final or None,
+                observaciones_docente=acta.observaciones or None,
+                temas_estudiante=acta.temas_alumno or [],
+                temas_docente=acta.temas_docente or [],
+                notificado_en=acta.notificado_en.isoformat(),
+                segundos_restantes=segundos_restantes,
+            )
+        )
+
+    return resultados
+
+
+@router.post(
+    "/conformidad/{acta_id}/responder",
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
+    auth=JWTAuth(),
+)
+def responder_conformidad_acta_oral(request, acta_id: int, payload: ResponderConformidadPayload = Body(...)):
+    """
+    Registra la conformidad o disconformidad del estudiante sobre un acta oral.
+    Valida autoritariamente contra la hora del servidor (máx 10 minutos).
+    """
+    user = request.user
+    dni = getattr(user, "username", "")
+
+    acta = (
+        MesaActaOral.objects.select_related("inscripcion__estudiante__persona")
+        .filter(id=acta_id)
+        .first()
+    )
+
+    if not acta:
+        return 404, ApiResponse(ok=False, message="Acta oral no encontrada.")
+
+    if acta.inscripcion.estudiante.persona.dni != dni:
+        return 403, ApiResponse(ok=False, message="No tienes permisos para responder sobre esta acta oral.")
+
+    if acta.estado_conformidad != MesaActaOral.EstadoConformidad.PENDIENTE:
+        return 400, ApiResponse(
+            ok=False,
+            message="El acta oral ya se encuentra cerrada y no admite modificaciones de conformidad.",
+        )
+
+    ahora = timezone.now()
+    diez_minutos = timedelta(minutes=10)
+    vencimiento = (acta.notificado_en or acta.created_at) + diez_minutos
+
+    if ahora > vencimiento:
+        # Expiró la ventana de 10 minutos: se cierra como TIMEOUT
+        acta.estado_conformidad = MesaActaOral.EstadoConformidad.TIMEOUT
+        acta.respondido_en = vencimiento
+        acta.save(update_fields=["estado_conformidad", "respondido_en", "updated_at"])
+        return 400, ApiResponse(
+            ok=False,
+            message="La ventana de 10 minutos ha expirado. El acta quedó notificada y sin objeción por tiempo cumplido.",
+        )
+
+    # Respuesta válida dentro de los 10 minutos
+    if payload.conformidad == "CON":
+        acta.estado_conformidad = MesaActaOral.EstadoConformidad.CONFORME
+        acta.observaciones_estudiante = ""
+    elif payload.conformidad == "DIS":
+        acta.estado_conformidad = MesaActaOral.EstadoConformidad.DISCONFORME
+        acta.observaciones_estudiante = payload.observaciones or ""
+    else:
+        return 400, ApiResponse(ok=False, message="Opción de conformidad no válida.")
+
+    acta.respondido_en = ahora
+    acta.save(update_fields=["estado_conformidad", "respondido_en", "observaciones_estudiante", "updated_at"])
+
+    return ApiResponse(ok=True, message="Conformidad registrada exitosamente.")
+
 
 
 @router.get(

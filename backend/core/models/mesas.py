@@ -172,6 +172,12 @@ class InscripcionMesa(models.Model):
 
 
 class MesaActaOral(models.Model):
+    class EstadoConformidad(models.TextChoices):
+        PENDIENTE = "PEN", "Pendiente de notificación"
+        CONFORME = "CON", "Notificado y sin objeción"
+        DISCONFORME = "DIS", "Notificado y en disconformidad"
+        TIMEOUT = "TIM", "Notificado y sin objeción (por tiempo cumplido)"
+
     mesa = models.ForeignKey(MesaExamen, on_delete=models.CASCADE, related_name="actas_orales")
     inscripcion = models.OneToOneField(InscripcionMesa, on_delete=models.CASCADE, related_name="acta_oral")
     acta_numero = models.CharField(max_length=64, blank=True, default="")
@@ -193,6 +199,28 @@ class MesaActaOral(models.Model):
     observaciones = models.TextField(blank=True, default="")
     temas_alumno = models.JSONField(default=list, blank=True)
     temas_docente = models.JSONField(default=list, blank=True)
+    estado_conformidad = models.CharField(
+        max_length=3,
+        choices=EstadoConformidad.choices,
+        default=EstadoConformidad.PENDIENTE,
+        db_index=True,
+        help_text="Estado de la notificación y conformidad del estudiante",
+    )
+    notificado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Momento en que el docente guardó la nota del acta oral y se inició la ventana de 10 min",
+    )
+    respondido_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Momento en que el estudiante respondió o se cerró automáticamente por timeout",
+    )
+    observaciones_estudiante = models.TextField(
+        blank=True,
+        default="",
+        help_text="Observación opcional del estudiante al manifestar disconformidad",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

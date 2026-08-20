@@ -208,21 +208,6 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
 		try {
 			await onSave(nextValues);
 			if (mesaId && inscripcionId) {
-				// Persist oral acta to backend so the PDF endpoint can read it
-				await guardarActaOral(mesaId, inscripcionId, {
-					acta_numero: nextValues.actaNumero || null,
-					folio_numero: nextValues.folioNumero || null,
-					fecha: nextValues.fecha || null,
-					curso: nextValues.curso || null,
-					nota_final: nextValues.notaFinal || null,
-					observaciones: nextValues.observaciones || null,
-					temas_estudiante: nextValues.temasEstudiante
-						.filter((i) => i.tema.trim())
-						.map((i) => ({ tema: i.tema.trim(), score: i.score || null })),
-					temas_docente: nextValues.temasDocente
-						.filter((i) => i.tema.trim())
-						.map((i) => ({ tema: i.tema.trim(), score: i.score || null })),
-				});
 				const safeName = estudianteNombre
 					.replace(/\s+/g, "_")
 					.replace(/[^\w_-]/g, "");

@@ -509,6 +509,48 @@ export async function guardarActaOral(
 	return data;
 }
 
+export type ActaOralPendienteConformidadDTO = {
+	acta_id: number;
+	inscripcion_id: number;
+	mesa_id: number;
+	materia_nombre: string;
+	profesorado_nombre: string;
+	fecha: string | null;
+	curso: string | null;
+	tribunal: string[];
+	nota_final: string | null;
+	observaciones_docente: string | null;
+	temas_estudiante: Array<{ tema: string; score: string | null }>;
+	temas_docente: Array<{ tema: string; score: string | null }>;
+	notificado_en: string;
+	segundos_restantes: number;
+};
+
+export type ResponderConformidadPayload = {
+	conformidad: "CON" | "DIS";
+	observaciones?: string;
+};
+
+export async function listarActasPendientesConformidad(): Promise<
+	ActaOralPendienteConformidadDTO[]
+> {
+	const { data } = await client.get<ActaOralPendienteConformidadDTO[]>(
+		"/estudiantes/carga-notas/conformidad/pendientes",
+	);
+	return data;
+}
+
+export async function responderConformidadActaOral(
+	actaId: number,
+	payload: ResponderConformidadPayload,
+): Promise<ApiResponse<null>> {
+	const { data } = await client.post<ApiResponse<null>>(
+		`/estudiantes/carga-notas/conformidad/${actaId}/responder`,
+		payload,
+	);
+	return data;
+}
+
 export async function listarActasOrales(
 	mesaId: number,
 ): Promise<ActaOralListItemDTO[]> {
