@@ -31,15 +31,27 @@ export const TYPE_CONFIG: Array<{
 	},
 	{
 		key: "MATERIAS",
-		label: "Inscripciones a Materias",
+		label: "Inscripciones a Materias (Estudiantes)",
 		category: "tramites",
-		description: "Períodos para que los estudiantes se inscriban a cursadas.",
+		description: "Períodos para que los estudiantes se inscriban a cursadas de forma directa.",
+	},
+	{
+		key: "MATERIAS_GESTION",
+		label: "Inscripciones a Materias (Gestión / Bedelía)",
+		category: "tramites",
+		description: "Período habilitado por Secretaría para que Bedelía y Secretaría puedan inscribir estudiantes de oficio o resolver inconvenientes.",
 	},
 	{
 		key: "COMISION",
-		label: "Cambios de Comisión",
+		label: "Cambios de Comisión (Estudiantes)",
 		category: "tramites",
-		description: "Gestiona solicitudes de cambio de comisión.",
+		description: "Gestiona solicitudes de cambio de comisión iniciadas por los estudiantes.",
+	},
+	{
+		key: "COMISION_GESTION",
+		label: "Cambios de Comisión (Gestión / Bedelía)",
+		category: "tramites",
+		description: "Período habilitado por Secretaría para procesar y resolver cambios de comisión de oficio en Bedelía.",
 	},
 	{
 		key: "ANALITICOS",

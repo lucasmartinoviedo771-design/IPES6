@@ -211,12 +211,28 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
     anio_actual = datetime.now().year
 
     # --- 1. VALIDACIÓN DE VENTANA TEMPORAL ---
-    hoy = timezone.now().date()
-    ventana = VentanaHabilitacion.objects.filter(
-        tipo=VentanaHabilitacion.Tipo.MATERIAS, activo=True, desde__lte=hoy, hasta__gte=hoy
-    ).first()
+    from core.permissions import can
 
-    if not ventana:
+    es_gestion = can(request.user, "formalizar_inscripcion") or can(request.user, "editar_estudiantes")
+    hoy = timezone.now().date()
+
+    # Si es staff de gestión, busca primero si hay ventana MATERIAS_GESTION activa; si no, chequea si la regular MATERIAS está activa
+    if es_gestion:
+        tipos_ventana = [VentanaHabilitacion.Tipo.MATERIAS_GESTION, VentanaHabilitacion.Tipo.MATERIAS]
+    else:
+        # El estudiante ÚNICAMENTE puede inscribirse bajo la ventana pública
+        tipos_ventana = [VentanaHabilitacion.Tipo.MATERIAS]
+
+    ventanas_candidatas = VentanaHabilitacion.objects.filter(
+        tipo__in=tipos_ventana, activo=True, desde__lte=hoy, hasta__gte=hoy
+    ).order_by("-tipo")
+
+    if not ventanas_candidatas.exists():
+        if es_gestion:
+            return 400, ApiResponse(
+                ok=False,
+                message="El período habilitado por Secretaría para inscripciones administrativas de materias se encuentra cerrado o no iniciado.",
+            )
         return 400, ApiResponse(ok=False, message="Periodo de inscripción cerrado o no iniciado.")
 
     # 1.5. VALIDACIÓN DE VIGENCIA (EDIs Cerrados)
@@ -226,8 +242,12 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             message=f"La materia '{mat.nombre}' finalizó su vigencia el {mat.fecha_fin} y no admite inscripciones en el ciclo {anio_actual}.",
         )
 
-    # Validación de régimen (Cuatrimestres)
-    if ventana.periodo:
+    # Validación de régimen (Cuatrimestres) sobre las ventanas activas
+    regimen_permitido = False
+    for ventana in ventanas_candidatas:
+        if not ventana.periodo:
+            regimen_permitido = True
+            break
         allowed_regimens = []
         if ventana.periodo == "1C_ANUALES":
             allowed_regimens = [Materia.TipoCursada.ANUAL, Materia.TipoCursada.PRIMER_CUATRIMESTRE]
@@ -236,10 +256,14 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
         elif ventana.periodo == "2C":
             allowed_regimens = [Materia.TipoCursada.SEGUNDO_CUATRIMESTRE]
 
-        if mat.regimen not in allowed_regimens:
-            return 400, ApiResponse(
-                ok=False, message=f"La materia {mat.nombre} no corresponde a este turno de inscripción."
-            )
+        if mat.regimen in allowed_regimens:
+            regimen_permitido = True
+            break
+
+    if not regimen_permitido:
+        return 400, ApiResponse(
+            ok=False, message=f"La materia {mat.nombre} no corresponde al turno o período de inscripción activo ({mat.get_regimen_display()})."
+        )
 
     # --- 2. VALIDACIÓN: MATERIA YA APROBADA ---
     # Usa _tiene_aprobacion_valida para cubrir Regularidad, Equivalencia y Acta,
@@ -1026,6 +1050,43 @@ def autorizar_cambio_comision(request, inscripcion_id: int, payload: AutorizarCa
     if ins.estado != InscripcionMateriaEstudiante.Estado.CONDICIONAL:
         return 400, ApiResponse(
             ok=False, message="La inscripción no tiene una solicitud de cambio pendiente (estado CONDICIONAL)."
+        )
+
+    # Validar ventana de gestión de cambio de comisión
+    hoy = timezone.now().date()
+    ventanas_comision = VentanaHabilitacion.objects.filter(
+        tipo__in=[VentanaHabilitacion.Tipo.COMISION_GESTION, VentanaHabilitacion.Tipo.COMISION],
+        activo=True,
+        desde__lte=hoy,
+        hasta__gte=hoy,
+    ).order_by("-tipo")
+
+    if not ventanas_comision.exists():
+        return 400, ApiResponse(
+            ok=False,
+            message="El período habilitado por Secretaría para procesar cambios de comisión se encuentra cerrado o no iniciado.",
+        )
+
+    # Validar régimen si la ventana tiene período definido
+    materia_target = ins.comision_solicitada.materia if ins.comision_solicitada else ins.materia
+    regimen_permitido = False
+    for v in ventanas_comision:
+        if not v.periodo:
+            regimen_permitido = True
+            break
+        allowed = []
+        if v.periodo == "1C_ANUALES":
+            allowed = [Materia.TipoCursada.ANUAL, Materia.TipoCursada.PRIMER_CUATRIMESTRE]
+        elif v.periodo == "2C":
+            allowed = [Materia.TipoCursada.SEGUNDO_CUATRIMESTRE]
+        if materia_target.regimen in allowed:
+            regimen_permitido = True
+            break
+
+    if not regimen_permitido:
+        return 400, ApiResponse(
+            ok=False,
+            message=f"La materia '{materia_target.nombre}' no corresponde al período de cambio de comisión habilitado ({materia_target.get_regimen_display()}).",
         )
 
     if payload.aprobado:

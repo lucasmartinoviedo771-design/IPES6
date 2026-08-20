@@ -260,6 +260,14 @@ class VentanaHabilitacion(models.Model):
             "PLANILLA_REGULARIDAD",
             "Entrega de planillas de regularidad",
         )
+        MATERIAS_GESTION = (
+            "MATERIAS_GESTION",
+            "Inscripciones a Materias (Gestión / Bedelía)",
+        )
+        COMISION_GESTION = (
+            "COMISION_GESTION",
+            "Cambios de Comisión (Gestión / Bedelía)",
+        )
 
     tipo = models.CharField(max_length=32, choices=Tipo.choices)
     desde = models.DateField()

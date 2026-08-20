@@ -70,6 +70,36 @@ const EditVentanaDialog: React.FC<Props> = ({
 							)
 						}
 					/>
+					{editVentana &&
+						(editVentana.tipo === "MATERIAS" ||
+							editVentana.tipo === "MATERIAS_GESTION" ||
+							editVentana.tipo === "COMISION" ||
+							editVentana.tipo === "COMISION_GESTION") && (
+							<TextField
+								select
+								label="Periodo"
+								fullWidth
+								size="small"
+								SelectProps={{ native: true }}
+								value={editVentana.periodo ?? "1C_ANUALES"}
+								onChange={(event) =>
+									setEditVentana((prev) =>
+										prev
+											? {
+													...prev,
+													periodo: event.target.value as
+														| "1C_ANUALES"
+														| "2C"
+														| undefined,
+												}
+											: prev,
+									)
+								}
+							>
+								<option value="1C_ANUALES">1er Cuatrimestre + Anuales</option>
+								<option value="2C">2do Cuatrimestre</option>
+							</TextField>
+						)}
 					<FormControlLabel
 						control={
 							<Switch

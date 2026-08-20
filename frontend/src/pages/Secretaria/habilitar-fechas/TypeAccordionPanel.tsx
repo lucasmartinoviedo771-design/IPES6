@@ -230,7 +230,10 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
 								}
 							/>
 						</Grid>
-						{typeKey === "MATERIAS" && (
+						{(typeKey === "MATERIAS" ||
+							typeKey === "MATERIAS_GESTION" ||
+							typeKey === "COMISION" ||
+							typeKey === "COMISION_GESTION") && (
 							<Grid item xs={12} md={3}>
 								<FormControl fullWidth size="small">
 									<InputLabel id={`periodo-${typeKey}`}>Periodo</InputLabel>
