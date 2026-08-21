@@ -98,6 +98,20 @@ Esta skill es el punto de entrada y catálogo obligatorio para todas las tareas 
 
 ---
 
+### 8. 🔗 Vinculación Automática de Horarios a Comisiones
+* **Script:** [`backend/vincular_horarios_comisiones.py`](file:///home/ipesrg/sistema-gestion/backend/vincular_horarios_comisiones.py)
+* **Cuándo usar:** Cuando se crean comisiones nuevas o se importan cursos y quedan sin su `horario_id` asociado, impidiendo que aparezcan en la toma de asistencias diaria.
+* **Comportamiento:**
+  * Vincula automáticamente cada comisión activa con su `HorarioCatedra` correspondiente por materia, año lectivo y turno.
+  * Regenera los snapshots de asistencia (`CursoHorarioSnapshot` y `CursoEstudianteSnapshot`).
+  * Genera y actualiza las clases programadas para el día actual.
+* **Comando:**
+  ```bash
+  docker exec ipes6-backend-dev /app/.venv/bin/python /app/vincular_horarios_comisiones.py
+  ```
+
+---
+
 ## ⚡ Regla de Ejecución en Docker
 
 Dado que la base de datos MySQL corre en el contenedor `ipes6-db-dev` bajo la red Docker interna (`db`), **todo script de backend debe ejecutarse mediante:**
