@@ -680,7 +680,7 @@ const CambioComisionPage: React.FC = () => {
 								"& .MuiAlert-icon": { color: "#fff" },
 							}}
 						>
-							<strong>Documentación obligatoria:</strong> Los estudiantes que soliciten cambio de comisión por motivos laborales deben presentar en Secretaría / Bedelía un <u>Certificado de Trabajo</u> original donde consten expresamente los días y horarios de su jornada laboral.
+							<strong>Documentación obligatoria:</strong> Los estudiantes que soliciten cambio de comisión por motivos laborales deben presentar en Tutoría, un <u>Certificado de Trabajo</u> original donde consten expresamente los días y horarios de su jornada laboral.
 						</Alert>
 
 						<Paper sx={{ p: 2, bgcolor: "grey.50" }}>
