@@ -17,6 +17,7 @@ import {
 		TrayectoriaCarreraDetalleDTO,
 	type VentanaInscripcion,
 } from "@/api/estudiantes";
+import { fetchVentanas } from "@/api/ventanas";
 import { useAuth } from "@/context/AuthContext";
 import { isVentanaActiva } from "@/utils/date";
 import { hasAnyRole } from "@/utils/roles";
@@ -249,8 +250,28 @@ export const useInscripcionMateria = () => {
 		isError: ventanaQError,
 		isLoading: ventanaQLoading,
 	} = useQuery<VentanaInscripcion | null>({
-		queryKey: ["ventana-materias"],
-		queryFn: obtenerVentanaMaterias,
+		queryKey: ["ventana-materias", puedeGestionar],
+		queryFn: async () => {
+			if (puedeGestionar) {
+				const [ventanasGestion, ventanasRegular] = await Promise.all([
+					fetchVentanas({ tipo: "MATERIAS_GESTION" }).catch((): VentanaInscripcion[] => []),
+					fetchVentanas({ tipo: "MATERIAS" }).catch((): VentanaInscripcion[] => []),
+				]);
+				const activaGestion = ventanasGestion.find((v: VentanaInscripcion) => isVentanaActiva(v));
+				if (activaGestion) return activaGestion;
+				const activaRegular = ventanasRegular.find((v: VentanaInscripcion) => isVentanaActiva(v));
+				if (activaRegular) return activaRegular;
+
+				// Si ninguna está activa, tomar la más reciente para mostrar las fechas
+				const todas = [...ventanasGestion, ...ventanasRegular].sort((a: VentanaInscripcion, b: VentanaInscripcion) => {
+					const dateA = a.desde ? new Date(a.desde).getTime() : 0;
+					const dateB = b.desde ? new Date(b.desde).getTime() : 0;
+					return dateB - dateA;
+				});
+				return todas[0] || null;
+			}
+			return obtenerVentanaMaterias();
+		},
 	});
 
 	const {
@@ -361,7 +382,7 @@ export const useInscripcionMateria = () => {
 	};
 	const ventana = ventanaQData ?? null;
 	const ventanaActiva = useMemo(() => isVentanaActiva(ventana), [ventana]);
-	const puedeInscribirse = ventanaActiva || puedeGestionar;
+	const puedeInscribirse = ventanaActiva;
 	const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
 	const inscripcionesData = inscripcionesQData ?? [];  
 
