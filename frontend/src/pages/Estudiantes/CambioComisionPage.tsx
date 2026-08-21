@@ -667,12 +667,29 @@ const CambioComisionPage: React.FC = () => {
 				)}
 
 				{tab === 1 && shouldFetch && (
-					<Paper sx={{ p: 2, mt: 2, bgcolor: "grey.50" }}>
-						<Typography variant="subtitle2" gutterBottom>
-							Definí tu horario laboral:
-						</Typography>
-						<HorarioLaboralForm value={horarioLab} onChange={setHorarioLab} />
-					</Paper>
+					<Stack spacing={2} sx={{ mt: 2 }}>
+						<Alert
+							severity="warning"
+							variant="filled"
+							sx={{
+								borderRadius: 2,
+								fontWeight: 600,
+								fontSize: "0.95rem",
+								bgcolor: "#d97706",
+								color: "#fff",
+								"& .MuiAlert-icon": { color: "#fff" },
+							}}
+						>
+							<strong>Documentación obligatoria:</strong> Los estudiantes que soliciten cambio de comisión por motivos laborales deben presentar en Secretaría / Bedelía un <u>Certificado de Trabajo</u> original donde consten expresamente los días y horarios de su jornada laboral.
+						</Alert>
+
+						<Paper sx={{ p: 2, bgcolor: "grey.50" }}>
+							<Typography variant="subtitle2" gutterBottom>
+								Definí tu horario laboral:
+							</Typography>
+							<HorarioLaboralForm value={horarioLab} onChange={setHorarioLab} />
+						</Paper>
+					</Stack>
 				)}
 
 				{queryError && (
