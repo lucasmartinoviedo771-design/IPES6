@@ -68,6 +68,21 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 			bajaTarget.materiaNombre.trim().toLowerCase()
 		: false;
 
+	// Agrupar materias inscriptas por año de cursada (1°, 2°, 3°, 4°, etc.)
+	const groupedInscriptas = inscriptasDetalle.reduce<Record<number, InscriptaDetalle[]>>(
+		(acc, item) => {
+			const anio = item.materia.anio || 1;
+			if (!acc[anio]) acc[anio] = [];
+			acc[anio].push(item);
+			return acc;
+		},
+		{},
+	);
+
+	const aniosOrdenados = Object.keys(groupedInscriptas)
+		.map(Number)
+		.sort((a, b) => a - b);
+
 	return (
 		<>
 			<Paper
@@ -87,46 +102,89 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 						Todavía no tenés inscripciones registradas.
 					</Typography>
 				) : (
-					<Stack spacing={2}>
-						{inscriptasDetalle.map(({ materia, inscripcion }) => {
-							const isBaja = inscripcion?.estado === "BAJA";
-							const canceling = inscripcion
-								? cancelarVars?.inscripcionId === inscripcion.inscripcion_id &&
-									mCancelarIsPending
-								: false;
-
-							return (
-								<Box
-									key={materia.id}
+					<Stack spacing={3}>
+						{aniosOrdenados.map((anio) => (
+							<Box key={anio}>
+								<Typography
+									variant="subtitle1"
+									fontWeight={700}
 									sx={{
-										p: 2,
-										borderRadius: 2,
-										border: "1px solid #cbb891",
-										bgcolor: isBaja ? "#fdf3f3" : "#f7f1df",
+										color: "#5c4d32",
+										mb: 1.5,
+										pb: 0.5,
+										borderBottom: "1px dashed #d8ccb0",
+										display: "flex",
+										alignItems: "center",
+										gap: 1,
 									}}
 								>
-									<Typography fontWeight={600}>{materia.nombre}</Typography>
-									{materia.horarios.length > 0 ? (
-										materia.horarios.map((h, idx) => (
-											<Typography
-												key={idx}
-												variant="body2"
-												color="text.secondary"
-											>
-												{h.dia} {h.desde} - {h.hasta}
-											</Typography>
-										))
-									) : (
-										<Typography variant="body2" color="text.secondary">
-											Horario no informado.
-										</Typography>
-									)}
-									<Stack
-										direction="row"
-										spacing={1}
-										alignItems="center"
-										sx={{ mt: 1 }}
+									<span>{anio}° Año</span>
+									<Typography
+										variant="caption"
+										color="text.secondary"
+										sx={{ fontWeight: 500 }}
 									>
+										({groupedInscriptas[anio].length}{" "}
+										{groupedInscriptas[anio].length === 1
+											? "materia inscripta"
+											: "materias inscriptas"}
+										)
+									</Typography>
+								</Typography>
+
+								<Stack spacing={2}>
+									{groupedInscriptas[anio].map(({ materia, inscripcion }) => {
+											const isBaja = inscripcion?.estado === "BAJA";
+											const canceling = inscripcion
+												? cancelarVars?.inscripcionId ===
+														inscripcion.inscripcion_id && mCancelarIsPending
+												: false;
+
+											return (
+												<Box
+													key={materia.id}
+													sx={{
+														p: 2,
+														borderRadius: 2,
+														border: "1px solid #cbb891",
+														bgcolor: isBaja ? "#fdf3f3" : "#f7f1df",
+													}}
+												>
+													<Typography fontWeight={600}>
+														{materia.nombre}
+													</Typography>
+													{materia.horarios.length > 0 ? (
+														materia.horarios.map((h, idx) => (
+															<Typography
+																key={idx}
+																variant="body2"
+																color="text.secondary"
+															>
+																{h.dia} {h.desde} - {h.hasta}
+															</Typography>
+														))
+													) : (
+														<Typography
+															variant="body2"
+															color="text.secondary"
+														>
+															Horario no informado.
+														</Typography>
+													)}
+													<Stack
+														direction="row"
+														spacing={1}
+														alignItems="center"
+														flexWrap="wrap"
+														gap={1}
+														sx={{ mt: 1 }}
+													>
+														<Chip
+															label={`${materia.anio}° Año`}
+															size="small"
+															variant="outlined"
+															sx={{ fontWeight: 600 }}
+														/>
 										{isBaja ? (
 											<Chip
 												label="Baja voluntaria"
@@ -213,8 +271,11 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 							);
 						})}
 					</Stack>
-				)}
-			</Paper>
+				</Box>
+			))}
+		</Stack>
+	)}
+</Paper>
 
 			{/* Diálogo de confirmación de baja */}
 			<Dialog
