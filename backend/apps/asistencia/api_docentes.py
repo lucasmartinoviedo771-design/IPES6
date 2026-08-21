@@ -252,78 +252,115 @@ def listar_clases_docente(
         )
 
         for cd in cargos_docente:
-            horarios_cargo = HorarioCargo.objects.filter(cargo=cd.cargo)
-            for hc in horarios_cargo:
-                for f in fechas:
-                    db_dia = f.weekday()
-                    if hc.dia_semana == db_dia:
-                        if dia_semana is not None and hc.dia_semana != dia_semana:
-                            continue
+            horarios_cargo = list(HorarioCargo.objects.filter(cargo=cd.cargo))
+            if horarios_cargo:
+                for hc in horarios_cargo:
+                    for f in fechas:
+                        dia_semana_py = f.weekday()
+                        dia_db = 0 if dia_semana_py == 6 else (dia_semana_py + 1)
+                        if hc.dia_semana == dia_db:
+                            if dia_semana is not None and hc.dia_semana != dia_semana:
+                                continue
 
-                        asistencia_cargo = AsistenciaCargoDocente.objects.filter(cargo_docente=cd, fecha=f).first()
+                            asistencia_cargo = AsistenciaCargoDocente.objects.filter(cargo_docente=cd, fecha=f).first()
 
-                        ya_registrada = bool(
-                            asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE
-                        )
-
-                        base_inicio = datetime.combine(f, hc.hora_inicio)
-                        base_fin = datetime.combine(f, hc.hora_fin)
-                        if settings.USE_TZ:
-                            tz = timezone.get_current_timezone()
-                            ventana_inicio = timezone.make_aware(
-                                base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS), tz
+                            ya_registrada = bool(
+                                asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE
                             )
-                            umbral_tarde = timezone.make_aware(
-                                base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz
-                            )
-                            ventana_fin = timezone.make_aware(base_fin, tz)
-                        else:
-                            ventana_inicio = base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS)
-                            umbral_tarde = base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS)
-                            ventana_fin = base_fin
 
-                        puede_marcar = False
-                        if current_time and not ya_registrada:
-                            puede_marcar = ventana_inicio <= current_time <= ventana_fin
+                            base_inicio = datetime.combine(f, hc.hora_inicio)
+                            base_fin = datetime.combine(f, hc.hora_fin)
+                            if settings.USE_TZ:
+                                tz = timezone.get_current_timezone()
+                                ventana_inicio = timezone.make_aware(
+                                    base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS), tz
+                                )
+                                umbral_tarde = timezone.make_aware(
+                                    base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS), tz
+                                )
+                                ventana_fin = timezone.make_aware(base_fin, tz)
+                            else:
+                                ventana_inicio = base_inicio - timedelta(minutes=TOLERANCIA_ANTERIOR_MINUTOS)
+                                umbral_tarde = base_inicio + timedelta(minutes=TOLERANCIA_TARDE_MINUTOS)
+                                ventana_fin = base_fin
 
-                        clases_out.append(
-                            DocenteClaseOut(
-                                id=hc.id,
-                                es_cargo=True,
-                                cargo_docente_id=cd.id,
-                                fecha=format_date(f),
-                                comision_id=None,
-                                materia=hc.cargo.nombre,
-                                materia_id=0,
-                                comision=hc.cargo.codigo_cargo,
-                                turno="Cargo",
-                                horario=_build_horario(hc.hora_inicio, hc.hora_fin),
-                                aula="",
-                                puede_marcar=puede_marcar,
-                                editable_staff=True,
-                                ya_registrada=ya_registrada,
-                                registrada_en=format_datetime(asistencia_cargo.registrado_en)
-                                if asistencia_cargo and asistencia_cargo.registrado_en
-                                else None,
-                                ventana_inicio=ventana_inicio.strftime("%H:%M") if ventana_inicio else None,
-                                ventana_fin=ventana_fin.strftime("%H:%M") if ventana_fin else None,
-                                umbral_tarde=umbral_tarde.strftime("%H:%M") if umbral_tarde else None,
-                                plan_id=None,
-                                plan_resolucion="",
-                                profesorado_id=None,
-                                profesorado_nombre="",
-                            )
-                        )
+                            puede_marcar = False
+                            if current_time and not ya_registrada:
+                                puede_marcar = ventana_inicio <= current_time <= ventana_fin
 
-                        if asistencia_cargo:
-                            historial.append(
-                                DocenteHistorialOut(
-                                    fecha=format_date(asistencia_cargo.fecha),
+                            clases_out.append(
+                                DocenteClaseOut(
+                                    id=hc.id,
+                                    es_cargo=True,
+                                    cargo_docente_id=cd.id,
+                                    fecha=format_date(f),
+                                    comision_id=None,
+                                    materia=hc.cargo.nombre,
+                                    materia_id=0,
+                                    comision=hc.cargo.codigo_cargo,
                                     turno="Cargo",
-                                    estado=asistencia_cargo.get_estado_display(),
-                                    observacion=asistencia_cargo.observaciones,
+                                    horario=_build_horario(hc.hora_inicio, hc.hora_fin),
+                                    aula="",
+                                    puede_marcar=puede_marcar,
+                                    editable_staff=True,
+                                    ya_registrada=ya_registrada,
+                                    registrada_en=format_datetime(asistencia_cargo.registrado_en)
+                                    if asistencia_cargo and asistencia_cargo.registrado_en
+                                    else None,
+                                    ventana_inicio=ventana_inicio.strftime("%H:%M") if ventana_inicio else None,
+                                    ventana_fin=ventana_fin.strftime("%H:%M") if ventana_fin else None,
+                                    umbral_tarde=umbral_tarde.strftime("%H:%M") if umbral_tarde else None,
+                                    plan_id=None,
+                                    plan_resolucion="",
+                                    profesorado_id=None,
+                                    profesorado_nombre="",
                                 )
                             )
+
+                            if asistencia_cargo:
+                                historial.append(
+                                    DocenteHistorialOut(
+                                        fecha=format_date(asistencia_cargo.fecha),
+                                        turno="Cargo",
+                                        estado=asistencia_cargo.get_estado_display(),
+                                        observacion=asistencia_cargo.observaciones,
+                                    )
+                                )
+            else:
+                # El cargo no tiene bloques cargados: mostrarlo en las fechas solicitadas para visibilidad de gestión
+                for f in fechas:
+                    asistencia_cargo = AsistenciaCargoDocente.objects.filter(cargo_docente=cd, fecha=f).first()
+                    ya_registrada = bool(
+                        asistencia_cargo and asistencia_cargo.estado != AsistenciaCargoDocente.Estado.AUSENTE
+                    )
+                    clases_out.append(
+                        DocenteClaseOut(
+                            id=0,
+                            es_cargo=True,
+                            cargo_docente_id=cd.id,
+                            fecha=format_date(f),
+                            comision_id=None,
+                            materia=cd.cargo.nombre,
+                            materia_id=0,
+                            comision=cd.cargo.codigo_cargo,
+                            turno="Cargo",
+                            horario="Sin horario asignado",
+                            aula="",
+                            puede_marcar=False,
+                            editable_staff=True,
+                            ya_registrada=ya_registrada,
+                            registrada_en=format_datetime(asistencia_cargo.registrado_en)
+                            if asistencia_cargo and asistencia_cargo.registrado_en
+                            else None,
+                            ventana_inicio=None,
+                            ventana_fin=None,
+                            umbral_tarde=None,
+                            plan_id=None,
+                            plan_resolucion="",
+                            profesorado_id=None,
+                            profesorado_nombre="",
+                        )
+                    )
 
     return DocenteClasesResponse(
         docente=DocenteInfoOut(nombre=_docente_nombre(docente), dni=docente.dni),

@@ -46,9 +46,9 @@ def reporte_diario_docentes(request: HttpRequest, fecha: date):
     clases = ClaseProgramada.objects.filter(
         fecha=fecha,
         estado__in=[
-            ClaseProgramada.Estado.VIGENTE,
-            ClaseProgramada.Estado.CONFIRMADA,
-            ClaseProgramada.Estado.FINALIZADA,
+            ClaseProgramada.Estado.PROGRAMADA,
+            ClaseProgramada.Estado.EN_CURSO,
+            ClaseProgramada.Estado.IMPARTIDA,
         ],
     ).select_related("docente__persona", "comision__materia", "comision__turno")
 
@@ -56,6 +56,9 @@ def reporte_diario_docentes(request: HttpRequest, fecha: date):
     asistencias_clases = {a.clase_id: a for a in AsistenciaDocente.objects.filter(clase__in=clases)}
 
     for clase in clases:
+        if not clase.docente or not clase.docente.persona:
+            continue
+
         asistencia = asistencias_clases.get(clase.id)
 
         horario = ""
@@ -79,17 +82,21 @@ def reporte_diario_docentes(request: HttpRequest, fecha: date):
         )
 
     # 2. Cargos
-    # Buscar los cargos que caen en este día de la semana
-    dia_semana_py = fecha.weekday()  # 0 = Lunes, 6 = Domingo
-    dia_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}  # En DB: 1=Lunes, 7=Domingo
-    dia_db = dia_map[dia_semana_py]
+    # Python weekday(): 0=Lunes, 1=Martes, 2=Miércoles, 3=Jueves, 4=Viernes, 5=Sábado, 6=Domingo
+    # DB HorarioCargo.DIA_CHOICES: 0=Domingo, 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado
+    dia_semana_py = fecha.weekday()
+    dia_db = 0 if dia_semana_py == 6 else (dia_semana_py + 1)
 
-    horarios_cargo = HorarioCargo.objects.filter(dia_semana=dia_db, activo=True).select_related("cargo")
+    horarios_cargo = HorarioCargo.objects.filter(dia_semana=dia_db).select_related("cargo")
 
     for hc in horarios_cargo:
+        if not hc.cargo or not hc.cargo.activo:
+            continue
         cargos_docentes = CargoDocente.objects.filter(cargo=hc.cargo, activo=True).select_related("docente__persona")
 
         for cd in cargos_docentes:
+            if not cd.docente or not cd.docente.persona:
+                continue
             asistencia = AsistenciaCargoDocente.objects.filter(cargo_docente=cd, fecha=fecha, horario=hc).first()
 
             horario = f"{hc.hora_inicio.strftime('%H:%M')} a {hc.hora_fin.strftime('%H:%M')}"
@@ -105,6 +112,31 @@ def reporte_diario_docentes(request: HttpRequest, fecha: date):
                     comision=hc.cargo.codigo_cargo,
                     horario=horario,
                     estado=asistencia.get_estado_display() if asistencia else "Pendiente",
+                    registrado_en=format_datetime(asistencia.registrado_en) if asistencia else None,
+                    observaciones=asistencia.observaciones if asistencia else None,
+                )
+            )
+
+    # 3. Cargos asignados a docentes activos que aún no tienen bloques horarios cargados
+    cargos_sin_horario = CargoDocente.objects.filter(activo=True, cargo__activo=True).exclude(
+        cargo__horarios__dia_semana=dia_db
+    ).select_related("docente__persona", "cargo")
+
+    for cd in cargos_sin_horario:
+        # Solo mostrar si el cargo no tiene horarios definidos para ningún día
+        if not cd.cargo.horarios.exists() and cd.docente and cd.docente.persona:
+            asistencia = AsistenciaCargoDocente.objects.filter(cargo_docente=cd, fecha=fecha).first()
+            items.append(
+                ReporteDiarioDocenteItem(
+                    docente_id=cd.docente.id,
+                    docente_nombre=f"{cd.docente.apellido}, {cd.docente.nombre}",
+                    docente_dni=cd.docente.persona.dni,
+                    es_cargo=True,
+                    cargo_id=None,
+                    materia_o_cargo=cd.cargo.nombre,
+                    comision=cd.cargo.codigo_cargo,
+                    horario="Sin horario definido",
+                    estado=asistencia.get_estado_display() if asistencia else "Asignado (s/horario)",
                     registrado_en=format_datetime(asistencia.registrado_en) if asistencia else None,
                     observaciones=asistencia.observaciones if asistencia else None,
                 )
