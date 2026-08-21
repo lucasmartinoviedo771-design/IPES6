@@ -11,6 +11,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { type Control, Controller } from "react-hook-form";
+import { formatApellido, formatNombres } from "@/utils/nameFormatters";
 import type { Carrera } from "@/api/carreras";
 import type { PreinscripcionForm } from "../schema";
 
@@ -18,7 +19,7 @@ interface PersonalesSectionProps {
 	control: Control<PreinscripcionForm>;
 	condicionSaludActiva: boolean;
 	carreras: Carrera[];
-		validationErrors: any;
+	validationErrors: any;
 }
 
 export default function PersonalesSection({
@@ -42,6 +43,7 @@ export default function PersonalesSection({
 								{...field}
 								label="Nombres"
 								fullWidth
+								onBlur={() => field.onChange(formatNombres(field.value))}
 								error={!!fieldState.error}
 								helperText={fieldState.error?.message}
 								size="small"
@@ -58,8 +60,11 @@ export default function PersonalesSection({
 								{...field}
 								label="Apellido"
 								fullWidth
+								inputProps={{ style: { textTransform: "uppercase" } }}
+								onChange={(e) => field.onChange(formatApellido(e.target.value))}
+								onBlur={() => field.onChange(formatApellido(field.value))}
 								error={!!fieldState.error}
-								helperText={fieldState.error?.message}
+								helperText={fieldState.error?.message || "EN MAYÚSCULAS"}
 								size="small"
 							/>
 						)}

@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/es";
 import { Controller, useFormContext } from "react-hook-form";
 
+import { formatApellido, formatNombres } from "@/utils/nameFormatters";
 import RHFDate from "@/components/RHFDate";
 import type { PreinscripcionForm } from "../schema";
 
@@ -36,8 +37,9 @@ function DatosPersonales() {
 							{...field}
 							label="Nombres *"
 							fullWidth
+							onBlur={() => field.onChange(formatNombres(field.value))}
 							error={Boolean(errors.nombres)}
-							helperText={errors.nombres?.message}
+							helperText={errors.nombres?.message || "Ej: María José"}
 						/>
 					)}
 				/>
@@ -51,8 +53,11 @@ function DatosPersonales() {
 							{...field}
 							label="Apellido *"
 							fullWidth
+							inputProps={{ style: { textTransform: "uppercase" } }}
+							onChange={(e) => field.onChange(formatApellido(e.target.value))}
+							onBlur={() => field.onChange(formatApellido(field.value))}
 							error={Boolean(errors.apellido)}
-							helperText={errors.apellido?.message}
+							helperText={errors.apellido?.message || "SIEMPRE EN MAYÚSCULAS"}
 						/>
 					)}
 				/>

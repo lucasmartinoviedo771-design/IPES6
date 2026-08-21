@@ -87,11 +87,21 @@ class PreinscripcionService:
     @staticmethod
     @transaction.atomic
     def create_or_update_preinscripcion(payload: PreinscripcionIn) -> Preinscripcion:
+        from apps.common.name_utils import normalizar_apellido, normalizar_nombres
+
         estudiante_data = payload.estudiante
         dni = estudiante_data.dni
+        estudiante_data.apellido = normalizar_apellido(estudiante_data.apellido)
+        estudiante_data.nombres = normalizar_nombres(estudiante_data.nombres)
+
         data_dict = payload.dict()
         data_dict.pop("captcha_token", None)
         data_dict.pop("honeypot", None)
+        if "estudiante" in data_dict:
+            data_dict["estudiante"]["apellido"] = estudiante_data.apellido
+            data_dict["estudiante"]["nombres"] = estudiante_data.nombres
+        data_dict["apellido"] = estudiante_data.apellido
+        data_dict["nombres"] = estudiante_data.nombres
 
         # 1. Persona — solo datos básicos de identidad y contacto
         # Los campos adicionales (nacimiento, emergencia, etc.) se copian al CONFIRMAR

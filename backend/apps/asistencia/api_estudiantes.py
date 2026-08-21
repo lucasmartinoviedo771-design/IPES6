@@ -114,13 +114,22 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         .order_by("estudiante__persona__apellido", "estudiante__persona__nombre")
     )
 
+    # Solo computar clases dictadas (donde el docente estuvo PRESENTE o donde se tomó asistencia explícitamente)
     stats = (
-        AsistenciaEstudiante.objects.filter(clase__comision_id=clase.comision_id)
+        AsistenciaEstudiante.objects.filter(
+            clase__comision_id=clase.comision_id,
+        )
+        .filter(
+            Q(clase__asistencia_docentes__estado=AsistenciaDocente.Estado.PRESENTE)
+            | ~Q(registrado_via=AsistenciaEstudiante.RegistradoVia.SISTEMA)
+        )
         .values("estudiante_id")
         .annotate(
-            total=Count("id"),
+            total=Count("id", distinct=True),
             presentes=Count(
-                "id", filter=Q(estado__in=[AsistenciaEstudiante.Estado.PRESENTE, AsistenciaEstudiante.Estado.TARDE])
+                "id",
+                filter=Q(estado__in=[AsistenciaEstudiante.Estado.PRESENTE, AsistenciaEstudiante.Estado.TARDE]),
+                distinct=True,
             ),
         )
     )
@@ -131,7 +140,7 @@ def obtener_clase_estudiantes(request: HttpRequest, clase_id: int) -> ClaseEstud
         stat = stats_map.get(asistencia.estudiante_id, {"total": 0, "presentes": 0})
         total = stat["total"]
         presentes = stat["presentes"]
-        porcentaje = (presentes / total * 100) if total > 0 else 0.0
+        porcentaje = (presentes / total * 100) if total > 0 else 100.0
 
         estudiantes.append(
             EstudianteResumenOut(
@@ -324,6 +333,14 @@ def registrar_asistencia_estudiantes(request: HttpRequest, clase_id: int, payloa
             registro.registrado_por = request.user if request.user and request.user.is_authenticated else None
             registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
 
+    # Propagar a bloques posteriores de la misma fecha
+    from .services import propagar_asistencia_estudiantes_bloques
+
+    propagar_asistencia_estudiantes_bloques(
+        clase_origen=clase,
+        registrado_por=request.user if request.user and request.user.is_authenticated else None,
+    )
+
     # Auditoría de asistencia
     log_action_from_request(
         request,
@@ -398,6 +415,14 @@ def registrar_asistencia_estudiante_pin(request: HttpRequest, payload: Registrar
         registro.registrado_via = AsistenciaEstudiante.RegistradoVia.SISTEMA
         registro.registrado_por = request.user
         registro.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
+
+    # Propagar a bloques posteriores de la misma fecha
+    from .services import propagar_asistencia_estudiantes_bloques
+
+    propagar_asistencia_estudiantes_bloques(
+        clase_origen=clase,
+        registrado_por=request.user,
+    )
 
     log_action_from_request(
         request,

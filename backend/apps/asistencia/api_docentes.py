@@ -576,7 +576,6 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
             alerta_motivo = ""
 
             if umbral_tarde and current_time > umbral_tarde:
-                estado = AsistenciaDocente.Estado.TARDE
                 categoria = AsistenciaDocente.MarcacionCategoria.TARDE
                 alerta = True
                 alerta_tipo = "llegada_tarde"
@@ -586,23 +585,23 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
             else:
                 mensajes.append(f"Presente en {clase.comision.materia.nombre}.")
 
+            via_enum = (
+                AsistenciaDocente.RegistradoVia.STAFF
+                if payload.via == "staff"
+                else AsistenciaDocente.RegistradoVia.DOCENTE
+            )
+
             asistencia, _ = AsistenciaDocente.objects.get_or_create(
                 clase=clase,
                 docente=docente,
                 defaults={
                     "estado": estado,
-                    "registrado_via": AsistenciaDocente.RegistradoVia.SISTEMA
-                    if payload.via == "staff"
-                    else AsistenciaDocente.RegistradoVia.APP_DOCENTE,
+                    "registrado_via": via_enum,
                 },
             )
             asistencia.estado = estado
             asistencia.observaciones = payload.observaciones or ""
-            asistencia.registrado_via = (
-                AsistenciaDocente.RegistradoVia.SISTEMA
-                if payload.via == "staff"
-                else AsistenciaDocente.RegistradoVia.APP_DOCENTE
-            )
+            asistencia.registrado_via = via_enum
             asistencia.registrado_por = registrado_por
             asistencia.registrado_en = current_time
             asistencia.marcacion_categoria = categoria
@@ -634,8 +633,16 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
                 alerta_motivo=alerta_motivo,
             )
 
+    # Generar mensaje institucional claro y consolidado para el docente
+    if hubo_alerta:
+        mensajes_out = ["Asistencia registrada correctamente (Marcación fuera de término)."]
+    else:
+        mensajes_out = ["Asistencia registrada correctamente."]
+
     return KioskBulkMarcarOut(
-        estado_general="TARDE" if hubo_alerta else "PRESENTE", alerta=hubo_alerta, mensajes=mensajes
+        estado_general="TARDE" if hubo_alerta else "PRESENTE",
+        alerta=hubo_alerta,
+        mensajes=mensajes_out,
     )
 
 

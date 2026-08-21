@@ -57,6 +57,15 @@ class Persona(models.Model):
             models.Index(fields=["apellido", "nombre"]),
         ]
 
+    def save(self, *args, **kwargs):
+        from apps.common.name_utils import normalizar_apellido, normalizar_nombres
+
+        if self.apellido:
+            self.apellido = normalizar_apellido(self.apellido)
+        if self.nombre:
+            self.nombre = normalizar_nombres(self.nombre)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.apellido}, {self.nombre} (DNI: {self.dni})"
 

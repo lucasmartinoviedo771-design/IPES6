@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from core.models import Comision, Docente, Estudiante, InscripcionMateriaEstudiante
+from core.models import Comision, Docente, Estudiante, InscripcionMateriaEstudiante, VentanaHabilitacion
 
 from .models import (
     AsistenciaDocente,
@@ -249,6 +249,33 @@ def generate_classes_for_date(target_date: date, *, comision_ids: Sequence[int] 
     if comision_ids:
         horario_qs = horario_qs.filter(comision_id__in=comision_ids)
 
+    # Determinar cuatrimestre activo consultando el Calendario Académico oficial configurado (VentanaHabilitacion)
+    # y contrastando la target_date contra los rangos oficiales de 1C y 2C:
+    ventana_1c = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.CALENDARIO_CUATRIMESTRE,
+        periodo="1C",
+        desde__lte=target_date,
+        hasta__gte=target_date,
+    ).first()
+
+    ventana_2c = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.CALENDARIO_CUATRIMESTRE,
+        periodo="2C",
+        desde__lte=target_date,
+        hasta__gte=target_date,
+    ).first()
+
+    if ventana_1c and not ventana_2c:
+        cuatrimestres_validos = {"PCU", "1C", "ANU", "", None}
+    elif ventana_2c and not ventana_1c:
+        cuatrimestres_validos = {"SCU", "2C", "ANU", "", None}
+    else:
+        # Si cae fuera de rango o no hay ventana explícita, fallback según mes
+        if target_date.month <= 7:
+            cuatrimestres_validos = {"PCU", "1C", "ANU", "", None}
+        else:
+            cuatrimestres_validos = {"SCU", "2C", "ANU", "", None}
+
     eventos_dia = _eventos_para_fecha(target_date)
 
     generadas: list[ClaseGenerada] = []
@@ -256,8 +283,18 @@ def generate_classes_for_date(target_date: date, *, comision_ids: Sequence[int] 
         "comision",
         "comision__docente",
         "comision__turno",
+        "comision__materia",
         "comision__materia__plan_de_estudio__profesorado",
     ):
+        comision = horario.comision
+        if comision.estado != Comision.Estado.ABIERTA:
+            continue
+
+        # Validar compatibilidad de cuatrimestre según el régimen de la materia o horario
+        regimen = getattr(comision.materia, "regimen", None)
+        if regimen and regimen not in cuatrimestres_validos:
+            continue
+
         turno_id = horario.comision.turno_id
         contexto = _contexto_para_horario(horario)
         evento_doc = _buscar_evento_que_aplica(
@@ -415,7 +452,7 @@ def _sync_horarios_snapshot(comision: Comision) -> None:
     bulk = [
         CursoHorarioSnapshot(
             comision=comision,
-            dia_semana=detalle.bloque.dia % 7,
+            dia_semana=(detalle.bloque.dia - 1) % 7,
             hora_inicio=detalle.bloque.hora_desde,
             hora_fin=detalle.bloque.hora_hasta,
             origen_id=str(detalle.id),
@@ -606,3 +643,62 @@ def propagar_asistencia_docente_turno(
             asistencia.marcacion_categoria = marcacion_categoria
 
         asistencia.save()
+
+
+def propagar_asistencia_estudiantes_bloques(
+    clase_origen: ClaseProgramada,
+    registrado_por=None,
+) -> None:
+    """
+    Propaga la asistencia de los estudiantes desde la clase origen hacia los demás bloques
+    de la misma comisión y misma fecha (tanto posteriores como anteriores si no tenían toma manual).
+
+    Regla pedagógica institucional (Opción A):
+    Cuando el docente toma asistencia en cualquier bloque del día, se asume que está registrando
+    la jornada completa de esa comisión. Todos los bloques de ese día quedan sincronizados
+    con los presentes/ausentes de la jornada.
+    """
+    if not clase_origen.hora_inicio:
+        return
+
+    # Buscar todos los otros bloques de la misma comisión en la misma fecha
+    otros_bloques = ClaseProgramada.objects.filter(
+        comision_id=clase_origen.comision_id,
+        fecha=clase_origen.fecha,
+    ).exclude(id=clase_origen.id).order_by("hora_inicio")
+
+    if not otros_bloques.exists():
+        return
+
+    # Obtener las asistencias registradas en la clase origen
+    asistencias_origen = AsistenciaEstudiante.objects.filter(clase=clase_origen).select_related("estudiante")
+    mapa_estados = {a.estudiante_id: a.estado for a in asistencias_origen}
+
+    now = timezone.now()
+
+    for bloque in otros_bloques:
+        _ensure_asistencias_estudiantes(bloque)
+        registros_bloque = AsistenciaEstudiante.objects.filter(clase=bloque)
+
+        for reg in registros_bloque:
+            if reg.justificacion_id or reg.estado == AsistenciaEstudiante.Estado.AUSENTE_JUSTIFICADA:
+                continue
+
+            estado_origen = mapa_estados.get(reg.estudiante_id)
+            if not estado_origen:
+                continue
+
+            # Si en el bloque origen estuvo PRESENTE o TARDE, en los demás bloques es PRESENTE
+            if estado_origen in [AsistenciaEstudiante.Estado.PRESENTE, AsistenciaEstudiante.Estado.TARDE]:
+                nuevo_estado = AsistenciaEstudiante.Estado.PRESENTE
+            else:
+                nuevo_estado = AsistenciaEstudiante.Estado.AUSENTE
+
+            if reg.estado != nuevo_estado:
+                reg.estado = nuevo_estado
+                reg.registrado_via = AsistenciaEstudiante.RegistradoVia.STAFF
+                reg.registrado_por = registrado_por
+                reg.registrado_en = now
+                reg.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
+
+

@@ -119,17 +119,25 @@ def _porcentaje_asistencia(estudiante_id: int, comision_id: int) -> int | None:
     Devuelve None si no hay clases registradas (el docente lo carga a mano).
     """
     try:
-        from apps.asistencia.models import AsistenciaEstudiante
+        from apps.asistencia.models import AsistenciaDocente, AsistenciaEstudiante
 
-        stats = AsistenciaEstudiante.objects.filter(
-            clase__comision_id=comision_id,
-            estudiante_id=estudiante_id,
-        ).aggregate(
-            total=Count("id"),
-            presentes=Count(
-                "id",
-                filter=Q(estado__in=["PRESENTE", "TARDE"]),
-            ),
+        stats = (
+            AsistenciaEstudiante.objects.filter(
+                clase__comision_id=comision_id,
+                estudiante_id=estudiante_id,
+            )
+            .filter(
+                Q(clase__asistencia_docentes__estado=AsistenciaDocente.Estado.PRESENTE)
+                | ~Q(registrado_via=AsistenciaEstudiante.RegistradoVia.SISTEMA)
+            )
+            .aggregate(
+                total=Count("id", distinct=True),
+                presentes=Count(
+                    "id",
+                    filter=Q(estado__in=["presente", "tarde", "PRESENTE", "TARDE"]),
+                    distinct=True,
+                ),
+            )
         )
         total = stats["total"] or 0
         if total == 0:

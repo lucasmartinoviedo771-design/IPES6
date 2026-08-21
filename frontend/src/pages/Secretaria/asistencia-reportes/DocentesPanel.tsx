@@ -15,9 +15,9 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
-import type React from "react";
-import "dayjs/locale/es";
 import type { DocenteClase, DocenteClasesResponse } from "@/api/asistencia";
+import React, { useMemo } from "react";
+import "dayjs/locale/es";
 import type { DateOption, Option } from "./types";
 
 dayjs.locale("es");
@@ -288,42 +288,122 @@ export const DocentesPanel: React.FC<DocentesPanelProps> = ({
 					<Alert severity="info">
 						Ingresa un DNI y rango de fechas para ver las clases asignadas.
 					</Alert>
-				) : (
-					<Stack spacing={1.5} sx={{ maxHeight: 260, overflowY: "auto" }}>
-						{docenteClasesFiltradas.map((clase) => (
-							<Paper key={clase.id} variant="outlined" sx={{ p: 1.5 }}>
-								<Stack spacing={0.5}>
-									<Stack direction="row" alignItems="center" justifyContent="space-between">
-										<Typography variant="subtitle2" fontWeight={600}>
-											{clase.materia} - {clase.comision}
-										</Typography>
-										{clase.ya_registrada ? (
-											<Typography variant="caption" sx={{ color: "success.main", fontWeight: "bold" }}>
-												{clase.registrada_en ? `Presente (${clase.registrada_en})` : "Presente"}
+				) : (() => {
+					// Agrupar clases por Materia + Comision + Fecha + Turno para mostrar un único bloque por cátedra
+					const gruposMap = new Map<string, {
+						id: string;
+						materia: string;
+						comision: string;
+						fecha: string;
+						turno: string;
+						profesorado_nombre: string | null;
+						plan_resolucion: string | null;
+						bloquesCount: number;
+						ya_registrada: boolean;
+						registrada_en: string | null;
+						hora_inicio_min: string | null;
+						hora_fin_max: string | null;
+						puede_marcar: boolean;
+						editable_staff: boolean;
+					}>();
+
+					docenteClasesFiltradas.forEach((clase) => {
+						const key = `${clase.fecha}_${clase.comision_id || clase.materia_id || clase.materia}_${clase.turno}`;
+						const existente = gruposMap.get(key);
+
+						// Extraer horas si vienen con formato "HH:mm a HH:mm" o "HH:mm - HH:mm"
+						let hIni: string | null = null;
+						let hFin: string | null = null;
+						if (clase.horario) {
+							const parts = clase.horario.split(/\s*(?:a|-)\s*/);
+							if (parts.length >= 2) {
+								hIni = parts[0]?.trim() || null;
+								hFin = parts[1]?.trim() || null;
+							}
+						}
+
+						if (!existente) {
+							gruposMap.set(key, {
+								id: key,
+								materia: clase.materia,
+								comision: clase.comision,
+								fecha: clase.fecha,
+								turno: clase.turno || "-",
+								profesorado_nombre: clase.profesorado_nombre ?? "-",
+								plan_resolucion: clase.plan_resolucion ?? "-",
+								bloquesCount: 1,
+								ya_registrada: clase.ya_registrada,
+								registrada_en: clase.registrada_en,
+								hora_inicio_min: hIni,
+								hora_fin_max: hFin,
+								puede_marcar: clase.puede_marcar,
+								editable_staff: clase.editable_staff,
+							});
+						} else {
+							existente.bloquesCount += 1;
+							if (clase.ya_registrada) {
+								existente.ya_registrada = true;
+								if (clase.registrada_en) {
+									existente.registrada_en = clase.registrada_en;
+								}
+							}
+							if (hIni && (!existente.hora_inicio_min || hIni < existente.hora_inicio_min)) {
+								existente.hora_inicio_min = hIni;
+							}
+							if (hFin && (!existente.hora_fin_max || hFin > existente.hora_fin_max)) {
+								existente.hora_fin_max = hFin;
+							}
+							if (clase.puede_marcar) existente.puede_marcar = true;
+							if (clase.editable_staff) existente.editable_staff = true;
+						}
+					});
+
+					const grupos = Array.from(gruposMap.values());
+
+					return (
+						<Stack spacing={1.5} sx={{ maxHeight: 260, overflowY: "auto" }}>
+							{grupos.map((grupo) => {
+								const rangoHorario =
+									grupo.hora_inicio_min && grupo.hora_fin_max
+										? `${grupo.hora_inicio_min} a ${grupo.hora_fin_max}`
+										: "Horario asignado";
+
+								return (
+									<Paper key={grupo.id} variant="outlined" sx={{ p: 1.5 }}>
+										<Stack spacing={0.5}>
+											<Stack direction="row" alignItems="center" justifyContent="space-between">
+												<Typography variant="subtitle2" fontWeight={600}>
+													{grupo.materia} - {grupo.comision}
+												</Typography>
+												{grupo.ya_registrada ? (
+													<Typography variant="caption" sx={{ color: "success.main", fontWeight: "bold" }}>
+														{grupo.registrada_en ? `Presente (${grupo.registrada_en})` : "Presente"}
+													</Typography>
+												) : (
+													<Typography variant="caption" sx={{ color: "error.main", fontWeight: "bold" }}>
+														Ausente
+													</Typography>
+												)}
+											</Stack>
+											<Typography variant="body2" color="text.secondary">
+												{dayjs(grupo.fecha, "DD/MM/YYYY").format("dddd DD/MM/YYYY")} - Turno{" "}
+												{grupo.turno} - {rangoHorario}{" "}
+												{grupo.bloquesCount > 1 ? `(${grupo.bloquesCount} hs cátedra)` : ""}
 											</Typography>
-										) : (
-											<Typography variant="caption" sx={{ color: "error.main", fontWeight: "bold" }}>
-												Ausente
+											<Typography variant="caption" color="text.secondary">
+												Profes.: {grupo.profesorado_nombre} - Plan {grupo.plan_resolucion}
 											</Typography>
-										)}
-									</Stack>
-									<Typography variant="body2" color="text.secondary">
-										{dayjs(clase.fecha, "DD/MM/YYYY").format("dddd DD/MM/YYYY")} - Turno{" "}
-										{clase.turno || "-"} - {clase.horario ?? "Sin horario"}
-									</Typography>
-									<Typography variant="caption" color="text.secondary">
-										Profes.: {clase.profesorado_nombre ?? "-"} - Plan{" "}
-										{clase.plan_resolucion ?? "-"}
-									</Typography>
-									<Typography variant="caption" color="text.secondary">
-										Puede marcar: {clase.puede_marcar ? "si" : "no"} - Staff
-										puede editar: {clase.editable_staff ? "si" : "no"}
-									</Typography>
-								</Stack>
-							</Paper>
-						))}
-					</Stack>
-				)}
+											<Typography variant="caption" color="text.secondary">
+												Puede marcar: {grupo.puede_marcar ? "si" : "no"} - Staff puede editar:{" "}
+												{grupo.editable_staff ? "si" : "no"}
+											</Typography>
+										</Stack>
+									</Paper>
+								);
+							})}
+						</Stack>
+					);
+				})()}
 
 				{!puedeVerDocentes && (
 					<Stack

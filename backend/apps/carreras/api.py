@@ -56,6 +56,8 @@ class MateriaInscriptoOut(Schema):
     estudiante_id: int
     estudiante: str
     dni: str
+    email: str | None = None
+    telefono: str | None = None
     legajo: str | None = None
     estado: str
     anio: int
@@ -611,20 +613,28 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
     # Formateo del resultado para la UI
     from django.db.models import Count, Q
 
-    from apps.asistencia.models import AsistenciaEstudiante
+    from apps.asistencia.models import AsistenciaDocente, AsistenciaEstudiante
 
     estudiante_ids = [ins.estudiante_id for ins in inscripciones]
     comision_ids = [ins.comision_id for ins in inscripciones if ins.comision_id]
 
     asistencias_stats = {}
     if estudiante_ids and comision_ids:
+        # Solo computar clases dictadas (donde el docente estuvo PRESENTE o donde se tomó asistencia explícitamente)
         stats_query = (
-            AsistenciaEstudiante.objects.filter(estudiante_id__in=estudiante_ids, clase__comision_id__in=comision_ids)
+            AsistenciaEstudiante.objects.filter(
+                estudiante_id__in=estudiante_ids,
+                clase__comision_id__in=comision_ids,
+            )
+            .filter(
+                Q(clase__asistencia_docentes__estado=AsistenciaDocente.Estado.PRESENTE)
+                | ~Q(registrado_via=AsistenciaEstudiante.RegistradoVia.SISTEMA)
+            )
             .values("estudiante_id", "clase__comision_id")
             .annotate(
-                presentes=Count("id", filter=Q(estado__in=["presente", "tarde"])),
-                ausentes=Count("id", filter=Q(estado__in=["ausente", "ausente_justificada"])),
-                total=Count("id"),
+                presentes=Count("id", filter=Q(estado__in=["presente", "tarde"]), distinct=True),
+                ausentes=Count("id", filter=Q(estado__in=["ausente", "ausente_justificada"]), distinct=True),
+                total=Count("id", distinct=True),
             )
         )
         for stat in stats_query:
@@ -660,7 +670,7 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
         p = stat.get("presentes", 0)
         a = stat.get("ausentes", 0)
         t = stat.get("total", 0)
-        pct = f"{int((p / t) * 100)}%" if t > 0 else "0%"
+        pct = f"{int((p / t) * 100)}%" if t > 0 else "-"
 
         profesorados_alumno = carreras_estudiantes.get(est.id, [])
         es_comisionado = False
@@ -669,12 +679,18 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
             es_comisionado = True
             profesorado_origen = ", ".join(profesorados_alumno)
 
+        # Email y Teléfono
+        email = est.persona.email if est.persona and est.persona.email else (est.user.email if est.user else None)
+        telefono = est.persona.telefono if est.persona else None
+
         resultado.append(
             MateriaInscriptoOut(
                 id=ins.id,
                 estudiante_id=est.id,
                 estudiante=nombre_completo,
                 dni=est.dni,
+                email=email,
+                telefono=telefono,
                 legajo=est.legajo,
                 estado=ins.estado,
                 anio=ins.anio,

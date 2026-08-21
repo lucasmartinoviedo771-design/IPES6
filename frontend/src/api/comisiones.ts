@@ -37,6 +37,8 @@ export type MateriaInscriptoDTO = {
 	estudiante_id: number;
 	estudiante: string;
 	dni: string;
+	email?: string | null;
+	telefono?: string | null;
 	legajo?: string | null;
 	estado: string;
 	anio: number;
