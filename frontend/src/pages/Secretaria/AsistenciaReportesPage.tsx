@@ -90,104 +90,133 @@ const AsistenciaReportesPage = () => {
 		userDni: user?.dni,
 	});
 
+	const [tabActual, setTabActual] = useState<number>(0);
+
 	return (
-		<Box sx={{ px: { xs: 1, md: 2 }, py: 1 }}>
+		<Box sx={{ px: { xs: 1, md: 3 }, py: 2 }}>
 			<Stack spacing={3}>
 				<BackButton fallbackPath="/secretaria" />
 				<PageHero
 					title="Reportes de asistencia"
-					subtitle="Filtros rápidos para acompañar el seguimiento diario de estudiantes y docentes"
+					subtitle="Gestión y seguimiento integral de asistencia para estudiantes, docentes y calendario institucional"
 				/>
 
-				<Grid container spacing={3}>
-					<Grid item xs={12} md={6}>
-						<EstudiantesPanel
-							puedeGestionarEstudiantes={puedeGestionarEstudiantes}
-							puedeVerEstudiantes={puedeVerEstudiantes}
-							profesoradoOptions={profesoradoOptions}
-							profesoradosLoading={profesoradosLoading}
-							estudianteProfesorado={
-								estudiantesAsistencia.estudianteProfesorado
-							}
-							setEstudianteProfesorado={
-								estudiantesAsistencia.setEstudianteProfesorado
-							}
-							estudiantePlan={estudiantesAsistencia.estudiantePlan}
-							setEstudiantePlan={estudiantesAsistencia.setEstudiantePlan}
-							estudianteMateria={estudiantesAsistencia.estudianteMateria}
-							setEstudianteMateria={estudiantesAsistencia.setEstudianteMateria}
-							estudianteComision={estudiantesAsistencia.estudianteComision}
-							setEstudianteComision={
-								estudiantesAsistencia.setEstudianteComision
-							}
-							estudianteDesde={estudiantesAsistencia.estudianteDesde}
-							setEstudianteDesde={estudiantesAsistencia.setEstudianteDesde}
-							estudianteHasta={estudiantesAsistencia.estudianteHasta}
-							setEstudianteHasta={estudiantesAsistencia.setEstudianteHasta}
-							estudianteResultados={estudiantesAsistencia.estudianteResultados}
-							cargandoEstudiantes={estudiantesAsistencia.cargandoEstudiantes}
-							estudiantePlanOptions={
-								estudiantesAsistencia.estudiantePlanOptions
-							}
-							estudiantePlanesLoading={
-								estudiantesAsistencia.estudiantePlanesLoading
-							}
-							estudianteMateriaOptions={
-								estudiantesAsistencia.estudianteMateriaOptions
-							}
-							estudianteMateriasLoading={
-								estudiantesAsistencia.estudianteMateriasLoading
-							}
-							estudianteComisionOptions={
-								estudiantesAsistencia.estudianteComisionOptions
-							}
-							estudianteComisionesLoading={
-								estudiantesAsistencia.estudianteComisionesLoading
-							}
-							handleBuscarEstudiantes={
-								estudiantesAsistencia.handleBuscarEstudiantes
-							}
-						/>
-					</Grid>
+				{/* Navegación por Pestañas / Tabs Principales */}
+				<Paper elevation={1} sx={{ borderRadius: 2 }}>
+					<Tabs
+						value={tabActual}
+						onChange={(_, newValue) => setTabActual(newValue)}
+						variant="scrollable"
+						scrollButtons="auto"
+						indicatorColor="primary"
+						textColor="primary"
+						sx={{
+							px: 2,
+							"& .MuiTab-root": {
+								fontWeight: 700,
+								fontSize: "0.95rem",
+								py: 2,
+							},
+						}}
+					>
+						<Tab label="👨‍🎓 Asistencia de Estudiantes" />
+						<Tab label="👨‍🏫 Asistencia de Docentes y Cargos" />
+						<Tab label="📅 Suspensiones, Feriados y Calendario" />
+					</Tabs>
+				</Paper>
 
-					<Grid item xs={12} md={6}>
-						<DocentesPanel
-							puedeGestionarDocentes={puedeGestionarDocentes}
-							puedeVerDocentes={puedeVerDocentes}
-							esDocenteSolo={esDocenteSolo}
-							docenteDni={docentesAsistencia.docenteDni}
-							setDocenteDni={docentesAsistencia.setDocenteDni}
-							docenteDesde={docentesAsistencia.docenteDesde}
-							setDocenteDesde={docentesAsistencia.setDocenteDesde}
-							docenteHasta={docentesAsistencia.docenteHasta}
-							setDocenteHasta={docentesAsistencia.setDocenteHasta}
-							docenteDiaSemana={docentesAsistencia.docenteDiaSemana}
-							setDocenteDiaSemana={docentesAsistencia.setDocenteDiaSemana}
-							docenteClases={docentesAsistencia.docenteClases}
-							docenteInfo={docentesAsistencia.docenteInfo}
-							cargandoDocente={docentesAsistencia.cargandoDocente}
-							docenteProfesorado={docentesAsistencia.docenteProfesorado}
-							setDocenteProfesorado={docentesAsistencia.setDocenteProfesorado}
-							docentePlan={docentesAsistencia.docentePlan}
-							setDocentePlan={docentesAsistencia.setDocentePlan}
-							docenteMateria={docentesAsistencia.docenteMateria}
-							setDocenteMateria={docentesAsistencia.setDocenteMateria}
-							docenteComision={docentesAsistencia.docenteComision}
-							setDocenteComision={docentesAsistencia.setDocenteComision}
-							docenteFecha={docentesAsistencia.docenteFecha}
-							setDocenteFecha={docentesAsistencia.setDocenteFecha}
-							docenteProfesOptions={docentesAsistencia.docenteProfesOptions}
-							docentePlanOptions={docentesAsistencia.docentePlanOptions}
-							docenteMateriaOptions={docentesAsistencia.docenteMateriaOptions}
-							docenteComisionOptions={docentesAsistencia.docenteComisionOptions}
-							docenteFechaOptions={docentesAsistencia.docenteFechaOptions}
-							docenteClasesFiltradas={docentesAsistencia.docenteClasesFiltradas}
-							handleBuscarDocente={docentesAsistencia.handleBuscarDocente}
-						/>
-					</Grid>
-				</Grid>
+				{/* Contenido de la Pestaña 1: Estudiantes */}
+				{tabActual === 0 && (
+					<EstudiantesPanel
+						puedeGestionarEstudiantes={puedeGestionarEstudiantes}
+						puedeVerEstudiantes={puedeVerEstudiantes}
+						profesoradoOptions={profesoradoOptions}
+						profesoradosLoading={profesoradosLoading}
+						estudianteProfesorado={
+							estudiantesAsistencia.estudianteProfesorado
+						}
+						setEstudianteProfesorado={
+							estudiantesAsistencia.setEstudianteProfesorado
+						}
+						estudiantePlan={estudiantesAsistencia.estudiantePlan}
+						setEstudiantePlan={estudiantesAsistencia.setEstudiantePlan}
+						estudianteMateria={estudiantesAsistencia.estudianteMateria}
+						setEstudianteMateria={estudiantesAsistencia.setEstudianteMateria}
+						estudianteComision={estudiantesAsistencia.estudianteComision}
+						setEstudianteComision={
+							estudiantesAsistencia.setEstudianteComision
+						}
+						estudianteDesde={estudiantesAsistencia.estudianteDesde}
+						setEstudianteDesde={estudiantesAsistencia.setEstudianteDesde}
+						estudianteHasta={estudiantesAsistencia.estudianteHasta}
+						setEstudianteHasta={estudiantesAsistencia.setEstudianteHasta}
+						estudianteResultados={estudiantesAsistencia.estudianteResultados}
+						cargandoEstudiantes={estudiantesAsistencia.cargandoEstudiantes}
+						estudiantePlanOptions={
+							estudiantesAsistencia.estudiantePlanOptions
+						}
+						estudiantePlanesLoading={
+							estudiantesAsistencia.estudiantePlanesLoading
+						}
+						estudianteMateriaOptions={
+							estudiantesAsistencia.estudianteMateriaOptions
+						}
+						estudianteMateriasLoading={
+							estudiantesAsistencia.estudianteMateriasLoading
+						}
+						estudianteComisionOptions={
+							estudiantesAsistencia.estudianteComisionOptions
+						}
+						estudianteComisionesLoading={
+							estudiantesAsistencia.estudianteComisionesLoading
+						}
+						handleBuscarEstudiantes={
+							estudiantesAsistencia.handleBuscarEstudiantes
+						}
+					/>
+				)}
 
-				<CalendarioEventosPanel canManage={puedeGestionarDocentes} />
+				{/* Contenido de la Pestaña 2: Docentes */}
+				{tabActual === 1 && (
+					<DocentesPanel
+						puedeGestionarDocentes={puedeGestionarDocentes}
+						puedeVerDocentes={puedeVerDocentes}
+						esDocenteSolo={esDocenteSolo}
+						docenteDni={docentesAsistencia.docenteDni}
+						setDocenteDni={docentesAsistencia.setDocenteDni}
+						docenteDesde={docentesAsistencia.docenteDesde}
+						setDocenteDesde={docentesAsistencia.setDocenteDesde}
+						docenteHasta={docentesAsistencia.docenteHasta}
+						setDocenteHasta={docentesAsistencia.setDocenteHasta}
+						docenteDiaSemana={docentesAsistencia.docenteDiaSemana}
+						setDocenteDiaSemana={docentesAsistencia.setDocenteDiaSemana}
+						docenteClases={docentesAsistencia.docenteClases}
+						docenteInfo={docentesAsistencia.docenteInfo}
+						cargandoDocente={docentesAsistencia.cargandoDocente}
+						docenteProfesorado={docentesAsistencia.docenteProfesorado}
+						setDocenteProfesorado={docentesAsistencia.setDocenteProfesorado}
+						docentePlan={docentesAsistencia.docentePlan}
+						setDocentePlan={docentesAsistencia.setDocentePlan}
+						docenteMateria={docentesAsistencia.docenteMateria}
+						setDocenteMateria={docentesAsistencia.setDocenteMateria}
+						docenteComision={docentesAsistencia.docenteComision}
+						setDocenteComision={docentesAsistencia.setDocenteComision}
+						docenteFecha={docentesAsistencia.docenteFecha}
+						setDocenteFecha={docentesAsistencia.setDocenteFecha}
+						docenteProfesOptions={docentesAsistencia.docenteProfesOptions}
+						docentePlanOptions={docentesAsistencia.docentePlanOptions}
+						docenteMateriaOptions={docentesAsistencia.docenteMateriaOptions}
+						docenteComisionOptions={docentesAsistencia.docenteComisionOptions}
+						docenteFechaOptions={docentesAsistencia.docenteFechaOptions}
+						docenteClasesFiltradas={docentesAsistencia.docenteClasesFiltradas}
+						handleBuscarDocente={docentesAsistencia.handleBuscarDocente}
+					/>
+				)}
+
+				{/* Contenido de la Pestaña 3: Suspensiones, Feriados y Calendario */}
+				{tabActual === 2 && (
+					<CalendarioEventosPanel canManage={puedeGestionarDocentes} />
+				)}
 			</Stack>
 		</Box>
 	);
