@@ -253,8 +253,9 @@ const PageHeader: React.FC<PageHeaderProps> = ({
 				)}
 				{!puedeInscribirse && !isVentanaLoading && (
 					<Alert severity="warning" sx={{ mt: 1 }}>
-						No hay una ventana de inscripción activa. Cuando se habilite vas a
-						poder inscribirte desde aquí.
+						{puedeGestionar
+							? "No hay una ventana de inscripción activa (ni para estudiantes ni de gestión para Bedelía/Secretaría). Podés habilitar un período de gestión desde Habilitar Fechas."
+							: "No hay una ventana de inscripción activa. Cuando se habilite vas a poder inscribirte desde aquí."}
 					</Alert>
 				)}
 			</Box>
