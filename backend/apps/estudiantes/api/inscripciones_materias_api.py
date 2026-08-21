@@ -766,6 +766,28 @@ def cambio_comision(request, payload: CambioComisionIn):
             ok=False, message="El alumno debe ser estudiante regular para solicitar cambios de comisión."
         )
 
+    # 1.1. VALIDACIÓN ESTRICTA DE VENTANA TEMPORAL DE CAMBIO DE COMISIÓN
+    from core.permissions import can
+    es_gestion = can(request.user, "formalizar_inscripcion") or can(request.user, "editar_estudiantes")
+    hoy = timezone.now().date()
+
+    if es_gestion:
+        tipos_ventana = [VentanaHabilitacion.Tipo.COMISION_GESTION, VentanaHabilitacion.Tipo.COMISION]
+    else:
+        tipos_ventana = [VentanaHabilitacion.Tipo.COMISION]
+
+    ventanas_candidatas = VentanaHabilitacion.objects.filter(
+        tipo__in=tipos_ventana, activo=True, desde__lte=hoy, hasta__gte=hoy
+    ).order_by("-tipo")
+
+    if not ventanas_candidatas.exists():
+        if es_gestion:
+            return 400, ApiResponse(
+                ok=False,
+                message="El período habilitado por Secretaría para cambios de comisión se encuentra cerrado o no iniciado.",
+            )
+        return 400, ApiResponse(ok=False, message="El período de cambios de comisión se encuentra cerrado.")
+
     # Obtener profesorado activo único
     profesorado_activo = carreras_activas.first().profesorado
 
@@ -775,6 +797,27 @@ def cambio_comision(request, payload: CambioComisionIn):
         return 404, ApiResponse(ok=False, message="Comisión de destino no encontrada.")
 
     mat = com_dest.materia
+
+    # Validar régimen (Cuatrimestre / Anual) contra la ventana
+    regimen_permitido = False
+    for v in ventanas_candidatas:
+        if not v.periodo:
+            regimen_permitido = True
+            break
+        allowed = []
+        if v.periodo == "1C_ANUALES":
+            allowed = [Materia.TipoCursada.ANUAL, Materia.TipoCursada.PRIMER_CUATRIMESTRE]
+        elif v.periodo == "2C":
+            allowed = [Materia.TipoCursada.SEGUNDO_CUATRIMESTRE]
+        if mat.regimen in allowed:
+            regimen_permitido = True
+            break
+
+    if not regimen_permitido:
+        return 400, ApiResponse(
+            ok=False,
+            message=f"La materia '{mat.nombre}' no corresponde al período de cambio de comisión habilitado.",
+        )
 
     anio_actual = datetime.now().year
 

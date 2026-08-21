@@ -32,6 +32,7 @@ import {
 	solicitarCambioComision,
 	type VentanaInscripcion,
 } from "@/api/estudiantes";
+import { fetchVentanas } from "@/api/ventanas";
 import BackButton from "@/components/ui/BackButton";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import { useAuth } from "@/context/AuthContext";
@@ -268,9 +269,36 @@ const CambioComisionPage: React.FC = () => {
 		data: ventanaData,
 		isError: ventanaError,
 		isLoading: ventanaLoading,
-	} = useQuery({
-		queryKey: ["cc-ventana"],
-		queryFn: obtenerVentanaMaterias,
+	} = useQuery<VentanaInscripcion | null>({
+		queryKey: ["cc-ventana", canGestionar],
+		queryFn: async () => {
+			if (canGestionar) {
+				const [ventanasGestion, ventanasRegular] = await Promise.all([
+					fetchVentanas({ tipo: "COMISION_GESTION" }).catch((): VentanaInscripcion[] => []),
+					fetchVentanas({ tipo: "COMISION" }).catch((): VentanaInscripcion[] => []),
+				]);
+				const activaGestion = ventanasGestion.find((v: VentanaInscripcion) => isVentanaActiva(v));
+				if (activaGestion) return activaGestion;
+				const activaRegular = ventanasRegular.find((v: VentanaInscripcion) => isVentanaActiva(v));
+				if (activaRegular) return activaRegular;
+
+				const todas = [...ventanasGestion, ...ventanasRegular].sort((a: VentanaInscripcion, b: VentanaInscripcion) => {
+					const dateA = a.desde ? new Date(a.desde).getTime() : 0;
+					const dateB = b.desde ? new Date(b.desde).getTime() : 0;
+					return dateB - dateA;
+				});
+				return todas[0] || null;
+			}
+			const data = await fetchVentanas({ tipo: "COMISION" }).catch((): VentanaInscripcion[] => []);
+			const activa = data.find((v: VentanaInscripcion) => isVentanaActiva(v));
+			if (activa) return activa;
+			const sorted = [...data].sort((a: VentanaInscripcion, b: VentanaInscripcion) => {
+				const dateA = a.desde ? new Date(a.desde).getTime() : 0;
+				const dateB = b.desde ? new Date(b.desde).getTime() : 0;
+				return dateB - dateA;
+			});
+			return sorted[0] || null;
+		},
 	});
 
 	const {
@@ -563,6 +591,11 @@ const CambioComisionPage: React.FC = () => {
 
 	const confirmarSolicitud = React.useCallback(() => {
 		if (!solicitudPendiente) return;
+		if (!ventanaActiva) {
+			setErr("No hay una ventana de cambio de comisión activa.");
+			setSolicitudPendiente(null);
+			return;
+		}
 		const payload: any = {
 			materia_id: solicitudPendiente.materiaId,
 			comision_id: solicitudPendiente.comisionId,
@@ -580,7 +613,7 @@ const CambioComisionPage: React.FC = () => {
 		}
 
 		mSolicitar.mutate(payload);
-	}, [mSolicitar, solicitudPendiente, tab, horarioLab]);
+	}, [mSolicitar, solicitudPendiente, tab, horarioLab, ventanaActiva]);
 
 	const queryError =
 		shouldFetch &&
@@ -826,7 +859,7 @@ const CambioComisionPage: React.FC = () => {
 												base={entrada}
 												otros={inscripcionesConHorario}
 												aprobadas={aprobadas}
-												disabled={mSolicitar.isPending}
+												disabled={mSolicitar.isPending || !ventanaActiva}
 												onSolicitar={(alt) =>
 													abrirConfirmacionSolicitud(entrada, alt)
 												}
