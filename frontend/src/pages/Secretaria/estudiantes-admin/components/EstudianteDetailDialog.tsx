@@ -77,6 +77,7 @@ type Props = {
 	autorizarRendirIsPending?: boolean;
 	onAgregarCarrera?: (profesorado_id: number, anio_ingreso?: number) => void;
 	agregarCarreraIsPending?: boolean;
+	isReadOnly?: boolean;
 	isAdmin?: boolean;
 	isAttp?: boolean;
 	isRectorado?: boolean;
@@ -87,7 +88,7 @@ export function EstudianteDetailDialog({
 	open,
 	onClose,
 	detailQuery,
-		selectedDni,
+	selectedDni,
 	condicionCalculada,
 	control,
 	handleSubmit,
@@ -109,6 +110,7 @@ export function EstudianteDetailDialog({
 	autorizarRendirIsPending,
 	onAgregarCarrera,
 	agregarCarreraIsPending,
+	isReadOnly = false,
 	isAdmin = true,
 	isAttp = false,
 	isRectorado = false,
@@ -270,7 +272,7 @@ export function EstudianteDetailDialog({
 			</DialogContent>
 			<DialogActions sx={{ px: 3, pb: 2, justifyContent: "space-between" }}>
 				<Stack direction="row" spacing={1}>
-					{!isAttp && !isRectorado && (
+					{!isReadOnly && !isAttp && !isRectorado && (
 						<Button
 							color="error"
 							startIcon={<DeleteIcon />}
@@ -282,7 +284,7 @@ export function EstudianteDetailDialog({
 							Eliminar estudiante
 						</Button>
 					)}
-					{(canResetPassword || (!isAttp && !isRectorado)) &&
+					{(canResetPassword || (!isReadOnly && !isAttp && !isRectorado)) &&
 						onResetPassword && (
 							<Button
 								color="warning"
@@ -307,7 +309,7 @@ export function EstudianteDetailDialog({
 					<Button startIcon={<CloseIcon />} onClick={onClose}>
 						Cerrar
 					</Button>
-					{!isAttp && !isRectorado && (
+					{!isReadOnly && !isAttp && !isRectorado && (
 						<Button
 							type="submit"
 							form="estudiante-admin-form"

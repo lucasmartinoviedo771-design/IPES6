@@ -340,7 +340,8 @@ export default function EstudiantesAdminPage() {
 				onAgregarCarrera={(profesorado_id, anio_ingreso) =>
 					agregarCarreraMutation.mutate({ profesorado_id, anio_ingreso })
 				}
-				agregarCarreraIsPending={agregarCarreraMutation.isPending}
+				isReadOnly={isReadOnly}
+				isAdmin={isAdminOrSec}
 				isAttp={isAttp}
 				isRectorado={isRectorado}
 				canResetPassword={canResetPassword}

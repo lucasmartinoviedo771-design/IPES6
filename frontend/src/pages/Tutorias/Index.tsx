@@ -7,6 +7,11 @@ const sections: RoleDashboardSection[] = [
 	{
 		title: "Acompañamiento académico",
 		items: [
+			{
+				...DASHBOARD_ITEMS.STUDENT_MANAGEMENT,
+				title: "Consultar estudiantes",
+				subtitle: "Búsqueda de legajos, datos de contacto y carreras (solo lectura).",
+			},
 			DASHBOARD_ITEMS.TRAJECTORY,
 			DASHBOARD_ITEMS.CURSO_INTRO_PENDIENTES,
 			DASHBOARD_ITEMS.RESGUARDO_MATERIAS,
