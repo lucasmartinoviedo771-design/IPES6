@@ -175,9 +175,24 @@ const CambioComisionAdminPage: React.FC = () => {
 										<Typography variant="body2" fontWeight={600}>
 											{sol.estudiante_nombre}
 										</Typography>
-										<Typography variant="caption" color="text.secondary">
+										<Typography variant="caption" color="text.secondary" display="block">
 											{sol.estudiante_dni}
 										</Typography>
+										{sol.profesorado_origen && (
+											<Chip
+												label={`Origen: ${sol.profesorado_origen}`}
+												size="small"
+												color="info"
+												variant="outlined"
+												sx={{
+													mt: 0.5,
+													fontSize: "0.72rem",
+													height: 22,
+													fontWeight: 600,
+													bgcolor: "info.50",
+												}}
+											/>
+										)}
 									</TableCell>
 									<TableCell>
 										<Typography variant="body2">

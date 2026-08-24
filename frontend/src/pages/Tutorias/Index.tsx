@@ -9,6 +9,7 @@ const sections: RoleDashboardSection[] = [
 		items: [
 			DASHBOARD_ITEMS.TRAJECTORY,
 			DASHBOARD_ITEMS.CURSO_INTRO_PENDIENTES,
+			DASHBOARD_ITEMS.RESGUARDO_MATERIAS,
 			{
 				...DASHBOARD_ITEMS.ANALYTICOS,
 				subtitle: "Revisa el estado para acompañar casos especiales.",
@@ -21,12 +22,15 @@ const sections: RoleDashboardSection[] = [
 		],
 	},
 	{
-		title: "Circuito de equivalencias",
-		items: [DASHBOARD_ITEMS.EQUIVALENCIAS_GESTION],
+		title: "Estructura y Cursadas",
+		items: [
+			DASHBOARD_ITEMS.CARRERAS_VIEW,
+			DASHBOARD_ITEMS.HORARIO_CURSADA,
+		],
 	},
 	{
-		title: "Horarios",
-		items: [DASHBOARD_ITEMS.HORARIO_CURSADA],
+		title: "Circuito de equivalencias",
+		items: [DASHBOARD_ITEMS.EQUIVALENCIAS_GESTION],
 	},
 ];
 

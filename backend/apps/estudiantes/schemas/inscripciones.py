@@ -54,6 +54,7 @@ class SolicitudCambioComisionItem(Schema):
     materia_nombre: str
     anio: int
     profesorado_nombre: str | None = None
+    profesorado_origen: str | None = None
     comision_actual: str | None = None
     comision_solicitada: str
     motivo: str

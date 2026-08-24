@@ -64,7 +64,7 @@ def admin_resguardo_materias(
     )
     from core.models import Correlatividad, Materia
 
-    require(request.user, "editar_estudiantes")
+    require(request.user, "ver_estudiantes")
 
     hoy = date.today()
     resultado = []

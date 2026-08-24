@@ -100,6 +100,7 @@ CAPABILITIES: dict[str, set[str]] = {
         "secretaria",
         "bedel",
         "titulos",
+        "tutor",
         "rectorado",
         "attp",
         "bedel_secretaria",

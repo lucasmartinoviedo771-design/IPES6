@@ -27,6 +27,7 @@ export interface SolicitudCambioComisionDTO {
 	materia_nombre: string;
 	anio: number;
 	profesorado_nombre: string | null;
+	profesorado_origen?: string | null;
 	comision_actual: string | null;
 	comision_solicitada: string;
 	motivo: string;

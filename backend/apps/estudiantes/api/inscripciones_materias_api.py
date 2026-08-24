@@ -720,6 +720,20 @@ def listar_cambios_comision_pendientes(request, dni: str | None = None, profesor
     result = []
     for ins in qs:
         prof = getattr(getattr(getattr(ins.materia, "plan_de_estudio", None), "profesorado", None), "nombre", None)
+        prof_origen = None
+        if ins.materia_origen and ins.materia_origen.plan_de_estudio and ins.materia_origen.plan_de_estudio.profesorado:
+            prof_origen = ins.materia_origen.plan_de_estudio.profesorado.nombre
+        else:
+            ec_activa = (
+                EstudianteCarrera.objects.filter(
+                    estudiante=ins.estudiante, estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
+                )
+                .select_related("profesorado")
+                .first()
+            )
+            if ec_activa and ec_activa.profesorado:
+                prof_origen = ec_activa.profesorado.nombre
+
         result.append(
             SolicitudCambioComisionItem(
                 id=ins.id,
@@ -730,6 +744,7 @@ def listar_cambios_comision_pendientes(request, dni: str | None = None, profesor
                 materia_nombre=ins.materia.nombre if ins.materia_id else "",
                 anio=ins.anio,
                 profesorado_nombre=prof,
+                profesorado_origen=prof_origen,
                 comision_actual=ins.comision.codigo if ins.comision_id else None,
                 comision_solicitada=ins.comision_solicitada.codigo if ins.comision_solicitada_id else "",
                 motivo=ins.get_motivo_cambio_display() if ins.motivo_cambio else "",
