@@ -510,9 +510,13 @@ def cerrar_planilla_cursada(request, planilla_id: int):
                 materia_regularidad = planilla.materia
 
             # Determinar resguardo
+            from apps.estudiantes.api.helpers.misc_utils import _calcular_resguardo_equivalencia
+
             est = fila.estudiante
             legajo_completo = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
-            en_resguardo = not legajo_completo
+            en_resguardo = (not legajo_completo) or _calcular_resguardo_equivalencia(
+                est, materia_regularidad, situacion=situacion
+            )
 
             fecha_cierre = timezone.localdate()
 

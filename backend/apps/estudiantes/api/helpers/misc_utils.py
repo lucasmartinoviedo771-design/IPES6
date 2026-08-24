@@ -217,7 +217,7 @@ def _evaluar_aprobacion(
     """Lógica interna de _tiene_aprobacion_valida, separada para claridad."""
     from core.models import ActaExamenEstudiante
 
-    # 1. Regularidad APR/PRO — re-verifica correlativas APROBADA_PARA_RENDIR en tiempo real
+    # 1. Regularidad APR/PRO — re-verifica correlativas APROBADA_PARA_RENDIR y CI para EDIs en tiempo real
     reg = Regularidad.objects.filter(
         estudiante=estudiante,
         materia=materia,
@@ -240,10 +240,28 @@ def _evaluar_aprobacion(
                 correlativas_ok = False
                 break
 
+        # Si es EDI, requerir CI aprobado
+        if correlativas_ok and (getattr(materia, "is_edi", False) or _es_materia_edi(getattr(materia, "nombre", ""))):
+            from core.models import CursoIntroductorioRegistro, PreinscripcionChecklist
+
+            tiene_ci = bool(getattr(estudiante, "curso_introductorio_aprobado", False))
+            if not tiene_ci:
+                tiene_ci = CursoIntroductorioRegistro.objects.filter(
+                    estudiante=estudiante,
+                    resultado=CursoIntroductorioRegistro.Resultado.APROBADO,
+                ).exists()
+            if not tiene_ci:
+                tiene_ci = PreinscripcionChecklist.objects.filter(
+                    preinscripcion__alumno=estudiante,
+                    curso_introductorio_aprobado=True,
+                ).exists()
+            if not tiene_ci:
+                correlativas_ok = False
+
         if correlativas_ok:
             return True
 
-        # Correlativa de base caducó → auto-sanar el flag en DB sin esperar el cron
+        # Correlativa de base caducó o falta CI → auto-sanar el flag en DB sin esperar el cron
         Regularidad.objects.filter(pk=reg.pk).update(en_resguardo=True)
         # No retornar True — continúa a verificar otras fuentes
 
@@ -334,11 +352,30 @@ def _calcular_resguardo_equivalencia(
     """
     if autorizadas_ids is None:
         autorizadas_ids = set(estudiante.materias_autorizadas.values_list("id", flat=True))
-    if _cache is None:
-        _cache = {}
-
     if materia.id in autorizadas_ids:
         return False
+
+    # REGLA EDI: Para aprobar o regularizar un EDI, el alumno debe tener el Curso Introductorio aprobado.
+    # Si aún no tiene el CI aprobado, la nota se registra pero queda bajo resguardo.
+    if getattr(materia, "is_edi", False) or _es_materia_edi(getattr(materia, "nombre", "")):
+        from core.models import CursoIntroductorioRegistro, PreinscripcionChecklist
+
+        tiene_ci = bool(getattr(estudiante, "curso_introductorio_aprobado", False))
+        if not tiene_ci:
+            # Chequear en registros de cohorte del CI
+            tiene_ci = CursoIntroductorioRegistro.objects.filter(
+                estudiante=estudiante,
+                resultado=CursoIntroductorioRegistro.Resultado.APROBADO,
+            ).exists()
+        if not tiene_ci:
+            # Chequear en checklist de preinscripción
+            tiene_ci = PreinscripcionChecklist.objects.filter(
+                preinscripcion__alumno=estudiante,
+                curso_introductorio_aprobado=True,
+            ).exists()
+
+        if not tiene_ci:
+            return True
 
     req_apr = list(
         _correlatividades_qs(materia, Correlatividad.TipoCorrelatividad.APROBADA_PARA_CURSAR, estudiante).values_list(

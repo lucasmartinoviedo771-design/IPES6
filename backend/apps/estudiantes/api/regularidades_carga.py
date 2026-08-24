@@ -624,23 +624,6 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                         message=f"El/la estudiante {insc.estudiante.dni} tiene baja voluntaria registrada el {insc.baja_fecha}. No se pueden cargar notas.",
                     )
 
-            # D. Bloqueo Institucional EDI
-            if (materia.nombre or "").startswith("EDI: "):
-                try:
-                    checklist = PreinscripcionChecklist.objects.get(preinscripcion__estudiante=insc.estudiante)
-                    if not checklist.curso_introductorio_aprobado and situ_cod in [
-                        Regularidad.Situacion.APROBADO,
-                        Regularidad.Situacion.PROMOCIONADO,
-                        Regularidad.Situacion.REGULAR,
-                    ]:
-                        raise HttpError(
-                            400, f"Alumno {insc.estudiante.dni}: Requiere curso introductorio aprobado para cerrar EDI."
-                        )
-                except PreinscripcionChecklist.DoesNotExist:
-                    raise HttpError(
-                        400, f"Alumno {insc.estudiante.dni}: Sin checklist de ingreso (Requerido para EDI)."
-                    )
-
             # E. Validación de Asistencia según Formato
             # Reglas: Talleres requieren 80% (65% con excepción). Materias estándar requieren 65%.
             asistencia = est_payload.asistencia or 0
