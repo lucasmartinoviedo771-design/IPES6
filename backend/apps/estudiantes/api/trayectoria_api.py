@@ -17,11 +17,12 @@ Lógicas de Negocio Implementadas:
 
 from __future__ import annotations
 
+from datetime import datetime
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
 from apps.common.api_schemas import ApiResponse
-from apps.common.date_utils import format_date, format_datetime
+from apps.common.date_utils import calcular_limite_baja_mesa, format_date, format_datetime
 from core.auth_ninja import JWTAuth
 from core.models import (
     ActaExamenEstudiante,
@@ -315,10 +316,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 },
                 "puede_baja": (
                     insc.estado == InscripcionMesa.Estado.INSCRIPTO
+                    and insc.mesa.tipo != "EXT"  # Mesas extraordinarias son a demanda y no permiten baja
                     and (
-                        (insc.mesa.ventana.desde <= hoy <= insc.mesa.ventana.hasta and insc.mesa.ventana.activo)
-                        if insc.mesa.ventana
-                        else (insc.mesa.fecha > hoy)
+                        datetime.now() <= calcular_limite_baja_mesa(insc.mesa.fecha)
                     )
                 ),
             }

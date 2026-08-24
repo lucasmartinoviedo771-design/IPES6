@@ -628,21 +628,20 @@ def baja_mesa(request, payload: BajaMesaIn):
     if not ins:
         return 400, {"message": "No tiene inscripción activa en esta mesa"}
 
-    # 4. Validar ventana de inscripción (Baja permitida solo si la ventana sigue abierta)
-    if mesa.ventana:
-        ahora = date.today()
-        if ahora > mesa.ventana.hasta or not mesa.ventana.activo:
-            return 400, {
-                "message": f"El período de inscripción para esta mesa ha finalizado (cerró el {format_date(mesa.ventana.hasta)}). Ya no puede cancelar su inscripción."
-            }
-    else:
-        # Si no tiene ventana (mesa especial), aplicamos el límite de 48hs hábiles por defecto
-        limite_baja = calcular_limite_baja_mesa(mesa.fecha)
-        ahora = datetime.now()
-        if ahora > limite_baja:
-            return 400, {
-                "message": f"El plazo para darse de baja venció el {format_datetime(limite_baja)}. No puede cancelar su inscripción."
-            }
+    # 4. Validar tipo de mesa y plazos de anulación
+    if mesa.tipo == MesaExamen.Tipo.EXTRAORDINARIA:
+        return 400, {
+            "message": "Las mesas extraordinarias se generan a demanda por solicitud y no admiten la anulación de la inscripción."
+        }
+
+    # Para Mesas Ordinarias / Especiales: se permite la anulación hasta 48 horas hábiles antes del examen
+    limite_baja = calcular_limite_baja_mesa(mesa.fecha)
+    ahora_dt = datetime.now()
+
+    if ahora_dt > limite_baja:
+        return 400, {
+            "message": f"El plazo para anular la inscripción a esta mesa ordinaria venció 48hs hábiles antes (venció el {format_datetime(limite_baja)})."
+        }
 
     # 5. Cancelar la inscripción
     ins.estado = InscripcionMesa.Estado.CANCELADO

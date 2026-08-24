@@ -1440,24 +1440,42 @@ const MesaExamenPage: React.FC = () => {
 																		</Typography>
 																	</Box>
 																)}
-																<Button
-																	size="small"
-																	color="error"
-																	variant="outlined"
-																	fullWidth
-																	sx={{ mt: 1 }}
-																	onClick={() =>
-																		setPendingBaja({
-																			mesaId: mi.mesa_id,
-																			materiaNombre: mi.materia_nombre,
-																		})
-																	}
-																	disabled={!mi.puede_baja}
-																>
-																	{!mi.puede_baja
-																		? "Baja no permitida (Período cerrado)"
-																		: "Anular inscripción"}
-																</Button>
+																{mi.tipo === "EXT" ? (
+																	<Typography
+																		variant="caption"
+																		sx={{
+																			mt: 1,
+																			p: 1,
+																			borderRadius: 1,
+																			bgcolor: "#f5f5f5",
+																			color: "text.secondary",
+																			textAlign: "center",
+																			display: "block",
+																			fontStyle: "italic",
+																		}}
+																	>
+																		Mesa a demanda (no admite anulación)
+																	</Typography>
+																) : (
+																	<Button
+																		size="small"
+																		color="error"
+																		variant="outlined"
+																		fullWidth
+																		sx={{ mt: 1 }}
+																		onClick={() =>
+																			setPendingBaja({
+																				mesaId: mi.mesa_id,
+																				materiaNombre: mi.materia_nombre,
+																			})
+																		}
+																		disabled={!mi.puede_baja}
+																	>
+																		{!mi.puede_baja
+																			? "Baja no permitida (Límite 48hs vencido)"
+																			: "Anular inscripción"}
+																	</Button>
+																)}
 															</Stack>
 														</Box>
 													</Grid>
