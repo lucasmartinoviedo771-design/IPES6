@@ -58,7 +58,7 @@ export const ROLE_NAV_MAP: Record<string, string[]> = {
 		"carreras",
 	],
 	docente: ["docentes", "mensajes"],
-	tutor: ["tutorias", "mensajes", "reportes", "cursoIntro", "estudiante"],
+	tutor: ["tutorias", "mensajes", "reportes", "cursoIntro"],
 	coordinador: [
 		"coordinacion",
 		"mensajes",
