@@ -246,10 +246,10 @@ export const useInscripcionMateria = () => {
 	});
 
 	const {
-		data: ventanaQData,
+		data: ventanasQData,
 		isError: ventanaQError,
 		isLoading: ventanaQLoading,
-	} = useQuery<VentanaInscripcion | null>({
+	} = useQuery<VentanaInscripcion[]>({
 		queryKey: ["ventana-materias", puedeGestionar],
 		queryFn: async () => {
 			if (puedeGestionar) {
@@ -257,20 +257,27 @@ export const useInscripcionMateria = () => {
 					fetchVentanas({ tipo: "MATERIAS_GESTION" }).catch((): VentanaInscripcion[] => []),
 					fetchVentanas({ tipo: "MATERIAS" }).catch((): VentanaInscripcion[] => []),
 				]);
-				const activaGestion = ventanasGestion.find((v: VentanaInscripcion) => isVentanaActiva(v));
-				if (activaGestion) return activaGestion;
-				const activaRegular = ventanasRegular.find((v: VentanaInscripcion) => isVentanaActiva(v));
-				if (activaRegular) return activaRegular;
+				const activas = [...ventanasGestion, ...ventanasRegular].filter((v: VentanaInscripcion) => isVentanaActiva(v));
+				if (activas.length > 0) return activas;
 
-				// Si ninguna está activa, tomar la más reciente para mostrar las fechas
 				const todas = [...ventanasGestion, ...ventanasRegular].sort((a: VentanaInscripcion, b: VentanaInscripcion) => {
 					const dateA = a.desde ? new Date(a.desde).getTime() : 0;
 					const dateB = b.desde ? new Date(b.desde).getTime() : 0;
 					return dateB - dateA;
 				});
-				return todas[0] || null;
+				return todas.slice(0, 1);
 			}
-			return obtenerVentanaMaterias();
+
+			const data = await fetchVentanas({ tipo: "MATERIAS" }).catch(() => []);
+			const activas = (data || []).filter((v: VentanaInscripcion) => isVentanaActiva(v));
+			if (activas.length > 0) return activas;
+
+			const sortedData = [...(data || [])].sort((a, b) => {
+				const dateA = a.desde ? new Date(a.desde).getTime() : 0;
+				const dateB = b.desde ? new Date(b.desde).getTime() : 0;
+				return dateB - dateA;
+			});
+			return sortedData.slice(0, 1);
 		},
 	});
 
@@ -380,9 +387,22 @@ export const useInscripcionMateria = () => {
 		regularizadas: historialRaw.regularizadas ?? [],
 		inscriptasActuales: historialRaw.inscriptas_actuales ?? [],
 	};
-	const ventana = ventanaQData ?? null;
-	const ventanaActiva = useMemo(() => isVentanaActiva(ventana), [ventana]);
+	const ventanas = ventanasQData ?? [];
+	const ventanasActivas = useMemo(
+		() => ventanas.filter((v) => isVentanaActiva(v)),
+		[ventanas],
+	);
+	const ventana = ventanasActivas[0] || ventanas[0] || null;
+	const ventanaActiva = ventanasActivas.length > 0;
 	const puedeInscribirse = ventanaActiva;
+	const periodosActivos = useMemo(() => {
+		if (ventanasActivas.length === 0) {
+			return ventana?.periodo ? [ventana.periodo] : [];
+		}
+		return Array.from(
+			new Set(ventanasActivas.map((v) => v.periodo).filter(Boolean)),
+		) as Array<"1C_ANUALES" | "2C" | "1C">;
+	}, [ventanasActivas, ventana]);
 	const periodo = (ventana?.periodo ?? null) as "1C_ANUALES" | "2C" | null;
 	const inscripcionesData = inscripcionesQData ?? [];  
 
@@ -409,14 +429,24 @@ export const useInscripcionMateria = () => {
 		return set;
 	}, [inscripcionesData]);
 	const esPeriodoHabilitado = (m: Materia) => {
-		if (!ventanaActiva || !periodo) return true;
-		if (periodo === "1C_ANUALES") {
-			return m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C";
-		}
-		if (periodo === "2C") {
-			return m.cuatrimestre === "2C";
-		}
-		return true;
+		if (!ventanaActiva) return true;
+		if (periodosActivos.length === 0) return true;
+
+		// Si alguna de las ventanas activas no tiene período especificado, habilita todo
+		if (ventanasActivas.some((v) => !v.periodo)) return true;
+
+		return periodosActivos.some((p) => {
+			if (p === "1C_ANUALES") {
+				return m.cuatrimestre === "ANUAL" || m.cuatrimestre === "1C";
+			}
+			if (p === "1C") {
+				return m.cuatrimestre === "1C";
+			}
+			if (p === "2C") {
+				return m.cuatrimestre === "2C";
+			}
+			return true;
+		});
 	};
 
 	const materiaById = useMemo(() => {
