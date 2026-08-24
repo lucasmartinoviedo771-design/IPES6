@@ -662,50 +662,38 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
 													</>
 												)}
 
+												{/* Columnas de Regularidad */}
 												<TableCell align="center" sx={commonCellSx}>
-													{record.tipo === "regularidad"
-														? formatDateToDDMMYY(record.fecha)
-														: "-"}
+													{record.fecha ? formatDateToDDMMYY(record.fecha) : "-"}
 												</TableCell>
 												<TableCell align="center" sx={commonCellSx}>
-													{record.tipo === "regularidad"
-														? formatCondicion(record.condicion)
-														: "-"}
+													{record.condicion ? formatCondicion(record.condicion) : "-"}
 												</TableCell>
 												<TableCell
 													align="center"
 													sx={{ ...commonCellSx, fontWeight: "medium" }}
 												>
-													{record.tipo === "regularidad"
-														? (record.nota ?? "-")
-														: "-"}
+													{record.nota ?? "-"}
 												</TableCell>
 
+												{/* Columnas de Final */}
 												<TableCell align="center" sx={commonCellSx}>
-													{record.tipo === "final"
-														? formatDateToDDMMYY(record.fecha)
-														: "-"}
+													{record.fechaFinal ? formatDateToDDMMYY(record.fechaFinal) : "-"}
 												</TableCell>
 												<TableCell align="center" sx={commonCellSx}>
-													{record.tipo === "final"
-														? formatCondicion(record.condicion)
-														: "-"}
+													{record.condicionFinal ? formatCondicion(record.condicionFinal) : "-"}
 												</TableCell>
 												<TableCell
 													align="center"
 													sx={{ ...commonCellSx, fontWeight: "medium" }}
 												>
-													{record.tipo === "final" ? (record.nota ?? "-") : "-"}
+													{record.notaFinal ?? "-"}
 												</TableCell>
 												<TableCell align="center" sx={commonCellSx}>
-													{record.tipo === "final"
-														? (record.folio ?? "-")
-														: "-"}
+													{record.folio ?? "-"}
 												</TableCell>
 												<TableCell align="center" sx={commonCellSx}>
-													{record.tipo === "final"
-														? (record.libro ?? "-")
-														: "-"}
+													{record.libro ?? "-"}
 												</TableCell>
 											</TableRow>
 										);

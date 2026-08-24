@@ -28,6 +28,9 @@ export interface ExamRecord {
 	fecha_iso?: string;
 	condicion?: string;
 	nota?: string | number;
+	fechaFinal?: string;
+	condicionFinal?: string;
+	notaFinal?: string | number;
 	folio?: string;
 	libro?: string;
 	idFila?: string | number;

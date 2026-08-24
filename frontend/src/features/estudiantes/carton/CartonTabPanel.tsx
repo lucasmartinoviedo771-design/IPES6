@@ -148,34 +148,12 @@ const transformData = (
 		);
 		const hasFinal = Boolean(materia.final);
 
-		if (!hasRegularidad && !hasFinal) {
-			registros.push({
-				...commonData,
-				tipo: "placeholder",
-			});
-			return;
-		}
-
 		const regularidadesList =
 			materia.regularidades && materia.regularidades.length > 0
 				? materia.regularidades
 				: materia.regularidad
 					? [materia.regularidad]
 					: [];
-
-		if (regularidadesList.length > 0) {
-			regularidadesList.forEach((reg) => {
-				registros.push({
-					...commonData,
-					tipo: "regularidad",
-					fecha: reg.fecha || undefined,
-					fecha_iso: reg.fecha_iso || undefined,
-					condicion: reg.condicion || undefined,
-					nota: reg.nota || undefined,
-					en_resguardo: reg.en_resguardo || false,
-				});
-			});
-		}
 
 		const finalesList =
 			materia.finales && materia.finales.length > 0
@@ -184,20 +162,42 @@ const transformData = (
 					? [materia.final]
 					: [];
 
-		if (finalesList.length > 0) {
-			finalesList.forEach((fin) => {
+		const maxRows = Math.max(regularidadesList.length, finalesList.length);
+
+		if (maxRows === 0) {
+			registros.push({
+				...commonData,
+				tipo: "placeholder",
+			});
+		} else {
+			for (let i = 0; i < maxRows; i++) {
+				const reg = regularidadesList[i];
+				const fin = finalesList[i];
+
+				// Determinamos el tipo predominante o combinado
+				const tipo: "regularidad" | "final" | "placeholder" = fin
+					? "final"
+					: reg
+						? "regularidad"
+						: "placeholder";
+
 				registros.push({
 					...commonData,
-					tipo: "final",
-					fecha: fin.fecha || undefined,
-					fecha_iso: fin.fecha_iso || undefined,
-					condicion: fin.condicion || undefined,
-					nota: fin.nota || undefined,
-					folio: fin.folio || undefined,
-					libro: fin.libro || undefined,
-					idFila: fin.id_fila || undefined,
+					tipo,
+					fecha: reg?.fecha || undefined,
+					fecha_iso: reg?.fecha_iso || fin?.fecha_iso || undefined,
+					condicion: reg?.condicion || undefined,
+					nota: reg?.nota || undefined,
+					en_resguardo: reg?.en_resguardo || false,
+					// Datos de final
+					fechaFinal: fin?.fecha || undefined,
+					condicionFinal: fin?.condicion || undefined,
+					notaFinal: fin?.nota || undefined,
+					folio: fin?.folio || undefined,
+					libro: fin?.libro || undefined,
+					idFila: fin?.id_fila || undefined,
 				});
-			});
+			}
 		}
 	});
 
@@ -226,17 +226,7 @@ const transformData = (
 
 		const timeA = a.fecha_iso ? new Date(a.fecha_iso).getTime() : 0;
 		const timeB = b.fecha_iso ? new Date(b.fecha_iso).getTime() : 0;
-
-		// Si tenemos fechas válidas, ordenamos por fecha primero
 		if (timeA && timeB && timeA !== timeB) return timeA - timeB;
-		if (timeA && !timeB) return -1;
-		if (!timeA && timeB) return 1;
-
-		// Si fallamos en fechas ISO, intentamos con el tipo como último recurso pero ya agrupado por materia
-		if (a.tipo !== b.tipo) {
-			if (a.tipo === "regularidad") return -1;
-			if (b.tipo === "regularidad") return 1;
-		}
 
 		return 0;
 	});
