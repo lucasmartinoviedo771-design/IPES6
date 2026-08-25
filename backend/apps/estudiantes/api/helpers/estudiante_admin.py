@@ -316,6 +316,15 @@ def _apply_estudiante_updates(
 
     if fields_to_update:
         est.save(update_fields=list(fields_to_update))
+        if "anio_ingreso" in fields_to_update and est.anio_ingreso:
+            # Sincronizar automáticamente en las carreras activas del estudiante
+            EstudianteCarrera.objects.filter(
+                estudiante=est,
+                anio_ingreso__isnull=True,
+            ).update(
+                anio_ingreso=est.anio_ingreso,
+                cohorte=str(est.anio_ingreso),
+            )
 
     if payload.carreras_update is not None:
         from django.utils import timezone

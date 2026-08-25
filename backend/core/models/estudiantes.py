@@ -188,11 +188,15 @@ class Estudiante(models.Model):
 
     def obtener_anio_ingreso(self, profesorado_id: int) -> int | None:
         detalle = self.carreras_detalle.filter(profesorado_id=profesorado_id).order_by("-updated_at").first()
-        return detalle.anio_ingreso if detalle else None
+        if detalle and detalle.anio_ingreso:
+            return detalle.anio_ingreso
+        return self.anio_ingreso
 
     def obtener_cohorte(self, profesorado_id: int) -> str | None:
         detalle = self.carreras_detalle.filter(profesorado_id=profesorado_id).order_by("-updated_at").first()
-        return detalle.cohorte if detalle and detalle.cohorte else None
+        if detalle and detalle.cohorte:
+            return detalle.cohorte
+        return self.cohorte or (str(self.anio_ingreso) if self.anio_ingreso else None)
 
 
 class EstudianteCarrera(models.Model):
