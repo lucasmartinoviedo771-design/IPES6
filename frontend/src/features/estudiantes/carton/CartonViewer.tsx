@@ -601,8 +601,17 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
 											backgroundColor: "#fff",
 										};
 
-										const enResguardo =
-											record.tipo === "regularidad" && record.en_resguardo;
+										let groupHasResguardo = false;
+										if (isFirstInGroup) {
+											for (let i = index; i < index + rowSpan; i++) {
+												if (data.registros[i]?.en_resguardo) {
+													groupHasResguardo = true;
+													break;
+												}
+											}
+										}
+
+										const enResguardo = groupHasResguardo || Boolean(record.en_resguardo);
 										const resguardoBg = enResguardo ? "#fff7ed" : "#fff";
 										return (
 											<TableRow
