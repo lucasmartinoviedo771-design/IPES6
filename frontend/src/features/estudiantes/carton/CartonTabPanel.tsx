@@ -164,10 +164,16 @@ const transformData = (
 
 		const maxRows = Math.max(regularidadesList.length, finalesList.length);
 
+		const isEnCurso =
+			trayectoria.inscriptas_actuales?.includes(materia.materia_id) &&
+			!hasRegularidad &&
+			!hasFinal;
+
 		if (maxRows === 0) {
 			registros.push({
 				...commonData,
-				tipo: "placeholder",
+				tipo: isEnCurso ? "cursando" : "placeholder",
+				condicion: isEnCurso ? "CURSANDO" : undefined,
 			});
 		} else {
 			for (let i = 0; i < maxRows; i++) {

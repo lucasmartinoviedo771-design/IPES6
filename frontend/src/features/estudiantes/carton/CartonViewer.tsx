@@ -396,6 +396,9 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
 								Situación Académica
 							</Typography>
 							<Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+								<Typography variant="caption" sx={{ color: "#0284c7" }}>
+									<b>CURSANDO:</b> En curso actualmente
+								</Typography>
 								<Typography variant="caption" sx={{ color: "text.secondary" }}>
 									<b>REG:</b> Regular
 								</Typography>
@@ -675,7 +678,18 @@ export const CartonViewer = ({ data }: CartonViewerProps) => {
 												<TableCell align="center" sx={commonCellSx}>
 													{record.fecha ? formatDateToDDMMYY(record.fecha) : "-"}
 												</TableCell>
-												<TableCell align="center" sx={commonCellSx}>
+												<TableCell
+													align="center"
+													sx={{
+														...commonCellSx,
+														fontWeight:
+															record.condicion === "CURSANDO" ? 700 : "normal",
+														color:
+															record.condicion === "CURSANDO"
+																? "#0284c7"
+																: "inherit",
+													}}
+												>
 													{record.condicion ? formatCondicion(record.condicion) : "-"}
 												</TableCell>
 												<TableCell

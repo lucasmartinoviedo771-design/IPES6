@@ -178,7 +178,12 @@ def trayectoria_estudiante(request, dni: str | None = None):
     aprobadas_set: set[int] = set()
     aprobadas_notas: dict[int, str] = {}
     regularizadas_set: set[int] = set()
-    inscriptas_actuales_set: set[int] = set()
+    inscriptas_actuales_set: set[int] = set(
+        InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est,
+            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
+        ).values_list("materia_id", flat=True)
+    )
 
     hoy = timezone.now().date()
 
@@ -556,10 +561,6 @@ def trayectoria_estudiante(request, dni: str | None = None):
                     for reg in regularidades_item_list
                 ]
 
-                # Seleccionamos la regularidad más reciente (o la mejor si hubiera lógica de éxito)
-                # Dado que ya vienen ordenadas por fecha_cierre ASC en regularidades_list, la última es la más reciente.
-                reg_data_legacy = regularidades_data[-1] if regularidades_data else None
-
                 # Unificación de resultados de finales por fecha
                 merged_finales = {}
                 for f in finales_map.get(mat.id, []):
@@ -590,6 +591,36 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
                 # Ordenar finales por fecha ASC
                 carton_finales = sorted(merged_finales.values(), key=lambda x: x["fecha_iso"])
+
+                # Si el estudiante está inscripto actualmente en la materia y no está aprobada:
+                if (mat.id in inscriptas_actuales_set) and (mat.id not in aprobadas_set):
+                    # Obtener la inscripción actual
+                    insc_obj = InscripcionMateriaEstudiante.objects.filter(
+                        estudiante=est,
+                        materia_id=mat.id,
+                        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
+                    ).order_by("-created_at").first()
+
+                    if insc_obj and insc_obj.created_at:
+                        fecha_insc_date = insc_obj.created_at.date()
+                        # Verificamos si no hay ya una regularidad cerrada posterior o igual a la fecha de inscripción
+                        tiene_cierre_posterior = any(
+                            reg.fecha_cierre and reg.fecha_cierre >= fecha_insc_date
+                            for reg in regularidades_item_list
+                        )
+                        if not tiene_cierre_posterior:
+                            regularidades_data.append(
+                                {
+                                    "fecha": format_date(fecha_insc_date),
+                                    "fecha_iso": fecha_insc_date.isoformat(),
+                                    "condicion": "CURSANDO",
+                                    "nota": "-",
+                                    "en_resguardo": False,
+                                }
+                            )
+
+                # Seleccionamos la regularidad más reciente (o la mejor si hubiera lógica de éxito)
+                reg_data_legacy = regularidades_data[-1] if regularidades_data else None
 
                 # Para el 'resumen' del cartón, mostrar el RESULTADO MÁS RECIENTE del final
                 # (o el más exitoso, pero lo más común es el último intento)

@@ -45,6 +45,8 @@ const TrayectoriaPage: React.FC = () => {
 		"admin",
 		"secretaria",
 		"bedel",
+		"bedel_secretaria",
+		"titulos",
 		"tutor",
 		"coordinador",
 		"jefes",

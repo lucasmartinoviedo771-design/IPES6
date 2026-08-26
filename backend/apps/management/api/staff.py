@@ -22,10 +22,13 @@ STAFF_ROLES = ALL_ROLES - {"estudiante", "kiosk"}
 @management_router.get("/staff", response=list[UserSchema], auth=JWTAuth())
 def list_staff(request):
     require(request.user, "asignar_roles")
+    docente_dnis = set(Docente.objects.values_list("persona__dni", flat=True))
     users = User.objects.filter(is_active=True).select_related("profile__persona").prefetch_related("groups")
     res = []
     for u in users:
-        if any(g.name in STAFF_ROLES for g in u.groups.all()):
+        is_docente = u.username in docente_dnis
+        has_staff_role = any(g.name in STAFF_ROLES for g in u.groups.all())
+        if has_staff_role or is_docente:
             persona = getattr(getattr(u, "profile", None), "persona", None)
             res.append(
                 UserSchema(

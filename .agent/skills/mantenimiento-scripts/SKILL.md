@@ -101,6 +101,16 @@ Esta skill es el punto de entrada y catálogo obligatorio para todas las tareas 
 
 ---
 
+### 8. 🔍 Auditoría de Inscripciones a Materias (Quién y Cuándo inscribió)
+* **Script:** [`backend/scripts/audit_student_inscriptions.py`](file:///home/ipesrg/sistema-gestion/backend/scripts/audit_student_inscriptions.py)
+* **Cuándo usar:** Cuando se requiera saber a qué materias/comisiones está inscripto un alumno por DNI, conociendo con precisión la fecha, hora exacta (hora de Argentina) y el operador o usuario que registró el movimiento en el sistema.
+* **Comando:**
+  ```bash
+  docker exec ipes6-backend-dev /app/.venv/bin/python /app/scripts/audit_student_inscriptions.py <DNI>
+  ```
+
+---
+
 ## ⚡ Regla de Ejecución en Docker
 
 Dado que la base de datos MySQL corre en el contenedor `ipes6-db-dev` bajo la red Docker interna (`db`), **todo script de backend debe ejecutarse mediante:**

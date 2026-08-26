@@ -20,7 +20,7 @@ export interface StudentInfo {
 }
 
 export interface ExamRecord {
-	tipo: "regularidad" | "final" | "placeholder";
+	tipo: "regularidad" | "final" | "placeholder" | "cursando";
 	anio: string;
 	cuatrimestre: string;
 	espacioCurricular: string;

@@ -49,11 +49,19 @@ Este documento registra los scripts disponibles para operaciones recurrentes, co
 * **Archivo:** [`backend/scripts/migrar_estudiantes.py`](file:///home/ipesrg/sistema-gestion/backend/scripts/migrar_estudiantes.py)
 * **Descripción:** Traspasa en bloque estudiantes inscriptos desde comisiones duplicadas/erróneas a la comisión activa correspondiente.
 
----
-
 ### 5. Vinculación Automática de Horarios a Comisiones
 * **Archivo:** [`backend/scripts/vincular_horarios_comisiones.py`](file:///home/ipesrg/sistema-gestion/backend/scripts/vincular_horarios_comisiones.py)
 * **Descripción:** Asocia cada comisión activa a su `HorarioCatedra` correspondiente y regenera snapshots de asistencia.
+
+---
+
+### 6. 🔍 Auditoría de Inscripciones a Materias (Quién y Cuándo inscribió)
+* **Archivo:** [`backend/scripts/audit_student_inscriptions.py`](file:///home/ipesrg/sistema-gestion/backend/scripts/audit_student_inscriptions.py)
+* **Descripción:** Consulta las materias y comisiones a las que está inscripto un alumno por DNI, detallando el operador que realizó la carga y la fecha/hora exacta (hora de Argentina).
+* **Ejecución:**
+  ```bash
+  docker exec ipes6-backend-dev /app/.venv/bin/python /app/scripts/audit_student_inscriptions.py <DNI>
+  ```
 
 ---
 

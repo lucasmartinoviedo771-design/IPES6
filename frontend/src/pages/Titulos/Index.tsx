@@ -7,6 +7,7 @@ const sections: RoleDashboardSection[] = [
 	{
 		title: "Documentación de Títulos",
 		items: [
+			DASHBOARD_ITEMS.TRAJECTORY,
 			DASHBOARD_ITEMS.EQUIV_WORKFLOW_TITULOS,
 			DASHBOARD_ITEMS.ANALYTICOS,
 			{

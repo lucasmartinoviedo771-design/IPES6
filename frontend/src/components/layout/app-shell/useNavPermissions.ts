@@ -91,7 +91,8 @@ export const useNavPermissions = (user: User, roleOverride: string | null) => {
 	);
 	const canEstudiantePanel = isNavAllowed(
 		"estudiante",
-		can("ver_estudiantes") && !hasAnyRole(user, ["estudiante"]),
+		can("ver_estudiantes") &&
+			!hasAnyRole(user, ["estudiante", "titulos", "equivalencias"]),
 	);
 	const canPrimeraCarga = isNavAllowed("primeraCarga", can("primera_carga"));
 	const canAttpPanel = isNavAllowed(
