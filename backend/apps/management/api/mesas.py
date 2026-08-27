@@ -280,7 +280,11 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
 def list_solicitudes(request, ventana_id: int | None = None, estado: str | None = None):
     require(request.user, "editar_estructura")
 
-    qs = SolicitudMesa.objects.select_related("estudiante__persona", "materia__plan_de_estudio__profesorado").all()
+    qs = SolicitudMesa.objects.select_related(
+        "estudiante__persona",
+        "materia__plan_de_estudio__profesorado",
+        "mesa_asignada",
+    ).all()
 
     if ventana_id:
         qs = qs.filter(ventana_id=ventana_id)
@@ -309,6 +313,8 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
             modalidad_display=s.get_modalidad_display(),
             observaciones=s.observaciones,
             mesa_asignada_id=s.mesa_asignada_id,
+            fecha_mesa=s.mesa_asignada.fecha if s.mesa_asignada else None,
+            hora_mesa=s.mesa_asignada.hora_desde.strftime("%H:%M") if s.mesa_asignada and s.mesa_asignada.hora_desde else None,
         )
         for s in qs.order_by("-fecha_solicitud")
     ]

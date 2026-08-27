@@ -639,6 +639,8 @@ export interface SolicitudMesaOutDTO {
 	modalidad_display?: string;
 	observaciones?: string;
 	mesa_asignada_id?: number;
+	fecha_mesa?: string;
+	hora_mesa?: string;
 }
 
 export interface SolicitudMesaAdminDTO extends SolicitudMesaOutDTO {

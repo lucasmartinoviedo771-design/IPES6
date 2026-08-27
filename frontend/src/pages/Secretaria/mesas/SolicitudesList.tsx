@@ -72,18 +72,69 @@ export const SolicitudesList: React.FC = () => {
 		numero_mesa: "",
 	});
 
-	const handleEditMesaClick = (s: SolicitudMesaAdminDTO) => {
+	const handleEditMesaClick = async (s: SolicitudMesaAdminDTO) => {
 		setSelectedSolicitud(s);
-		setEditMesaData({
-			fecha: s.fecha_solicitud ? s.fecha_solicitud.substring(0, 10) : "",
-			hora_desde: "",
-			docente_presidente_id: "",
-			docente_vocal1_id: "",
-			docente_vocal2_id: "",
-			aula: "",
-			cupo: 40,
-			numero_mesa: "",
-		});
+		if (s.mesa_asignada_id) {
+			try {
+				const planilla = await obtenerMesaPlanilla(s.mesa_asignada_id);
+				setEditMesaData({
+					fecha: planilla.fecha ? planilla.fecha.substring(0, 10) : (s.fecha_solicitud ? s.fecha_solicitud.substring(0, 10) : ""),
+					hora_desde: planilla.hora_desde || "",
+					docente_presidente_id: "",
+					docente_vocal1_id: "",
+					docente_vocal2_id: "",
+					aula: "",
+					cupo: 40,
+					numero_mesa: planilla.numero_mesa ? String(planilla.numero_mesa) : "",
+				});
+
+				// Buscar IDs de los docentes si coinciden los nombres en la lista de docentes cargada
+				const pres = docentes.find(
+					(d) =>
+						planilla.tribunal_presidente &&
+						`${d.apellido}, ${d.nombre}`.toUpperCase() === planilla.tribunal_presidente.toUpperCase(),
+				);
+				const voc1 = docentes.find(
+					(d) =>
+						planilla.tribunal_vocal1 &&
+						`${d.apellido}, ${d.nombre}`.toUpperCase() === planilla.tribunal_vocal1.toUpperCase(),
+				);
+				const voc2 = docentes.find(
+					(d) =>
+						planilla.tribunal_vocal2 &&
+						`${d.apellido}, ${d.nombre}`.toUpperCase() === planilla.tribunal_vocal2.toUpperCase(),
+				);
+
+				setEditMesaData((prev) => ({
+					...prev,
+					docente_presidente_id: pres ? String(pres.id) : "",
+					docente_vocal1_id: voc1 ? String(voc1.id) : "",
+					docente_vocal2_id: voc2 ? String(voc2.id) : "",
+				}));
+			} catch (_err) {
+				setEditMesaData({
+					fecha: s.fecha_solicitud ? s.fecha_solicitud.substring(0, 10) : "",
+					hora_desde: "",
+					docente_presidente_id: "",
+					docente_vocal1_id: "",
+					docente_vocal2_id: "",
+					aula: "",
+					cupo: 40,
+					numero_mesa: "",
+				});
+			}
+		} else {
+			setEditMesaData({
+				fecha: s.fecha_solicitud ? s.fecha_solicitud.substring(0, 10) : "",
+				hora_desde: "",
+				docente_presidente_id: "",
+				docente_vocal1_id: "",
+				docente_vocal2_id: "",
+				aula: "",
+				cupo: 40,
+				numero_mesa: "",
+			});
+		}
 		setOpenEditMesaDialog(true);
 	};
 
@@ -114,7 +165,7 @@ export const SolicitudesList: React.FC = () => {
 			setOpenEditMesaDialog(false);
 			setSelectedSolicitud(null);
 			await load();
-					} catch (e: any) {
+		} catch (e: any) {
 			alert(e.response?.data?.message || "Error al actualizar la mesa");
 		}
 	};
@@ -366,7 +417,7 @@ export const SolicitudesList: React.FC = () => {
         <span><b>PLAN:</b> ${planilla.plan_resolucion || "-"}</span>
       </div>
       <div class="info"><b>PROFESOR TITULAR:</b> ${(planilla.tribunal_presidente || "").toUpperCase()}</div>
-      <div class="info"><b>PROFESORES/AS VOCALES:</b> ________________________________</div>
+      <div class="info"><b>PROFESORES/AS VOCALES:</b> ${vocales || "________________________________"}</div>
 
       <table>
         <thead><tr>
@@ -390,9 +441,9 @@ export const SolicitudesList: React.FC = () => {
       <div class="obs"><b>OBSERVACIONES:</b><div class="obs-line"></div><div class="obs-line"></div></div>
 
       <div class="firmas">
-        <div class="firma-box"><div class="linea-firma"></div><div class="rol">Vocal</div></div>
+        <div class="firma-box"><div class="linea-firma">${(planilla.tribunal_vocal1 || "").toUpperCase()}</div><div class="rol">Vocal</div></div>
         <div class="firma-box"><div class="linea-firma">${(planilla.tribunal_presidente || "").toUpperCase()}</div><div class="rol">Presidente</div></div>
-        <div class="firma-box"><div class="linea-firma"></div><div class="rol">Vocal</div></div>
+        <div class="firma-box"><div class="linea-firma">${(planilla.tribunal_vocal2 || "").toUpperCase()}</div><div class="rol">Vocal</div></div>
       </div>
       <div class="footer">"Las Islas Malvinas, Georgia y Sándwich del Sur, son y serán Argentinas"</div>
     </body></html>`;
@@ -427,7 +478,8 @@ export const SolicitudesList: React.FC = () => {
 				<Table size="small">
 					<TableHead sx={{ bgcolor: "grey.50" }}>
 						<TableRow>
-							<TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>Fecha Pedido</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>Fecha Mesa</TableCell>
 							<TableCell sx={{ fontWeight: 700 }}>Estudiante</TableCell>
 							<TableCell sx={{ fontWeight: 700 }}>DNI</TableCell>
 							<TableCell sx={{ fontWeight: 700 }}>Materia</TableCell>
@@ -443,6 +495,18 @@ export const SolicitudesList: React.FC = () => {
 						{solicitudes.map((s) => (
 							<TableRow key={s.id} hover>
 								<TableCell>{formatDate(s.fecha_solicitud)}</TableCell>
+								<TableCell>
+									{s.estado === "PRO" && s.fecha_mesa ? (
+										<Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+											{formatDate(s.fecha_mesa)}
+											{s.hora_mesa ? ` (${s.hora_mesa} hs)` : ""}
+										</Typography>
+									) : (
+										<Typography variant="caption" color="text.secondary">
+											—
+										</Typography>
+									)}
+								</TableCell>
 								<TableCell>{s.estudiante_nombre}</TableCell>
 								<TableCell>{s.estudiante_dni}</TableCell>
 								<TableCell>{s.materia_nombre}</TableCell>
