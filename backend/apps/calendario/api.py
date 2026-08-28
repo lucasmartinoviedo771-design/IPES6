@@ -1,3 +1,5 @@
+from apps.common.audit import log_action_from_request, snapshot
+from core.models import AuditLog
 from datetime import time
 
 from django.db.models import F, Q
@@ -206,6 +208,17 @@ def create_horario_catedra(request, payload: HorarioCatedraIn):
 
         comisiones = Comision.objects.filter(materia=materia, turno_id=payload.turno_id, horario__isnull=True)
         comisiones.update(horario=hc)
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.CREATE if created else AuditLog.Accion.OTHER,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"{'Creación' if created else 'Obtención'} de horario de cátedra para {materia.nombre}",
+        entidad="HorarioCatedra",
+        entidad_id=hc.id,
+        after=snapshot(hc),
+        metadata={"materia_id": materia.id, "materia_nombre": materia.nombre, "turno_id": payload.turno_id, "anio_academico": payload.anio_academico},
+    )
     return hc
 
 
@@ -220,16 +233,46 @@ def get_horario_catedra(request, horario_id: int):
 def update_horario_catedra(request, horario_id: int, payload: HorarioCatedraIn):
     hc = get_object_or_404(HorarioCatedra, id=horario_id)
     _ensure_structure_edit(request.user, hc.espacio.plan_de_estudio.profesorado_id)
+    before_snap = snapshot(hc)
     for attr, value in payload.dict().items():
         setattr(hc, attr, value)
     hc.save()
+    after_snap = snapshot(hc)
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Modificación de horario de cátedra ID {hc.id} ({hc.espacio.nombre if hasattr(hc, 'espacio') and hc.espacio else ''})",
+        entidad="HorarioCatedra",
+        entidad_id=hc.id,
+        before=before_snap,
+        after=after_snap,
+    )
     return hc
 
 
 @router.delete("/horarios_catedra/{horario_id}", response={204: None}, auth=JWTAuth())
 def delete_horario_catedra(request, horario_id: int):
-    hc = get_object_or_404(HorarioCatedra, id=horario_id)
+    hc = get_object_or_404(HorarioCatedra.objects.select_related("espacio", "turno"), id=horario_id)
     _ensure_structure_edit(request.user, hc.espacio.plan_de_estudio.profesorado_id)
+    
+    before_snap = snapshot(hc)
+    detalles_snap = [snapshot(d) for d in hc.detalles.all()]
+    materia_nombre = hc.espacio.nombre if hc.espacio else ""
+    turno_nombre = hc.turno.nombre if hc.turno else ""
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.DELETE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Eliminación de horario de cátedra: {materia_nombre} (Turno {turno_nombre}, Año {hc.anio_academico})",
+        entidad="HorarioCatedra",
+        entidad_id=hc.id,
+        before=before_snap,
+        metadata={"materia_nombre": materia_nombre, "turno": turno_nombre, "anio_academico": hc.anio_academico, "detalles": detalles_snap},
+    )
+
     hc.delete()
     return 204, None
 
@@ -330,14 +373,48 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
                 message=f"Conflicto de docente: El docente asignado ya tiene clase en {conf.horario_catedra.espacio.nombre} ({conf.horario_catedra.espacio.plan_de_estudio.profesorado.nombre})",
             )
 
-    detalle, _ = HorarioCatedraDetalle.objects.get_or_create(horario_catedra=hc, bloque=bloque)
+    detalle, created = HorarioCatedraDetalle.objects.get_or_create(horario_catedra=hc, bloque=bloque)
+    if created:
+        log_action_from_request(
+            request,
+            accion=AuditLog.Accion.CREATE,
+            tipo_accion=AuditLog.TipoAccion.CRUD,
+            detalle_accion=f"Asignación de bloque {bloque.dia} {bloque.hora_desde}-{bloque.hora_hasta} a {hc.espacio.nombre if hc.espacio else 'Horario'}",
+            entidad="HorarioCatedraDetalle",
+            entidad_id=detalle.id,
+            after=snapshot(detalle),
+            metadata={"horario_id": hc.id, "bloque_id": bloque.id, "dia": bloque.dia, "hora_desde": str(bloque.hora_desde), "hora_hasta": str(bloque.hora_hasta)},
+        )
     return detalle
 
 
 @router.delete("/horarios_catedra_detalles/{detalle_id}", response={204: None}, auth=JWTAuth())
 def delete_horario_detalle(request, detalle_id: int):
-    detalle = get_object_or_404(HorarioCatedraDetalle, id=detalle_id)
+    detalle = get_object_or_404(HorarioCatedraDetalle.objects.select_related("horario_catedra__espacio", "bloque"), id=detalle_id)
     _ensure_structure_edit(request.user, detalle.horario_catedra.espacio.plan_de_estudio.profesorado_id)
+    
+    before_snap = snapshot(detalle)
+    bloque = detalle.bloque
+    materia_nombre = detalle.horario_catedra.espacio.nombre if detalle.horario_catedra.espacio else ""
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.DELETE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Eliminación de bloque {bloque.dia} {bloque.hora_desde}-{bloque.hora_hasta} de {materia_nombre}",
+        entidad="HorarioCatedraDetalle",
+        entidad_id=detalle.id,
+        before=before_snap,
+        metadata={
+            "horario_id": detalle.horario_catedra_id,
+            "bloque_id": bloque.id,
+            "dia": bloque.dia,
+            "hora_desde": str(bloque.hora_desde),
+            "hora_hasta": str(bloque.hora_hasta),
+            "materia_nombre": materia_nombre,
+        },
+    )
+
     detalle.delete()
     return 204, None
 

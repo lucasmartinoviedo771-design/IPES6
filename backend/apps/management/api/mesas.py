@@ -1,3 +1,5 @@
+from apps.common.audit import log_action_from_request, snapshot
+from core.models import AuditLog
 from datetime import datetime
 
 from django.db import transaction
@@ -183,6 +185,16 @@ def create_mesa(request, payload: MesaIn):
         numero_mesa=payload.numero_mesa,
         estudiante_exclusivo=est_exclusivo,
     )
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.CREATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Creación de mesa de examen: {materia.nombre} ({mesa.fecha} {mesa.hora_desde})",
+        entidad="MesaExamen",
+        entidad_id=mesa.id,
+        after=snapshot(mesa),
+        metadata={"materia_id": materia.id, "materia_nombre": materia.nombre, "tipo": mesa.tipo, "modalidad": mesa.modalidad},
+    )
     return _serialize_mesa(mesa)
 
 
@@ -209,15 +221,49 @@ def update_mesa(request, mesa_id: int, payload: MesaIn):
     elif payload.estudiante_exclusivo_dni is None and mesa.tipo == "ESP":
         mesa.estudiante_exclusivo = None
 
+    before_snap = snapshot(mesa)
     mesa.save()
+    after_snap = snapshot(mesa)
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Modificación de mesa de examen ID {mesa.id}: {mesa.materia.nombre} ({mesa.fecha})",
+        entidad="MesaExamen",
+        entidad_id=mesa.id,
+        before=before_snap,
+        after=after_snap,
+    )
     return _serialize_mesa(mesa)
 
 
 @management_router.delete("/mesas/{mesa_id}", response={204: None}, auth=JWTAuth())
 def delete_mesa(request, mesa_id: int):
     require(request.user, "editar_estructura")
-    mesa = get_object_or_404(MesaExamen, id=mesa_id)
+    mesa = get_object_or_404(MesaExamen.objects.select_related("materia__plan_de_estudio__profesorado"), id=mesa_id)
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
+    
+    before_snap = snapshot(mesa)
+    inscripciones_count = getattr(mesa, 'inscripciones', None) and mesa.inscripciones.count() or 0
+    materia_nombre = mesa.materia.nombre if mesa.materia else ""
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.DELETE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Eliminación de mesa de examen ID {mesa.id}: {materia_nombre} ({mesa.fecha})",
+        entidad="MesaExamen",
+        entidad_id=mesa.id,
+        before=before_snap,
+        metadata={
+            "materia_nombre": materia_nombre,
+            "fecha": str(mesa.fecha),
+            "hora_desde": str(mesa.hora_desde) if mesa.hora_desde else "",
+            "inscripciones_previas": inscripciones_count,
+        },
+    )
+
     mesa.delete()
     return 204, None
 
@@ -335,7 +381,21 @@ def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = 
                 InscripcionMesa.objects.get_or_create(
                     mesa_id=mesa_id, estudiante_id=sol.estudiante_id, defaults={"estado": "INS"}
                 )
+        before_snap = snapshot(sol)
         sol.save()
+        after_snap = snapshot(sol)
+
+        log_action_from_request(
+            request,
+            accion=AuditLog.Accion.UPDATE,
+            tipo_accion=AuditLog.TipoAccion.CRUD,
+            detalle_accion=f"Procesamiento solicitud mesa ID {sol.id} ({sol.materia.nombre}): {sol.estado}",
+            entidad="SolicitudMesa",
+            entidad_id=sol.id,
+            before=before_snap,
+            after=after_snap,
+            metadata={"estado_nuevo": sol.estado, "mesa_id": mesa_id, "estudiante_id": sol.estudiante_id},
+        )
 
     return SolicitudMesaOut(
         id=sol.id,

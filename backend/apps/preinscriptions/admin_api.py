@@ -1,3 +1,5 @@
+from apps.common.audit import log_action_from_request, snapshot
+from core.models import AuditLog
 """
 API administrativa para la gestión de Preinscripciones.
 Permite a bedeles y administradores listar, filtrar, modificar y confirmar
@@ -87,7 +89,22 @@ def list_preinscriptions(request, anio: int | None = None, carrera_id: int | Non
 @router.delete("/{pre_id}")
 def delete_preinscription(request, pre_id: int):
     """Elimina una solicitud de preinscripción (acción destructiva)."""
-    pre = get_object_or_404(Preinscripcion, id=pre_id)
+    pre = get_object_or_404(Preinscripcion.objects.select_related("alumno__persona", "carrera"), id=pre_id)
+    before_snap = snapshot(pre)
+    alumno_nombre = f"{pre.alumno.persona.apellido}, {pre.alumno.persona.nombre}" if pre.alumno and hasattr(pre.alumno, 'persona') and pre.alumno.persona else ""
+    carrera_nombre = pre.carrera.nombre if pre.carrera else ""
+
+    log_action_from_request(
+        request,
+        accion=AuditLog.Accion.DELETE,
+        tipo_accion=AuditLog.TipoAccion.CRUD,
+        detalle_accion=f"Eliminación de preinscripción ID {pre.id}: {alumno_nombre} ({carrera_nombre})",
+        entidad="Preinscripcion",
+        entidad_id=pre.id,
+        before=before_snap,
+        metadata={"alumno": alumno_nombre, "carrera": carrera_nombre, "anio": pre.anio, "estado": pre.estado},
+    )
+
     pre.delete()
     return {"success": True}
 
@@ -116,6 +133,16 @@ def confirm_preinscription(request, pre_id: int):
         # Creación del vínculo académico formal si no existe
         EstudianteCarrera.objects.get_or_create(
             estudiante=estudiante, profesorado=pre.carrera, defaults={"anio_ingreso": pre.anio}
+        )
+
+        log_action_from_request(
+            request,
+            accion=AuditLog.Accion.UPDATE,
+            tipo_accion=AuditLog.TipoAccion.CRUD,
+            detalle_accion=f"Confirmación y aprobación de preinscripción ID {pre.id}: {estudiante.persona.apellido}, {estudiante.persona.nombre}",
+            entidad="Preinscripcion",
+            entidad_id=pre.id,
+            metadata={"estudiante_id": estudiante.id, "carrera_id": pre.carrera_id, "anio": pre.anio},
         )
 
     return {"success": True}

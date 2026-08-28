@@ -12,11 +12,13 @@ from django.http import HttpResponseRedirect, JsonResponse
 from ninja import Router
 from pydantic import BaseModel
 
+from apps.common.audit import log_action, log_action_from_request
 from apps.common.constants import AppErrorCode
 from apps.common.error_schemas import ErrorResponse
 from apps.common.errors import AppError
 from core.auth_ninja import JWTAuth
 from core.authentication.jwt_service import JWTService
+from core.models import AuditLog
 
 router = Router(auth=None)  # <- Permitimos acceso público a login, etc.
 
@@ -284,6 +286,18 @@ def login(request, payload: LoginIn):
     if not user:
         attempts = cache.get(cache_key, 0) + 1
         cache.set(cache_key, attempts, timeout=window)
+        # Log intento fallido
+        log_action_from_request(
+            request,
+            user=u,
+            accion=AuditLog.Accion.LOGIN,
+            tipo_accion=AuditLog.TipoAccion.AUTH,
+            detalle_accion=f"Intento de inicio de sesión fallido para {payload.login[:50]}",
+            entidad="User",
+            entidad_id=u.id if u else None,
+            resultado=AuditLog.Resultado.ERROR,
+            metadata={"login_ingresado": payload.login[:50]},
+        )
         if attempts >= limit:
             raise AppError(
                 429, AppErrorCode.RATE_LIMITED, "Demasiados intentos fallidos. Intenta nuevamente más tarde."
@@ -291,6 +305,18 @@ def login(request, payload: LoginIn):
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Credenciales inválidas.")
 
     cache.delete(cache_key)
+
+    # Log login exitoso
+    log_action_from_request(
+        request,
+        user=user,
+        accion=AuditLog.Accion.LOGIN,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion=f"Inicio de sesión exitoso: {user.username}",
+        entidad="User",
+        entidad_id=user.id,
+        resultado=AuditLog.Resultado.OK,
+    )
 
     access_token = JWTService.create_access_token(user.id)
     refresh_token = JWTService.create_refresh_token(user.id)
@@ -373,6 +399,17 @@ def change_password(request, payload: ChangePasswordIn):
     user.set_password(payload.new_password)
     user.save(update_fields=["password"])
 
+    log_action_from_request(
+        request,
+        user=user,
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion="Cambio de contraseña",
+        entidad="User",
+        entidad_id=user.id,
+        resultado=AuditLog.Resultado.OK,
+    )
+
     estudiante = getattr(user, "estudiante", None)
     if estudiante and estudiante.must_change_password:
         estudiante.must_change_password = False
@@ -388,6 +425,17 @@ def change_password(request, payload: ChangePasswordIn):
 
 @router.post("/logout/")
 def logout(request):
+    if getattr(request, "user", None) and request.user.is_authenticated:
+        log_action_from_request(
+            request,
+            user=request.user,
+            accion=AuditLog.Accion.LOGOUT,
+            tipo_accion=AuditLog.TipoAccion.AUTH,
+            detalle_accion=f"Cierre de sesión: {request.user.username}",
+            entidad="User",
+            entidad_id=request.user.id,
+            resultado=AuditLog.Resultado.OK,
+        )
     response = JsonResponse({"detail": "Sesión cerrada correctamente."})
     _clear_jwt_cookies(response)
     return response
@@ -515,6 +563,18 @@ def google_callback(request, code: str | None = None, error: str | None = None, 
             AppErrorCode.AUTHENTICATION_FAILED,
             f"Tu cuenta de Google ({email}) no esta habilitada en el sistema. Usa tu usuario y contrasena o pedi acceso al administrador.",
         )
+
+    log_action_from_request(
+        request,
+        user=user,
+        accion=AuditLog.Accion.LOGIN,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion=f"Inicio de sesión exitoso vía Google OAuth: {email}",
+        entidad="User",
+        entidad_id=user.id,
+        resultado=AuditLog.Resultado.OK,
+        metadata={"email": email, "provider": "google"},
+    )
 
     access_token = JWTService.create_access_token(user.id)
     refresh_token = JWTService.create_refresh_token(user.id)
