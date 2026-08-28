@@ -50,11 +50,12 @@ def admin_resguardo_materias(
     request,
     profesorado_id: int | None = None,
     dni: str | None = None,
+    estado_academico: str = "ACT",
 ):
     """
     Lista todas las Regularidades y Equivalencias con en_resguardo=True,
     con el motivo detallado de por qué están en resguardo.
-    Filtrable por profesorado y DNI.
+    Filtrable por profesorado, DNI y estado académico del estudiante ('ACT', 'INA', 'ALL').
     """
     from datetime import date
 
@@ -124,15 +125,27 @@ def admin_resguardo_materias(
         ]
         return list(dict.fromkeys(faltantes))
 
-    # Estudiantes activos en el profesorado indicado
-
-    activos_en_prof_qs = EstudianteCarrera.objects.filter(estado_academico="ACT")
+    # Estudiantes según estado académico en el profesorado indicado
+    estudiantes_prof_qs = EstudianteCarrera.objects.all()
     if profesorado_id:
-        activos_en_prof_qs = activos_en_prof_qs.filter(profesorado_id=profesorado_id)
-    activos_ids = activos_en_prof_qs.values_list("estudiante_id", flat=True)
+        estudiantes_prof_qs = estudiantes_prof_qs.filter(profesorado_id=profesorado_id)
+
+    estado_upper = (estado_academico or "ACT").upper().strip()
+    if estado_upper == "ACT":
+        estudiantes_prof_qs = estudiantes_prof_qs.filter(estado_academico="ACT")
+    elif estado_upper == "INA":
+        estudiantes_prof_qs = estudiantes_prof_qs.exclude(estado_academico="ACT")
+    # Si es 'ALL' o 'TODOS', no se aplica filtro de estado académico
+
+    estudiantes_ids = estudiantes_prof_qs.values_list("estudiante_id", flat=True)
+
+    # Mapa de estado académico por estudiante para mostrar en el listado
+    estados_academicos = dict(
+        estudiantes_prof_qs.values_list("estudiante_id", "estado_academico")
+    )
 
     # Regularidades en resguardo
-    reg_qs = Regularidad.objects.filter(en_resguardo=True, estudiante_id__in=activos_ids).select_related(
+    reg_qs = Regularidad.objects.filter(en_resguardo=True, estudiante_id__in=estudiantes_ids).select_related(
         "estudiante__persona", "materia__plan_de_estudio__profesorado"
     )
     if profesorado_id:
@@ -149,6 +162,7 @@ def admin_resguardo_materias(
             if reg.materia.plan_de_estudio_id
             else None
         )
+        est_acad = estados_academicos.get(est.id, "ACT")
         resultado.append(
             {
                 "tipo": "REG",
@@ -158,12 +172,13 @@ def admin_resguardo_materias(
                 "materia": reg.materia.nombre,
                 "situacion": reg.get_situacion_display(),
                 "motivos": _motivo_faltantes(est, reg.materia, autorizadas_ids, reg.situacion),
+                "estado_academico": est_acad,
             }
         )
 
     # Equivalencias en resguardo
     eq_qs = EquivalenciaDisposicionDetalle.objects.filter(
-        en_resguardo=True, disposicion__estudiante_id__in=activos_ids
+        en_resguardo=True, disposicion__estudiante_id__in=estudiantes_ids
     ).select_related("disposicion__estudiante__persona", "materia__plan_de_estudio__profesorado")
     if profesorado_id:
         eq_qs = eq_qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
@@ -179,6 +194,7 @@ def admin_resguardo_materias(
             if eq.materia.plan_de_estudio_id
             else None
         )
+        est_acad = estados_academicos.get(est.id, "ACT")
         resultado.append(
             {
                 "tipo": "EQUIV",
@@ -188,6 +204,7 @@ def admin_resguardo_materias(
                 "materia": eq.materia.nombre,
                 "situacion": "Equivalencia",
                 "motivos": _motivo_faltantes(est, eq.materia, autorizadas_ids),
+                "estado_academico": est_acad,
             }
         )
 

@@ -233,10 +233,11 @@ export type ResguardoMateriaItemDTO = {
 	materia: string;
 	situacion: string;
 	motivos: string[];
+	estado_academico?: string;
 };
 
 export async function fetchResguardoMaterias(
-	params: { profesorado_id?: number; dni?: string } = {},
+	params: { profesorado_id?: number; dni?: string; estado_academico?: string } = {},
 ): Promise<ResguardoMateriaItemDTO[]> {
 	const { data } = await client.get<ResguardoMateriaItemDTO[]>(
 		"/estudiantes/admin/resguardo-materias",

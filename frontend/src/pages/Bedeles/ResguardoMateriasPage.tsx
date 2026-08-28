@@ -46,6 +46,9 @@ export default function ResguardoMateriasPage() {
 	const [profesoradoIdCargado, setProfesoradoIdCargado] = useState<
 		number | null
 	>(null);
+	const [estadoAcademico, setEstadoAcademico] = useState<string>("ACT");
+	const [estadoAcademicoCargado, setEstadoAcademicoCargado] =
+		useState<string>("ACT");
 	const [dniSearch, setDniSearch] = useState("");
 	const [nombreSearch, setNombreSearch] = useState("");
 	const [recalculando, setRecalculando] = useState(false);
@@ -63,10 +66,15 @@ export default function ResguardoMateriasPage() {
 	});
 
 	const { data, isLoading, isError } = useQuery({
-		queryKey: ["resguardo-materias", profesoradoIdCargado],
+		queryKey: [
+			"resguardo-materias",
+			profesoradoIdCargado,
+			estadoAcademicoCargado,
+		],
 		queryFn: () =>
 			fetchResguardoMaterias({
 				profesorado_id: profesoradoIdCargado ?? undefined,
+				estado_academico: estadoAcademicoCargado,
 			}),
 		enabled: profesoradoIdCargado !== null,
 		staleTime: 1000 * 60 * 5,
@@ -78,6 +86,7 @@ export default function ResguardoMateriasPage() {
 		setNombreSearch("");
 		setSelectedRows(new Set());
 		setProfesoradoIdCargado(profesoradoId as number);
+		setEstadoAcademicoCargado(estadoAcademico);
 	};
 
 	const handleRecalcular = async () => {
@@ -327,7 +336,7 @@ export default function ResguardoMateriasPage() {
 			<BackButton />
 			<PageHero
 				title="Resguardo de Materias"
-				subtitle="Regularidades y equivalencias en resguardo por correlativas no satisfechas — solo estudiantes activos"
+				subtitle="Regularidades y equivalencias en resguardo por correlativas no satisfechas"
 			/>
 
 			{/* Filtros */}
@@ -338,7 +347,7 @@ export default function ResguardoMateriasPage() {
 					alignItems="center"
 					flexWrap="wrap"
 				>
-					{/* Selector de profesorado + botón Cargar */}
+					{/* Selector de profesorado */}
 					<FormControl size="small" sx={{ minWidth: 280 }}>
 						<InputLabel>Profesorado *</InputLabel>
 						<Select
@@ -354,6 +363,20 @@ export default function ResguardoMateriasPage() {
 									{c.nombre}
 								</MenuItem>
 							))}
+						</Select>
+					</FormControl>
+
+					{/* Selector de estado académico */}
+					<FormControl size="small" sx={{ minWidth: 160 }}>
+						<InputLabel>Estudiantes</InputLabel>
+						<Select
+							value={estadoAcademico}
+							label="Estudiantes"
+							onChange={(e) => setEstadoAcademico(e.target.value)}
+						>
+							<MenuItem value="ACT">Solo activos</MenuItem>
+							<MenuItem value="INA">Solo inactivos / bajas</MenuItem>
+							<MenuItem value="ALL">Todos los estudiantes</MenuItem>
 						</Select>
 					</FormControl>
 
@@ -581,7 +604,28 @@ export default function ResguardoMateriasPage() {
 											onClick={(e) => e.stopPropagation()}
 										/>
 									</TableCell>
-									<TableCell sx={{ fontWeight: 600 }}>{item.nombre}</TableCell>
+									<TableCell sx={{ fontWeight: 600 }}>
+										<Stack direction="row" alignItems="center" spacing={1}>
+											<span>{item.nombre}</span>
+											{item.estado_academico && item.estado_academico !== "ACT" && (
+												<Chip
+													label={
+														item.estado_academico === "BAJ"
+															? "Baja"
+															: item.estado_academico === "EGR"
+																? "Egresado"
+																: item.estado_academico === "SUS"
+																	? "Suspendido"
+																	: "Inactivo"
+													}
+													size="small"
+													color="default"
+													variant="outlined"
+													sx={{ fontSize: "0.7rem", height: 20 }}
+												/>
+											)}
+										</Stack>
+									</TableCell>
 									<TableCell>{item.dni}</TableCell>
 									<TableCell>{item.materia}</TableCell>
 									<TableCell>
