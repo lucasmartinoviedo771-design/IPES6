@@ -133,6 +133,27 @@ def update_docente(request, docente_id: int, payload: DocenteIn):
 @router.delete("/{docente_id}", response={204: None}, auth=JWTAuth())
 def delete_docente(request, docente_id: int):
     _ensure_structure_edit(request.user)
-    docente = get_object_or_404(Docente, id=docente_id)
+    docente = get_object_or_404(Docente.objects.select_related("persona"), id=docente_id)
+
+    doc_nom = f"{docente.persona.apellido}, {docente.persona.nombre} (DNI: {docente.persona.dni})" if docente.persona else f"Docente ID {docente.id}"
+    before_state = {
+        "docente_id": docente.id,
+        "nombre": docente.persona.nombre if docente.persona else "",
+        "apellido": docente.persona.apellido if docente.persona else "",
+        "dni": docente.persona.dni if docente.persona else "",
+        "email": docente.persona.email if docente.persona else "",
+    }
+
+    from apps.common.audit import log_action_from_request
+    log_action_from_request(
+        request,
+        accion="DELETE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Eliminó docente: {doc_nom}",
+        entidad="Docente",
+        entidad_id=docente.id,
+        before=before_state,
+    )
+
     docente.delete()
     return 204, None

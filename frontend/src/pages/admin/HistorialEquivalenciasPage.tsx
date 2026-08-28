@@ -498,6 +498,17 @@ type RowEdit = {
 	isExisting: boolean;
 };
 
+const parseDateToInputFormat = (dateStr?: string | null): string => {
+	if (!dateStr) return new Date().toISOString().slice(0, 10);
+	if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+	if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+		const [d, m, y] = dateStr.split("/");
+		return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+	}
+	const d = dayjs(dateStr);
+	return d.isValid() ? d.format("YYYY-MM-DD") : new Date().toISOString().slice(0, 10);
+};
+
 const EditarEquivalenciaDialog: React.FC<EditarProps> = ({
 	open,
 	dispo,
@@ -508,8 +519,8 @@ const EditarEquivalenciaDialog: React.FC<EditarProps> = ({
 	const [numeroDisposicion, setNumeroDisposicion] = useState(
 		dispo.numero_disposicion || "",
 	);
-	const [fechaDisposicion, setFechaDisposicion] = useState(
-		dispo.fecha_disposicion || new Date().toISOString().slice(0, 10),
+	const [fechaDisposicion, setFechaDisposicion] = useState(() =>
+		parseDateToInputFormat(dispo.fecha_disposicion),
 	);
 	const [observaciones, setObservaciones] = useState(dispo.observaciones || "");
 

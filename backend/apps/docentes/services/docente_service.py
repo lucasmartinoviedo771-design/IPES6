@@ -47,7 +47,16 @@ class DocenteService:
         user = User.objects.create_user(
             username=username,
             password=temp_password,
+            first_name=docente.persona.nombre if docente.persona else "",
+            last_name=docente.persona.apellido if docente.persona else "",
+            email=docente.persona.email if (docente.persona and docente.persona.email) else "",
         )
+        if docente.persona:
+            from core.models import UserProfile
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={"persona": docente.persona},
+            )
         return user, True, temp_password
 
     @staticmethod

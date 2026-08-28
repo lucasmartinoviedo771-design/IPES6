@@ -193,6 +193,26 @@ def create_comision(request, payload: ComisionIn):
         orden=payload.orden or 1,
         observaciones=payload.observaciones or "",
     )
+
+    from apps.common.audit import log_action_from_request
+    docente_nom = f"{comision.docente.persona.apellido}, {comision.docente.persona.nombre}" if (comision.docente and comision.docente.persona) else "Sin docente"
+    log_action_from_request(
+        request,
+        accion="CREATE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Creó comisión {comision.codigo} en {materia.nombre} ({docente_nom})",
+        entidad="Comision",
+        entidad_id=comision.id,
+        after={
+            "comision_id": comision.id,
+            "materia": materia.nombre,
+            "codigo": comision.codigo,
+            "anio_lectivo": comision.anio_lectivo,
+            "docente": docente_nom,
+            "estado": comision.estado,
+        },
+    )
+
     return _serialize_comision(comision)
 
 
@@ -200,8 +220,24 @@ def create_comision(request, payload: ComisionIn):
 def update_comision(request, comision_id: int, payload: ComisionIn):
     """Actualiza la configuración (docente, turno, cupo) de una comisión."""
     _require_manage(request.user)
-    comision = get_object_or_404(Comision, id=comision_id)
+    comision = get_object_or_404(
+        Comision.objects.select_related("docente__persona", "suplente__persona", "suplente_2__persona", "materia", "turno"),
+        id=comision_id,
+    )
     ensure_profesorado_access(request.user, comision.materia.plan_de_estudio.profesorado_id)
+
+    doc_tit_antes = f"{comision.docente.persona.apellido}, {comision.docente.persona.nombre}" if (comision.docente and comision.docente.persona) else "Ninguno"
+    doc_sup_antes = f"{comision.suplente.persona.apellido}, {comision.suplente.persona.nombre}" if (comision.suplente and comision.suplente.persona) else "Ninguno"
+    before_state = {
+        "comision_id": comision.id,
+        "materia": comision.materia.nombre,
+        "codigo": comision.codigo,
+        "docente_titular": doc_tit_antes,
+        "docente_suplente": doc_sup_antes,
+        "estado": comision.estado,
+        "turno": comision.turno.nombre if comision.turno else "",
+        "cupo_maximo": comision.cupo_maximo,
+    }
 
     for attr, value in payload.dict(exclude_unset=True).items():
         setattr(comision, attr, value)
@@ -213,22 +249,34 @@ def update_comision(request, comision_id: int, payload: ComisionIn):
         if hc:
             comision.horario = hc
 
-    # Loguear cambios (Auditoría)
-    cambios = []
-    for field in (
-        comision.get_dirty_fields(check_relationship=True).keys()
-        if hasattr(comision, "get_dirty_fields")
-        else payload.dict().keys()
-    ):
-        if field.startswith("suplente") or field.startswith("estado"):
-            cambios.append(field)
-
-    if cambios:
-        logger.info(
-            f"Usuario {request.user.username} (ID: {request.user.id}) modificó la jerarquía de la comisión {comision.id} ({comision.materia.nombre}). Campos alterados: {', '.join(cambios)}"
-        )
-
     comision.save()
+    comision.refresh_from_db()
+
+    doc_tit_despues = f"{comision.docente.persona.apellido}, {comision.docente.persona.nombre}" if (comision.docente and comision.docente.persona) else "Ninguno"
+    doc_sup_despues = f"{comision.suplente.persona.apellido}, {comision.suplente.persona.nombre}" if (comision.suplente and comision.suplente.persona) else "Ninguno"
+    after_state = {
+        "comision_id": comision.id,
+        "materia": comision.materia.nombre,
+        "codigo": comision.codigo,
+        "docente_titular": doc_tit_despues,
+        "docente_suplente": doc_sup_despues,
+        "estado": comision.estado,
+        "turno": comision.turno.nombre if comision.turno else "",
+        "cupo_maximo": comision.cupo_maximo,
+    }
+
+    from apps.common.audit import log_action_from_request
+    log_action_from_request(
+        request,
+        accion="UPDATE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Modificó cátedra/comisión {comision.codigo} de {comision.materia.nombre} ({doc_tit_antes} -> {doc_tit_despues})",
+        entidad="Comision",
+        entidad_id=comision.id,
+        before=before_state,
+        after=after_state,
+    )
+
     return _serialize_comision(comision)
 
 
@@ -318,7 +366,32 @@ def bulk_generate_comisiones(request, payload: ComisionBulkGenerateIn):
 def delete_comision(request, comision_id: int):
     """Elimina una comisión. Precaución: puede afectar inscripciones existentes."""
     _require_manage(request.user)
-    comision = get_object_or_404(Comision, id=comision_id)
+    comision = get_object_or_404(
+        Comision.objects.select_related("materia", "docente__persona", "turno"),
+        id=comision_id,
+    )
     ensure_profesorado_access(request.user, comision.materia.plan_de_estudio.profesorado_id)
+
+    doc_tit = f"{comision.docente.persona.apellido}, {comision.docente.persona.nombre}" if (comision.docente and comision.docente.persona) else "Ninguno"
+    before_state = {
+        "comision_id": comision.id,
+        "materia": comision.materia.nombre,
+        "codigo": comision.codigo,
+        "anio_lectivo": comision.anio_lectivo,
+        "docente": doc_tit,
+        "turno": comision.turno.nombre if comision.turno else "",
+    }
+
+    from apps.common.audit import log_action_from_request
+    log_action_from_request(
+        request,
+        accion="DELETE",
+        tipo_accion="CRUD",
+        detalle_accion=f"Eliminó comisión {comision.codigo} de {comision.materia.nombre} (Docente: {doc_tit})",
+        entidad="Comision",
+        entidad_id=comision.id,
+        before=before_state,
+    )
+
     comision.delete()
     return 204, None
