@@ -86,7 +86,9 @@ def create_docente(request, payload: DocenteIn):
         else:
             raise HttpError(409, f"El DNI '{payload.dni}' ya está en uso.")
     docente = Docente.objects.create(persona=persona)
-    return DocenteService.serialize_docente(docente)
+    user, _, temp_password = DocenteService.ensure_user_for_docente(docente)
+    DocenteService.ensure_docente_group(user)
+    return DocenteService.serialize_docente(docente, temp_password=temp_password)
 
 
 @router.get("/{docente_id}", response=DocenteOut, auth=JWTAuth())
