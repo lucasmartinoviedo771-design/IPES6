@@ -154,6 +154,8 @@ def admin_resguardo_materias(
         reg_qs = reg_qs.filter(estudiante__persona__dni=dni)
     reg_qs = reg_qs.order_by("estudiante__persona__apellido", "materia__nombre")
 
+    from apps.common.date_utils import format_date
+
     for reg in reg_qs:
         est = reg.estudiante
         autorizadas_ids = set(est.materias_autorizadas.values_list("id", flat=True))
@@ -171,6 +173,8 @@ def admin_resguardo_materias(
                 "profesorado": prof,
                 "materia": reg.materia.nombre,
                 "situacion": reg.get_situacion_display(),
+                "fecha": format_date(reg.fecha_cierre) if reg.fecha_cierre else None,
+                "fecha_iso": reg.fecha_cierre.isoformat() if reg.fecha_cierre else None,
                 "motivos": _motivo_faltantes(est, reg.materia, autorizadas_ids, reg.situacion),
                 "estado_academico": est_acad,
             }
@@ -203,6 +207,8 @@ def admin_resguardo_materias(
                 "profesorado": prof,
                 "materia": eq.materia.nombre,
                 "situacion": "Equivalencia",
+                "fecha": format_date(eq.disposicion.fecha_disposicion) if eq.disposicion.fecha_disposicion else None,
+                "fecha_iso": eq.disposicion.fecha_disposicion.isoformat() if eq.disposicion.fecha_disposicion else None,
                 "motivos": _motivo_faltantes(est, eq.materia, autorizadas_ids),
                 "estado_academico": est_acad,
             }

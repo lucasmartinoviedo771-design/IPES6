@@ -194,7 +194,7 @@ export default function ResguardoMateriasPage() {
         <td>${item.nombre}</td>
         <td>${item.dni ?? ""}</td>
         <td>${item.materia}</td>
-        <td>${item.situacion}</td>
+        <td>${item.situacion}${item.fecha ? `<br><span style="font-size:9px;color:#666;">${item.fecha}</span>` : ""}</td>
         <td>${item.tipo}</td>
         <td>${item.motivos.map((m) => `<span class="${m.includes("VENCIDA") || m.includes("AGOTADA") ? "err" : ""}">${m}</span>`).join("<br>")}</td>
       </tr>`,
@@ -284,11 +284,14 @@ export default function ResguardoMateriasPage() {
 		doc.setTextColor(17, 17, 17);
 
 		exportItems.forEach((item) => {
+			const situacionTexto = item.fecha
+				? `${item.situacion}\n(${item.fecha})`
+				: item.situacion;
 			const row = [
 				item.nombre,
 				item.dni ?? "",
 				item.materia,
-				item.situacion,
+				situacionTexto,
 				item.tipo,
 				item.motivos.join(" | "),
 			];
@@ -629,29 +632,40 @@ export default function ResguardoMateriasPage() {
 									<TableCell>{item.dni}</TableCell>
 									<TableCell>{item.materia}</TableCell>
 									<TableCell>
-										<Chip
-											label={item.situacion}
-											size="small"
-											sx={{
-												bgcolor:
-													item.situacion === "Promocionado"
-														? "#dbeafe"
-														: item.situacion === "Aprobado (sin final)"
-															? "#ede9fe"
-															: item.situacion === "Equivalencia"
-																? "#fef9c3"
-																: "#f1f5f9",
-												color:
-													item.situacion === "Promocionado"
-														? "#1d4ed8"
-														: item.situacion === "Aprobado (sin final)"
-															? "#6d28d9"
-															: item.situacion === "Equivalencia"
-																? "#854d0e"
-																: "#334155",
-												fontWeight: 600,
-											}}
-										/>
+										<Stack spacing={0.5} alignItems="flex-start">
+											<Chip
+												label={item.situacion}
+												size="small"
+												sx={{
+													bgcolor:
+														item.situacion === "Promocionado"
+															? "#dbeafe"
+															: item.situacion === "Aprobado (sin final)"
+																? "#ede9fe"
+																: item.situacion === "Equivalencia"
+																	? "#fef9c3"
+																	: "#f1f5f9",
+													color:
+														item.situacion === "Promocionado"
+															? "#1d4ed8"
+															: item.situacion === "Aprobado (sin final)"
+																? "#6d28d9"
+																: item.situacion === "Equivalencia"
+																	? "#854d0e"
+																	: "#334155",
+													fontWeight: 600,
+												}}
+											/>
+											{item.fecha && (
+												<Typography
+													variant="caption"
+													color="text.secondary"
+													sx={{ fontSize: "0.75rem", pl: 0.5 }}
+												>
+													{item.fecha}
+												</Typography>
+											)}
+										</Stack>
 									</TableCell>
 									<TableCell>
 										<Chip

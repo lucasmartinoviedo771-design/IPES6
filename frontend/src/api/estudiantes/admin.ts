@@ -232,6 +232,8 @@ export type ResguardoMateriaItemDTO = {
 	profesorado: string | null;
 	materia: string;
 	situacion: string;
+	fecha?: string | null;
+	fecha_iso?: string | null;
 	motivos: string[];
 	estado_academico?: string;
 };
