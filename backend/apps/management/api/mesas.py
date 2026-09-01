@@ -9,7 +9,7 @@ from ninja.errors import HttpError
 
 from apps.common.date_utils import calcular_limite_baja_mesa
 from core.auth_ninja import JWTAuth
-from core.models import Docente, Materia, MesaExamen, Profesorado, SolicitudMesa
+from core.models import Docente, Materia, MesaExamen, Profesorado, SolicitudMesa, VentanaHabilitacion
 from core.permissions import allowed_profesorados, ensure_profesorado_access, require
 
 from ..router import management_router
@@ -332,8 +332,22 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
         "mesa_asignada",
     ).all()
 
-    if ventana_id:
+    if ventana_id == -1:
+        # Histórico completo solicitado explícitamente
+        pass
+    elif ventana_id:
         qs = qs.filter(ventana_id=ventana_id)
+    else:
+        # Por defecto: Solo el llamado extraordinario activo
+        from django.utils import timezone
+
+        hoy = timezone.now().date()
+        ventana_activa = VentanaHabilitacion.objects.filter(
+            tipo=VentanaHabilitacion.Tipo.MESAS_EXTRA, activo=True, desde__lte=hoy, hasta__gte=hoy
+        ).first()
+        if ventana_activa:
+            qs = qs.filter(ventana_id=ventana_activa.id)
+
     if estado:
         qs = qs.filter(estado=estado.upper())
 

@@ -47,6 +47,7 @@ import {
 	listarSolicitudesMesas,
 	procesarSolicitudMesa,
 } from "@/api/managementMesas";
+import { fetchVentanas, type VentanaDto } from "@/api/ventanas";
 import { formatDate } from "@/utils/date";
 import { getIpesHeaderHtml, IPES_HEADER_CSS } from "@/utils/printActaHtml";
 
@@ -181,10 +182,20 @@ export const SolicitudesList: React.FC = () => {
 		numero_mesa: "",
 	});
 
-	const load = async () => {
+	const [ventanas, setVentanas] = useState<VentanaDto[]>([]);
+	const [selectedVentanaId, setSelectedVentanaId] = useState<string>("TODAS");
+
+	const load = async (ventanaIdFilter?: string) => {
 		setLoading(true);
 		try {
-			const data = await listarSolicitudesMesas();
+			const vId = ventanaIdFilter !== undefined ? ventanaIdFilter : selectedVentanaId;
+			const params: { ventana_id?: number } = {};
+			if (vId === "TODAS") {
+				params.ventana_id = -1;
+			} else if (vId) {
+				params.ventana_id = parseInt(vId, 10);
+			}
+			const data = await listarSolicitudesMesas(params);
 			setSolicitudes(data);
 		} catch (_e) {
 			void 0;
@@ -194,7 +205,17 @@ export const SolicitudesList: React.FC = () => {
 	};
 
 	useEffect(() => {
-		load();
+		fetchVentanas({ tipo: "MESAS_EXTRA" })
+			.then((vList) => {
+				setVentanas(vList);
+				const activa = vList.find((v) => v.activo);
+				const defaultId = activa ? String(activa.id) : (vList.length > 0 ? String(vList[0].id) : "TODAS");
+				setSelectedVentanaId(defaultId);
+				load(defaultId);
+			})
+			.catch(() => {
+				load("TODAS");
+			});
 		listarDocentes().then(setDocentes).catch(console.error);
 	}, []);
 
@@ -461,17 +482,47 @@ export const SolicitudesList: React.FC = () => {
 	return (
 		<Box>
 			<Stack
-				direction="row"
+				direction={{ xs: "column", sm: "row" }}
 				justifyContent="space-between"
-				alignItems="center"
+				alignItems={{ xs: "stretch", sm: "center" }}
+				spacing={2}
 				mb={2}
 			>
 				<Typography variant="h6" fontWeight={700}>
 					Gestión de Solicitudes Extraordinarias
 				</Typography>
-				<IconButton onClick={load} disabled={loading} color="primary">
-					<RefreshIcon />
-				</IconButton>
+				<Stack direction="row" spacing={1.5} alignItems="center">
+					<FormControl size="small" sx={{ minWidth: 260 }}>
+						<InputLabel id="select-ventana-label">Llamado / Período</InputLabel>
+						<Select
+							labelId="select-ventana-label"
+							value={selectedVentanaId}
+							label="Llamado / Período"
+							onChange={(e) => {
+								const val = e.target.value;
+								setSelectedVentanaId(val);
+								load(val);
+							}}
+						>
+							{ventanas.map((v) => {
+								const labelLlamado = v.periodo && !v.periodo.includes("1C") && !v.periodo.includes("2C")
+									? v.periodo
+									: `Llamado Extraordinario (${formatDate(v.desde)} - ${formatDate(v.hasta)})`;
+								return (
+									<MenuItem key={v.id} value={String(v.id)}>
+										{labelLlamado} {v.activo ? "🟢 (Activo)" : "⚪ (Histórico)"}
+									</MenuItem>
+								);
+							})}
+							<MenuItem value="TODAS">
+								<em>Todos los llamados (Histórico completo)</em>
+							</MenuItem>
+						</Select>
+					</FormControl>
+					<IconButton onClick={() => load()} disabled={loading} color="primary">
+						<RefreshIcon />
+					</IconButton>
+				</Stack>
 			</Stack>
 
 			<TableContainer component={Paper} variant="outlined">

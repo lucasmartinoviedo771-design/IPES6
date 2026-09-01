@@ -181,6 +181,8 @@ def _get_estudiantes_documentacion_raw(
         "certificado_alumno_regular_sec",
         "adeuda_materias",
         "es_certificacion_docente",
+        "titulo_terciario_univ",
+        "incumbencia",
     ]
 
     items = []
@@ -219,6 +221,7 @@ def _get_estudiantes_documentacion_raw(
                 doc_data.get("titulo_secundario_legalizado"),
                 doc_data.get("certificado_titulo_en_tramite"),
                 doc_data.get("analitico_legalizado"),
+                doc_data.get("titulo_terciario_univ"),
             ]
         )
 
@@ -300,15 +303,16 @@ def admin_export_estudiantes_documentacion_excel(
         ws.cell(row=idx, column=2, value=item.apellido)
         ws.cell(row=idx, column=3, value=item.nombre)
         ws.cell(row=idx, column=4, value=item.email)
-        ws.cell(row=idx, column=5, value=item.condicion_administrativa)
-        ws.cell(row=idx, column=6, value="SI" if item.curso_introductorio_aprobado else "NO")
-        ws.cell(row=idx, column=7, value="SI" if item.libreta_entregada else "NO")
-        ws.cell(row=idx, column=8, value="SI" if item.dni_legalizado else "NO")
-        ws.cell(row=idx, column=9, value="SI" if item.fotos_4x4 else "NO")
-        ws.cell(row=idx, column=10, value="SI" if item.certificado_salud else "NO")
-        ws.cell(row=idx, column=11, value=item.folios_oficio)
-        ws.cell(row=idx, column=12, value="SI" if item.titulo_secundario_ok else "NO")
-        ws.cell(row=idx, column=13, value="SI" if item.articulo_7 else "NO")
+        ws.cell(row=idx, column=5, value=item.fecha_inscripcion or "-")
+        ws.cell(row=idx, column=6, value=item.condicion_administrativa)
+        ws.cell(row=idx, column=7, value="SI" if item.curso_introductorio_aprobado else "NO")
+        ws.cell(row=idx, column=8, value="SI" if item.libreta_entregada else "NO")
+        ws.cell(row=idx, column=9, value="SI" if item.dni_legalizado else "NO")
+        ws.cell(row=idx, column=10, value="SI" if item.fotos_4x4 else "NO")
+        ws.cell(row=idx, column=11, value="SI" if item.certificado_salud else "NO")
+        ws.cell(row=idx, column=12, value=item.folios_oficio)
+        ws.cell(row=idx, column=13, value="SI" if item.titulo_secundario_ok else "NO")
+        ws.cell(row=idx, column=14, value="SI" if item.articulo_7 else "NO")
 
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 15

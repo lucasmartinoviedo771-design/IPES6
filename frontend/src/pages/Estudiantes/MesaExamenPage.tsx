@@ -1070,7 +1070,48 @@ const MesaExamenPage: React.FC = () => {
 											</Typography>
 										)}
 
-										<Divider sx={{ my: 2 }} />
+										{err && (
+											<Alert
+												severity="error"
+												sx={{ mb: 2, borderRadius: 2 }}
+												onClose={() => setErr(null)}
+											>
+												<Typography variant="subtitle2" fontWeight={700}>
+													No se pudo registrar la solicitud:
+												</Typography>
+												<Typography variant="body2">{err}</Typography>
+											</Alert>
+										)}
+
+										{solicitudes.length > 0 && (
+											<Alert
+												severity="warning"
+												variant="outlined"
+												sx={{
+													mb: 2.5,
+													borderRadius: 2,
+													bgcolor: "#fff8e1",
+													borderColor: "#ffe082",
+													color: "#b78103",
+												}}
+											>
+												<Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
+													<Chip
+														label="Límite alcanzado: 1 materia"
+														size="small"
+														color="warning"
+														sx={{ fontWeight: 700 }}
+													/>
+													<Typography variant="subtitle2" fontWeight={700}>
+														Solicitud registrada para este llamado
+													</Typography>
+												</Stack>
+												<Typography variant="body2" color="text.secondary">
+													El reglamento institucional permite solicitar como <b>máximo una (1) materia por llamado extraordinario</b>.
+													Si deseás solicitar una materia distinta, debés hacer clic en el botón <b>"Anular"</b> de tu solicitud actual arriba antes de elegir otra.
+												</Typography>
+											</Alert>
+										)}
 
 										<Typography
 											variant="subtitle1"
@@ -1092,6 +1133,7 @@ const MesaExamenPage: React.FC = () => {
 											<LinearProgress sx={{ mt: 1 }} />
 										) : (
 											(() => {
+												const tieneSolicitudActiva = solicitudes.some((s) => s.estado !== "REC");
 												const yaEnMesa = (mid: number) =>
 													mesasDisponibles.some(
 														(m) => (m.materia?.id ?? m.materia_id) === mid,
@@ -1288,12 +1330,15 @@ const MesaExamenPage: React.FC = () => {
 																										}}
 																										disabled={
 																											!ventanaId ||
-																											!ventanaExtraInfo.habilitada
+																											!ventanaExtraInfo.habilitada ||
+																											tieneSolicitudActiva
 																										}
 																									>
-																										{ventanaExtraInfo.habilitada
-																											? "Solicitar Mesa"
-																											: "Solicitudes cerradas"}
+																										{!ventanaExtraInfo.habilitada
+																											? "Solicitudes cerradas"
+																											: tieneSolicitudActiva
+																											? "Límite alcanzado (1 máx)"
+																											: "Solicitar Mesa"}
 																									</Button>
 																								</Box>
 																							</Stack>

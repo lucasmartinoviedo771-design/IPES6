@@ -104,10 +104,10 @@ def log_action_from_request(request, **kwargs):
     Helper que extrae metadatos de usuario, IP y Session del objeto request
     inyectado por el middleware.
     """
-    user = getattr(request, "user", None)
-    session_id = getattr(request, "audit_session_id", None)
-    request_id = getattr(request, "request_id", None)
-    ip = getattr(request, "audit_ip", None)
+    user = kwargs.pop("user", getattr(request, "user", None))
+    session_id = kwargs.pop("session_id", getattr(request, "audit_session_id", None))
+    request_id = kwargs.pop("request_id", getattr(request, "request_id", None))
+    ip = kwargs.pop("ip_origen", getattr(request, "audit_ip", None))
     return log_action(
         user=user,
         session_id=session_id,

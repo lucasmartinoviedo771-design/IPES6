@@ -148,39 +148,26 @@ def _check_academic_eligibility(
                 if not reg.fecha_cierre:
                     return False, "Regularidad sin fecha de cierre válida.", {}
 
-                fecha_base = _add_years(reg.fecha_cierre, 2)
-                allowed_until = (fecha_base + timedelta(days=60)) if fecha_base else None
-                if fecha_examen and allowed_until and fecha_examen > allowed_until:
+                from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+
+                limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg)
+                ref_fecha = fecha_examen or date.today()
+
+                if ref_fecha > limite:
                     return (
                         False,
-                        f"La vigencia de su regularidad ha expirado. Venció el {format_date(allowed_until)}.",
+                        f"La vigencia de su regularidad ha expirado. Venció el {format_date(limite)}.",
+                        {},
+                    )
+
+                if intentos >= max_intentos:
+                    return (
+                        False,
+                        f"Ha agotado los llamados permitidos ({max_intentos}) para esta regularidad. Debe rendir como libre o recursar.",
                         {},
                     )
             else:
                 reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
-                allowed_until = None  # no aplica si bypass
-
-            # 3. Conteo de Intentos (excluye la mesa actual para no contarse a sí mismo)
-            if not bypass_regularidad and reg:
-                intentos_qs = InscripcionMesa.objects.filter(
-                    estudiante=est,
-                    cuenta_para_intentos=True,
-                    mesa__materia=materia,
-                    mesa__tipo__in=MESA_TIPOS_ORDINARIOS,
-                    mesa__fecha__gte=reg.fecha_cierre,
-                )
-                if allowed_until:
-                    intentos_qs = intentos_qs.filter(mesa__fecha__lte=allowed_until)
-
-                if mesa:
-                    intentos_qs = intentos_qs.exclude(mesa=mesa)
-
-                if intentos_qs.count() >= 3:
-                    return (
-                        False,
-                        "Ha agotado los llamados permitidos (3) para esta regularidad. Debe rendir como libre o recursar.",
-                        {},
-                    )
 
             # 4a. Correlativas de cursada caídas (resguardo dinámico)
             # Verifica que las correlativas que habilitaban cursar esta materia
@@ -284,19 +271,10 @@ def _check_academic_eligibility(
 
         reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
         if reg and reg.situacion == Regularidad.Situacion.REGULAR:
-            if not reg.fecha_cierre:
-                return False, "Regularidad sin fecha de cierre válida.", {}
-            two_years = _add_years(reg.fecha_cierre, 2)
-            next_call = (
-                MesaExamen.objects.filter(materia=materia, tipo__in=MESA_TIPOS_ORDINARIOS, fecha__gte=two_years)
-                .order_by("fecha")
-                .values_list("fecha", flat=True)
-                .first()
-                if two_years
-                else None
-            )
-            allowed_until = next_call or two_years
-            if fecha_examen and allowed_until and fecha_examen <= allowed_until:
+            from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+            limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg)
+            ref_fecha = fecha_examen or date.today()
+            if ref_fecha <= limite and intentos < max_intentos:
                 return False, "Posee regularidad vigente. Debe inscribirse en modalidad REGULAR.", {}
 
         # Correlatividades para LIBRE (omitido si el staff gestiona el pedido)
@@ -705,15 +683,26 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
     if not is_ok:
         return 400, {"message": f"No cumple las condiciones: {msg}", **extra}
 
-    sol, created = SolicitudMesa.objects.get_or_create(
+    # REGLA: En mesas extraordinarias solo se permite solicitar hasta 1 sola materia por llamado
+    if not es_staff:
+        solicitudes_en_ventana = SolicitudMesa.objects.filter(
+            estudiante=est,
+            ventana=ventana,
+        ).exclude(estado=SolicitudMesa.Estado.RECHAZADA)
+
+        if solicitudes_en_ventana.exists():
+            sol_prev = solicitudes_en_ventana.first()
+            return 400, {
+                "message": f"Solo podés solicitar una (1) materia por llamado extraordinario. Ya tenés una solicitud para '{sol_prev.materia.nombre}'."
+            }
+
+    sol = SolicitudMesa.objects.create(
         estudiante=est,
         materia=materia,
         ventana=ventana,
-        defaults={"observaciones": payload.observaciones, "modalidad": modalidad},
+        modalidad=modalidad,
+        observaciones=payload.observaciones,
     )
-
-    if not created:
-        return 400, {"message": "Ya envió una solicitud para esta materia en este período."}
 
     return {"message": "Solicitud enviada exitosamente. Se le notificará cuando la mesa sea armada."}
 
@@ -729,11 +718,21 @@ def listar_solicitudes_estudiante(request, dni: str | None = None):
     if not est:
         return []
 
-    qs = (
-        SolicitudMesa.objects.filter(estudiante=est)
-        .select_related("materia", "mesa_asignada")
-        .order_by("-fecha_solicitud")
-    )
+    # Obtener ventana activa para mostrar solo las solicitudes del turno / período actual
+    from django.utils import timezone
+
+    hoy = timezone.now().date()
+    ventana_activa = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.MESAS_EXTRA, activo=True, desde__lte=hoy, hasta__gte=hoy
+    ).first()
+
+    qs = SolicitudMesa.objects.filter(estudiante=est).select_related("materia", "mesa_asignada")
+
+    if ventana_activa:
+        # Solo solicitudes del período vigente
+        qs = qs.filter(fecha_solicitud__date__gte=ventana_activa.desde, fecha_solicitud__date__lte=ventana_activa.hasta)
+
+    qs = qs.order_by("-fecha_solicitud")
 
     return [
         {

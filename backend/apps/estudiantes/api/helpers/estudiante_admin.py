@@ -471,11 +471,18 @@ def _determine_condicion(documentacion: dict | None) -> str:
             (documentacion.get("folios_oficio") or 0) >= 1,
         )
     )
-    titulo_ok = bool(documentacion.get("titulo_secundario_legalizado"))
-    es_articulo_7 = bool(documentacion.get("articulo_7"))
-
-    if requisito_basico and (titulo_ok or es_articulo_7):
-        return "Regular"
+    
+    es_cert_docente = bool(documentacion.get("es_certificacion_docente"))
+    if es_cert_docente:
+        # En Certificación Docente el título requerido es Terciario/Universitario e Incumbencia
+        titulo_cert_ok = bool(documentacion.get("titulo_terciario_univ")) and bool(documentacion.get("incumbencia"))
+        if requisito_basico and titulo_cert_ok:
+            return "Regular"
+    else:
+        titulo_ok = bool(documentacion.get("titulo_secundario_legalizado"))
+        es_articulo_7 = bool(documentacion.get("articulo_7"))
+        if requisito_basico and (titulo_ok or es_articulo_7):
+            return "Regular"
 
     indicadores_actividad = any(
         [

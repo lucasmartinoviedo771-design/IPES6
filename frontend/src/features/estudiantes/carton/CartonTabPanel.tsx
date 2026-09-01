@@ -146,7 +146,9 @@ const transformData = (
 			(materia.regularidades && materia.regularidades.length) ||
 				materia.regularidad,
 		);
-		const hasFinal = Boolean(materia.final);
+		const hasFinal = Boolean(
+			(materia.finales && materia.finales.length) || materia.final
+		);
 
 		const regularidadesList =
 			materia.regularidades && materia.regularidades.length > 0
@@ -162,48 +164,82 @@ const transformData = (
 					? [materia.final]
 					: [];
 
-		const maxRows = Math.max(regularidadesList.length, finalesList.length);
-
 		const isEnCurso =
 			trayectoria.inscriptas_actuales?.includes(materia.materia_id) &&
 			!hasRegularidad &&
 			!hasFinal;
 
-		if (maxRows === 0) {
+		if (regularidadesList.length === 0 && finalesList.length === 0) {
 			registros.push({
 				...commonData,
 				tipo: isEnCurso ? "cursando" : "placeholder",
 				condicion: isEnCurso ? "CURSANDO" : undefined,
 			});
 		} else {
-			for (let i = 0; i < maxRows; i++) {
-				const reg = regularidadesList[i];
-				const fin = finalesList[i];
+			// Construimos todos los eventos cronológicos de la materia
+			type EventoItem = {
+				fecha_iso: string;
+				isFinal: boolean;
+				reg?: typeof regularidadesList[0];
+				fin?: typeof finalesList[0];
+			};
 
-				// Determinamos el tipo predominante o combinado
-				const tipo: "regularidad" | "final" | "placeholder" = fin
-					? "final"
-					: reg
-						? "regularidad"
-						: "placeholder";
+			const eventos: EventoItem[] = [];
 
-				registros.push({
-					...commonData,
-					tipo,
-					fecha: reg?.fecha || undefined,
-					fecha_iso: reg?.fecha_iso || fin?.fecha_iso || undefined,
-					condicion: reg?.condicion || undefined,
-					nota: reg?.nota || undefined,
-					en_resguardo: reg?.en_resguardo || false,
-					// Datos de final
-					fechaFinal: fin?.fecha || undefined,
-					condicionFinal: fin?.condicion || undefined,
-					notaFinal: fin?.nota || undefined,
-					folio: fin?.folio || undefined,
-					libro: fin?.libro || undefined,
-					idFila: fin?.id_fila || undefined,
+			regularidadesList.forEach((reg) => {
+				eventos.push({
+					fecha_iso: reg.fecha_iso || reg.fecha || "0000-00-00",
+					isFinal: false,
+					reg,
 				});
-			}
+			});
+
+			finalesList.forEach((fin) => {
+				eventos.push({
+					fecha_iso: fin.fecha_iso || fin.fecha || "0000-00-00",
+					isFinal: true,
+					fin,
+				});
+			});
+
+			// Ordenar cronológicamente por fecha del evento
+			eventos.sort((a, b) => a.fecha_iso.localeCompare(b.fecha_iso));
+
+			eventos.forEach((ev) => {
+				if (ev.isFinal && ev.fin) {
+					registros.push({
+						...commonData,
+						tipo: "final",
+						fecha: undefined,
+						fecha_iso: ev.fin.fecha_iso || undefined,
+						condicion: undefined,
+						nota: undefined,
+						en_resguardo: false,
+						fechaFinal: ev.fin.fecha || undefined,
+						condicionFinal: ev.fin.condicion || undefined,
+						notaFinal: ev.fin.nota || undefined,
+						folio: ev.fin.folio || undefined,
+						libro: ev.fin.libro || undefined,
+						idFila: ev.fin.id_fila || undefined,
+					});
+				} else if (ev.reg) {
+					registros.push({
+						...commonData,
+						tipo: "regularidad",
+						fecha: ev.reg.fecha || undefined,
+						fecha_iso: ev.reg.fecha_iso || undefined,
+						condicion: ev.reg.condicion || undefined,
+						nota: ev.reg.nota || undefined,
+						en_resguardo: ev.reg.en_resguardo || false,
+						fechaFinal: undefined,
+						condicionFinal: undefined,
+						notaFinal: undefined,
+						folio: undefined,
+						libro: undefined,
+						idFila: undefined,
+					});
+				}
+			});
 		}
 	});
 

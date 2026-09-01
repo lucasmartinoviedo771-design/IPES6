@@ -273,6 +273,21 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
             ok=False, message=f"La materia '{mat.nombre}' ya se encuentra aprobada en su historial académico."
         )
 
+    # --- 2.1. VALIDACIÓN: BAJA PREVIA EN EL MISMO CICLO LECTIVO ---
+    # Si el alumno se dio de baja de la materia en este ciclo lectivo, no puede volver a inscribirse para cursar
+    if not es_gestion:
+        hubo_baja = InscripcionMateriaEstudiante.objects.filter(
+            estudiante=est,
+            materia=mat,
+            anio=anio_actual,
+            estado=InscripcionMateriaEstudiante.Estado.BAJA,
+        ).exists()
+        if hubo_baja:
+            return 400, ApiResponse(
+                ok=False,
+                message=f"Registrás una baja en '{mat.nombre}' durante el ciclo lectivo {anio_actual}. No es posible volver a inscribirse a cursar en el mismo ciclo.",
+            )
+
     # --- 3. VALIDACIÓN DE CORRELATIVIDADES ---
     req_reg = list(
         _correlatividades_qs(mat, Correlatividad.TipoCorrelatividad.REGULAR_PARA_CURSAR, est).values_list(
