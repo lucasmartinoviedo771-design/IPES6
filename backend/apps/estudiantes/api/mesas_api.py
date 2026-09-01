@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from django.contrib.auth.models import AnonymousUser
+from django.db import models
 from django.shortcuts import get_object_or_404
 
 from apps.common.api_schemas import ApiResponse
@@ -112,31 +113,38 @@ def _check_academic_eligibility(
         if inscriptos_count >= mesa.cupo:
             return False, f"La mesa ha alcanzado su cupo máximo de {mesa.cupo} inscriptos.", {}
 
+    # C. Estado de Legajo / Documentación (Tanto para REGULAR como para LIBRE)
+    if (mesa_tipo is None or mesa_tipo in MESA_TIPOS_ORDINARIOS) and not bypass_legajo:
+        from core.models import EstudianteCarrera
+        prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
+        ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado=prof).first() if prof else None
+
+        # El legajo es válido si está COMPLETO en Estudiante o en EstudianteCarrera
+        legajo_ok = (est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO) or (
+            ec and ec.estado_legajo == EstudianteCarrera.EstadoLegajo.COMPLETO
+        )
+        if not legajo_ok:
+            from core.models import ProrrogaTituloSecundario
+
+            prorroga_vigente = ProrrogaTituloSecundario.objects.filter(
+                estudiante=est,
+                fecha_vencimiento__gte=date.today(),
+            ).exists()
+            if not prorroga_vigente:
+                pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first() if prof else None
+                cl = getattr(pre, "checklist", None) if pre else None
+                titulo_en_tramite = (ec and ec.certificado_titulo_en_tramite) or (cl and cl.certificado_titulo_en_tramite)
+                if not titulo_en_tramite:
+                    return (
+                        False,
+                        "Tu legajo está incompleto. Para inscribirte a rendir (regular o libre) debés completar la documentación requerida.",
+                        {},
+                    )
+
     # --- MODALIDAD REGULAR ---
     if modalidad == MesaExamen.Modalidad.REGULAR:
         if mesa_tipo is None or mesa_tipo in MESA_TIPOS_ORDINARIOS:
-            # 1. Estado de Legajo (omitido si un administrativo gestiona la inscripción)
-            if not bypass_legajo:
-                legajo_ok = est.estado_legajo == Estudiante.EstadoLegajo.COMPLETO
-                if not legajo_ok:
-                    from core.models import ProrrogaTituloSecundario
-
-                    prorroga_vigente = ProrrogaTituloSecundario.objects.filter(
-                        estudiante=est,
-                        fecha_vencimiento__gte=date.today(),
-                    ).exists()
-                    if not prorroga_vigente:
-                        prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
-                        pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first()
-                        cl = getattr(pre, "checklist", None) if pre else None
-                        if not (cl and cl.certificado_titulo_en_tramite):
-                            return (
-                                False,
-                                "Tu legajo está incompleto. Para inscribirte a rendir debés completar la documentación requerida.",
-                                {},
-                            )
-
-            # 2. Verificación de Regularidad
+            # 1. Verificación de Regularidad
             if not bypass_regularidad:
                 reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
                 if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
@@ -256,20 +264,39 @@ def _check_academic_eligibility(
 
     # --- MODALIDAD LIBRE ---
     elif modalidad == MesaExamen.Modalidad.LIBRE:
+        if not materia.permite_mesa_libre:
+            return False, "Esta materia no admite examen en condición LIBRE según el plan de estudio.", {}
+
+        # Validar pertenencia activa a la carrera de la materia
+        from core.models import EstudianteCarrera
+        ec = EstudianteCarrera.objects.filter(
+            estudiante=est, profesorado=materia.plan_de_estudio.profesorado
+        ).first()
+        if ec and ec.estado_academico in (EstudianteCarrera.EstadoAcademico.BAJA, EstudianteCarrera.EstadoAcademico.INACTIVO):
+            return False, f"El estudiante se encuentra en condición de {ec.get_estado_academico_display()} en esta carrera.", {}
+
         if _tiene_aprobacion_valida(est, materia):
             return False, "Materia ya superada en el ciclo de cursada.", {}
 
         current_year = date.today().year
+        # Verificar cursada activa tanto por ID de materia como por materias homónimas del estudiante
+        nombre_mat_norm = materia.nombre.strip().lower()
         is_enrolled = InscripcionMateriaEstudiante.objects.filter(
             estudiante=est,
-            materia=materia,
             anio=current_year,
             estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
+        ).filter(
+            models.Q(materia=materia) | models.Q(materia__nombre__iexact=materia.nombre.strip())
         ).exists()
         if is_enrolled:
             return False, "No puede rendir LIBRE mientras cursa la materia actualmente.", {}
 
-        reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
+        # Verificar regularidad vigente por ID o por nombre homónimo
+        reg = Regularidad.objects.filter(
+            models.Q(estudiante=est, materia=materia) |
+            models.Q(estudiante=est, materia__nombre__iexact=materia.nombre.strip(), materia__plan_de_estudio__profesorado=materia.plan_de_estudio.profesorado)
+        ).order_by("-fecha_cierre").first()
+
         if reg and reg.situacion == Regularidad.Situacion.REGULAR:
             from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
             limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg)
@@ -330,6 +357,9 @@ def listar_mesas_estudiante(
     _ensure_estudiante_access(request, dni)
     est = _resolve_estudiante(request, dni)
     carreras_est = list(est.carreras.all()) if est else []
+    carreras_visibles_det = _listar_carreras_detalle(est, carreras_est) if est else []
+    carreras_visibles_ids = {c["profesorado_id"] for c in carreras_visibles_det}
+    carreras_visibles = [c for c in carreras_est if c.id in carreras_visibles_ids] if est else []
 
     plan_obj: PlanDeEstudio | None = None
     plan_profesorado: Profesorado | None = None
@@ -350,15 +380,19 @@ def listar_mesas_estudiante(
             return 403, ApiResponse(ok=False, message="El alumno no pertenece a esta carrera.")
     else:
         if est:
-            if not carreras_est:
-                return 400, ApiResponse(ok=False, message="El estudiante no tiene ninguna carrera asignada.")
-            if len(carreras_est) > 1:
+            if not carreras_visibles:
+                if not carreras_est:
+                    return 400, ApiResponse(ok=False, message="El estudiante no tiene ninguna carrera asignada.")
+                carreras_visibles = carreras_est
+                carreras_visibles_det = _listar_carreras_detalle(est, carreras_est)
+
+            if len(carreras_visibles) > 1:
                 return 400, ApiResponse(
                     ok=False,
                     message="Múltiples carreras detectadas. Seleccione una.",
-                    data={"carreras": _listar_carreras_detalle(est, carreras_est)},
+                    data={"carreras": carreras_visibles_det},
                 )
-            plan_profesorado = carreras_est[0]
+            plan_profesorado = carreras_visibles[0]
 
     qs = MesaExamen.objects.select_related(
         "materia__plan_de_estudio__profesorado", "docente_presidente", "docente_vocal1", "docente_vocal2"
@@ -790,13 +824,16 @@ def listar_materias_solicitables(
     if not est:
         return []
 
-    # 1. Obtener todas las materias de sus carreras (o el plan específico)
+    # 1. Obtener todas las materias de sus carreras activas (o el plan específico)
     if plan_id:
         materias_qs = Materia.objects.filter(plan_de_estudio_id=plan_id)
     else:
-        materias_qs = Materia.objects.filter(plan_de_estudio__profesorado__in=est.carreras.all())
+        carreras_est = list(est.carreras.all())
+        carreras_visibles_det = _listar_carreras_detalle(est, carreras_est)
+        carreras_ids = [c["profesorado_id"] for c in carreras_visibles_det] if carreras_visibles_det else [c.id for c in carreras_est]
+        materias_qs = Materia.objects.filter(plan_de_estudio__profesorado_id__in=carreras_ids)
 
-    materias_qs = materias_qs.select_related("plan_de_estudio")
+    materias_qs = materias_qs.select_related("plan_de_estudio", "plan_de_estudio__profesorado")
 
     # 2. Filtro de Formato (Excluir lo que no tiene final tradicional)
     formatos_excluidos = [

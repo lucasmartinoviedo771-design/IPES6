@@ -507,7 +507,12 @@ def trayectoria_estudiante(request, dni: str | None = None):
     )
     edi_nombres_con_actividad_normalizados = {n.strip().lower() for n in materias_con_actividad_nombres}
 
-    for carrera in carreras_est:
+    # Obtener el conjunto de IDs de carreras visibles para este estudiante
+    carreras_visibles_det = _listar_carreras_detalle(est, carreras_est)
+    carreras_visibles_ids = {c["profesorado_id"] for c in carreras_visibles_det}
+    carreras_a_procesar = [c for c in carreras_est if c.id in carreras_visibles_ids] if carreras_visibles_ids else carreras_est
+
+    for carrera in carreras_a_procesar:
         planes = PlanDeEstudio.objects.filter(profesorado=carrera, vigente=True)
         if not planes:
             planes = PlanDeEstudio.objects.filter(profesorado=carrera)
@@ -520,6 +525,8 @@ def trayectoria_estudiante(request, dni: str | None = None):
             )
 
             carton_materias = []
+            plan_tiene_actividad = False
+
             for mat in materias_plan_qs:
                 # Lógica de filtrado de EDIs por vigencia
                 if mat.is_edi:
@@ -594,11 +601,12 @@ def trayectoria_estudiante(request, dni: str | None = None):
 
                 # Si el estudiante está inscripto actualmente en la materia y no está aprobada:
                 if (mat.id in inscriptas_actuales_set) and (mat.id not in aprobadas_set):
-                    # Obtener la inscripción actual
+                    # Obtener la inscripción actual del ciclo vigente
                     insc_obj = InscripcionMateriaEstudiante.objects.filter(
                         estudiante=est,
                         materia_id=mat.id,
                         estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
+                        created_at__year__gte=hoy.year,
                     ).order_by("-created_at").first()
 
                     if insc_obj and insc_obj.created_at:
@@ -618,6 +626,10 @@ def trayectoria_estudiante(request, dni: str | None = None):
                                     "en_resguardo": False,
                                 }
                             )
+
+                # Si tiene al menos una regularidad, final o cursada actual en este plan
+                if regularidades_data or carton_finales:
+                    plan_tiene_actividad = True
 
                 # Seleccionamos la regularidad más reciente (o la mejor si hubiera lógica de éxito)
                 reg_data_legacy = regularidades_data[-1] if regularidades_data else None
@@ -656,18 +668,20 @@ def trayectoria_estudiante(request, dni: str | None = None):
             # 3. Dentro de cada año, por fecha de actividad (cronológico)
             carton_materias.sort(key=lambda x: (x["is_edi"], x["anio"], x["_last_date"], x["materia_nombre"]))
 
-            carton_planes.append(
-                {
-                    "profesorado_id": carrera.id,
-                    "profesorado_nombre": carrera.nombre,
-                    "plan_id": plan.id,
-                    "plan_resolucion": plan.resolucion,
-                    "materias": carton_materias,
-                }
-            )
+            # REGLA: Si el alumno tiene varias carreras y este plan está 100% vacío (sin actividad académica alguna),
+            # no llenamos el cartón con un profesorado fantasma. Solo se incluye si tiene actividad o si es su única carrera.
+            if plan_tiene_actividad or len(carreras_a_procesar) == 1:
+                carton_planes.append(
+                    {
+                        "profesorado_id": carrera.id,
+                        "profesorado_nombre": carrera.nombre,
+                        "plan_id": plan.id,
+                        "plan_resolucion": plan.resolucion,
+                        "materias": carton_materias,
+                    }
+                )
 
     # --- 5. MOTOR DE RECOMENDACIONES DE INSCRIPCIÓN ---
-
     materias_sugeridas_data = []
     todas_las_materias_plan = set()
     for plan_data in carton_planes:
