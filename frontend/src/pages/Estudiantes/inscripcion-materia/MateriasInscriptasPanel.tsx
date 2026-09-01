@@ -225,10 +225,11 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 											/>
 										)}
 
-										{/* Cancelar: solo durante ventana abierta, sin baja, y sin notas finales */}
+										{/* Cancelar: solo si la ventana está abierta, no está en baja, no tiene notas y NO posee actividad académica registrada */}
 										{!isBaja &&
 											!inscripcion?.estado_regularidad &&
 											ventanaActiva &&
+											!inscripcion?.tiene_actividad &&
 											inscripcion && (
 												<Button
 													variant="outlined"
@@ -247,10 +248,10 @@ const MateriasInscriptasPanel: React.FC<MateriasInscriptasPanelProps> = ({
 												</Button>
 											)}
 
-										{/* Dar de baja: Solo después de cerrada la ventana y sin notas finales */}
+										{/* Dar de baja: si la ventana cerró O si ya posee actividad académica registrada (asistencias/notas) */}
 										{!isBaja &&
 											!inscripcion?.estado_regularidad &&
-											!ventanaActiva &&
+											(!ventanaActiva || Boolean(inscripcion?.tiene_actividad)) &&
 											inscripcion && (
 												<Button
 													variant="outlined"

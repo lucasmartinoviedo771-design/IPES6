@@ -139,6 +139,7 @@ class MateriaInscriptaItem(Schema):
     estado_display: str
     regimen: str | None = None
     estado_regularidad: str | None = None
+    tiene_actividad: bool = False
     horarios: list[Horario] = Field(default_factory=list)
     comision_actual: ComisionResumen | None = None
     comision_solicitada: ComisionResumen | None = None
