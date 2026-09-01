@@ -228,7 +228,6 @@ const MateriasTable: React.FC<MateriasTableProps> = ({
 								<MenuItem value="2">2.º Año</MenuItem>
 								<MenuItem value="3">3.º Año</MenuItem>
 								<MenuItem value="4">4.º Año</MenuItem>
-								<MenuItem value="5">5.º Año</MenuItem>
 							</Select>
 						</FormControl>
 					</Grid>

@@ -84,6 +84,7 @@ class SolicitudMesaOut(Schema):
     mesa_asignada_id: int | None = None
     fecha_mesa: date | None = None
     hora_mesa: str | None = None
+    docente_nombre: str | None = None
 
 
 class VentanaIn(Schema):

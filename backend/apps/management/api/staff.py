@@ -151,7 +151,7 @@ def list_user_assignments(request, user_id: int):
 @management_router.post("/staff/force-password-reset", response={200: dict}, auth=JWTAuth())
 def force_reset_password(request, payload: ForceResetPasswordIn):
     """Permite el reseteo administrativo forzado para dar acceso inmediato a un usuario."""
-    require(request.user, "asignar_roles")
+    require(request.user, "resetear_password_docente")
     user = get_object_or_404(User, username=payload.username)
     using_default = not (payload.new_password and payload.new_password.strip())
     new_pass = "pass12346789" if using_default else payload.new_password

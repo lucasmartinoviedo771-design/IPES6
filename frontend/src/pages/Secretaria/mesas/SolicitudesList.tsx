@@ -2,8 +2,10 @@ import AddBoxIcon from "@mui/icons-material/AddBox";
 import CancelIcon from "@mui/icons-material/Cancel";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EditIcon from "@mui/icons-material/Edit";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import PrintIcon from "@mui/icons-material/Print";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchIcon from "@mui/icons-material/Search";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -16,6 +18,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
 import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import InputLabel from "@mui/material/InputLabel";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -30,13 +33,15 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
+import TableSortLabel from "@mui/material/TableSortLabel";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import DOMPurify from "dompurify";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type DocenteDTO, listarDocentes } from "@/api/docentes";
 import { type MesaPlanillaDTO, obtenerMesaPlanilla } from "@/api/estudiantes";
 import type { SolicitudMesaAdminDTO } from "@/api/estudiantes/types";
@@ -477,6 +482,128 @@ export const SolicitudesList: React.FC = () => {
 		}
 	};
 
+	const [search, setSearch] = useState("");
+	const [filtroEstado, setFiltroEstado] = useState("");
+	const [filtroProfesorado, setFiltroProfesorado] = useState("");
+	const [orderBy, setOrderBy] = useState<string>("fecha_solicitud");
+	const [order, setOrder] = useState<"asc" | "desc">("desc");
+	const [page, setPage] = useState(0);
+	const [rowsPerPage, setRowsPerPage] = useState(25);
+
+	const handleRequestSort = (property: string) => {
+		const isAsc = orderBy === property && order === "asc";
+		setOrder(isAsc ? "desc" : "asc");
+		setOrderBy(property);
+	};
+
+	// Lista de profesorados únicos para el selector de filtro
+	const profesoradosDisponibles = useMemo(() => {
+		const profs = new Set<string>();
+		solicitudes.forEach((s) => {
+			if (s.profesorado_nombre) profs.add(s.profesorado_nombre);
+		});
+		return Array.from(profs).sort();
+	}, [solicitudes]);
+
+	// Filtrado y ordenamiento de las solicitudes
+	const processedSolicitudes = useMemo(() => {
+		let list = [...solicitudes];
+
+		if (search.trim()) {
+			const q = search.toLowerCase().trim();
+			list = list.filter(
+				(s) =>
+					s.estudiante_nombre?.toLowerCase().includes(q) ||
+					s.estudiante_dni?.includes(q) ||
+					s.materia_nombre?.toLowerCase().includes(q) ||
+					s.profesorado_nombre?.toLowerCase().includes(q) ||
+					s.docente_nombre?.toLowerCase().includes(q),
+			);
+		}
+
+		if (filtroEstado) {
+			list = list.filter((s) => s.estado === filtroEstado);
+		}
+
+		if (filtroProfesorado) {
+			list = list.filter((s) => s.profesorado_nombre === filtroProfesorado);
+		}
+
+		list.sort((a, b) => {
+			let valA: any = (a as any)[orderBy];
+			let valB: any = (b as any)[orderBy];
+
+			if (valA == null) valA = "";
+			if (valB == null) valB = "";
+
+			if (typeof valA === "string") {
+				valA = valA.toLowerCase();
+				valB = (valB as string).toLowerCase();
+			}
+
+			if (valA < valB) return order === "asc" ? -1 : 1;
+			if (valA > valB) return order === "asc" ? 1 : -1;
+			return 0;
+		});
+
+		return list;
+	}, [solicitudes, search, filtroEstado, filtroProfesorado, orderBy, order]);
+
+	const paginatedSolicitudes = useMemo(() => {
+		return processedSolicitudes.slice(
+			page * rowsPerPage,
+			page * rowsPerPage + rowsPerPage,
+		);
+	}, [processedSolicitudes, page, rowsPerPage]);
+
+	const handleExportExcel = () => {
+		if (processedSolicitudes.length === 0) return;
+
+		const BOM = "\uFEFF";
+		const headers = [
+			"Fecha Pedido",
+			"Fecha Mesa",
+			"Hora Mesa",
+			"Estudiante",
+			"DNI",
+			"Materia",
+			"Docente Cátedra",
+			"Condición",
+			"Profesorado",
+			"Estado",
+		];
+
+		const rows = processedSolicitudes.map((s) => [
+			s.fecha_solicitud ? formatDate(s.fecha_solicitud) : "",
+			s.fecha_mesa ? formatDate(s.fecha_mesa) : "",
+			s.hora_mesa || "",
+			`"${(s.estudiante_nombre || "").replace(/"/g, '""')}"`,
+			`"${s.estudiante_dni || ""}"`,
+			`"${(s.materia_nombre || "").replace(/"/g, '""')}"`,
+			`"${(s.docente_nombre || "Sin docente asignado").replace(/"/g, '""')}"`,
+			s.modalidad_display || (s.modalidad === "REG" ? "Regular" : "Libre"),
+			`"${(s.profesorado_nombre || "").replace(/"/g, '""')}"`,
+			s.estado_display || s.estado,
+		]);
+
+		const csvContent =
+			BOM +
+			[headers.join(";"), ...rows.map((row) => row.join(";"))].join("\r\n");
+
+		const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.setAttribute("href", url);
+		link.setAttribute(
+			"download",
+			`Solicitudes_Mesas_Extraordinarias_${new Date().toISOString().split("T")[0]}.csv`,
+		);
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	};
+
 	if (loading && solicitudes.length === 0) return <CircularProgress />;
 
 	return (
@@ -491,7 +618,7 @@ export const SolicitudesList: React.FC = () => {
 				<Typography variant="h6" fontWeight={700}>
 					Gestión de Solicitudes Extraordinarias
 				</Typography>
-				<Stack direction="row" spacing={1.5} alignItems="center">
+				<Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
 					<FormControl size="small" sx={{ minWidth: 260 }}>
 						<InputLabel id="select-ventana-label">Llamado / Período</InputLabel>
 						<Select
@@ -501,6 +628,7 @@ export const SolicitudesList: React.FC = () => {
 							onChange={(e) => {
 								const val = e.target.value;
 								setSelectedVentanaId(val);
+								setPage(0);
 								load(val);
 							}}
 						>
@@ -519,31 +647,178 @@ export const SolicitudesList: React.FC = () => {
 							</MenuItem>
 						</Select>
 					</FormControl>
+					<Button
+						variant="contained"
+						color="success"
+						startIcon={<FileDownloadIcon />}
+						disabled={processedSolicitudes.length === 0}
+						onClick={handleExportExcel}
+						size="small"
+					>
+						Exportar Excel ({processedSolicitudes.length})
+					</Button>
 					<IconButton onClick={() => load()} disabled={loading} color="primary">
 						<RefreshIcon />
 					</IconButton>
 				</Stack>
 			</Stack>
 
+			<Paper sx={{ p: 2, mb: 2, borderRadius: 2 }} variant="outlined">
+				<Grid container spacing={2} alignItems="center">
+					<Grid item xs={12} md={5}>
+						<TextField
+							placeholder="Buscar por Estudiante, DNI, Materia, Profesorado o Docente..."
+							fullWidth
+							size="small"
+							value={search}
+							onChange={(e) => {
+								setSearch(e.target.value);
+								setPage(0);
+							}}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start">
+										<SearchIcon fontSize="small" color="action" />
+									</InputAdornment>
+								),
+							}}
+						/>
+					</Grid>
+					<Grid item xs={12} sm={6} md={3.5}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="filtro-prof-label">Profesorado</InputLabel>
+							<Select
+								labelId="filtro-prof-label"
+								value={filtroProfesorado}
+								label="Profesorado"
+								onChange={(e) => {
+									setFiltroProfesorado(e.target.value);
+									setPage(0);
+								}}
+							>
+								<MenuItem value="">Todos los profesorados</MenuItem>
+								{profesoradosDisponibles.map((p) => (
+									<MenuItem key={p} value={p}>
+										{p}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					</Grid>
+					<Grid item xs={12} sm={6} md={3.5}>
+						<FormControl fullWidth size="small">
+							<InputLabel id="filtro-estado-label">Estado</InputLabel>
+							<Select
+								labelId="filtro-estado-label"
+								value={filtroEstado}
+								label="Estado"
+								onChange={(e) => {
+									setFiltroEstado(e.target.value);
+									setPage(0);
+								}}
+							>
+								<MenuItem value="">Todos los estados</MenuItem>
+								<MenuItem value="PEN">Pendiente</MenuItem>
+								<MenuItem value="PRO">Aprobada / En Mesa</MenuItem>
+								<MenuItem value="REC">Rechazada</MenuItem>
+							</Select>
+						</FormControl>
+					</Grid>
+				</Grid>
+			</Paper>
+
 			<TableContainer component={Paper} variant="outlined">
 				<Table size="small">
 					<TableHead sx={{ bgcolor: "grey.50" }}>
 						<TableRow>
-							<TableCell sx={{ fontWeight: 700 }}>Fecha Pedido</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>Fecha Mesa</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>Estudiante</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>DNI</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>Materia</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>Condición</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>Profesorado</TableCell>
-							<TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "fecha_solicitud"}
+									direction={orderBy === "fecha_solicitud" ? order : "asc"}
+									onClick={() => handleRequestSort("fecha_solicitud")}
+								>
+									Fecha Pedido
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "fecha_mesa"}
+									direction={orderBy === "fecha_mesa" ? order : "asc"}
+									onClick={() => handleRequestSort("fecha_mesa")}
+								>
+									Fecha Mesa
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "estudiante_nombre"}
+									direction={orderBy === "estudiante_nombre" ? order : "asc"}
+									onClick={() => handleRequestSort("estudiante_nombre")}
+								>
+									Estudiante
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "estudiante_dni"}
+									direction={orderBy === "estudiante_dni" ? order : "asc"}
+									onClick={() => handleRequestSort("estudiante_dni")}
+								>
+									DNI
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "materia_nombre"}
+									direction={orderBy === "materia_nombre" ? order : "asc"}
+									onClick={() => handleRequestSort("materia_nombre")}
+								>
+									Materia
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "docente_nombre"}
+									direction={orderBy === "docente_nombre" ? order : "asc"}
+									onClick={() => handleRequestSort("docente_nombre")}
+								>
+									Docente Cátedra
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "modalidad"}
+									direction={orderBy === "modalidad" ? order : "asc"}
+									onClick={() => handleRequestSort("modalidad")}
+								>
+									Condición
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "profesorado_nombre"}
+									direction={orderBy === "profesorado_nombre" ? order : "asc"}
+									onClick={() => handleRequestSort("profesorado_nombre")}
+								>
+									Profesorado
+								</TableSortLabel>
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
+								<TableSortLabel
+									active={orderBy === "estado"}
+									direction={orderBy === "estado" ? order : "asc"}
+									onClick={() => handleRequestSort("estado")}
+								>
+									Estado
+								</TableSortLabel>
+							</TableCell>
 							<TableCell align="center" sx={{ fontWeight: 700 }}>
 								Acciones
 							</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{solicitudes.map((s) => (
+						{paginatedSolicitudes.map((s) => (
 							<TableRow key={s.id} hover>
 								<TableCell>{formatDate(s.fecha_solicitud)}</TableCell>
 								<TableCell>
@@ -558,9 +833,20 @@ export const SolicitudesList: React.FC = () => {
 										</Typography>
 									)}
 								</TableCell>
-								<TableCell>{s.estudiante_nombre}</TableCell>
+								<TableCell sx={{ fontWeight: 600 }}>{s.estudiante_nombre}</TableCell>
 								<TableCell>{s.estudiante_dni}</TableCell>
 								<TableCell>{s.materia_nombre}</TableCell>
+								<TableCell>
+									{s.docente_nombre ? (
+										<Typography variant="body2" sx={{ fontWeight: 500, color: "primary.dark" }}>
+											{s.docente_nombre}
+										</Typography>
+									) : (
+										<Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+											Sin docente asignado
+										</Typography>
+									)}
+								</TableCell>
 								<TableCell>
 									<Chip
 										label={
@@ -656,15 +942,31 @@ export const SolicitudesList: React.FC = () => {
 								</TableCell>
 							</TableRow>
 						))}
-						{solicitudes.length === 0 && (
+						{processedSolicitudes.length === 0 && (
 							<TableRow>
-								<TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-									No hay solicitudes registradas.
+								<TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+									No se encontraron solicitudes con los filtros aplicados.
 								</TableCell>
 							</TableRow>
 						)}
 					</TableBody>
 				</Table>
+				<TablePagination
+					rowsPerPageOptions={[10, 25, 50, 100]}
+					component="div"
+					count={processedSolicitudes.length}
+					rowsPerPage={rowsPerPage}
+					page={page}
+					onPageChange={(_e, newPage) => setPage(newPage)}
+					onRowsPerPageChange={(e) => {
+						setRowsPerPage(parseInt(e.target.value, 10));
+						setPage(0);
+					}}
+					labelRowsPerPage="Filas por página:"
+					labelDisplayedRows={({ from, to, count }) =>
+						`${from}-${to} de ${count !== -1 ? count : `más de ${to}`}`
+					}
+				/>
 			</TableContainer>
 			<Dialog
 				open={openDialog}

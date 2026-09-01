@@ -1,4 +1,6 @@
 import LockResetIcon from "@mui/icons-material/LockReset";
+import Grid from "@mui/material/Grid";
+import { ForcedResetWidget } from "@/components/dashboard/ForcedResetWidget";
 import { DASHBOARD_ITEMS } from "@/components/roles/dashboardItems";
 import RoleDashboard, {
 	type RoleDashboardSection,
@@ -13,13 +15,6 @@ const sections: RoleDashboardSection[] = [
 				title: "Inscripción a carreras",
 				subtitle:
 					"Formalizá y confirmá inscripciones de aspirantes a profesorados.",
-			},
-			{
-				title: "Primera carga",
-				subtitle:
-					"Registro inicial de estudiantes, actas y regularidades históricas.",
-				icon: DASHBOARD_ITEMS.ACTAS_FINALES.icon,
-				path: "/admin/primera-carga",
 			},
 			{
 				...DASHBOARD_ITEMS.REGULARIDAD_CARGA,
@@ -37,7 +32,7 @@ const sections: RoleDashboardSection[] = [
 		title: "Estudiantes",
 		items: [
 			{
-				title: "Resetear contraseña",
+				title: "Resetear contraseña estudiante",
 				subtitle: "Restablecé la contraseña de un estudiante usando su DNI.",
 				icon: <LockResetIcon />,
 				path: "/attp/resetear-password",
@@ -61,6 +56,12 @@ export default function AttpIndex() {
 			title="A.T.T.P."
 			subtitle="Gestión de inscripciones a carreras y espacios curriculares. Consulta en modo solo lectura para el resto."
 			sections={sections}
-		/>
+		>
+			<Grid container spacing={3} mb={1}>
+				<Grid item xs={12} md={6} lg={4}>
+					<ForcedResetWidget />
+				</Grid>
+			</Grid>
+		</RoleDashboard>
 	);
 }

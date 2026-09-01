@@ -356,6 +356,29 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
     if allowed is not None:
         qs = qs.filter(materia__plan_de_estudio__profesorado_id__in=allowed)
 
+    items = list(qs.order_by("-fecha_solicitud"))
+    materia_ids = {s.materia_id for s in items}
+
+    # Pre-cargar docentes de cátedra para el año académico actual/reciente
+    from collections import defaultdict
+    from core.models import Comision
+    from django.utils import timezone
+
+    current_year = timezone.now().year
+    comisiones = Comision.objects.filter(
+        materia_id__in=materia_ids,
+        anio_lectivo__in=[current_year, current_year - 1],
+        docente__isnull=False,
+    ).select_related("docente__persona", "suplente__persona").order_by("orden", "id")
+
+    materia_docentes_map = defaultdict(list)
+    for c in comisiones:
+        d = c.suplente if (c.estado == "LIC" and c.suplente) else c.docente
+        if d and d.persona:
+            doc_str = f"{d.persona.apellido}, {d.persona.nombre}"
+            if doc_str not in materia_docentes_map[c.materia_id]:
+                materia_docentes_map[c.materia_id].append(doc_str)
+
     return [
         SolicitudMesaOut(
             id=s.id,
@@ -375,8 +398,9 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
             mesa_asignada_id=s.mesa_asignada_id,
             fecha_mesa=s.mesa_asignada.fecha if s.mesa_asignada else None,
             hora_mesa=s.mesa_asignada.hora_desde.strftime("%H:%M") if s.mesa_asignada and s.mesa_asignada.hora_desde else None,
+            docente_nombre="; ".join(materia_docentes_map.get(s.materia_id, [])) or None,
         )
-        for s in qs.order_by("-fecha_solicitud")
+        for s in items
     ]
 
 

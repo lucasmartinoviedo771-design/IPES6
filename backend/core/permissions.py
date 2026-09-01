@@ -144,6 +144,7 @@ CAPABILITIES: dict[str, set[str]] = {
     # --- Staff ---
     "asignar_roles": {"admin", "secretaria"},
     "gestionar_staff": {"admin", "secretaria"},
+    "resetear_password_docente": {"admin", "secretaria", "attp"},
     # --- Horarios ---
     # El horario de cursada (consulta y descarga en PDF) es informacion no
     # sensible que debe poder ver cualquier rol institucional.
