@@ -564,7 +564,8 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         pass
 
     # Fetch regularidades for the student for the subjects in this query
-    from core.models import Regularidad
+    from core.models import Regularidad, PlanillaRegularidadFila
+    from apps.asistencia.models import AsistenciaEstudiante, JustificacionDetalle
 
     materia_ids = [ins.materia_id for ins in qs]
     inscripcion_ids = [ins.id for ins in qs]
@@ -586,6 +587,33 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         if key not in reg_by_mat_year:
             reg_by_mat_year[key] = reg.get_situacion_display()
 
+    # Pre-calcular comisiones con actividad de asistencia / justificaciones / planillas
+    comisiones_ids = [ins.comision_id for ins in qs if ins.comision_id]
+    comisiones_con_asistencia = set()
+    if comisiones_ids:
+        comisiones_con_asistencia = set(
+            AsistenciaEstudiante.objects.filter(
+                estudiante=est,
+                clase__comision_id__in=comisiones_ids,
+            ).values_list("clase__comision_id", flat=True)
+        )
+        just_comisiones = set(
+            JustificacionDetalle.objects.filter(
+                estudiante=est,
+                clase__comision_id__in=comisiones_ids,
+            ).values_list("clase__comision_id", flat=True)
+        )
+        comisiones_con_asistencia.update(just_comisiones)
+
+    # Filas de planillas de regularidad
+    planillas_con_notas = set(
+        PlanillaRegularidadFila.objects.filter(
+            estudiante=est,
+            planilla__comision_id__in=comisiones_ids,
+        ).values_list("planilla__comision_id", flat=True)
+    )
+    comisiones_con_asistencia.update(planillas_con_notas)
+
     items: list[MateriaInscriptaItem] = []
     for ins in qs:
         materia = ins.materia
@@ -602,6 +630,12 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         # Determinar el estado de regularidad de ESTA inscripción particular (mismo año / misma inscripción)
         estado_reg = reg_by_ins.get(ins.id) or reg_by_mat_year.get((materia.id, ins.anio))
 
+        # Determinar si ya posee actividad académica registrada
+        tiene_act = (
+            bool(estado_reg)
+            or (ins.comision_id is not None and ins.comision_id in comisiones_con_asistencia)
+        )
+
         items.append(
             MateriaInscriptaItem(
                 inscripcion_id=ins.id,
@@ -616,6 +650,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
                 estado_display=ins.get_estado_display(),
                 regimen=materia.get_regimen_display(),
                 estado_regularidad=estado_reg,
+                tiene_actividad=tiene_act,
                 horarios=obtener_horarios_materia(materia),
                 comision_actual=_comision_to_resumen(comision_visible),
                 comision_solicitada=_comision_to_resumen(ins.comision_solicitada),
@@ -664,6 +699,37 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
     ):
         return 400, ApiResponse(
             ok=False, message="Solo se pueden cancelar inscripciones activas (Confirmadas o Pendientes)."
+        )
+
+    # 1. Validación de Actividad Académica Registrada (Asistencia / Justificaciones / Notas / Regularidad)
+    from core.models import Regularidad, PlanillaRegularidadFila
+    from apps.asistencia.models import AsistenciaEstudiante, JustificacionDetalle
+
+    tiene_actividad = False
+    motivo_actividad = ""
+
+    # Verificar si tiene regularidad cargada
+    if Regularidad.objects.filter(inscripcion=inscripcion).exists():
+        tiene_actividad = True
+        motivo_actividad = "situación académica / regularidad ya registrada"
+    elif inscripcion.comision_id:
+        if AsistenciaEstudiante.objects.filter(estudiante=est, clase__comision_id=inscripcion.comision_id).exists():
+            tiene_actividad = True
+            motivo_actividad = "registros de asistencia tomados en clases"
+        elif JustificacionDetalle.objects.filter(estudiante=est, clase__comision_id=inscripcion.comision_id).exists():
+            tiene_actividad = True
+            motivo_actividad = "licencias / justificaciones de inasistencia"
+        elif PlanillaRegularidadFila.objects.filter(estudiante=est, planilla__comision_id=inscripcion.comision_id).exists():
+            tiene_actividad = True
+            motivo_actividad = "notas parciales o de cursada en la planilla docente"
+
+    if tiene_actividad and not es_gestion:
+        return 400, ApiResponse(
+            ok=False,
+            message=(
+                f"No es posible cancelar la inscripción porque el estudiante ya posee {motivo_actividad} "
+                f"en '{inscripcion.materia.nombre}'. Debe solicitar la 'Baja Voluntaria' del espacio curricular."
+            ),
         )
 
     # Si no es gestión, verificar que la ventana esté abierta para que el alumno pueda cancelar

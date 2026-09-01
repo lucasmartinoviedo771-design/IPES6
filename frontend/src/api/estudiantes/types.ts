@@ -483,6 +483,7 @@ export type MateriaInscriptaItemDTO = {
 	estado_display: string;
 	regimen?: string;
 	estado_regularidad?: string;
+	tiene_actividad?: boolean;
 	horarios: HorarioDTO[];
 	comision_actual?: ComisionResumenDTO | null;
 	comision_solicitada?: ComisionResumenDTO | null;
