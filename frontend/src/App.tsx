@@ -5,7 +5,11 @@ import { ProtectedRoute } from "@/router/guards";
 import { buildAdminRoutes } from "@/router/routes/AdminRoutes";
 import { buildAppShellRoutes } from "@/router/routes/AppShellRoutes";
 import { buildPublicRoutes } from "@/router/routes/PublicRoutes";
-import ChangePasswordPage from "./pages/Auth/ChangePasswordPage";
+import { lazyPage } from "@/utils/lazy";
+
+const ChangePasswordPage = lazyPage(
+	() => import("./pages/Auth/ChangePasswordPage"),
+);
 
 export default function App() {
 	const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;

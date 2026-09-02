@@ -33,6 +33,18 @@ window.addEventListener("unhandledrejection", (e) => {
 	void 0;
 });
 
+// Auto-recuperación ante despliegues (ChunkLoadError / vite:preloadError)
+window.addEventListener("vite:preloadError", (event) => {
+	event.preventDefault();
+	const lastReload = sessionStorage.getItem("last_chunk_preload_reload");
+	const now = Date.now();
+	// Evitar loop infinito: solo recargar si pasaron más de 8 segundos desde el último intento
+	if (!lastReload || now - parseInt(lastReload, 10) > 8000) {
+		sessionStorage.setItem("last_chunk_preload_reload", String(now));
+		window.location.reload();
+	}
+});
+
 const qc = new QueryClient({
 	defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });

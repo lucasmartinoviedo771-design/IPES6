@@ -6,7 +6,7 @@
 	"scripts": {
 		"start": "vite",
 		"dev": "vite --host",
-		"build": "tsc -b && vite build",
+		"build": "tsc -b && vite build && node scripts/precompress.cjs",
 		"preview": "vite preview",
 		"lint": "eslint src/ vite.config.ts --report-unused-disable-directives --max-warnings 0",
 		"test": "vitest run"
