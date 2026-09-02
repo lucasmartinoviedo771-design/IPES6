@@ -24,7 +24,14 @@ export const setGlobalRoleOverride = (role: string | null) => {
 /**
  * Obtiene el rol simulado actual.
  */
-const getGlobalRoleOverride = () => globalRoleOverride;
+const getGlobalRoleOverride = () => {
+	if (globalRoleOverride) return globalRoleOverride;
+	try {
+		return sessionStorage.getItem("roleOverride") || localStorage.getItem("ipes_active_role") || null;
+	} catch {
+		return null;
+	}
+};
 
 /**
  * Limpia y normaliza una lista de roles crudos.
@@ -47,8 +54,9 @@ const getActiveRole = (): string | null => {
 
 const collectRoles = (user: User | null | undefined): Set<string> => {
 	const set = new Set<string>();
+	if (!user) return set;
 
-	// Prioridad 1: Simulación activa (Impersonation) o rol seleccionado por usuario multi-rol
+	// Si hay simulación o rol activo seleccionado
 	const effectiveOverride = globalRoleOverride || getActiveRole();
 	if (effectiveOverride) {
 		const r = effectiveOverride.toLowerCase().trim();
@@ -63,15 +71,16 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
 		if (r.startsWith("coordinador")) set.add("coordinador");
 		if (r.startsWith("tutor")) set.add("tutor");
 		if (r === "tutoria" || r === "tutoría") set.add("tutor");
+
+		// Si el usuario simulado es un superuser real (no simulado), podría tener admin
+		if (user.is_superuser && !user.is_impersonated && !globalRoleOverride) {
+			set.add("admin");
+		}
 		return set;
 	}
 
-	// Prioridad 2: Roles reales del usuario
-	if (!user) return set;
-
 	normalizeRoles(user.roles).forEach((role) => {
 		set.add(role);
-		// Expansión semántica: 'bedel-secundaria' otorga capacidades de 'bedel' genérico
 		if (role.includes("estudiante")) set.add("estudiante");
 		if (role === "bedel_secretaria") {
 			// no expandir
@@ -84,18 +93,8 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
 		if (role === "tutoria" || role === "tutoría") set.add("tutor");
 	});
 
-	// Privilegios administrativos absolutos
-	if (user.is_superuser) {
+	if (user.is_superuser && !user.is_impersonated) {
 		set.add("admin");
-	}
-
-	if (import.meta.env.DEV) {
-		console.debug(
-			"[Roles] User:",
-			user.dni,
-			"Effective Roles:",
-			Array.from(set),
-		);
 	}
 
 	return set;
@@ -121,8 +120,8 @@ export const hasAnyRole = (
 ): boolean => {
 	if (!roles || roles.length === 0) return true;
 	const bag = collectRoles(user);
-	if (bag.has("admin")) return true;
-	if (user?.is_superuser && !getGlobalRoleOverride()) return true;
+	if (bag.has("admin") && !user?.is_impersonated) return true;
+	if (user?.is_superuser && !user?.is_impersonated && !getGlobalRoleOverride()) return true;
 
 	return roles.some((role) => {
 		let r = role.toLowerCase().trim();
@@ -140,8 +139,8 @@ export const hasAllRoles = (
 ): boolean => {
 	if (!roles || roles.length === 0) return true;
 	const bag = collectRoles(user);
-	if (bag.has("admin")) return true;
-	if (user?.is_superuser && !getGlobalRoleOverride()) return true;
+	if (bag.has("admin") && !user?.is_impersonated) return true;
+	if (user?.is_superuser && !user?.is_impersonated && !getGlobalRoleOverride()) return true;
 
 	return roles.every((role) => {
 		let r = role.toLowerCase().trim();
@@ -237,7 +236,7 @@ export const hasCapability = (
 ): boolean => {
 	if (!user) return false;
 	// Superusuario sin impersonation siempre puede todo
-	if (user.is_superuser && !getGlobalRoleOverride()) return true;
+	if (user.is_superuser && !user.is_impersonated && !getGlobalRoleOverride()) return true;
 	// Leer capabilities del backend
 	const caps = user.capabilities ?? [];
 	return caps.includes(capability);
