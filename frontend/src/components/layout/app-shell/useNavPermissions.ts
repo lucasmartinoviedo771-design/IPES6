@@ -10,18 +10,27 @@ import { ROLE_NAV_MAP } from "./constants";
  *
  * Compatible con el sistema de roleOverride (impersonation) para admins.
  */
-export const useNavPermissions = (user: User, roleOverride: string | null) => {
-	// Cuando hay roleOverride activo, restringimos según ROLE_NAV_MAP (para simulación de admin)
+export const useNavPermissions = (
+	user: User,
+	roleOverride: string | null,
+	activeRole?: string | null,
+) => {
+	const effectiveRole = (roleOverride || activeRole || "")
+		.split(":")[0]
+		.toLowerCase()
+		.trim();
+
+	// Cuando hay un rol activo o simulado, restringimos según ROLE_NAV_MAP
 	const allowedNavSet = useMemo(() => {
-		if (!roleOverride) return null;
-		const entries = ROLE_NAV_MAP[roleOverride];
+		if (!effectiveRole) return null;
+		const entries = ROLE_NAV_MAP[effectiveRole];
 		if (!entries || entries.length === 0) return null;
 		return new Set(entries);
-	}, [roleOverride]);
+	}, [effectiveRole]);
 
 	const isNavAllowed = (key: string, capabilityCheck: boolean) => {
-		if (roleOverride) {
-			return allowedNavSet ? allowedNavSet.has(key) : false;
+		if (effectiveRole && allowedNavSet) {
+			return allowedNavSet.has(key) && capabilityCheck;
 		}
 		return capabilityCheck;
 	};

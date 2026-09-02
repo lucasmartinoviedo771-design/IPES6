@@ -70,7 +70,7 @@ export default function AppShell({ children }: PropsWithChildren) {
 
 	const studentOnly = isOnlyEstudiante(user);
 
-	const navPerms = useNavPermissions(user, roleOverride);
+	const navPerms = useNavPermissions(user, roleOverride, activeRole);
 	const { canUseMessages } = navPerms;
 
 	const previousRoleRef = useRef<string | null>(roleOverride || activeRole);
