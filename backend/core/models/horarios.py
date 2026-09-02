@@ -273,6 +273,10 @@ class VentanaHabilitacion(models.Model):
     desde = models.DateField()
     hasta = models.DateField()
     activo = models.BooleanField(default=False)
+    permite_libres = models.BooleanField(
+        default=False,
+        help_text="Indica si en este período se permite la solicitud o examen en condición libre (especialmente para extraordinarias).",
+    )
     periodo = models.CharField(
         max_length=16,
         null=True,

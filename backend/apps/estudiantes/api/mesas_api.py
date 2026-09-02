@@ -700,6 +700,12 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
             else MesaExamen.Modalidad.LIBRE
         )
 
+    # REGLA: Verificar si la ventana extraordinaria permite rendir en condición Libre
+    if modalidad == MesaExamen.Modalidad.LIBRE and not ventana.permite_libres:
+        return 400, {
+            "message": "En este llamado extraordinario no está habilitada la solicitud de mesas en condición libre."
+        }
+
     # --- VALIDACIÓN ACADÉMICA ---
     from core.permissions import can
 
@@ -845,19 +851,34 @@ def listar_materias_solicitables(
     materias_qs = materias_qs.exclude(formato__in=formatos_excluidos)
 
     from core.permissions import can
+    from django.utils import timezone
+
+    hoy = timezone.now().date()
+    ventana_extra_activa = VentanaHabilitacion.objects.filter(
+        tipo=VentanaHabilitacion.Tipo.MESAS_EXTRA, activo=True, desde__lte=hoy, hasta__gte=hoy
+    ).first()
 
     es_staff = bool(dni and can(request.user, "editar_estudiantes"))
 
     solicitables = []
 
+    # Determinar si se evalúan materias libres según la configuración de la ventana activa
+    permite_libres_ventana = ventana_extra_activa.permite_libres if ventana_extra_activa else False
+
     # Si no se especifica modalidad, devolvemos ambas (REG y LIB) para que el frontend las separe
-    modalidades_a_chequear = [modalidad] if modalidad else ["REG", "LIB"]
+    if modalidad:
+        modalidades_a_chequear = [modalidad]
+    else:
+        modalidades_a_chequear = ["REG", "LIB"] if (permite_libres_ventana or es_staff) else ["REG"]
 
     # 3. Validación Académica para cada materia
     for m in materias_qs:
         for mod in modalidades_a_chequear:
-            if mod == "LIB" and not m.permite_mesa_libre:
-                continue
+            if mod == "LIB":
+                if not permite_libres_ventana and not es_staff:
+                    continue
+                if not m.permite_mesa_libre:
+                    continue
 
             is_ok, _, _ = _check_academic_eligibility(
                 est,

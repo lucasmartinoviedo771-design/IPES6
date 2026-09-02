@@ -100,6 +100,28 @@ const EditVentanaDialog: React.FC<Props> = ({
 								<option value="2C">2do Cuatrimestre</option>
 							</TextField>
 						)}
+					{editVentana && editVentana.tipo === "MESAS_EXTRA" && (
+						<FormControlLabel
+							control={
+								<Switch
+									checked={!!editVentana?.permite_libres}
+									onChange={(event) =>
+										setEditVentana((prev) =>
+											prev
+												? { ...prev, permite_libres: event.target.checked }
+												: prev,
+										)
+									}
+									color="secondary"
+								/>
+							}
+							label={
+								editVentana?.permite_libres
+									? "Mesas Libres: Habilitadas"
+									: "Mesas Libres: Deshabilitadas"
+							}
+						/>
+					)}
 					<FormControlLabel
 						control={
 							<Switch

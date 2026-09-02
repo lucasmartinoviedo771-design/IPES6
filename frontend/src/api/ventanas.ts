@@ -6,6 +6,7 @@ export type VentanaDto = {
 	desde: string;
 	hasta: string;
 	activo: boolean;
+	permite_libres?: boolean;
 	periodo?: "1C_ANUALES" | "2C" | "1C";
 };
 

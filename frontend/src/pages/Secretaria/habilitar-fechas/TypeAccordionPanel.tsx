@@ -282,10 +282,30 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
 								</FormControl>
 							</Grid>
 						)}
+						{typeKey === "MESAS_EXTRA" && (
+							<Grid item xs={12} md={3}>
+								<FormControlLabel
+									control={
+										<Switch
+											checked={!!currentDraft.permite_libres}
+											onChange={(event) =>
+												setLocalDraft({ permite_libres: event.target.checked })
+											}
+											color="secondary"
+										/>
+									}
+									label={
+										currentDraft.permite_libres
+											? "Mesas Libres: Habilitadas"
+											: "Mesas Libres: Deshabilitadas"
+									}
+								/>
+							</Grid>
+						)}
 						<Grid
 							item
 							xs={12}
-							md={3}
+							md={typeKey === "MESAS_EXTRA" ? 3 : 3}
 							display="flex"
 							justifyContent={{ xs: "flex-start", md: "flex-end" }}
 						>
@@ -370,6 +390,18 @@ const TypeAccordionPanel: React.FC<TypeAccordionPanelProps> = ({
 															size="small"
 															variant="outlined"
 															label="Cerrado"
+														/>
+													)}
+													{typeKey === "MESAS_EXTRA" && (
+														<Chip
+															size="small"
+															variant="outlined"
+															color={item.permite_libres ? "secondary" : "default"}
+															label={
+																item.permite_libres
+																	? "Libres: Sí"
+																	: "Libres: No"
+															}
 														/>
 													)}
 													{(typeKey === "MATERIAS" ||

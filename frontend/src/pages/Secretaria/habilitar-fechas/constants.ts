@@ -142,6 +142,7 @@ export function defaultDraft(tipo: string): Ventana {
 	return {
 		tipo,
 		activo: false,
+		permite_libres: false,
 		desde: dayjs().format("YYYY-MM-DD"),
 		hasta: dayjs().add(7, "day").format("YYYY-MM-DD"),
 		periodo: tipo === CALENDAR_TYPE ? "1C" : "1C_ANUALES",

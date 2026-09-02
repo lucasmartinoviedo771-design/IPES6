@@ -634,28 +634,33 @@ const MesaExamenPage: React.FC = () => {
 		if (!extra)
 			return {
 				habilitada: false,
+				permite_libres: false,
 				mensaje: "No hay período de solicitudes extraordinarias configurado.",
 			};
 		const hoy = new Date();
 		hoy.setHours(0, 0, 0, 0);
 		const desde = new Date(extra.desde + "T00:00:00");
 		const hasta = new Date(extra.hasta + "T00:00:00");
+		const permite_libres = Boolean(extra.permite_libres);
 		if (!extra.activo)
 			return {
 				habilitada: false,
+				permite_libres,
 				mensaje: "Las solicitudes de mesas extraordinarias están cerradas.",
 			};
 		if (hoy < desde)
 			return {
 				habilitada: false,
+				permite_libres,
 				mensaje: `Las solicitudes se habilitarán el ${desde.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}.`,
 			};
 		if (hoy > hasta)
 			return {
 				habilitada: false,
+				permite_libres,
 				mensaje: `El período de solicitudes cerró el ${hasta.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}.`,
 			};
-		return { habilitada: true, mensaje: "" };
+		return { habilitada: true, permite_libres, mensaje: "" };
 	}, [ventanas]);
 
 	return (
@@ -1353,22 +1358,26 @@ const MesaExamenPage: React.FC = () => {
 													);
 												};
 
+												const showLibres = ventanaExtraInfo.permite_libres || canGestionar;
+
 												return (
 													<Grid container spacing={3} sx={{ mt: 0.5 }}>
-														<Grid item xs={12} md={6}>
+														<Grid item xs={12} md={showLibres ? 6 : 12}>
 															<MateriasGrid
 																lista={reg}
 																label="Regular"
 																isLibre={false}
 															/>
 														</Grid>
-														<Grid item xs={12} md={6}>
-															<MateriasGrid
-																lista={lib}
-																label="Libre"
-																isLibre={true}
-															/>
-														</Grid>
+														{showLibres && (
+															<Grid item xs={12} md={6}>
+																<MateriasGrid
+																	lista={lib}
+																	label="Libre"
+																	isLibre={true}
+																/>
+															</Grid>
+														)}
 													</Grid>
 												);
 											})()

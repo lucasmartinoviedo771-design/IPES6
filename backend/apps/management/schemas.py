@@ -92,6 +92,7 @@ class VentanaIn(Schema):
     desde: date
     hasta: date
     activo: bool = True
+    permite_libres: bool = False
     periodo: str | None = None
 
 
@@ -101,6 +102,7 @@ class VentanaOut(Schema):
     desde: date
     hasta: date
     activo: bool
+    permite_libres: bool = False
     periodo: str | None = None
 
 
