@@ -1,15 +1,17 @@
-import sys
 import os
+import sys
+
 import django
 
-sys.path.append('/app')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+sys.path.append("/app")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
 User = get_user_model()
+
 
 def reset_password(username_or_dni: str, new_password: str = None):
     u = User.objects.filter(username=username_or_dni).first()
@@ -23,12 +25,13 @@ def reset_password(username_or_dni: str, new_password: str = None):
     print(f"Contraseña de '{username_or_dni}' reseteada exitosamente.")
 
     # Si es un perfil de estudiante, marcar cambio de clave obligatorio
-    persona = getattr(u, 'persona', None)
-    if persona and hasattr(persona, 'estudiante'):
+    persona = getattr(u, "persona", None)
+    if persona and hasattr(persona, "estudiante"):
         est = persona.estudiante
         est.must_change_password = True
         est.save()
         print("Flag 'must_change_password' activado en el legajo del estudiante.")
+
 
 if __name__ == "__main__":
     if len(sys.argv) >= 2:

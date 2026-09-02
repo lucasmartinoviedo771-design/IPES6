@@ -1,5 +1,6 @@
 import os
 import sys
+
 import django
 
 # Setup Django environment
@@ -10,13 +11,13 @@ django.setup()
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
+from apps.asistencia.models import AsistenciaEstudiante
+from core.models.actas import ActaExamenEstudiante
 from core.models.base import Persona
 from core.models.estudiantes import Estudiante
-from core.models.actas import ActaExamenEstudiante
-from core.models.regularidades import Regularidad, PlanillaRegularidadFila, PlanillaCursadaFila
 from core.models.inscripciones import InscripcionMateriaEstudiante
 from core.models.mesas import InscripcionMesa
-from apps.asistencia.models import AsistenciaEstudiante
+from core.models.regularidades import PlanillaCursadaFila, PlanillaRegularidadFila, Regularidad
 
 User = get_user_model()
 
@@ -29,9 +30,9 @@ def unify_student(dni_source: str, dni_target: str):
     :param dni_source: DNI erróneo o que se va a dar de baja (origen).
     :param dni_target: DNI correcto y definitivo del estudiante (destino).
     """
-    print(f"\n=======================================================")
+    print("\n=======================================================")
     print(f" Iniciando unificación: {dni_source} -> {dni_target}")
-    print(f"=======================================================")
+    print("=======================================================")
 
     p_src = Persona.objects.filter(dni=dni_source).first()
     p_tgt = Persona.objects.filter(dni=dni_target).first()
@@ -40,7 +41,12 @@ def unify_student(dni_source: str, dni_target: str):
     u_src = User.objects.filter(username=dni_source).first()
     u_tgt = User.objects.filter(username=dni_target).first()
 
-    if not p_src and not e_src and not ActaExamenEstudiante.objects.filter(dni=dni_source).exists() and not PlanillaRegularidadFila.objects.filter(dni=dni_source).exists():
+    if (
+        not p_src
+        and not e_src
+        and not ActaExamenEstudiante.objects.filter(dni=dni_source).exists()
+        and not PlanillaRegularidadFila.objects.filter(dni=dni_source).exists()
+    ):
         print(f"Error: No se encontró ningún registro asociado al DNI de origen {dni_source}.")
         return
 
@@ -58,7 +64,7 @@ def unify_student(dni_source: str, dni_target: str):
         # Caso B: Existen ambos registros y hay que fusionar
         else:
             print(f"Fusionando registros de {dni_source} en {dni_target}...")
-            
+
             if e_src and e_tgt:
                 # 1. Carreras
                 for c in e_src.carreras.all():
@@ -78,8 +84,12 @@ def unify_student(dni_source: str, dni_target: str):
 
                 # 3. Inscripciones a materias
                 for ins in InscripcionMateriaEstudiante.objects.filter(estudiante=e_src):
-                    if InscripcionMateriaEstudiante.objects.filter(estudiante=e_tgt, materia=ins.materia, anio=ins.anio).exists():
-                        print(f"  * Conflicto en Inscripción {ins.materia.nombre} ({ins.anio}). Se conserva la existente.")
+                    if InscripcionMateriaEstudiante.objects.filter(
+                        estudiante=e_tgt, materia=ins.materia, anio=ins.anio
+                    ).exists():
+                        print(
+                            f"  * Conflicto en Inscripción {ins.materia.nombre} ({ins.anio}). Se conserva la existente."
+                        )
                         ins.delete()
                     else:
                         ins.estudiante = e_tgt
@@ -121,8 +131,12 @@ def unify_student(dni_source: str, dni_target: str):
         print(f"  + Actas de Examen actualizadas (DNI {dni_source} -> {dni_target}): {actas_updated}")
 
         # 9. Actualizar DNI en Planillas de Regularidad históricas (por texto de DNI)
-        prf_dni_updated = PlanillaRegularidadFila.objects.filter(dni=dni_source).update(dni=dni_target, estudiante=e_tgt)
-        print(f"  + Planillas de Regularidad históricas actualizadas (DNI {dni_source} -> {dni_target}): {prf_dni_updated}")
+        prf_dni_updated = PlanillaRegularidadFila.objects.filter(dni=dni_source).update(
+            dni=dni_target, estudiante=e_tgt
+        )
+        print(
+            f"  + Planillas de Regularidad históricas actualizadas (DNI {dni_source} -> {dni_target}): {prf_dni_updated}"
+        )
 
     print("=======================================================")
     print(" Unificación completada exitosamente.")

@@ -21,9 +21,11 @@ sys.path.append("/home/ipesrg/sistema-gestion/backend")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 import django
+
 django.setup()
 
 from django.contrib.auth.models import User
+
 from core.models.estudiantes import Estudiante
 from core.models.inscripciones import InscripcionMateriaEstudiante
 
@@ -31,9 +33,9 @@ TZ_ARG = zoneinfo.ZoneInfo("America/Argentina/Ushuaia")
 
 
 def auditar_estudiante(dni: str):
-    print(f"\n============================================================")
+    print("\n============================================================")
     print(f" AUDITORÍA DE INSCRIPCIONES A MATERIAS - DNI: {dni}")
-    print(f"============================================================")
+    print("============================================================")
 
     # Buscar usuario / estudiante
     user = User.objects.filter(username=dni).first()
@@ -48,10 +50,12 @@ def auditar_estudiante(dni: str):
 
     estudiante = getattr(user, "estudiante", None)
     if not estudiante:
-        print(f"⚠️ El usuario {user.username} ({user.first_name} {user.last_name}) existe pero no tiene perfil de Estudiante.")
+        print(
+            f"⚠️ El usuario {user.username} ({user.first_name} {user.last_name}) existe pero no tiene perfil de Estudiante."
+        )
         return
 
-    print(f"\n👤 ESTUDIANTE:")
+    print("\n👤 ESTUDIANTE:")
     print(f"  • Nombre y Apellido: {user.first_name} {user.last_name}")
     print(f"  • DNI: {user.username}")
     print(f"  • Legajo: {estudiante.legajo or 'Sin legajo asignado'}")
@@ -59,9 +63,11 @@ def auditar_estudiante(dni: str):
 
     carreras = estudiante.carreras_detalle.select_related("profesorado").all()
     if carreras.exists():
-        print(f"  • Carreras asociadas:")
+        print("  • Carreras asociadas:")
         for ec in carreras:
-            print(f"      - {ec.profesorado.nombre} (Cohorte: {ec.cohorte or ec.anio_ingreso or 'S/D'} | Estado: {ec.get_estado_academico_display()})")
+            print(
+                f"      - {ec.profesorado.nombre} (Cohorte: {ec.cohorte or ec.anio_ingreso or 'S/D'} | Estado: {ec.get_estado_academico_display()})"
+            )
 
     inscripciones = (
         InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante)
@@ -88,7 +94,7 @@ def auditar_estudiante(dni: str):
 
         movimientos = ins.movimientos.all().order_by("fecha_hora")
         if movimientos.exists():
-            print(f"      • Historial de Movimientos / Auditoría:")
+            print("      • Historial de Movimientos / Auditoría:")
             for mov in movimientos:
                 mov_dt = mov.fecha_hora.astimezone(TZ_ARG) if mov.fecha_hora else None
                 mov_dt_str = mov_dt.strftime("%d/%m/%Y %H:%M:%S hs") if mov_dt else "Desconocida"
@@ -105,9 +111,9 @@ def auditar_estudiante(dni: str):
                 detalle = f" | Motivo/Detalle: {mov.motivo_detalle}" if mov.motivo_detalle else ""
                 print(f"          - [{mov.get_tipo_display()}] el {mov_dt_str} por {op_nombre}{detalle}")
         else:
-            print(f"      • Historial de Movimientos: Sin movimientos de auditoría registrados.")
+            print("      • Historial de Movimientos: Sin movimientos de auditoría registrados.")
 
-    print(f"\n============================================================\n")
+    print("\n============================================================\n")
 
 
 if __name__ == "__main__":
