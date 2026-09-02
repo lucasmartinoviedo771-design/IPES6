@@ -49,7 +49,7 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const [simularOpen, setSimularOpen] = useState(false);
-	const isAdmin = hasAnyRole(user, ["admin"]) || Boolean(user?.is_superuser);
+	const isAdmin = !user?.is_impersonated && (hasAnyRole(user, ["admin"]) || Boolean(user?.is_superuser));
 
 	const hasMultipleRoles = React.useMemo(() => {
 		if (!user) return false;
@@ -65,13 +65,13 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 			else if (normalized.startsWith("secretaria")) unique.add("secretaria");
 			else unique.add(normalized);
 		});
-		if (user.is_superuser) {
+		if (user.is_superuser && !user.is_impersonated) {
 			unique.add("admin");
 		}
 		return (
 			unique.size > 1 ||
 			(user.role_assignments ?? []).length > 1 ||
-			!!user.is_superuser
+			(!!user.is_superuser && !user.is_impersonated)
 		);
 	}, [user]);
 

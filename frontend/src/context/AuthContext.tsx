@@ -330,7 +330,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 			else normalized.add(role);
 		});
 
-		if (normalized.has("admin") || user.is_superuser) {
+		if ((normalized.has("admin") || user.is_superuser) && !user.is_impersonated) {
 			Object.keys(ROLE_LABELS).forEach((role) => normalized.add(role));
 		}
 		return Array.from(normalized)
@@ -402,11 +402,21 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 			const { data } = await client.post("auth/impersonate/", { dni: dni.trim() });
 			const u: User = normalizeUserPayload(data?.user);
 			if (!u) throw new Error("Respuesta inválida del servidor al simular usuario.");
-			// Limpiar roles forzados para que adopte los del usuario simulado
-			setRoleOverride(null);
-			setActiveRoleState(null);
+			
+			// Determinar el rol principal del usuario simulado
+			const targetRoles = (u.roles ?? []).map((r) => (r || "").toLowerCase().trim()).filter(Boolean);
+			const initialRole = targetRoles.length > 0 ? targetRoles[0] : null;
+
+			setRoleOverride(initialRole);
+			setActiveRoleState(initialRole);
 			try {
-				localStorage.removeItem("ipes_active_role");
+				if (initialRole) {
+					localStorage.setItem("ipes_active_role", initialRole);
+					sessionStorage.setItem("roleOverride", initialRole);
+				} else {
+					localStorage.removeItem("ipes_active_role");
+					sessionStorage.removeItem("roleOverride");
+				}
 			} catch {
 				/* ignore */
 			}
@@ -431,6 +441,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 			setActiveRoleState(null);
 			try {
 				localStorage.removeItem("ipes_active_role");
+				sessionStorage.removeItem("roleOverride");
 			} catch {
 				/* ignore */
 			}
