@@ -10,11 +10,13 @@ import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import { Link, useNavigate } from "react-router-dom";
 import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
 import { useAuth } from "@/context/AuthContext";
+import { getDefaultHomeRoute } from "@/utils/roles";
 import { toast } from "@/utils/toast";
 
 interface SimularUsuarioModalProps {
@@ -26,6 +28,7 @@ export const SimularUsuarioModal: React.FC<SimularUsuarioModalProps> = ({
 	open,
 	onClose,
 }) => {
+	const navigate = useNavigate();
 	const { impersonateUser } = useAuth();
 	const [dni, setDni] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -55,6 +58,8 @@ export const SimularUsuarioModal: React.FC<SimularUsuarioModalProps> = ({
 				toast.success(
 					`Simulación iniciada como ${targetUser.name || targetUser.dni}`
 				);
+				const targetHome = getDefaultHomeRoute(targetUser);
+				navigate(targetHome, { replace: true });
 			}
 			handleClose();
 		} catch (err: any) {

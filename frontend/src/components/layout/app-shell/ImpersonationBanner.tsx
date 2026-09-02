@@ -5,10 +5,13 @@ import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { getDefaultHomeRoute } from "@/utils/roles";
 import { toast } from "@/utils/toast";
 
 export const ImpersonationBanner: React.FC = () => {
+	const navigate = useNavigate();
 	const { user, stopImpersonate } = useAuth();
 	const [loading, setLoading] = useState(false);
 
@@ -17,8 +20,10 @@ export const ImpersonationBanner: React.FC = () => {
 	const handleExit = async () => {
 		setLoading(true);
 		try {
-			await stopImpersonate();
+			const adminUser = await stopImpersonate();
 			toast.success("Has vuelto a tu sesión de Administrador.");
+			const adminHome = getDefaultHomeRoute(adminUser);
+			navigate(adminHome, { replace: true });
 		} catch (err: any) {
 			toast.error(err.message || "Error al salir de la simulación.");
 		} finally {
