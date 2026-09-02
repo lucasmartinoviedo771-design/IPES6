@@ -20,13 +20,18 @@ export const ImpersonationBanner: React.FC = () => {
 	const handleExit = async () => {
 		setLoading(true);
 		try {
-			const adminUser = await stopImpersonate();
+			await stopImpersonate();
 			toast.success("Has vuelto a tu sesión de Administrador.");
-			const adminHome = getDefaultHomeRoute(adminUser);
-			navigate(adminHome, { replace: true });
+			try {
+				sessionStorage.removeItem("roleOverride");
+				localStorage.removeItem("ipes_active_role");
+			} catch {
+				/* ignore */
+			}
+			// Redirección completa para limpiar caches y estado de React
+			window.location.href = "/dashboard";
 		} catch (err: any) {
 			toast.error(err.message || "Error al salir de la simulación.");
-		} finally {
 			setLoading(false);
 		}
 	};

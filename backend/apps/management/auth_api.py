@@ -477,18 +477,31 @@ def refresh_token(request, payload: RefreshIn | None = None):
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Refresh token inválido.")
 
     user_id = payload_decoded.get("user_id")
+    original_admin_id = payload_decoded.get("original_admin_id")
     User = get_user_model()
     user = User.objects.filter(id=user_id, is_active=True).first()
     if not user:
         raise AppError(401, AppErrorCode.AUTHENTICATION_FAILED, "Usuario no encontrado o inactivo.")
 
-    new_access = JWTService.create_access_token(user.id)
-    new_refresh = JWTService.create_refresh_token(user.id)
+    new_access = JWTService.create_access_token(user.id, original_admin_id=original_admin_id)
+    new_refresh = JWTService.create_refresh_token(user.id, original_admin_id=original_admin_id)
+
+    serialized = _serialize_user(user)
+    if original_admin_id:
+        serialized["is_impersonated"] = True
+        admin_user = User.objects.filter(id=original_admin_id, is_active=True).first()
+        if admin_user:
+            admin_persona = getattr(getattr(admin_user, "profile", None), "persona", None)
+            serialized["original_admin_name"] = (
+                f"{admin_persona.nombre} {admin_persona.apellido}".strip()
+                if admin_persona
+                else (admin_user.get_full_name() or admin_user.username)
+            )
 
     response_body = {
         "access": new_access,
         "refresh": new_refresh,
-        "user": _serialize_user(user),
+        "user": serialized,
     }
     response = JsonResponse(response_body)
     _set_access_cookie(response, new_access)
