@@ -59,12 +59,11 @@ export const SimularUsuarioModal: React.FC<SimularUsuarioModalProps> = ({
 					`Simulación iniciada como ${targetUser.name || targetUser.dni}`
 				);
 				const targetHome = getDefaultHomeRoute(targetUser);
-				navigate(targetHome, { replace: true });
+				// Recarga completa a la vista del usuario para resetear todo el árbol de React
+				window.location.href = targetHome;
 			}
-			handleClose();
 		} catch (err: any) {
 			setError(err.message || "Error al iniciar la simulación.");
-		} finally {
 			setLoading(false);
 		}
 	};
