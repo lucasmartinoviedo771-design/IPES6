@@ -50,11 +50,21 @@ class JWTAuth(AuthBase):
             return None
 
         # Validación criptográfica contra la base de datos/secretos
-        user = JWTService.get_user_from_token(token)
-        if user:
+        payload = JWTService.decode_token(token)
+        if not payload or payload.get("type") != "access":
+            return None
+
+        user_id = payload.get("user_id")
+        if not user_id:
+            return None
+
+        try:
+            user = User.objects.get(pk=user_id, is_active=True)
             request.user = user
+            request.jwt_payload = payload
             return user
-        return None
+        except User.DoesNotExist:
+            return None
 
 
 def ensure_roles(required_roles: list[str]):

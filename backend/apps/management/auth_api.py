@@ -65,6 +65,8 @@ class UserOut(BaseModel):
     must_complete_profile: bool = False
     profesorado_ids: list[int] | None = None
     role_assignments: list[RoleAssignmentOut] = []
+    is_impersonated: bool = False
+    original_admin_name: str | None = None
 
 
 class TokenOut(BaseModel):
@@ -357,6 +359,23 @@ def profile(request):
     persona = getattr(estudiante, "persona", None) or getattr(profile, "persona", None)
     name = f"{persona.nombre} {persona.apellido}".strip() if persona else (u.get_full_name() or u.username)
 
+    jwt_payload = getattr(request, "jwt_payload", {}) or {}
+    original_admin_id = jwt_payload.get("original_admin_id")
+    is_impersonated = False
+    original_admin_name = None
+
+    if original_admin_id:
+        User = get_user_model()
+        admin_user = User.objects.filter(id=original_admin_id).first()
+        if admin_user:
+            is_impersonated = True
+            admin_persona = getattr(getattr(admin_user, "profile", None), "persona", None)
+            original_admin_name = (
+                f"{admin_persona.nombre} {admin_persona.apellido}".strip()
+                if admin_persona
+                else (admin_user.get_full_name() or admin_user.username)
+            )
+
     return {
         "id": u.id,
         "dni": getattr(u, "username", ""),
@@ -371,6 +390,8 @@ def profile(request):
         "must_complete_profile": _must_complete_profile(u),
         "profesorado_ids": prof_ids,
         "role_assignments": _get_role_assignments(u),
+        "is_impersonated": is_impersonated,
+        "original_admin_name": original_admin_name,
     }
 
 
@@ -582,6 +603,126 @@ def google_callback(request, code: str | None = None, error: str | None = None, 
     # Redireccionar al frontend
     response = HttpResponseRedirect(settings.FRONTEND_URL + "/auth/callback")
 
+    _set_access_cookie(response, access_token)
+    _set_refresh_cookie(response, refresh_token)
+    return response
+
+
+class ImpersonateIn(BaseModel):
+    dni: str
+
+
+@router.post("/impersonate/", response={200: TokenOut, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse}, auth=JWTAuth())
+def impersonate_user(request, payload: ImpersonateIn):
+    """
+    Permite a un Administrador simular la identidad de un estudiante o docente.
+    Exclusivo para usuarios con rol admin o is_superuser.
+    """
+    admin_user = request.user
+    if not admin_user or not admin_user.is_authenticated:
+        raise AppError(401, AppErrorCode.AUTHENTICATION_REQUIRED, "No autenticado.")
+
+    # Validar que sea superuser o admin
+    roles = list(admin_user.groups.values_list("name", flat=True))
+    if not (admin_user.is_superuser or "admin" in roles):
+        raise AppError(403, AppErrorCode.PERMISSION_DENIED, "Solo los administradores pueden simular usuarios.")
+
+    target_dni = payload.dni.strip()
+    if not target_dni:
+        raise AppError(400, AppErrorCode.VALIDATION_ERROR, "El DNI es obligatorio.")
+
+    target_user = _resolve_user_by_identifier(target_dni)
+    if not target_user:
+        # Intentar buscar por persona DNI si aún no tiene user directo
+        from core.models import Persona
+        persona = Persona.objects.filter(dni=target_dni).first()
+        if persona:
+            # Buscar perfil estudiante o docente
+            est = getattr(persona, "estudiante_perfil", None)
+            doc = getattr(persona, "docente_perfil", None)
+            if est and est.user:
+                target_user = est.user
+            elif doc:
+                from apps.docentes.services.docente_service import DocenteService
+                target_user, _, _ = DocenteService.ensure_user_for_docente(doc)
+                DocenteService.ensure_docente_group(target_user)
+
+    if not target_user:
+        raise AppError(404, AppErrorCode.NOT_FOUND, f"No se encontró ningún usuario con DNI {target_dni}.")
+
+    # Generar tokens con original_admin_id
+    access_token = JWTService.create_access_token(target_user.id, original_admin_id=admin_user.id)
+    refresh_token = JWTService.create_refresh_token(target_user.id, original_admin_id=admin_user.id)
+
+    log_action_from_request(
+        request,
+        user=admin_user,
+        accion=AuditLog.Accion.LOGIN,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion=f"Admin {admin_user.username} inició simulación de usuario: {target_user.username}",
+        entidad="User",
+        entidad_id=target_user.id,
+        resultado=AuditLog.Resultado.OK,
+        metadata={"impersonated_user_id": target_user.id, "impersonated_dni": target_user.username},
+    )
+
+    serialized = _serialize_user(target_user)
+    serialized["is_impersonated"] = True
+    admin_persona = getattr(getattr(admin_user, "profile", None), "persona", None)
+    serialized["original_admin_name"] = (
+        f"{admin_persona.nombre} {admin_persona.apellido}".strip()
+        if admin_persona
+        else (admin_user.get_full_name() or admin_user.username)
+    )
+
+    response_body = {
+        "access": access_token,
+        "refresh": refresh_token,
+        "user": serialized,
+    }
+    response = JsonResponse(response_body)
+    _set_access_cookie(response, access_token)
+    _set_refresh_cookie(response, refresh_token)
+    return response
+
+
+@router.post("/stop-impersonate/", response={200: TokenOut, 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse}, auth=JWTAuth())
+def stop_impersonate(request):
+    """
+    Finaliza la simulación y restaura la sesión del Administrador original.
+    """
+    jwt_payload = getattr(request, "jwt_payload", {}) or {}
+    original_admin_id = jwt_payload.get("original_admin_id")
+
+    if not original_admin_id:
+        raise AppError(400, AppErrorCode.VALIDATION_ERROR, "No te encuentras en una sesión de simulación activa.")
+
+    User = get_user_model()
+    admin_user = User.objects.filter(id=original_admin_id, is_active=True).first()
+    if not admin_user:
+        raise AppError(404, AppErrorCode.NOT_FOUND, "No se encontró el usuario administrador original.")
+
+    # Generar tokens limpios para el admin
+    access_token = JWTService.create_access_token(admin_user.id)
+    refresh_token = JWTService.create_refresh_token(admin_user.id)
+
+    log_action_from_request(
+        request,
+        user=admin_user,
+        accion=AuditLog.Accion.LOGOUT,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion=f"Admin {admin_user.username} finalizó simulación de usuario.",
+        entidad="User",
+        entidad_id=admin_user.id,
+        resultado=AuditLog.Resultado.OK,
+    )
+
+    response_body = {
+        "access": access_token,
+        "refresh": refresh_token,
+        "user": _serialize_user(admin_user),
+    }
+    response = JsonResponse(response_body)
     _set_access_cookie(response, access_token)
     _set_refresh_cookie(response, refresh_token)
     return response

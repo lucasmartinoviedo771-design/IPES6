@@ -19,4 +19,6 @@ export type User = {
 	email?: string;
 	profesorado_ids?: number[] | null;
 	role_assignments?: RoleAssignment[];
+	is_impersonated?: boolean;
+	original_admin_name?: string | null;
 } | null;

@@ -4,6 +4,7 @@ import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import MenuIcon from "@mui/icons-material/Menu";
 import SchoolIcon from "@mui/icons-material/School";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import AppBar from "@mui/material/AppBar";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
@@ -12,9 +13,10 @@ import IconButton from "@mui/material/IconButton";
 import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ipesLogoFull from "@/assets/ipes-logo.png";
+import { SimularUsuarioModal } from "@/components/admin/SimularUsuarioModal";
 import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
@@ -46,6 +48,8 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 	onLogout,
 }) => {
 	const navigate = useNavigate();
+	const [simularOpen, setSimularOpen] = useState(false);
+	const isAdmin = hasAnyRole(user, ["admin"]) || Boolean(user?.is_superuser);
 
 	const hasMultipleRoles = React.useMemo(() => {
 		if (!user) return false;
@@ -249,6 +253,28 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 							) : null;
 						})()}
 					</Box>
+					{isAdmin && (
+						<Button
+							onClick={() => setSimularOpen(true)}
+							startIcon={<VisibilityIcon fontSize="small" />}
+							sx={{
+								display: { xs: "none", md: "inline-flex" },
+								textTransform: "none",
+								fontWeight: 600,
+								color: "#b45309",
+								border: "1px solid #fde68a",
+								backgroundColor: "#fffbeb",
+								borderRadius: 10,
+								px: 2,
+								"&:hover": {
+									backgroundColor: "#fef3c7",
+									borderColor: "#f59e0b",
+								},
+							}}
+						>
+							Simular Usuario
+						</Button>
+					)}
 					{hasAnyRole(user, ["estudiante"]) && (
 						<Button
 							component={Link}
@@ -310,11 +336,29 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 					>
 						Salir
 					</Button>
+					{/* Botón Simular Usuario - Móvil */}
+					{isAdmin && (
+						<Tooltip title="Simular Usuario">
+							<IconButton
+								onClick={() => setSimularOpen(true)}
+								sx={{
+									display: { xs: "inline-flex", md: "none" },
+									borderRadius: 10,
+									border: "1px solid #fde68a",
+									backgroundColor: "#fffbeb",
+									color: "#b45309",
+									p: 0.75,
+								}}
+							>
+								<VisibilityIcon fontSize="small" />
+							</IconButton>
+						</Tooltip>
+					)}
 					{/* Botón Cambiar Rol - Móvil */}
 					{hasMultipleRoles && (
 						<Tooltip title="Cambiar Rol">
 							<IconButton
-																{...({ component: Link, to: "/seleccionar-rol" } as any)}
+								{...({ component: Link, to: "/seleccionar-rol" } as any)}
 								sx={{
 									display: { xs: "inline-flex", md: "none" },
 									borderRadius: 10,
@@ -348,6 +392,10 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 					</Tooltip>
 				</Box>
 			</Toolbar>
+			<SimularUsuarioModal
+				open={simularOpen}
+				onClose={() => setSimularOpen(false)}
+			/>
 		</AppBar>
 	);
 };

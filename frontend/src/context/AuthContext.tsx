@@ -41,6 +41,10 @@ interface AuthContextType {
 	activeRole: string | null;
 	/** Cambia el rol activo de la sesión actual */
 	setActiveRole: (role: string | null) => void;
+	/** Simula la sesión de un estudiante o docente por DNI (exclusivo admin) */
+	impersonateUser: (dni: string) => Promise<User>;
+	/** Finaliza la simulación y retorna a la cuenta de Admin original */
+	stopImpersonate: () => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -393,6 +397,55 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 		}
 	};
 
+	const impersonateUser = async (dni: string): Promise<User> => {
+		try {
+			const { data } = await client.post("auth/impersonate/", { dni: dni.trim() });
+			const u: User = normalizeUserPayload(data?.user);
+			if (!u) throw new Error("Respuesta inválida del servidor al simular usuario.");
+			// Limpiar roles forzados para que adopte los del usuario simulado
+			setRoleOverride(null);
+			setActiveRoleState(null);
+			try {
+				localStorage.removeItem("ipes_active_role");
+			} catch {
+				/* ignore */
+			}
+			setUser(u);
+			return u;
+		} catch (err: any) {
+			const msg =
+				err?.response?.data?.message ||
+				err?.response?.data?.detail ||
+				err?.message ||
+				"No se pudo simular el usuario.";
+			throw new Error(msg);
+		}
+	};
+
+	const stopImpersonate = async (): Promise<User> => {
+		try {
+			const { data } = await client.post("auth/stop-impersonate/");
+			const u: User = normalizeUserPayload(data?.user);
+			if (!u) throw new Error("Respuesta inválida del servidor al finalizar simulación.");
+			setRoleOverride(null);
+			setActiveRoleState(null);
+			try {
+				localStorage.removeItem("ipes_active_role");
+			} catch {
+				/* ignore */
+			}
+			setUser(u);
+			return u;
+		} catch (err: any) {
+			const msg =
+				err?.response?.data?.message ||
+				err?.response?.data?.detail ||
+				err?.message ||
+				"No se pudo volver a la sesión de administrador.";
+			throw new Error(msg);
+		}
+	};
+
 	// Limpiar activeRole al cerrar sesión
 	useEffect(() => {
 		if (!user) {
@@ -418,6 +471,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({
 				availableRoleOptions,
 				activeRole,
 				setActiveRole,
+				impersonateUser,
+				stopImpersonate,
 			}}
 		>
 			{children}

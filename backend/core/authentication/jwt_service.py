@@ -19,7 +19,7 @@ class JWTService:
     """
 
     @staticmethod
-    def create_access_token(user_id: int) -> str:
+    def create_access_token(user_id: int, original_admin_id: int | None = None) -> str:
         """
         Genera un token de acceso de corta duración (60 minutos).
         Destinado a ser enviado en cada petición protegida.
@@ -30,10 +30,12 @@ class JWTService:
             "iat": datetime.now(UTC),
             "type": "access",
         }
+        if original_admin_id is not None:
+            payload["original_admin_id"] = original_admin_id
         return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
     @staticmethod
-    def create_refresh_token(user_id: int) -> str:
+    def create_refresh_token(user_id: int, original_admin_id: int | None = None) -> str:
         """
         Genera un token de actualización de larga duración (7 días).
         Permite obtener nuevos access tokens sin re-autenticar al usuario.
@@ -44,6 +46,8 @@ class JWTService:
             "iat": datetime.now(UTC),
             "type": "refresh",
         }
+        if original_admin_id is not None:
+            payload["original_admin_id"] = original_admin_id
         return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
     @staticmethod

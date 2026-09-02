@@ -21,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getDefaultHomeRoute, isOnlyEstudiante } from "@/utils/roles";
 import { AppSidebar } from "./app-shell/AppSidebar";
 import { AppTopBar } from "./app-shell/AppTopBar";
+import { ImpersonationBanner } from "./app-shell/ImpersonationBanner";
 import { roleHomeMap } from "./app-shell/constants";
 import { UserGuideDialog } from "./app-shell/UserGuideDialog";
 import { useNavPermissions } from "./app-shell/useNavPermissions";
@@ -210,6 +211,7 @@ export default function AppShell({ children }: PropsWithChildren) {
 				}}
 			>
 				<Toolbar sx={{ minHeight: 64 }} />
+				<ImpersonationBanner />
 				<ErrorBoundary
 					FallbackComponent={ErrorBoundaryFallback}
 					resetKeys={[current]}
