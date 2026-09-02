@@ -116,6 +116,7 @@ def _check_academic_eligibility(
     # C. Estado de Legajo / Documentación (Tanto para REGULAR como para LIBRE)
     if (mesa_tipo is None or mesa_tipo in MESA_TIPOS_ORDINARIOS) and not bypass_legajo:
         from core.models import EstudianteCarrera
+
         prof = materia.plan_de_estudio.profesorado if materia and materia.plan_de_estudio else None
         ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado=prof).first() if prof else None
 
@@ -131,9 +132,15 @@ def _check_academic_eligibility(
                 fecha_vencimiento__gte=date.today(),
             ).exists()
             if not prorroga_vigente:
-                pre = Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first() if prof else None
+                pre = (
+                    Preinscripcion.objects.filter(alumno=est, carrera=prof).order_by("-anio", "-id").first()
+                    if prof
+                    else None
+                )
                 cl = getattr(pre, "checklist", None) if pre else None
-                titulo_en_tramite = (ec and ec.certificado_titulo_en_tramite) or (cl and cl.certificado_titulo_en_tramite)
+                titulo_en_tramite = (ec and ec.certificado_titulo_en_tramite) or (
+                    cl and cl.certificado_titulo_en_tramite
+                )
                 if not titulo_en_tramite:
                     return (
                         False,
@@ -269,11 +276,17 @@ def _check_academic_eligibility(
 
         # Validar pertenencia activa a la carrera de la materia
         from core.models import EstudianteCarrera
-        ec = EstudianteCarrera.objects.filter(
-            estudiante=est, profesorado=materia.plan_de_estudio.profesorado
-        ).first()
-        if ec and ec.estado_academico in (EstudianteCarrera.EstadoAcademico.BAJA, EstudianteCarrera.EstadoAcademico.INACTIVO):
-            return False, f"El estudiante se encuentra en condición de {ec.get_estado_academico_display()} en esta carrera.", {}
+
+        ec = EstudianteCarrera.objects.filter(estudiante=est, profesorado=materia.plan_de_estudio.profesorado).first()
+        if ec and ec.estado_academico in (
+            EstudianteCarrera.EstadoAcademico.BAJA,
+            EstudianteCarrera.EstadoAcademico.INACTIVO,
+        ):
+            return (
+                False,
+                f"El estudiante se encuentra en condición de {ec.get_estado_academico_display()} en esta carrera.",
+                {},
+            )
 
         if _tiene_aprobacion_valida(est, materia):
             return False, "Materia ya superada en el ciclo de cursada.", {}
@@ -281,24 +294,38 @@ def _check_academic_eligibility(
         current_year = date.today().year
         # Verificar cursada activa tanto por ID de materia como por materias homónimas del estudiante
         nombre_mat_norm = materia.nombre.strip().lower()
-        is_enrolled = InscripcionMateriaEstudiante.objects.filter(
-            estudiante=est,
-            anio=current_year,
-            estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
-        ).filter(
-            models.Q(materia=materia) | models.Q(materia__nombre__iexact=materia.nombre.strip())
-        ).exists()
+        is_enrolled = (
+            InscripcionMateriaEstudiante.objects.filter(
+                estudiante=est,
+                anio=current_year,
+                estado__in=[
+                    InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                    InscripcionMateriaEstudiante.Estado.PENDIENTE,
+                ],
+            )
+            .filter(models.Q(materia=materia) | models.Q(materia__nombre__iexact=materia.nombre.strip()))
+            .exists()
+        )
         if is_enrolled:
             return False, "No puede rendir LIBRE mientras cursa la materia actualmente.", {}
 
         # Verificar regularidad vigente por ID o por nombre homónimo
-        reg = Regularidad.objects.filter(
-            models.Q(estudiante=est, materia=materia) |
-            models.Q(estudiante=est, materia__nombre__iexact=materia.nombre.strip(), materia__plan_de_estudio__profesorado=materia.plan_de_estudio.profesorado)
-        ).order_by("-fecha_cierre").first()
+        reg = (
+            Regularidad.objects.filter(
+                models.Q(estudiante=est, materia=materia)
+                | models.Q(
+                    estudiante=est,
+                    materia__nombre__iexact=materia.nombre.strip(),
+                    materia__plan_de_estudio__profesorado=materia.plan_de_estudio.profesorado,
+                )
+            )
+            .order_by("-fecha_cierre")
+            .first()
+        )
 
         if reg and reg.situacion == Regularidad.Situacion.REGULAR:
             from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
+
             limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg)
             ref_fecha = fecha_examen or date.today()
             if ref_fecha <= limite and intentos < max_intentos:
@@ -836,7 +863,11 @@ def listar_materias_solicitables(
     else:
         carreras_est = list(est.carreras.all())
         carreras_visibles_det = _listar_carreras_detalle(est, carreras_est)
-        carreras_ids = [c["profesorado_id"] for c in carreras_visibles_det] if carreras_visibles_det else [c.id for c in carreras_est]
+        carreras_ids = (
+            [c["profesorado_id"] for c in carreras_visibles_det]
+            if carreras_visibles_det
+            else [c.id for c in carreras_est]
+        )
         materias_qs = Materia.objects.filter(plan_de_estudio__profesorado_id__in=carreras_ids)
 
     materias_qs = materias_qs.select_related("plan_de_estudio", "plan_de_estudio__profesorado")
@@ -850,8 +881,9 @@ def listar_materias_solicitables(
     ]
     materias_qs = materias_qs.exclude(formato__in=formatos_excluidos)
 
-    from core.permissions import can
     from django.utils import timezone
+
+    from core.permissions import can
 
     hoy = timezone.now().date()
     ventana_extra_activa = VentanaHabilitacion.objects.filter(

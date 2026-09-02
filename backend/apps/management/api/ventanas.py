@@ -1,10 +1,9 @@
-from apps.common.audit import log_action_from_request, snapshot
-from core.models import AuditLog
 from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
 
+from apps.common.audit import log_action_from_request, snapshot
 from core.auth_ninja import JWTAuth
-from core.models import VentanaHabilitacion
+from core.models import AuditLog, VentanaHabilitacion
 from core.permissions import require
 
 from ..router import management_router

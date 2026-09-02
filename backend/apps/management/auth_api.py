@@ -625,7 +625,11 @@ class ImpersonateIn(BaseModel):
     dni: str
 
 
-@router.post("/impersonate/", response={200: TokenOut, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse}, auth=JWTAuth())
+@router.post(
+    "/impersonate/",
+    response={200: TokenOut, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse},
+    auth=JWTAuth(),
+)
 def impersonate_user(request, payload: ImpersonateIn):
     """
     Permite a un Administrador simular la identidad de un estudiante o docente.
@@ -648,6 +652,7 @@ def impersonate_user(request, payload: ImpersonateIn):
     if not target_user:
         # Intentar buscar por persona DNI si aún no tiene user directo
         from core.models import Persona
+
         persona = Persona.objects.filter(dni=target_dni).first()
         if persona:
             # Buscar perfil estudiante o docente
@@ -657,6 +662,7 @@ def impersonate_user(request, payload: ImpersonateIn):
                 target_user = est.user
             elif doc:
                 from apps.docentes.services.docente_service import DocenteService
+
                 target_user, _, _ = DocenteService.ensure_user_for_docente(doc)
                 DocenteService.ensure_docente_group(target_user)
 
@@ -699,7 +705,11 @@ def impersonate_user(request, payload: ImpersonateIn):
     return response
 
 
-@router.post("/stop-impersonate/", response={200: TokenOut, 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse}, auth=JWTAuth())
+@router.post(
+    "/stop-impersonate/",
+    response={200: TokenOut, 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse},
+    auth=JWTAuth(),
+)
 def stop_impersonate(request):
     """
     Finaliza la simulación y restaura la sesión del Administrador original.

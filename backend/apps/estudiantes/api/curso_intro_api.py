@@ -111,16 +111,16 @@ def _ci_set_ci_aprobado(estudiante: Estudiante, aprobado: bool) -> None:
 
     # Sincronizar checklist y EstudianteCarrera
     from core.models import EstudianteCarrera, PreinscripcionChecklist, Regularidad
+
     PreinscripcionChecklist.objects.filter(preinscripcion__alumno=estudiante).update(
         curso_introductorio_aprobado=aprobado_flag
     )
-    EstudianteCarrera.objects.filter(estudiante=estudiante).update(
-        curso_introductorio_aprobado=aprobado_flag
-    )
+    EstudianteCarrera.objects.filter(estudiante=estudiante).update(curso_introductorio_aprobado=aprobado_flag)
 
     # Si se aprobó el CI y el alumno tiene legajo completo, liberar resguardos de EDIs cuyas correlativas estén satisfechas
     if aprobado_flag and estudiante.estado_legajo == Estudiante.EstadoLegajo.COMPLETO:
         from apps.estudiantes.api.helpers.misc_utils import _calcular_resguardo_equivalencia
+
         for reg in Regularidad.objects.filter(estudiante=estudiante, en_resguardo=True).select_related("materia"):
             if not _calcular_resguardo_equivalencia(estudiante, reg.materia, situacion=reg.situacion):
                 reg.en_resguardo = False

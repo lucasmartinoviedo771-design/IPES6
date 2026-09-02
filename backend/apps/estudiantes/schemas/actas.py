@@ -132,4 +132,3 @@ class ActaOralPendienteConformidadSchema(Schema):
 class ResponderConformidadPayload(Schema):
     conformidad: Literal["CON", "DIS"]
     observaciones: str | None = None
-

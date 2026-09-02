@@ -1,5 +1,6 @@
 import os
 import sys
+
 import django
 
 # Setup Django environment
@@ -7,8 +8,12 @@ sys.path.insert(0, '/home/ipesrg/sistema-gestion/backend')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
+from apps.estudiantes.api.helpers.estudiante_admin import (
+    _determine_condicion,
+    _extract_documentacion_from_ec,
+)
 from core.models import EstudianteCarrera
-from apps.estudiantes.api.helpers.estudiante_admin import _extract_documentacion_from_ec, _determine_condicion
+
 
 def main():
     ecs_activos = EstudianteCarrera.objects.filter(
@@ -24,9 +29,9 @@ def main():
         if cond_calculada == "Regular" and ec.estado_legajo != EstudianteCarrera.EstadoLegajo.COMPLETO:
             ecs_a_corregir.append((ec, cond_calculada, ec.estado_legajo, doc))
 
-    print(f"\n=======================================================")
-    print(f"📊 REPORTE DE AUDITORÍA DE LEGAJOS (ESTUDIANTES ACTIVOS)")
-    print(f"=======================================================")
+    print("\n=======================================================")
+    print("📊 REPORTE DE AUDITORÍA DE LEGAJOS (ESTUDIANTES ACTIVOS)")
+    print("=======================================================")
     print(f"Total inscripciones activas evaluadas: {total_activos}")
     print(f"Casos a regularizar (Legajo completo que figuraban Condicionales): {len(ecs_a_corregir)}\n")
 

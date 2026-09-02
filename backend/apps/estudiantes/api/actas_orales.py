@@ -30,12 +30,11 @@ def _get_inscripcion_mesa_or_404(mesa_id: int, inscripcion_id: int) -> Inscripci
 
 
 from datetime import timedelta
+
 from django.utils import timezone
 
 from apps.estudiantes.schemas import (
-    ActaOralListItemSchema,
     ActaOralPendienteConformidadSchema,
-    ActaOralSchema,
     ResponderConformidadPayload,
 )
 
@@ -86,8 +85,8 @@ def guardar_acta_oral(request, mesa_id: int, inscripcion_id: int, payload: ActaO
         return 403, ApiResponse(ok=False, message="No tienes permitido cargar o modificar tus propias actas orales.")
 
     # Restringir carga de actas orales exclusivamente al Docente Presidente de la mesa (o administradores / secretaría)
-    from core.permissions import can, get_user_roles
     from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+    from core.permissions import can, get_user_roles
 
     es_admin_o_secretaria = can(request.user, "editar_estudiantes") or can(request.user, "gestionar_staff")
     if not es_admin_o_secretaria:
@@ -268,11 +267,7 @@ def responder_conformidad_acta_oral(request, acta_id: int, payload: ResponderCon
     user = request.user
     dni = getattr(user, "username", "")
 
-    acta = (
-        MesaActaOral.objects.select_related("inscripcion__estudiante__persona")
-        .filter(id=acta_id)
-        .first()
-    )
+    acta = MesaActaOral.objects.select_related("inscripcion__estudiante__persona").filter(id=acta_id).first()
 
     if not acta:
         return 404, ApiResponse(ok=False, message="Acta oral no encontrada.")
@@ -314,7 +309,6 @@ def responder_conformidad_acta_oral(request, acta_id: int, payload: ResponderCon
     acta.save(update_fields=["estado_conformidad", "respondido_en", "observaciones_estudiante", "updated_at"])
 
     return ApiResponse(ok=True, message="Conformidad registrada exitosamente.")
-
 
 
 @router.get(

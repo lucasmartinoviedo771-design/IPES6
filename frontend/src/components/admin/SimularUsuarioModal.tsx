@@ -93,7 +93,6 @@ export const SimularUsuarioModal: React.FC<SimularUsuarioModalProps> = ({
 						onChange={(e) => setDni(e.target.value)}
 						disabled={loading}
 						fullWidth
-						autoFocus
 						required
 						size="small"
 					/>

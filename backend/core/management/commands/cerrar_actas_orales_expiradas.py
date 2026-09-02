@@ -43,6 +43,4 @@ class Command(BaseCommand):
         if total_cerradas == 0:
             self.stdout.write("No se encontraron actas orales pendientes de conformidad expiradas.")
         else:
-            self.stdout.write(
-                self.style.SUCCESS(f"Se cerraron un total de {total_cerradas} actas orales por timeout.")
-            )
+            self.stdout.write(self.style.SUCCESS(f"Se cerraron un total de {total_cerradas} actas orales por timeout."))

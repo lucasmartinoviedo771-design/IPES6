@@ -18,6 +18,7 @@ Lógicas de Negocio Implementadas:
 from __future__ import annotations
 
 from datetime import datetime
+
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
@@ -322,9 +323,7 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 "puede_baja": (
                     insc.estado == InscripcionMesa.Estado.INSCRIPTO
                     and insc.mesa.tipo != "EXT"  # Mesas extraordinarias son a demanda y no permiten baja
-                    and (
-                        datetime.now() <= calcular_limite_baja_mesa(insc.mesa.fecha)
-                    )
+                    and (datetime.now() <= calcular_limite_baja_mesa(insc.mesa.fecha))
                 ),
             }
         )
@@ -510,7 +509,9 @@ def trayectoria_estudiante(request, dni: str | None = None):
     # Obtener el conjunto de IDs de carreras visibles para este estudiante
     carreras_visibles_det = _listar_carreras_detalle(est, carreras_est)
     carreras_visibles_ids = {c["profesorado_id"] for c in carreras_visibles_det}
-    carreras_a_procesar = [c for c in carreras_est if c.id in carreras_visibles_ids] if carreras_visibles_ids else carreras_est
+    carreras_a_procesar = (
+        [c for c in carreras_est if c.id in carreras_visibles_ids] if carreras_visibles_ids else carreras_est
+    )
 
     for carrera in carreras_a_procesar:
         planes = PlanDeEstudio.objects.filter(profesorado=carrera, vigente=True)
@@ -602,19 +603,25 @@ def trayectoria_estudiante(request, dni: str | None = None):
                 # Si el estudiante está inscripto actualmente en la materia y no está aprobada:
                 if (mat.id in inscriptas_actuales_set) and (mat.id not in aprobadas_set):
                     # Obtener la inscripción actual del ciclo vigente
-                    insc_obj = InscripcionMateriaEstudiante.objects.filter(
-                        estudiante=est,
-                        materia_id=mat.id,
-                        estado__in=[InscripcionMateriaEstudiante.Estado.CONFIRMADA, InscripcionMateriaEstudiante.Estado.PENDIENTE],
-                        created_at__year__gte=hoy.year,
-                    ).order_by("-created_at").first()
+                    insc_obj = (
+                        InscripcionMateriaEstudiante.objects.filter(
+                            estudiante=est,
+                            materia_id=mat.id,
+                            estado__in=[
+                                InscripcionMateriaEstudiante.Estado.CONFIRMADA,
+                                InscripcionMateriaEstudiante.Estado.PENDIENTE,
+                            ],
+                            created_at__year__gte=hoy.year,
+                        )
+                        .order_by("-created_at")
+                        .first()
+                    )
 
                     if insc_obj and insc_obj.created_at:
                         fecha_insc_date = insc_obj.created_at.date()
                         # Verificamos si no hay ya una regularidad cerrada posterior o igual a la fecha de inscripción
                         tiene_cierre_posterior = any(
-                            reg.fecha_cierre and reg.fecha_cierre >= fecha_insc_date
-                            for reg in regularidades_item_list
+                            reg.fecha_cierre and reg.fecha_cierre >= fecha_insc_date for reg in regularidades_item_list
                         )
                         if not tiene_cierre_posterior:
                             regularidades_data.append(

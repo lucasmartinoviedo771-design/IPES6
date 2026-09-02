@@ -13,9 +13,9 @@ Uso:
     python scripts/enviar_credenciales.py --tipo estudiantes --limite 100 --delay 10
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
 from pathlib import Path
 
 # Agregar el backend al path
@@ -25,10 +25,11 @@ sys.path.insert(0, str(backend_path))
 # Configurar Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django
+
 django.setup()
 
-from django.conf import settings
 from core.models import Docente, UserProfile
+from django.conf import settings
 
 
 def generar_email_docente(docente_nombre, docente_apellido, username, password):
@@ -165,7 +166,6 @@ def enviar_correos_estudiantes(limite=100, delay=10, dry_run=False):
     """Similar a docentes pero para estudiantes"""
     print("⚠️  Sistema de envío para estudiantes - Similar implementación que docentes")
     # Implementación similar
-    pass
 
 
 if __name__ == "__main__":

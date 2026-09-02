@@ -28,9 +28,9 @@ class TestPersonaFuenteDeVerdad:
         user = User.objects.create_user(username="30333444", first_name="SUCIO", last_name="VIEJO")
         est = Estudiante.objects.create(user=user, persona=persona)
 
-        # Las properties de Estudiante deben priorizar la Persona, no el User
+        # Las properties de Estudiante deben priorizar la Persona, no el User (y Persona normaliza apellido a MAYÚSCULAS)
         assert est.nombre == "Ana"
-        assert est.apellido == "Gomez"
+        assert est.apellido == "GOMEZ"
 
     def test_guard_seguro_sin_persona(self):
         user = User.objects.create_user(username="30555666")

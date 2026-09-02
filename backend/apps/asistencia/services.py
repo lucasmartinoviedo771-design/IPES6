@@ -662,10 +662,14 @@ def propagar_asistencia_estudiantes_bloques(
         return
 
     # Buscar todos los otros bloques de la misma comisión en la misma fecha
-    otros_bloques = ClaseProgramada.objects.filter(
-        comision_id=clase_origen.comision_id,
-        fecha=clase_origen.fecha,
-    ).exclude(id=clase_origen.id).order_by("hora_inicio")
+    otros_bloques = (
+        ClaseProgramada.objects.filter(
+            comision_id=clase_origen.comision_id,
+            fecha=clase_origen.fecha,
+        )
+        .exclude(id=clase_origen.id)
+        .order_by("hora_inicio")
+    )
 
     if not otros_bloques.exists():
         return
@@ -700,5 +704,3 @@ def propagar_asistencia_estudiantes_bloques(
                 reg.registrado_por = registrado_por
                 reg.registrado_en = now
                 reg.save(update_fields=["estado", "registrado_via", "registrado_por", "registrado_en"])
-
-

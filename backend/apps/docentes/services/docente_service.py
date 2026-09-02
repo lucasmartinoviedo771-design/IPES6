@@ -53,6 +53,7 @@ class DocenteService:
         )
         if docente.persona:
             from core.models import UserProfile
+
             UserProfile.objects.update_or_create(
                 user=user,
                 defaults={"persona": docente.persona},

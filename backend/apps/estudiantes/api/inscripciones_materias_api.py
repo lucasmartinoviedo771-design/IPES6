@@ -262,7 +262,8 @@ def inscripcion_materia(request, payload: InscripcionMateriaIn):
 
     if not regimen_permitido:
         return 400, ApiResponse(
-            ok=False, message=f"La materia {mat.nombre} no corresponde al turno o período de inscripción activo ({mat.get_regimen_display()})."
+            ok=False,
+            message=f"La materia {mat.nombre} no corresponde al turno o período de inscripción activo ({mat.get_regimen_display()}).",
         )
 
     # --- 2. VALIDACIÓN: MATERIA YA APROBADA ---
@@ -564,8 +565,8 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         pass
 
     # Fetch regularidades for the student for the subjects in this query
-    from core.models import Regularidad, PlanillaRegularidadFila
     from apps.asistencia.models import AsistenciaEstudiante, JustificacionDetalle
+    from core.models import PlanillaRegularidadFila, Regularidad
 
     materia_ids = [ins.materia_id for ins in qs]
     inscripcion_ids = [ins.id for ins in qs]
@@ -631,10 +632,7 @@ def materias_inscriptas(request, anio: int | None = None, dni: str | None = None
         estado_reg = reg_by_ins.get(ins.id) or reg_by_mat_year.get((materia.id, ins.anio))
 
         # Determinar si ya posee actividad académica registrada
-        tiene_act = (
-            bool(estado_reg)
-            or (ins.comision_id is not None and ins.comision_id in comisiones_con_asistencia)
-        )
+        tiene_act = bool(estado_reg) or (ins.comision_id is not None and ins.comision_id in comisiones_con_asistencia)
 
         items.append(
             MateriaInscriptaItem(
@@ -702,8 +700,8 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
         )
 
     # 1. Validación de Actividad Académica Registrada (Asistencia / Justificaciones / Notas / Regularidad)
-    from core.models import Regularidad, PlanillaRegularidadFila
     from apps.asistencia.models import AsistenciaEstudiante, JustificacionDetalle
+    from core.models import PlanillaRegularidadFila, Regularidad
 
     tiene_actividad = False
     motivo_actividad = ""
@@ -719,7 +717,9 @@ def _ejecutar_cancelacion(request, inscripcion_id: int, dni: str | None):
         elif JustificacionDetalle.objects.filter(estudiante=est, clase__comision_id=inscripcion.comision_id).exists():
             tiene_actividad = True
             motivo_actividad = "licencias / justificaciones de inasistencia"
-        elif PlanillaRegularidadFila.objects.filter(estudiante=est, planilla__comision_id=inscripcion.comision_id).exists():
+        elif PlanillaRegularidadFila.objects.filter(
+            estudiante=est, planilla__comision_id=inscripcion.comision_id
+        ).exists():
             tiene_actividad = True
             motivo_actividad = "notas parciales o de cursada en la planilla docente"
 
@@ -864,6 +864,7 @@ def cambio_comision(request, payload: CambioComisionIn):
 
     # 1.1. VALIDACIÓN ESTRICTA DE VENTANA TEMPORAL DE CAMBIO DE COMISIÓN
     from core.permissions import can
+
     es_gestion = can(request.user, "formalizar_inscripcion") or can(request.user, "editar_estudiantes")
     hoy = timezone.now().date()
 
@@ -921,17 +922,20 @@ def cambio_comision(request, payload: CambioComisionIn):
     is_edi = "EDI" in mat.nombre.upper()
     if mat.tipo_formacion != Materia.TipoFormacion.FORMACION_GENERAL and not is_edi:
         return 400, ApiResponse(
-            ok=False, message="Solo se permiten cambios de comisión para materias de Formación General o Espacios de Definición Institucional."
+            ok=False,
+            message="Solo se permiten cambios de comisión para materias de Formación General o Espacios de Definición Institucional.",
         )
 
     # REGLA EDI: No tener aprobado otro EDI con el mismo nombre
     if is_edi:
         from .helpers import _tiene_aprobacion_valida
+
         materias_mismo_nombre = Materia.objects.filter(nombre__iexact=mat.nombre)
         for m_mn in materias_mismo_nombre:
             if _tiene_aprobacion_valida(est, m_mn):
                 return 400, ApiResponse(
-                    ok=False, message=f"No puedes inscribirte a este EDI porque ya tienes aprobado un espacio con el nombre '{mat.nombre}'."
+                    ok=False,
+                    message=f"No puedes inscribirte a este EDI porque ya tienes aprobado un espacio con el nombre '{mat.nombre}'.",
                 )
 
     # 4. RESOLVER INSCRIPCIÓN PREVIA O NUEVA (CASO LABORAL/SUPERPOSICIÓN)

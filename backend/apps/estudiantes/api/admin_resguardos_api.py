@@ -140,9 +140,7 @@ def admin_resguardo_materias(
     estudiantes_ids = estudiantes_prof_qs.values_list("estudiante_id", flat=True)
 
     # Mapa de estado académico por estudiante para mostrar en el listado
-    estados_academicos = dict(
-        estudiantes_prof_qs.values_list("estudiante_id", "estado_academico")
-    )
+    estados_academicos = dict(estudiantes_prof_qs.values_list("estudiante_id", "estado_academico"))
 
     # Regularidades en resguardo
     reg_qs = Regularidad.objects.filter(en_resguardo=True, estudiante_id__in=estudiantes_ids).select_related(

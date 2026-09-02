@@ -1,5 +1,3 @@
-from apps.common.audit import log_action_from_request, snapshot
-from core.models import AuditLog
 from datetime import datetime
 
 from django.db import transaction
@@ -7,9 +5,10 @@ from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
 
+from apps.common.audit import log_action_from_request, snapshot
 from apps.common.date_utils import calcular_limite_baja_mesa
 from core.auth_ninja import JWTAuth
-from core.models import Docente, Materia, MesaExamen, Profesorado, SolicitudMesa, VentanaHabilitacion
+from core.models import AuditLog, Docente, Materia, MesaExamen, Profesorado, SolicitudMesa, VentanaHabilitacion
 from core.permissions import allowed_profesorados, ensure_profesorado_access, require
 
 from ..router import management_router
@@ -193,7 +192,12 @@ def create_mesa(request, payload: MesaIn):
         entidad="MesaExamen",
         entidad_id=mesa.id,
         after=snapshot(mesa),
-        metadata={"materia_id": materia.id, "materia_nombre": materia.nombre, "tipo": mesa.tipo, "modalidad": mesa.modalidad},
+        metadata={
+            "materia_id": materia.id,
+            "materia_nombre": materia.nombre,
+            "tipo": mesa.tipo,
+            "modalidad": mesa.modalidad,
+        },
     )
     return _serialize_mesa(mesa)
 
@@ -243,9 +247,9 @@ def delete_mesa(request, mesa_id: int):
     require(request.user, "editar_estructura")
     mesa = get_object_or_404(MesaExamen.objects.select_related("materia__plan_de_estudio__profesorado"), id=mesa_id)
     ensure_profesorado_access(request.user, mesa.materia.plan_de_estudio.profesorado_id)
-    
+
     before_snap = snapshot(mesa)
-    inscripciones_count = getattr(mesa, 'inscripciones', None) and mesa.inscripciones.count() or 0
+    inscripciones_count = getattr(mesa, "inscripciones", None) and mesa.inscripciones.count() or 0
     materia_nombre = mesa.materia.nombre if mesa.materia else ""
 
     log_action_from_request(
@@ -361,15 +365,21 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
 
     # Pre-cargar docentes de cátedra para el año académico actual/reciente
     from collections import defaultdict
-    from core.models import Comision
+
     from django.utils import timezone
 
+    from core.models import Comision
+
     current_year = timezone.now().year
-    comisiones = Comision.objects.filter(
-        materia_id__in=materia_ids,
-        anio_lectivo__in=[current_year, current_year - 1],
-        docente__isnull=False,
-    ).select_related("docente__persona", "suplente__persona").order_by("orden", "id")
+    comisiones = (
+        Comision.objects.filter(
+            materia_id__in=materia_ids,
+            anio_lectivo__in=[current_year, current_year - 1],
+            docente__isnull=False,
+        )
+        .select_related("docente__persona", "suplente__persona")
+        .order_by("orden", "id")
+    )
 
     materia_docentes_map = defaultdict(list)
     for c in comisiones:
@@ -397,7 +407,9 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
             observaciones=s.observaciones,
             mesa_asignada_id=s.mesa_asignada_id,
             fecha_mesa=s.mesa_asignada.fecha if s.mesa_asignada else None,
-            hora_mesa=s.mesa_asignada.hora_desde.strftime("%H:%M") if s.mesa_asignada and s.mesa_asignada.hora_desde else None,
+            hora_mesa=s.mesa_asignada.hora_desde.strftime("%H:%M")
+            if s.mesa_asignada and s.mesa_asignada.hora_desde
+            else None,
             docente_nombre="; ".join(materia_docentes_map.get(s.materia_id, [])) or None,
         )
         for s in items

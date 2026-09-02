@@ -643,9 +643,9 @@ def list_inscriptos_materia(request, materia_id: int, anio: int | None = None, e
     # Mapeo de carreras de los estudiantes para detectar comisionados
     carreras_estudiantes = {}
     from core.models import EstudianteCarrera
+
     for ec in EstudianteCarrera.objects.filter(
-        estudiante_id__in=estudiante_ids,
-        estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
+        estudiante_id__in=estudiante_ids, estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO
     ).select_related("profesorado"):
         carreras_estudiantes.setdefault(ec.estudiante_id, []).append(ec.profesorado.nombre)
 

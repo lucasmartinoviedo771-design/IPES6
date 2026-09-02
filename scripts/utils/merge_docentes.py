@@ -1,6 +1,7 @@
 from core.models import Docente, MesaExamen, Persona
 from django.db import transaction
 
+
 def merge_docentes(source_ids, target_id):
     try:
         target = Docente.objects.get(pk=target_id)

@@ -135,7 +135,11 @@ def delete_docente(request, docente_id: int):
     _ensure_structure_edit(request.user)
     docente = get_object_or_404(Docente.objects.select_related("persona"), id=docente_id)
 
-    doc_nom = f"{docente.persona.apellido}, {docente.persona.nombre} (DNI: {docente.persona.dni})" if docente.persona else f"Docente ID {docente.id}"
+    doc_nom = (
+        f"{docente.persona.apellido}, {docente.persona.nombre} (DNI: {docente.persona.dni})"
+        if docente.persona
+        else f"Docente ID {docente.id}"
+    )
     before_state = {
         "docente_id": docente.id,
         "nombre": docente.persona.nombre if docente.persona else "",
@@ -145,6 +149,7 @@ def delete_docente(request, docente_id: int):
     }
 
     from apps.common.audit import log_action_from_request
+
     log_action_from_request(
         request,
         accion="DELETE",

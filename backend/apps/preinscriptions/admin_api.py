@@ -1,5 +1,6 @@
 from apps.common.audit import log_action_from_request, snapshot
 from core.models import AuditLog
+
 """
 API administrativa para la gestión de Preinscripciones.
 Permite a bedeles y administradores listar, filtrar, modificar y confirmar
@@ -91,7 +92,11 @@ def delete_preinscription(request, pre_id: int):
     """Elimina una solicitud de preinscripción (acción destructiva)."""
     pre = get_object_or_404(Preinscripcion.objects.select_related("alumno__persona", "carrera"), id=pre_id)
     before_snap = snapshot(pre)
-    alumno_nombre = f"{pre.alumno.persona.apellido}, {pre.alumno.persona.nombre}" if pre.alumno and hasattr(pre.alumno, 'persona') and pre.alumno.persona else ""
+    alumno_nombre = (
+        f"{pre.alumno.persona.apellido}, {pre.alumno.persona.nombre}"
+        if pre.alumno and hasattr(pre.alumno, "persona") and pre.alumno.persona
+        else ""
+    )
     carrera_nombre = pre.carrera.nombre if pre.carrera else ""
 
     log_action_from_request(

@@ -289,7 +289,11 @@ def actualizar_disposicion_equivalencia(
     usuario: User | None,
     validar_correlatividades: bool = True,
 ) -> EquivalenciaDisposicionResult:
-    dispo = EquivalenciaDisposicion.objects.select_related("estudiante__user", "profesorado", "plan").filter(id=disposicion_id).first()
+    dispo = (
+        EquivalenciaDisposicion.objects.select_related("estudiante__user", "profesorado", "plan")
+        .filter(id=disposicion_id)
+        .first()
+    )
     if not dispo:
         raise ValueError("No se encontró la disposición de equivalencia a modificar.")
 

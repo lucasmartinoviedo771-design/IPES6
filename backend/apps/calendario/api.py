@@ -1,5 +1,3 @@
-from apps.common.audit import log_action_from_request, snapshot
-from core.models import AuditLog
 from datetime import time
 
 from django.db.models import F, Q
@@ -9,8 +7,9 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from apps.common.api_schemas import ApiResponse
+from apps.common.audit import log_action_from_request, snapshot
 from core.auth_ninja import JWTAuth
-from core.models import Bloque, Comision, HorarioCatedra, HorarioCatedraDetalle, Materia, Turno
+from core.models import AuditLog, Bloque, Comision, HorarioCatedra, HorarioCatedraDetalle, Materia, Turno
 from core.permissions import (
     ensure_profesorado_access,
     require,
@@ -217,7 +216,12 @@ def create_horario_catedra(request, payload: HorarioCatedraIn):
         entidad="HorarioCatedra",
         entidad_id=hc.id,
         after=snapshot(hc),
-        metadata={"materia_id": materia.id, "materia_nombre": materia.nombre, "turno_id": payload.turno_id, "anio_academico": payload.anio_academico},
+        metadata={
+            "materia_id": materia.id,
+            "materia_nombre": materia.nombre,
+            "turno_id": payload.turno_id,
+            "anio_academico": payload.anio_academico,
+        },
     )
     return hc
 
@@ -256,7 +260,7 @@ def update_horario_catedra(request, horario_id: int, payload: HorarioCatedraIn):
 def delete_horario_catedra(request, horario_id: int):
     hc = get_object_or_404(HorarioCatedra.objects.select_related("espacio", "turno"), id=horario_id)
     _ensure_structure_edit(request.user, hc.espacio.plan_de_estudio.profesorado_id)
-    
+
     before_snap = snapshot(hc)
     detalles_snap = [snapshot(d) for d in hc.detalles.all()]
     materia_nombre = hc.espacio.nombre if hc.espacio else ""
@@ -270,7 +274,12 @@ def delete_horario_catedra(request, horario_id: int):
         entidad="HorarioCatedra",
         entidad_id=hc.id,
         before=before_snap,
-        metadata={"materia_nombre": materia_nombre, "turno": turno_nombre, "anio_academico": hc.anio_academico, "detalles": detalles_snap},
+        metadata={
+            "materia_nombre": materia_nombre,
+            "turno": turno_nombre,
+            "anio_academico": hc.anio_academico,
+            "detalles": detalles_snap,
+        },
     )
 
     hc.delete()
@@ -383,16 +392,24 @@ def create_horario_detalle(request, horario_id: int, payload: HorarioCatedraDeta
             entidad="HorarioCatedraDetalle",
             entidad_id=detalle.id,
             after=snapshot(detalle),
-            metadata={"horario_id": hc.id, "bloque_id": bloque.id, "dia": bloque.dia, "hora_desde": str(bloque.hora_desde), "hora_hasta": str(bloque.hora_hasta)},
+            metadata={
+                "horario_id": hc.id,
+                "bloque_id": bloque.id,
+                "dia": bloque.dia,
+                "hora_desde": str(bloque.hora_desde),
+                "hora_hasta": str(bloque.hora_hasta),
+            },
         )
     return detalle
 
 
 @router.delete("/horarios_catedra_detalles/{detalle_id}", response={204: None}, auth=JWTAuth())
 def delete_horario_detalle(request, detalle_id: int):
-    detalle = get_object_or_404(HorarioCatedraDetalle.objects.select_related("horario_catedra__espacio", "bloque"), id=detalle_id)
+    detalle = get_object_or_404(
+        HorarioCatedraDetalle.objects.select_related("horario_catedra__espacio", "bloque"), id=detalle_id
+    )
     _ensure_structure_edit(request.user, detalle.horario_catedra.espacio.plan_de_estudio.profesorado_id)
-    
+
     before_snap = snapshot(detalle)
     bloque = detalle.bloque
     materia_nombre = detalle.horario_catedra.espacio.nombre if detalle.horario_catedra.espacio else ""

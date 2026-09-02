@@ -1113,7 +1113,7 @@ const MesaExamenPage: React.FC = () => {
 												</Stack>
 												<Typography variant="body2" color="text.secondary">
 													El reglamento institucional permite solicitar como <b>máximo una (1) materia por llamado extraordinario</b>.
-													Si deseás solicitar una materia distinta, debés hacer clic en el botón <b>"Anular"</b> de tu solicitud actual arriba antes de elegir otra.
+													Si deseás solicitar una materia distinta, debés hacer clic en el botón <b>&quot;Anular&quot;</b> de tu solicitud actual arriba antes de elegir otra.
 												</Typography>
 											</Alert>
 										)}

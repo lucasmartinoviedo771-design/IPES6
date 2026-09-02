@@ -471,7 +471,7 @@ def _determine_condicion(documentacion: dict | None) -> str:
             (documentacion.get("folios_oficio") or 0) >= 1,
         )
     )
-    
+
     es_cert_docente = bool(documentacion.get("es_certificacion_docente"))
     if es_cert_docente:
         # En Certificación Docente el título requerido es Terciario/Universitario e Incumbencia

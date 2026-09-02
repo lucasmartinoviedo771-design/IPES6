@@ -1,5 +1,6 @@
 import re
 
+
 def normalizar_apellido(apellido: str | None) -> str:
     """
     Normaliza el apellido para que quede SIEMPRE en MAYÚSCULAS completas.
@@ -21,13 +22,13 @@ def normalizar_nombres(nombre: str | None) -> str:
     """
     if not nombre:
         return ""
-    
+
     palabras = nombre.strip().split()
     resultado = []
-    
+
     # Lista de partículas que suelen ir en minúscula en nombres intermedios salvo que sea la primera palabra
     particulas_minus = {"de", "del", "la", "las", "los", "y", "e", "da", "di", "van", "von"}
-    
+
     for i, p in enumerate(palabras):
         p_lower = p.lower()
         if i > 0 and p_lower in particulas_minus:
@@ -35,5 +36,5 @@ def normalizar_nombres(nombre: str | None) -> str:
         else:
             # Capitalizar la primera letra respetando caracteres con tildes / ñ
             resultado.append(p_lower.capitalize())
-            
+
     return " ".join(resultado)

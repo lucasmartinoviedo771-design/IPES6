@@ -118,9 +118,11 @@ def reporte_diario_docentes(request: HttpRequest, fecha: date):
             )
 
     # 3. Cargos asignados a docentes activos que aún no tienen bloques horarios cargados
-    cargos_sin_horario = CargoDocente.objects.filter(activo=True, cargo__activo=True).exclude(
-        cargo__horarios__dia_semana=dia_db
-    ).select_related("docente__persona", "cargo")
+    cargos_sin_horario = (
+        CargoDocente.objects.filter(activo=True, cargo__activo=True)
+        .exclude(cargo__horarios__dia_semana=dia_db)
+        .select_related("docente__persona", "cargo")
+    )
 
     for cd in cargos_sin_horario:
         # Solo mostrar si el cargo no tiene horarios definidos para ningún día

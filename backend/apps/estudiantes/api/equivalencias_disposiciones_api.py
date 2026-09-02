@@ -5,8 +5,8 @@ from ninja.errors import HttpError
 from apps.common.api_schemas import ApiResponse
 from apps.estudiantes.schemas import (
     EquivalenciaDisposicionCreateIn,
-    EquivalenciaDisposicionUpdateIn,
     EquivalenciaDisposicionOut,
+    EquivalenciaDisposicionUpdateIn,
     EquivalenciaMateriaPendiente,
 )
 from apps.estudiantes.services.equivalencias_disposicion import (
@@ -17,7 +17,7 @@ from apps.estudiantes.services.equivalencias_disposicion import (
     resolver_contexto_equivalencia,
     serialize_disposicion,
 )
-from core.permissions import require, get_user_roles
+from core.permissions import get_user_roles, require
 
 from .router import estudiantes_router
 
@@ -131,7 +131,12 @@ def modificar_disposicion_equivalencia(
 def anular_disposicion_equivalencia(request, disposicion_id: int):
     require(request.user, "gestionar_equivalencias")
     roles = get_user_roles(request.user)
-    if not (request.user.is_superuser or "admin" in roles or "secretaria" in roles or any(r.startswith("secretaria") for r in roles)):
+    if not (
+        request.user.is_superuser
+        or "admin" in roles
+        or "secretaria" in roles
+        or any(r.startswith("secretaria") for r in roles)
+    ):
         return 403, ApiResponse(ok=False, message="Solo Secretaría o Administradores pueden anular equivalencias.")
 
     try:

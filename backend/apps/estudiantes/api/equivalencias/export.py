@@ -67,20 +67,17 @@ def equivalencias_para_materia(request, materia_id: int):
         if grupos.exists():
             for g in grupos:
                 # Filtramos candidatos por Reglas: FGN, misma carga horaria y mismo formato
-                candidates = (
-                    g.materias.select_related("plan_de_estudio__profesorado")
-                    .filter(
-                        tipo_formacion=m.tipo_formacion
-                    )
+                candidates = g.materias.select_related("plan_de_estudio__profesorado").filter(
+                    tipo_formacion=m.tipo_formacion
                 )
-                
+
                 # Si NO es EDI, aplicamos reglas estrictas
                 if not is_edi:
                     candidates = candidates.filter(
                         horas_semana=m.horas_semana,
                         formato=m.formato,
                     )
-                
+
                 candidates = candidates.exclude(id=m.id)
                 for mm in candidates:
                     materias_equivalentes.append(mm)
@@ -92,13 +89,13 @@ def equivalencias_para_materia(request, materia_id: int):
                 nombre__iexact=m.nombre,
                 tipo_formacion=m.tipo_formacion,
             )
-            
+
             # Si NO es EDI, aplicamos reglas estrictas
             candidates = candidates.filter(
                 horas_semana=m.horas_semana,
                 formato=m.formato,
             )
-                
+
             materias_equivalentes = list(candidates)
 
     # Si había grupos formales (if anterior) igual debemos asegurarnos de que m esté en la lista
@@ -139,7 +136,11 @@ def equivalencias_para_materia(request, materia_id: int):
         # Obtener comisiones (clases) de esta materia
         from core.models import Comision
 
-        comisiones = Comision.objects.filter(materia=mm, estado=Comision.Estado.ABIERTA).select_related("turno", "docente").order_by("codigo")
+        comisiones = (
+            Comision.objects.filter(materia=mm, estado=Comision.Estado.ABIERTA)
+            .select_related("turno", "docente")
+            .order_by("codigo")
+        )
 
         comisiones_list = []
         for comision in comisiones:

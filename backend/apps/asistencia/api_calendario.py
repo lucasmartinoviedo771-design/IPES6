@@ -1,13 +1,12 @@
-from apps.common.audit import log_action_from_request, snapshot
-from core.models import AuditLog
 from datetime import date
 
 from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
+from apps.common.audit import log_action_from_request, snapshot
 from core.auth_ninja import JWTAuth
-from core.models import Turno
+from core.models import AuditLog, Turno
 from core.permissions import require
 
 from .api_helpers import (
