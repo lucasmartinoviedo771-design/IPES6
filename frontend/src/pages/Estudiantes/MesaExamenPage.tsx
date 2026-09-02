@@ -1358,7 +1358,7 @@ const MesaExamenPage: React.FC = () => {
 													);
 												};
 
-												const showLibres = ventanaExtraInfo.permite_libres || canGestionar;
+												const showLibres = Boolean(ventanaExtraInfo.permite_libres);
 
 												return (
 													<Grid container spacing={3} sx={{ mt: 0.5 }}>

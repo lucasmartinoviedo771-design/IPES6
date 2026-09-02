@@ -865,17 +865,17 @@ def listar_materias_solicitables(
     # Determinar si se evalúan materias libres según la configuración de la ventana activa
     permite_libres_ventana = ventana_extra_activa.permite_libres if ventana_extra_activa else False
 
-    # Si no se especifica modalidad, devolvemos ambas (REG y LIB) para que el frontend las separe
+    # Si no se especifica modalidad, devolvemos ambas (REG y LIB) solo si la ventana permite libres
     if modalidad:
         modalidades_a_chequear = [modalidad]
     else:
-        modalidades_a_chequear = ["REG", "LIB"] if (permite_libres_ventana or es_staff) else ["REG"]
+        modalidades_a_chequear = ["REG", "LIB"] if permite_libres_ventana else ["REG"]
 
     # 3. Validación Académica para cada materia
     for m in materias_qs:
         for mod in modalidades_a_chequear:
             if mod == "LIB":
-                if not permite_libres_ventana and not es_staff:
+                if not permite_libres_ventana:
                     continue
                 if not m.permite_mesa_libre:
                     continue
