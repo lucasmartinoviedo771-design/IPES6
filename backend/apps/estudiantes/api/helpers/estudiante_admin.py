@@ -21,6 +21,7 @@ from core.models import (
     EstudianteCarrera,
     InscripcionMateriaEstudiante,
     PlanDeEstudio,
+    Preinscripcion,
     PreinscripcionChecklist,
     Profesorado,
     Regularidad,
@@ -444,6 +445,14 @@ def _recalcular_estado_legajo_ec(ec: EstudianteCarrera) -> None:
     if ec.estado_legajo != nuevo_estado:
         ec.estado_legajo = nuevo_estado
         ec.save(update_fields=["estado_legajo"])
+
+    # Si el legajo ya fue revisado/formalizado (Completo o Condicional), sincronizar la preinscripción
+    if nuevo_estado in (EstudianteCarrera.EstadoLegajo.COMPLETO, EstudianteCarrera.EstadoLegajo.INCOMPLETO):
+        Preinscripcion.objects.filter(
+            alumno=ec.estudiante,
+            carrera_id=ec.profesorado_id,
+            estado__in=["Enviada", "PEN", "Borrador"],
+        ).update(estado="Confirmada")
 
     # Liberar resguardos de la carrera si el legajo pasó a COMPLETO
     if nuevo_estado == EstudianteCarrera.EstadoLegajo.COMPLETO:

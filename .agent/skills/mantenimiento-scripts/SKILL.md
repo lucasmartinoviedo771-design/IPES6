@@ -111,6 +111,17 @@ Esta skill es el punto de entrada y catálogo obligatorio para todas las tareas 
 
 ---
 
+### 9. 🔄 Sincronización de Preinscripciones vs Legajos y Cursadas
+* **Script:** [`backend/scripts/sync_preinscripciones.py`](file:///home/ipesrg/sistema-gestion/backend/scripts/sync_preinscripciones.py)
+* **Cuándo usar:** Cuando existan estudiantes que realizaron la preinscripción web pero luego fueron incorporados administrativamente a carreras (`EstudianteCarrera` en `COM` o `INC`) o ya están cursando materias activas, quedando su preinscripción erróneamente en estado `Enviada` o `PEN`.
+* **Comportamiento:** Pasa automáticamente el estado a `Confirmada` alineando la analítica institucional con la cursada efectiva. Soporta `--dry-run`.
+* **Comando:**
+  ```bash
+  docker exec ipes6-backend-dev /app/.venv/bin/python /app/scripts/sync_preinscripciones.py [--dry-run]
+  ```
+
+---
+
 ## ⚡ Regla de Ejecución en Docker
 
 Dado que la base de datos MySQL corre en el contenedor `ipes6-db-dev` bajo la red Docker interna (`db`), **todo script de backend debe ejecutarse mediante:**
