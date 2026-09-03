@@ -48,6 +48,10 @@ export const useNavPermissions = (
 		can("ver_reportes") &&
 			(can("editar_documentacion") || !can("gestionar_preinscripcion")),
 	);
+	const canSeeAnalytics = isNavAllowed(
+		"analytics",
+		can("ver_metricas") || can("ver_dashboard"),
+	);
 	const canSecretaria = isNavAllowed(
 		"secretaria",
 		can("ver_estudiantes") && can("editar_documentacion"),
@@ -121,6 +125,7 @@ export const useNavPermissions = (
 
 	return {
 		dashboardVisible,
+		canSeeAnalytics,
 		canPreins,
 		canSeeCarreras,
 		canSeeReportes,

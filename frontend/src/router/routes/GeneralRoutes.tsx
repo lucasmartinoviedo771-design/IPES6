@@ -15,6 +15,9 @@ const MateriaInscriptosPage = lazyPage(
 	() => import("../../pages/MateriaInscriptosPage"),
 );
 const ReportesPage = lazyPage(() => import("../../pages/ReportesPage"));
+const AnalyticsDashboardPage = lazyPage(
+	() => import("../../pages/AnalyticsDashboardPage"),
+);
 const ConfirmarInscripcionPage = lazyPage(
 	() => import("../../pages/ConfirmarInscripcionPage"),
 );
@@ -59,6 +62,15 @@ export const buildGeneralRoutes = () => (
 			}
 		>
 			<Route path="/reportes" element={<ReportesPage />} />
+		</Route>
+		<Route
+			element={
+				<ProtectedRoute capability="ver_metricas">
+					<Outlet />
+				</ProtectedRoute>
+			}
+		>
+			<Route path="/analytics" element={<AnalyticsDashboardPage />} />
 		</Route>
 		<Route
 			element={

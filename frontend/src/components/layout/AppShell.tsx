@@ -177,6 +177,7 @@ export default function AppShell({ children }: PropsWithChildren) {
 				canPreins={navPerms.canPreins}
 				canSeeCarreras={navPerms.canSeeCarreras}
 				canSeeReportes={navPerms.canSeeReportes}
+				canSeeAnalytics={navPerms.canSeeAnalytics}
 				canSecretaria={navPerms.canSecretaria}
 				canBedeles={navPerms.canBedeles}
 				canDocentesPanel={navPerms.canDocentesPanel}

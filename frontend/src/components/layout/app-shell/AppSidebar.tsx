@@ -50,6 +50,7 @@ interface AppSidebarProps {
 	canPreins: boolean;
 	canSeeCarreras: boolean;
 	canSeeReportes: boolean;
+	canSeeAnalytics: boolean;
 	canSecretaria: boolean;
 	canBedeles: boolean;
 	canDocentesPanel: boolean;
@@ -81,6 +82,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 	canPreins,
 	canSeeCarreras,
 	canSeeReportes,
+	canSeeAnalytics,
 	canSecretaria,
 	canBedeles,
 	canDocentesPanel,
@@ -248,6 +250,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 							</ListItemIcon>
 							<ListItemText
 								primary="Reportes"
+								primaryTypographyProps={{ sx: { color: "#fff" } }}
+							/>
+						</ListItemButton>
+					)}
+
+					{!studentOnly && canSeeAnalytics && (
+						<ListItemButton
+							selected={current.startsWith("/analytics")}
+							onClick={() => navigate("/analytics")}
+							sx={navButtonSx}
+						>
+							<ListItemIcon>
+								<InsightsIcon fontSize="small" />
+							</ListItemIcon>
+							<ListItemText
+								primary="Alerta Temprana"
 								primaryTypographyProps={{ sx: { color: "#fff" } }}
 							/>
 						</ListItemButton>
