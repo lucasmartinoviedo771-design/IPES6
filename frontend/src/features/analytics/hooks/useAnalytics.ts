@@ -66,6 +66,7 @@ export const usePreinscripcionesEvolucion = (params: {
 
 export const useTeacherAttendanceSummary = (params: {
 	anio?: number;
+	profesorado_id?: number;
 	docente_id?: number;
 }) => {
 	return useQuery<TeacherAttendanceSummaryResponse>({
@@ -77,6 +78,7 @@ export const useTeacherAttendanceSummary = (params: {
 
 export const useTeacherAttendanceByWeekday = (params: {
 	anio?: number;
+	profesorado_id?: number;
 	docente_id?: number;
 }) => {
 	return useQuery<WeekdayAbsenceItem[]>({

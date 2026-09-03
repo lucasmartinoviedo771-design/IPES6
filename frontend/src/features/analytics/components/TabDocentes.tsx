@@ -56,12 +56,14 @@ export default function TabDocentes({
 	const { data: attendance, isLoading: loadingAttendance } =
 		useTeacherAttendanceSummary({
 			anio,
+			profesorado_id: profesoradoId,
 			docente_id: docenteId,
 		});
 
 	const { data: weekdayData, isLoading: loadingWeekday } =
 		useTeacherAttendanceByWeekday({
 			anio,
+			profesorado_id: profesoradoId,
 			docente_id: docenteId,
 		});
 

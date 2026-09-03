@@ -175,6 +175,7 @@ export interface DesgranamientoCatedraResponse {
 
 export const getTeacherAttendanceSummary = async (params?: {
 	anio?: number;
+	profesorado_id?: number;
 	docente_id?: number;
 }): Promise<TeacherAttendanceSummaryResponse> => {
 	const res = await api.get("/analytics/teachers/attendance-summary/", { params });
@@ -183,6 +184,7 @@ export const getTeacherAttendanceSummary = async (params?: {
 
 export const getTeacherAttendanceByWeekday = async (params?: {
 	anio?: number;
+	profesorado_id?: number;
 	docente_id?: number;
 }): Promise<WeekdayAbsenceItem[]> => {
 	const res = await api.get("/analytics/teachers/attendance-by-weekday/", { params });

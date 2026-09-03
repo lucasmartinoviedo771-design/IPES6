@@ -561,11 +561,13 @@ def preinscripciones_evolucion(
 def teacher_attendance_summary(
     request,
     anio: int | None = None,
+    profesorado_id: int | None = None,
     docente_id: int | None = None,
 ):
     """
     Asistencia general docente agrupada por año (presente, ausente, tarde, justificada).
     Si no se especifica docente_id y tiene ver_metricas, computa todo el cuerpo docente.
+    Permite filtrar por profesorado_id.
     """
     docente = _check_metrics_access(request, docente_id)
 
@@ -574,6 +576,8 @@ def teacher_attendance_summary(
         qs = qs.filter(docente=docente)
     if anio:
         qs = qs.filter(clase__fecha__year=anio)
+    if profesorado_id:
+        qs = qs.filter(clase__comision__materia__plan_de_estudio__profesorado_id=profesorado_id)
 
     counts = {
         row["estado"]: row["total"]
@@ -606,11 +610,12 @@ def teacher_attendance_summary(
 def teacher_attendance_by_weekday(
     request,
     anio: int | None = None,
+    profesorado_id: int | None = None,
     docente_id: int | None = None,
 ):
     """
     Patrón de ausencias de docentes agrupadas por día de la semana (1: Domingo, 2: Lunes ... 7: Sábado).
-    Permite detectar concentración de inasistencias en días clave.
+    Permite detectar concentración de inasistencias en días clave y filtrar por carrera.
     """
     docente = _check_metrics_access(request, docente_id)
 
@@ -622,6 +627,8 @@ def teacher_attendance_by_weekday(
         qs = qs.filter(docente=docente)
     if anio:
         qs = qs.filter(clase__fecha__year=anio)
+    if profesorado_id:
+        qs = qs.filter(clase__comision__materia__plan_de_estudio__profesorado_id=profesorado_id)
 
     # Agrupación por día de la semana (Django ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday)
     by_weekday_raw = (
@@ -709,18 +716,23 @@ def teachers_desgranamiento_catedra(
         else:
             sin_muestra_count += 1
 
-        # Docentes vinculados y chequeo de suplencia
+        # Docentes vinculados y chequeo de suplencia (excluyendo bedeles)
         docentes_list = []
         hubo_suplencia = False
         for d in p.docentes.all():
+            rol_doc = (d.rol or "").lower()
+            if "bedel" in rol_doc:
+                continue
             nombre_doc = d.nombre or (str(d.docente) if d.docente else "Docente no registrado")
-            rol_doc = d.rol
-            if rol_doc and "suplente" in rol_doc.lower():
+            if "suplente" in rol_doc:
                 hubo_suplencia = True
-            docentes_list.append(f"{nombre_doc} ({rol_doc or 'Profesor'})")
+            docentes_list.append(f"{nombre_doc} ({d.rol or 'Profesor'})")
 
         if not docentes_list and p.comision:
             for staff in p.comision.staff.all():
+                rol_staff = (staff.rol or "").lower()
+                if "bedel" in rol_staff:
+                    continue
                 if staff.es_suplente:
                     hubo_suplencia = True
                 docentes_list.append(f"{staff.docente} ({staff.rol})")

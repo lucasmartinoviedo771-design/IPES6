@@ -11,7 +11,6 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import AdminCorrelativasWidget from "@/components/dashboard/AdminCorrelativasWidget";
 import StudentAlerts from "@/components/dashboard/StudentAlerts";
 import { PageHero } from "@/components/ui/GradientTitles";
 import TabDocentes from "@/features/analytics/components/TabDocentes";
@@ -179,16 +178,12 @@ export default function DashboardPage() {
 
 			{/* Contenido según la solapa activa */}
 			{currentTab === "preinscripciones" && (
-				<Stack spacing={3}>
-					<TabPreinscripciones
-						anio={anio}
-						profesoradoId={profesoradoId}
-						onAnioChange={handleAnioChange}
-						onProfesoradoChange={handleProfesoradoChange}
-					/>
-					{/* Widget administrativo de correlativas caídas */}
-					<AdminCorrelativasWidget />
-				</Stack>
+				<TabPreinscripciones
+					anio={anio}
+					profesoradoId={profesoradoId}
+					onAnioChange={handleAnioChange}
+					onProfesoradoChange={handleProfesoradoChange}
+				/>
 			)}
 
 			{currentTab === "estudiantes" && (
