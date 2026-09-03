@@ -4,7 +4,7 @@ import Stack from "@mui/material/Stack";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { fetchCarreras } from "@/api/carreras";
-import AnalyticsFilters from "./AnalyticsFilters";
+import AnalyticsFilters, { type FactorRiesgo } from "./AnalyticsFilters";
 import AnalyticsHeader from "./AnalyticsHeader";
 import EstudiantesRiesgoTable from "./EstudiantesRiesgoTable";
 import SemaforoCards from "./SemaforoCards";
@@ -27,6 +27,7 @@ export default function TabEstudiantes({
 	onProfesoradoChange,
 }: TabEstudiantesProps) {
 	const [nivel, setNivel] = useState<string>("rojo");
+	const [factor, setFactor] = useState<FactorRiesgo>("todos");
 	const [page, setPage] = useState<number>(1);
 
 	// Carreras para el selector
@@ -46,7 +47,7 @@ export default function TabEstudiantes({
 		profesorado_id: profesoradoId,
 	});
 
-	// Listado de Estudiantes en riesgo
+	// Listado de Estudiantes en riesgo filtrado por nivel y por factor académico
 	const {
 		data: estudiantes,
 		isLoading: loadingEstudiantes,
@@ -55,6 +56,7 @@ export default function TabEstudiantes({
 	} = useEstudiantesAtRisk({
 		nivel,
 		profesorado_id: profesoradoId,
+		motivo: factor !== "todos" ? factor : undefined,
 		page,
 	});
 
@@ -79,6 +81,11 @@ export default function TabEstudiantes({
 					setPage(1);
 				}}
 				carreras={carreras}
+				factor={factor}
+				onFactorChange={(f) => {
+					setFactor(f);
+					setPage(1);
+				}}
 			/>
 
 			{errorSummary ? (
@@ -123,6 +130,7 @@ export default function TabEstudiantes({
 					page={page}
 					onPageChange={(p) => setPage(p)}
 					profesoradoId={profesoradoId}
+					factor={factor}
 				/>
 			)}
 		</Stack>

@@ -31,6 +31,7 @@ interface EstudiantesRiesgoTableProps {
 	page: number;
 	onPageChange: (newPage: number) => void;
 	profesoradoId?: number;
+	factor?: string;
 }
 
 export default function EstudiantesRiesgoTable({
@@ -41,6 +42,7 @@ export default function EstudiantesRiesgoTable({
 	page,
 	onPageChange,
 	profesoradoId,
+	factor,
 }: EstudiantesRiesgoTableProps) {
 	const [copiedPhoneId, setCopiedPhoneId] = useState<number | null>(null);
 
@@ -54,6 +56,7 @@ export default function EstudiantesRiesgoTable({
 	const exportUrl = getExportStudentsAtRiskUrl({
 		nivel,
 		profesorado_id: profesoradoId,
+		motivo: factor && factor !== "todos" ? factor : undefined,
 	});
 
 	const nivelLabelMap: Record<string, { label: string; color: string }> = {

@@ -73,6 +73,7 @@ export const getStudentsSummary = async (params?: {
 export const getStudentsAtRisk = async (params: {
 	nivel: string;
 	profesorado_id?: number;
+	motivo?: string;
 	page?: number;
 }): Promise<StudentsAtRiskResponse> => {
 	const res = await api.get("/analytics/students/at-risk/", { params });
@@ -82,6 +83,7 @@ export const getStudentsAtRisk = async (params: {
 export const getExportStudentsAtRiskUrl = (params: {
 	nivel: string;
 	profesorado_id?: number;
+	motivo?: string;
 }): string => {
 	const query = new URLSearchParams({
 		nivel: params.nivel,
@@ -89,6 +91,9 @@ export const getExportStudentsAtRiskUrl = (params: {
 	});
 	if (params.profesorado_id) {
 		query.set("profesorado_id", params.profesorado_id.toString());
+	}
+	if (params.motivo) {
+		query.set("motivo", params.motivo);
 	}
 	return `/api/analytics/students/at-risk/?${query.toString()}`;
 };

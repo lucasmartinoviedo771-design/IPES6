@@ -253,11 +253,13 @@ def students_at_risk(
     request,
     nivel: str = "rojo",
     profesorado_id: int | None = None,
+    motivo: str | None = None,
     export: str | None = None,
 ):
     """
     Grilla paginada de estudiantes en un nivel de riesgo (rojo, amarillo, verde),
-    con opción de exportar a CSV para Secretaría o Tutorías.
+    con opción de filtrar por tipo de motivo (recursa, finales, inscripcion, aplazos)
+    y exportar a CSV para Secretaría o Tutorías.
     """
     require(request.user, "ver_metricas")
 
@@ -272,6 +274,16 @@ def students_at_risk(
         qs = qs.filter(fecha_calculo=ultimo_snapshot)
     if profesorado_id:
         qs = qs.filter(profesorado_id=profesorado_id)
+    if motivo:
+        motivo_clean = motivo.lower().strip()
+        if motivo_clean == "recursa":
+            qs = qs.filter(motivos__icontains="recursando")
+        elif motivo_clean == "finales":
+            qs = qs.filter(motivos__icontains="finales")
+        elif motivo_clean == "inscripcion":
+            qs = qs.filter(motivos__icontains="inscripciones")
+        elif motivo_clean == "aplazos":
+            qs = qs.filter(motivos__icontains="aplazo")
 
     # Si se pide exportación a CSV
     if export == "csv":

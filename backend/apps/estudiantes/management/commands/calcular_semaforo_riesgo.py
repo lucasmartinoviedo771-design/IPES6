@@ -211,26 +211,9 @@ class Command(BaseCommand):
             elif any(fallos == 1 for fallos in intentos):
                 motivos_amarillo.append("Recursando materia por 2da vez")
 
-            # --- Regla Asistencia según Formato y Excepciones Puntuales ---
-            regularidades = asistencias_por_estudiante.get(est.id, [])
-            for reg in regularidades:
-                pct = reg.asistencia_porcentaje
-                if pct is None:
-                    continue
-
-                fmt = reg.materia.formato
-                tiene_excepcion = reg.excepcion or (est.id, reg.materia_id) in justificaciones_por_materia
-
-                # Umbrales
-                if fmt in ["PRA", "TAL", "LAB"]:  # Grupo 80%
-                    umbral_verde = 70 if tiene_excepcion else 80
-                else:  # Grupo 65% (ASI, MOD, SEM)
-                    umbral_verde = 50 if tiene_excepcion else 65
-
-                if pct <= 50:
-                    motivos_rojo.append(f"Asistencia crítica ({pct}%) en {reg.materia.nombre}")
-                elif pct < umbral_verde:
-                    motivos_amarillo.append(f"Asistencia en alerta ({pct}%) en {reg.materia.nombre}")
+            # NOTA: La regla de asistencia de regularidades cerradas pasadas fue deshabilitada.
+            # No se deben disparar alertas de intervención sobre materias que ya cerraron el cuatrimestre anterior.
+            # La alerta de asistencia solo corresponde cuando provenga del seguimiento en vivo de la cursada actual.
 
             # --- Consolidación del Nivel ---
             if motivos_rojo:

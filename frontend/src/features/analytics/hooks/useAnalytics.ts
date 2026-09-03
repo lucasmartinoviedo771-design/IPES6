@@ -32,6 +32,7 @@ export const useAnalyticsSummary = (params: {
 export const useEstudiantesAtRisk = (params: {
 	nivel: string;
 	profesorado_id?: number;
+	motivo?: string;
 	page?: number;
 }) => {
 	return useQuery<StudentsAtRiskResponse>({
