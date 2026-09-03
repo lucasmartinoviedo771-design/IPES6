@@ -25,6 +25,7 @@ import { toast } from "@/utils/toast";
 
 interface EstudiantesRiesgoTableProps {
 	estudiantes: StudentAtRiskItem[] | undefined;
+	totalCount?: number;
 	nivel: string;
 	loading: boolean;
 	page: number;
@@ -34,6 +35,7 @@ interface EstudiantesRiesgoTableProps {
 
 export default function EstudiantesRiesgoTable({
 	estudiantes,
+	totalCount,
 	nivel,
 	loading,
 	page,
@@ -262,7 +264,7 @@ export default function EstudiantesRiesgoTable({
 			{estudiantes && estudiantes.length > 0 && (
 				<Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
 					<Pagination
-						count={Math.max(page, 1) + (estudiantes.length === 20 ? 1 : 0)}
+						count={totalCount ? Math.ceil(totalCount / 20) : Math.max(page, 1)}
 						page={page}
 						onChange={(_, newP) => onPageChange(newP)}
 						color="primary"

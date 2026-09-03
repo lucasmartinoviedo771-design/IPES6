@@ -66,15 +66,17 @@ export const getStudentsSummary = async (params?: {
 	anio?: number;
 	profesorado_id?: number;
 }): Promise<StudentsSummaryResponse> => {
-	return api.get("/analytics/students/summary/", { params });
+	const res = await api.get("/analytics/students/summary/", { params });
+	return res.data;
 };
 
 export const getStudentsAtRisk = async (params: {
 	nivel: string;
 	profesorado_id?: number;
 	page?: number;
-}): Promise<StudentAtRiskItem[]> => {
-	return api.get("/analytics/students/at-risk/", { params });
+}): Promise<StudentsAtRiskResponse> => {
+	const res = await api.get("/analytics/students/at-risk/", { params });
+	return res.data;
 };
 
 export const getExportStudentsAtRiskUrl = (params: {

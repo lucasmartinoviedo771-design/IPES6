@@ -154,7 +154,8 @@ export default function AnalyticsDashboardPage() {
 				</Alert>
 			) : (
 				<EstudiantesRiesgoTable
-					estudiantes={estudiantes}
+					estudiantes={estudiantes?.items}
+					totalCount={estudiantes?.count}
 					nivel={nivel}
 					loading={loadingEstudiantes}
 					page={page}

@@ -3,7 +3,7 @@ import {
 	getStudentsSummary,
 	getStudentsAtRisk,
 	type StudentsSummaryResponse,
-	type StudentAtRiskItem,
+	type StudentsAtRiskResponse,
 } from "@/api/analytics";
 
 export const useAnalyticsSummary = (params: {
@@ -22,7 +22,7 @@ export const useEstudiantesAtRisk = (params: {
 	profesorado_id?: number;
 	page?: number;
 }) => {
-	return useQuery<StudentAtRiskItem[]>({
+	return useQuery<StudentsAtRiskResponse>({
 		queryKey: ["analytics", "studentsAtRisk", params],
 		queryFn: () => getStudentsAtRisk(params),
 		staleTime: 1000 * 60 * 2, // 2 minutos
