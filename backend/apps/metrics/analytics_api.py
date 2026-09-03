@@ -46,6 +46,7 @@ class StudentsSummaryOut(Schema):
     promedio_asistencia: float | None
     regularidades_por_situacion: dict[str, int]
     semaforo: SemáforoBreakdown
+    fecha_actualizacion: str | None = None
 
 
 class StudentAtRiskItem(Schema):
@@ -181,6 +182,7 @@ def students_summary(request, anio: int | None = None, profesorado_id: int | Non
             "verde": v_count,
             "total_evaluados": r_count + a_count + v_count,
         },
+        "fecha_actualizacion": ultimo_snapshot.isoformat() if ultimo_snapshot else None,
     }
 
 
