@@ -2,6 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import CancelIcon from "@mui/icons-material/Cancel";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import InsightsIcon from "@mui/icons-material/Insights";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import PeopleIcon from "@mui/icons-material/People";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -396,6 +397,26 @@ export default function DashboardPage() {
 						spacing={1.5}
 						alignItems="center"
 					>
+						<Button
+							variant="outlined"
+							onClick={() => navigate("/analytics")}
+							startIcon={<InsightsIcon />}
+							sx={{
+								borderColor: "rgba(255,255,255,0.7)",
+								color: "#fff",
+								textTransform: "none",
+								fontWeight: 700,
+								borderRadius: 999,
+								px: 3,
+								backgroundColor: "rgba(255,255,255,0.15)",
+								"&:hover": {
+									backgroundColor: "rgba(255,255,255,0.25)",
+									borderColor: "#fff",
+								},
+							}}
+						>
+							Alerta temprana
+						</Button>
 						<Button
 							variant="outlined"
 							onClick={() => navigate("/reportes")}

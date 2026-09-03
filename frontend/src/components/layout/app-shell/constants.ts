@@ -4,6 +4,7 @@ export const collapsedDrawerWidth = 0;
 export const ROLE_NAV_MAP: Record<string, string[]> = {
 	admin: [
 		"dashboard",
+		"analytics",
 		"preinscripciones",
 		"carreras",
 		"reportes",
@@ -23,6 +24,7 @@ export const ROLE_NAV_MAP: Record<string, string[]> = {
 	],
 	secretaria: [
 		"dashboard",
+		"analytics",
 		"preinscripciones",
 		"carreras",
 		"reportes",
@@ -58,23 +60,24 @@ export const ROLE_NAV_MAP: Record<string, string[]> = {
 		"carreras",
 	],
 	docente: ["docentes", "mensajes"],
-	tutor: ["tutorias", "mensajes", "reportes", "cursoIntro"],
+	tutor: ["tutorias", "analytics", "mensajes", "reportes", "cursoIntro"],
 	coordinador: [
 		"coordinacion",
+		"analytics",
 		"mensajes",
 		"estudiante",
 		"reportes",
 		"cursoIntro",
 	],
-	jefes: ["jefatura", "mensajes", "reportes", "estudiante"],
-	jefa_aaee: ["jefatura", "mensajes", "reportes", "estudiante"],
-	consulta: ["dashboard", "reportes", "mensajes"],
+	jefes: ["jefatura", "analytics", "mensajes", "reportes", "estudiante"],
+	jefa_aaee: ["jefatura", "analytics", "mensajes", "reportes", "estudiante"],
+	consulta: ["dashboard", "analytics", "reportes", "mensajes"],
 	estudiante: ["estudiante", "mensajes"],
 	equivalencias: ["equivalencias", "mensajes"],
 	titulos: ["titulos", "mensajes"],
 	curso_intro: ["cursoIntro", "mensajes"],
 	attp: ["attp", "estudiante", "mensajes", "primeraCarga"],
-	rectorado: ["rectorado", "estudiante", "mensajes", "asistencia"],
+	rectorado: ["rectorado", "analytics", "estudiante", "mensajes", "asistencia"],
 };
 
 export const roleLabels: Record<string, string> = {
