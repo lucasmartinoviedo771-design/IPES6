@@ -111,6 +111,9 @@ if "api" not in locals():
     safe_add_router("/", guias_router)
 
     # Reportes y Dashboards
+    from apps.metrics.analytics_api import router as analytics_router
+
+    safe_add_router("/analytics", analytics_router)
     safe_add_router("/reportes", metrics_router)
     safe_add_router("/", dashboard_router)
 

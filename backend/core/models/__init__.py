@@ -58,6 +58,7 @@ from .regularidades import (
     RegularidadPlanillaLock,
     RegularidadPlantilla,
 )
+from .riesgo import RiesgoAcademicoEstudiante
 
 __all__ = [
     # base
@@ -132,4 +133,6 @@ __all__ = [
     # auditoria
     "AuditLog",
     "SystemLog",
+    # riesgo
+    "RiesgoAcademicoEstudiante",
 ]
