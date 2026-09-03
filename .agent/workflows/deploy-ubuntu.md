@@ -469,6 +469,23 @@ docker run --rm -v backend_db_data:/data -v $(pwd):/backup ubuntu tar czf /backu
 
 ---
 
+## Tareas Operativas y Sincronizaciones Post-Deploy
+
+### Sincronización de Preinscripciones vs Cursadas
+Cuando se actualice el servidor de producción o se migren datos de alumnos que preinscribieron pero comenzaron a cursar antes de la formalización web:
+```bash
+# 1. Copiar el script al contenedor backend de producción si no está montado:
+docker cp backend/scripts/sync_preinscripciones.py ipes6-backend-prod:/app/scripts/sync_preinscripciones.py
+
+# 2. (Opcional) Simular ejecución:
+docker exec -it ipes6-backend-prod /app/.venv/bin/python /app/scripts/sync_preinscripciones.py --dry-run
+
+# 3. Aplicar sincronización real en la base de datos de producción:
+docker exec -it ipes6-backend-prod /app/.venv/bin/python /app/scripts/sync_preinscripciones.py
+```
+
+---
+
 ## Próximos Pasos Recomendados
 
 1. **Configurar backups automáticos** de la base de datos
