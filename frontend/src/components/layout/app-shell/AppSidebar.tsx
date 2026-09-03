@@ -257,8 +257,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
 					{!studentOnly && canSeeAnalytics && (
 						<ListItemButton
-							selected={current.startsWith("/analytics")}
-							onClick={() => navigate("/analytics")}
+							selected={
+								current.startsWith("/analytics") ||
+								(current.startsWith("/dashboard") && current.includes("tab=estudiantes"))
+							}
+							onClick={() => navigate("/dashboard?tab=estudiantes")}
 							sx={navButtonSx}
 						>
 							<ListItemIcon>

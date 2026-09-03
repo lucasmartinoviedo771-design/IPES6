@@ -1,4 +1,4 @@
-import { Outlet, Route } from "react-router-dom";
+import { Navigate, Outlet, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/router/guards";
 
 import { lazyPage } from "@/utils/lazy";
@@ -70,7 +70,10 @@ export const buildGeneralRoutes = () => (
 				</ProtectedRoute>
 			}
 		>
-			<Route path="/analytics" element={<AnalyticsDashboardPage />} />
+			<Route
+				path="/analytics"
+				element={<Navigate to="/dashboard?tab=estudiantes" replace />}
+			/>
 		</Route>
 		<Route
 			element={

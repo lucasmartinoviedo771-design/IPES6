@@ -2,7 +2,8 @@ import csv
 from datetime import datetime, timedelta
 from typing import Optional
 
-from django.db.models import Avg, Count, Max, Q, Sum
+from django.db.models import Avg, Case, CharField, Count, Max, Q, Sum, Value, When
+from django.db.models.functions import ExtractWeekDay, TruncMonth, TruncWeek
 from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Query, Router, Schema
@@ -17,7 +18,12 @@ from core.models import (
     Estudiante,
     EstudianteCarrera,
     InscripcionMateriaEstudiante,
+    Materia,
     MesaExamen,
+    PlanillaRegularidad,
+    PlanillaRegularidadDocente,
+    PlanillaRegularidadFila,
+    Preinscripcion,
     Profesorado,
     Regularidad,
     RiesgoAcademicoEstudiante,
@@ -89,6 +95,61 @@ class TeacherAttendanceOut(Schema):
     comision_id: int | None
     por_docente_individual: dict[str, int]
     por_catedra_comision: dict[str, int] | None
+
+
+class PreinscripcionCarreraItem(Schema):
+    profesorado_id: int
+    profesorado_nombre: str
+    total: int
+
+
+class PreinscripcionesSummaryOut(Schema):
+    total: int
+    por_estado: dict[str, int]
+    por_profesorado: list[PreinscripcionCarreraItem]
+
+
+class PreinscripcionEvolucionItem(Schema):
+    periodo: str
+    total: int
+
+
+class TeacherAttendanceSummaryOut(Schema):
+    docente_id: int | None
+    total_registros: int
+    presentes: int
+    ausentes: int
+    tardes: int
+    justificadas: int
+    porcentaje_asistencia: float
+
+
+class WeekdayAbsenceItem(Schema):
+    dia_numero: int  # 1: Domingo / Lunes según convención
+    dia_nombre: str
+    ausencias: int
+
+
+class DesgranamientoCatedraItem(Schema):
+    materia_id: int
+    materia_nombre: str
+    anio_cursada: int
+    profesorado_nombre: str
+    comision_codigo: str | None
+    docentes: list[str]
+    hubo_suplencia: bool
+    total_inscriptos: int
+    muestra_suficiente: bool  # True si inscriptos >= 15
+    tasa_desgranamiento: float | None
+    promedio_desgranamiento_anio: float | None
+    diferencia_vs_promedio: float | None
+
+
+class DesgranamientoCatedraOut(Schema):
+    items: list[DesgranamientoCatedraItem]
+    comisiones_sin_muestra_suficiente: int
+    total_comisiones_analizadas: int
+    nota_metodologica: str
 
 
 # ==========================================
@@ -384,4 +445,343 @@ def teacher_attendance(request, docente_id: int | None = None, comision_id: int 
         "comision_id": comision_id,
         "por_docente_individual": res_individual,
         "por_catedra_comision": res_comision,
+    }
+
+
+# ==========================================
+# 5. ENDPOINTS DE PREINSCRIPCIONES
+# ==========================================
+
+
+@router.get("/preinscripciones/summary/", response=PreinscripcionesSummaryOut)
+def preinscripciones_summary(
+    request,
+    anio: int | None = None,
+    profesorado_id: int | None = None,
+):
+    """
+    Resumen de preinscripciones con estado normalizado y desglose por profesorado.
+    Permiso requerido: ver_metricas o ver_dashboard.
+    """
+    if not (request.user.is_superuser or can(request.user, "ver_metricas") or can(request.user, "ver_dashboard")):
+        raise HttpError(403, "No tiene permisos para ver métricas de preinscripciones.")
+
+    qs = Preinscripcion.objects.all()
+    if anio:
+        qs = qs.filter(anio=anio)
+    if profesorado_id:
+        qs = qs.filter(carrera_id=profesorado_id)
+
+    # Normalización del estado con Case/When
+    qs_norm = qs.annotate(
+        estado_norm=Case(
+            When(estado__in=["Confirmada", "finalizada"], then=Value("Confirmada")),
+            When(estado__in=["Enviada", "PEN"], then=Value("Enviada")),
+            When(estado="Borrador", then=Value("Borrador")),
+            When(estado="Observada", then=Value("Observada")),
+            When(estado="Rechazada", then=Value("Rechazada")),
+            default=Value("Enviada"),
+            output_field=CharField(),
+        )
+    )
+
+    por_estado_raw = qs_norm.values("estado_norm").annotate(total=Count("id"))
+    por_estado = {row["estado_norm"]: row["total"] for row in por_estado_raw}
+
+    # Desglose por carrera
+    por_carrera_raw = (
+        qs.values("carrera_id", "carrera__nombre")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+    por_profesorado = [
+        PreinscripcionCarreraItem(
+            profesorado_id=row["carrera_id"],
+            profesorado_nombre=row["carrera__nombre"],
+            total=row["total"],
+        )
+        for row in por_carrera_raw
+        if row["carrera_id"] is not None
+    ]
+
+    return {
+        "total": qs.count(),
+        "por_estado": por_estado,
+        "por_profesorado": por_profesorado,
+    }
+
+
+@router.get("/preinscripciones/evolucion/", response=list[PreinscripcionEvolucionItem])
+def preinscripciones_evolucion(
+    request,
+    anio: int | None = None,
+    profesorado_id: int | None = None,
+    agrupacion: str = "semana",
+):
+    """
+    Serie temporal de evolución de preinscripciones agrupada por semana o mes según created_at.
+    """
+    if not (request.user.is_superuser or can(request.user, "ver_metricas") or can(request.user, "ver_dashboard")):
+        raise HttpError(403, "No tiene permisos para ver métricas de preinscripciones.")
+
+    qs = Preinscripcion.objects.filter(created_at__isnull=False)
+    if anio:
+        qs = qs.filter(anio=anio)
+    if profesorado_id:
+        qs = qs.filter(carrera_id=profesorado_id)
+
+    trunc_func = TruncMonth if agrupacion.lower() == "mes" else TruncWeek
+
+    evol_raw = (
+        qs.annotate(periodo_trunc=trunc_func("created_at"))
+        .values("periodo_trunc")
+        .annotate(total=Count("id"))
+        .order_by("periodo_trunc")
+    )
+
+    items = []
+    for row in evol_raw:
+        dt = row["periodo_trunc"]
+        periodo_str = dt.strftime("%Y-%m-%d") if dt else "S/F"
+        items.append(
+            PreinscripcionEvolucionItem(
+                periodo=periodo_str,
+                total=row["total"],
+            )
+        )
+    return items
+
+
+# ==========================================
+# 6. ENDPOINTS DE DOCENTES Y CÁTEDRAS
+# ==========================================
+
+
+@router.get("/teachers/attendance-summary/", response=TeacherAttendanceSummaryOut)
+def teacher_attendance_summary(
+    request,
+    anio: int | None = None,
+    docente_id: int | None = None,
+):
+    """
+    Asistencia general docente agrupada por año (presente, ausente, tarde, justificada).
+    Si no se especifica docente_id y tiene ver_metricas, computa todo el cuerpo docente.
+    """
+    docente = _check_metrics_access(request, docente_id)
+
+    qs = AsistenciaDocente.objects.all()
+    if docente:
+        qs = qs.filter(docente=docente)
+    if anio:
+        qs = qs.filter(clase__fecha__year=anio)
+
+    counts = {
+        row["estado"]: row["total"]
+        for row in qs.values("estado").annotate(total=Count("id"))
+    }
+
+    presentes = counts.get("presente", 0)
+    ausentes = counts.get("ausente", 0)
+    tardes = counts.get("tarde", 0)
+    justificadas = counts.get("ausente_justificado", 0) + counts.get("licencia", 0)
+    total_registros = sum(counts.values())
+
+    porcentaje = 0.0
+    if total_registros > 0:
+        # Los presentes y tardes suman asistencia institucional
+        porcentaje = round(((presentes + tardes) / total_registros) * 100, 1)
+
+    return {
+        "docente_id": docente.id if docente else None,
+        "total_registros": total_registros,
+        "presentes": presentes,
+        "ausentes": ausentes,
+        "tardes": tardes,
+        "justificadas": justificadas,
+        "porcentaje_asistencia": porcentaje,
+    }
+
+
+@router.get("/teachers/attendance-by-weekday/", response=list[WeekdayAbsenceItem])
+def teacher_attendance_by_weekday(
+    request,
+    anio: int | None = None,
+    docente_id: int | None = None,
+):
+    """
+    Patrón de ausencias de docentes agrupadas por día de la semana (1: Domingo, 2: Lunes ... 7: Sábado).
+    Permite detectar concentración de inasistencias en días clave.
+    """
+    docente = _check_metrics_access(request, docente_id)
+
+    qs = AsistenciaDocente.objects.filter(
+        estado__in=["ausente", "ausente_justificado", "licencia"]
+    ).filter(clase__fecha__isnull=False)
+
+    if docente:
+        qs = qs.filter(docente=docente)
+    if anio:
+        qs = qs.filter(clase__fecha__year=anio)
+
+    # Agrupación por día de la semana (Django ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday)
+    by_weekday_raw = (
+        qs.annotate(dia=ExtractWeekDay("clase__fecha"))
+        .values("dia")
+        .annotate(total=Count("id"))
+        .order_by("dia")
+    )
+
+    dias_nombres = {
+        1: "Domingo",
+        2: "Lunes",
+        3: "Martes",
+        4: "Miércoles",
+        5: "Jueves",
+        6: "Viernes",
+        7: "Sábado",
+    }
+
+    weekday_map = {row["dia"]: row["total"] for row in by_weekday_raw}
+
+    resultado = []
+    # De Lunes (2) a Viernes (6) o Sábado (7)
+    for dia_num in range(2, 7):
+        resultado.append(
+            WeekdayAbsenceItem(
+                dia_numero=dia_num,
+                dia_nombre=dias_nombres[dia_num],
+                ausencias=weekday_map.get(dia_num, 0),
+            )
+        )
+    return resultado
+
+
+@router.get("/teachers/desgranamiento-catedra/", response=DesgranamientoCatedraOut)
+def teachers_desgranamiento_catedra(
+    request,
+    anio: int | None = None,
+    profesorado_id: int | None = None,
+    materia_id: int | None = None,
+):
+    """
+    Tasa de desgranamiento por cátedra calculada desde PlanillaRegularidad -> PlanillaRegularidadFila.
+    Reglas obligatorias:
+    - Excluye planillas borrador (solo estado 'final').
+    - Comisiones con < 15 alumnos se marcan con muestra_suficiente = False y sin porcentaje de tasa.
+    - Se compara cada comisión contra el promedio de desgranamiento de su mismo año de cursada (1°, 2°, 3°, 4°).
+    - Detecta y marca si hubo suplencia.
+    """
+    if not (request.user.is_superuser or can(request.user, "ver_metricas") or can(request.user, "ver_dashboard")):
+        raise HttpError(403, "No tiene permisos para ver métricas de cátedras.")
+
+    planillas_qs = PlanillaRegularidad.objects.filter(estado=PlanillaRegularidad.Estado.FINAL).select_related(
+        "materia", "materia__plan_de_estudio", "profesorado", "comision"
+    ).prefetch_related("docentes__docente", "filas")
+
+    if anio:
+        planillas_qs = planillas_qs.filter(anio_academico=anio)
+    if profesorado_id:
+        planillas_qs = planillas_qs.filter(profesorado_id=profesorado_id)
+    if materia_id:
+        planillas_qs = planillas_qs.filter(materia_id=materia_id)
+
+    # 1. Primero agrupamos inscriptos y abandonos (LAT, LBI) por año de cursada para calcular promedios
+    totales_por_anio_cursada = {1: {"inscriptos": 0, "desgranados": 0}, 2: {"inscriptos": 0, "desgranados": 0}, 3: {"inscriptos": 0, "desgranados": 0}, 4: {"inscriptos": 0, "desgranados": 0}}
+
+    planillas_data = []
+    sin_muestra_count = 0
+
+    for p in planillas_qs:
+        filas = list(p.filas.all())
+        total_inscr = len(filas)
+        if total_inscr == 0:
+            continue
+
+        desgranados_count = sum(1 for f in filas if f.situacion in ["LAT", "LBI"])
+        anio_cursada = getattr(p.materia, "anio_cursada", 1)
+
+        # Si tiene muestra suficiente (>= 15), aporta al promedio de su año
+        if total_inscr >= 15:
+            if anio_cursada not in totales_por_anio_cursada:
+                totales_por_anio_cursada[anio_cursada] = {"inscriptos": 0, "desgranados": 0}
+            totales_por_anio_cursada[anio_cursada]["inscriptos"] += total_inscr
+            totales_por_anio_cursada[anio_cursada]["desgranados"] += desgranados_count
+        else:
+            sin_muestra_count += 1
+
+        # Docentes vinculados y chequeo de suplencia
+        docentes_list = []
+        hubo_suplencia = False
+        for d in p.docentes.all():
+            nombre_doc = d.nombre or (str(d.docente) if d.docente else "Docente no registrado")
+            rol_doc = d.rol
+            if rol_doc and "suplente" in rol_doc.lower():
+                hubo_suplencia = True
+            docentes_list.append(f"{nombre_doc} ({rol_doc or 'Profesor'})")
+
+        if not docentes_list and p.comision:
+            for staff in p.comision.staff.all():
+                if staff.es_suplente:
+                    hubo_suplencia = True
+                docentes_list.append(f"{staff.docente} ({staff.rol})")
+
+        planillas_data.append({
+            "materia_id": p.materia_id,
+            "materia_nombre": p.materia.nombre,
+            "anio_cursada": anio_cursada,
+            "profesorado_nombre": p.profesorado.nombre if p.profesorado else "",
+            "comision_codigo": p.comision.codigo if p.comision else f"Comisión {p.numero}",
+            "docentes": docentes_list,
+            "hubo_suplencia": hubo_suplencia,
+            "total_inscriptos": total_inscr,
+            "desgranados_count": desgranados_count,
+            "muestra_suficiente": total_inscr >= 15,
+        })
+
+    # Calcular tasas promedio por año de cursada
+    promedios_por_anio = {}
+    for anio_c, vals in totales_por_anio_cursada.items():
+        if vals["inscriptos"] > 0:
+            promedios_por_anio[anio_c] = round((vals["desgranados"] / vals["inscriptos"]) * 100, 1)
+        else:
+            promedios_por_anio[anio_c] = None
+
+    items = []
+    for item_data in planillas_data:
+        anio_c = item_data["anio_cursada"]
+        promedio_anio = promedios_por_anio.get(anio_c)
+
+        if item_data["muestra_suficiente"]:
+            tasa = round((item_data["desgranados_count"] / item_data["total_inscriptos"]) * 100, 1)
+            diff = round(tasa - promedio_anio, 1) if promedio_anio is not None else None
+        else:
+            tasa = None
+            diff = None
+
+        items.append(
+            DesgranamientoCatedraItem(
+                materia_id=item_data["materia_id"],
+                materia_nombre=item_data["materia_nombre"],
+                anio_cursada=anio_c,
+                profesorado_nombre=item_data["profesorado_nombre"],
+                comision_codigo=item_data["comision_codigo"],
+                docentes=item_data["docentes"],
+                hubo_suplencia=item_data["hubo_suplencia"],
+                total_inscriptos=item_data["total_inscriptos"],
+                muestra_suficiente=item_data["muestra_suficiente"],
+                tasa_desgranamiento=tasa,
+                promedio_desgranamiento_anio=promedio_anio,
+                diferencia_vs_promedio=diff,
+            )
+        )
+
+    return {
+        "items": items,
+        "comisiones_sin_muestra_suficiente": sin_muestra_count,
+        "total_comisiones_analizadas": len(items),
+        "nota_metodologica": (
+            "El desgranamiento por cátedra refleja la tasa de alumnos que no continuaron la cursada "
+            "(Libres por Inasistencia o Abandono Temprano) sobre planillas consolidadas. "
+            "Se requiere un mínimo de 15 estudiantes inscriptos para que el valor sea estadísticamente representativo."
+        ),
     }

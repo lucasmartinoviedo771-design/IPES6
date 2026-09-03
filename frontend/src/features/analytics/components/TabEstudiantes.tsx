@@ -1,0 +1,130 @@
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { fetchCarreras } from "@/api/carreras";
+import AnalyticsFilters from "./AnalyticsFilters";
+import AnalyticsHeader from "./AnalyticsHeader";
+import EstudiantesRiesgoTable from "./EstudiantesRiesgoTable";
+import SemaforoCards from "./SemaforoCards";
+import {
+	useAnalyticsSummary,
+	useEstudiantesAtRisk,
+} from "../hooks/useAnalytics";
+
+interface TabEstudiantesProps {
+	anio: number;
+	profesoradoId?: number;
+	onAnioChange: (anio: number) => void;
+	onProfesoradoChange: (profesoradoId?: number) => void;
+}
+
+export default function TabEstudiantes({
+	anio,
+	profesoradoId,
+	onAnioChange,
+	onProfesoradoChange,
+}: TabEstudiantesProps) {
+	const [nivel, setNivel] = useState<string>("rojo");
+	const [page, setPage] = useState<number>(1);
+
+	// Carreras para el selector
+	const { data: carreras = [] } = useQuery({
+		queryKey: ["carreras", "activas"],
+		queryFn: () => fetchCarreras(),
+	});
+
+	// Resumen y Semáforo
+	const {
+		data: summary,
+		isLoading: loadingSummary,
+		error: errorSummary,
+		refetch: refetchSummary,
+	} = useAnalyticsSummary({
+		anio,
+		profesorado_id: profesoradoId,
+	});
+
+	// Listado de Estudiantes en riesgo
+	const {
+		data: estudiantes,
+		isLoading: loadingEstudiantes,
+		error: errorEstudiantes,
+		refetch: refetchEstudiantes,
+	} = useEstudiantesAtRisk({
+		nivel,
+		profesorado_id: profesoradoId,
+		page,
+	});
+
+	const handleNivelSelect = (newNivel: string) => {
+		setNivel(newNivel);
+		setPage(1);
+	};
+
+	return (
+		<Stack spacing={3}>
+			<AnalyticsHeader fechaActualizacion={summary?.fecha_actualizacion || null} />
+
+			<AnalyticsFilters
+				anio={anio}
+				onAnioChange={(y) => {
+					onAnioChange(y);
+					setPage(1);
+				}}
+				profesoradoId={profesoradoId}
+				onProfesoradoChange={(p) => {
+					onProfesoradoChange(p);
+					setPage(1);
+				}}
+				carreras={carreras}
+			/>
+
+			{errorSummary ? (
+				<Alert
+					severity="error"
+					sx={{ mb: 2 }}
+					action={
+						<Button color="inherit" size="small" onClick={() => refetchSummary()}>
+							Reintentar
+						</Button>
+					}
+				>
+					Error al cargar el resumen del semáforo. Verifique su conexión o intente nuevamente.
+				</Alert>
+			) : (
+				<SemaforoCards
+					semaforo={summary?.semaforo}
+					nivelSeleccionado={nivel}
+					onSelectNivel={handleNivelSelect}
+					loading={loadingSummary}
+				/>
+			)}
+
+			{errorEstudiantes ? (
+				<Alert
+					severity="error"
+					sx={{ mb: 2 }}
+					action={
+						<Button color="inherit" size="small" onClick={() => refetchEstudiantes()}>
+							Reintentar
+						</Button>
+					}
+				>
+					Error al cargar el listado de estudiantes en riesgo.
+				</Alert>
+			) : (
+				<EstudiantesRiesgoTable
+					estudiantes={estudiantes?.items}
+					totalCount={estudiantes?.count}
+					nivel={nivel}
+					loading={loadingEstudiantes}
+					page={page}
+					onPageChange={(p) => setPage(p)}
+					profesoradoId={profesoradoId}
+				/>
+			)}
+		</Stack>
+	);
+}

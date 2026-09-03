@@ -92,3 +92,117 @@ export const getExportStudentsAtRiskUrl = (params: {
 	}
 	return `/api/analytics/students/at-risk/?${query.toString()}`;
 };
+
+// ==========================================
+// SOLAPA PREINSCRIPCIONES
+// ==========================================
+
+export interface PreinscripcionCarreraItem {
+	profesorado_id: number;
+	profesorado_nombre: string;
+	total: number;
+}
+
+export interface PreinscripcionesSummaryResponse {
+	total: number;
+	por_estado: Record<string, number>;
+	por_profesorado: PreinscripcionCarreraItem[];
+}
+
+export interface PreinscripcionEvolucionItem {
+	periodo: string;
+	total: number;
+}
+
+export const getPreinscripcionesSummary = async (params?: {
+	anio?: number;
+	profesorado_id?: number;
+}): Promise<PreinscripcionesSummaryResponse> => {
+	const res = await api.get("/analytics/preinscripciones/summary/", { params });
+	return res.data;
+};
+
+export const getPreinscripcionesEvolucion = async (params?: {
+	anio?: number;
+	profesorado_id?: number;
+	agrupacion?: "semana" | "mes";
+}): Promise<PreinscripcionEvolucionItem[]> => {
+	const res = await api.get("/analytics/preinscripciones/evolucion/", { params });
+	return res.data;
+};
+
+// ==========================================
+// SOLAPA DOCENTES
+// ==========================================
+
+export interface TeacherAttendanceSummaryResponse {
+	docente_id: number | null;
+	total_registros: number;
+	presentes: number;
+	ausentes: number;
+	tardes: number;
+	justificadas: number;
+	porcentaje_asistencia: number;
+}
+
+export interface WeekdayAbsenceItem {
+	dia_numero: number;
+	dia_nombre: string;
+	ausencias: number;
+}
+
+export interface DesgranamientoCatedraItem {
+	materia_id: number;
+	materia_nombre: string;
+	anio_cursada: number;
+	profesorado_nombre: string;
+	comision_codigo: string | null;
+	docentes: string[];
+	hubo_suplencia: boolean;
+	total_inscriptos: number;
+	muestra_suficiente: boolean;
+	tasa_desgranamiento: number | null;
+	promedio_desgranamiento_anio: number | null;
+	diferencia_vs_promedio: number | null;
+}
+
+export interface DesgranamientoCatedraResponse {
+	items: DesgranamientoCatedraItem[];
+	comisiones_sin_muestra_suficiente: number;
+	total_comisiones_analizadas: number;
+	nota_metodologica: string;
+}
+
+export const getTeacherAttendanceSummary = async (params?: {
+	anio?: number;
+	docente_id?: number;
+}): Promise<TeacherAttendanceSummaryResponse> => {
+	const res = await api.get("/analytics/teachers/attendance-summary/", { params });
+	return res.data;
+};
+
+export const getTeacherAttendanceByWeekday = async (params?: {
+	anio?: number;
+	docente_id?: number;
+}): Promise<WeekdayAbsenceItem[]> => {
+	const res = await api.get("/analytics/teachers/attendance-by-weekday/", { params });
+	return res.data;
+};
+
+export const getTeachersDesgranamiento = async (params?: {
+	anio?: number;
+	profesorado_id?: number;
+	materia_id?: number;
+}): Promise<DesgranamientoCatedraResponse> => {
+	const res = await api.get("/analytics/teachers/desgranamiento-catedra/", { params });
+	return res.data;
+};
+
+export const getTeacherWorkload = async (
+	docenteId?: number,
+): Promise<TeacherWorkloadResponse> => {
+	const res = await api.get("/analytics/teachers/workload/", {
+		params: docenteId ? { docente_id: docenteId } : undefined,
+	});
+	return res.data;
+};
