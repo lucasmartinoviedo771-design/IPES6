@@ -110,3 +110,69 @@ def test_el_cache_no_saltea_el_chequeo_de_permisos(req_admin, cache_real, db):
     with pytest.raises(AppError) as exc:
         A.students_summary(pelado)
     assert exc.value.status_code == 403
+
+
+def test_guardar_un_acta_invalida_el_cache_de_rendimiento(req_admin, cache_redis, db):
+    """
+    Al cargar un acta, el rendimiento academico cacheado queda obsoleto y tiene
+    que borrarse en el momento, no quince minutos despues.
+
+    Usa Redis real (base 15) y no LocMemCache: la invalidacion se apoya en
+    delete_pattern, que LocMemCache no implementa, asi que con `cache_real` este
+    test pasaria sin probar nada.
+    """
+    from datetime import date
+
+    from core.models import ActaExamen, Materia, PlanDeEstudio, Profesorado
+
+    prof = Profesorado.objects.create(nombre="Prof Invalidacion", activo=True, duracion_anios=4)
+    plan = PlanDeEstudio.objects.create(
+        profesorado=prof, resolucion="RES-INVALIDACION", anio_inicio=2020, vigente=True
+    )
+    materia = Materia.objects.create(
+        plan_de_estudio=plan, nombre="Materia Invalidacion", anio_cursada=1, formato="ASI", horas_semana=4
+    )
+
+    # El endpoint deja su respuesta en el cache.
+    A.rendimiento_por_materia(req_admin)
+    assert cache_redis.keys("*academic_performance_materia*"), (
+        "el endpoint tendria que haber dejado la respuesta cacheada"
+    )
+
+    # Guardar un acta dispara la señal de invalidacion.
+    ActaExamen.objects.create(
+        codigo="ACTA-INVALIDACION-1",
+        tipo=ActaExamen.Tipo.values[0],
+        profesorado=prof,
+        materia=materia,
+        plan=plan,
+        fecha=date.today(),
+    )
+
+    assert not cache_redis.keys("*academic_performance_materia*"), (
+        "la señal tendria que haber borrado el rendimiento cacheado"
+    )
+
+
+def test_la_invalidacion_no_borra_snapshots(req_admin, cache_redis, db):
+    """
+    Los snapshots son el registro historico de como estaba el sistema cada dia y
+    no se pueden reconstruir hacia atras. Una version previa de las señales los
+    borraba en cada post_save; este test existe para que eso no vuelva a pasar.
+    """
+    from datetime import date
+
+    from apps.metrics.models import MatriculaSnapshot
+    from core.models import Profesorado, Regularidad  # noqa: F401
+
+    prof = Profesorado.objects.create(nombre="Prof Snapshots", activo=True, duracion_anios=4)
+    MatriculaSnapshot.objects.create(profesorado=prof, fecha_snapshot=date(2026, 1, 1), total_matriculados=42)
+
+    # Cualquier evento que dispare invalidacion de cache.
+    from apps.metrics.cache_invalidation import invalidar
+
+    invalidar("students_summary", "academic_performance_materia")
+
+    assert MatriculaSnapshot.objects.filter(profesorado=prof).count() == 1, (
+        "invalidar el cache no debe tocar la serie historica de snapshots"
+    )

@@ -363,11 +363,16 @@ LOGGING = {
 REDIS_URL = os.getenv("REDIS_URL", "")
 
 if REDIS_URL:
+    # django-redis y no el backend nativo de Django: hace falta delete_pattern()
+    # para invalidar por evento (ver apps/metrics/cache_invalidation.py). La API
+    # generica de cache de Django no expone borrado por patron porque no todos
+    # los backends pueden implementarlo de forma eficiente.
     CACHES = {
         "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
             "KEY_PREFIX": "ipes6",
+            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
         }
     }
 else:
