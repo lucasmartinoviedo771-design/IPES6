@@ -12,6 +12,11 @@ from ninja.pagination import PageNumberPagination, paginate
 
 from apps.asistencia.models import AsistenciaDocente, ClaseProgramada
 from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+from apps.metrics.models import (
+    AsistenciaSnapshot,
+    AusentismoSnapshot,
+    MatriculaSnapshot,
+)
 from core.models import (
     Comision,
     Docente,
@@ -112,6 +117,38 @@ class PreinscripcionesSummaryOut(Schema):
 class PreinscripcionEvolucionItem(Schema):
     periodo: str
     total: int
+
+
+class MatriculaEvolucionItem(Schema):
+    fecha: str
+    total_matriculados: int
+    promedio_notas: float | None
+    promedio_asistencia: float | None
+    por_estado: dict[str, int]
+
+
+class AsistenciaEvolucionItem(Schema):
+    fecha: str
+    total_registros: int
+    presentes: int
+    ausentes: int
+    tardias: int
+    justificadas: int
+    porcentaje_asistencia: float | None
+
+
+class AusentismoEvolucionItem(Schema):
+    fecha: str
+    tasa_ausentismo: float
+    total_estudiantes: int
+    estudiantes_críticos: int
+
+
+class EvolucionOut(Schema):
+    items: list
+    fecha_inicio: str | None
+    fecha_fin: str | None
+    periodo: str
 
 
 class TeacherAttendanceSummaryOut(Schema):
@@ -808,4 +845,139 @@ def teachers_desgranamiento_catedra(
             "(Libres por Inasistencia o Abandono Temprano) sobre planillas consolidadas. "
             "Se requiere un mínimo de 15 estudiantes inscriptos para que el valor sea estadísticamente representativo."
         ),
+    }
+
+
+# ==========================================
+# 4. SERIES TEMPORALES (EVOLUCIÓN DE MÉTRICAS)
+# ==========================================
+
+
+@router.get("/matricula/evolucion/", response=EvolucionOut)
+def matricula_evolucion(
+    request,
+    profesorado_id: int | None = None,
+    dias: int | None = None,
+):
+    """
+    Evolución de matrícula a lo largo del tiempo (últimos N días/snapshots).
+    Reutiliza snapshots precalculados para performance.
+    """
+    require(request.user, "ver_metricas")
+
+    dias = dias or 90
+    qs = MatriculaSnapshot.objects.all()
+
+    if profesorado_id:
+        qs = qs.filter(profesorado_id=profesorado_id)
+
+    qs = qs.order_by("fecha_snapshot")[-dias:]
+
+    items = [
+        {
+            "fecha": s.fecha_snapshot.isoformat(),
+            "total_matriculados": s.total_matriculados,
+            "promedio_notas": s.promedio_notas,
+            "promedio_asistencia": s.promedio_asistencia,
+            "por_estado": s.por_estado,
+        }
+        for s in qs
+    ]
+
+    fecha_inicio = qs.first().fecha_snapshot.isoformat() if qs.exists() else None
+    fecha_fin = qs.last().fecha_snapshot.isoformat() if qs.exists() else None
+
+    return {
+        "items": items,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "periodo": f"últimos {dias} días",
+    }
+
+
+@router.get("/asistencia/evolucion/", response=EvolucionOut)
+def asistencia_evolucion(
+    request,
+    profesorado_id: int | None = None,
+    dias: int | None = None,
+):
+    """
+    Evolución de asistencia agregada de estudiantes por profesorado.
+    Útil para detectar tendencias de desenganche.
+    """
+    require(request.user, "ver_metricas")
+
+    dias = dias or 90
+    qs = AsistenciaSnapshot.objects.all()
+
+    if profesorado_id:
+        qs = qs.filter(profesorado_id=profesorado_id)
+
+    qs = qs.order_by("fecha_snapshot")[-dias:]
+
+    items = [
+        {
+            "fecha": s.fecha_snapshot.isoformat(),
+            "total_registros": s.total_registros,
+            "presentes": s.presentes,
+            "ausentes": s.ausentes,
+            "tardias": s.tardias,
+            "justificadas": s.justificadas,
+            "porcentaje_asistencia": s.porcentaje_asistencia,
+        }
+        for s in qs
+    ]
+
+    fecha_inicio = qs.first().fecha_snapshot.isoformat() if qs.exists() else None
+    fecha_fin = qs.last().fecha_snapshot.isoformat() if qs.exists() else None
+
+    return {
+        "items": items,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "periodo": f"últimos {dias} días",
+    }
+
+
+@router.get("/ausentismo/evolucion/", response=EvolucionOut)
+def ausentismo_evolucion(
+    request,
+    comision_id: int | None = None,
+    profesorado_id: int | None = None,
+    dias: int | None = None,
+):
+    """
+    Evolución de ausentismo por comisión/cátedra.
+    Detecta cátedras con problemas de asistencia emergentes.
+    """
+    require(request.user, "ver_metricas")
+
+    dias = dias or 90
+    qs = AusentismoSnapshot.objects.all()
+
+    if comision_id:
+        qs = qs.filter(comision_id=comision_id)
+    elif profesorado_id:
+        qs = qs.filter(profesorado_id=profesorado_id)
+
+    qs = qs.order_by("fecha_snapshot")[-dias:]
+
+    items = [
+        {
+            "fecha": s.fecha_snapshot.isoformat(),
+            "tasa_ausentismo": s.tasa_ausentismo,
+            "total_estudiantes": s.total_estudiantes,
+            "estudiantes_críticos": s.estudiantes_críticos,
+        }
+        for s in qs
+    ]
+
+    fecha_inicio = qs.first().fecha_snapshot.isoformat() if qs.exists() else None
+    fecha_fin = qs.last().fecha_snapshot.isoformat() if qs.exists() else None
+
+    return {
+        "items": items,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "periodo": f"últimos {dias} días",
     }
