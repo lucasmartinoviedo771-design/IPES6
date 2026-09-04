@@ -450,7 +450,52 @@ const CargaNotasPage: React.FC = () => {
 					<Stack gap={3}>
 						<Paper sx={{ p: 3 }}>
 							<Stack gap={3}>
-								{!isDocente && (
+								{isDocente ? (
+									<Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", gap: 1 }}>
+										<Typography variant="body2" fontWeight={600} color="text.secondary">
+											Ver:
+										</Typography>
+										<Chip
+											label="Mesas abiertas (Pendientes)"
+											color={finalFilters.estadoPlanilla === "ABIERTAS" ? "primary" : "default"}
+											variant={finalFilters.estadoPlanilla === "ABIERTAS" ? "filled" : "outlined"}
+											onClick={() =>
+												setFinalFilters((prev) => ({
+													...prev,
+													estadoPlanilla: "ABIERTAS",
+												}))
+											}
+											clickable
+											size="small"
+										/>
+										<Chip
+											label="Mesas cerradas"
+											color={finalFilters.estadoPlanilla === "CERRADAS" ? "primary" : "default"}
+											variant={finalFilters.estadoPlanilla === "CERRADAS" ? "filled" : "outlined"}
+											onClick={() =>
+												setFinalFilters((prev) => ({
+													...prev,
+													estadoPlanilla: "CERRADAS",
+												}))
+											}
+											clickable
+											size="small"
+										/>
+										<Chip
+											label="Todas mis mesas"
+											color={finalFilters.estadoPlanilla === "TODAS" ? "primary" : "default"}
+											variant={finalFilters.estadoPlanilla === "TODAS" ? "filled" : "outlined"}
+											onClick={() =>
+												setFinalFilters((prev) => ({
+													...prev,
+													estadoPlanilla: "TODAS",
+												}))
+											}
+											clickable
+											size="small"
+										/>
+									</Stack>
+								) : (
 									<FinalExamFiltersPanel
 										finalFilters={finalFilters}
 										setFinalFilters={setFinalFilters}
