@@ -18,6 +18,7 @@ from apps.metrics.models import (
     MatriculaSnapshot,
 )
 from core.models import (
+    AuditLog,
     Comision,
     Docente,
     Estudiante,
@@ -33,6 +34,7 @@ from core.models import (
     Regularidad,
     RiesgoAcademicoEstudiante,
 )
+from apps.common.models import SystemLog
 from core.permissions import can, require
 
 router = Router(tags=["Analytics"])
@@ -200,6 +202,58 @@ class RendimientoComisionesOut(Schema):
     profesorado_id: int | None
     total_comisiones: int
     promedio_general_notas: float | None
+
+
+class LoginPorDiaItem(Schema):
+    fecha: str
+    total_logins: int
+    usuarios_unicos: int
+
+
+class TopAccionesItem(Schema):
+    accion: str
+    cantidad: int
+    porcentaje: float
+
+
+class TopUsuariosItem(Schema):
+    usuario: str
+    total_acciones: int
+    ultimos_accesos: str
+
+
+class AlertaCriticaItem(Schema):
+    id: int
+    fecha: str
+    tipo: str  # SECURITY, DATA_INTEGRITY, ERROR, etc
+    mensaje: str
+    entidad_afectada: str | None
+    resuelto: bool
+
+
+class AuditoriaResumenOut(Schema):
+    total_eventos_7d: int
+    logins_7d: int
+    acciones_crud_7d: int
+    alertas_sin_resolver: int
+    eventos_hoy: int
+    hora_pico: str | None
+
+
+class AuditoriaEvolucionItem(Schema):
+    fecha: str
+    logins: int
+    acciones_crud: int
+    errores: int
+
+
+class AuditoriaDashboardOut(Schema):
+    resumen: AuditoriaResumenOut
+    logins_por_dia: list[LoginPorDiaItem]
+    top_acciones: list[TopAccionesItem]
+    top_usuarios: list[TopUsuariosItem]
+    alertas_criticas: list[AlertaCriticaItem]
+    evolucion_7d: list[AuditoriaEvolucionItem]
 
 
 class TeacherAttendanceSummaryOut(Schema):
@@ -1289,4 +1343,139 @@ def comparacion_cohortes(
         "items": items,
         "profesorado_id": profesorado_id,
         "comparacion_historica": comparacion_historica,
+    }
+
+
+# ==========================================
+# 6. AUDITORÍA Y ACTIVIDAD DEL SISTEMA
+# ==========================================
+
+
+@router.get("/auditoria/dashboard/", response=AuditoriaDashboardOut)
+def auditoria_dashboard(request):
+    """
+    Panel completo de auditoría: actividad del sistema, logins, alertas críticas.
+    Utiliza AuditLog y SystemLog para dar visibilidad de la salud e integridad del sistema.
+    """
+    require(request.user, "ver_metricas")
+
+    # Datos de últimos 7 días
+    fecha_hace_7d = timezone.now().date() - timedelta(days=7)
+    fecha_hoy = timezone.now().date()
+
+    # 1. RESUMEN (últimos 7 días)
+    audit_logs_7d = AuditLog.objects.filter(created_at__date__gte=fecha_hace_7d)
+    system_logs = SystemLog.objects.filter(created_at__date__gte=fecha_hace_7d)
+    alertas_sin_resolver = system_logs.filter(resuelto=False, tipo="ALERT")
+
+    total_eventos_7d = audit_logs_7d.count()
+    logins_7d = audit_logs_7d.filter(accion="LOGIN").count()
+    acciones_crud_7d = audit_logs_7d.filter(accion__in=["CREATE", "UPDATE", "DELETE"]).count()
+    eventos_hoy = audit_logs_7d.filter(created_at__date=fecha_hoy).count()
+
+    # Hora pico (hora con más logins hoy)
+    logins_hoy = audit_logs_7d.filter(accion="LOGIN", created_at__date=fecha_hoy)
+    hora_pico = None
+    if logins_hoy.exists():
+        from django.db.models.functions import ExtractHour
+        hora_pico_data = logins_hoy.annotate(
+            hora=ExtractHour("created_at")
+        ).values("hora").annotate(total=Count("id")).order_by("-total").first()
+        if hora_pico_data:
+            hora_pico = f"{hora_pico_data['hora']:02d}:00"
+
+    resumen = {
+        "total_eventos_7d": total_eventos_7d,
+        "logins_7d": logins_7d,
+        "acciones_crud_7d": acciones_crud_7d,
+        "alertas_sin_resolver": alertas_sin_resolver.count(),
+        "eventos_hoy": eventos_hoy,
+        "hora_pico": hora_pico,
+    }
+
+    # 2. LOGINS POR DÍA (últimos 7 días)
+    logins_por_dia = []
+    for i in range(7, -1, -1):
+        fecha = fecha_hoy - timedelta(days=i)
+        logs_dia = audit_logs_7d.filter(
+            accion="LOGIN",
+            created_at__date=fecha
+        )
+        total_logins = logs_dia.count()
+        usuarios_unicos = logs_dia.values("usuario").distinct().count()
+
+        logins_por_dia.append({
+            "fecha": fecha.isoformat(),
+            "total_logins": total_logins,
+            "usuarios_unicos": usuarios_unicos,
+        })
+
+    # 3. TOP ACCIONES
+    top_acciones_data = audit_logs_7d.values("accion").annotate(
+        cantidad=Count("id")
+    ).order_by("-cantidad")[:10]
+
+    total_acciones = audit_logs_7d.count()
+    top_acciones = []
+    for item in top_acciones_data:
+        top_acciones.append({
+            "accion": item["accion"],
+            "cantidad": item["cantidad"],
+            "porcentaje": round((item["cantidad"] / total_acciones * 100), 1) if total_acciones > 0 else 0,
+        })
+
+    # 4. TOP USUARIOS
+    top_usuarios_data = audit_logs_7d.values("usuario").annotate(
+        total_acciones=Count("id")
+    ).order_by("-total_acciones")[:5]
+
+    top_usuarios = []
+    for item in top_usuarios_data:
+        ultimo_acceso = audit_logs_7d.filter(
+            usuario=item["usuario"]
+        ).order_by("-created_at").first()
+
+        top_usuarios.append({
+            "usuario": item["usuario"] or "Anónimo",
+            "total_acciones": item["total_acciones"],
+            "ultimos_accesos": ultimo_acceso.created_at.isoformat() if ultimo_acceso else None,
+        })
+
+    # 5. ALERTAS CRÍTICAS
+    alertas_criticas = []
+    for alert in alertas_sin_resolver.order_by("-created_at")[:10]:
+        alertas_criticas.append({
+            "id": alert.id,
+            "fecha": alert.created_at.isoformat(),
+            "tipo": alert.tipo,
+            "mensaje": alert.mensaje,
+            "entidad_afectada": alert.entidad_afectada,
+            "resuelto": alert.resuelto,
+        })
+
+    # 6. EVOLUCIÓN 7 DÍAS (logins, CRUD, errores)
+    evolucion_7d = []
+    for i in range(7, -1, -1):
+        fecha = fecha_hoy - timedelta(days=i)
+        logs_fecha = audit_logs_7d.filter(created_at__date=fecha)
+        system_logs_fecha = system_logs.filter(created_at__date=fecha)
+
+        logins = logs_fecha.filter(accion="LOGIN").count()
+        crud = logs_fecha.filter(accion__in=["CREATE", "UPDATE", "DELETE"]).count()
+        errores = system_logs_fecha.filter(tipo="ERROR").count()
+
+        evolucion_7d.append({
+            "fecha": fecha.isoformat(),
+            "logins": logins,
+            "acciones_crud": crud,
+            "errores": errores,
+        })
+
+    return {
+        "resumen": resumen,
+        "logins_por_dia": logins_por_dia,
+        "top_acciones": top_acciones,
+        "top_usuarios": top_usuarios,
+        "alertas_criticas": alertas_criticas,
+        "evolucion_7d": evolucion_7d,
     }

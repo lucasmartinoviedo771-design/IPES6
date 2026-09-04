@@ -17,12 +17,14 @@ import TabDocentes from "@/features/analytics/components/TabDocentes";
 import TabEstudiantes from "@/features/analytics/components/TabEstudiantes";
 import TabPreinscripciones from "@/features/analytics/components/TabPreinscripciones";
 import TabRendimientoAcademico from "@/features/analytics/components/TabRendimientoAcademico";
+import TabAuditoria from "@/features/analytics/components/TabAuditoria";
 import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
+import GavelIcon from "@mui/icons-material/Gavel";
 
-type TabKey = "preinscripciones" | "estudiantes" | "docentes" | "rendimiento";
+type TabKey = "preinscripciones" | "estudiantes" | "docentes" | "rendimiento" | "auditoria";
 
 export default function DashboardPage() {
 	const navigate = useNavigate();
@@ -180,6 +182,12 @@ export default function DashboardPage() {
 						iconPosition="start"
 						label="Rendimiento Académico"
 					/>
+					<Tab
+						value="auditoria"
+						icon={<GavelIcon />}
+						iconPosition="start"
+						label="Auditoría & Seguridad"
+					/>
 				</Tabs>
 			</Box>
 
@@ -218,6 +226,10 @@ export default function DashboardPage() {
 					onAnioChange={handleAnioChange}
 					onProfesoradoChange={handleProfesoradoChange}
 				/>
+			)}
+
+			{currentTab === "auditoria" && (
+				<TabAuditoria />
 			)}
 		</Stack>
 	);

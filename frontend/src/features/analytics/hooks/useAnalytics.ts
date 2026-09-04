@@ -11,6 +11,7 @@ import {
 	getAcademicPerformancePorMateria,
 	getAcademicPerformancePorComisiones,
 	getAcademicPerformanceCohortes,
+	getAuditoriaDashboard,
 	type StudentsSummaryResponse,
 	type StudentsAtRiskResponse,
 	type PreinscripcionesSummaryResponse,
@@ -22,6 +23,7 @@ import {
 	type AcademicPerformancePorMateriaResponse,
 	type AcademicPerformancePorComisionesResponse,
 	type AcademicPerformanceCohortesResponse,
+	type AuditoriaDashboardResponse,
 } from "@/api/analytics";
 
 export const useAnalyticsSummary = (params: {
@@ -142,5 +144,13 @@ export const useAcademicPerformanceCohortes = (params: {
 		queryKey: ["analytics", "academicPerformanceCohortes", params],
 		queryFn: () => getAcademicPerformanceCohortes(params),
 		staleTime: 1000 * 60 * 10,
+	});
+};
+
+export const useAuditoriaDashboard = () => {
+	return useQuery<AuditoriaDashboardResponse>({
+		queryKey: ["analytics", "auditoriaDashboard"],
+		queryFn: () => getAuditoriaDashboard(),
+		staleTime: 1000 * 60 * 5,
 	});
 };

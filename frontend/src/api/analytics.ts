@@ -289,3 +289,64 @@ export const getAcademicPerformanceCohortes = async (params?: {
 	const res = await api.get("/analytics/academic-performance/comparacion-cohortes/", { params });
 	return res.data;
 };
+
+// ==========================================
+// SOLAPA AUDITORÍA
+// ==========================================
+
+export interface LoginPorDiaItem {
+	fecha: string;
+	total_logins: number;
+	usuarios_unicos: number;
+}
+
+export interface TopAccionesItem {
+	accion: string;
+	cantidad: number;
+	porcentaje: number;
+}
+
+export interface TopUsuariosItem {
+	usuario: string;
+	total_acciones: number;
+	ultimos_accesos: string | null;
+}
+
+export interface AlertaCriticaItem {
+	id: number;
+	fecha: string;
+	tipo: string;
+	mensaje: string;
+	entidad_afectada: string | null;
+	resuelto: boolean;
+}
+
+export interface AuditoriaResumenOut {
+	total_eventos_7d: number;
+	logins_7d: number;
+	acciones_crud_7d: number;
+	alertas_sin_resolver: number;
+	eventos_hoy: number;
+	hora_pico: string | null;
+}
+
+export interface AuditoriaEvolucionItem {
+	fecha: string;
+	logins: number;
+	acciones_crud: number;
+	errores: number;
+}
+
+export interface AuditoriaDashboardResponse {
+	resumen: AuditoriaResumenOut;
+	logins_por_dia: LoginPorDiaItem[];
+	top_acciones: TopAccionesItem[];
+	top_usuarios: TopUsuariosItem[];
+	alertas_criticas: AlertaCriticaItem[];
+	evolucion_7d: AuditoriaEvolucionItem[];
+}
+
+export const getAuditoriaDashboard = async (): Promise<AuditoriaDashboardResponse> => {
+	const res = await api.get("/analytics/auditoria/dashboard/");
+	return res.data;
+};
