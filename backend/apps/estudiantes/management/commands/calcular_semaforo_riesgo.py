@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.asistencia.models import JustificacionDetalle
@@ -51,18 +51,37 @@ class Command(BaseCommand):
             f"Iniciando cálculo de semáforo de riesgo para el ciclo {anio_actual} (fecha snapshot: {hoy})..."
         )
 
-        # 1. Estudiantes con al menos una carrera activa
+        # 1. Estudiantes con al menos una carrera activa y con actividad académica en el ciclo actual:
+        # - Inscriptos a cursar materias en anio_actual
+        # - Inscriptos a mesas de examen en anio_actual
+        # - Ingresantes de la cohorte anio_actual
+        con_cursada = set(
+            InscripcionMateriaEstudiante.objects.filter(anio=anio_actual).values_list("estudiante_id", flat=True)
+        )
+        con_mesas = set(
+            InscripcionMesa.objects.filter(mesa__fecha__year=anio_actual).values_list("estudiante_id", flat=True)
+        )
+        ingresantes = set(
+            Estudiante.objects.filter(
+                Q(anio_ingreso=anio_actual) | Q(carreras_detalle__anio_ingreso=anio_actual)
+            ).values_list("id", flat=True)
+        )
+        universo_activo_ids = con_cursada | con_mesas | ingresantes
+
         estudiantes_activos = (
-            Estudiante.objects.filter(carreras_detalle__estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO)
+            Estudiante.objects.filter(
+                id__in=universo_activo_ids,
+                carreras_detalle__estado_academico=EstudianteCarrera.EstadoAcademico.ACTIVO,
+            )
             .select_related("persona")
             .prefetch_related("carreras_detalle__profesorado")
             .distinct()
         )
 
         total_estudiantes = estudiantes_activos.count()
-        self.stdout.write(f"Total estudiantes con carrera activa a procesar: {total_estudiantes}")
+        self.stdout.write(f"Total estudiantes activos del ciclo {anio_actual} a procesar: {total_estudiantes}")
         if total_estudiantes == 0:
-            self.stdout.write("No hay estudiantes activos para evaluar.")
+            self.stdout.write("No hay estudiantes activos en este ciclo para evaluar.")
             return
 
         est_ids = list(estudiantes_activos.values_list("id", flat=True))
@@ -157,9 +176,7 @@ class Command(BaseCommand):
 
             es_ingresante = anio_ingreso == anio_actual
 
-            # --- Regla Inactividad 1: 0 inscripciones en ciclo lectivo actual ---
-            if est.id not in inscripciones_actuales:
-                motivos_rojo.append(f"0 inscripciones a materias en el ciclo lectivo {anio_actual}")
+            # NOTA: Los estudiantes evaluados pertenecen al universo con actividad en el ciclo lectivo actual.
 
             # --- Regla Finales: Inactividad y Aplazos consecutivos (Criterio 2) ---
             finales = finales_por_estudiante.get(est.id, [])

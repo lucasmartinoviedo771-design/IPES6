@@ -9,7 +9,7 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import type { Carrera } from "@/api/carreras";
 
-export type FactorRiesgo = "todos" | "recursa" | "finales" | "inscripcion" | "aplazos";
+export type FactorRiesgo = "todos" | "recursa" | "finales" | "aplazos";
 
 interface AnalyticsFiltersProps {
 	anio: number;
@@ -27,7 +27,6 @@ const FACTORES: { id: FactorRiesgo; label: string }[] = [
 	{ id: "todos", label: "Todos los factores" },
 	{ id: "recursa", label: "Recursando materias" },
 	{ id: "finales", label: "Finales adeudados" },
-	{ id: "inscripcion", label: "Sin inscripción activa" },
 	{ id: "aplazos", label: "Aplazos recientes" },
 ];
 
