@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCarreras } from "@/api/carreras";
 import AnalyticsFilters from "./AnalyticsFilters";
 import AnalyticsHeader from "./AnalyticsHeader";
+import { AsistenciaPorProfesoradoPanel } from "./ResumenPorProfesoradoPanels";
 import { useAusentismoConsolidado } from "../hooks/useAnalytics";
 import {
 	INSTITUTIONAL_TERRACOTTA,
@@ -409,6 +410,8 @@ export default function TabAusentismo({
 					</Box>
 				)}
 			</Paper>
+
+			<AsistenciaPorProfesoradoPanel />
 
 			{/* Nota metodológica */}
 			<Alert severity="info" sx={{ borderRadius: 2 }}>

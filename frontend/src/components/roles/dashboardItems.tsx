@@ -121,7 +121,7 @@ export const DASHBOARD_ITEMS = {
 		title: "Reportes institucionales",
 		subtitle: "Tableros e informes para reuniones de gestión.",
 		icon: <AssessmentIcon />,
-		path: "/reportes",
+		path: "/dashboard",
 	},
 	MENSAJES: {
 		title: "Mensajes institucionales",
@@ -217,7 +217,7 @@ export const DASHBOARD_ITEMS = {
 		title: "Reportes de equivalencias",
 		subtitle: "Analizá métricas y exportá listados para auditorías.",
 		icon: <InsightsIcon />,
-		path: "/reportes",
+		path: "/dashboard",
 	},
 	DOCENTE_MIS_COMISIONES: {
 		title: "Mis comisiones",

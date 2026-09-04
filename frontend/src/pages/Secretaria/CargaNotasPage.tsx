@@ -2,6 +2,7 @@ import AssignmentIcon from "@mui/icons-material/Assignment";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -49,10 +50,15 @@ const CargaNotasPage: React.FC = () => {
 	const activeRole = (roleOverride ?? user?.roles?.[0] ?? "").toLowerCase();
 	const isDocente = activeRole === "docente";
 
-	// Para docentes, forzar siempre filtro de planillas abiertas
+	// Para docentes, no restringir tipo ni modalidad y priorizar planillas abiertas
 	React.useEffect(() => {
 		if (isDocente) {
-			setFinalFilters((prev) => ({ ...prev, estadoPlanilla: "ABIERTAS" }));
+			setFinalFilters((prev) => ({
+				...prev,
+				tipo: "",
+				modalidad: "",
+				estadoPlanilla: "ABIERTAS",
+			}));
 		}
 	}, [isDocente]);
 
@@ -88,8 +94,8 @@ const CargaNotasPage: React.FC = () => {
 
 	const [finalFilters, setFinalFilters] = useState<FinalFiltersState>({
 		ventanaId: "",
-		tipo: "FIN",
-		modalidad: "REG",
+		tipo: "",
+		modalidad: "",
 		profesoradoId: null,
 		planId: null,
 		materiaId: null,

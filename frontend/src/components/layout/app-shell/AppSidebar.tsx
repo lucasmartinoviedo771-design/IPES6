@@ -1,6 +1,5 @@
 import ArticleIcon from "@mui/icons-material/Article";
 import AssignmentIcon from "@mui/icons-material/Assignment";
-import BarChartIcon from "@mui/icons-material/BarChart";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -49,7 +48,6 @@ interface AppSidebarProps {
 	dashboardVisible: boolean;
 	canPreins: boolean;
 	canSeeCarreras: boolean;
-	canSeeReportes: boolean;
 	canSeeAnalytics: boolean;
 	canSecretaria: boolean;
 	canBedeles: boolean;
@@ -81,7 +79,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 	dashboardVisible,
 	canPreins,
 	canSeeCarreras,
-	canSeeReportes,
 	canSeeAnalytics,
 	canSecretaria,
 	canBedeles,
@@ -234,22 +231,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 							</ListItemIcon>
 							<ListItemText
 								primary="Carreras"
-								primaryTypographyProps={{ sx: { color: "#fff" } }}
-							/>
-						</ListItemButton>
-					)}
-
-					{!studentOnly && canSeeReportes && (
-						<ListItemButton
-							selected={current.startsWith("/reportes")}
-							onClick={() => navigate("/reportes")}
-							sx={navButtonSx}
-						>
-							<ListItemIcon>
-								<BarChartIcon fontSize="small" />
-							</ListItemIcon>
-							<ListItemText
-								primary="Reportes"
 								primaryTypographyProps={{ sx: { color: "#fff" } }}
 							/>
 						</ListItemButton>

@@ -144,7 +144,7 @@ def list_mesas(
         qs = qs.filter(fecha__gte=desde)
     if hasta:
         qs = qs.filter(fecha__lte=hasta)
-    if tipo:
+    if tipo and not is_docente_only:
         qs = qs.filter(tipo=tipo.upper())
 
     qs = qs.order_by("fecha", "hora_desde")

@@ -117,26 +117,7 @@ export default function DashboardPage() {
 				subtitle="Monitoreo ejecutivo de admisión, trayectorias estudiantiles y espacios curriculares"
 				actions={
 					<Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
-						<Button
-							variant="outlined"
-							onClick={() => navigate("/reportes")}
-							startIcon={<BarChartIcon />}
-							sx={{
-								borderColor: "rgba(255,255,255,0.5)",
-								color: "#fff",
-								textTransform: "none",
-								fontWeight: 600,
-								borderRadius: 999,
-								px: 3,
-								backgroundColor: "rgba(255,255,255,0.08)",
-								"&:hover": {
-									backgroundColor: "rgba(255,255,255,0.18)",
-									borderColor: "#fff",
-								},
-							}}
-						>
-							Ver reportes
-						</Button>
+						
 						<Button
 							variant="contained"
 							onClick={() => navigate("/preinscripciones")}

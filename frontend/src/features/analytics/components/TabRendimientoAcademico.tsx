@@ -23,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCarreras } from "@/api/carreras";
 import AnalyticsFilters, { type FactorRiesgo } from "./AnalyticsFilters";
 import AnalyticsHeader from "./AnalyticsHeader";
+import { RegularizacionCursadaPanel } from "./ResumenPorProfesoradoPanels";
 import {
 	useAcademicPerformancePorMateria,
 	useAcademicPerformancePorComisiones,
@@ -219,9 +220,9 @@ export default function TabRendimientoAcademico({
 						},
 					}}
 				>
-					<Tab label="Por Materia" value="materias" />
-					<Tab label="Por Comisión" value="comisiones" />
-					<Tab label="Comparación de Cohortes" value="cohortes" />
+					<Tab label="Finales por materia" value="materias" />
+					<Tab label="Finales por comisión" value="comisiones" />
+					<Tab label="Finales por cohorte" value="cohortes" />
 				</Tabs>
 			</Paper>
 
@@ -694,6 +695,8 @@ export default function TabRendimientoAcademico({
 					)}
 				</Stack>
 			)}
+
+			<RegularizacionCursadaPanel />
 		</Stack>
 	);
 }

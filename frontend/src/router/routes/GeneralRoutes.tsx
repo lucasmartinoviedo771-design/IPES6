@@ -14,7 +14,6 @@ const CarrerasPage = lazyPage(() => import("../../pages/CarrerasPage"));
 const MateriaInscriptosPage = lazyPage(
 	() => import("../../pages/MateriaInscriptosPage"),
 );
-const ReportesPage = lazyPage(() => import("../../pages/ReportesPage"));
 const AnalyticsDashboardPage = lazyPage(
 	() => import("../../pages/AnalyticsDashboardPage"),
 );
@@ -54,15 +53,11 @@ export const buildGeneralRoutes = () => (
 				element={<MateriaInscriptosPage />}
 			/>
 		</Route>
-		<Route
-			element={
-				<ProtectedRoute capability="ver_reportes">
-					<Outlet />
-				</ProtectedRoute>
-			}
-		>
-			<Route path="/reportes" element={<ReportesPage />} />
-		</Route>
+		{/* /reportes se absorbio en el dashboard: sus paneles viven ahora en las
+		    pestanas Preinscripciones, Estudiantes, Rendimiento y Ausentismo.
+		    Se deja el redirect fuera de ProtectedRoute para que cualquier link
+		    guardado llegue al dashboard, que ya aplica sus propios permisos. */}
+		<Route path="/reportes" element={<Navigate to="/dashboard" replace />} />
 		<Route
 			element={
 				<ProtectedRoute capability="ver_metricas">

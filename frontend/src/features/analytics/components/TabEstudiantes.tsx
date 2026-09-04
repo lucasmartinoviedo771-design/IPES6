@@ -8,6 +8,7 @@ import AnalyticsFilters, { type FactorRiesgo } from "./AnalyticsFilters";
 import AnalyticsHeader from "./AnalyticsHeader";
 import EstudiantesRiesgoTable from "./EstudiantesRiesgoTable";
 import SemaforoCards from "./SemaforoCards";
+import CorrelativasCaidasPanel from "./CorrelativasCaidasPanel";
 import {
 	useAnalyticsSummary,
 	useEstudiantesAtRisk,
@@ -133,6 +134,8 @@ export default function TabEstudiantes({
 					factor={factor}
 				/>
 			)}
+
+			<CorrelativasCaidasPanel anio={anio} />
 		</Stack>
 	);
 }
