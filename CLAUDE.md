@@ -17,11 +17,33 @@ Si lo ves fallar, es porque alguien reactivó la escritura en auth.User. No lo
 
 ## Cron pendiente de configurar en producción
 
-Agregar el siguiente cron en el servidor de producción para que el sistema verifique
-automáticamente las residencias condicionales el 1° de junio de cada año:
+El contenedor **no tiene cron instalado**, así que los cron van en el crontab del
+host (`crontab -e` como el usuario del servidor) invocando el contenedor. El
+contenedor se llama `ipes6-backend-dev`.
+
+Patrón que usan los cron ya configurados:
 
 ```
-0 6 1 6 * cd /app && .venv/bin/python manage.py verificar_residencias_condicionales
+<horario> docker exec -u root ipes6-backend-dev /app/.venv/bin/python /app/manage.py <comando> >> /home/admin486321/NuevoIPES/logs/backend/<comando>.log 2>&1
+```
+
+### Ya configurados
+
+```
+0 3 1 * *  purge_audit_logs        # purga de AuditLog, día 1 de cada mes
+30 23 * * * calcular_snapshots      # snapshots diarios de matrícula/asistencia/ausentismo
+```
+
+`calcular_snapshots` alimenta los gráficos de evolución del dashboard. Es
+idempotente y acepta `--fecha AAAA-MM-DD` para rellenar días faltantes, y
+`--profesorado-id N` para acotar el alcance.
+
+### PENDIENTE: residencias condicionales
+
+Falta agregar (verificado: no está en el crontab):
+
+```
+0 6 1 6 * docker exec -u root ipes6-backend-dev /app/.venv/bin/python /app/manage.py verificar_residencias_condicionales >> /home/admin486321/NuevoIPES/logs/backend/residencias.log 2>&1
 ```
 
 **Qué hace:** El 01/06 a las 6am, verifica todas las inscripciones condicionales a
@@ -29,17 +51,10 @@ Residencia (Práctica IV / Talleres de Residencia) del ciclo lectivo en curso.
 - Si el estudiante aprobó la materia pendiente en las mesas extraordinarias de mayo → marca la condición como RESUELTA.
 - Si no aprobó → marca la condición como CAÍDA y pone la regularidad de Residencia en resguardo automáticamente.
 
-**Cómo configurar:**
-```bash
-# Dentro del contenedor Docker de producción:
-docker exec -it ipes6-backend crontab -e
-# O bien configurarlo en el crontab del host apuntando al contenedor:
-# 0 6 1 6 * docker exec ipes6-backend bash -c "cd /app && .venv/bin/python manage.py verificar_residencias_condicionales"
-```
-
 **Verificación manual (sin esperar el 01/06):**
 ```bash
-docker exec ipes6-backend bash -c "cd /app && .venv/bin/python manage.py verificar_residencias_condicionales --dry-run"
+# --dry-run informa sin escribir; --ciclo AAAA procesa otro año lectivo
+docker exec ipes6-backend-dev /app/.venv/bin/python /app/manage.py verificar_residencias_condicionales --dry-run
 ```
 
 ## Reactivar la inscripción a materias para estudiantes
