@@ -80,9 +80,14 @@ def sync_estudiante_from_checklist(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Estudiante)
-def sync_checklists_from_estudiante(sender, instance, **kwargs):
+def ensure_estudiante_group(sender, instance, created, **kwargs):
     """
-    DESACTIVADO: Ya no sincronizamos masivamente los checklists desde Estudiante.
-    La documentación ahora se maneja de forma independiente por carrera.
+    Garantiza que cualquier usuario vinculado a un perfil de Estudiante
+    tenga siempre asignado el grupo de Django 'estudiante'.
     """
-    return
+    if instance.user_id:
+        from django.contrib.auth.models import Group
+
+        grupo = Group.objects.filter(name="estudiante").first()
+        if grupo and not instance.user.groups.filter(id=grupo.id).exists():
+            instance.user.groups.add(grupo)

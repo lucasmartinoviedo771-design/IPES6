@@ -134,14 +134,24 @@ def get_historico_mesas_pandemia(user, ordering="-fecha", materia=None, fecha=No
         for insc in mesa.inscripciones.select_related("estudiante__persona").all():
             inscripciones_data.append(
                 {
+                    "inscripcion_id": insc.id,
                     "dni": insc.estudiante.dni,
                     "nombre": (
                         f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}"
                         if insc.estudiante.persona
                         else insc.estudiante.dni
                     ),
-                    "nota": str(insc.nota) if insc.nota is not None else insc.condicion,
+                    "apellido_nombre": (
+                        f"{insc.estudiante.persona.apellido}, {insc.estudiante.persona.nombre}"
+                        if insc.estudiante.persona
+                        else insc.estudiante.dni
+                    ),
+                    "nota": float(insc.nota) if insc.nota is not None else None,
                     "condicion": insc.condicion,
+                    "folio": insc.folio,
+                    "libro": insc.libro,
+                    "observaciones": insc.observaciones,
+                    "fecha_resultado": insc.fecha_resultado.isoformat() if insc.fecha_resultado else None,
                 }
             )
 

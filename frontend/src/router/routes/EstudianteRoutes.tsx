@@ -59,6 +59,7 @@ export const buildEstudianteRoutes = () => (
 		>
 			<Route path="/estudiantes" element={<EstudiantesIndex />} />
 			<Route path="/estudiantes/presente" element={<PresentePage />} />
+			<Route path="/estudiantes/tomar-asistencia" element={<PresentePage />} />
 			<Route
 				path="/estudiantes/completar-perfil"
 				element={<CompletarPerfilPage />}
@@ -78,6 +79,10 @@ export const buildEstudianteRoutes = () => (
 			<Route path="/estudiantes/mesa-examen" element={<MesaExamenPage />} />
 			<Route
 				path="/estudiantes/mis-asistencias"
+				element={<MisAsistenciasPage />}
+			/>
+			<Route
+				path="/estudiantes/asistencia"
 				element={<MisAsistenciasPage />}
 			/>
 			<Route

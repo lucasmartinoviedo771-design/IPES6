@@ -310,6 +310,10 @@ def get_user_roles(user: User) -> set[str]:
         if name == "attp":
             roles.add("attp")
 
+    # Si tiene perfil de estudiante creado, asignamos rol estudiante automáticamente
+    if hasattr(user, "estudiante"):
+        roles.add("estudiante")
+
     if user.is_superuser:
         roles.add("admin")
     if hasattr(user, "estudiante"):

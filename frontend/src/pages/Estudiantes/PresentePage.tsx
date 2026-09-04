@@ -43,9 +43,24 @@ export default function PresentePage() {
 				variant: "success",
 			});
 		},
+		onError: (err: any) => {
+			const msg =
+				err?.response?.data?.message ||
+				err?.message ||
+				"No se pudo registrar la asistencia.";
+			enqueueSnackbar(msg, { variant: "error" });
+		},
 	});
 
 	const requestLocation = useCallback(() => {
+		if (!navigator.geolocation) {
+			enqueueSnackbar(
+				"Tu navegador no soporta geolocalización. Por favor usá Chrome, Edge o Safari en tu teléfono.",
+				{ variant: "error" },
+			);
+			return;
+		}
+
 		setLocating(true);
 		navigator.geolocation.getCurrentPosition(
 			(pos) => {
@@ -60,7 +75,17 @@ export default function PresentePage() {
 			},
 			(err) => {
 				setLocating(false);
-				enqueueSnackbar("No pudimos obtener tu ubicación: " + err.message, {
+				let errorMsg = "No pudimos obtener tu ubicación.";
+				if (err.code === 1) {
+					errorMsg =
+						"Permiso de ubicación denegado. Por favor, habilitá los permisos de ubicación en tu navegador o celular.";
+				} else if (err.code === 2) {
+					errorMsg =
+						"Ubicación no disponible. Verificá que el GPS de tu celular esté encendido.";
+				} else if (err.code === 3) {
+					errorMsg = "Tiempo de espera agotado al intentar obtener tu ubicación.";
+				}
+				enqueueSnackbar(errorMsg, {
 					variant: "error",
 				});
 			},

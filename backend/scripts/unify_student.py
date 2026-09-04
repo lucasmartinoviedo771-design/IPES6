@@ -17,6 +17,7 @@ from core.models.base import Persona
 from core.models.estudiantes import Estudiante
 from core.models.inscripciones import InscripcionMateriaEstudiante
 from core.models.mesas import InscripcionMesa
+from core.models.pedidos import EquivalenciaDisposicion, PedidoAnalitico, PedidoEquivalencia
 from core.models.regularidades import PlanillaCursadaFila, PlanillaRegularidadFila, Regularidad
 
 User = get_user_model()
@@ -74,13 +75,18 @@ def unify_student(dni_source: str, dni_target: str):
 
                 # 2. Regularidades
                 for r in Regularidad.objects.filter(estudiante=e_src):
-                    if Regularidad.objects.filter(estudiante=e_tgt, materia=r.materia).exists():
-                        print(f"  * Conflicto en Regularidad {r.materia.nombre}. Se conserva la existente.")
+                    # El modelo Regularidad tiene unique_together = ('estudiante', 'materia', 'fecha_cierre')
+                    if Regularidad.objects.filter(
+                        estudiante=e_tgt, materia=r.materia, fecha_cierre=r.fecha_cierre
+                    ).exists():
+                        print(
+                            f"  * Duplicado exacto en Regularidad {r.materia.nombre} ({r.fecha_cierre}). Se conserva la existente."
+                        )
                         r.delete()
                     else:
                         r.estudiante = e_tgt
                         r.save()
-                        print(f"  + Regularidad movida: {r.materia.nombre} ({r.situacion})")
+                        print(f"  + Regularidad movida: {r.materia.nombre} ({r.situacion} - {r.fecha_cierre})")
 
                 # 3. Inscripciones a materias
                 for ins in InscripcionMateriaEstudiante.objects.filter(estudiante=e_src):
@@ -117,6 +123,19 @@ def unify_student(dni_source: str, dni_target: str):
                 # 7. Planillas de Regularidad (FK)
                 prf_fk_count = PlanillaRegularidadFila.objects.filter(estudiante=e_src).update(estudiante=e_tgt)
                 print(f"  + PlanillaRegularidadFila (FK) actualizadas: {prf_fk_count}")
+
+                # 8. Equivalencias (Disposiciones y Pedidos)
+                ed_count = EquivalenciaDisposicion.objects.filter(estudiante=e_src).update(estudiante=e_tgt)
+                if ed_count:
+                    print(f"  + Disposiciones de equivalencia movidas: {ed_count}")
+
+                pe_count = PedidoEquivalencia.objects.filter(estudiante=e_src).update(estudiante=e_tgt)
+                if pe_count:
+                    print(f"  + Pedidos de equivalencia movidos: {pe_count}")
+
+                pa_count = PedidoAnalitico.objects.filter(estudiante=e_src).update(estudiante=e_tgt)
+                if pa_count:
+                    print(f"  + Pedidos de analítico movidos: {pa_count}")
 
                 # Eliminar registros viejos
                 e_src.delete()

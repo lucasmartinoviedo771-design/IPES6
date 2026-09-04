@@ -2,7 +2,7 @@
 
 **Base de datos:** `ipes6` (MySQL 8.0, puerto local 3307)  
 **Backend:** Django — Python  
-**Última actualización:** 2026-06-14
+**Última actualización:** 2026-09-02
 
 ---
 
@@ -70,6 +70,7 @@ Datos personales compartidos por estudiantes, docentes y usuarios administrativo
 | `localidad_nac` | varchar(150) | NULL | Localidad de nacimiento |
 | `provincia_nac` | varchar(150) | NULL | Provincia de nacimiento |
 | `pais_nac` | varchar(150) | NULL | País de nacimiento |
+| `foto` | varchar(100) | NULL | Ruta a la imagen de perfil/avatar |
 | `created_at` | datetime(6) | NN | Fecha de creación del registro |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -265,6 +266,22 @@ Perfil académico-administrativo del estudiante. Sus datos personales viven en `
 | `certificado_titulo_en_tramite` | tinyint(1) | NN | Flag: certificado de título en trámite |
 | `analitico_legalizado` | tinyint(1) | NN | Flag: analítico legalizado entregado |
 | `articulo_7` | tinyint(1) | NN | Flag: habilitado por Art. 7 (mayor de 25 sin título secundario) |
+| `autorizado_rendir` | tinyint(1) | NN | Flag: habilitado administrativamente para rendir exámenes |
+| `autorizado_rendir_observacion` | longtext | NULL | Motivo o resolución de autorización para rendir |
+| `adeuda_materias` | tinyint(1) | NN | Si `1`, adeuda materias del secundario |
+| `adeuda_materias_detalle` | longtext | NN | Detalle de las materias adeudadas del secundario |
+| `certificado_alumno_regular_sec` | tinyint(1) | NN | Constancia de alumno regular de secundario |
+| `es_certificacion_docente` | tinyint(1) | NN | Si el trámite corresponde a certificación docente |
+| `escuela_secundaria` | varchar(255) | NN | Nombre de la escuela secundaria de egreso |
+| `incumbencia` | tinyint(1) | NN | Si cumple con la incumbencia de título requerida |
+| `titulo_terciario_univ` | tinyint(1) | NN | Si posee título previo terciario o universitario |
+| `perfil_actualizado` | tinyint(1) | NN | Flag de actualización obligatoria de legajo confirmada por el estudiante |
+| `sup1_titulo` | varchar(255) | NULL | Título de nivel superior previo |
+| `sup1_establecimiento` | varchar(255) | NULL | Institución de nivel superior previa |
+| `sup1_fecha_egreso` | varchar(100) | NULL | Fecha de egreso de nivel superior |
+| `sup1_localidad` | varchar(150) | NULL | Localidad del establecimiento superior |
+| `sup1_provincia` | varchar(150) | NULL | Provincia del establecimiento superior |
+| `sup1_pais` | varchar(100) | NULL | País del establecimiento superior |
 | `materias_autorizadas` | m2m | → `core_materia` | Materias específicas autorizadas excepcionalmente para rendir |
 | `datos_extra` | json | NN | Datos adicionales no estructurados |
 
@@ -297,6 +314,24 @@ Inscripción de un estudiante a una carrera específica, con su estado académic
 | `cohorte` | varchar(32) | NN | Identificador de cohorte |
 | `estado_academico` | varchar(3) | NN | `ACT`=Activo · `BAJ`=Baja/Abandono · `EGR`=Egresado · `SUS`=Suspendido · `INA`=Inactivo |
 | `estado_legajo` | varchar(3) | NN | `COM`=Completo · `INC`=Incompleto/Condicional · `PEN`=Pendiente de Revisión. Estado físico para esta carrera. |
+| `estado_academico_changed_at` | datetime(6) | NULL | Fecha/hora del último cambio de estado académico |
+| `adeuda_materias` | tinyint(1) | NN | Flag: adeuda materias secundario |
+| `adeuda_materias_detalle` | longtext | NN | Detalle materias secundario adeudadas |
+| `analitico_legalizado` | tinyint(1) | NN | Flag: analítico legalizado |
+| `articulo_7` | tinyint(1) | NN | Flag: artículo 7 (mayor de 25) |
+| `certificado_alumno_regular_sec` | tinyint(1) | NN | Flag: certificado alumno regular secundario |
+| `certificado_salud` | tinyint(1) | NN | Flag: certificado de salud entregado |
+| `certificado_titulo_en_tramite` | tinyint(1) | NN | Flag: título en trámite |
+| `curso_introductorio_aprobado` | tinyint(1) | NN | Flag: CI aprobado en esta carrera |
+| `dni_legalizado` | tinyint(1) | NN | Flag: fotocopia DNI legalizada |
+| `es_certificacion_docente` | tinyint(1) | NN | Flag: trámite de certificación docente |
+| `escuela_secundaria` | varchar(255) | NN | Escuela secundaria de egreso |
+| `folios_oficio` | tinyint(1) | NN | Flag: folios oficio entregados |
+| `fotos_4x4` | tinyint(1) | NN | Flag: fotos carnet 4x4 |
+| `incumbencia` | tinyint(1) | NN | Flag: incumbencia aprobada |
+| `libreta_entregada` | tinyint(1) | NN | Flag: libreta estudiantil entregada |
+| `titulo_secundario_legalizado` | tinyint(1) | NN | Flag: título secundario legalizado |
+| `titulo_terciario_univ` | tinyint(1) | NN | Flag: título superior previo |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -381,6 +416,14 @@ Instancia concreta de una materia dictada en un año lectivo por un docente.
 | `estado` | varchar(3) | NN | `ABI`=Abierta · `CER`=Cerrada · `SUS`=Suspendida · `LIC`=En Licencia |
 | `rol` | varchar(3) | NN | `TIT`=Titular · `INT`=Interino · `SUP`=Suplente |
 | `orden` | int unsigned | NN | Orden de jerarquía/suplencia (1 = principal) |
+| `suplente_id` | bigint | FK → `core_docente`, NULL | Suplente 1 asignado cuando el docente titular está en licencia |
+| `estado_suplente` | varchar(3) | NN | Estado del Suplente 1: `ABI` · `CER` · `SUS` · `LIC` |
+| `suplente_2_id` | bigint | FK → `core_docente`, NULL | Suplente 2 asignado cuando el Suplente 1 entra en licencia |
+| `estado_suplente_2` | varchar(3) | NN | Estado del Suplente 2: `ABI` · `CER` · `SUS` · `LIC` |
+| `suplente_3_id` | bigint | FK → `core_docente`, NULL | Suplente 3 asignado cuando el Suplente 2 entra en licencia |
+| `estado_suplente_3` | varchar(3) | NN | Estado del Suplente 3: `ABI` · `CER` · `SUS` · `LIC` |
+| `suplente_4_id` | bigint | FK → `core_docente`, NULL | Suplente 4 asignado cuando el Suplente 3 entra en licencia |
+| `estado_suplente_4` | varchar(3) | NN | Estado del Suplente 4: `ABI` · `CER` · `SUS` · `LIC` |
 | `observaciones` | varchar(255) | NULL | Notas internas |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
@@ -413,10 +456,11 @@ Períodos de habilitación para distintos trámites del sistema.
 | Columna | Tipo | Restricciones | Descripción |
 |---------|------|---------------|-------------|
 | `id` | bigint | PK, NN, AUTO | Identificador interno |
-| `tipo` | varchar(32) | NN | `INSCRIPCION` · `MESAS_FINALES` · `MESAS_EXTRA` · `MATERIAS` · `CARRERAS` · `COMISION` · `ANALITICOS` · `EQUIVALENCIAS` · `PREINSCRIPCION` · `CURSO_INTRODUCTORIO` · `CALENDARIO_CUATRIMESTRE` |
+| `tipo` | varchar(32) | NN | `INSCRIPCION` · `MESAS_FINALES` · `MESAS_EXTRA` · `MATERIAS` · `CARRERAS` · `COMISION` · `ANALITICOS` · `EQUIVALENCIAS` · `PREINSCRIPCION` · `CURSO_INTRODUCTORIO` · `CALENDARIO_CUATRIMESTRE` · `PLANILLA_REGULARIDAD` · `MATERIAS_GESTION` · `COMISION_GESTION` |
 | `desde` | date | NN | Fecha de inicio de la habilitación |
 | `hasta` | date | NN | Fecha de fin de la habilitación |
 | `activo` | tinyint(1) | NN | Si `1`, la ventana está actualmente activa |
+| `permite_libres` | tinyint(1) | NN | Si `1`, habilita solicitud/examen en condición libre (ej: extraordinarias) |
 | `periodo` | varchar(16) | NULL | Para inscripción a materias/calendario: `"1C_ANUALES"` · `"1C"` · `"2C"` |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
@@ -659,6 +703,9 @@ Mesa de examen final (ordinaria, extraordinaria o especial) para una materia.
 | `docente_vocal2_id` | bigint | FK → `core_docente`, NULL | Vocal 2 del tribunal |
 | `planilla_cerrada_en` | datetime(6) | NULL | Fecha en que se cerró la planilla de resultados |
 | `planilla_cerrada_por_id` | int | FK → `auth_user`, NULL | Usuario que cerró la planilla |
+| `numero_mesa` | int unsigned | NULL | Número correlativo o asignado de mesa |
+| `estudiante_exclusivo_id` | bigint | FK → `core_estudiante`, NULL | Para mesas especiales: estudiante único para quien fue creada |
+| `activa` | tinyint(1) | NN | Soft-delete: `1`=activa · `0`=descartada administrativamente |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -705,6 +752,11 @@ Acta del examen oral para una inscripción a mesa específica.
 | `observaciones` | longtext | NN | Observaciones del examen |
 | `temas_alumno` | json | NN | Lista JSON de temas sorteados por el alumno |
 | `temas_docente` | json | NN | Lista JSON de temas propuestos por el docente |
+| `nota_numeral` | smallint unsigned | NULL | Nota numérica (1 a 10) |
+| `estado_conformidad` | varchar(3) | NN | `PEN`=Pendiente · `CON`=Conforme · `DIS`=Disconforme · `TIM`=Timeout/Sin objeción |
+| `notificado_en` | datetime(6) | NULL | Fecha/hora en que se notificó al estudiante |
+| `observaciones_estudiante` | longtext | NN | Descargo u observaciones del estudiante al notificarse |
+| `respondido_en` | datetime(6) | NULL | Fecha/hora de conformidad/disconformidad del estudiante |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -796,6 +848,7 @@ Planilla de regularidad emitida para una materia en un año académico (equivale
 | `pdf` | varchar(255) | NULL | Ruta al archivo PDF generado |
 | `created_by_id` | int | FK → `auth_user`, NULL | Usuario que creó la planilla |
 | `updated_by_id` | int | FK → `auth_user`, NULL | Usuario que modificó la planilla |
+| `comision_id` | bigint | FK → `core_comision`, NULL | Comisión específica a la que corresponde la planilla |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
@@ -947,6 +1000,7 @@ Acta oficial de examen final de una materia.
 | `total_ausentes` | int unsigned | NN | Total de ausentes |
 | `created_by_id` | int | FK → `auth_user`, NULL | Usuario que creó el acta |
 | `updated_by_id` | int | FK → `auth_user`, NULL | Usuario que modificó el acta |
+| `mesa_id` | bigint | FK → `core_mesaexamen`, NULL | Mesa de examen vinculada al acta |
 | `created_at` | datetime(6) | NN | Fecha de creación |
 | `updated_at` | datetime(6) | NN | Fecha de última modificación |
 
