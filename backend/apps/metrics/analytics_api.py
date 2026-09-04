@@ -17,6 +17,7 @@ from apps.metrics.models import (
     AusentismoSnapshot,
     MatriculaSnapshot,
 )
+from apps.metrics.cache_utils import cache_endpoint
 from core.models import (
     AuditLog,
     Comision,
@@ -359,6 +360,7 @@ def _check_metrics_access(request, target_docente_id: int | None = None) -> Doce
 
 
 @router.get("/students/summary/", response=StudentsSummaryOut)
+@cache_endpoint(timeout=600, prefix="students_summary")
 def students_summary(request, anio: int | None = None, profesorado_id: int | None = None):
     """
     Métricas ejecutivas de estudiantes para el Dashboard.
@@ -1125,6 +1127,7 @@ def ausentismo_evolucion(
 
 
 @router.get("/academic-performance/por-materia/", response=RendimientoPorMateriaOut)
+@cache_endpoint(timeout=900, prefix="academic_performance_materia")
 def rendimiento_por_materia(
     request,
     profesorado_id: int | None = None,
@@ -1220,6 +1223,7 @@ def rendimiento_por_materia(
 
 
 @router.get("/academic-performance/por-comisiones/", response=RendimientoComisionesOut)
+@cache_endpoint(timeout=900, prefix="academic_performance_comisiones")
 def rendimiento_por_comisiones(
     request,
     profesorado_id: int | None = None,
@@ -1301,6 +1305,7 @@ def rendimiento_por_comisiones(
 
 
 @router.get("/academic-performance/comparacion-cohortes/", response=RendimientoCohortesOut)
+@cache_endpoint(timeout=900, prefix="academic_performance_cohortes")
 def comparacion_cohortes(
     request,
     profesorado_id: int | None = None,
@@ -1518,6 +1523,7 @@ def auditoria_dashboard(request):
 
 
 @router.get("/ausentismo/consolidado/", response=AusentismoConsolidadoOut)
+@cache_endpoint(timeout=600, prefix="ausentismo_consolidado")
 def ausentismo_consolidado(
     request,
     profesorado_id: int | None = None,
