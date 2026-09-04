@@ -17,6 +17,10 @@ export default function BedelesIndex() {
 	const canManageAnaliticos = hasCapability(user, "ver_analiticos");
 	const canManageEquivalencias = hasCapability(user, "ver_documentacion");
 	const canCursoIntro = hasCapability(user, "gestionar_ci");
+	const canVerMesas =
+		hasCapability(user, "ver_actas") ||
+		hasCapability(user, "ver_estructura") ||
+		hasCapability(user, "editar_estructura");
 	const canManageNotas =
 		hasCapability(user, "carga_regularidades") ||
 		hasCapability(user, "carga_finales") ||
@@ -53,6 +57,7 @@ export default function BedelesIndex() {
 								DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION,
 							]
 						: []),
+					...(canVerMesas ? [DASHBOARD_ITEMS.MESAS_EXAMEN] : []),
 					...(canManageAnaliticos ? [DASHBOARD_ITEMS.ANALYTICOS] : []),
 					...(canManageEquivalencias
 						? [DASHBOARD_ITEMS.EQUIV_LISTADO_GENERAL]
@@ -93,6 +98,7 @@ export default function BedelesIndex() {
 		],
 		[
 			canFormalize,
+			canVerMesas,
 			canManageAnaliticos,
 			canManageEquivalencias,
 			canManageNotas,

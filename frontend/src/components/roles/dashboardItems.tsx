@@ -21,6 +21,7 @@ import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import PrintIcon from "@mui/icons-material/Print";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 import type { SectionCardProps } from "@/components/secretaria/SectionCard";
 
@@ -257,6 +258,13 @@ export const DASHBOARD_ITEMS = {
 			"Descargar comprobante en PDF de estudiantes preinscriptos.",
 		icon: <PrintIcon />,
 		path: "/secretaria/reimprimir-preinscripcion",
+	},
+	MESAS_EXAMEN: {
+		title: "Mesas de examen",
+		subtitle:
+			"Consultá solicitudes extraordinarias, mesas activas y actas.",
+		icon: <CalendarMonthIcon />,
+		path: "/secretaria/mesas",
 	},
 } satisfies Record<string, SectionCardProps>;
 

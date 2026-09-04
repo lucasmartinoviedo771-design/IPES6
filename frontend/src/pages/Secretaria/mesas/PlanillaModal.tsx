@@ -44,6 +44,7 @@ interface PlanillaModalProps {
 		field: "folio" | "libro" | "observaciones",
 		value: string,
 	) => void;
+	readOnly?: boolean;
 }
 
 export function PlanillaModal({
@@ -62,6 +63,7 @@ export function PlanillaModal({
 	onFechaChange,
 	onCuentaIntentosChange,
 	onTextoChange,
+	readOnly = false,
 }: PlanillaModalProps) {
 	return (
 		<Dialog open={open} onClose={onCerrar} fullWidth maxWidth="lg">
@@ -132,7 +134,7 @@ export function PlanillaModal({
 														e.target.value,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 											>
 												<MenuItem value="">Sin asignar</MenuItem>
 												{planillaCondiciones.map((cond) => (
@@ -153,7 +155,7 @@ export function PlanillaModal({
 														e.target.value,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 												inputProps={{ step: 0.5, min: 0, max: 10 }}
 											/>
 										</TableCell>
@@ -168,7 +170,7 @@ export function PlanillaModal({
 														e.target.value,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 												InputLabelProps={{ shrink: true }}
 											/>
 										</TableCell>
@@ -181,7 +183,7 @@ export function PlanillaModal({
 														e.target.checked,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 											/>
 										</TableCell>
 										<TableCell sx={{ minWidth: 120 }}>
@@ -195,7 +197,7 @@ export function PlanillaModal({
 														e.target.value,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 											/>
 										</TableCell>
 										<TableCell sx={{ minWidth: 120 }}>
@@ -209,7 +211,7 @@ export function PlanillaModal({
 														e.target.value,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 											/>
 										</TableCell>
 										<TableCell sx={{ minWidth: 220 }}>
@@ -223,7 +225,7 @@ export function PlanillaModal({
 														e.target.value,
 													)
 												}
-												disabled={planillaSaving}
+												disabled={planillaSaving || readOnly}
 												multiline
 												maxRows={3}
 											/>
@@ -239,21 +241,23 @@ export function PlanillaModal({
 				<Button onClick={onCerrar} disabled={planillaSaving}>
 					Cerrar
 				</Button>
-				<Button
-					onClick={onGuardar}
-					disabled={
-						planillaSaving ||
-						planillaLoading ||
-						planillaEstudiantes.length === 0
-					}
-					startIcon={
-						planillaSaving ? (
-							<CircularProgress size={16} color="inherit" />
-						) : undefined
-					}
-				>
-					Guardar
-				</Button>
+				{!readOnly && (
+					<Button
+						onClick={onGuardar}
+						disabled={
+							planillaSaving ||
+							planillaLoading ||
+							planillaEstudiantes.length === 0
+						}
+						startIcon={
+							planillaSaving ? (
+								<CircularProgress size={16} color="inherit" />
+							) : undefined
+						}
+					>
+						Guardar
+					</Button>
+				)}
 			</DialogActions>
 		</Dialog>
 	);

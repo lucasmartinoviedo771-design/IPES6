@@ -633,6 +633,7 @@ export interface SolicitudMesaOutDTO {
 	id: number;
 	materia_id: number;
 	materia_nombre: string;
+	materia_anio?: number | null;
 	estado: "PEN" | "PRO" | "REC";
 	estado_display: string;
 	fecha_solicitud: string;
@@ -642,6 +643,11 @@ export interface SolicitudMesaOutDTO {
 	mesa_asignada_id?: number;
 	fecha_mesa?: string;
 	hora_mesa?: string;
+	aula_mesa?: string;
+	numero_mesa?: number;
+	tribunal_presidente?: string;
+	tribunal_vocal1?: string;
+	tribunal_vocal2?: string;
 	docente_nombre?: string;
 }
 

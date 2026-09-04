@@ -53,10 +53,25 @@ import {
 	procesarSolicitudMesa,
 } from "@/api/managementMesas";
 import { fetchVentanas, type VentanaDto } from "@/api/ventanas";
+import { useAuth } from "@/context/AuthContext";
 import { formatDate } from "@/utils/date";
 import { getIpesHeaderHtml, IPES_HEADER_CSS } from "@/utils/printActaHtml";
 
 export const SolicitudesList: React.FC = () => {
+	const { roleOverride, user } = useAuth();
+	const canEdit = useMemo(() => {
+		const roles = new Set(
+			roleOverride
+				? [roleOverride.toLowerCase()]
+				: user?.roles?.map((r: string) => r.toLowerCase()) || [],
+		);
+		return (
+			roles.has("admin") ||
+			roles.has("secretaria") ||
+			roles.has("administrador")
+		);
+	}, [roleOverride, user]);
+
 	const [solicitudes, setSolicitudes] = useState<SolicitudMesaAdminDTO[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [selectedSolicitud, setSelectedSolicitud] =
@@ -564,12 +579,17 @@ export const SolicitudesList: React.FC = () => {
 			"Fecha Pedido",
 			"Fecha Mesa",
 			"Hora Mesa",
+			"N° Mesa",
+			"Aula",
 			"Estudiante",
 			"DNI",
 			"Materia",
+			"Año Materia",
 			"Docente Cátedra",
 			"Condición",
 			"Profesorado",
+			"Presidente Tribunal",
+			"Vocales Tribunal",
 			"Estado",
 		];
 
@@ -577,12 +597,17 @@ export const SolicitudesList: React.FC = () => {
 			s.fecha_solicitud ? formatDate(s.fecha_solicitud) : "",
 			s.fecha_mesa ? formatDate(s.fecha_mesa) : "",
 			s.hora_mesa || "",
+			s.numero_mesa != null ? String(s.numero_mesa) : "",
+			`"${(s.aula_mesa || "").replace(/"/g, '""')}"`,
 			`"${(s.estudiante_nombre || "").replace(/"/g, '""')}"`,
 			`"${s.estudiante_dni || ""}"`,
 			`"${(s.materia_nombre || "").replace(/"/g, '""')}"`,
+			s.materia_anio ? `"${s.materia_anio}º Año"` : "",
 			`"${(s.docente_nombre || "Sin docente asignado").replace(/"/g, '""')}"`,
 			s.modalidad_display || (s.modalidad === "REG" ? "Regular" : "Libre"),
 			`"${(s.profesorado_nombre || "").replace(/"/g, '""')}"`,
+			`"${(s.tribunal_presidente || "Sin designar").replace(/"/g, '""')}"`,
+			`"${([s.tribunal_vocal1, s.tribunal_vocal2].filter(Boolean).join(" / ") || "Sin designar").replace(/"/g, '""')}"`,
 			s.estado_display || s.estado,
 		]);
 
@@ -632,19 +657,23 @@ export const SolicitudesList: React.FC = () => {
 								load(val);
 							}}
 						>
-							{ventanas.map((v) => {
-								const labelLlamado = v.periodo && !v.periodo.includes("1C") && !v.periodo.includes("2C")
-									? v.periodo
-									: `Llamado Extraordinario (${formatDate(v.desde)} - ${formatDate(v.hasta)})`;
-								return (
-									<MenuItem key={v.id} value={String(v.id)}>
-										{labelLlamado} {v.activo ? "🟢 (Activo)" : "⚪ (Histórico)"}
-									</MenuItem>
-								);
-							})}
-							<MenuItem value="TODAS">
-								<em>Todos los llamados (Histórico completo)</em>
-							</MenuItem>
+							{ventanas
+								.filter((v) => canEdit || v.activo)
+								.map((v) => {
+									const labelLlamado = v.periodo && !v.periodo.includes("1C") && !v.periodo.includes("2C")
+										? v.periodo
+										: `Llamado Extraordinario (${formatDate(v.desde)} - ${formatDate(v.hasta)})`;
+									return (
+										<MenuItem key={v.id} value={String(v.id)}>
+											{labelLlamado} {v.activo ? "🟢 (Activo)" : "⚪ (Histórico)"}
+										</MenuItem>
+									);
+								})}
+							{canEdit && (
+								<MenuItem value="TODAS">
+									<em>Todos los llamados (Histórico completo)</em>
+								</MenuItem>
+							)}
 						</Select>
 					</FormControl>
 					<Button
@@ -804,6 +833,9 @@ export const SolicitudesList: React.FC = () => {
 								</TableSortLabel>
 							</TableCell>
 							<TableCell sx={{ fontWeight: 700 }}>
+								Tribunal / Mesa
+							</TableCell>
+							<TableCell sx={{ fontWeight: 700 }}>
 								<TableSortLabel
 									active={orderBy === "estado"}
 									direction={orderBy === "estado" ? order : "asc"}
@@ -835,7 +867,27 @@ export const SolicitudesList: React.FC = () => {
 								</TableCell>
 								<TableCell sx={{ fontWeight: 600 }}>{s.estudiante_nombre}</TableCell>
 								<TableCell>{s.estudiante_dni}</TableCell>
-								<TableCell>{s.materia_nombre}</TableCell>
+								<TableCell>
+									<Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+										<Typography variant="body2" sx={{ fontWeight: 500 }}>
+											{s.materia_nombre}
+										</Typography>
+										{s.materia_anio != null && (
+											<Chip
+												label={`${s.materia_anio}º año`}
+												size="small"
+												variant="filled"
+												sx={{
+													height: 20,
+													fontSize: "0.7rem",
+													fontWeight: 700,
+													backgroundColor: "primary.light",
+													color: "primary.contrastText",
+												}}
+											/>
+										)}
+									</Stack>
+								</TableCell>
 								<TableCell>
 									{s.docente_nombre ? (
 										<Typography variant="body2" sx={{ fontWeight: 500, color: "primary.dark" }}>
@@ -860,6 +912,28 @@ export const SolicitudesList: React.FC = () => {
 								</TableCell>
 								<TableCell>{s.profesorado_nombre}</TableCell>
 								<TableCell>
+									{s.estado === "PRO" && s.mesa_asignada_id ? (
+										<Box sx={{ fontSize: "0.8rem", lineHeight: 1.3 }}>
+											<Typography variant="caption" display="block" sx={{ fontWeight: 600, color: "text.primary" }}>
+												{s.numero_mesa ? `Mesa N° ${s.numero_mesa}` : `Mesa #${s.mesa_asignada_id}`}
+												{s.aula_mesa ? ` · Aula ${s.aula_mesa}` : ""}
+											</Typography>
+											<Typography variant="caption" display="block" color="text.secondary">
+												<b>Pres:</b> {s.tribunal_presidente || "Sin designar"}
+											</Typography>
+											{([s.tribunal_vocal1, s.tribunal_vocal2].filter(Boolean).length > 0) && (
+												<Typography variant="caption" display="block" color="text.secondary">
+													<b>Voc:</b> {[s.tribunal_vocal1, s.tribunal_vocal2].filter(Boolean).join(" / ")}
+												</Typography>
+											)}
+										</Box>
+									) : (
+										<Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+											{s.estado === "PEN" ? "Pendiente de mesa" : "—"}
+										</Typography>
+									)}
+								</TableCell>
+								<TableCell>
 									<Chip
 										label={s.estado_display}
 										color={
@@ -874,35 +948,41 @@ export const SolicitudesList: React.FC = () => {
 								</TableCell>
 								<TableCell align="center">
 									{s.estado === "PEN" && (
-										<Stack direction="row" spacing={1} justifyContent="center">
-											<Tooltip title="Vincular a Mesa Existente">
-												<IconButton
-													size="small"
-													color="success"
-													onClick={() => handleAprobarClick(s)}
-												>
-													<CheckCircleIcon fontSize="small" />
-												</IconButton>
-											</Tooltip>
-											<Tooltip title="Crear Mesa Nueva (Agrupa similares)">
-												<IconButton
-													size="small"
-													color="primary"
-													onClick={() => handleCreateMesaClick(s)}
-												>
-													<AddBoxIcon fontSize="small" />
-												</IconButton>
-											</Tooltip>
-											<Tooltip title="Rechazar">
-												<IconButton
-													size="small"
-													color="error"
-													onClick={() => handleRechazar(s.id)}
-												>
-													<CancelIcon fontSize="small" />
-												</IconButton>
-											</Tooltip>
-										</Stack>
+										canEdit ? (
+											<Stack direction="row" spacing={1} justifyContent="center">
+												<Tooltip title="Vincular a Mesa Existente">
+													<IconButton
+														size="small"
+														color="success"
+														onClick={() => handleAprobarClick(s)}
+													>
+														<CheckCircleIcon fontSize="small" />
+													</IconButton>
+												</Tooltip>
+												<Tooltip title="Crear Mesa Nueva (Agrupa similares)">
+													<IconButton
+														size="small"
+														color="primary"
+														onClick={() => handleCreateMesaClick(s)}
+													>
+														<AddBoxIcon fontSize="small" />
+													</IconButton>
+												</Tooltip>
+												<Tooltip title="Rechazar">
+													<IconButton
+														size="small"
+														color="error"
+														onClick={() => handleRechazar(s.id)}
+													>
+														<CancelIcon fontSize="small" />
+													</IconButton>
+												</Tooltip>
+											</Stack>
+										) : (
+											<Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+												Solo lectura
+											</Typography>
+										)
 									)}
 									{s.estado !== "PEN" && (
 										<Stack
@@ -912,15 +992,17 @@ export const SolicitudesList: React.FC = () => {
 										>
 											{s.estado === "PRO" && s.mesa_asignada_id && (
 												<>
-													<Tooltip title="Editar Mesa">
-														<IconButton
-															size="small"
-															color="warning"
-															onClick={() => handleEditMesaClick(s)}
-														>
-															<EditIcon fontSize="small" />
-														</IconButton>
-													</Tooltip>
+													{canEdit && (
+														<Tooltip title="Editar Mesa">
+															<IconButton
+																size="small"
+																color="warning"
+																onClick={() => handleEditMesaClick(s)}
+															>
+																<EditIcon fontSize="small" />
+															</IconButton>
+														</Tooltip>
+													)}
 													<Tooltip title="Imprimir Acta de Examen">
 														<IconButton
 															size="small"
@@ -944,7 +1026,7 @@ export const SolicitudesList: React.FC = () => {
 						))}
 						{processedSolicitudes.length === 0 && (
 							<TableRow>
-								<TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+								<TableCell colSpan={11} align="center" sx={{ py: 4 }}>
 									No se encontraron solicitudes con los filtros aplicados.
 								</TableCell>
 							</TableRow>

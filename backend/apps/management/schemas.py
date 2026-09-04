@@ -73,6 +73,7 @@ class SolicitudMesaOut(Schema):
     estudiante_dni: str
     materia_id: int
     materia_nombre: str
+    materia_anio: int | None = None
     profesorado_nombre: str | None = None
     ventana_id: int
     estado: str
@@ -84,6 +85,11 @@ class SolicitudMesaOut(Schema):
     mesa_asignada_id: int | None = None
     fecha_mesa: date | None = None
     hora_mesa: str | None = None
+    aula_mesa: str | None = None
+    numero_mesa: int | None = None
+    tribunal_presidente: str | None = None
+    tribunal_vocal1: str | None = None
+    tribunal_vocal2: str | None = None
     docente_nombre: str | None = None
 
 

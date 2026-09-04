@@ -36,7 +36,6 @@ export default function MesasPage() {
 		return (
 			roles.has("admin") ||
 			roles.has("secretaria") ||
-			roles.has("bedel") ||
 			roles.has("administrador")
 		);
 	}, [roleOverride, user]);
@@ -310,7 +309,7 @@ export default function MesasPage() {
 					{canEdit && <Tab label="Nueva mesa" sx={{ fontWeight: 700 }} />}
 					<Tab label="Solicitudes (Extra)" sx={{ fontWeight: 700 }} />
 					<Tab label="Activas / Futuras" sx={{ fontWeight: 700 }} />
-					<Tab label="Historial / Pasadas" sx={{ fontWeight: 700 }} />
+					{canEdit && <Tab label="Historial / Pasadas" sx={{ fontWeight: 700 }} />}
 				</Tabs>
 			</Box>
 
@@ -406,10 +405,10 @@ export default function MesasPage() {
 
 			{/* TABS DE LISTADOS: 
           Si canEdit: Activas=2, Pasadas=3
-          Si !canEdit: Activas=1, Pasadas=2
+          Si !canEdit: Activas=1 (solo activas/futuras)
       */}
 			{((canEdit && (activeTab === 2 || activeTab === 3)) ||
-				(!canEdit && (activeTab === 1 || activeTab === 2))) && (
+				(!canEdit && activeTab === 1)) && (
 				<Box sx={{ mt: 2 }}>
 					<Box
 						sx={{ bgcolor: "background.paper", p: 2, borderRadius: 2, mb: 3 }}
@@ -446,9 +445,9 @@ export default function MesasPage() {
 					</Box>
 
 					<Grid container spacing={2}>
-						{((canEdit ? activeTab === 2 : activeTab === 1)
-							? mesasFuturas
-							: mesasPasadas
+						{(canEdit
+							? (activeTab === 2 ? mesasFuturas : mesasPasadas)
+							: mesasFuturas
 						).map((m) => (
 							<Grid item xs={12} md={6} lg={4} key={m.id}>
 								<MesaCard
@@ -460,9 +459,9 @@ export default function MesasPage() {
 								/>
 							</Grid>
 						))}
-						{((canEdit ? activeTab === 2 : activeTab === 1)
-							? mesasFuturas
-							: mesasPasadas
+						{(canEdit
+							? (activeTab === 2 ? mesasFuturas : mesasPasadas)
+							: mesasFuturas
 						).length === 0 && (
 							<Box sx={{ width: "100%", textAlign: "center", py: 8 }}>
 								<Typography color="text.secondary">
@@ -490,6 +489,7 @@ export default function MesasPage() {
 				onFechaChange={handlePlanillaFechaChange}
 				onCuentaIntentosChange={handlePlanillaCuentaIntentosChange}
 				onTextoChange={handlePlanillaTextoChange}
+				readOnly={!canEdit}
 			/>
 		</Box>
 	);

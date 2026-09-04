@@ -328,12 +328,16 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
 
 @management_router.get("/solicitudes_mesas", response=list[SolicitudMesaOut], auth=JWTAuth())
 def list_solicitudes(request, ventana_id: int | None = None, estado: str | None = None):
-    require(request.user, "editar_estructura")
+    from core.permissions import can
+    if not (can(request.user, "ver_actas") or can(request.user, "ver_estructura") or can(request.user, "editar_estructura")):
+        require(request.user, "ver_actas")
 
     qs = SolicitudMesa.objects.select_related(
         "estudiante__persona",
         "materia__plan_de_estudio__profesorado",
-        "mesa_asignada",
+        "mesa_asignada__docente_presidente__persona",
+        "mesa_asignada__docente_vocal1__persona",
+        "mesa_asignada__docente_vocal2__persona",
     ).all()
 
     if ventana_id == -1:
@@ -389,31 +393,42 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
             if doc_str not in materia_docentes_map[c.materia_id]:
                 materia_docentes_map[c.materia_id].append(doc_str)
 
-    return [
-        SolicitudMesaOut(
-            id=s.id,
-            estudiante_id=s.estudiante_id,
-            estudiante_nombre=f"{s.estudiante.persona.apellido}, {s.estudiante.persona.nombre}",
-            estudiante_dni=s.estudiante.persona.dni,
-            materia_id=s.materia_id,
-            materia_nombre=s.materia.nombre,
-            profesorado_nombre=s.materia.plan_de_estudio.profesorado.nombre,
-            ventana_id=s.ventana_id,
-            estado=s.estado,
-            estado_display=s.get_estado_display(),
-            fecha_solicitud=s.fecha_solicitud,
-            modalidad=s.modalidad,
-            modalidad_display=s.get_modalidad_display(),
-            observaciones=s.observaciones,
-            mesa_asignada_id=s.mesa_asignada_id,
-            fecha_mesa=s.mesa_asignada.fecha if s.mesa_asignada else None,
-            hora_mesa=s.mesa_asignada.hora_desde.strftime("%H:%M")
-            if s.mesa_asignada and s.mesa_asignada.hora_desde
-            else None,
-            docente_nombre="; ".join(materia_docentes_map.get(s.materia_id, [])) or None,
+    res = []
+    for s in items:
+        m = s.mesa_asignada
+        pres = f"{m.docente_presidente.persona.apellido}, {m.docente_presidente.persona.nombre}" if (m and m.docente_presidente and m.docente_presidente.persona) else None
+        v1 = f"{m.docente_vocal1.persona.apellido}, {m.docente_vocal1.persona.nombre}" if (m and m.docente_vocal1 and m.docente_vocal1.persona) else None
+        v2 = f"{m.docente_vocal2.persona.apellido}, {m.docente_vocal2.persona.nombre}" if (m and m.docente_vocal2 and m.docente_vocal2.persona) else None
+
+        res.append(
+            SolicitudMesaOut(
+                id=s.id,
+                estudiante_id=s.estudiante_id,
+                estudiante_nombre=f"{s.estudiante.persona.apellido}, {s.estudiante.persona.nombre}",
+                estudiante_dni=s.estudiante.persona.dni,
+                materia_id=s.materia_id,
+                materia_nombre=s.materia.nombre,
+                materia_anio=s.materia.anio_cursada,
+                profesorado_nombre=s.materia.plan_de_estudio.profesorado.nombre,
+                ventana_id=s.ventana_id,
+                estado=s.estado,
+                estado_display=s.get_estado_display(),
+                fecha_solicitud=s.fecha_solicitud,
+                modalidad=s.modalidad,
+                modalidad_display=s.get_modalidad_display(),
+                observaciones=s.observaciones,
+                mesa_asignada_id=s.mesa_asignada_id,
+                fecha_mesa=m.fecha if m else None,
+                hora_mesa=m.hora_desde.strftime("%H:%M") if (m and m.hora_desde) else None,
+                aula_mesa=m.aula if m else None,
+                numero_mesa=m.numero_mesa if m else None,
+                tribunal_presidente=pres,
+                tribunal_vocal1=v1,
+                tribunal_vocal2=v2,
+                docente_nombre="; ".join(materia_docentes_map.get(s.materia_id, [])) or None,
+            )
         )
-        for s in items
-    ]
+    return res
 
 
 @management_router.post("/solicitudes_mesas/{sol_id}/procesar", response=SolicitudMesaOut, auth=JWTAuth())
