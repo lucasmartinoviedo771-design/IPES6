@@ -256,6 +256,37 @@ class AuditoriaDashboardOut(Schema):
     evolucion_7d: list[AuditoriaEvolucionItem]
 
 
+class AusentismoEvolucionItem(Schema):
+    fecha: str
+    tasa_ausentismo: float
+    total_clases: int
+    ausencias: int
+    tardias: int
+    estudiantes_sin_registro: int
+
+
+class AusentismoCatedraItem(Schema):
+    codigo_comision: str
+    materia: str
+    docentes: list[str]
+    tasa_ausentismo_actual: float
+    tasa_ausentismo_promedio_7d: float
+    estudiantes_en_riesgo: int
+    total_estudiantes: int
+    tendencia: str  # "estable" | "mejorando" | "empeorando"
+
+
+class AusentismoConsolidadoOut(Schema):
+    profesorado_id: int | None
+    profesorado_nombre: str | None
+    resumen: dict  # tasa_promedio, tasa_maxima, catedras_criticas
+    evolucion: list[AusentismoEvolucionItem]
+    catedras: list[AusentismoCatedraItem]
+    estudiantes_criticos: int
+    fecha_inicio: str | None
+    fecha_fin: str | None
+
+
 class TeacherAttendanceSummaryOut(Schema):
     docente_id: int | None
     total_registros: int
@@ -1478,4 +1509,166 @@ def auditoria_dashboard(request):
         "top_usuarios": top_usuarios,
         "alertas_criticas": alertas_criticas,
         "evolucion_7d": evolucion_7d,
+    }
+
+
+# ==========================================
+# 7. AUSENTISMO CONSOLIDADO
+# ==========================================
+
+
+@router.get("/ausentismo/consolidado/", response=AusentismoConsolidadoOut)
+def ausentismo_consolidado(
+    request,
+    profesorado_id: int | None = None,
+    dias: int | None = None,
+):
+    """
+    Ausentismo consolidado por profesorado/comisión con tendencias.
+    Utiliza snapshots de AusentismoSnapshot para detectar cátedras con problemas emergentes.
+    """
+    require(request.user, "ver_metricas")
+
+    dias = dias or 90
+    fecha_limite = timezone.now().date() - timedelta(days=dias)
+
+    # 1. EVOLUCIÓN TEMPORAL (últimos N días)
+    snapshots = AusentismoSnapshot.objects.filter(
+        fecha_snapshot__gte=fecha_limite
+    ).order_by("fecha_snapshot")
+
+    if profesorado_id:
+        snapshots = snapshots.filter(profesorado_id=profesorado_id)
+        prof = Profesorado.objects.filter(id=profesorado_id).first()
+        prof_name = prof.nombre if prof else None
+    else:
+        prof_name = None
+
+    # Agregar por fecha
+    evolucion_dict = {}
+    for snap in snapshots:
+        if snap.fecha_snapshot not in evolucion_dict:
+            evolucion_dict[snap.fecha_snapshot] = {
+                "total_clases": 0,
+                "ausencias": 0,
+                "tardias": 0,
+                "estudiantes_sin_registro": 0,
+            }
+
+        evolucion_dict[snap.fecha_snapshot]["ausencias"] += snap.detalles.get("ausencias", 0)
+        evolucion_dict[snap.fecha_snapshot]["tardias"] += snap.detalles.get("tardias", 0)
+        evolucion_dict[snap.fecha_snapshot]["total_clases"] += snap.detalles.get("total_registros", 0)
+        evolucion_dict[snap.fecha_snapshot]["estudiantes_sin_registro"] += snap.estudiantes_sin_registro
+
+    evolucion = []
+    for fecha in sorted(evolucion_dict.keys()):
+        data = evolucion_dict[fecha]
+        total = data["total_clases"]
+        tasa = (data["ausencias"] / total * 100) if total > 0 else 0
+
+        evolucion.append({
+            "fecha": fecha.isoformat(),
+            "tasa_ausentismo": round(tasa, 1),
+            "total_clases": total,
+            "ausencias": data["ausencias"],
+            "tardias": data["tardias"],
+            "estudiantes_sin_registro": data["estudiantes_sin_registro"],
+        })
+
+    # 2. RESUMEN GENERAL
+    tasa_promedio = round(
+        sum(e["tasa_ausentismo"] for e in evolucion) / len(evolucion), 1
+    ) if evolucion else 0
+    tasa_maxima = max((e["tasa_ausentismo"] for e in evolucion), default=0)
+
+    # 3. POR COMISIÓN (snapshot más reciente + histórico)
+    comisiones_dict = {}
+    for snap in snapshots:
+        if snap.comision_id not in comisiones_dict:
+            comisiones_dict[snap.comision_id] = {
+                "snapshots": [],
+                "comision": snap.comision,
+                "profesorado": snap.profesorado,
+                "total_estudiantes": snap.total_estudiantes,
+            }
+
+        comisiones_dict[snap.comision_id]["snapshots"].append(snap)
+
+    catedras = []
+    estudiantes_criticos_total = 0
+
+    for com_id, com_data in comisiones_dict.items():
+        snapshots_com = com_data["snapshots"]
+        comision = com_data["comision"]
+        prof = com_data["profesorado"]
+
+        if not comision or not snapshots_com:
+            continue
+
+        # Datos actuales (último snapshot)
+        ultimo_snap = snapshots_com[-1]
+        tasa_actual = ultimo_snap.tasa_ausentismo
+        estudiantes_criticos_total += ultimo_snap.estudiantes_críticos
+
+        # Histórico 7 últimos days
+        fecha_hace_7d = timezone.now().date() - timedelta(days=7)
+        snapshots_7d = [s for s in snapshots_com if s.fecha_snapshot >= fecha_hace_7d]
+        tasa_promedio_7d = (
+            sum(s.tasa_ausentismo for s in snapshots_7d) / len(snapshots_7d)
+        ) if snapshots_7d else tasa_actual
+
+        # Tendencia
+        if len(snapshots_7d) >= 2:
+            tasa_primera = snapshots_7d[0].tasa_ausentismo
+            tasa_ultima = snapshots_7d[-1].tasa_ausentismo
+            diff = tasa_ultima - tasa_primera
+            if diff > 2:
+                tendencia = "empeorando"
+            elif diff < -2:
+                tendencia = "mejorando"
+            else:
+                tendencia = "estable"
+        else:
+            tendencia = "estable"
+
+        # Docentes
+        hc = comision.horario_catedra.first()
+        docentes = []
+        if hc:
+            for sa in hc.staff_asignaciones.all():
+                docentes.append(f"{sa.docente.persona.nombre} {sa.docente.persona.apellido}")
+
+        catedras.append({
+            "codigo_comision": comision.codigo,
+            "materia": hc.materia.nombre if hc else "N/A",
+            "docentes": docentes or ["Sin asignar"],
+            "tasa_ausentismo_actual": round(tasa_actual, 1),
+            "tasa_ausentismo_promedio_7d": round(tasa_promedio_7d, 1),
+            "estudiantes_en_riesgo": ultimo_snap.estudiantes_críticos,
+            "total_estudiantes": ultimo_snap.total_estudiantes,
+            "tendencia": tendencia,
+        })
+
+    # Ordenar por tasa de ausentismo (críticas primero)
+    catedras.sort(key=lambda x: x["tasa_ausentismo_actual"], reverse=True)
+
+    # 4. CÁTEDRAS CRÍTICAS (tasa > 20%)
+    catedras_criticas = sum(1 for c in catedras if c["tasa_ausentismo_actual"] > 20)
+
+    fecha_inicio = evolucion[0]["fecha"] if evolucion else None
+    fecha_fin = evolucion[-1]["fecha"] if evolucion else None
+
+    return {
+        "profesorado_id": profesorado_id,
+        "profesorado_nombre": prof_name,
+        "resumen": {
+            "tasa_promedio": tasa_promedio,
+            "tasa_maxima": tasa_maxima,
+            "catedras_criticas": catedras_criticas,
+        },
+        "evolucion": evolucion,
+        "catedras": catedras,
+        "estudiantes_criticos": estudiantes_criticos_total,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
     }

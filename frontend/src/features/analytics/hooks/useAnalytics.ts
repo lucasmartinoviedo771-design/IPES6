@@ -12,6 +12,7 @@ import {
 	getAcademicPerformancePorComisiones,
 	getAcademicPerformanceCohortes,
 	getAuditoriaDashboard,
+	getAusentismoConsolidado,
 	type StudentsSummaryResponse,
 	type StudentsAtRiskResponse,
 	type PreinscripcionesSummaryResponse,
@@ -24,6 +25,7 @@ import {
 	type AcademicPerformancePorComisionesResponse,
 	type AcademicPerformanceCohortesResponse,
 	type AuditoriaDashboardResponse,
+	type AusentismoConsolidadoResponse,
 } from "@/api/analytics";
 
 export const useAnalyticsSummary = (params: {
@@ -152,5 +154,16 @@ export const useAuditoriaDashboard = () => {
 		queryKey: ["analytics", "auditoriaDashboard"],
 		queryFn: () => getAuditoriaDashboard(),
 		staleTime: 1000 * 60 * 5,
+	});
+};
+
+export const useAusentismoConsolidado = (params: {
+	profesorado_id?: number;
+	dias?: number;
+}) => {
+	return useQuery<AusentismoConsolidadoResponse>({
+		queryKey: ["analytics", "ausentismoConsolidado", params],
+		queryFn: () => getAusentismoConsolidado(params),
+		staleTime: 1000 * 60 * 10,
 	});
 };

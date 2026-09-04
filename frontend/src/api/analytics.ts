@@ -350,3 +350,50 @@ export const getAuditoriaDashboard = async (): Promise<AuditoriaDashboardRespons
 	const res = await api.get("/analytics/auditoria/dashboard/");
 	return res.data;
 };
+
+// ==========================================
+// SOLAPA AUSENTISMO CONSOLIDADO
+// ==========================================
+
+export interface AusentismoEvolucionItem {
+	fecha: string;
+	tasa_ausentismo: number;
+	total_clases: number;
+	ausencias: number;
+	tardias: number;
+	estudiantes_sin_registro: number;
+}
+
+export interface AusentismoCatedraItem {
+	codigo_comision: string;
+	materia: string;
+	docentes: string[];
+	tasa_ausentismo_actual: number;
+	tasa_ausentismo_promedio_7d: number;
+	estudiantes_en_riesgo: number;
+	total_estudiantes: number;
+	tendencia: "estable" | "mejorando" | "empeorando";
+}
+
+export interface AusentismoConsolidadoResponse {
+	profesorado_id: number | null;
+	profesorado_nombre: string | null;
+	resumen: {
+		tasa_promedio: number;
+		tasa_maxima: number;
+		catedras_criticas: number;
+	};
+	evolucion: AusentismoEvolucionItem[];
+	catedras: AusentismoCatedraItem[];
+	estudiantes_criticos: number;
+	fecha_inicio: string | null;
+	fecha_fin: string | null;
+}
+
+export const getAusentismoConsolidado = async (params?: {
+	profesorado_id?: number;
+	dias?: number;
+}): Promise<AusentismoConsolidadoResponse> => {
+	const res = await api.get("/analytics/ausentismo/consolidado/", { params });
+	return res.data;
+};
