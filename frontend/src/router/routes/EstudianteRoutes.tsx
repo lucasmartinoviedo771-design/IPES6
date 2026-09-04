@@ -52,7 +52,7 @@ export const buildEstudianteRoutes = () => (
 	<>
 		<Route
 			element={
-				<ProtectedRoute capability="ver_estudiantes" roles={["estudiante"]}>
+				<ProtectedRoute roles={["estudiante"]}>
 					<Outlet />
 				</ProtectedRoute>
 			}
@@ -99,7 +99,7 @@ export const buildEstudianteRoutes = () => (
 		</Route>
 		<Route
 			element={
-				<ProtectedRoute capability="ver_estudiantes" roles={["estudiante"]}>
+				<ProtectedRoute roles={["estudiante"]}>
 					<Outlet />
 				</ProtectedRoute>
 			}

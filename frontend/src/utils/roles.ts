@@ -93,6 +93,15 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
 		if (role === "tutoria" || role === "tutoría") set.add("tutor");
 	});
 
+	(user.role_assignments ?? []).forEach((asg) => {
+		const norm = asg.role.toLowerCase().trim();
+		set.add(norm);
+		if (norm.includes("estudiante")) set.add("estudiante");
+		if (norm.includes("docente")) set.add("docente");
+		if (norm.startsWith("bedel")) set.add("bedel");
+		if (norm.startsWith("secretaria")) set.add("secretaria");
+	});
+
 	if (user.is_superuser && !user.is_impersonated) {
 		set.add("admin");
 	}

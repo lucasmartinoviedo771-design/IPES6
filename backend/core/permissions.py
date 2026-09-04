@@ -312,6 +312,10 @@ def get_user_roles(user: User) -> set[str]:
 
     if user.is_superuser:
         roles.add("admin")
+    if hasattr(user, "estudiante"):
+        roles.add("estudiante")
+    if hasattr(user, "docente"):
+        roles.add("docente")
     return roles
 
 

@@ -13,6 +13,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHero } from "@/components/ui/GradientTitles";
 import { useAuth } from "@/context/AuthContext";
+import { roleHomeMap } from "@/components/layout/app-shell/constants";
+import { getDefaultHomeRoute } from "@/utils/roles";
 
 // Configuración visual premium para cada tarjeta de rol
 const ROLE_VISUAL_CONFIG: Record<
@@ -184,8 +186,9 @@ export default function RoleSelectorPage() {
 		const baseRole = role.split(":")[0];
 		setRoleOverride(baseRole);
 		setActiveRole(baseRole);
-		// AppShell navega automáticamente al destino del rol via roleHomeMap
-		navigate("/dashboard", { replace: true });
+		const destination =
+			roleHomeMap[baseRole] ?? getDefaultHomeRoute(user);
+		navigate(destination, { replace: true });
 	};
 
 	return (

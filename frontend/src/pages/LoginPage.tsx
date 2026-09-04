@@ -184,11 +184,18 @@ export default function LoginPage() {
 						localStorage.getItem("ipes_active_role") || onlyRole;
 					let target =
 						from && isFromValid(from, activeRole) ? from : defaultHome;
-					if (target === "/preinscripcion") {
+					if (target === "/preinscripcion" || target === "/403") {
 						target = defaultHome;
 					}
+					const isStudent =
+						activeRole.startsWith("estudiante") ||
+						isOnlyEstudiante(loggedUser) ||
+						(loggedUser?.roles ?? []).some((r) => r.toLowerCase().includes("estudiante")) ||
+						(loggedUser?.role_assignments ?? []).some(
+							(a) => a.role.toLowerCase().includes("estudiante")
+						);
 					if (
-						isOnlyEstudiante(loggedUser) &&
+						isStudent &&
 						target &&
 						!target.startsWith("/estudiantes")
 					) {

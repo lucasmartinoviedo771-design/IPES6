@@ -188,6 +188,10 @@ def _serialize_user(user):
     if user.is_superuser:
         if "admin" not in roles:
             roles.append("admin")
+    if hasattr(user, "estudiante") and "estudiante" not in roles:
+        roles.append("estudiante")
+    if hasattr(user, "docente") and "docente" not in roles:
+        roles.append("docente")
 
     capabilities = [cap for cap in CAPABILITIES if can(user, cap)]
 
@@ -349,6 +353,10 @@ def profile(request):
     if u.is_superuser:
         if "admin" not in roles:
             roles.append("admin")
+    if hasattr(u, "estudiante") and "estudiante" not in roles:
+        roles.append("estudiante")
+    if hasattr(u, "docente") and "docente" not in roles:
+        roles.append("docente")
 
     # Leemos la cabecera X-Active-Role para filtrar capacidades según el contexto activo
     active_role = request.headers.get("X-Active-Role")
