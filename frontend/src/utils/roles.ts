@@ -56,29 +56,7 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
 	const set = new Set<string>();
 	if (!user) return set;
 
-	// Si hay simulación o rol activo seleccionado
-	const effectiveOverride = globalRoleOverride || getActiveRole();
-	if (effectiveOverride) {
-		const r = effectiveOverride.toLowerCase().trim();
-		set.add(r);
-		if (r.includes("estudiante")) set.add("estudiante");
-		if (r === "bedel_secretaria") {
-			// no expandir
-		} else if (r.startsWith("bedel")) {
-			set.add("bedel");
-		}
-		if (r.startsWith("secretaria")) set.add("secretaria");
-		if (r.startsWith("coordinador")) set.add("coordinador");
-		if (r.startsWith("tutor")) set.add("tutor");
-		if (r === "tutoria" || r === "tutoría") set.add("tutor");
-
-		// Si el usuario simulado es un superuser real (no simulado), podría tener admin
-		if (user.is_superuser && !user.is_impersonated && !globalRoleOverride) {
-			set.add("admin");
-		}
-		return set;
-	}
-
+	// 1. Recolectar roles nativos del usuario
 	normalizeRoles(user.roles).forEach((role) => {
 		set.add(role);
 		if (role.includes("estudiante")) set.add("estudiante");
@@ -93,6 +71,7 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
 		if (role === "tutoria" || role === "tutoría") set.add("tutor");
 	});
 
+	// 2. Recolectar asignaciones de roles por profesorado
 	(user.role_assignments ?? []).forEach((asg) => {
 		const norm = asg.role.toLowerCase().trim();
 		set.add(norm);
@@ -102,8 +81,29 @@ const collectRoles = (user: User | null | undefined): Set<string> => {
 		if (norm.startsWith("secretaria")) set.add("secretaria");
 	});
 
+	// 3. Superusuarios reales (no simulados) tienen rol admin
 	if (user.is_superuser && !user.is_impersonated) {
 		set.add("admin");
+	}
+
+	// 4. Override de rol explícito (ej: simulación de usuario)
+	const effectiveOverride = globalRoleOverride || getActiveRole();
+	if (effectiveOverride) {
+		const r = effectiveOverride.toLowerCase().trim();
+		// Solo permitir el override si es simulación explícita o el usuario realmente posee ese rol o es superuser
+		if (globalRoleOverride || user.is_superuser || set.has(r)) {
+			set.add(r);
+			if (r.includes("estudiante")) set.add("estudiante");
+			if (r === "bedel_secretaria") {
+				// no expandir
+			} else if (r.startsWith("bedel")) {
+				set.add("bedel");
+			}
+			if (r.startsWith("secretaria")) set.add("secretaria");
+			if (r.startsWith("coordinador")) set.add("coordinador");
+			if (r.startsWith("tutor")) set.add("tutor");
+			if (r === "tutoria" || r === "tutoría") set.add("tutor");
+		}
 	}
 
 	return set;
@@ -189,8 +189,8 @@ export const getDefaultHomeRoute = (user: User | null | undefined): string => {
 	const bag = collectRoles(user);
 	if (bag.size === 0) return "/login";
 
-	// 1. Administradores (Dashboard central)
-	if (bag.has("admin")) return "/dashboard";
+	// 1. Administradores (Dashboard central) - solo si no está en simulación
+	if (bag.has("admin") && !user.is_impersonated) return "/dashboard";
 
 	// 2. Secretaría (Centro de operaciones)
 	if (bag.has("secretaria")) return "/secretaria";
