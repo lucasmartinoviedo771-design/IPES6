@@ -397,3 +397,66 @@ export const getAusentismoConsolidado = async (params?: {
 	const res = await api.get("/analytics/ausentismo/consolidado/", { params });
 	return res.data;
 };
+
+// ==========================================
+// MESAS DE EXAMEN Y TRÁMITES
+// ==========================================
+
+export interface MesaPorTipoItem {
+	tipo_mesa: string;
+	cantidad: number;
+	promedio_nota: number | null;
+	tasa_aprobacion: number;
+}
+
+export interface MesaPorResultadoItem {
+	resultado: string;
+	cantidad: number;
+	porcentaje: number;
+}
+
+export interface MesasDashboardResponse {
+	total_mesas: number;
+	mesas_pendientes: number;
+	promedio_general_notas: number | null;
+	tasa_aprobacion_general: number;
+	por_tipo: MesaPorTipoItem[];
+	por_resultado: MesaPorResultadoItem[];
+	ultimas_mesas: Array<{
+		materia: string;
+		estudiante: string;
+		tipo: string;
+		nota: number | null;
+		fecha: string;
+	}>;
+}
+
+export interface PedidoItem {
+	id: number;
+	tipo: string;
+	estado: string;
+	estudiante_nombre: string;
+	dias_transcurridos: number;
+	fecha_solicitud: string;
+	observaciones: string | null;
+}
+
+export interface TramitesDashboardResponse {
+	total_pendientes: number;
+	total_aprobados: number;
+	total_rechazados: number;
+	tiempo_promedio_resolucion: number;
+	tiempo_maximo: number;
+	por_estado: Record<string, number>;
+	pedidos_recientes: PedidoItem[];
+}
+
+export const getMesasDashboard = async (): Promise<MesasDashboardResponse> => {
+	const res = await api.get("/analytics/mesas/dashboard/");
+	return res.data;
+};
+
+export const getTramitesDashboard = async (): Promise<TramitesDashboardResponse> => {
+	const res = await api.get("/analytics/tramites/dashboard/");
+	return res.data;
+};

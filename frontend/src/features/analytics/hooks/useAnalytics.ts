@@ -13,6 +13,8 @@ import {
 	getAcademicPerformanceCohortes,
 	getAuditoriaDashboard,
 	getAusentismoConsolidado,
+	getMesasDashboard,
+	getTramitesDashboard,
 	type StudentsSummaryResponse,
 	type StudentsAtRiskResponse,
 	type PreinscripcionesSummaryResponse,
@@ -26,6 +28,8 @@ import {
 	type AcademicPerformanceCohortesResponse,
 	type AuditoriaDashboardResponse,
 	type AusentismoConsolidadoResponse,
+	type MesasDashboardResponse,
+	type TramitesDashboardResponse,
 } from "@/api/analytics";
 
 export const useAnalyticsSummary = (params: {
@@ -164,6 +168,22 @@ export const useAusentismoConsolidado = (params: {
 	return useQuery<AusentismoConsolidadoResponse>({
 		queryKey: ["analytics", "ausentismoConsolidado", params],
 		queryFn: () => getAusentismoConsolidado(params),
+		staleTime: 1000 * 60 * 10,
+	});
+};
+
+export const useMesasDashboard = () => {
+	return useQuery<MesasDashboardResponse>({
+		queryKey: ["analytics", "mesasDashboard"],
+		queryFn: () => getMesasDashboard(),
+		staleTime: 1000 * 60 * 15,
+	});
+};
+
+export const useTramitesDashboard = () => {
+	return useQuery<TramitesDashboardResponse>({
+		queryKey: ["analytics", "tramitesDashboard"],
+		queryFn: () => getTramitesDashboard(),
 		staleTime: 1000 * 60 * 10,
 	});
 };

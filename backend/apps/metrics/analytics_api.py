@@ -288,6 +288,49 @@ class AusentismoConsolidadoOut(Schema):
     fecha_fin: str | None
 
 
+class MesaPorTipoItem(Schema):
+    tipo_mesa: str  # "Oral", "Escrita", "Mixta"
+    cantidad: int
+    promedio_nota: float | None
+    tasa_aprobacion: float
+
+
+class MesaPorResultadoItem(Schema):
+    resultado: str  # "Aprobado", "Desaprobado", "Ausente", "Cancelada"
+    cantidad: int
+    porcentaje: float
+
+
+class MesasDashboardOut(Schema):
+    total_mesas: int
+    mesas_pendientes: int
+    promedio_general_notas: float | None
+    tasa_aprobacion_general: float
+    por_tipo: list[MesaPorTipoItem]
+    por_resultado: list[MesaPorResultadoItem]
+    ultimas_mesas: list[dict]  # Últimas 10 mesas cargadas
+
+
+class PedidoItem(Schema):
+    id: int
+    tipo: str  # "Analitico", "Equivalencia"
+    estado: str  # "Pendiente", "Aprobado", "Rechazado"
+    estudiante_nombre: str
+    dias_transcurridos: int
+    fecha_solicitud: str
+    observaciones: str | None
+
+
+class TramitesDashboardOut(Schema):
+    total_pendientes: int
+    total_aprobados: int
+    total_rechazados: int
+    tiempo_promedio_resolucion: float  # días
+    tiempo_maximo: int  # días
+    por_estado: dict[str, int]
+    pedidos_recientes: list[PedidoItem]
+
+
 class TeacherAttendanceSummaryOut(Schema):
     docente_id: int | None
     total_registros: int
@@ -1677,4 +1720,193 @@ def ausentismo_consolidado(
         "estudiantes_criticos": estudiantes_criticos_total,
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
+    }
+
+
+# ==========================================
+# 8. MESAS DE EXAMEN Y EQUIVALENCIAS/TRÁMITES
+# ==========================================
+
+
+@router.get("/mesas/dashboard/", response=MesasDashboardOut)
+@cache_endpoint(timeout=900, prefix="mesas_dashboard")
+def mesas_dashboard(request):
+    """
+    Dashboard de mesas de examen: tipos, resultados, promedio de notas.
+    """
+    require(request.user, "ver_metricas")
+
+    # Todas las mesas (independiente de año)
+    mesas_qs = MesaExamen.objects.all()
+    total_mesas = mesas_qs.count()
+    mesas_pendientes = mesas_qs.filter(estado="Pendiente").count()
+
+    # 1. POR TIPO DE MESA
+    por_tipo_data = mesas_qs.values("tipo_mesa").annotate(
+        cantidad=Count("id"),
+        promedio=Avg("nota_promedio")
+    )
+
+    por_tipo = []
+    for item in por_tipo_data:
+        tipo = item["tipo_mesa"]
+        cantidad = item["cantidad"]
+        promedio = item["promedio"]
+
+        # Tasa de aprobación (nota_promedio >= 6)
+        aprobadas = mesas_qs.filter(
+            tipo_mesa=tipo,
+            nota_promedio__gte=6
+        ).count()
+        tasa = (aprobadas / cantidad * 100) if cantidad > 0 else 0
+
+        por_tipo.append({
+            "tipo_mesa": tipo or "Sin especificar",
+            "cantidad": cantidad,
+            "promedio_nota": round(promedio, 2) if promedio else None,
+            "tasa_aprobacion": round(tasa, 1),
+        })
+
+    # 2. POR RESULTADO
+    por_resultado_data = mesas_qs.values("estado").annotate(
+        cantidad=Count("id")
+    )
+
+    total_con_resultado = sum(item["cantidad"] for item in por_resultado_data)
+    por_resultado = []
+
+    for item in por_resultado_data:
+        estado = item["estado"]
+        cantidad = item["cantidad"]
+        porcentaje = (cantidad / total_con_resultado * 100) if total_con_resultado > 0 else 0
+
+        por_resultado.append({
+            "resultado": estado or "Sin resultado",
+            "cantidad": cantidad,
+            "porcentaje": round(porcentaje, 1),
+        })
+
+    # 3. PROMEDIO GENERAL
+    promedio_general = mesas_qs.aggregate(avg=Avg("nota_promedio"))["avg"]
+    aprobadas_total = mesas_qs.filter(nota_promedio__gte=6).count()
+    tasa_aprobacion_general = (
+        (aprobadas_total / total_mesas * 100) if total_mesas > 0 else 0
+    )
+
+    # 4. ÚLTIMAS 10 MESAS
+    ultimas_mesas = []
+    for mesa in mesas_qs.select_related(
+        "materia", "inscripcion_mesa__estudiante"
+    ).order_by("-created_at")[:10]:
+        inscripcion = mesa.inscripcion_mesa.first()
+        if inscripcion:
+            ultimas_mesas.append({
+                "materia": mesa.materia.nombre if mesa.materia else "N/A",
+                "estudiante": str(inscripcion.estudiante),
+                "tipo": mesa.tipo_mesa,
+                "nota": mesa.nota_promedio,
+                "fecha": mesa.created_at.isoformat(),
+            })
+
+    return {
+        "total_mesas": total_mesas,
+        "mesas_pendientes": mesas_pendientes,
+        "promedio_general_notas": round(promedio_general, 2) if promedio_general else None,
+        "tasa_aprobacion_general": round(tasa_aprobacion_general, 1),
+        "por_tipo": por_tipo,
+        "por_resultado": por_resultado,
+        "ultimas_mesas": ultimas_mesas,
+    }
+
+
+@router.get("/tramites/dashboard/", response=TramitesDashboardOut)
+@cache_endpoint(timeout=600, prefix="tramites_dashboard")
+def tramites_dashboard(request):
+    """
+    Dashboard de trámites: análiticos y equivalencias con tiempos de resolución.
+    """
+    require(request.user, "ver_metricas")
+
+    # Combinar PedidoAnalitico y PedidoEquivalencia
+    from core.models import PedidoAnalitico, PedidoEquivalencia
+
+    pedidos_analitico = PedidoAnalitico.objects.select_related(
+        "estudiante__persona"
+    ).order_by("-fecha_solicitud")
+
+    pedidos_equivalencia = PedidoEquivalencia.objects.select_related(
+        "estudiante__persona"
+    ).order_by("-fecha_solicitud")
+
+    # Estados
+    estado_counts = {}
+    tiempo_resolucion = []
+
+    # Procesar analíticos
+    for pedido in pedidos_analitico:
+        estado = pedido.estado or "Pendiente"
+        estado_counts[estado] = estado_counts.get(estado, 0) + 1
+
+        if pedido.estado in ["Aprobado", "Rechazado"] and pedido.fecha_resolucion:
+            dias = (pedido.fecha_resolucion - pedido.fecha_solicitud).days
+            tiempo_resolucion.append(dias)
+
+    # Procesar equivalencias
+    for pedido in pedidos_equivalencia:
+        estado = pedido.estado or "Pendiente"
+        estado_counts[estado] = estado_counts.get(estado, 0) + 1
+
+        if pedido.estado in ["Aprobado", "Rechazado"] and pedido.fecha_resolucion:
+            dias = (pedido.fecha_resolucion - pedido.fecha_solicitud).days
+            tiempo_resolucion.append(dias)
+
+    total_pendientes = estado_counts.get("Pendiente", 0)
+    total_aprobados = estado_counts.get("Aprobado", 0)
+    total_rechazados = estado_counts.get("Rechazado", 0)
+
+    tiempo_promedio = (
+        sum(tiempo_resolucion) / len(tiempo_resolucion)
+    ) if tiempo_resolucion else 0
+
+    tiempo_maximo = max(tiempo_resolucion) if tiempo_resolucion else 0
+
+    # Últimos 10 trámites
+    pedidos_recientes = []
+    hoy = timezone.now().date()
+
+    for pedido in list(pedidos_analitico)[:10]:
+        dias = (hoy - pedido.fecha_solicitud.date()).days
+        pedidos_recientes.append({
+            "id": pedido.id,
+            "tipo": "Analítico",
+            "estado": pedido.estado or "Pendiente",
+            "estudiante_nombre": str(pedido.estudiante.persona),
+            "dias_transcurridos": dias,
+            "fecha_solicitud": pedido.fecha_solicitud.isoformat(),
+            "observaciones": pedido.observaciones or None,
+        })
+
+    for pedido in list(pedidos_equivalencia)[:10]:
+        dias = (hoy - pedido.fecha_solicitud.date()).days
+        pedidos_recientes.append({
+            "id": pedido.id,
+            "tipo": "Equivalencia",
+            "estado": pedido.estado or "Pendiente",
+            "estudiante_nombre": str(pedido.estudiante.persona),
+            "dias_transcurridos": dias,
+            "fecha_solicitud": pedido.fecha_solicitud.isoformat(),
+            "observaciones": pedido.observaciones or None,
+        })
+
+    # Ordenar por más recientes
+    pedidos_recientes.sort(key=lambda x: x["fecha_solicitud"], reverse=True)
+
+    return {
+        "total_pendientes": total_pendientes,
+        "total_aprobados": total_aprobados,
+        "total_rechazados": total_rechazados,
+        "tiempo_promedio_resolucion": round(tiempo_promedio, 1),
+        "tiempo_maximo": int(tiempo_maximo),
+        "por_estado": estado_counts,
+        "pedidos_recientes": pedidos_recientes[:20],
     }

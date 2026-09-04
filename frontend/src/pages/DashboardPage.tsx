@@ -19,14 +19,16 @@ import TabPreinscripciones from "@/features/analytics/components/TabPreinscripci
 import TabRendimientoAcademico from "@/features/analytics/components/TabRendimientoAcademico";
 import TabAuditoria from "@/features/analytics/components/TabAuditoria";
 import TabAusentismo from "@/features/analytics/components/TabAusentismo";
+import TabMesasYTramites from "@/features/analytics/components/TabMesasYTramites";
 import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
 import GavelIcon from "@mui/icons-material/Gavel";
 import ReportIcon from "@mui/icons-material/Report";
+import SchoolIcon from "@mui/icons-material/School";
 
-type TabKey = "preinscripciones" | "estudiantes" | "docentes" | "rendimiento" | "auditoria" | "ausentismo";
+type TabKey = "preinscripciones" | "estudiantes" | "docentes" | "rendimiento" | "auditoria" | "ausentismo" | "mesas";
 
 export default function DashboardPage() {
 	const navigate = useNavigate();
@@ -196,6 +198,12 @@ export default function DashboardPage() {
 						iconPosition="start"
 						label="Ausentismo Consolidado"
 					/>
+					<Tab
+						value="mesas"
+						icon={<SchoolIcon />}
+						iconPosition="start"
+						label="Mesas & Trámites"
+					/>
 				</Tabs>
 			</Box>
 
@@ -247,6 +255,10 @@ export default function DashboardPage() {
 					onAnioChange={handleAnioChange}
 					onProfesoradoChange={handleProfesoradoChange}
 				/>
+			)}
+
+			{currentTab === "mesas" && (
+				<TabMesasYTramites />
 			)}
 		</Stack>
 	);
