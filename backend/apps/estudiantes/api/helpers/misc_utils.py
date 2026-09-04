@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 
+from django.db.models import Q
+
 from apps.common.date_utils import format_date, format_datetime, parse_date
 from core.models import (
     Correlatividad,
@@ -293,13 +295,15 @@ def _evaluar_aprobacion(
         EquivalenciaDisposicionDetalle.objects.filter(pk=eq.pk).update(en_resguardo=True)
 
     # 2b. Mesa pandemia aprobada (InscripcionMesa con folio/libro PANDEMIA y condicion APR)
-
-    if InscripcionMesa.objects.filter(
-        estudiante=estudiante,
-        mesa__materia=materia,
-        condicion=InscripcionMesa.Condicion.APROBADO,
-        folio="PANDEMIA",
-    ).exists():
+    if (
+        InscripcionMesa.objects.filter(
+            estudiante=estudiante,
+            mesa__materia=materia,
+            condicion=InscripcionMesa.Condicion.APROBADO,
+        )
+        .filter(Q(folio__icontains="PANDEMIA") | Q(libro__icontains="PANDEMIA"))
+        .exists()
+    ):
         return True
 
     # 3. Acta de examen aprobada — chequeo dinámico de correlativas
