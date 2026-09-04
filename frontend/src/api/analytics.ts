@@ -213,3 +213,79 @@ export const getTeacherWorkload = async (
 	});
 	return res.data;
 };
+
+// ==========================================
+// SOLAPA RENDIMIENTO ACADÉMICO
+// ==========================================
+
+export interface RendimientoMateriaItem {
+	materia_id: number;
+	materia_nombre: string;
+	profesorado: string;
+	total_estudiantes: number;
+	promedio_nota: number | null;
+	tasa_aprobacion: number;
+	tasa_desaprobacion: number;
+	distribucion_notas: Record<string, number>;
+}
+
+export interface AcademicPerformancePorMateriaResponse {
+	items: RendimientoMateriaItem[];
+	profesorado_id: number | null;
+	profesorado_nombre: string | null;
+	promedio_general: number | null;
+	tasa_aprobacion_general: number;
+}
+
+export interface RendimientoComisionItem {
+	comision_codigo: string;
+	materia_nombre: string;
+	docentes: string[];
+	total_inscritos: number;
+	promedio_nota: number | null;
+	tasa_aprobacion: number;
+	tasa_desaprobacion: number;
+	estudiantes_riesgo: number;
+}
+
+export interface AcademicPerformancePorComisionesResponse {
+	items: RendimientoComisionItem[];
+	profesorado_id: number | null;
+	total_comisiones: number;
+	promedio_general_notas: number | null;
+}
+
+export interface RendimientoCohortesItem {
+	cohorte: number;
+	total_estudiantes: number;
+	promedio_general: number | null;
+	tasa_aprobacion: number;
+	distribucion: Record<string, number>;
+}
+
+export interface AcademicPerformanceCohortesResponse {
+	items: RendimientoCohortesItem[];
+	profesorado_id: number | null;
+	comparacion_historica: Record<string, number>;
+}
+
+export const getAcademicPerformancePorMateria = async (params?: {
+	profesorado_id?: number;
+}): Promise<AcademicPerformancePorMateriaResponse> => {
+	const res = await api.get("/analytics/academic-performance/por-materia/", { params });
+	return res.data;
+};
+
+export const getAcademicPerformancePorComisiones = async (params?: {
+	profesorado_id?: number;
+}): Promise<AcademicPerformancePorComisionesResponse> => {
+	const res = await api.get("/analytics/academic-performance/por-comisiones/", { params });
+	return res.data;
+};
+
+export const getAcademicPerformanceCohortes = async (params?: {
+	profesorado_id?: number;
+}): Promise<AcademicPerformanceCohortesResponse> => {
+	const res = await api.get("/analytics/academic-performance/comparacion-cohortes/", { params });
+	return res.data;
+};

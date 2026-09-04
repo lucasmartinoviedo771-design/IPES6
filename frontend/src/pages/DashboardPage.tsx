@@ -16,12 +16,13 @@ import { PageHero } from "@/components/ui/GradientTitles";
 import TabDocentes from "@/features/analytics/components/TabDocentes";
 import TabEstudiantes from "@/features/analytics/components/TabEstudiantes";
 import TabPreinscripciones from "@/features/analytics/components/TabPreinscripciones";
+import TabRendimientoAcademico from "@/features/analytics/components/TabRendimientoAcademico";
 import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
 } from "@/styles/institutionalColors";
 
-type TabKey = "preinscripciones" | "estudiantes" | "docentes";
+type TabKey = "preinscripciones" | "estudiantes" | "docentes" | "rendimiento";
 
 export default function DashboardPage() {
 	const navigate = useNavigate();
@@ -173,6 +174,12 @@ export default function DashboardPage() {
 						iconPosition="start"
 						label="Docentes & Cátedras"
 					/>
+					<Tab
+						value="rendimiento"
+						icon={<BarChartIcon />}
+						iconPosition="start"
+						label="Rendimiento Académico"
+					/>
 				</Tabs>
 			</Box>
 
@@ -197,6 +204,15 @@ export default function DashboardPage() {
 
 			{currentTab === "docentes" && (
 				<TabDocentes
+					anio={anio}
+					profesoradoId={profesoradoId}
+					onAnioChange={handleAnioChange}
+					onProfesoradoChange={handleProfesoradoChange}
+				/>
+			)}
+
+			{currentTab === "rendimiento" && (
+				<TabRendimientoAcademico
 					anio={anio}
 					profesoradoId={profesoradoId}
 					onAnioChange={handleAnioChange}

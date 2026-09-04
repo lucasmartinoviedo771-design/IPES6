@@ -8,6 +8,9 @@ import {
 	getTeacherAttendanceByWeekday,
 	getTeachersDesgranamiento,
 	getTeacherWorkload,
+	getAcademicPerformancePorMateria,
+	getAcademicPerformancePorComisiones,
+	getAcademicPerformanceCohortes,
 	type StudentsSummaryResponse,
 	type StudentsAtRiskResponse,
 	type PreinscripcionesSummaryResponse,
@@ -16,6 +19,9 @@ import {
 	type WeekdayAbsenceItem,
 	type DesgranamientoCatedraResponse,
 	type TeacherWorkloadResponse,
+	type AcademicPerformancePorMateriaResponse,
+	type AcademicPerformancePorComisionesResponse,
+	type AcademicPerformanceCohortesResponse,
 } from "@/api/analytics";
 
 export const useAnalyticsSummary = (params: {
@@ -106,5 +112,35 @@ export const useTeacherWorkload = (docenteId?: number) => {
 		queryKey: ["analytics", "teacherWorkload", docenteId],
 		queryFn: () => getTeacherWorkload(docenteId),
 		staleTime: 1000 * 60 * 5,
+	});
+};
+
+export const useAcademicPerformancePorMateria = (params: {
+	profesorado_id?: number;
+}) => {
+	return useQuery<AcademicPerformancePorMateriaResponse>({
+		queryKey: ["analytics", "academicPerformancePorMateria", params],
+		queryFn: () => getAcademicPerformancePorMateria(params),
+		staleTime: 1000 * 60 * 10,
+	});
+};
+
+export const useAcademicPerformancePorComisiones = (params: {
+	profesorado_id?: number;
+}) => {
+	return useQuery<AcademicPerformancePorComisionesResponse>({
+		queryKey: ["analytics", "academicPerformancePorComisiones", params],
+		queryFn: () => getAcademicPerformancePorComisiones(params),
+		staleTime: 1000 * 60 * 10,
+	});
+};
+
+export const useAcademicPerformanceCohortes = (params: {
+	profesorado_id?: number;
+}) => {
+	return useQuery<AcademicPerformanceCohortesResponse>({
+		queryKey: ["analytics", "academicPerformanceCohortes", params],
+		queryFn: () => getAcademicPerformanceCohortes(params),
+		staleTime: 1000 * 60 * 10,
 	});
 };

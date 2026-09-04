@@ -151,6 +151,57 @@ class EvolucionOut(Schema):
     periodo: str
 
 
+class RendimientoMateriaItem(Schema):
+    materia_id: int
+    materia_nombre: str
+    profesorado: str
+    total_estudiantes: int
+    promedio_nota: float | None
+    tasa_aprobacion: float  # %
+    tasa_desaprobacion: float  # %
+    distribucion_notas: dict[str, int]  # {0-4: N, 5-6: N, 7-8: N, 9-10: N}
+
+
+class RendimientoPorMateriaOut(Schema):
+    items: list[RendimientoMateriaItem]
+    profesorado_id: int | None
+    profesorado_nombre: str | None
+    promedio_general: float | None
+    tasa_aprobacion_general: float
+
+
+class RendimientoCohortesItem(Schema):
+    cohorte: int
+    total_estudiantes: int
+    promedio_general: float | None
+    tasa_aprobacion: float
+    distribucion: dict[str, int]
+
+
+class RendimientoCohortesOut(Schema):
+    items: list[RendimientoCohortesItem]
+    profesorado_id: int | None
+    comparacion_historica: dict[str, float]  # {2022: 7.5, 2023: 7.3, ...}
+
+
+class RendimientoComisionItem(Schema):
+    comision_codigo: str
+    materia_nombre: str
+    docentes: list[str]
+    total_inscritos: int
+    promedio_nota: float | None
+    tasa_aprobacion: float
+    tasa_desaprobacion: float
+    estudiantes_riesgo: int
+
+
+class RendimientoComisionesOut(Schema):
+    items: list[RendimientoComisionItem]
+    profesorado_id: int | None
+    total_comisiones: int
+    promedio_general_notas: float | None
+
+
 class TeacherAttendanceSummaryOut(Schema):
     docente_id: int | None
     total_registros: int
@@ -980,4 +1031,262 @@ def ausentismo_evolucion(
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
         "periodo": f"últimos {dias} días",
+    }
+
+
+# ==========================================
+# 5. RENDIMIENTO ACADÉMICO DESGLOSADO
+# ==========================================
+
+
+@router.get("/academic-performance/por-materia/", response=RendimientoPorMateriaOut)
+def rendimiento_por_materia(
+    request,
+    profesorado_id: int | None = None,
+):
+    """
+    Rendimiento académico desglosado por materia.
+    Muestra promedio de notas, tasas de aprobación y distribución.
+    """
+    require(request.user, "ver_metricas")
+
+    # Base: ActaExamen (notas finales de cada estudiante por materia)
+    actas_qs = ActaExamen.objects.select_related("materia", "materia__plan_de_estudio__profesorado")
+
+    if profesorado_id:
+        actas_qs = actas_qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
+
+    items = []
+    prof_name = None
+
+    # Agrupar por materia
+    materias_dict = {}
+    for acta in actas_qs:
+        mat = acta.materia
+        mat_key = mat.id
+
+        if mat_key not in materias_dict:
+            materias_dict[mat_key] = {
+                "materia_id": mat.id,
+                "materia_nombre": mat.nombre,
+                "profesorado": mat.plan_de_estudio.profesorado.nombre if mat.plan_de_estudio.profesorado else "N/A",
+                "notas": [],
+                "total": 0,
+            }
+
+        if acta.nota_final is not None:
+            materias_dict[mat_key]["notas"].append(acta.nota_final)
+            materias_dict[mat_key]["total"] += 1
+
+        if profesorado_id and mat.plan_de_estudio.profesorado:
+            prof_name = mat.plan_de_estudio.profesorado.nombre
+
+    # Calcular estadísticas por materia
+    notas_globales = []
+    aprobados_global = 0
+    total_global = 0
+
+    for mat_data in materias_dict.values():
+        notas = mat_data["notas"]
+
+        if not notas:
+            continue
+
+        total = len(notas)
+        aprobados = sum(1 for n in notas if n >= 6)
+        desaprobados = total - aprobados
+        promedio = sum(notas) / total if notas else None
+
+        # Distribución de notas
+        distribucion = {
+            "0-4": sum(1 for n in notas if n < 5),
+            "5-6": sum(1 for n in notas if 5 <= n < 7),
+            "7-8": sum(1 for n in notas if 7 <= n < 9),
+            "9-10": sum(1 for n in notas if 9 <= n <= 10),
+        }
+
+        items.append(
+            RendimientoMateriaItem(
+                materia_id=mat_data["materia_id"],
+                materia_nombre=mat_data["materia_nombre"],
+                profesorado=mat_data["profesorado"],
+                total_estudiantes=total,
+                promedio_nota=round(promedio, 2) if promedio else None,
+                tasa_aprobacion=round((aprobados / total * 100), 1) if total > 0 else 0,
+                tasa_desaprobacion=round((desaprobados / total * 100), 1) if total > 0 else 0,
+                distribucion_notas=distribucion,
+            )
+        )
+
+        notas_globales.extend(notas)
+        aprobados_global += aprobados
+        total_global += total
+
+    promedio_general = round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None
+    tasa_aprobacion_general = round((aprobados_global / total_global * 100), 1) if total_global > 0 else 0
+
+    return {
+        "items": items,
+        "profesorado_id": profesorado_id,
+        "profesorado_nombre": prof_name,
+        "promedio_general": promedio_general,
+        "tasa_aprobacion_general": tasa_aprobacion_general,
+    }
+
+
+@router.get("/academic-performance/por-comisiones/", response=RendimientoComisionesOut)
+def rendimiento_por_comisiones(
+    request,
+    profesorado_id: int | None = None,
+):
+    """
+    Rendimiento académico por comisión/cátedra.
+    Útil para identificar cátedras con bajo rendimiento.
+    """
+    require(request.user, "ver_metricas")
+
+    comisiones_qs = Comision.objects.select_related(
+        "horario_catedra__materia",
+        "horario_catedra__profesorado"
+    ).prefetch_related("horario_catedra__staff_asignaciones")
+
+    if profesorado_id:
+        comisiones_qs = comisiones_qs.filter(horario_catedra__profesorado_id=profesorado_id)
+
+    items = []
+    prof_name = None
+    notas_globales = []
+
+    for comision in comisiones_qs:
+        if not comision.horario_catedra.exists():
+            continue
+
+        hc = comision.horario_catedra.first()
+
+        # Notas de estudiantes en esta comisión
+        actas_comision = ActaExamen.objects.filter(
+            materia=hc.materia
+        ).values_list("nota_final", flat=True)
+
+        notas = [n for n in actas_comision if n is not None]
+
+        if not notas:
+            continue
+
+        total = len(notas)
+        aprobados = sum(1 for n in notas if n >= 6)
+        desaprobados = total - aprobados
+        promedio = sum(notas) / total if notas else None
+
+        # Docentes de la comisión
+        docentes_names = [
+            f"{sa.docente.persona.nombre} {sa.docente.persona.apellido}"
+            for sa in hc.staff_asignaciones.all()
+        ] or ["Sin asignar"]
+
+        # Estudiantes en riesgo (nota < 5)
+        estudiantes_riesgo = sum(1 for n in notas if n < 5)
+
+        if profesorado_id and hc.profesorado:
+            prof_name = hc.profesorado.nombre
+
+        items.append(
+            RendimientoComisionItem(
+                comision_codigo=comision.codigo,
+                materia_nombre=hc.materia.nombre,
+                docentes=docentes_names,
+                total_inscritos=total,
+                promedio_nota=round(promedio, 2) if promedio else None,
+                tasa_aprobacion=round((aprobados / total * 100), 1) if total > 0 else 0,
+                tasa_desaprobacion=round((desaprobados / total * 100), 1) if total > 0 else 0,
+                estudiantes_riesgo=estudiantes_riesgo,
+            )
+        )
+
+        notas_globales.extend(notas)
+
+    promedio_general = round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None
+
+    return {
+        "items": items,
+        "profesorado_id": profesorado_id,
+        "total_comisiones": len(items),
+        "promedio_general_notas": promedio_general,
+    }
+
+
+@router.get("/academic-performance/comparacion-cohortes/", response=RendimientoCohortesOut)
+def comparacion_cohortes(
+    request,
+    profesorado_id: int | None = None,
+):
+    """
+    Comparación de rendimiento entre cohortes (años de ingreso).
+    Permite identificar si el desempeño mejora/empeora con el tiempo.
+    """
+    require(request.user, "ver_metricas")
+
+    # Estudiantes por cohorte
+    ec_qs = EstudianteCarrera.objects.select_related("estudiante")
+
+    if profesorado_id:
+        ec_qs = ec_qs.filter(profesorado_id=profesorado_id)
+
+    items = []
+    cohortes_dict = {}
+    prof_name = None
+
+    for ec in ec_qs:
+        cohorte = ec.estudiante.anio_ingreso
+
+        if cohorte not in cohortes_dict:
+            cohortes_dict[cohorte] = {
+                "estudiantes": [],
+                "notas": [],
+            }
+
+        cohortes_dict[cohorte]["estudiantes"].append(ec.estudiante.id)
+
+        if profesorado_id:
+            prof_name = ec.profesorado.nombre
+
+    # Obtener notas para cada cohorte
+    for cohorte in sorted(cohortes_dict.keys(), reverse=True):
+        est_ids = cohortes_dict[cohorte]["estudiantes"]
+
+        actas = ActaExamen.objects.filter(
+            estudiante_id__in=est_ids
+        ).values_list("nota_final", flat=True)
+
+        notas = [n for n in actas if n is not None]
+
+        if notas:
+            total = len(notas)
+            aprobados = sum(1 for n in notas if n >= 6)
+            promedio = sum(notas) / total
+
+            items.append(
+                RendimientoCohortesItem(
+                    cohorte=cohorte,
+                    total_estudiantes=len(est_ids),
+                    promedio_general=round(promedio, 2),
+                    tasa_aprobacion=round((aprobados / total * 100), 1),
+                    distribucion={
+                        "0-4": sum(1 for n in notas if n < 5),
+                        "5-6": sum(1 for n in notas if 5 <= n < 7),
+                        "7-8": sum(1 for n in notas if 7 <= n < 9),
+                        "9-10": sum(1 for n in notas if 9 <= n <= 10),
+                    },
+                )
+            )
+
+    # Comparación histórica (promedio por año)
+    comparacion_historica = {}
+    for item in items:
+        comparacion_historica[str(item.cohorte)] = item.promedio_general
+
+    return {
+        "items": items,
+        "profesorado_id": profesorado_id,
+        "comparacion_historica": comparacion_historica,
     }
