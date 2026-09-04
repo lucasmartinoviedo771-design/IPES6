@@ -236,24 +236,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 						</ListItemButton>
 					)}
 
-					{!studentOnly && canSeeAnalytics && (
-						<ListItemButton
-							selected={
-								current.startsWith("/analytics") ||
-								(current.startsWith("/dashboard") && current.includes("tab=estudiantes"))
-							}
-							onClick={() => navigate("/dashboard?tab=estudiantes")}
-							sx={navButtonSx}
-						>
-							<ListItemIcon>
-								<InsightsIcon fontSize="small" />
-							</ListItemIcon>
-							<ListItemText
-								primary="Alerta Temprana"
-								primaryTypographyProps={{ sx: { color: "#fff" } }}
-							/>
-						</ListItemButton>
-					)}
 
 					{canAsistenciaReportes && (
 						<ListItemButton
