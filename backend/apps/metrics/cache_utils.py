@@ -1,6 +1,8 @@
 """
 Utilidades de caching para analytics.
-Centraliza estrategia de cache con invalidación inteligente.
+
+IMPORTANTE: el chequeo de permisos va SIEMPRE antes de mirar el cache. Ver
+cache_endpoint().
 """
 
 import hashlib
@@ -9,6 +11,8 @@ from functools import wraps
 from typing import Any, Callable
 
 from django.core.cache import cache
+
+from core.permissions import require
 
 
 def get_cache_key(prefix: str, **kwargs) -> str:
@@ -27,13 +31,24 @@ def get_cache_key(prefix: str, **kwargs) -> str:
     return f"analytics:{prefix}:{params_hash}"
 
 
-def cache_endpoint(timeout: int = 300, prefix: str | None = None) -> Callable:
+def cache_endpoint(timeout: int = 300, prefix: str | None = None, capability: str = "ver_metricas") -> Callable:
     """
     Decorador para cachear respuestas de endpoints analíticos.
+
+    El permiso se verifica ANTES de consultar el cache, en cada request.
+
+    El motivo no es teórico: este decorador envuelve la vista completa, así que
+    un acierto de cache devuelve el valor guardado sin ejecutar el cuerpo de la
+    función. Si el `require()` viviera solamente dentro del cuerpo, cualquier
+    usuario autenticado recibiría métricas institucionales cacheadas por otro
+    con permisos, sin control alguno. Por eso el chequeo se hace acá y no se
+    delega en la vista.
 
     Args:
         timeout: Segundos a cachear (default: 5 minutos)
         prefix: Prefijo custom para la cache key (default: nombre de la función)
+        capability: Permiso exigido en cada llamada, incluso con cache HIT.
+            Pasar None solo si la vista es deliberadamente pública.
 
     Ejemplo:
         @cache_endpoint(timeout=600, prefix="students_summary")
@@ -44,6 +59,12 @@ def cache_endpoint(timeout: int = 300, prefix: str | None = None) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
+            if capability:
+                request = kwargs.get("request") or (args[0] if args else None)
+                user = getattr(request, "user", None)
+                # Sin request identificable no se puede autorizar: se niega.
+                require(user, capability)
+
             # Extraer parámetros relevantes (excluir 'request')
             cache_params = {k: v for k, v in kwargs.items() if k != "request"}
 
