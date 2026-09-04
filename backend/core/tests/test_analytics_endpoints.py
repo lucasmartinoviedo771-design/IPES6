@@ -50,25 +50,23 @@ ENDPOINTS = [
 
 
 @pytest.mark.parametrize("nombre,llamar", ENDPOINTS, ids=[n for n, _ in ENDPOINTS])
-def test_endpoint_responde_con_base_vacia(nombre, llamar, req_admin, settings):
+def test_endpoint_responde_con_base_vacia(nombre, llamar, req_admin):
     """
     No debe lanzar FieldError, NameError ni AttributeError por referirse a
     campos o relaciones inexistentes.
     """
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
     resultado = llamar(req_admin)
     assert resultado is not None
     assert isinstance(resultado, dict)
 
 
-def test_ausentismo_avisa_cuando_la_muestra_no_alcanza(req_admin, settings):
+def test_ausentismo_avisa_cuando_la_muestra_no_alcanza(req_admin):
     """
     La asistencia se marca por excepcion: una clase sin marcar queda como
     ausente. Con el modulo en puesta a punto eso da tasas cercanas al 100% que
     no representan el ausentismo real, asi que el endpoint tiene que avisarlo
     en vez de publicar el numero a secas.
     """
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
     d = A.ausentismo_consolidado(req_admin)
 
     assert d["muestra_suficiente"] is False, "sin registros la muestra no puede darse por valida"
@@ -89,7 +87,7 @@ def test_endpoints_exigen_permiso_de_metricas(db):
     assert exc.value.status_code == 403
 
 
-def test_el_cache_no_saltea_el_chequeo_de_permisos(req_admin, settings, db):
+def test_el_cache_no_saltea_el_chequeo_de_permisos(req_admin, cache_real, db):
     """
     Regresion de una vulnerabilidad real.
 
@@ -98,19 +96,10 @@ def test_el_cache_no_saltea_el_chequeo_de_permisos(req_admin, settings, db):
     dentro del cuerpo, cualquier usuario autenticado obtenia las metricas que
     otro con permisos habia dejado cacheadas.
 
-    Se usa LocMemCache para no depender del Redis compartido.
+    Usa la fixture cache_real: necesita un cache que de verdad guarde, porque
+    lo que se prueba es justamente que un HIT no saltee la autorizacion.
     """
     from apps.common.errors import AppError
-
-    settings.CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "test-permisos-cache",
-        }
-    }
-    from django.core.cache import cache
-
-    cache.clear()
 
     # El admin puebla el cache.
     A.students_summary(req_admin)

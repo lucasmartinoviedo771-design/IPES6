@@ -31,7 +31,12 @@ def get_cache_key(prefix: str, **kwargs) -> str:
     return f"analytics:{prefix}:{params_hash}"
 
 
-def cache_endpoint(timeout: int = 300, prefix: str | None = None, capability: str = "ver_metricas") -> Callable:
+def cache_endpoint(
+    timeout: int = 300,
+    prefix: str | None = None,
+    capability: str = "ver_metricas",
+    vary_on_user: bool = False,
+) -> Callable:
     """
     Decorador para cachear respuestas de endpoints analíticos.
 
@@ -49,6 +54,14 @@ def cache_endpoint(timeout: int = 300, prefix: str | None = None, capability: st
         prefix: Prefijo custom para la cache key (default: nombre de la función)
         capability: Permiso exigido en cada llamada, incluso con cache HIT.
             Pasar None solo si la vista es deliberadamente pública.
+        vary_on_user: incluir al usuario en la clave. Necesario si la respuesta
+            depende de quién pregunta (por ejemplo un endpoint que recorta los
+            datos al profesorado del usuario). Con False, todos los usuarios
+            autorizados comparten la misma entrada; eso es correcto solo si la
+            respuesta es idéntica para todos ellos, que es el caso de los
+            endpoints de analytics actuales. Si agregás uno cuyo alcance dependa
+            del rol y no pasás True, un usuario terminaría viendo los datos de
+            otro.
 
     Ejemplo:
         @cache_endpoint(timeout=600, prefix="students_summary")
@@ -67,6 +80,9 @@ def cache_endpoint(timeout: int = 300, prefix: str | None = None, capability: st
 
             # Extraer parámetros relevantes (excluir 'request')
             cache_params = {k: v for k, v in kwargs.items() if k != "request"}
+            if vary_on_user:
+                request = kwargs.get("request") or (args[0] if args else None)
+                cache_params["__user"] = getattr(getattr(request, "user", None), "pk", None)
 
             key = get_cache_key(prefix or func.__name__, **cache_params)
 
