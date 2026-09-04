@@ -343,6 +343,21 @@ export default function TabMesasYTramites() {
 			{/* TAB: TRÁMITES */}
 			{subTab === "tramites" && (
 				<Stack spacing={3}>
+					{!loadingTramites &&
+						tramitesData &&
+						(tramitesData.pedidos_recientes?.length ?? 0) === 0 && (
+							<Alert severity="info" sx={{ borderRadius: 2 }}>
+								<Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+									Todavía no hay trámites registrados
+								</Typography>
+								<Typography variant="caption">
+									No existen pedidos de analítico ni de equivalencia cargados en el
+									sistema. Los indicadores de abajo permanecerán en cero hasta que se
+									registre el primero.
+								</Typography>
+							</Alert>
+						)}
+
 					{/* KPI Cards */}
 					<Grid container spacing={2}>
 						<Grid item xs={12} sm={6} md={3}>

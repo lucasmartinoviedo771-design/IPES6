@@ -18,6 +18,7 @@ import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import WarningIcon from "@mui/icons-material/Warning";
 import SchoolIcon from "@mui/icons-material/School";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCarreras } from "@/api/carreras";
 import AnalyticsFilters from "./AnalyticsFilters";
@@ -92,6 +93,17 @@ export default function TabAusentismo({
 				onProfesoradoChange={onProfesoradoChange}
 				carreras={carreras}
 			/>
+
+			{!isLoading && ausentismoData && !ausentismoData.muestra_suficiente && (
+				<Alert severity="info" icon={<InfoOutlinedIcon />} sx={{ borderRadius: 2 }}>
+					<Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+						Módulo de asistencia en puesta a punto — los valores no son representativos
+					</Typography>
+					<Typography variant="caption">
+						{ausentismoData.nota_metodologica}
+					</Typography>
+				</Alert>
+			)}
 
 			{/* KPI Cards */}
 			<Grid container spacing={2}>

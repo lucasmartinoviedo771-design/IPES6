@@ -388,6 +388,9 @@ export interface AusentismoConsolidadoResponse {
 	estudiantes_criticos: number;
 	fecha_inicio: string | null;
 	fecha_fin: string | null;
+	muestra_suficiente: boolean;
+	cobertura_marcacion: number;
+	nota_metodologica: string;
 }
 
 export const getAusentismoConsolidado = async (params?: {

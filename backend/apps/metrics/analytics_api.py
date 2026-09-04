@@ -290,6 +290,10 @@ class AusentismoConsolidadoOut(Schema):
     estudiantes_criticos: int
     fecha_inicio: str | None
     fecha_fin: str | None
+    # Igual que en desgranamiento-catedra: no publicar una métrica sin muestra representativa.
+    muestra_suficiente: bool
+    cobertura_marcacion: float  # % de registros efectivamente marcados (no-ausente por defecto)
+    nota_metodologica: str
 
 
 class MesaPorTipoItem(Schema):
@@ -1672,6 +1676,35 @@ def ausentismo_consolidado(
     fecha_inicio = evolucion[0]["fecha"] if evolucion else None
     fecha_fin = evolucion[-1]["fecha"] if evolucion else None
 
+    # La asistencia se marca por excepcion: una clase sin marcar queda como "ausente".
+    # Mientras el modulo este en puesta a punto, casi todo el universo figura ausente y
+    # la tasa resultante no representa el ausentismo real. Se expone la cobertura para
+    # que el front pueda avisarlo en lugar de mostrar un numero enganoso.
+    total_registros_periodo = sum(e["total_clases"] for e in evolucion)
+    total_ausencias_periodo = sum(e["ausencias"] for e in evolucion)
+    cobertura_marcacion = (
+        round(((total_registros_periodo - total_ausencias_periodo) / total_registros_periodo) * 100, 1)
+        if total_registros_periodo
+        else 0.0
+    )
+    muestra_suficiente = total_registros_periodo >= 100 and cobertura_marcacion >= 20.0
+
+    if muestra_suficiente:
+        nota_metodologica = (
+            "Tasa de ausentismo = ausencias / clases registradas. Se considera critica una catedra "
+            "por encima del 20% y preocupante por encima del 10%. Un estudiante figura en riesgo "
+            "con mas del 30% de ausencias."
+        )
+    else:
+        nota_metodologica = (
+            "Muestra no representativa: solo el "
+            f"{cobertura_marcacion}% de los registros del periodo tiene marcacion efectiva "
+            f"(sobre {total_registros_periodo} registros). Una clase sin marcar queda como ausente, "
+            "por lo que mientras la toma de asistencia este en puesta a punto la tasa aparece "
+            "artificialmente alta. Los valores se muestran a modo informativo y no deben leerse "
+            "como ausentismo real."
+        )
+
     return {
         "profesorado_id": profesorado_id,
         "profesorado_nombre": prof_name,
@@ -1685,6 +1718,9 @@ def ausentismo_consolidado(
         "estudiantes_criticos": estudiantes_criticos_total,
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
+        "muestra_suficiente": muestra_suficiente,
+        "cobertura_marcacion": cobertura_marcacion,
+        "nota_metodologica": nota_metodologica,
     }
 
 
