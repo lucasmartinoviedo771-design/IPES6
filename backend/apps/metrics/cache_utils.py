@@ -3,11 +3,12 @@ Utilidades de caching para analytics.
 Centraliza estrategia de cache con invalidación inteligente.
 """
 
-from functools import wraps
-from django.core.cache import cache
-from typing import Callable, Any, Optional
 import hashlib
 import json
+from functools import wraps
+from typing import Any, Callable
+
+from django.core.cache import cache
 
 
 def get_cache_key(prefix: str, **kwargs) -> str:
@@ -26,7 +27,7 @@ def get_cache_key(prefix: str, **kwargs) -> str:
     return f"analytics:{prefix}:{params_hash}"
 
 
-def cache_endpoint(timeout: int = 300, prefix: Optional[str] = None) -> Callable:
+def cache_endpoint(timeout: int = 300, prefix: str | None = None) -> Callable:
     """
     Decorador para cachear respuestas de endpoints analíticos.
 

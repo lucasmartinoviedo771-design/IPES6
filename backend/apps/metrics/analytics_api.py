@@ -1,6 +1,5 @@
 import csv
 from datetime import datetime, timedelta
-from typing import Optional
 
 from django.db.models import Avg, Case, CharField, Count, Max, Q, Sum, Value, When
 from django.db.models.functions import ExtractHour, ExtractWeekDay, TruncMonth, TruncWeek
@@ -12,17 +11,16 @@ from ninja.pagination import PageNumberPagination, paginate
 
 from apps.asistencia.models import AsistenciaDocente, ClaseProgramada
 from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+from apps.metrics.cache_utils import cache_endpoint
 from apps.metrics.models import (
     AsistenciaSnapshot,
     AusentismoSnapshot,
     MatriculaSnapshot,
 )
-from apps.metrics.cache_utils import cache_endpoint
 from core.models import (
     ActaExamen,
     ActaExamenEstudiante,
     AuditLog,
-    SystemLog,
     Comision,
     Docente,
     Estudiante,
@@ -30,15 +28,16 @@ from core.models import (
     InscripcionMateriaEstudiante,
     Materia,
     MesaExamen,
+    PedidoAnalitico,
+    PedidoEquivalencia,
     PlanillaRegularidad,
     PlanillaRegularidadDocente,
     PlanillaRegularidadFila,
-    PedidoAnalitico,
-    PedidoEquivalencia,
     Preinscripcion,
     Profesorado,
     Regularidad,
     RiesgoAcademicoEstudiante,
+    SystemLog,
 )
 from core.permissions import can, require
 
@@ -142,13 +141,6 @@ class AsistenciaEvolucionItem(Schema):
     tardias: int
     justificadas: int
     porcentaje_asistencia: float | None
-
-
-class AusentismoEvolucionItem(Schema):
-    fecha: str
-    tasa_ausentismo: float
-    total_estudiantes: int
-    estudiantes_criticos: int
 
 
 class EvolucionOut(Schema):
@@ -1615,7 +1607,7 @@ def ausentismo_consolidado(
     catedras = []
     estudiantes_criticos_total = 0
 
-    for com_id, com_data in comisiones_dict.items():
+    for _com_id, com_data in comisiones_dict.items():
         snapshots_com = com_data["snapshots"]
         comision = com_data["comision"]
         prof = com_data["profesorado"]
