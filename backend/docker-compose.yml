@@ -24,6 +24,21 @@ services:
     env_file:
       - .env
 
+  redis:
+    container_name: ipes6-redis-dev
+    image: redis:7-alpine
+    restart: always
+    # maxmemory con politica LRU: es cache descartable, no debe crecer sin techo
+    # ni tumbar el server. Sin persistencia por el mismo motivo.
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "127.0.0.1:6380:6379" # 6380 en el host para no chocar con otros redis
+
   backend:
     container_name: ipes6-backend-dev
     build:
@@ -36,7 +51,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/1}
       DJANGO_ENV: ${DJANGO_ENV:-production}
       DEBUG: ${DEBUG:-False}
       SECRET_KEY: ${SECRET_KEY}   # Sin fallback — falla explícitamente si no está definida en .env

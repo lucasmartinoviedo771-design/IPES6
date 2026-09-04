@@ -353,3 +353,27 @@ LOGGING = {
         },
     },
 }
+
+
+# --- Cache -------------------------------------------------------------------
+# Con REDIS_URL definido el cache es compartido por los workers de gunicorn y
+# admite borrado por patron. Sin la variable cae a LocMemCache, que funciona
+# pero vive dentro de cada worker: el sistema sigue andando, solo con menos
+# aciertos de cache. Ver apps/metrics/CACHE_STRATEGY.md.
+REDIS_URL = os.getenv("REDIS_URL", "")
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "ipes6",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "ipes6-analytics",
+        }
+    }

@@ -1,8 +1,7 @@
 # Caching de los endpoints de analytics
 
 > Estado real del sistema, verificado el 04/09/2026. Si cambiás algo acá,
-> actualizá este archivo: la versión anterior documentaba un mecanismo de
-> invalidación por signals que no existe.
+> actualizá este archivo.
 
 ## Qué hay hoy
 
@@ -31,53 +30,46 @@ baratos).
 La clave se arma con el prefijo más un hash MD5 de los parámetros, así que
 filtrar por profesorado o por año genera entradas distintas.
 
-## Dos limitaciones que conviene conocer
+## Dónde vive el cache
 
-### 1. Los datos recién cargados tardan en aparecer
+Servicio `redis` del compose (`ipes6-redis-dev`), configurado en settings a
+partir de `REDIS_URL` (por defecto `redis://redis:6379/1`). Es cache
+descartable: arranca con `--save "" --appendonly no`, sin persistencia, y con
+`--maxmemory 256mb --maxmemory-policy allkeys-lru` para que no crezca sin techo.
 
-Si alguien cierra una planilla o carga un acta, el dashboard puede seguir
-mostrando el valor anterior **hasta 15 minutos**. No es un bug: es el TTL.
-Si esa demora molesta, la salida es bajar los TTL de esta tabla, o implementar
-invalidación real (ver abajo).
+**Si `REDIS_URL` no está definida, settings cae a `LocMemCache`** y el sistema
+sigue funcionando, solo que cada worker de gunicorn tiene su propia copia y
+hay menos aciertos. Es un modo degradado válido, no un error.
 
-### 2. El cache está fragmentado entre workers
+## La limitación que queda
 
-No hay `CACHES` configurado en settings, así que Django usa `LocMemCache`, que
-vive **en la memoria de cada proceso**. Gunicorn corre con `--workers 3`, con lo
-cual hay tres caches independientes: una misma consulta puede fallar el cache
-tres veces antes de empezar a acertar. La eficacia real es aproximadamente un
-tercio de la nominal.
+Los datos recién cargados tardan en aparecer: si alguien cierra una planilla o
+carga un acta, el dashboard puede seguir mostrando el valor anterior **hasta 15
+minutos**. No es un bug, es el TTL. No hay invalidación por eventos.
+
+Con Redis ya es posible implementarla (ver abajo); mientras no exista, la
+palanca es bajar los TTL de la tabla de arriba.
 
 ## Medición real
 
-Sobre la base de datos de prueba, `rendimiento_por_materia` (296 materias):
+Sobre la base de datos de prueba, `rendimiento_por_materia` (296 materias),
+midiendo desde **dos procesos distintos** para comprobar que el cache se
+comparte:
 
 ```
-1ra llamada (miss): 166 ms
-2da llamada (hit) :   1 ms
+proceso A (miss, escribe): 121 ms
+proceso B (otro PID, hit):   2 ms
 ```
 
-El cache funciona. El número depende del volumen de datos y del endpoint;
-no extrapolar a los demás sin medir.
+El número depende del volumen de datos y del endpoint; no extrapolar a los
+demás sin medir.
 
-## Si se quiere mejorar
+## Pendiente: invalidación por eventos
 
-Ambas limitaciones se resuelven con lo mismo: mover el cache a Redis.
-
-```python
-# settings.py
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.environ["REDIS_URL"],   # redis://host:6379/1
-        "KEY_PREFIX": "ipes6",
-    }
-}
-```
-
-Eso da un cache compartido por los tres workers (arregla el punto 2) y habilita
-`delete_pattern("ipes6:analytics:*")`, con lo que se puede invalidar de verdad
-desde señales de Django al guardar `ActaExamen`, `Regularidad`, etc.
+Redis soporta borrado por patrón, así que se puede invalidar al guardar
+`ActaExamen`, `Regularidad`, etc. en lugar de esperar el TTL. Requiere
+`django-redis` (el backend nativo de Django no expone `delete_pattern`) o
+mantener un índice de claves propio.
 
 **Advertencia sobre las señales:** hubo un intento previo de hacer esto que
 además de invalidar el cache borraba filas de `MatriculaSnapshot` y
@@ -88,13 +80,11 @@ esos modelos existen para acumular. Si se reimplementa, la señal debe tocar
 ## Cómo inspeccionar el cache
 
 ```bash
-docker exec -it ipes6-backend-dev /app/.venv/bin/python /app/manage.py shell
-```
-```python
-from django.core.cache import cache
-cache.clear()          # vaciar todo
-cache.get("<clave>")   # None = miss
+# listar claves y vaciar (db 1)
+docker exec ipes6-redis-dev redis-cli -n 1 --scan --pattern "ipes6:*"
+docker exec ipes6-redis-dev redis-cli -n 1 dbsize
+docker exec ipes6-redis-dev redis-cli -n 1 flushdb
 ```
 
-Con `LocMemCache` no se puede listar claves ni borrar por patrón, y lo que
-limpies afecta solo al worker que atendió esa consulta.
+Las claves quedan como `ipes6:1:analytics:<prefijo>:<hash>` — Django intercala
+su version del cache entre el KEY_PREFIX y la clave.

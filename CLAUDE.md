@@ -30,21 +30,16 @@ Patrón que usan los cron ya configurados:
 ### Ya configurados
 
 ```
-0 3 1 * *  purge_audit_logs        # purga de AuditLog, día 1 de cada mes
-30 23 * * * calcular_snapshots      # snapshots diarios de matrícula/asistencia/ausentismo
+0 3 1 * *  purge_audit_logs                       # purga de AuditLog, día 1 de cada mes
+30 23 * * * calcular_snapshots                     # snapshots diarios de matrícula/asistencia/ausentismo
+0 6 1 6 *  verificar_residencias_condicionales     # 01/06 anual, ver detalle abajo
 ```
 
 `calcular_snapshots` alimenta los gráficos de evolución del dashboard. Es
 idempotente y acepta `--fecha AAAA-MM-DD` para rellenar días faltantes, y
 `--profesorado-id N` para acotar el alcance.
 
-### PENDIENTE: residencias condicionales
-
-Falta agregar (verificado: no está en el crontab):
-
-```
-0 6 1 6 * docker exec -u root ipes6-backend-dev /app/.venv/bin/python /app/manage.py verificar_residencias_condicionales >> /home/admin486321/NuevoIPES/logs/backend/residencias.log 2>&1
-```
+### Residencias condicionales
 
 **Qué hace:** El 01/06 a las 6am, verifica todas las inscripciones condicionales a
 Residencia (Práctica IV / Talleres de Residencia) del ciclo lectivo en curso.
