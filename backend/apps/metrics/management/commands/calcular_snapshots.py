@@ -77,11 +77,7 @@ class Command(BaseCommand):
         n_asi = self._asistencia(fecha, prof_id)
         n_aus = self._ausentismo(fecha, prof_id)
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Listo: {n_mat} matrícula, {n_asi} asistencia, {n_aus} ausentismo."
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f"Listo: {n_mat} matrícula, {n_asi} asistencia, {n_aus} ausentismo."))
 
     def _guardar(self, model, defaults, **claves):
         if self.dry_run:
@@ -104,9 +100,7 @@ class Command(BaseCommand):
             }
 
             reg = Regularidad.objects.filter(materia__plan_de_estudio__profesorado=prof)
-            agg = reg.aggregate(
-                nota=Avg("nota_final_cursada"), asis=Avg("asistencia_porcentaje")
-            )
+            agg = reg.aggregate(nota=Avg("nota_final_cursada"), asis=Avg("asistencia_porcentaje"))
 
             self._guardar(
                 MatriculaSnapshot,
@@ -128,9 +122,7 @@ class Command(BaseCommand):
         """Asistencia agregada de estudiantes, por profesorado."""
         n = 0
         for prof in self._profesorados(prof_id):
-            qs = AsistenciaEstudiante.objects.filter(
-                clase__comision__materia__plan_de_estudio__profesorado=prof
-            )
+            qs = AsistenciaEstudiante.objects.filter(clase__comision__materia__plan_de_estudio__profesorado=prof)
 
             conteos = qs.aggregate(
                 total=Count("id"),
@@ -163,13 +155,9 @@ class Command(BaseCommand):
 
     def _ausentismo(self, fecha, prof_id):
         """Ausentismo por comisión, con conteo de estudiantes críticos."""
-        comisiones = Comision.objects.select_related(
-            "materia__plan_de_estudio__profesorado"
-        )
+        comisiones = Comision.objects.select_related("materia__plan_de_estudio__profesorado")
         if prof_id:
-            comisiones = comisiones.filter(
-                materia__plan_de_estudio__profesorado_id=prof_id
-            )
+            comisiones = comisiones.filter(materia__plan_de_estudio__profesorado_id=prof_id)
 
         n = 0
         for comision in comisiones:

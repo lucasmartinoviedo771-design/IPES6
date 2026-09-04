@@ -329,7 +329,10 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
 @management_router.get("/solicitudes_mesas", response=list[SolicitudMesaOut], auth=JWTAuth())
 def list_solicitudes(request, ventana_id: int | None = None, estado: str | None = None):
     from core.permissions import can
-    if not (can(request.user, "ver_actas") or can(request.user, "ver_estructura") or can(request.user, "editar_estructura")):
+
+    if not (
+        can(request.user, "ver_actas") or can(request.user, "ver_estructura") or can(request.user, "editar_estructura")
+    ):
         require(request.user, "ver_actas")
 
     qs = SolicitudMesa.objects.select_related(
@@ -396,9 +399,21 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
     res = []
     for s in items:
         m = s.mesa_asignada
-        pres = f"{m.docente_presidente.persona.apellido}, {m.docente_presidente.persona.nombre}" if (m and m.docente_presidente and m.docente_presidente.persona) else None
-        v1 = f"{m.docente_vocal1.persona.apellido}, {m.docente_vocal1.persona.nombre}" if (m and m.docente_vocal1 and m.docente_vocal1.persona) else None
-        v2 = f"{m.docente_vocal2.persona.apellido}, {m.docente_vocal2.persona.nombre}" if (m and m.docente_vocal2 and m.docente_vocal2.persona) else None
+        pres = (
+            f"{m.docente_presidente.persona.apellido}, {m.docente_presidente.persona.nombre}"
+            if (m and m.docente_presidente and m.docente_presidente.persona)
+            else None
+        )
+        v1 = (
+            f"{m.docente_vocal1.persona.apellido}, {m.docente_vocal1.persona.nombre}"
+            if (m and m.docente_vocal1 and m.docente_vocal1.persona)
+            else None
+        )
+        v2 = (
+            f"{m.docente_vocal2.persona.apellido}, {m.docente_vocal2.persona.nombre}"
+            if (m and m.docente_vocal2 and m.docente_vocal2.persona)
+            else None
+        )
 
         res.append(
             SolicitudMesaOut(

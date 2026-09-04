@@ -718,11 +718,7 @@ def preinscripciones_summary(
     por_estado = {row["estado_norm"]: row["total"] for row in por_estado_raw}
 
     # Desglose por carrera
-    por_carrera_raw = (
-        qs.values("carrera_id", "carrera__nombre")
-        .annotate(total=Count("id"))
-        .order_by("-total")
-    )
+    por_carrera_raw = qs.values("carrera_id", "carrera__nombre").annotate(total=Count("id")).order_by("-total")
     por_profesorado = [
         PreinscripcionCarreraItem(
             profesorado_id=row["carrera_id"],
@@ -808,10 +804,7 @@ def teacher_attendance_summary(
     if profesorado_id:
         qs = qs.filter(clase__comision__materia__plan_de_estudio__profesorado_id=profesorado_id)
 
-    counts = {
-        row["estado"]: row["total"]
-        for row in qs.values("estado").annotate(total=Count("id"))
-    }
+    counts = {row["estado"]: row["total"] for row in qs.values("estado").annotate(total=Count("id"))}
 
     presentes = counts.get("presente", 0)
     ausentes = counts.get("ausente", 0)
@@ -848,9 +841,9 @@ def teacher_attendance_by_weekday(
     """
     docente = _check_metrics_access(request, docente_id)
 
-    qs = AsistenciaDocente.objects.filter(
-        estado__in=["ausente", "ausente_justificado", "licencia"]
-    ).filter(clase__fecha__isnull=False)
+    qs = AsistenciaDocente.objects.filter(estado__in=["ausente", "ausente_justificado", "licencia"]).filter(
+        clase__fecha__isnull=False
+    )
 
     if docente:
         qs = qs.filter(docente=docente)
@@ -861,10 +854,7 @@ def teacher_attendance_by_weekday(
 
     # Agrupación por día de la semana (Django ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday)
     by_weekday_raw = (
-        qs.annotate(dia=ExtractWeekDay("clase__fecha"))
-        .values("dia")
-        .annotate(total=Count("id"))
-        .order_by("dia")
+        qs.annotate(dia=ExtractWeekDay("clase__fecha")).values("dia").annotate(total=Count("id")).order_by("dia")
     )
 
     dias_nombres = {
@@ -910,9 +900,11 @@ def teachers_desgranamiento_catedra(
     if not (request.user.is_superuser or can(request.user, "ver_metricas") or can(request.user, "ver_dashboard")):
         raise HttpError(403, "No tiene permisos para ver métricas de cátedras.")
 
-    planillas_qs = PlanillaRegularidad.objects.filter(estado=PlanillaRegularidad.Estado.FINAL).select_related(
-        "materia", "materia__plan_de_estudio", "profesorado", "comision"
-    ).prefetch_related("docentes__docente", "filas")
+    planillas_qs = (
+        PlanillaRegularidad.objects.filter(estado=PlanillaRegularidad.Estado.FINAL)
+        .select_related("materia", "materia__plan_de_estudio", "profesorado", "comision")
+        .prefetch_related("docentes__docente", "filas")
+    )
 
     if anio:
         planillas_qs = planillas_qs.filter(anio_academico=anio)
@@ -922,7 +914,12 @@ def teachers_desgranamiento_catedra(
         planillas_qs = planillas_qs.filter(materia_id=materia_id)
 
     # 1. Primero agrupamos inscriptos y abandonos (LAT, LBI) por año de cursada para calcular promedios
-    totales_por_anio_cursada = {1: {"inscriptos": 0, "desgranados": 0}, 2: {"inscriptos": 0, "desgranados": 0}, 3: {"inscriptos": 0, "desgranados": 0}, 4: {"inscriptos": 0, "desgranados": 0}}
+    totales_por_anio_cursada = {
+        1: {"inscriptos": 0, "desgranados": 0},
+        2: {"inscriptos": 0, "desgranados": 0},
+        3: {"inscriptos": 0, "desgranados": 0},
+        4: {"inscriptos": 0, "desgranados": 0},
+    }
 
     planillas_data = []
     sin_muestra_count = 0
@@ -966,18 +963,20 @@ def teachers_desgranamiento_catedra(
                     hubo_suplencia = True
                 docentes_list.append(f"{staff.docente} ({staff.rol})")
 
-        planillas_data.append({
-            "materia_id": p.materia_id,
-            "materia_nombre": p.materia.nombre,
-            "anio_cursada": anio_cursada,
-            "profesorado_nombre": p.profesorado.nombre if p.profesorado else "",
-            "comision_codigo": p.comision.codigo if p.comision else f"Comisión {p.numero}",
-            "docentes": docentes_list,
-            "hubo_suplencia": hubo_suplencia,
-            "total_inscriptos": total_inscr,
-            "desgranados_count": desgranados_count,
-            "muestra_suficiente": total_inscr >= 15,
-        })
+        planillas_data.append(
+            {
+                "materia_id": p.materia_id,
+                "materia_nombre": p.materia.nombre,
+                "anio_cursada": anio_cursada,
+                "profesorado_nombre": p.profesorado.nombre if p.profesorado else "",
+                "comision_codigo": p.comision.codigo if p.comision else f"Comisión {p.numero}",
+                "docentes": docentes_list,
+                "hubo_suplencia": hubo_suplencia,
+                "total_inscriptos": total_inscr,
+                "desgranados_count": desgranados_count,
+                "muestra_suficiente": total_inscr >= 15,
+            }
+        )
 
     # Calcular tasas promedio por año de cursada
     promedios_por_anio = {}
@@ -1072,9 +1071,7 @@ def matricula_evolucion(request, profesorado_id: int | None = None, dias: int | 
     require(request.user, "ver_metricas")
 
     dias = dias or 90
-    por_fecha, f_ini, f_fin = _snapshots_por_fecha(
-        MatriculaSnapshot, dias, profesorado_id=profesorado_id
-    )
+    por_fecha, f_ini, f_fin = _snapshots_por_fecha(MatriculaSnapshot, dias, profesorado_id=profesorado_id)
 
     items = []
     for fecha in sorted(por_fecha):
@@ -1084,13 +1081,15 @@ def matricula_evolucion(request, profesorado_id: int | None = None, dias: int | 
             for clave, valor in (snap.por_estado or {}).items():
                 estados[clave] = estados.get(clave, 0) + valor
 
-        items.append({
-            "fecha": fecha.isoformat(),
-            "total_matriculados": sum(s.total_matriculados for s in grupo),
-            "promedio_notas": _promedio([s.promedio_notas for s in grupo]),
-            "promedio_asistencia": _promedio([s.promedio_asistencia for s in grupo]),
-            "por_estado": estados,
-        })
+        items.append(
+            {
+                "fecha": fecha.isoformat(),
+                "total_matriculados": sum(s.total_matriculados for s in grupo),
+                "promedio_notas": _promedio([s.promedio_notas for s in grupo]),
+                "promedio_asistencia": _promedio([s.promedio_asistencia for s in grupo]),
+                "por_estado": estados,
+            }
+        )
 
     return {
         "items": items,
@@ -1106,9 +1105,7 @@ def asistencia_evolucion(request, profesorado_id: int | None = None, dias: int |
     require(request.user, "ver_metricas")
 
     dias = dias or 90
-    por_fecha, f_ini, f_fin = _snapshots_por_fecha(
-        AsistenciaSnapshot, dias, profesorado_id=profesorado_id
-    )
+    por_fecha, f_ini, f_fin = _snapshots_por_fecha(AsistenciaSnapshot, dias, profesorado_id=profesorado_id)
 
     items = []
     for fecha in sorted(por_fecha):
@@ -1116,15 +1113,17 @@ def asistencia_evolucion(request, profesorado_id: int | None = None, dias: int |
         total = sum(s.total_registros for s in grupo)
         presentes = sum(s.presentes for s in grupo)
 
-        items.append({
-            "fecha": fecha.isoformat(),
-            "total_registros": total,
-            "presentes": presentes,
-            "ausentes": sum(s.ausentes for s in grupo),
-            "tardias": sum(s.tardias for s in grupo),
-            "justificadas": sum(s.justificadas for s in grupo),
-            "porcentaje_asistencia": round(presentes / total * 100, 2) if total else None,
-        })
+        items.append(
+            {
+                "fecha": fecha.isoformat(),
+                "total_registros": total,
+                "presentes": presentes,
+                "ausentes": sum(s.ausentes for s in grupo),
+                "tardias": sum(s.tardias for s in grupo),
+                "justificadas": sum(s.justificadas for s in grupo),
+                "porcentaje_asistencia": round(presentes / total * 100, 2) if total else None,
+            }
+        )
 
     return {
         "items": items,
@@ -1156,12 +1155,14 @@ def ausentismo_evolucion(
         registros = sum((s.detalles or {}).get("total_registros", 0) for s in grupo)
         ausencias = sum((s.detalles or {}).get("ausencias", 0) for s in grupo)
 
-        items.append({
-            "fecha": fecha.isoformat(),
-            "tasa_ausentismo": round(ausencias / registros * 100, 2) if registros else 0.0,
-            "total_estudiantes": sum(s.total_estudiantes for s in grupo),
-            "estudiantes_criticos": sum(s.estudiantes_críticos for s in grupo),
-        })
+        items.append(
+            {
+                "fecha": fecha.isoformat(),
+                "tasa_ausentismo": round(ausencias / registros * 100, 2) if registros else 0.0,
+                "total_estudiantes": sum(s.total_estudiantes for s in grupo),
+                "estudiantes_criticos": sum(s.estudiantes_críticos for s in grupo),
+            }
+        )
 
     return {
         "items": items,
@@ -1195,9 +1196,9 @@ def rendimiento_por_materia(request, profesorado_id: int | None = None):
     """Rendimiento académico desglosado por materia."""
     require(request.user, "ver_metricas")
 
-    qs = ActaExamenEstudiante.objects.filter(
-        calificacion_numerica__isnull=False
-    ).select_related("acta__materia", "acta__profesorado")
+    qs = ActaExamenEstudiante.objects.filter(calificacion_numerica__isnull=False).select_related(
+        "acta__materia", "acta__profesorado"
+    )
 
     if profesorado_id:
         qs = qs.filter(acta__profesorado_id=profesorado_id)
@@ -1277,14 +1278,10 @@ def rendimiento_por_comisiones(request, profesorado_id: int | None = None):
     """
     require(request.user, "ver_metricas")
 
-    comisiones = Comision.objects.select_related(
-        "materia", "docente", "suplente"
-    ).order_by("materia__nombre", "codigo")
+    comisiones = Comision.objects.select_related("materia", "docente", "suplente").order_by("materia__nombre", "codigo")
 
     if profesorado_id:
-        comisiones = comisiones.filter(
-            materia__plan_de_estudio__profesorado_id=profesorado_id
-        )
+        comisiones = comisiones.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
 
     # Notas por (materia, año) en una sola pasada
     notas_qs = ActaExamenEstudiante.objects.filter(calificacion_numerica__isnull=False)
@@ -1292,9 +1289,7 @@ def rendimiento_por_comisiones(request, profesorado_id: int | None = None):
         notas_qs = notas_qs.filter(acta__profesorado_id=profesorado_id)
 
     notas_por_materia_anio: dict[tuple, list[int]] = {}
-    for fila in notas_qs.values(
-        "acta__materia_id", "acta__anio_academico", "calificacion_numerica"
-    ):
+    for fila in notas_qs.values("acta__materia_id", "acta__anio_academico", "calificacion_numerica"):
         clave = (fila["acta__materia_id"], fila["acta__anio_academico"])
         notas_por_materia_anio.setdefault(clave, []).append(fila["calificacion_numerica"])
 
@@ -1335,9 +1330,7 @@ def rendimiento_por_comisiones(request, profesorado_id: int | None = None):
         "items": items,
         "profesorado_id": profesorado_id,
         "total_comisiones": len(items),
-        "promedio_general_notas": (
-            round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None
-        ),
+        "promedio_general_notas": (round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None),
     }
 
 
@@ -1353,9 +1346,7 @@ def comparacion_cohortes(request, profesorado_id: int | None = None):
     """
     require(request.user, "ver_metricas")
 
-    ec_qs = EstudianteCarrera.objects.select_related("estudiante").filter(
-        estudiante__anio_ingreso__isnull=False
-    )
+    ec_qs = EstudianteCarrera.objects.select_related("estudiante").filter(estudiante__anio_ingreso__isnull=False)
     if profesorado_id:
         ec_qs = ec_qs.filter(profesorado_id=profesorado_id)
 
@@ -1461,19 +1452,21 @@ def auditoria_dashboard(request):
         del_dia = logs.filter(timestamp__date=fecha)
         logins_dia = del_dia.filter(accion=AuditLog.Accion.LOGIN)
 
-        logins_por_dia.append({
-            "fecha": fecha.isoformat(),
-            "total_logins": logins_dia.count(),
-            "usuarios_unicos": logins_dia.values("usuario_id").distinct().count(),
-        })
-        evolucion_7d.append({
-            "fecha": fecha.isoformat(),
-            "logins": logins_dia.count(),
-            "acciones_crud": del_dia.filter(accion__in=acciones_crud).count(),
-            "errores": sys_logs.filter(
-                created_at__date=fecha, tipo__in=["SYSTEM_ERROR", "IMPORT_ERROR"]
-            ).count(),
-        })
+        logins_por_dia.append(
+            {
+                "fecha": fecha.isoformat(),
+                "total_logins": logins_dia.count(),
+                "usuarios_unicos": logins_dia.values("usuario_id").distinct().count(),
+            }
+        )
+        evolucion_7d.append(
+            {
+                "fecha": fecha.isoformat(),
+                "logins": logins_dia.count(),
+                "acciones_crud": del_dia.filter(accion__in=acciones_crud).count(),
+                "errores": sys_logs.filter(created_at__date=fecha, tipo__in=["SYSTEM_ERROR", "IMPORT_ERROR"]).count(),
+            }
+        )
 
     # Top acciones
     total_acciones = logs.count()
@@ -1543,9 +1536,7 @@ def ausentismo_consolidado(
     fecha_limite = timezone.now().date() - timedelta(days=dias)
 
     # 1. EVOLUCIÓN TEMPORAL (últimos N días)
-    snapshots = AusentismoSnapshot.objects.filter(
-        fecha_snapshot__gte=fecha_limite
-    ).order_by("fecha_snapshot")
+    snapshots = AusentismoSnapshot.objects.filter(fecha_snapshot__gte=fecha_limite).order_by("fecha_snapshot")
 
     if profesorado_id:
         snapshots = snapshots.filter(profesorado_id=profesorado_id)
@@ -1576,19 +1567,19 @@ def ausentismo_consolidado(
         total = data["total_clases"]
         tasa = (data["ausencias"] / total * 100) if total > 0 else 0
 
-        evolucion.append({
-            "fecha": fecha.isoformat(),
-            "tasa_ausentismo": round(tasa, 1),
-            "total_clases": total,
-            "ausencias": data["ausencias"],
-            "tardias": data["tardias"],
-            "estudiantes_sin_registro": data["estudiantes_sin_registro"],
-        })
+        evolucion.append(
+            {
+                "fecha": fecha.isoformat(),
+                "tasa_ausentismo": round(tasa, 1),
+                "total_clases": total,
+                "ausencias": data["ausencias"],
+                "tardias": data["tardias"],
+                "estudiantes_sin_registro": data["estudiantes_sin_registro"],
+            }
+        )
 
     # 2. RESUMEN GENERAL
-    tasa_promedio = round(
-        sum(e["tasa_ausentismo"] for e in evolucion) / len(evolucion), 1
-    ) if evolucion else 0
+    tasa_promedio = round(sum(e["tasa_ausentismo"] for e in evolucion) / len(evolucion), 1) if evolucion else 0
     tasa_maxima = max((e["tasa_ausentismo"] for e in evolucion), default=0)
 
     # 3. POR COMISIÓN (snapshot más reciente + histórico)
@@ -1624,8 +1615,8 @@ def ausentismo_consolidado(
         fecha_hace_7d = timezone.now().date() - timedelta(days=7)
         snapshots_7d = [s for s in snapshots_com if s.fecha_snapshot >= fecha_hace_7d]
         tasa_promedio_7d = (
-            sum(s.tasa_ausentismo for s in snapshots_7d) / len(snapshots_7d)
-        ) if snapshots_7d else tasa_actual
+            (sum(s.tasa_ausentismo for s in snapshots_7d) / len(snapshots_7d)) if snapshots_7d else tasa_actual
+        )
 
         # Tendencia
         if len(snapshots_7d) >= 2:
@@ -1648,16 +1639,18 @@ def ausentismo_consolidado(
         if comision.suplente:
             docentes.append(f"{comision.suplente} (suplente)")
 
-        catedras.append({
-            "codigo_comision": f"{comision.codigo} ({comision.anio_lectivo})",
-            "materia": comision.materia.nombre if comision.materia else "N/A",
-            "docentes": docentes or ["Sin asignar"],
-            "tasa_ausentismo_actual": round(tasa_actual, 1),
-            "tasa_ausentismo_promedio_7d": round(tasa_promedio_7d, 1),
-            "estudiantes_en_riesgo": ultimo_snap.estudiantes_críticos,
-            "total_estudiantes": ultimo_snap.total_estudiantes,
-            "tendencia": tendencia,
-        })
+        catedras.append(
+            {
+                "codigo_comision": f"{comision.codigo} ({comision.anio_lectivo})",
+                "materia": comision.materia.nombre if comision.materia else "N/A",
+                "docentes": docentes or ["Sin asignar"],
+                "tasa_ausentismo_actual": round(tasa_actual, 1),
+                "tasa_ausentismo_promedio_7d": round(tasa_promedio_7d, 1),
+                "estudiantes_en_riesgo": ultimo_snap.estudiantes_críticos,
+                "total_estudiantes": ultimo_snap.total_estudiantes,
+                "tendencia": tendencia,
+            }
+        )
 
     # Ordenar por tasa de ausentismo (críticas primero)
     catedras.sort(key=lambda x: x["tasa_ausentismo_actual"], reverse=True)
@@ -1745,21 +1738,21 @@ def mesas_dashboard(request):
     for fila in ActaExamenEstudiante.objects.filter(
         calificacion_numerica__isnull=False, acta__mesa__isnull=False
     ).values("acta__mesa__tipo", "calificacion_numerica"):
-        notas_por_tipo.setdefault(fila["acta__mesa__tipo"], []).append(
-            fila["calificacion_numerica"]
-        )
+        notas_por_tipo.setdefault(fila["acta__mesa__tipo"], []).append(fila["calificacion_numerica"])
 
     por_tipo = []
     for fila in mesas.values("tipo").annotate(cantidad=Count("id")).order_by("-cantidad"):
         tipo = fila["tipo"]
         notas = notas_por_tipo.get(tipo, [])
         aprobados = sum(1 for n in notas if n >= 6)
-        por_tipo.append({
-            "tipo_mesa": etiquetas_tipo.get(tipo, tipo or "Sin especificar"),
-            "cantidad": fila["cantidad"],
-            "promedio_nota": round(sum(notas) / len(notas), 2) if notas else None,
-            "tasa_aprobacion": round(aprobados / len(notas) * 100, 1) if notas else 0,
-        })
+        por_tipo.append(
+            {
+                "tipo_mesa": etiquetas_tipo.get(tipo, tipo or "Sin especificar"),
+                "cantidad": fila["cantidad"],
+                "promedio_nota": round(sum(notas) / len(notas), 2) if notas else None,
+                "tasa_aprobacion": round(aprobados / len(notas) * 100, 1) if notas else 0,
+            }
+        )
 
     # Resultados: se derivan de los totales que ya trae cada acta
     totales = ActaExamen.objects.aggregate(
@@ -1802,12 +1795,8 @@ def mesas_dashboard(request):
     return {
         "total_mesas": total_mesas,
         "mesas_pendientes": mesas_pendientes,
-        "promedio_general_notas": (
-            round(sum(todas_las_notas) / len(todas_las_notas), 2) if todas_las_notas else None
-        ),
-        "tasa_aprobacion_general": (
-            round(aprobadas_total / len(todas_las_notas) * 100, 1) if todas_las_notas else 0
-        ),
+        "promedio_general_notas": (round(sum(todas_las_notas) / len(todas_las_notas), 2) if todas_las_notas else None),
+        "tasa_aprobacion_general": (round(aprobadas_total / len(todas_las_notas) * 100, 1) if todas_las_notas else 0),
         "por_tipo": por_tipo,
         "por_resultado": por_resultado,
         "ultimas_mesas": ultimas_mesas,
@@ -1848,16 +1837,12 @@ def tramites_dashboard(request):
 
     # Finalizados vs en curso
     analiticos_entregados = analiticos.filter(estado=PedidoAnalitico.Estado.ENTREGADO)
-    equiv_notificadas = equivalencias.filter(
-        workflow_estado=PedidoEquivalencia.WorkflowEstado.NOTIFICADO
-    )
+    equiv_notificadas = equivalencias.filter(workflow_estado=PedidoEquivalencia.WorkflowEstado.NOTIFICADO)
 
     total_finalizados = analiticos_entregados.count() + equiv_notificadas.count()
     total_pendientes = (
         analiticos.exclude(estado=PedidoAnalitico.Estado.ENTREGADO).count()
-        + equivalencias.exclude(
-            workflow_estado=PedidoEquivalencia.WorkflowEstado.NOTIFICADO
-        ).count()
+        + equivalencias.exclude(workflow_estado=PedidoEquivalencia.WorkflowEstado.NOTIFICADO).count()
     )
 
     # Tiempos de resolución sobre lo que sí tiene fecha de cierre
@@ -1872,25 +1857,29 @@ def tramites_dashboard(request):
     # Últimos trámites de ambos tipos
     recientes = []
     for p in analiticos[:10]:
-        recientes.append({
-            "id": p.id,
-            "tipo": "Analítico",
-            "estado": etiquetas_analitico.get(p.estado, p.estado),
-            "estudiante_nombre": str(p.estudiante),
-            "dias_transcurridos": (hoy - p.created_at.date()).days,
-            "fecha_solicitud": p.created_at.isoformat(),
-            "observaciones": p.motivo_otro or None,
-        })
+        recientes.append(
+            {
+                "id": p.id,
+                "tipo": "Analítico",
+                "estado": etiquetas_analitico.get(p.estado, p.estado),
+                "estudiante_nombre": str(p.estudiante),
+                "dias_transcurridos": (hoy - p.created_at.date()).days,
+                "fecha_solicitud": p.created_at.isoformat(),
+                "observaciones": p.motivo_otro or None,
+            }
+        )
     for p in equivalencias[:10]:
-        recientes.append({
-            "id": p.id,
-            "tipo": "Equivalencia",
-            "estado": etiquetas_workflow.get(p.workflow_estado, p.workflow_estado),
-            "estudiante_nombre": str(p.estudiante),
-            "dias_transcurridos": (hoy - p.created_at.date()).days,
-            "fecha_solicitud": p.created_at.isoformat(),
-            "observaciones": p.profesorado_destino_nombre or None,
-        })
+        recientes.append(
+            {
+                "id": p.id,
+                "tipo": "Equivalencia",
+                "estado": etiquetas_workflow.get(p.workflow_estado, p.workflow_estado),
+                "estudiante_nombre": str(p.estudiante),
+                "dias_transcurridos": (hoy - p.created_at.date()).days,
+                "fecha_solicitud": p.created_at.isoformat(),
+                "observaciones": p.profesorado_destino_nombre or None,
+            }
+        )
 
     recientes.sort(key=lambda x: x["fecha_solicitud"], reverse=True)
 

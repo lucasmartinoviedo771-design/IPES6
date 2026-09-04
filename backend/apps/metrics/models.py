@@ -111,9 +111,7 @@ class AusentismoSnapshot(models.Model):
     fecha_snapshot = models.DateField(
         db_index=True,
     )
-    tasa_ausentismo = models.FloatField(
-        help_text="Porcentaje de ausencias sobre total de asistencias registradas."
-    )
+    tasa_ausentismo = models.FloatField(help_text="Porcentaje de ausencias sobre total de asistencias registradas.")
     total_estudiantes = models.IntegerField(default=0)
     estudiantes_sin_registro = models.IntegerField(default=0)
     estudiantes_críticos = models.IntegerField(

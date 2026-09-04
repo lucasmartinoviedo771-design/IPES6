@@ -40,6 +40,7 @@ def cache_endpoint(timeout: int = 300, prefix: str | None = None) -> Callable:
         def students_summary(request, anio=None, profesorado_id=None):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
@@ -62,6 +63,7 @@ def cache_endpoint(timeout: int = 300, prefix: str | None = None) -> Callable:
             return result
 
         return wrapper
+
     return decorator
 
 
