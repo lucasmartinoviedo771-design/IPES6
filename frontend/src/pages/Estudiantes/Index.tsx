@@ -31,7 +31,7 @@ import {
 	INSTITUTIONAL_GREEN,
 	INSTITUTIONAL_TERRACOTTA,
 } from "@/styles/institutionalColors";
-import { hasAnyRole, hasRole } from "@/utils/roles";
+import { hasAnyRole, hasCapability, hasRole } from "@/utils/roles";
 
 type EventCard = {
 	title: string;
@@ -201,7 +201,10 @@ export default function EstudiantesIndex() {
 	const navigate = useNavigate();
 	const { user } = useAuth();
 	const isStudent = hasAnyRole(user, ["estudiante", "estudiantes"]);
-	const isAdmin = hasAnyRole(user, ["admin", "secretaria", "bedel"]);
+	const canManageEstudiantes =
+		hasAnyRole(user, ["admin", "secretaria", "bedel", "bedel_secretaria"]) ||
+		hasCapability(user, "ver_estudiantes");
+	const isAdmin = canManageEstudiantes;
 
 	const { data: cursoIntroEstado } = useQuery({
 		queryKey: ["curso-intro", "estado"],
