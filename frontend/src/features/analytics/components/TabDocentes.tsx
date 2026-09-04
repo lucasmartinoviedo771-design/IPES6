@@ -1,4 +1,3 @@
-import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -77,26 +76,6 @@ export default function TabDocentes({
 
 	return (
 		<Stack spacing={3}>
-			{/* Aclaración metodológica obligatoria */}
-			<Alert
-				severity="info"
-				sx={{
-					borderRadius: 2,
-					backgroundColor: "#f8fafc",
-					border: "1px solid #cbd5e1",
-					"& .MuiAlert-icon": { color: "#0284c7" },
-				}}
-			>
-				<Typography variant="subtitle2" fontWeight={700} color="#0f172a">
-					Aviso Metodológico Institucional
-				</Typography>
-				<Typography variant="body2" color="#334155" mt={0.5}>
-					La <strong>Tasa de Desgranamiento por Cátedra</strong> refleja el porcentaje de alumnos que no
-					continuaron la cursada regular (Libre por Inasistencias o Abandono Temprano). No debe interpretarse
-					como una evaluación causal directa del desempeño docente, ya que intervienen variables determinantes como el año de cursada (alto desgranamiento estructural en 1° año), correlatividades y licencias o suplencias transitorias. Solo se calculan tasas para comisiones con un mínimo de 15 alumnos inscriptos.
-				</Typography>
-			</Alert>
-
 			{/* Filtros */}
 			<Paper
 				elevation={0}
