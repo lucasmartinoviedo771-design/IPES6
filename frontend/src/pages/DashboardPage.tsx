@@ -26,9 +26,26 @@ import {
 } from "@/styles/institutionalColors";
 import GavelIcon from "@mui/icons-material/Gavel";
 import ReportIcon from "@mui/icons-material/Report";
-import SchoolIcon from "@mui/icons-material/School";
+import EventNoteIcon from "@mui/icons-material/EventNote";
 
-type TabKey = "preinscripciones" | "estudiantes" | "docentes" | "rendimiento" | "auditoria" | "ausentismo" | "mesas";
+type TabKey =
+	| "preinscripciones"
+	| "estudiantes"
+	| "docentes"
+	| "rendimiento"
+	| "auditoria"
+	| "ausentismo"
+	| "mesas";
+
+const TABS_VALIDAS: TabKey[] = [
+	"preinscripciones",
+	"estudiantes",
+	"docentes",
+	"rendimiento",
+	"auditoria",
+	"ausentismo",
+	"mesas",
+];
 
 export default function DashboardPage() {
 	const navigate = useNavigate();
@@ -37,7 +54,7 @@ export default function DashboardPage() {
 	// 1. Manejo del Tab activo sincronizado con la URL
 	const currentTabParam = (searchParams.get("tab") as TabKey) || "preinscripciones";
 	const [currentTab, setCurrentTab] = useState<TabKey>(
-		["preinscripciones", "estudiantes", "docentes"].includes(currentTabParam)
+		TABS_VALIDAS.includes(currentTabParam)
 			? currentTabParam
 			: "preinscripciones",
 	);
@@ -200,7 +217,7 @@ export default function DashboardPage() {
 					/>
 					<Tab
 						value="mesas"
-						icon={<SchoolIcon />}
+						icon={<EventNoteIcon />}
 						iconPosition="start"
 						label="Mesas & Trámites"
 					/>

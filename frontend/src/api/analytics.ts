@@ -443,8 +443,7 @@ export interface PedidoItem {
 
 export interface TramitesDashboardResponse {
 	total_pendientes: number;
-	total_aprobados: number;
-	total_rechazados: number;
+	total_finalizados: number;
 	tiempo_promedio_resolucion: number;
 	tiempo_maximo: number;
 	por_estado: Record<string, number>;

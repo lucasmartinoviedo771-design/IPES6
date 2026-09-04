@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from django.db.models import Avg, Case, CharField, Count, Max, Q, Sum, Value, When
-from django.db.models.functions import ExtractWeekDay, TruncMonth, TruncWeek
+from django.db.models.functions import ExtractHour, ExtractWeekDay, TruncMonth, TruncWeek
 from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Query, Router, Schema
@@ -19,7 +19,10 @@ from apps.metrics.models import (
 )
 from apps.metrics.cache_utils import cache_endpoint
 from core.models import (
+    ActaExamen,
+    ActaExamenEstudiante,
     AuditLog,
+    SystemLog,
     Comision,
     Docente,
     Estudiante,
@@ -30,12 +33,13 @@ from core.models import (
     PlanillaRegularidad,
     PlanillaRegularidadDocente,
     PlanillaRegularidadFila,
+    PedidoAnalitico,
+    PedidoEquivalencia,
     Preinscripcion,
     Profesorado,
     Regularidad,
     RiesgoAcademicoEstudiante,
 )
-from apps.common.models import SystemLog
 from core.permissions import can, require
 
 router = Router(tags=["Analytics"])
@@ -144,7 +148,7 @@ class AusentismoEvolucionItem(Schema):
     fecha: str
     tasa_ausentismo: float
     total_estudiantes: int
-    estudiantes_críticos: int
+    estudiantes_criticos: int
 
 
 class EvolucionOut(Schema):
@@ -323,8 +327,7 @@ class PedidoItem(Schema):
 
 class TramitesDashboardOut(Schema):
     total_pendientes: int
-    total_aprobados: int
-    total_rechazados: int
+    total_finalizados: int
     tiempo_promedio_resolucion: float  # días
     tiempo_maximo: int  # días
     por_estado: dict[str, int]
@@ -1034,88 +1037,103 @@ def teachers_desgranamiento_catedra(
 # ==========================================
 
 
+def _snapshots_por_fecha(model, dias, **filtros):
+    """
+    Agrupa los snapshots del período por fecha.
+
+    Los snapshots se guardan con granularidad por profesorado/comisión, así que
+    para una misma fecha hay varias filas. Si no se filtra por una de esas
+    dimensiones hay que CONSOLIDARLAS, si no cada profesorado aparecería como un
+    punto distinto del eje temporal.
+
+    Devuelve (dict fecha -> lista de snapshots, fecha_inicio, fecha_fin).
+    """
+    desde = timezone.now().date() - timedelta(days=dias)
+    qs = model.objects.filter(fecha_snapshot__gte=desde)
+    for campo, valor in filtros.items():
+        if valor is not None:
+            qs = qs.filter(**{campo: valor})
+
+    agrupado: dict = {}
+    for snap in qs.order_by("fecha_snapshot"):
+        agrupado.setdefault(snap.fecha_snapshot, []).append(snap)
+
+    if not agrupado:
+        return {}, None, None
+
+    fechas = sorted(agrupado)
+    return agrupado, fechas[0].isoformat(), fechas[-1].isoformat()
+
+
+def _promedio(valores):
+    limpios = [v for v in valores if v is not None]
+    return round(sum(limpios) / len(limpios), 2) if limpios else None
+
+
 @router.get("/matricula/evolucion/", response=EvolucionOut)
-def matricula_evolucion(
-    request,
-    profesorado_id: int | None = None,
-    dias: int | None = None,
-):
-    """
-    Evolución de matrícula a lo largo del tiempo (últimos N días/snapshots).
-    Reutiliza snapshots precalculados para performance.
-    """
+def matricula_evolucion(request, profesorado_id: int | None = None, dias: int | None = None):
+    """Evolución de matrícula a lo largo del tiempo, desde snapshots precalculados."""
     require(request.user, "ver_metricas")
 
     dias = dias or 90
-    qs = MatriculaSnapshot.objects.all()
+    por_fecha, f_ini, f_fin = _snapshots_por_fecha(
+        MatriculaSnapshot, dias, profesorado_id=profesorado_id
+    )
 
-    if profesorado_id:
-        qs = qs.filter(profesorado_id=profesorado_id)
+    items = []
+    for fecha in sorted(por_fecha):
+        grupo = por_fecha[fecha]
+        estados: dict[str, int] = {}
+        for snap in grupo:
+            for clave, valor in (snap.por_estado or {}).items():
+                estados[clave] = estados.get(clave, 0) + valor
 
-    qs = qs.order_by("fecha_snapshot")[-dias:]
-
-    items = [
-        {
-            "fecha": s.fecha_snapshot.isoformat(),
-            "total_matriculados": s.total_matriculados,
-            "promedio_notas": s.promedio_notas,
-            "promedio_asistencia": s.promedio_asistencia,
-            "por_estado": s.por_estado,
-        }
-        for s in qs
-    ]
-
-    fecha_inicio = qs.first().fecha_snapshot.isoformat() if qs.exists() else None
-    fecha_fin = qs.last().fecha_snapshot.isoformat() if qs.exists() else None
+        items.append({
+            "fecha": fecha.isoformat(),
+            "total_matriculados": sum(s.total_matriculados for s in grupo),
+            "promedio_notas": _promedio([s.promedio_notas for s in grupo]),
+            "promedio_asistencia": _promedio([s.promedio_asistencia for s in grupo]),
+            "por_estado": estados,
+        })
 
     return {
         "items": items,
-        "fecha_inicio": fecha_inicio,
-        "fecha_fin": fecha_fin,
+        "fecha_inicio": f_ini,
+        "fecha_fin": f_fin,
         "periodo": f"últimos {dias} días",
     }
 
 
 @router.get("/asistencia/evolucion/", response=EvolucionOut)
-def asistencia_evolucion(
-    request,
-    profesorado_id: int | None = None,
-    dias: int | None = None,
-):
-    """
-    Evolución de asistencia agregada de estudiantes por profesorado.
-    Útil para detectar tendencias de desenganche.
-    """
+def asistencia_evolucion(request, profesorado_id: int | None = None, dias: int | None = None):
+    """Evolución de asistencia agregada de estudiantes por profesorado."""
     require(request.user, "ver_metricas")
 
     dias = dias or 90
-    qs = AsistenciaSnapshot.objects.all()
+    por_fecha, f_ini, f_fin = _snapshots_por_fecha(
+        AsistenciaSnapshot, dias, profesorado_id=profesorado_id
+    )
 
-    if profesorado_id:
-        qs = qs.filter(profesorado_id=profesorado_id)
+    items = []
+    for fecha in sorted(por_fecha):
+        grupo = por_fecha[fecha]
+        total = sum(s.total_registros for s in grupo)
+        presentes = sum(s.presentes for s in grupo)
 
-    qs = qs.order_by("fecha_snapshot")[-dias:]
-
-    items = [
-        {
-            "fecha": s.fecha_snapshot.isoformat(),
-            "total_registros": s.total_registros,
-            "presentes": s.presentes,
-            "ausentes": s.ausentes,
-            "tardias": s.tardias,
-            "justificadas": s.justificadas,
-            "porcentaje_asistencia": s.porcentaje_asistencia,
-        }
-        for s in qs
-    ]
-
-    fecha_inicio = qs.first().fecha_snapshot.isoformat() if qs.exists() else None
-    fecha_fin = qs.last().fecha_snapshot.isoformat() if qs.exists() else None
+        items.append({
+            "fecha": fecha.isoformat(),
+            "total_registros": total,
+            "presentes": presentes,
+            "ausentes": sum(s.ausentes for s in grupo),
+            "tardias": sum(s.tardias for s in grupo),
+            "justificadas": sum(s.justificadas for s in grupo),
+            "porcentaje_asistencia": round(presentes / total * 100, 2) if total else None,
+        })
 
     return {
         "items": items,
-        "fecha_inicio": fecha_inicio,
-        "fecha_fin": fecha_fin,
+        "fecha_inicio": f_ini,
+        "fecha_fin": f_fin,
         "periodo": f"últimos {dias} días",
     }
 
@@ -1127,39 +1145,32 @@ def ausentismo_evolucion(
     profesorado_id: int | None = None,
     dias: int | None = None,
 ):
-    """
-    Evolución de ausentismo por comisión/cátedra.
-    Detecta cátedras con problemas de asistencia emergentes.
-    """
+    """Evolución de ausentismo por comisión/cátedra."""
     require(request.user, "ver_metricas")
 
     dias = dias or 90
-    qs = AusentismoSnapshot.objects.all()
+    filtros = {"comision_id": comision_id} if comision_id else {"profesorado_id": profesorado_id}
+    por_fecha, f_ini, f_fin = _snapshots_por_fecha(AusentismoSnapshot, dias, **filtros)
 
-    if comision_id:
-        qs = qs.filter(comision_id=comision_id)
-    elif profesorado_id:
-        qs = qs.filter(profesorado_id=profesorado_id)
+    items = []
+    for fecha in sorted(por_fecha):
+        grupo = por_fecha[fecha]
+        # La tasa se recalcula sobre los totales; promediar porcentajes de
+        # comisiones de tamaños distintos daría un número engañoso.
+        registros = sum((s.detalles or {}).get("total_registros", 0) for s in grupo)
+        ausencias = sum((s.detalles or {}).get("ausencias", 0) for s in grupo)
 
-    qs = qs.order_by("fecha_snapshot")[-dias:]
-
-    items = [
-        {
-            "fecha": s.fecha_snapshot.isoformat(),
-            "tasa_ausentismo": s.tasa_ausentismo,
-            "total_estudiantes": s.total_estudiantes,
-            "estudiantes_críticos": s.estudiantes_críticos,
-        }
-        for s in qs
-    ]
-
-    fecha_inicio = qs.first().fecha_snapshot.isoformat() if qs.exists() else None
-    fecha_fin = qs.last().fecha_snapshot.isoformat() if qs.exists() else None
+        items.append({
+            "fecha": fecha.isoformat(),
+            "tasa_ausentismo": round(ausencias / registros * 100, 2) if registros else 0.0,
+            "total_estudiantes": sum(s.total_estudiantes for s in grupo),
+            "estudiantes_criticos": sum(s.estudiantes_críticos for s in grupo),
+        })
 
     return {
         "items": items,
-        "fecha_inicio": fecha_inicio,
-        "fecha_fin": fecha_fin,
+        "fecha_inicio": f_ini,
+        "fecha_fin": f_fin,
         "periodo": f"últimos {dias} días",
     }
 
@@ -1167,261 +1178,235 @@ def ausentismo_evolucion(
 # ==========================================
 # 5. RENDIMIENTO ACADÉMICO DESGLOSADO
 # ==========================================
+#
+# Fuente de notas: ActaExamenEstudiante.calificacion_numerica (nota final de
+# cada estudiante en un acta). ActaExamen es la cabecera del acta y da acceso
+# a materia/profesorado. Se considera aprobado con nota >= 6.
+
+
+def _distribucion(notas: list[int]) -> dict[str, int]:
+    return {
+        "0-4": sum(1 for n in notas if n < 5),
+        "5-6": sum(1 for n in notas if 5 <= n < 7),
+        "7-8": sum(1 for n in notas if 7 <= n < 9),
+        "9-10": sum(1 for n in notas if n >= 9),
+    }
 
 
 @router.get("/academic-performance/por-materia/", response=RendimientoPorMateriaOut)
 @cache_endpoint(timeout=900, prefix="academic_performance_materia")
-def rendimiento_por_materia(
-    request,
-    profesorado_id: int | None = None,
-):
-    """
-    Rendimiento académico desglosado por materia.
-    Muestra promedio de notas, tasas de aprobación y distribución.
-    """
+def rendimiento_por_materia(request, profesorado_id: int | None = None):
+    """Rendimiento académico desglosado por materia."""
     require(request.user, "ver_metricas")
 
-    # Base: ActaExamen (notas finales de cada estudiante por materia)
-    actas_qs = ActaExamen.objects.select_related("materia", "materia__plan_de_estudio__profesorado")
+    qs = ActaExamenEstudiante.objects.filter(
+        calificacion_numerica__isnull=False
+    ).select_related("acta__materia", "acta__profesorado")
 
     if profesorado_id:
-        actas_qs = actas_qs.filter(materia__plan_de_estudio__profesorado_id=profesorado_id)
+        qs = qs.filter(acta__profesorado_id=profesorado_id)
+
+    por_materia: dict[int, dict] = {}
+    for fila in qs.values(
+        "acta__materia_id",
+        "acta__materia__nombre",
+        "acta__profesorado__nombre",
+        "calificacion_numerica",
+    ):
+        mid = fila["acta__materia_id"]
+        if mid is None:
+            continue
+        if mid not in por_materia:
+            por_materia[mid] = {
+                "materia_id": mid,
+                "materia_nombre": fila["acta__materia__nombre"] or "Sin nombre",
+                "profesorado": fila["acta__profesorado__nombre"] or "N/A",
+                "notas": [],
+            }
+        por_materia[mid]["notas"].append(fila["calificacion_numerica"])
 
     items = []
-    prof_name = None
-
-    # Agrupar por materia
-    materias_dict = {}
-    for acta in actas_qs:
-        mat = acta.materia
-        mat_key = mat.id
-
-        if mat_key not in materias_dict:
-            materias_dict[mat_key] = {
-                "materia_id": mat.id,
-                "materia_nombre": mat.nombre,
-                "profesorado": mat.plan_de_estudio.profesorado.nombre if mat.plan_de_estudio.profesorado else "N/A",
-                "notas": [],
-                "total": 0,
-            }
-
-        if acta.nota_final is not None:
-            materias_dict[mat_key]["notas"].append(acta.nota_final)
-            materias_dict[mat_key]["total"] += 1
-
-        if profesorado_id and mat.plan_de_estudio.profesorado:
-            prof_name = mat.plan_de_estudio.profesorado.nombre
-
-    # Calcular estadísticas por materia
-    notas_globales = []
+    notas_globales: list[int] = []
     aprobados_global = 0
-    total_global = 0
 
-    for mat_data in materias_dict.values():
-        notas = mat_data["notas"]
-
-        if not notas:
-            continue
-
+    for datos in por_materia.values():
+        notas = datos["notas"]
         total = len(notas)
         aprobados = sum(1 for n in notas if n >= 6)
-        desaprobados = total - aprobados
-        promedio = sum(notas) / total if notas else None
-
-        # Distribución de notas
-        distribucion = {
-            "0-4": sum(1 for n in notas if n < 5),
-            "5-6": sum(1 for n in notas if 5 <= n < 7),
-            "7-8": sum(1 for n in notas if 7 <= n < 9),
-            "9-10": sum(1 for n in notas if 9 <= n <= 10),
-        }
 
         items.append(
             RendimientoMateriaItem(
-                materia_id=mat_data["materia_id"],
-                materia_nombre=mat_data["materia_nombre"],
-                profesorado=mat_data["profesorado"],
+                materia_id=datos["materia_id"],
+                materia_nombre=datos["materia_nombre"],
+                profesorado=datos["profesorado"],
                 total_estudiantes=total,
-                promedio_nota=round(promedio, 2) if promedio else None,
-                tasa_aprobacion=round((aprobados / total * 100), 1) if total > 0 else 0,
-                tasa_desaprobacion=round((desaprobados / total * 100), 1) if total > 0 else 0,
-                distribucion_notas=distribucion,
+                promedio_nota=round(sum(notas) / total, 2),
+                tasa_aprobacion=round(aprobados / total * 100, 1),
+                tasa_desaprobacion=round((total - aprobados) / total * 100, 1),
+                distribucion_notas=_distribucion(notas),
             )
         )
-
         notas_globales.extend(notas)
         aprobados_global += aprobados
-        total_global += total
 
-    promedio_general = round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None
-    tasa_aprobacion_general = round((aprobados_global / total_global * 100), 1) if total_global > 0 else 0
+    items.sort(key=lambda i: i.promedio_nota or 0)
+
+    prof_nombre = None
+    if profesorado_id:
+        prof = Profesorado.objects.filter(id=profesorado_id).first()
+        prof_nombre = prof.nombre if prof else None
+
+    total_global = len(notas_globales)
 
     return {
         "items": items,
         "profesorado_id": profesorado_id,
-        "profesorado_nombre": prof_name,
-        "promedio_general": promedio_general,
-        "tasa_aprobacion_general": tasa_aprobacion_general,
+        "profesorado_nombre": prof_nombre,
+        "promedio_general": round(sum(notas_globales) / total_global, 2) if total_global else None,
+        "tasa_aprobacion_general": round(aprobados_global / total_global * 100, 1) if total_global else 0,
     }
 
 
 @router.get("/academic-performance/por-comisiones/", response=RendimientoComisionesOut)
 @cache_endpoint(timeout=900, prefix="academic_performance_comisiones")
-def rendimiento_por_comisiones(
-    request,
-    profesorado_id: int | None = None,
-):
+def rendimiento_por_comisiones(request, profesorado_id: int | None = None):
     """
-    Rendimiento académico por comisión/cátedra.
-    Útil para identificar cátedras con bajo rendimiento.
+    Rendimiento por comisión/cátedra.
+
+    ADVERTENCIA METODOLÓGICA: no existe un vínculo directo entre una comisión de
+    cursada y las actas de examen final. Las notas se atribuyen por MATERIA y
+    AÑO LECTIVO, así que dos comisiones de la misma materia en el mismo año
+    comparten las mismas notas. Sirve para comparar materias entre sí, no para
+    comparar el desempeño de dos comisiones de una misma materia.
     """
     require(request.user, "ver_metricas")
 
-    comisiones_qs = Comision.objects.select_related(
-        "horario_catedra__materia",
-        "horario_catedra__profesorado"
-    ).prefetch_related("horario_catedra__staff_asignaciones")
+    comisiones = Comision.objects.select_related(
+        "materia", "docente", "suplente"
+    ).order_by("materia__nombre", "codigo")
 
     if profesorado_id:
-        comisiones_qs = comisiones_qs.filter(horario_catedra__profesorado_id=profesorado_id)
+        comisiones = comisiones.filter(
+            materia__plan_de_estudio__profesorado_id=profesorado_id
+        )
+
+    # Notas por (materia, año) en una sola pasada
+    notas_qs = ActaExamenEstudiante.objects.filter(calificacion_numerica__isnull=False)
+    if profesorado_id:
+        notas_qs = notas_qs.filter(acta__profesorado_id=profesorado_id)
+
+    notas_por_materia_anio: dict[tuple, list[int]] = {}
+    for fila in notas_qs.values(
+        "acta__materia_id", "acta__anio_academico", "calificacion_numerica"
+    ):
+        clave = (fila["acta__materia_id"], fila["acta__anio_academico"])
+        notas_por_materia_anio.setdefault(clave, []).append(fila["calificacion_numerica"])
 
     items = []
-    prof_name = None
-    notas_globales = []
+    notas_globales: list[int] = []
 
-    for comision in comisiones_qs:
-        if not comision.horario_catedra.exists():
-            continue
-
-        hc = comision.horario_catedra.first()
-
-        # Notas de estudiantes en esta comisión
-        actas_comision = ActaExamen.objects.filter(
-            materia=hc.materia
-        ).values_list("nota_final", flat=True)
-
-        notas = [n for n in actas_comision if n is not None]
-
+    for comision in comisiones:
+        notas = notas_por_materia_anio.get((comision.materia_id, comision.anio_lectivo), [])
         if not notas:
             continue
 
         total = len(notas)
         aprobados = sum(1 for n in notas if n >= 6)
-        desaprobados = total - aprobados
-        promedio = sum(notas) / total if notas else None
 
-        # Docentes de la comisión
-        docentes_names = [
-            f"{sa.docente.persona.nombre} {sa.docente.persona.apellido}"
-            for sa in hc.staff_asignaciones.all()
-        ] or ["Sin asignar"]
-
-        # Estudiantes en riesgo (nota < 5)
-        estudiantes_riesgo = sum(1 for n in notas if n < 5)
-
-        if profesorado_id and hc.profesorado:
-            prof_name = hc.profesorado.nombre
+        docentes = []
+        if comision.docente:
+            docentes.append(str(comision.docente))
+        if comision.suplente:
+            docentes.append(f"{comision.suplente} (suplente)")
 
         items.append(
             RendimientoComisionItem(
-                comision_codigo=comision.codigo,
-                materia_nombre=hc.materia.nombre,
-                docentes=docentes_names,
+                comision_codigo=f"{comision.codigo} ({comision.anio_lectivo})",
+                materia_nombre=comision.materia.nombre,
+                docentes=docentes or ["Sin asignar"],
                 total_inscritos=total,
-                promedio_nota=round(promedio, 2) if promedio else None,
-                tasa_aprobacion=round((aprobados / total * 100), 1) if total > 0 else 0,
-                tasa_desaprobacion=round((desaprobados / total * 100), 1) if total > 0 else 0,
-                estudiantes_riesgo=estudiantes_riesgo,
+                promedio_nota=round(sum(notas) / total, 2),
+                tasa_aprobacion=round(aprobados / total * 100, 1),
+                tasa_desaprobacion=round((total - aprobados) / total * 100, 1),
+                estudiantes_riesgo=sum(1 for n in notas if n < 5),
             )
         )
-
         notas_globales.extend(notas)
 
-    promedio_general = round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None
+    items.sort(key=lambda i: i.promedio_nota or 0)
 
     return {
         "items": items,
         "profesorado_id": profesorado_id,
         "total_comisiones": len(items),
-        "promedio_general_notas": promedio_general,
+        "promedio_general_notas": (
+            round(sum(notas_globales) / len(notas_globales), 2) if notas_globales else None
+        ),
     }
 
 
 @router.get("/academic-performance/comparacion-cohortes/", response=RendimientoCohortesOut)
 @cache_endpoint(timeout=900, prefix="academic_performance_cohortes")
-def comparacion_cohortes(
-    request,
-    profesorado_id: int | None = None,
-):
+def comparacion_cohortes(request, profesorado_id: int | None = None):
     """
-    Comparación de rendimiento entre cohortes (años de ingreso).
-    Permite identificar si el desempeño mejora/empeora con el tiempo.
+    Comparación de rendimiento entre cohortes (año de ingreso).
+
+    NOTA: ActaExamenEstudiante identifica al estudiante por DNI (no por FK), así
+    que el cruce cohorte↔notas se hace por DNI. Estudiantes sin anio_ingreso
+    cargado quedan excluidos.
     """
     require(request.user, "ver_metricas")
 
-    # Estudiantes por cohorte
-    ec_qs = EstudianteCarrera.objects.select_related("estudiante")
-
+    ec_qs = EstudianteCarrera.objects.select_related("estudiante").filter(
+        estudiante__anio_ingreso__isnull=False
+    )
     if profesorado_id:
         ec_qs = ec_qs.filter(profesorado_id=profesorado_id)
 
-    items = []
-    cohortes_dict = {}
-    prof_name = None
-
+    # DNI -> cohorte
+    dni_cohorte: dict[str, int] = {}
+    estudiantes_por_cohorte: dict[int, set] = {}
     for ec in ec_qs:
-        cohorte = ec.estudiante.anio_ingreso
+        est = ec.estudiante
+        cohorte = est.anio_ingreso
+        if not est.dni:
+            continue
+        dni_cohorte[est.dni] = cohorte
+        estudiantes_por_cohorte.setdefault(cohorte, set()).add(est.dni)
 
-        if cohorte not in cohortes_dict:
-            cohortes_dict[cohorte] = {
-                "estudiantes": [],
-                "notas": [],
-            }
+    if not dni_cohorte:
+        return {"items": [], "profesorado_id": profesorado_id, "comparacion_historica": {}}
 
-        cohortes_dict[cohorte]["estudiantes"].append(ec.estudiante.id)
+    notas_por_cohorte: dict[int, list[int]] = {}
+    notas_qs = ActaExamenEstudiante.objects.filter(
+        calificacion_numerica__isnull=False, dni__in=list(dni_cohorte.keys())
+    ).values("dni", "calificacion_numerica")
 
-        if profesorado_id:
-            prof_name = ec.profesorado.nombre
+    for fila in notas_qs:
+        cohorte = dni_cohorte.get(fila["dni"])
+        if cohorte is not None:
+            notas_por_cohorte.setdefault(cohorte, []).append(fila["calificacion_numerica"])
 
-    # Obtener notas para cada cohorte
-    for cohorte in sorted(cohortes_dict.keys(), reverse=True):
-        est_ids = cohortes_dict[cohorte]["estudiantes"]
+    items = []
+    for cohorte in sorted(notas_por_cohorte.keys(), reverse=True):
+        notas = notas_por_cohorte[cohorte]
+        total = len(notas)
+        aprobados = sum(1 for n in notas if n >= 6)
 
-        actas = ActaExamen.objects.filter(
-            estudiante_id__in=est_ids
-        ).values_list("nota_final", flat=True)
-
-        notas = [n for n in actas if n is not None]
-
-        if notas:
-            total = len(notas)
-            aprobados = sum(1 for n in notas if n >= 6)
-            promedio = sum(notas) / total
-
-            items.append(
-                RendimientoCohortesItem(
-                    cohorte=cohorte,
-                    total_estudiantes=len(est_ids),
-                    promedio_general=round(promedio, 2),
-                    tasa_aprobacion=round((aprobados / total * 100), 1),
-                    distribucion={
-                        "0-4": sum(1 for n in notas if n < 5),
-                        "5-6": sum(1 for n in notas if 5 <= n < 7),
-                        "7-8": sum(1 for n in notas if 7 <= n < 9),
-                        "9-10": sum(1 for n in notas if 9 <= n <= 10),
-                    },
-                )
+        items.append(
+            RendimientoCohortesItem(
+                cohorte=cohorte,
+                total_estudiantes=len(estudiantes_por_cohorte.get(cohorte, [])),
+                promedio_general=round(sum(notas) / total, 2),
+                tasa_aprobacion=round(aprobados / total * 100, 1),
+                distribucion=_distribucion(notas),
             )
-
-    # Comparación histórica (promedio por año)
-    comparacion_historica = {}
-    for item in items:
-        comparacion_historica[str(item.cohorte)] = item.promedio_general
+        )
 
     return {
         "items": items,
         "profesorado_id": profesorado_id,
-        "comparacion_historica": comparacion_historica,
+        "comparacion_historica": {str(i.cohorte): i.promedio_general for i in items},
     }
 
 
@@ -1433,122 +1418,102 @@ def comparacion_cohortes(
 @router.get("/auditoria/dashboard/", response=AuditoriaDashboardOut)
 def auditoria_dashboard(request):
     """
-    Panel completo de auditoría: actividad del sistema, logins, alertas críticas.
-    Utiliza AuditLog y SystemLog para dar visibilidad de la salud e integridad del sistema.
+    Panel de auditoría: actividad del sistema, logins y alertas sin resolver.
+    Fuentes: AuditLog (campo de fecha: timestamp) y SystemLog.
     """
     require(request.user, "ver_metricas")
 
-    # Datos de últimos 7 días
-    fecha_hace_7d = timezone.now().date() - timedelta(days=7)
-    fecha_hoy = timezone.now().date()
+    hoy = timezone.now().date()
+    desde = hoy - timedelta(days=7)
 
-    # 1. RESUMEN (últimos 7 días)
-    audit_logs_7d = AuditLog.objects.filter(created_at__date__gte=fecha_hace_7d)
-    system_logs = SystemLog.objects.filter(created_at__date__gte=fecha_hace_7d)
-    alertas_sin_resolver = system_logs.filter(resuelto=False, tipo="ALERT")
+    logs = AuditLog.objects.filter(timestamp__date__gte=desde)
+    sys_logs = SystemLog.objects.filter(created_at__date__gte=desde)
 
-    total_eventos_7d = audit_logs_7d.count()
-    logins_7d = audit_logs_7d.filter(accion="LOGIN").count()
-    acciones_crud_7d = audit_logs_7d.filter(accion__in=["CREATE", "UPDATE", "DELETE"]).count()
-    eventos_hoy = audit_logs_7d.filter(created_at__date=fecha_hoy).count()
+    # Tipos de SystemLog considerados "alerta crítica" (choices reales del modelo)
+    TIPOS_CRITICOS = ["SECURITY_ALERT", "SYSTEM_ERROR", "IMPORT_ERROR"]
+    alertas_qs = SystemLog.objects.filter(resuelto=False, tipo__in=TIPOS_CRITICOS)
 
-    # Hora pico (hora con más logins hoy)
-    logins_hoy = audit_logs_7d.filter(accion="LOGIN", created_at__date=fecha_hoy)
+    acciones_crud = [AuditLog.Accion.CREATE, AuditLog.Accion.UPDATE, AuditLog.Accion.DELETE]
+
+    # Hora pico de logins de hoy
     hora_pico = None
-    if logins_hoy.exists():
-        from django.db.models.functions import ExtractHour
-        hora_pico_data = logins_hoy.annotate(
-            hora=ExtractHour("created_at")
-        ).values("hora").annotate(total=Count("id")).order_by("-total").first()
-        if hora_pico_data:
-            hora_pico = f"{hora_pico_data['hora']:02d}:00"
+    pico = (
+        logs.filter(accion=AuditLog.Accion.LOGIN, timestamp__date=hoy)
+        .annotate(hora=ExtractHour("timestamp"))
+        .values("hora")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+        .first()
+    )
+    if pico and pico["hora"] is not None:
+        hora_pico = f"{pico['hora']:02d}:00"
 
     resumen = {
-        "total_eventos_7d": total_eventos_7d,
-        "logins_7d": logins_7d,
-        "acciones_crud_7d": acciones_crud_7d,
-        "alertas_sin_resolver": alertas_sin_resolver.count(),
-        "eventos_hoy": eventos_hoy,
+        "total_eventos_7d": logs.count(),
+        "logins_7d": logs.filter(accion=AuditLog.Accion.LOGIN).count(),
+        "acciones_crud_7d": logs.filter(accion__in=acciones_crud).count(),
+        "alertas_sin_resolver": alertas_qs.count(),
+        "eventos_hoy": logs.filter(timestamp__date=hoy).count(),
         "hora_pico": hora_pico,
     }
 
-    # 2. LOGINS POR DÍA (últimos 7 días)
+    # Logins y evolución por día (una pasada por fecha)
     logins_por_dia = []
+    evolucion_7d = []
     for i in range(7, -1, -1):
-        fecha = fecha_hoy - timedelta(days=i)
-        logs_dia = audit_logs_7d.filter(
-            accion="LOGIN",
-            created_at__date=fecha
-        )
-        total_logins = logs_dia.count()
-        usuarios_unicos = logs_dia.values("usuario").distinct().count()
+        fecha = hoy - timedelta(days=i)
+        del_dia = logs.filter(timestamp__date=fecha)
+        logins_dia = del_dia.filter(accion=AuditLog.Accion.LOGIN)
 
         logins_por_dia.append({
             "fecha": fecha.isoformat(),
-            "total_logins": total_logins,
-            "usuarios_unicos": usuarios_unicos,
+            "total_logins": logins_dia.count(),
+            "usuarios_unicos": logins_dia.values("usuario_id").distinct().count(),
         })
-
-    # 3. TOP ACCIONES
-    top_acciones_data = audit_logs_7d.values("accion").annotate(
-        cantidad=Count("id")
-    ).order_by("-cantidad")[:10]
-
-    total_acciones = audit_logs_7d.count()
-    top_acciones = []
-    for item in top_acciones_data:
-        top_acciones.append({
-            "accion": item["accion"],
-            "cantidad": item["cantidad"],
-            "porcentaje": round((item["cantidad"] / total_acciones * 100), 1) if total_acciones > 0 else 0,
-        })
-
-    # 4. TOP USUARIOS
-    top_usuarios_data = audit_logs_7d.values("usuario").annotate(
-        total_acciones=Count("id")
-    ).order_by("-total_acciones")[:5]
-
-    top_usuarios = []
-    for item in top_usuarios_data:
-        ultimo_acceso = audit_logs_7d.filter(
-            usuario=item["usuario"]
-        ).order_by("-created_at").first()
-
-        top_usuarios.append({
-            "usuario": item["usuario"] or "Anónimo",
-            "total_acciones": item["total_acciones"],
-            "ultimos_accesos": ultimo_acceso.created_at.isoformat() if ultimo_acceso else None,
-        })
-
-    # 5. ALERTAS CRÍTICAS
-    alertas_criticas = []
-    for alert in alertas_sin_resolver.order_by("-created_at")[:10]:
-        alertas_criticas.append({
-            "id": alert.id,
-            "fecha": alert.created_at.isoformat(),
-            "tipo": alert.tipo,
-            "mensaje": alert.mensaje,
-            "entidad_afectada": alert.entidad_afectada,
-            "resuelto": alert.resuelto,
-        })
-
-    # 6. EVOLUCIÓN 7 DÍAS (logins, CRUD, errores)
-    evolucion_7d = []
-    for i in range(7, -1, -1):
-        fecha = fecha_hoy - timedelta(days=i)
-        logs_fecha = audit_logs_7d.filter(created_at__date=fecha)
-        system_logs_fecha = system_logs.filter(created_at__date=fecha)
-
-        logins = logs_fecha.filter(accion="LOGIN").count()
-        crud = logs_fecha.filter(accion__in=["CREATE", "UPDATE", "DELETE"]).count()
-        errores = system_logs_fecha.filter(tipo="ERROR").count()
-
         evolucion_7d.append({
             "fecha": fecha.isoformat(),
-            "logins": logins,
-            "acciones_crud": crud,
-            "errores": errores,
+            "logins": logins_dia.count(),
+            "acciones_crud": del_dia.filter(accion__in=acciones_crud).count(),
+            "errores": sys_logs.filter(
+                created_at__date=fecha, tipo__in=["SYSTEM_ERROR", "IMPORT_ERROR"]
+            ).count(),
         })
+
+    # Top acciones
+    total_acciones = logs.count()
+    top_acciones = [
+        {
+            "accion": fila["accion"],
+            "cantidad": fila["total"],
+            "porcentaje": round(fila["total"] / total_acciones * 100, 1) if total_acciones else 0,
+        }
+        for fila in logs.values("accion").annotate(total=Count("id")).order_by("-total")[:10]
+    ]
+
+    # Top usuarios (nombre_usuario es el texto; usuario es FK y puede ser NULL)
+    top_usuarios = [
+        {
+            "usuario": fila["nombre_usuario"] or "Sistema",
+            "total_acciones": fila["total"],
+            "ultimos_accesos": fila["ultimo"].isoformat() if fila["ultimo"] else None,
+        }
+        for fila in logs.values("nombre_usuario")
+        .annotate(total=Count("id"), ultimo=Max("timestamp"))
+        .order_by("-total")[:5]
+    ]
+
+    # Alertas críticas (SystemLog NO tiene entidad_afectada; se usa metadata)
+    alertas_criticas = [
+        {
+            "id": a.id,
+            "fecha": a.created_at.isoformat(),
+            "tipo": a.tipo,
+            "mensaje": a.mensaje[:300],
+            "entidad_afectada": (a.metadata or {}).get("entidad") if isinstance(a.metadata, dict) else None,
+            "resuelto": a.resuelto,
+        }
+        for a in alertas_qs.order_by("-created_at")[:10]
+    ]
 
     return {
         "resumen": resumen,
@@ -1680,16 +1645,16 @@ def ausentismo_consolidado(
         else:
             tendencia = "estable"
 
-        # Docentes
-        hc = comision.horario_catedra.first()
+        # Docentes: Comision tiene FK directo a docente y suplente
         docentes = []
-        if hc:
-            for sa in hc.staff_asignaciones.all():
-                docentes.append(f"{sa.docente.persona.nombre} {sa.docente.persona.apellido}")
+        if comision.docente:
+            docentes.append(str(comision.docente))
+        if comision.suplente:
+            docentes.append(f"{comision.suplente} (suplente)")
 
         catedras.append({
-            "codigo_comision": comision.codigo,
-            "materia": hc.materia.nombre if hc else "N/A",
+            "codigo_comision": f"{comision.codigo} ({comision.anio_lectivo})",
+            "materia": comision.materia.nombre if comision.materia else "N/A",
             "docentes": docentes or ["Sin asignar"],
             "tasa_ausentismo_actual": round(tasa_actual, 1),
             "tasa_ausentismo_promedio_7d": round(tasa_promedio_7d, 1),
@@ -1724,7 +1689,7 @@ def ausentismo_consolidado(
 
 
 # ==========================================
-# 8. MESAS DE EXAMEN Y EQUIVALENCIAS/TRÁMITES
+# 8. MESAS DE EXAMEN Y TRÁMITES
 # ==========================================
 
 
@@ -1732,87 +1697,89 @@ def ausentismo_consolidado(
 @cache_endpoint(timeout=900, prefix="mesas_dashboard")
 def mesas_dashboard(request):
     """
-    Dashboard de mesas de examen: tipos, resultados, promedio de notas.
+    Dashboard de mesas de examen.
+
+    MesaExamen no guarda nota ni estado: la nota vive en las actas
+    (mesa -> actas_cargadas -> estudiantes -> calificacion_numerica) y el
+    "cierre" se representa con planilla_cerrada_en / activa.
     """
     require(request.user, "ver_metricas")
 
-    # Todas las mesas (independiente de año)
-    mesas_qs = MesaExamen.objects.all()
-    total_mesas = mesas_qs.count()
-    mesas_pendientes = mesas_qs.filter(estado="Pendiente").count()
+    mesas = MesaExamen.objects.all()
+    total_mesas = mesas.count()
+    # "Pendiente" = mesa activa cuya planilla todavía no fue cerrada
+    mesas_pendientes = mesas.filter(activa=True, planilla_cerrada_en__isnull=True).count()
 
-    # 1. POR TIPO DE MESA
-    por_tipo_data = mesas_qs.values("tipo_mesa").annotate(
-        cantidad=Count("id"),
-        promedio=Avg("nota_promedio")
-    )
+    etiquetas_tipo = dict(MesaExamen.Tipo.choices)
+
+    # Notas por tipo de mesa, en una sola query
+    notas_por_tipo: dict[str, list[int]] = {}
+    for fila in ActaExamenEstudiante.objects.filter(
+        calificacion_numerica__isnull=False, acta__mesa__isnull=False
+    ).values("acta__mesa__tipo", "calificacion_numerica"):
+        notas_por_tipo.setdefault(fila["acta__mesa__tipo"], []).append(
+            fila["calificacion_numerica"]
+        )
 
     por_tipo = []
-    for item in por_tipo_data:
-        tipo = item["tipo_mesa"]
-        cantidad = item["cantidad"]
-        promedio = item["promedio"]
-
-        # Tasa de aprobación (nota_promedio >= 6)
-        aprobadas = mesas_qs.filter(
-            tipo_mesa=tipo,
-            nota_promedio__gte=6
-        ).count()
-        tasa = (aprobadas / cantidad * 100) if cantidad > 0 else 0
-
+    for fila in mesas.values("tipo").annotate(cantidad=Count("id")).order_by("-cantidad"):
+        tipo = fila["tipo"]
+        notas = notas_por_tipo.get(tipo, [])
+        aprobados = sum(1 for n in notas if n >= 6)
         por_tipo.append({
-            "tipo_mesa": tipo or "Sin especificar",
-            "cantidad": cantidad,
-            "promedio_nota": round(promedio, 2) if promedio else None,
-            "tasa_aprobacion": round(tasa, 1),
+            "tipo_mesa": etiquetas_tipo.get(tipo, tipo or "Sin especificar"),
+            "cantidad": fila["cantidad"],
+            "promedio_nota": round(sum(notas) / len(notas), 2) if notas else None,
+            "tasa_aprobacion": round(aprobados / len(notas) * 100, 1) if notas else 0,
         })
 
-    # 2. POR RESULTADO
-    por_resultado_data = mesas_qs.values("estado").annotate(
-        cantidad=Count("id")
+    # Resultados: se derivan de los totales que ya trae cada acta
+    totales = ActaExamen.objects.aggregate(
+        aprobados=Sum("total_aprobados"),
+        desaprobados=Sum("total_desaprobados"),
+        ausentes=Sum("total_ausentes"),
     )
+    aprobados = totales["aprobados"] or 0
+    desaprobados = totales["desaprobados"] or 0
+    ausentes = totales["ausentes"] or 0
+    total_resultados = aprobados + desaprobados + ausentes
 
-    total_con_resultado = sum(item["cantidad"] for item in por_resultado_data)
-    por_resultado = []
+    por_resultado = [
+        {
+            "resultado": etiqueta,
+            "cantidad": valor,
+            "porcentaje": round(valor / total_resultados * 100, 1) if total_resultados else 0,
+        }
+        for etiqueta, valor in (
+            ("Aprobados", aprobados),
+            ("Desaprobados", desaprobados),
+            ("Ausentes", ausentes),
+        )
+    ]
 
-    for item in por_resultado_data:
-        estado = item["estado"]
-        cantidad = item["cantidad"]
-        porcentaje = (cantidad / total_con_resultado * 100) if total_con_resultado > 0 else 0
+    todas_las_notas = [n for notas in notas_por_tipo.values() for n in notas]
+    aprobadas_total = sum(1 for n in todas_las_notas if n >= 6)
 
-        por_resultado.append({
-            "resultado": estado or "Sin resultado",
-            "cantidad": cantidad,
-            "porcentaje": round(porcentaje, 1),
-        })
-
-    # 3. PROMEDIO GENERAL
-    promedio_general = mesas_qs.aggregate(avg=Avg("nota_promedio"))["avg"]
-    aprobadas_total = mesas_qs.filter(nota_promedio__gte=6).count()
-    tasa_aprobacion_general = (
-        (aprobadas_total / total_mesas * 100) if total_mesas > 0 else 0
-    )
-
-    # 4. ÚLTIMAS 10 MESAS
-    ultimas_mesas = []
-    for mesa in mesas_qs.select_related(
-        "materia", "inscripcion_mesa__estudiante"
-    ).order_by("-created_at")[:10]:
-        inscripcion = mesa.inscripcion_mesa.first()
-        if inscripcion:
-            ultimas_mesas.append({
-                "materia": mesa.materia.nombre if mesa.materia else "N/A",
-                "estudiante": str(inscripcion.estudiante),
-                "tipo": mesa.tipo_mesa,
-                "nota": mesa.nota_promedio,
-                "fecha": mesa.created_at.isoformat(),
-            })
+    ultimas_mesas = [
+        {
+            "materia": mesa.materia.nombre if mesa.materia else "N/A",
+            "estudiante": f"{mesa.inscripciones.count()} inscriptos",
+            "tipo": etiquetas_tipo.get(mesa.tipo, mesa.tipo),
+            "nota": None,
+            "fecha": mesa.fecha.isoformat() if mesa.fecha else None,
+        }
+        for mesa in mesas.select_related("materia").order_by("-fecha")[:10]
+    ]
 
     return {
         "total_mesas": total_mesas,
         "mesas_pendientes": mesas_pendientes,
-        "promedio_general_notas": round(promedio_general, 2) if promedio_general else None,
-        "tasa_aprobacion_general": round(tasa_aprobacion_general, 1),
+        "promedio_general_notas": (
+            round(sum(todas_las_notas) / len(todas_las_notas), 2) if todas_las_notas else None
+        ),
+        "tasa_aprobacion_general": (
+            round(aprobadas_total / len(todas_las_notas) * 100, 1) if todas_las_notas else 0
+        ),
         "por_tipo": por_tipo,
         "por_resultado": por_resultado,
         "ultimas_mesas": ultimas_mesas,
@@ -1823,90 +1790,87 @@ def mesas_dashboard(request):
 @cache_endpoint(timeout=600, prefix="tramites_dashboard")
 def tramites_dashboard(request):
     """
-    Dashboard de trámites: análiticos y equivalencias con tiempos de resolución.
+    Dashboard de trámites: pedidos de analítico y de equivalencia.
+
+    Los dos modelos tienen ciclos de vida distintos:
+      - PedidoAnalitico.estado: PEND / CONF / ENTR
+      - PedidoEquivalencia.workflow_estado: draft / pending_docs / review /
+        titulos / notified, con resultado_final: pendiente / otorgada /
+        denegada / mixta
+    Por eso NO se reducen a "aprobado/rechazado": se informa cada estado tal
+    cual, y "finalizado" = analítico ENTREGADO o equivalencia NOTIFICADA.
     """
     require(request.user, "ver_metricas")
 
-    # Combinar PedidoAnalitico y PedidoEquivalencia
-    from core.models import PedidoAnalitico, PedidoEquivalencia
-
-    pedidos_analitico = PedidoAnalitico.objects.select_related(
-        "estudiante__persona"
-    ).order_by("-fecha_solicitud")
-
-    pedidos_equivalencia = PedidoEquivalencia.objects.select_related(
-        "estudiante__persona"
-    ).order_by("-fecha_solicitud")
-
-    # Estados
-    estado_counts = {}
-    tiempo_resolucion = []
-
-    # Procesar analíticos
-    for pedido in pedidos_analitico:
-        estado = pedido.estado or "Pendiente"
-        estado_counts[estado] = estado_counts.get(estado, 0) + 1
-
-        if pedido.estado in ["Aprobado", "Rechazado"] and pedido.fecha_resolucion:
-            dias = (pedido.fecha_resolucion - pedido.fecha_solicitud).days
-            tiempo_resolucion.append(dias)
-
-    # Procesar equivalencias
-    for pedido in pedidos_equivalencia:
-        estado = pedido.estado or "Pendiente"
-        estado_counts[estado] = estado_counts.get(estado, 0) + 1
-
-        if pedido.estado in ["Aprobado", "Rechazado"] and pedido.fecha_resolucion:
-            dias = (pedido.fecha_resolucion - pedido.fecha_solicitud).days
-            tiempo_resolucion.append(dias)
-
-    total_pendientes = estado_counts.get("Pendiente", 0)
-    total_aprobados = estado_counts.get("Aprobado", 0)
-    total_rechazados = estado_counts.get("Rechazado", 0)
-
-    tiempo_promedio = (
-        sum(tiempo_resolucion) / len(tiempo_resolucion)
-    ) if tiempo_resolucion else 0
-
-    tiempo_maximo = max(tiempo_resolucion) if tiempo_resolucion else 0
-
-    # Últimos 10 trámites
-    pedidos_recientes = []
     hoy = timezone.now().date()
 
-    for pedido in list(pedidos_analitico)[:10]:
-        dias = (hoy - pedido.fecha_solicitud.date()).days
-        pedidos_recientes.append({
-            "id": pedido.id,
+    analiticos = PedidoAnalitico.objects.select_related("estudiante").order_by("-created_at")
+    equivalencias = PedidoEquivalencia.objects.select_related("estudiante").order_by("-created_at")
+
+    etiquetas_analitico = dict(PedidoAnalitico.Estado.choices)
+    etiquetas_workflow = dict(PedidoEquivalencia.WorkflowEstado.choices)
+
+    por_estado: dict[str, int] = {}
+    for fila in analiticos.values("estado").annotate(total=Count("id")):
+        clave = f"Analítico: {etiquetas_analitico.get(fila['estado'], fila['estado'])}"
+        por_estado[clave] = fila["total"]
+    for fila in equivalencias.values("workflow_estado").annotate(total=Count("id")):
+        clave = f"Equivalencia: {etiquetas_workflow.get(fila['workflow_estado'], fila['workflow_estado'])}"
+        por_estado[clave] = fila["total"]
+
+    # Finalizados vs en curso
+    analiticos_entregados = analiticos.filter(estado=PedidoAnalitico.Estado.ENTREGADO)
+    equiv_notificadas = equivalencias.filter(
+        workflow_estado=PedidoEquivalencia.WorkflowEstado.NOTIFICADO
+    )
+
+    total_finalizados = analiticos_entregados.count() + equiv_notificadas.count()
+    total_pendientes = (
+        analiticos.exclude(estado=PedidoAnalitico.Estado.ENTREGADO).count()
+        + equivalencias.exclude(
+            workflow_estado=PedidoEquivalencia.WorkflowEstado.NOTIFICADO
+        ).count()
+    )
+
+    # Tiempos de resolución sobre lo que sí tiene fecha de cierre
+    tiempos = []
+    for p in analiticos_entregados.filter(preparado_en__isnull=False):
+        tiempos.append((p.preparado_en - p.created_at).days)
+    for p in equiv_notificadas.filter(notificado_en__isnull=False):
+        tiempos.append((p.notificado_en - p.created_at).days)
+
+    tiempos = [t for t in tiempos if t >= 0]
+
+    # Últimos trámites de ambos tipos
+    recientes = []
+    for p in analiticos[:10]:
+        recientes.append({
+            "id": p.id,
             "tipo": "Analítico",
-            "estado": pedido.estado or "Pendiente",
-            "estudiante_nombre": str(pedido.estudiante.persona),
-            "dias_transcurridos": dias,
-            "fecha_solicitud": pedido.fecha_solicitud.isoformat(),
-            "observaciones": pedido.observaciones or None,
+            "estado": etiquetas_analitico.get(p.estado, p.estado),
+            "estudiante_nombre": str(p.estudiante),
+            "dias_transcurridos": (hoy - p.created_at.date()).days,
+            "fecha_solicitud": p.created_at.isoformat(),
+            "observaciones": p.motivo_otro or None,
         })
-
-    for pedido in list(pedidos_equivalencia)[:10]:
-        dias = (hoy - pedido.fecha_solicitud.date()).days
-        pedidos_recientes.append({
-            "id": pedido.id,
+    for p in equivalencias[:10]:
+        recientes.append({
+            "id": p.id,
             "tipo": "Equivalencia",
-            "estado": pedido.estado or "Pendiente",
-            "estudiante_nombre": str(pedido.estudiante.persona),
-            "dias_transcurridos": dias,
-            "fecha_solicitud": pedido.fecha_solicitud.isoformat(),
-            "observaciones": pedido.observaciones or None,
+            "estado": etiquetas_workflow.get(p.workflow_estado, p.workflow_estado),
+            "estudiante_nombre": str(p.estudiante),
+            "dias_transcurridos": (hoy - p.created_at.date()).days,
+            "fecha_solicitud": p.created_at.isoformat(),
+            "observaciones": p.profesorado_destino_nombre or None,
         })
 
-    # Ordenar por más recientes
-    pedidos_recientes.sort(key=lambda x: x["fecha_solicitud"], reverse=True)
+    recientes.sort(key=lambda x: x["fecha_solicitud"], reverse=True)
 
     return {
         "total_pendientes": total_pendientes,
-        "total_aprobados": total_aprobados,
-        "total_rechazados": total_rechazados,
-        "tiempo_promedio_resolucion": round(tiempo_promedio, 1),
-        "tiempo_maximo": int(tiempo_maximo),
-        "por_estado": estado_counts,
-        "pedidos_recientes": pedidos_recientes[:20],
+        "total_finalizados": total_finalizados,
+        "tiempo_promedio_resolucion": round(sum(tiempos) / len(tiempos), 1) if tiempos else 0,
+        "tiempo_maximo": max(tiempos) if tiempos else 0,
+        "por_estado": por_estado,
+        "pedidos_recientes": recientes[:20],
     }

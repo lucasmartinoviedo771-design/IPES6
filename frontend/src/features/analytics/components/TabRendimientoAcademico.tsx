@@ -3,7 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import LinearProgress from "@mui/material/LinearProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -106,7 +106,7 @@ export default function TabRendimientoAcademico({
 
 			{/* Tarjetas Resumen */}
 			<Grid container spacing={2}>
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_TERRACOTTA,
@@ -129,7 +129,7 @@ export default function TabRendimientoAcademico({
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_GREEN,
@@ -152,7 +152,7 @@ export default function TabRendimientoAcademico({
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK,
@@ -175,7 +175,7 @@ export default function TabRendimientoAcademico({
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_BEIGE,
@@ -603,7 +603,7 @@ export default function TabRendimientoAcademico({
 									? []
 									: dataCohortes?.items || []
 								).map((cohorte) => (
-									<Grid key={cohorte.cohorte} size={{ xs: 12, sm: 6 }}>
+									<Grid item key={cohorte.cohorte} xs={12} sm={6}>
 										<Card
 											sx={{
 												borderLeft: `4px solid ${INSTITUTIONAL_TERRACOTTA}`,

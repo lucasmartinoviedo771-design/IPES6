@@ -4,7 +4,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import LinearProgress from "@mui/material/LinearProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -25,7 +25,6 @@ import {
 	INSTITUTIONAL_TERRACOTTA_DARK,
 	INSTITUTIONAL_GREEN,
 	INSTITUTIONAL_BEIGE,
-	INSTITUTIONAL_GREEN_DARK,
 } from "@/styles/institutionalColors";
 
 export default function TabAuditoria() {
@@ -57,7 +56,7 @@ export default function TabAuditoria() {
 
 			{/* KPI Cards - Últimos 7 días */}
 			<Grid container spacing={2}>
-				<Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+				<Grid item xs={12} sm={6} md={2}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_TERRACOTTA,
@@ -75,14 +74,14 @@ export default function TabAuditoria() {
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.total_eventos_7d || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Total de acciones
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+				<Grid item xs={12} sm={6} md={2}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_GREEN,
@@ -100,14 +99,14 @@ export default function TabAuditoria() {
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.logins_7d || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Inicios de sesión
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+				<Grid item xs={12} sm={6} md={2}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK,
@@ -125,14 +124,14 @@ export default function TabAuditoria() {
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.acciones_crud_7d || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Datos modificados
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+				<Grid item xs={12} sm={6} md={2}>
 					<Card
 						sx={{
 							backgroundColor: "#d32f2f",
@@ -150,14 +149,14 @@ export default function TabAuditoria() {
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.alertas_sin_resolver || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Sin resolver
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+				<Grid item xs={12} sm={6} md={2}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_BEIGE,
@@ -175,7 +174,7 @@ export default function TabAuditoria() {
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.eventos_hoy || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.8 }}>
+							<Typography variant="caption" sx={{ opacity: 0.8 }}>
 								Pico: {resumen?.hora_pico || "-"}
 							</Typography>
 						</CardContent>
@@ -186,7 +185,7 @@ export default function TabAuditoria() {
 			{/* Logins por día + Top Acciones */}
 			<Grid container spacing={2}>
 				{/* Logins por Día */}
-				<Grid size={{ xs: 12, md: 6 }}>
+				<Grid item xs={12} md={6}>
 					<Paper sx={{ borderRadius: 2, p: 2, backgroundColor: "#fafafa" }}>
 						<Typography
 							variant="h6"
@@ -246,7 +245,7 @@ export default function TabAuditoria() {
 				</Grid>
 
 				{/* Top Acciones */}
-				<Grid size={{ xs: 12, md: 6 }}>
+				<Grid item xs={12} md={6}>
 					<Paper sx={{ borderRadius: 2, p: 2, backgroundColor: "#fafafa" }}>
 						<Typography
 							variant="h6"
@@ -360,7 +359,7 @@ export default function TabAuditoria() {
 												}}
 											/>
 										</TableCell>
-										<TableCell variant="body2">
+										<TableCell>
 											{user.ultimos_accesos
 												? new Date(user.ultimos_accesos).toLocaleString("es-AR")
 												: "-"}

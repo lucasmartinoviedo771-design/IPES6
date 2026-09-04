@@ -1,27 +1,39 @@
-from datetime import datetime, timedelta
-from typing import Optional
+"""
+Calcula y persiste los snapshots diarios que alimentan las series temporales
+del dashboard analítico.
+
+Pensado para correr una vez por noche vía cron:
+    0 23 * * * cd /app && .venv/bin/python manage.py calcular_snapshots
+
+Es idempotente: volver a correrlo para la misma fecha recalcula y pisa los
+valores de esa fecha, sin tocar el histórico de otras fechas.
+"""
+
+from datetime import datetime
 
 from django.core.management.base import BaseCommand
 from django.db.models import Avg, Count, Q
 from django.utils import timezone
 
-from apps.asistencia.models import AsistenciaEstudiante, ClaseProgramada
+from apps.asistencia.models import AsistenciaEstudiante
 from apps.metrics.models import (
     AsistenciaSnapshot,
     AusentismoSnapshot,
     MatriculaSnapshot,
 )
-from core.models import (
-    Comision,
-    EstudianteCarrera,
-    Profesorado,
-    Regularidad,
-    RiesgoAcademicoEstudiante,
-)
+from core.models import Comision, EstudianteCarrera, Profesorado, Regularidad
+
+# Estados reales de AsistenciaEstudiante
+PRESENTE = "presente"
+AUSENTE = "ausente"
+AUSENTE_JUST = "ausente_justificada"
+TARDE = "tarde"
+
+UMBRAL_ESTUDIANTE_CRITICO = 0.30  # >30% de ausencias
 
 
 class Command(BaseCommand):
-    help = "Calcula y guarda snapshots diarios de métricas analíticas"
+    help = "Calcula y guarda los snapshots diarios de métricas analíticas"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -34,237 +46,176 @@ class Command(BaseCommand):
             "--profesorado-id",
             type=int,
             default=None,
-            help="ID de profesorado específico. Si no se pasa, se calcula para todos.",
+            help="Limitar el cálculo a un profesorado.",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Calcula e informa, pero no escribe en la base.",
         )
 
     def handle(self, *args, **options):
         fecha_str = options.get("fecha")
         if fecha_str:
             try:
-                fecha_snapshot = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+                fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
             except ValueError:
-                self.stderr.write(
-                    self.style.ERROR(
-                        f"Fecha inválida: {fecha_str}. Use formato YYYY-MM-DD"
-                    )
-                )
+                self.stderr.write(self.style.ERROR(f"Fecha inválida: {fecha_str} (usar YYYY-MM-DD)"))
                 return
         else:
-            fecha_snapshot = timezone.now().date()
+            fecha = timezone.now().date()
 
-        profesorado_id = options.get("profesorado_id")
+        prof_id = options.get("profesorado_id")
+        self.dry_run = options.get("dry_run", False)
 
-        self.stdout.write(
-            f"Calculando snapshots para {fecha_snapshot.isoformat()}..."
-        )
+        if self.dry_run:
+            self.stdout.write(self.style.WARNING("DRY-RUN: no se escribirá nada"))
 
-        # 1. Calcular MatriculaSnapshot
-        self._calcular_matricula(fecha_snapshot, profesorado_id)
+        self.stdout.write(f"Calculando snapshots para {fecha.isoformat()}...")
 
-        # 2. Calcular AsistenciaSnapshot
-        self._calcular_asistencia(fecha_snapshot, profesorado_id)
-
-        # 3. Calcular AusentismoSnapshot
-        self._calcular_ausentismo(fecha_snapshot, profesorado_id)
+        n_mat = self._matricula(fecha, prof_id)
+        n_asi = self._asistencia(fecha, prof_id)
+        n_aus = self._ausentismo(fecha, prof_id)
 
         self.stdout.write(
-            self.style.SUCCESS("Snapshots calculados exitosamente.")
-        )
-
-    def _calcular_matricula(
-        self, fecha_snapshot, profesorado_id: Optional[int] = None
-    ):
-        """Calcula y guarda MatriculaSnapshot."""
-        profesorados = Profesorado.objects.all()
-        if profesorado_id:
-            profesorados = profesorados.filter(id=profesorado_id)
-
-        for prof in profesorados:
-            ec_qs = EstudianteCarrera.objects.filter(profesorado=prof)
-            total = ec_qs.count()
-
-            # Desglose por estado
-            por_estado = {}
-            for row in ec_qs.values("estado_academico").annotate(
-                total=Count("id")
-            ):
-                por_estado[row["estado_academico"]] = row["total"]
-
-            # Promedios de notas y asistencia
-            reg_qs = Regularidad.objects.filter(
-                materia__plan_de_estudio__profesorado=prof
+            self.style.SUCCESS(
+                f"Listo: {n_mat} matrícula, {n_asi} asistencia, {n_aus} ausentismo."
             )
-            promedio_notas = reg_qs.aggregate(avg=Avg("nota_final_cursada"))[
-                "avg"
-            ]
-            promedio_asistencia = reg_qs.aggregate(
-                avg=Avg("asistencia_porcentaje")
-            )["avg"]
+        )
 
-            MatriculaSnapshot.objects.update_or_create(
-                profesorado=prof,
-                fecha_snapshot=fecha_snapshot,
-                defaults={
-                    "total_matriculados": total,
+    def _guardar(self, model, defaults, **claves):
+        if self.dry_run:
+            return
+        model.objects.update_or_create(defaults=defaults, **claves)
+
+    def _profesorados(self, prof_id):
+        qs = Profesorado.objects.all()
+        return qs.filter(id=prof_id) if prof_id else qs
+
+    def _matricula(self, fecha, prof_id):
+        """Matrícula total y por estado, más promedios académicos, por profesorado."""
+        n = 0
+        for prof in self._profesorados(prof_id):
+            ec = EstudianteCarrera.objects.filter(profesorado=prof)
+
+            por_estado = {
+                fila["estado_academico"]: fila["total"]
+                for fila in ec.values("estado_academico").annotate(total=Count("id"))
+            }
+
+            reg = Regularidad.objects.filter(materia__plan_de_estudio__profesorado=prof)
+            agg = reg.aggregate(
+                nota=Avg("nota_final_cursada"), asis=Avg("asistencia_porcentaje")
+            )
+
+            self._guardar(
+                MatriculaSnapshot,
+                {
+                    "total_matriculados": ec.count(),
                     "por_estado": por_estado,
-                    "promedio_notas": (
-                        round(promedio_notas, 2) if promedio_notas else None
-                    ),
-                    "promedio_asistencia": (
-                        round(promedio_asistencia, 2)
-                        if promedio_asistencia
-                        else None
-                    ),
+                    "promedio_notas": round(agg["nota"], 2) if agg["nota"] else None,
+                    "promedio_asistencia": round(agg["asis"], 2) if agg["asis"] else None,
                 },
-            )
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"MatriculaSnapshot calculado para {fecha_snapshot}"
-            )
-        )
-
-    def _calcular_asistencia(
-        self, fecha_snapshot, profesorado_id: Optional[int] = None
-    ):
-        """Calcula y guarda AsistenciaSnapshot de estudiantes por profesorado."""
-        profesorados = Profesorado.objects.all()
-        if profesorado_id:
-            profesorados = profesorados.filter(id=profesorado_id)
-
-        for prof in profesorados:
-            # Filtra asistencias por comisiones de este profesorado
-            comisiones = Comision.objects.filter(
-                horario_catedra__profesorado=prof
-            ).distinct()
-
-            qs_asistencia = AsistenciaEstudiante.objects.filter(
-                clase_programada__comision__in=comisiones
-            )
-
-            total_registros = qs_asistencia.count()
-            if total_registros == 0:
-                # Si no hay asistencias, crear snapshot con ceros
-                AsistenciaSnapshot.objects.update_or_create(
-                    profesorado=prof,
-                    fecha_snapshot=fecha_snapshot,
-                    defaults={
-                        "total_registros": 0,
-                        "presentes": 0,
-                        "ausentes": 0,
-                        "tardias": 0,
-                        "justificadas": 0,
-                        "porcentaje_asistencia": None,
-                    },
-                )
-                continue
-
-            # Contar estados
-            presentes = qs_asistencia.filter(estado="presente").count()
-            ausentes = qs_asistencia.filter(estado="ausente").count()
-            tardias = qs_asistencia.filter(estado="tarde").count()
-            justificadas = qs_asistencia.filter(
-                estado="ausente", justificacion__isnull=False
-            ).count()
-
-            porcentaje = (
-                (presentes / total_registros * 100)
-                if total_registros > 0
-                else None
-            )
-
-            AsistenciaSnapshot.objects.update_or_create(
                 profesorado=prof,
-                fecha_snapshot=fecha_snapshot,
-                defaults={
-                    "total_registros": total_registros,
-                    "presentes": presentes,
-                    "ausentes": ausentes,
-                    "tardias": tardias,
-                    "justificadas": justificadas,
-                    "porcentaje_asistencia": (
-                        round(porcentaje, 2) if porcentaje else None
-                    ),
+                fecha_snapshot=fecha,
+            )
+            n += 1
+
+        self.stdout.write(f"  matrícula: {n} profesorados")
+        return n
+
+    def _asistencia(self, fecha, prof_id):
+        """Asistencia agregada de estudiantes, por profesorado."""
+        n = 0
+        for prof in self._profesorados(prof_id):
+            qs = AsistenciaEstudiante.objects.filter(
+                clase__comision__materia__plan_de_estudio__profesorado=prof
+            )
+
+            conteos = qs.aggregate(
+                total=Count("id"),
+                presentes=Count("id", filter=Q(estado=PRESENTE)),
+                ausentes=Count("id", filter=Q(estado=AUSENTE)),
+                tardias=Count("id", filter=Q(estado=TARDE)),
+                justificadas=Count("id", filter=Q(estado=AUSENTE_JUST)),
+            )
+
+            total = conteos["total"]
+            porcentaje = round(conteos["presentes"] / total * 100, 2) if total else None
+
+            self._guardar(
+                AsistenciaSnapshot,
+                {
+                    "total_registros": total,
+                    "presentes": conteos["presentes"],
+                    "ausentes": conteos["ausentes"],
+                    "tardias": conteos["tardias"],
+                    "justificadas": conteos["justificadas"],
+                    "porcentaje_asistencia": porcentaje,
                 },
+                profesorado=prof,
+                fecha_snapshot=fecha,
             )
+            n += 1
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"AsistenciaSnapshot calculado para {fecha_snapshot}"
-            )
+        self.stdout.write(f"  asistencia: {n} profesorados")
+        return n
+
+    def _ausentismo(self, fecha, prof_id):
+        """Ausentismo por comisión, con conteo de estudiantes críticos."""
+        comisiones = Comision.objects.select_related(
+            "materia__plan_de_estudio__profesorado"
         )
-
-    def _calcular_ausentismo(
-        self, fecha_snapshot, profesorado_id: Optional[int] = None
-    ):
-        """Calcula y guarda AusentismoSnapshot por comisión."""
-        comisiones = Comision.objects.all()
-        if profesorado_id:
+        if prof_id:
             comisiones = comisiones.filter(
-                horario_catedra__profesorado_id=profesorado_id
-            ).distinct()
+                materia__plan_de_estudio__profesorado_id=prof_id
+            )
 
+        n = 0
         for comision in comisiones:
-            prof = (
-                comision.horario_catedra.first().profesorado
-                if comision.horario_catedra.exists()
-                else None
-            )
+            qs = AsistenciaEstudiante.objects.filter(clase__comision=comision)
 
-            qs_asistencia = AsistenciaEstudiante.objects.filter(
-                clase_programada__comision=comision
+            conteos = qs.aggregate(
+                total=Count("id"),
+                ausencias=Count("id", filter=Q(estado__in=[AUSENTE, AUSENTE_JUST])),
+                tardias=Count("id", filter=Q(estado=TARDE)),
+                estudiantes=Count("estudiante_id", distinct=True),
             )
-
-            if not qs_asistencia.exists():
+            total = conteos["total"]
+            if not total:
                 continue
 
-            total_registros = qs_asistencia.count()
-            ausencias = qs_asistencia.filter(estado="ausente").count()
-            tardias = qs_asistencia.filter(estado="tarde").count()
-
-            tasa_ausentismo = (
-                (ausencias / total_registros * 100)
-                if total_registros > 0
-                else 0
+            # Estudiantes críticos: una sola query agregada por estudiante
+            criticos = 0
+            por_estudiante = qs.values("estudiante_id").annotate(
+                n=Count("id"),
+                aus=Count("id", filter=Q(estado__in=[AUSENTE, AUSENTE_JUST])),
             )
+            for fila in por_estudiante:
+                if fila["n"] and fila["aus"] / fila["n"] > UMBRAL_ESTUDIANTE_CRITICO:
+                    criticos += 1
 
-            # Estudiantes únicos
-            estudiantes = (
-                qs_asistencia.values_list("estudiante", flat=True)
-                .distinct()
-                .count()
-            )
+            plan = getattr(comision.materia, "plan_de_estudio", None)
+            profesorado = getattr(plan, "profesorado", None) if plan else None
 
-            # Estudiantes críticos (>30% de ausencias)
-            estudiantes_con_alta_ausencia = set()
-            for est_id in (
-                qs_asistencia.values_list("estudiante_id", flat=True)
-                .distinct()
-            ):
-                qs_est = qs_asistencia.filter(estudiante_id=est_id)
-                total_est = qs_est.count()
-                ausencias_est = qs_est.filter(estado="ausente").count()
-                if total_est > 0 and (ausencias_est / total_est > 0.3):
-                    estudiantes_con_alta_ausencia.add(est_id)
-
-            AusentismoSnapshot.objects.update_or_create(
-                comision=comision,
-                fecha_snapshot=fecha_snapshot,
-                defaults={
-                    "profesorado": prof,
-                    "tasa_ausentismo": round(tasa_ausentismo, 2),
-                    "total_estudiantes": estudiantes,
-                    "estudiantes_críticos": len(estudiantes_con_alta_ausencia),
+            self._guardar(
+                AusentismoSnapshot,
+                {
+                    "profesorado": profesorado,
+                    "tasa_ausentismo": round(conteos["ausencias"] / total * 100, 2),
+                    "total_estudiantes": conteos["estudiantes"],
+                    "estudiantes_sin_registro": 0,
+                    "estudiantes_críticos": criticos,
                     "detalles": {
-                        "ausencias": ausencias,
-                        "tardias": tardias,
-                        "total_registros": total_registros,
+                        "ausencias": conteos["ausencias"],
+                        "tardias": conteos["tardias"],
+                        "total_registros": total,
                     },
                 },
+                comision=comision,
+                fecha_snapshot=fecha,
             )
+            n += 1
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"AusentismoSnapshot calculado para {fecha_snapshot}"
-            )
-        )
+        self.stdout.write(f"  ausentismo: {n} comisiones con registros")
+        return n

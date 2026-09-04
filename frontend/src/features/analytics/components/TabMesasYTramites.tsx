@@ -4,7 +4,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import LinearProgress from "@mui/material/LinearProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -27,7 +27,6 @@ import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
 	INSTITUTIONAL_GREEN,
-	INSTITUTIONAL_GREEN_DARK,
 	INSTITUTIONAL_BEIGE,
 } from "@/styles/institutionalColors";
 
@@ -82,7 +81,7 @@ export default function TabMesasYTramites() {
 				<Stack spacing={3}>
 					{/* KPI Cards */}
 					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: INSTITUTIONAL_TERRACOTTA,
@@ -100,14 +99,14 @@ export default function TabMesasYTramites() {
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
 										{loadingMesas ? "..." : mesasData?.total_mesas || 0}
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+									<Typography variant="caption" sx={{ opacity: 0.9 }}>
 										Exámenes finales
 									</Typography>
 								</CardContent>
 							</Card>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: INSTITUTIONAL_GREEN,
@@ -125,14 +124,14 @@ export default function TabMesasYTramites() {
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
 										{loadingMesas ? "..." : mesasData?.mesas_pendientes || 0}
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+									<Typography variant="caption" sx={{ opacity: 0.9 }}>
 										Sin procesar
 									</Typography>
 								</CardContent>
 							</Card>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK,
@@ -150,14 +149,14 @@ export default function TabMesasYTramites() {
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
 										{loadingMesas ? "..." : mesasData?.promedio_general_notas?.toFixed(2) || "-"}
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+									<Typography variant="caption" sx={{ opacity: 0.9 }}>
 										Nota general
 									</Typography>
 								</CardContent>
 							</Card>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: INSTITUTIONAL_BEIGE,
@@ -175,7 +174,7 @@ export default function TabMesasYTramites() {
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
 										{loadingMesas ? "..." : mesasData?.tasa_aprobacion_general?.toFixed(1) || "-"}%
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.8 }}>
+									<Typography variant="caption" sx={{ opacity: 0.8 }}>
 										Tasa de aprobación
 									</Typography>
 								</CardContent>
@@ -346,7 +345,7 @@ export default function TabMesasYTramites() {
 				<Stack spacing={3}>
 					{/* KPI Cards */}
 					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: "#ff9800",
@@ -364,14 +363,14 @@ export default function TabMesasYTramites() {
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
 										{loadingTramites ? "..." : tramitesData?.total_pendientes || 0}
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+									<Typography variant="caption" sx={{ opacity: 0.9 }}>
 										En revisión
 									</Typography>
 								</CardContent>
 							</Card>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: INSTITUTIONAL_GREEN,
@@ -383,20 +382,20 @@ export default function TabMesasYTramites() {
 									<Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
 										<CheckCircleIcon sx={{ mr: 1, fontSize: 20 }} />
 										<Typography variant="caption" sx={{ fontWeight: 600 }}>
-											Aprobados
+											Finalizados
 										</Typography>
 									</Box>
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
-										{loadingTramites ? "..." : tramitesData?.total_aprobados || 0}
+										{loadingTramites ? "..." : tramitesData?.total_finalizados || 0}
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.9 }}>
-										Resolución positiva
+									<Typography variant="caption" sx={{ opacity: 0.9 }}>
+										Entregados / notificados
 									</Typography>
 								</CardContent>
 							</Card>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: "#d32f2f",
@@ -408,20 +407,20 @@ export default function TabMesasYTramites() {
 									<Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
 										<TimerIcon sx={{ mr: 1, fontSize: 20 }} />
 										<Typography variant="caption" sx={{ fontWeight: 600 }}>
-											Rechazados
+											Tiempo máximo
 										</Typography>
 									</Box>
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
-										{loadingTramites ? "..." : tramitesData?.total_rechazados || 0}
+										{loadingTramites ? "..." : tramitesData?.tiempo_maximo || 0}d
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.9 }}>
-										No aprobados
+									<Typography variant="caption" sx={{ opacity: 0.9 }}>
+										Trámite más lento
 									</Typography>
 								</CardContent>
 							</Card>
 						</Grid>
 
-						<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+						<Grid item xs={12} sm={6} md={3}>
 							<Card
 								sx={{
 									backgroundColor: INSTITUTIONAL_BEIGE,
@@ -439,7 +438,7 @@ export default function TabMesasYTramites() {
 									<Typography variant="h4" sx={{ fontWeight: 700 }}>
 										{loadingTramites ? "..." : tramitesData?.tiempo_promedio_resolucion?.toFixed(1) || "-"}d
 									</Typography>
-									<Typography variant="caption2" sx={{ opacity: 0.8 }}>
+									<Typography variant="caption" sx={{ opacity: 0.8 }}>
 										Días de resolución
 									</Typography>
 								</CardContent>

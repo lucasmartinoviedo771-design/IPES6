@@ -4,7 +4,7 @@ import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
-import Grid from "@mui/material/Grid2";
+import Grid from "@mui/material/Grid";
 import LinearProgress from "@mui/material/LinearProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -27,7 +27,6 @@ import {
 	INSTITUTIONAL_TERRACOTTA,
 	INSTITUTIONAL_TERRACOTTA_DARK,
 	INSTITUTIONAL_GREEN,
-	INSTITUTIONAL_GREEN_DARK,
 	INSTITUTIONAL_BEIGE,
 } from "@/styles/institutionalColors";
 
@@ -96,7 +95,7 @@ export default function TabAusentismo({
 
 			{/* KPI Cards */}
 			<Grid container spacing={2}>
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_TERRACOTTA,
@@ -114,14 +113,14 @@ export default function TabAusentismo({
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.tasa_promedio?.toFixed(1) || "0"}%
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Últimos 90 días
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_TERRACOTTA_DARK,
@@ -139,14 +138,14 @@ export default function TabAusentismo({
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.tasa_maxima?.toFixed(1) || "0"}%
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Pico registrado
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_GREEN,
@@ -164,14 +163,14 @@ export default function TabAusentismo({
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : resumen?.catedras_criticas || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.9 }}>
+							<Typography variant="caption" sx={{ opacity: 0.9 }}>
 								Tasa &gt; 20%
 							</Typography>
 						</CardContent>
 					</Card>
 				</Grid>
 
-				<Grid size={{ xs: 12, sm: 6, md: 3 }}>
+				<Grid item xs={12} sm={6} md={3}>
 					<Card
 						sx={{
 							backgroundColor: INSTITUTIONAL_BEIGE,
@@ -189,7 +188,7 @@ export default function TabAusentismo({
 							<Typography variant="h4" sx={{ fontWeight: 700 }}>
 								{isLoading ? "..." : ausentismoData?.estudiantes_criticos || 0}
 							</Typography>
-							<Typography variant="caption2" sx={{ opacity: 0.8 }}>
+							<Typography variant="caption" sx={{ opacity: 0.8 }}>
 								&gt; 30% ausencias
 							</Typography>
 						</CardContent>
