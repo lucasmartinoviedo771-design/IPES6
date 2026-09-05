@@ -1,5 +1,11 @@
 import Box from "@mui/material/Box";
-import type React from "react";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import Badge from "@mui/material/Badge";
+import Paper from "@mui/material/Paper";
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import HowToRegIcon from "@mui/icons-material/HowToReg";
+import React, { useState } from "react";
 import BackButton from "@/components/ui/BackButton";
 import { PageHero } from "@/components/ui/GradientTitles";
 import AsistenciaDialog from "./curso-introductorio/AsistenciaDialog";
@@ -80,6 +86,8 @@ const CursoIntroductorioPage: React.FC = () => {
 		loadRegistros,
 	} = useCursoIntroductorio();
 
+	const [tabActual, setTabActual] = useState<"pendientes" | "registros">("pendientes");
+
 	return (
 		<Box sx={{ p: 3 }}>
 			<BackButton fallbackPath="/secretaria" />
@@ -96,37 +104,91 @@ const CursoIntroductorioPage: React.FC = () => {
 				onEditarCohorte={(cohorte) => abrirDialogoCohorte(cohorte)}
 			/>
 
-			<PendientesTable
-				profesorados={profesorados}
-				pendientes={pendientes}
-				pendientesLoading={pendientesLoading}
-				pendientesProfesoradoId={pendientesProfesoradoId}
-				pendientesSoloActivos={pendientesSoloActivos}
-				pendientesSoloConfirmados={pendientesSoloConfirmados}
-				pendientesAnioIngreso={pendientesAnioIngreso}
-				puedeGestionarRegistros={puedeGestionarRegistros}
-				cohortesDisponibles={cohortes.length > 0}
-				onChangePendientesProfesorado={setPendientesProfesoradoId}
-				onChangePendientesSoloActivos={setPendientesSoloActivos}
-				onChangePendientesSoloConfirmados={setPendientesSoloConfirmados}
-				onChangePendientesAnioIngreso={setPendientesAnioIngreso}
-				onInscribir={abrirDialogoInscripcion}
-			/>
+			{/* ── Tabs de Navegación entre Pendientes y Registros ── */}
+			<Paper variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
+				<Tabs
+					value={tabActual}
+					onChange={(_, newValue) => setTabActual(newValue)}
+					textColor="primary"
+					indicatorColor="primary"
+					variant="scrollable"
+					scrollButtons="auto"
+					sx={{ px: 2, borderBottom: 1, borderColor: "divider" }}
+				>
+					<Tab
+						value="pendientes"
+						icon={<AssignmentIndIcon />}
+						iconPosition="start"
+						label={
+							<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+								<span>Estudiantes pendientes</span>
+								{pendientes.length > 0 && (
+									<Badge
+										badgeContent={pendientes.length}
+										color="warning"
+										max={999}
+									/>
+								)}
+							</Box>
+						}
+						sx={{ textTransform: "none", fontWeight: 600, minHeight: 48 }}
+					/>
+					<Tab
+						value="registros"
+						icon={<HowToRegIcon />}
+						iconPosition="start"
+						label={
+							<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+								<span>Registros y asistencias</span>
+								{registros.length > 0 && (
+									<Badge
+										badgeContent={registros.length}
+										color="primary"
+										max={999}
+									/>
+								)}
+							</Box>
+						}
+						sx={{ textTransform: "none", fontWeight: 600, minHeight: 48 }}
+					/>
+				</Tabs>
 
-			<RegistrosTable
-				profesorados={profesorados}
-				turnos={turnos}
-				registros={registros}
-				registrosLoading={registrosLoading}
-				registroFiltros={registroFiltros}
-				cohorteOptions={cohorteOptions}
-				anioOptions={anioOptions}
-				puedeGestionarRegistros={puedeGestionarRegistros}
-				onChangeFiltros={setRegistroFiltros}
-				onActualizar={loadRegistros}
-				onAsistencia={abrirDialogoAsistencia}
-				onCierre={abrirDialogoCierre}
-			/>
+				<Box sx={{ p: 2 }}>
+					{tabActual === "pendientes" ? (
+						<PendientesTable
+							profesorados={profesorados}
+							pendientes={pendientes}
+							pendientesLoading={pendientesLoading}
+							pendientesProfesoradoId={pendientesProfesoradoId}
+							pendientesSoloActivos={pendientesSoloActivos}
+							pendientesSoloConfirmados={pendientesSoloConfirmados}
+							pendientesAnioIngreso={pendientesAnioIngreso}
+							puedeGestionarRegistros={puedeGestionarRegistros}
+							cohortesDisponibles={cohortes.length > 0}
+							onChangePendientesProfesorado={setPendientesProfesoradoId}
+							onChangePendientesSoloActivos={setPendientesSoloActivos}
+							onChangePendientesSoloConfirmados={setPendientesSoloConfirmados}
+							onChangePendientesAnioIngreso={setPendientesAnioIngreso}
+							onInscribir={abrirDialogoInscripcion}
+						/>
+					) : (
+						<RegistrosTable
+							profesorados={profesorados}
+							turnos={turnos}
+							registros={registros}
+							registrosLoading={registrosLoading}
+							registroFiltros={registroFiltros}
+							cohorteOptions={cohorteOptions}
+							anioOptions={anioOptions}
+							puedeGestionarRegistros={puedeGestionarRegistros}
+							onChangeFiltros={setRegistroFiltros}
+							onActualizar={loadRegistros}
+							onAsistencia={abrirDialogoAsistencia}
+							onCierre={abrirDialogoCierre}
+						/>
+					)}
+				</Box>
+			</Paper>
 
 			<CohorteDialog
 				open={cohorteDialogOpen}
