@@ -18,7 +18,7 @@ def get_summary_by_profesorado(request):
         Preinscripcion.objects.values("carrera__nombre")
         .annotate(
             total=Count("id"),
-            confirmadas=Count(Case(When(estado="Aceptada", then=1))),
+            confirmadas=Count(Case(When(estado__in=["Confirmada", "finalizada"], then=1))),
         )
         .order_by("-total")
     )
