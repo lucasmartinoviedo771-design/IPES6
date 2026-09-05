@@ -1,18 +1,16 @@
 import io
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape
 
 from django.conf import settings
-from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from core.models import ActaExamen, ActaExamenDocente, ActaExamenEstudiante, Estudiante
+from core.models import ActaExamen, ActaExamenDocente, Estudiante
 
 
 def _number_to_text(n: str) -> str:

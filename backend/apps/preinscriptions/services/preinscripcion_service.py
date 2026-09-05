@@ -322,7 +322,6 @@ class PreinscripcionService:
     @staticmethod
     @transaction.atomic
     def cambiar_carrera(pre, carrera_id: int) -> dict | tuple:
-        from ninja.errors import HttpError
 
         from core.models import InscripcionMateriaEstudiante, InscripcionMesa, Regularidad
 

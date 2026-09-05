@@ -7,7 +7,6 @@ from typing import Any
 from xml.sax.saxutils import escape
 
 from django.conf import settings
-from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4

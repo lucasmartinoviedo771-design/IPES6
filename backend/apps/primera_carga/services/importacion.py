@@ -5,22 +5,18 @@ import io
 from datetime import date
 
 from django.contrib.auth.models import Group, User
-from django.core.management.base import CommandError
 from django.db import transaction
 
 from core.models import (
-    Docente,
     EquivalenciaCurricular,
     Estudiante,
     InscripcionMesa,
     Materia,
     MesaExamen,
     PlanDeEstudio,
-    PlanillaRegularidadDocente,
     Preinscripcion,
     PreinscripcionChecklist,
     Profesorado,
-    Regularidad,
     RegularidadPlantilla,
     SystemLog,
 )

@@ -1,6 +1,5 @@
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import Q
 
 from core.models import (
     ActaExamenEstudiante,

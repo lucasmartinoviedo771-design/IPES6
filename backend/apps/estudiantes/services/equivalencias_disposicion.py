@@ -6,7 +6,6 @@ from itertools import chain
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Q
 
 from apps.estudiantes.services.cursada import estudiante_tiene_materia_aprobada
 from apps.primera_carga.audit_utils import verify_equivalencia_consistency

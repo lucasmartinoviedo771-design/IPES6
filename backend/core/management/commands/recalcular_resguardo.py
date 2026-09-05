@@ -88,8 +88,6 @@ class Command(BaseCommand):
                 for reg in reg_qs:
                     from apps.estudiantes.api.helpers import _tiene_aprobacion_valida
                     from apps.estudiantes.api.helpers.misc_utils import _calcular_resguardo_equivalencia
-                    from core.models import Correlatividad
-                    from core.models import Materia as Mat
 
                     deberia_resguardo = _calcular_resguardo_equivalencia(
                         est,
