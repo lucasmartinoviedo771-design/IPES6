@@ -6,12 +6,13 @@ import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
+import Link from "@mui/material/Link";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import ipesLogoDark from "@/assets/ipes-logo-dark.png";
 import sigedFirma from "@/assets/siged-firma.png";
 import { PageHero } from "@/components/ui/GradientTitles";
@@ -396,6 +397,17 @@ export default function LoginPage() {
 								>
 									Ingresar
 								</Button>
+								<Link
+									component={RouterLink}
+									to="/olvide-password"
+									sx={{
+										color: "rgba(255,255,255,0.7)",
+										textAlign: "center",
+										fontSize: "0.875rem",
+									}}
+								>
+									¿Olvidaste tu contraseña?
+								</Link>
 							</Stack>
 						</form>
 					</Stack>

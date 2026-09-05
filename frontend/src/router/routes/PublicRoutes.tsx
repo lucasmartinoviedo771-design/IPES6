@@ -21,6 +21,12 @@ const InscripcionPreview = lazyPage(
 	() => import("../../pages/InscripcionPreview"),
 );
 const Forbidden = lazyPage(() => import("../../pages/Forbidden"));
+const ForgotPasswordPage = lazyPage(
+	() => import("../../pages/Auth/ForgotPasswordPage"),
+);
+const ResetPasswordPage = lazyPage(
+	() => import("../../pages/Auth/ResetPasswordPage"),
+);
 
 export const buildPublicRoutes = ({
 	preinscripcionElement,
@@ -34,6 +40,22 @@ export const buildPublicRoutes = ({
 			element={
 				<PublicOnlyRoute>
 					<LoginPage />
+				</PublicOnlyRoute>
+			}
+		/>
+		<Route
+			path="/olvide-password"
+			element={
+				<PublicOnlyRoute>
+					<ForgotPasswordPage />
+				</PublicOnlyRoute>
+			}
+		/>
+		<Route
+			path="/reset-password"
+			element={
+				<PublicOnlyRoute>
+					<ResetPasswordPage />
 				</PublicOnlyRoute>
 			}
 		/>

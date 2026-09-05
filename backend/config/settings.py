@@ -238,6 +238,26 @@ FRONTEND_ORIGINS = env_list(
 )
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# === Email (recuperación de contraseña) ===
+# Sin EMAIL_HOST_USER configurado, se usa el backend de consola: los emails
+# se imprimen en el log del backend en vez de enviarse de verdad. Apenas se
+# tenga una casilla real, cargar las variables de entorno de abajo (nunca
+# hardcodear credenciales acá) y el envío empieza a funcionar sin tocar código.
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+if EMAIL_HOST_USER:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = "no-reply@ipesrg.com"
+
+# Ventana de validez del link de recuperación de contraseña.
+PASSWORD_RESET_TIMEOUT_MINUTES = int(os.getenv("PASSWORD_RESET_TIMEOUT_MINUTES", "30"))
+
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True

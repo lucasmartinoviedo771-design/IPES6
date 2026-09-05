@@ -10,3 +10,16 @@ export async function changePassword(payload: ChangePasswordPayload) {
 	const { data } = await client.post("/auth/change-password/", payload);
 	return data;
 }
+
+export async function requestPasswordReset(login: string) {
+	const { data } = await client.post("/auth/password-reset/request/", { login });
+	return data;
+}
+
+export async function confirmPasswordReset(token: string, new_password: string) {
+	const { data } = await client.post("/auth/password-reset/confirm/", {
+		token,
+		new_password,
+	});
+	return data;
+}

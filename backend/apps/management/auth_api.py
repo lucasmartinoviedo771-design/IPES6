@@ -12,6 +12,8 @@ from django.http import HttpResponseRedirect, JsonResponse
 from ninja import Router
 from pydantic import BaseModel
 
+from django.core.mail import send_mail
+
 from apps.common.audit import log_action, log_action_from_request
 from apps.common.constants import AppErrorCode
 from apps.common.error_schemas import ErrorResponse
@@ -20,6 +22,7 @@ from core.auth_ninja import JWTAuth
 from core.authentication.jwt_service import JWTService
 from core.client_ip import get_client_ip
 from core.models import AuditLog
+from core.persona_utils import get_persona_email
 
 router = Router(auth=None)  # <- Permitimos acceso público a login, etc.
 
@@ -87,6 +90,15 @@ class ChangePasswordIn(BaseModel):
 
 class RefreshIn(BaseModel):
     refresh: str | None = None
+
+
+class PasswordResetRequestIn(BaseModel):
+    login: str
+
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str
+    new_password: str
 
 
 def _must_complete_profile(user) -> bool:
@@ -445,6 +457,113 @@ def change_password(request, payload: ChangePasswordIn):
         profile.save(update_fields=["must_change_password"])
 
     return {"detail": "Contraseña actualizada correctamente."}
+
+
+@router.post("/password-reset/request/", response={200: Message})
+def password_reset_request(request, payload: PasswordResetRequestIn):
+    """
+    Pide el envío de un link de recuperación. Responde siempre el mismo
+    mensaje genérico, exista o no el usuario y tenga o no email cargado en
+    Persona: no hay que revelar esa información a quien llama.
+    """
+    generic_msg = {"detail": "Si el usuario existe, se envió un email con instrucciones."}
+
+    cache_key = f"auth:password-reset:{get_client_ip(request) or 'unknown'}:{(payload.login or '').strip().lower()}"
+    limit = getattr(settings, "LOGIN_RATE_LIMIT_ATTEMPTS", 5)
+    window = getattr(settings, "LOGIN_RATE_LIMIT_WINDOW_SECONDS", 300)
+    attempts = cache.get(cache_key, 0)
+    if attempts >= limit:
+        return generic_msg
+    cache.set(cache_key, attempts + 1, timeout=window)
+
+    user = _resolve_user_by_identifier(payload.login)
+    if not user or not user.is_active:
+        return generic_msg
+
+    email = get_persona_email(user)
+    if not email:
+        return generic_msg
+
+    token = JWTService.create_password_reset_token(user)
+    reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
+    minutes = getattr(settings, "PASSWORD_RESET_TIMEOUT_MINUTES", 30)
+
+    send_mail(
+        subject="IPES - Recuperación de contraseña",
+        message=(
+            f"Recibimos un pedido de recuperación de contraseña para tu cuenta.\n\n"
+            f"Para definir una nueva, entrá a este link (válido por {minutes} minutos):\n"
+            f"{reset_url}\n\n"
+            f"Si no pediste esto, ignorá este mensaje: tu contraseña actual sigue funcionando."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+        fail_silently=True,
+    )
+
+    log_action_from_request(
+        request,
+        user=user,
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion="Pedido de recuperación de contraseña",
+        entidad="User",
+        entidad_id=user.id,
+        resultado=AuditLog.Resultado.OK,
+    )
+
+    return generic_msg
+
+
+@router.post("/password-reset/confirm/", response={200: Message, 400: ErrorResponse})
+def password_reset_confirm(request, payload: PasswordResetConfirmIn):
+    payload_data = JWTService.decode_token(payload.token)
+    if not payload_data or payload_data.get("type") != "password_reset":
+        raise AppError(400, AppErrorCode.AUTHENTICATION_FAILED, "El link de recuperación es inválido o expiró.")
+
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=payload_data.get("user_id"), is_active=True)
+    except User.DoesNotExist:
+        raise AppError(400, AppErrorCode.AUTHENTICATION_FAILED, "El link de recuperación es inválido o expiró.")
+
+    # Si la contraseña ya cambió desde que se generó el token (con este link
+    # ya usado, o por otra vía), el fragmento no coincide más: el link es de
+    # un solo uso, sin necesitar una tabla de tokens consumidos.
+    if user.password[-16:] != payload_data.get("pwd_fragment"):
+        raise AppError(400, AppErrorCode.AUTHENTICATION_FAILED, "El link de recuperación es inválido o expiró.")
+
+    try:
+        validate_password(payload.new_password, user)
+    except ValidationError as exc:
+        error_msg = " ".join(exc.messages)
+        raise AppError(400, AppErrorCode.VALIDATION_ERROR, error_msg, details=exc.messages)
+
+    user.set_password(payload.new_password)
+    user.save(update_fields=["password"])
+
+    log_action_from_request(
+        request,
+        user=user,
+        accion=AuditLog.Accion.UPDATE,
+        tipo_accion=AuditLog.TipoAccion.AUTH,
+        detalle_accion="Contraseña restablecida vía link de recuperación",
+        entidad="User",
+        entidad_id=user.id,
+        resultado=AuditLog.Resultado.OK,
+    )
+
+    estudiante = getattr(user, "estudiante", None)
+    if estudiante and estudiante.must_change_password:
+        estudiante.must_change_password = False
+        estudiante.save(update_fields=["must_change_password"])
+
+    profile = getattr(user, "profile", None)
+    if profile and profile.must_change_password:
+        profile.must_change_password = False
+        profile.save(update_fields=["must_change_password"])
+
+    return {"detail": "Contraseña restablecida correctamente. Ya podés iniciar sesión."}
 
 
 @router.post("/logout/")

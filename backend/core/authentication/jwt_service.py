@@ -51,6 +51,25 @@ class JWTService:
         return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
 
     @staticmethod
+    def create_password_reset_token(user) -> str:
+        """
+        Token de un solo uso para recuperación de contraseña. Incluye un
+        fragmento del hash de la contraseña actual: si el usuario ya cambió
+        la contraseña (con este link o por otra vía) antes de usarlo, el
+        fragmento no coincide más y el token queda invalidado sin necesitar
+        una tabla de tokens usados.
+        """
+        minutes = getattr(settings, "PASSWORD_RESET_TIMEOUT_MINUTES", 30)
+        payload = {
+            "user_id": user.id,
+            "pwd_fragment": user.password[-16:],
+            "exp": datetime.now(UTC) + timedelta(minutes=minutes),
+            "iat": datetime.now(UTC),
+            "type": "password_reset",
+        }
+        return jwt.encode(payload, getattr(settings, "JWT_SECRET_KEY", settings.SECRET_KEY), algorithm="HS256")
+
+    @staticmethod
     def decode_token(token: str) -> dict | None:
         """
         Decodifica un token y valida su firma y expiración.
