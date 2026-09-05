@@ -8,11 +8,10 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 from django.http import HttpResponseRedirect, JsonResponse
 from ninja import Router
 from pydantic import BaseModel
-
-from django.core.mail import send_mail
 
 from apps.common.audit import log_action, log_action_from_request
 from apps.common.constants import AppErrorCode
