@@ -136,4 +136,16 @@ def serve_media(request, path):
         if not (request.user.is_superuser or roles.intersection({"admin", "secretaria"})):
             return HttpResponse(status=403)
 
-    return FileResponse(open(file_path, "rb"))
+    # FileResponse toma posesion del archivo y lo cierra al terminar la respuesta.
+    response = FileResponse(open(file_path, "rb"))  # noqa: SIM115
+    # Evita que el navegador reinterprete el archivo por su contenido en vez de
+    # por su Content-Type (MIME sniffing). Sin esto, un archivo malicioso servido
+    # con un tipo benigno podria ejecutarse como HTML/JS en el contexto del dominio.
+    response["X-Content-Type-Options"] = "nosniff"
+    # Los unicos tipos que el navegador ejecuta al abrirlos inline son HTML y SVG.
+    # Para esos se fuerza la descarga; las imagenes y PDFs se siguen mostrando
+    # inline (fotos de perfil, adjuntos) para no romper la app.
+    ctype = (response.get("Content-Type") or "").split(";")[0].strip().lower()
+    if ctype in ("text/html", "application/xhtml+xml", "image/svg+xml"):
+        response["Content-Disposition"] = "attachment"
+    return response

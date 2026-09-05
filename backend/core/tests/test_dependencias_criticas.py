@@ -57,8 +57,9 @@ def test_pillow_sanitize_reserializa_y_descarta_metadata():
     sobre cada foto que se almacena; si un Pillow nuevo cambia la API, se rompe
     la subida de fotos.
     """
-    from apps.preinscriptions.upload_utils import sanitize_image
     from PIL import Image
+
+    from apps.preinscriptions.upload_utils import sanitize_image
 
     out = sanitize_image(_png_bytes())
     out.seek(0)

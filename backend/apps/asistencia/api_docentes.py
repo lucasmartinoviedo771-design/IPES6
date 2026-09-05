@@ -1,3 +1,4 @@
+import hmac
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -686,7 +687,9 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
 def check_kiosk_key(request):
     """Valida que la petición provenga de un dispositivo físico autorizado."""
     key = request.headers.get("X-Kiosk-Key")
-    if not key or key != settings.KIOSK_API_KEY:
+    # Comparacion en tiempo constante: != corta en el primer caracter distinto,
+    # lo que permitiria deducir la clave byte a byte midiendo tiempos de respuesta.
+    if not key or not hmac.compare_digest(key, settings.KIOSK_API_KEY or ""):
         raise HttpError(401, "Kiosk key inválida o ausente.")
 
 
