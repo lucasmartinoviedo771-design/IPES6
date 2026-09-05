@@ -66,21 +66,23 @@ docker exec <frontend> sh -c 'ls /usr/share/nginx/html/assets/*.map 2>/dev/null 
 docker exec -u root <backend> /app/.venv/bin/python /app/manage.py calcular_snapshots
 ```
 
-### 9. Configurar Nginx con Cloudflare
+### 9. Configurar Nginx para leer CF-Connecting-IP
 ```bash
-# Agregar proxy_set_header CF-Connecting-IP en cada bloque location de proxy
-# Agregar allow/deny para los 22 rangos de Cloudflare (ver paso 10)
+# Agregar proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+# en cada bloque location que hace proxy_pass al backend
 docker exec <frontend> nginx -t && docker exec <frontend> nginx -s reload
 ```
 
-### 10. Firewall a Cloudflare (CRÍTICO)
-```bash
-# En /etc/nginx/conf.d/default.conf, después de "server {":
-allow 103.21.244.0/22;
-allow 103.22.200.0/22;
-# ... (completar con los 22 rangos de https://www.cloudflare.com/ips/)
-deny all;
-```
+### 10. NO agregar firewall a rangos de Cloudflare en nginx
+
+**Ver [INFRAESTRUCTURA.md](INFRAESTRUCTURA.md) sección 1 antes de tocar esto.**
+
+Este servidor usa Cloudflare Tunnel: no hay puerto público sirviendo la app,
+así que no hace falta (ni funciona) restringir por rangos de IP de Cloudflare
+en nginx. Se probó el 2026-09-05 y tumbó el sitio ~35 min porque nginx nunca
+ve una IP de Cloudflare como origen — siempre ve `172.18.0.1` (el gateway del
+Tunnel). `CF-Connecting-IP` ya es confiable sin esa regla, porque no hay otro
+camino público hacia el backend.
 
 ### 11. Agregar Cron de Snapshots
 ```bash
@@ -139,9 +141,9 @@ Ninguno de estos es un error de despliegue.
 
 ## Firewall
 
-**⚠️ Ver [FIREWALL_WARNING.md](FIREWALL_WARNING.md) antes de tocar el firewall del sistema.**
+**⚠️ Ver [INFRAESTRUCTURA.md](INFRAESTRUCTURA.md) y [FIREWALL_WARNING.md](FIREWALL_WARNING.md) antes de tocar nginx o firewall del sistema.**
 
-Resumen: `deny all` en nginx solo bloquea puertos 80/443. Para restringir SSH (puerto 22), usar ufw, no nginx.
+Resumen: no agregar `allow <cloudflare>; deny all;` en nginx (no aplica a esta arquitectura, ver INFRAESTRUCTURA.md §1). Si alguna vez hace falta tocar el firewall del sistema para SSH, usar ufw, no nginx — `deny all` en nginx solo afecta puertos 80/443.
 
 ---
 
@@ -162,5 +164,4 @@ docker exec <backend> manage.py migrate metrics zero
 ## Monitoreo Post-Despliegue
 
 - `/home/ipesrg/scripts/snapshots.log` — cron diario a 23:30
-- Nginx `deny all` — verificar que no bloquea healthchecks/scripts internos
-- Cloudflare IP ranges — actualizar las 22 reglas si Cloudflare cambia su infraestructura
+- No agregar restricciones de origen por IP en nginx (ver INFRAESTRUCTURA.md §1)

@@ -1,95 +1,77 @@
-# ⚠️ ADVERTENCIA: Puerto 22 (SSH) en Firewall
+# ⚠️ ADVERTENCIA: Firewall y Puerto 22 (SSH)
 
-Al configurar `deny all` en nginx para restringir a Cloudflare:
+**Ver primero [INFRAESTRUCTURA.md](INFRAESTRUCTURA.md), sección 1.** Este
+servidor usa Cloudflare Tunnel, no el modelo clásico de Cloudflare → IP
+pública. Eso cambia qué firewall tiene sentido acá.
 
-```nginx
-allow 103.21.244.0/22;
-...
-deny all;
-```
+## No agregar `allow <rangos-cloudflare>; deny all;` en nginx
 
-**Esto solo afecta HTTP/HTTPS (puertos 80/443).** El puerto 22 (SSH) queda sin restricción.
+Esa regla fue probada en producción el 2026-09-05 y **tumbó el sitio durante
+~35 minutos**. La razón: el nginx del contenedor nunca ve una IP de
+Cloudflare como origen de la conexión — siempre ve `172.18.0.1` (el gateway
+hacia el Cloudflare Tunnel). `deny all` bloqueó el 100% del tráfico legítimo.
 
-## ¿Qué NO hacer?
+Esa restricción tiene sentido quando el servidor tiene un puerto público
+directo (Cloudflare → IP real → tu app), para evitar que alguien salte
+Cloudflare pegándole directo al origen. Acá no hay puerto público que sirva
+la app Docker — todo pasa por el Tunnel — así que no hay nada a lo que
+"pegarle directo", y la regla solo rompe el tráfico legítimo.
 
-❌ No agregar SSH a las reglas de nginx. Nginx no controla puertos fuera de HTTP/HTTPS.
+## Sobre el puerto 22 (SSH), si en algún momento se toca el firewall del sistema
 
-<<<<<<< HEAD
-## Si necesitas restringir SSH
+`deny all` en nginx **solo afecta HTTP/HTTPS (puertos 80/443)**. Nunca toca
+SSH. Nginx no controla puertos fuera de HTTP/HTTPS — restringir SSH desde ahí
+no tiene efecto.
 
-Hacerlo en el **firewall del sistema** (ufw/iptables), no en nginx:
-
-```bash
-sudo ufw default deny incoming
-sudo ufw allow from 203.0.113.0/24 to any port 22  # Tu red de admin
-sudo ufw allow from 103.21.244.0/22 to any port 80,443  # Cloudflare
-sudo ufw allow 22/tcp
-sudo ufw enable
-```
-
-## La distinción
-
-- **Nginx** (en este archivo): controla HTTP/HTTPS solamente
-- **Firewall del host** (ufw/iptables): controla TODOS los puertos
-
-Restriccionar SSH desde nginx no hace nada. Hacerlo desde el sistema sí.
-
-## Verificar después de cambios
-
-```bash
-ssh user@server "echo OK"   # ¿SSH funciona?
-curl -I https://server      # ¿HTTPS funciona?
-=======
-## Si necesitas restringir SSH a ciertos orígenes
-
-Hacerlo en el **firewall del sistema** (ufw), no en nginx.
-
-### Configuración segura (ufw)
+Si en el futuro hace falta restringir SSH a ciertos orígenes, hacerlo en el
+**firewall del sistema** (ufw), nunca en nginx:
 
 ```bash
 # Denegar todo por defecto
 sudo ufw default deny incoming
 
-# Permitir tu red de administración (SSH)
+# Permitir tu red de administración (SSH) — AJUSTAR a tu IP real
 sudo ufw allow from 203.0.113.0/24 to any port 22
 
-# Permitir Cloudflare (HTTP/HTTPS)
-sudo ufw allow from 103.21.244.0/22 to any port 80,443 proto tcp
-sudo ufw allow from 103.22.200.0/22 to any port 80,443 proto tcp
-# ... (continuar con los otros rangos de Cloudflare)
+# Permitir HTTP/HTTPS público (si hiciera falta — hoy no hace falta,
+# ver INFRAESTRUCTURA.md sección 1: no hay puerto público sirviendo la app)
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 
-# Habilitar firewall
 sudo ufw enable
 ```
 
-**Nota:** `proto tcp` es obligatorio cuando especificas múltiples puertos en ufw.
+**Nota:** `proto tcp` es obligatorio en ufw cuando se especifican múltiples
+puertos separados por coma (ej. `to any port 80,443 proto tcp`).
 
-## La distinción
+## La distinción que hay que tener clara
 
-- **Nginx** (en `/etc/nginx/conf.d/default.conf`): controla HTTP/HTTPS solamente
-- **Firewall del host** (ufw/iptables): controla **TODOS** los puertos, incluyendo SSH
+- **Nginx** (contenedor o Hestia): controla HTTP/HTTPS solamente.
+- **Firewall del host** (ufw/iptables): controla **todos** los puertos,
+  incluyendo SSH.
 
-Restringir SSH desde nginx no hace nada. Hacerlo desde ufw sí.
+## ⚠️ Riesgo crítico de cualquier cambio de firewall
 
-## ⚠️ RIESGO CRÍTICO
+Si se configura mal, se puede perder acceso SSH al servidor sin forma de
+recuperarlo remotamente.
 
-Si cambias el firewall incorrectamente, **pierdes acceso SSH al servidor y no puedes recuperarlo remotamente.**
-
-Siempre verificar después de cambios:
+Verificar siempre, **en una terminal separada, antes de cerrar la sesión
+actual**:
 
 ```bash
-# En una terminal, ANTES de cerrar la sesión actual:
-ssh user@server "echo OK"   # ¿SSH funciona?
-curl -I https://server      # ¿HTTPS funciona?
-
-# Si algo falla, volver atrás:
-sudo ufw reset
+ssh user@server "echo OK"   # ¿SSH sigue funcionando?
+curl -I https://ipesrg.com  # ¿el sitio sigue funcionando?
 ```
 
-## Revertir cambios rápidamente
+## Revertir rápido si algo sale mal
 
 ```bash
 sudo ufw reset
 sudo ufw disable
->>>>>>> a8eee79 (docs: advertencia sobre puerto 22 en configuracion de firewall)
+```
+
+Para nginx, sacar el bloque agregado y recargar:
+
+```bash
+docker exec ipes6-frontend-dev nginx -t && docker exec ipes6-frontend-dev nginx -s reload
 ```
