@@ -126,9 +126,7 @@ def test_guardar_un_acta_invalida_el_cache_de_rendimiento(req_admin, cache_redis
     from core.models import ActaExamen, Materia, PlanDeEstudio, Profesorado
 
     prof = Profesorado.objects.create(nombre="Prof Invalidacion", activo=True, duracion_anios=4)
-    plan = PlanDeEstudio.objects.create(
-        profesorado=prof, resolucion="RES-INVALIDACION", anio_inicio=2020, vigente=True
-    )
+    plan = PlanDeEstudio.objects.create(profesorado=prof, resolucion="RES-INVALIDACION", anio_inicio=2020, vigente=True)
     materia = Materia.objects.create(
         plan_de_estudio=plan, nombre="Materia Invalidacion", anio_cursada=1, formato="ASI", horas_semana=4
     )
