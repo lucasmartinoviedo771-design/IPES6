@@ -6,9 +6,9 @@
 ## Qué hay hoy
 
 Un decorador `@cache_endpoint(timeout, prefix)` en `cache_utils.py` que guarda
-la respuesta del endpoint en el cache de Django. **La única forma de que un
-valor cacheado se renueve es que expire su TTL.** No hay invalidación por
-eventos.
+la respuesta del endpoint en el cache de Django. Una entrada cacheada se renueva
+de dos maneras: cuando vence su TTL, o cuando cambian los datos de origen —ver
+[Invalidación por eventos](#invalidación-por-eventos).
 
 ### Endpoints cacheados
 
@@ -110,12 +110,6 @@ vacío y fallaba con Redis poblado.
 >    repo**: el CI clonaba sin él y fallaba. Corregido a `/conftest*.py`, igual
 >    que la línea `/test_*.py` de al lado. Si agregás un `conftest.py` nuevo,
 >    confirmá con `git ls-files` que quedó trackeado.
-
-**Advertencia sobre las señales:** hubo un intento previo de hacer esto que
-además de invalidar el cache borraba filas de `MatriculaSnapshot` y
-`AusentismoSnapshot` en cada `post_save`. Eso destruye la serie histórica que
-esos modelos existen para acumular. Si se reimplementa, la señal debe tocar
-únicamente el cache, nunca los snapshots.
 
 ## Cómo inspeccionar el cache
 
