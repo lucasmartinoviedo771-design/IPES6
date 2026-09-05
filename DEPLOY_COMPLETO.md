@@ -106,6 +106,45 @@ for r in AuditLog.objects.filter(id__in=ids).values('ip_origen').annotate(n=Coun
 
 ---
 
+## Migraciones
+
+La única migración de este despliegue es `metrics.0001_initial`:
+
+```
+Tablas creadas (nuevas, no modifica existentes):
+  - metrics_matriculasnapshot
+  - metrics_asistenciasnapshot
+  - metrics_ausentismosnapshot
+```
+
+**Reversibilidad:** ✅ Seguro revertir.
+
+**Importante:** Los snapshots acumulados en esas tablas NO se pueden reconstruir hacia atrás (son fotos diarias). Si se borran, se pierde el historial. Pero la migración solo agregó tablas sin tocar nada existente, así que en la mayoría de los casos alcanza con revertir el código y dejar las tablas vacías.
+
+---
+
+## Comportamientos que NO son errores
+
+Después del deploy, algunos gráficos/datos pueden verse vacíos o con advertencias:
+
+| Comportamiento | Causa | Cuándo se arregla |
+|---|---|---|
+| **Ausentismo muestra cifras altas** | Módulo en puesta a punto; sin datos sistemáticos = todo cuenta como ausente | Cuando la asistencia se registra consistentemente |
+| **Gráficos de evolución: un solo punto** | Primer snapshot acumulado | Después de 2-3 días (acumula snapshots diarios) |
+| **Panel Trámites vacío** | No hay pedidos de analítico o equivalencia | Normal si no hay trámites en curso |
+
+Ninguno de estos es un error de despliegue.
+
+---
+
+## Firewall
+
+**⚠️ Ver [FIREWALL_WARNING.md](FIREWALL_WARNING.md) antes de tocar el firewall del sistema.**
+
+Resumen: `deny all` en nginx solo bloquea puertos 80/443. Para restringir SSH (puerto 22), usar ufw, no nginx.
+
+---
+
 ## Rollback
 
 ```bash
