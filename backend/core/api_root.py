@@ -46,12 +46,22 @@ from apps.primera_carga.api import primera_carga_router
 
 # Singleton de la API
 if "api" not in locals():
+    from django.conf import settings
+
     from core.auth_ninja import JWTAuth
+
+    # La UI de /docs y el esquema /openapi.json los sirve django-ninja FUERA de
+    # la auth de la API, asi que quedan publicos aunque los endpoints esten
+    # protegidos. En produccion se desactivan: exponen el mapa completo de la
+    # API (endpoints, formas de request) y eso es reconocimiento gratis para un
+    # atacante. En desarrollo se dejan porque son utiles.
+    _docs_kwargs = {"docs_url": None, "openapi_url": None} if settings.IS_PROD else {}
 
     api = NinjaAPI(
         title="IPES6 API",
         version="1.0.0",
         auth=JWTAuth(),  # SEGURIDAD: TODA la API requiere JWT por defecto.
+        **_docs_kwargs,
     )
     register_error_handlers(api)
 
