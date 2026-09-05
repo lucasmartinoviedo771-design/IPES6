@@ -115,10 +115,8 @@ def _import_estudiante_record(
     )
 
     user = User.objects.filter(username=dni).first()
-    user_created = False
     if not user:
         user = User.objects.create_user(username=dni, password=password or dni)
-        user_created = True
 
     user.is_active = is_active
     user.save()

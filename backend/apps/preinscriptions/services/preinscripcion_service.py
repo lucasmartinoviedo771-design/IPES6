@@ -265,7 +265,7 @@ class PreinscripcionService:
             estudiante.save(update_fields=list(est_updates.keys()))
 
         # Career assignment
-        inscripcion = pre.alumno.asignar_profesorado(
+        pre.alumno.asignar_profesorado(
             pre.carrera,
             anio_ingreso=pre.anio,
             cohorte=str(pre.anio) if pre.anio else None,

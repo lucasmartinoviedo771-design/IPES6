@@ -105,9 +105,7 @@ def registrar_mesa_pandemia(
     Parámetros:
       dry_run: si es True, hace rollback al final (para previsualizar).
     """
-    try:
-        profesorado = Profesorado.objects.get(pk=profesorado_id)
-    except Profesorado.DoesNotExist:
+    if not Profesorado.objects.filter(pk=profesorado_id).exists():
         raise ValueError("El profesorado especificado no existe.")
 
     try:

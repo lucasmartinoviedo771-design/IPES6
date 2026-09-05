@@ -20,7 +20,6 @@ def serialize_pre(pre) -> dict:
     user_email = getattr(a, "email", "") if a else ""
 
     extra = copy.deepcopy(pre.datos_extra or {})
-    pre_estudiante_extra = extra.get("estudiante") if isinstance(extra.get("estudiante"), dict) else {}
     persisted_estudiante_extra = getattr(a, "datos_extra", {}) or {}
 
     def ensure_extra(field: str):

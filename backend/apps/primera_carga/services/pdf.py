@@ -55,14 +55,6 @@ def _render_planilla_regularidad_pdf(planilla: PlanillaRegularidad) -> bytes:
         leading=13,
         spaceAfter=2,
     )
-    info_style = ParagraphStyle(
-        "InfoCell",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=11,
-        spaceAfter=2,
-        alignment=TA_LEFT,
-    )
     header_style = ParagraphStyle(
         "TableHeader",
         parent=styles["Normal"],

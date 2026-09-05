@@ -145,7 +145,6 @@ class EstudianteService:
         for est in paginated:
             user = est.user if est.user_id else None
             persona = est.persona
-            condicion = _calcular_condicion_estudiante(est, checklist_map)
             # Obtener detalles de carrera para incluir el estado académico de cada una (filtrado por permisos)
             carreras_det = []
             carreras_nombres = []

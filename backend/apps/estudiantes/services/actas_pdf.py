@@ -142,7 +142,6 @@ def generar_acta_examen_pdf(
         spaceAfter=10,
         fontName="Helvetica-Bold",
     )
-    header_label_style = ParagraphStyle("HeaderLabel", parent=styles["Normal"], fontSize=9, fontName="Helvetica-Bold")
     header_value_style = ParagraphStyle("HeaderValue", parent=styles["Normal"], fontSize=9)
     table_header_style = ParagraphStyle(
         "TableHeader", parent=styles["Normal"], fontSize=8, alignment=TA_CENTER, fontName="Helvetica-Bold"
