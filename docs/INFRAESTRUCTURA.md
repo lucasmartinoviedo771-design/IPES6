@@ -63,6 +63,29 @@ recibe tráfico que pasó por el edge de Cloudflare. Nadie puede inyectar ese
 header directamente porque no hay puerto público al que conectarse para
 intentarlo.
 
+### Cómo verificar esta premisa
+
+Todo lo anterior se apoya en un solo hecho: **ningún puerto de la app está
+publicado hacia afuera**. Si alguien publica uno en `0.0.0.0`, la garantía se
+cae en silencio y `CF-Connecting-IP` vuelve a ser falsificable por quien llegue
+a ese puerto. Conviene comprobarlo después de cualquier cambio en el compose:
+
+```bash
+# Los contenedores de IPES6 tienen que publicar SOLO en 127.0.0.1
+docker ps --filter name=ipes6 --format '{{.Names}}\t{{.Ports}}'
+
+# Nada de la app deberia figurar escuchando en 0.0.0.0
+ss -ltn | awk 'NR>1 {print $4}' | grep -E '^0\.0\.0\.0|^\[::\]'
+```
+
+Verificado el 05/09/2026 en DEV: los cuatro contenedores (frontend, backend,
+redis, db) publican solo en `127.0.0.1`.
+
+El segundo comando sí devuelve varios puertos, pero pertenecen a otros
+proyectos del mismo servidor —no a IPES6— y por lo tanto quedan fuera de la
+protección del Tunnel. Vale tenerlo presente al evaluar la seguridad del host,
+aunque no afecte esta conclusión.
+
 ---
 
 ## 2. El otro sitio en la misma IP (no confundir)

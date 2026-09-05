@@ -11,7 +11,7 @@ Esa regla fue probada en producción el 2026-09-05 y **tumbó el sitio durante
 Cloudflare como origen de la conexión — siempre ve `172.18.0.1` (el gateway
 hacia el Cloudflare Tunnel). `deny all` bloqueó el 100% del tráfico legítimo.
 
-Esa restricción tiene sentido quando el servidor tiene un puerto público
+Esa restricción tiene sentido cuando el servidor tiene un puerto público
 directo (Cloudflare → IP real → tu app), para evitar que alguien salte
 Cloudflare pegándole directo al origen. Acá no hay puerto público que sirva
 la app Docker — todo pasa por el Tunnel — así que no hay nada a lo que
