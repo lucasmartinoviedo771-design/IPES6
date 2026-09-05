@@ -18,6 +18,7 @@ from apps.common.error_schemas import ErrorResponse
 from apps.common.errors import AppError
 from core.auth_ninja import JWTAuth
 from core.authentication.jwt_service import JWTService
+from core.client_ip import get_client_ip
 from core.models import AuditLog
 
 router = Router(auth=None)  # <- Permitimos acceso público a login, etc.
@@ -259,13 +260,7 @@ def _clear_jwt_cookies(response: JsonResponse):
 
 
 def _client_identifier(request, login: str) -> str:
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        # Usamos la última IP para evitar spoofing (coincide con Audit Middleware)
-        ips = [ip.strip() for ip in x_forwarded_for.split(",")]
-        ip = ips[-1]
-    else:
-        ip = request.META.get("REMOTE_ADDR") or "unknown"
+    ip = get_client_ip(request) or "unknown"
 
     login_id = (login or "").strip().lower() or "anonymous"
     return f"auth:login:{ip}:{login_id}"

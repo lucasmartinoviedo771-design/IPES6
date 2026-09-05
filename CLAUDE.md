@@ -27,13 +27,23 @@ Patrón que usan los cron ya configurados:
 <horario> docker exec -u root ipes6-backend-dev /app/.venv/bin/python /app/manage.py <comando> >> /home/admin486321/NuevoIPES/logs/backend/<comando>.log 2>&1
 ```
 
-### Ya configurados
+### Estado por servidor
 
-```
-0 3 1 * *  purge_audit_logs                       # purga de AuditLog, día 1 de cada mes
-30 23 * * * calcular_snapshots                     # snapshots diarios de matrícula/asistencia/ausentismo
-0 6 1 6 *  verificar_residencias_condicionales     # 01/06 anual, ver detalle abajo
-```
+**El crontab es de cada máquina, no del repositorio.** Configurar algo en DEV no
+lo configura en producción; hay que verificar en cada servidor con `crontab -l`.
+
+| Tarea | Horario | DEV | Producción |
+|---|---|---|---|
+| `purge_audit_logs` | `0 3 1 * *` | sí | verificar |
+| `calcular_snapshots` | `30 23 * * *` | sí | **falta** (verificado 05/09/2026) |
+| `verificar_residencias_condicionales` | `0 6 1 6 *` | sí | sí |
+| `recalcular_resguardo` | `30 1 * * *` | no | sí |
+
+Sin `calcular_snapshots` los gráficos de evolución del dashboard no acumulan
+datos: quedan mostrando un único punto.
+
+`recalcular_resguardo` existe solo en producción y no está documentado acá;
+conviene averiguar qué hace antes de replicarlo o quitarlo.
 
 `calcular_snapshots` alimenta los gráficos de evolución del dashboard. Es
 idempotente y acepta `--fecha AAAA-MM-DD` para rellenar días faltantes, y

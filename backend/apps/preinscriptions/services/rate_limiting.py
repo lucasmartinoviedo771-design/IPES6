@@ -5,16 +5,14 @@ from django.conf import settings
 from django.core.cache import cache
 from ninja.errors import HttpError
 
+from core.client_ip import get_client_ip
+
 logger = logging.getLogger(__name__)
 
 
 def client_ip(request) -> str:
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(",")[0].strip()
-        if ip:
-            return ip
-    return request.META.get("REMOTE_ADDR", "") or ""
+    """Alias del resolvedor central. Ver core/client_ip.py."""
+    return get_client_ip(request)
 
 
 def check_rate_limit(request) -> None:

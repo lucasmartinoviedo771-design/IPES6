@@ -71,6 +71,15 @@ jobs:
         run: uv run ruff format --check .
         working-directory: backend
 
+      # Consulta la base de CVEs en cada corrida, que es el punto: una version
+      # segura hoy puede dejar de serlo manana sin que cambie una linea de codigo.
+      # continue-on-error para que un aviso no bloquee el pipeline: se revisa el
+      # log y se decide. Si se quiere que frene, sacar esa linea.
+      - name: Audit dependencies (pip-audit)
+        run: uvx pip-audit --disable-pip
+        working-directory: backend
+        continue-on-error: true
+
       - name: Run backend tests
         run: uv run pytest core/tests/ -v --no-migrations -o cache_dir=/tmp
         working-directory: backend

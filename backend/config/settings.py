@@ -382,3 +382,12 @@ else:
             "LOCATION": "ipes6-analytics",
         }
     }
+
+
+# --- IP real del cliente -----------------------------------------------------
+# Posición de X-Forwarded-For a usar cuando NO llega CF-Connecting-IP. Con
+# Cloudflare adelante la IP del visitante queda primera (índice 0). Si algún día
+# se saca Cloudflare y queda un único nginx propio, el valor confiable pasa a ser
+# el último (-1), porque el primero lo puede escribir el cliente.
+# Ver core/client_ip.py.
+CLIENT_IP_XFF_INDEX = int(os.getenv("CLIENT_IP_XFF_INDEX", "0"))
