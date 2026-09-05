@@ -96,13 +96,20 @@ Sin ese aislamiento los tests no son reproducibles. El caso concreto: el test
 que verifica que un usuario sin permisos no puede leer métricas pasaba con Redis
 vacío y fallaba con Redis poblado.
 
-> **Trampa del entorno.** `conftest.py` tiene que estar dentro de un directorio
-> montado en el contenedor. El `docker-compose.yml` monta solo `./apps`,
-> `./core`, `./config` y `./manage.py`: un `conftest.py` en la raíz del backend
-> existe en el host pero **no dentro del contenedor**, y pytest lo ignora sin
-> avisar — las fixtures aparecen como "not found" aunque el archivo esté ahí.
-> Por eso vive en `core/tests/conftest.py`. Lo mismo vale para cualquier archivo
-> nuevo fuera de esos cuatro directorios.
+> **Dos trampas con `conftest.py`.** Las dos se manifiestan igual —las fixtures
+> figuran como "not found" aunque el archivo esté ahí— y por eso cuestan de
+> diagnosticar.
+>
+> 1. *Volúmenes.* El `docker-compose.yml` monta solo `./apps`, `./core`,
+>    `./config` y `./manage.py`. Un `conftest.py` en la raíz del backend existe
+>    en el host pero **no dentro del contenedor**. Vale para cualquier archivo
+>    nuevo fuera de esos cuatro directorios.
+> 2. *`.gitignore`.* La regla era `conftest*.py` sin barra inicial, así que
+>    ignoraba los conftest de cualquier nivel, no solo los locales de la raíz
+>    que se querían excluir. El archivo funcionaba en DEV y **no llegaba al
+>    repo**: el CI clonaba sin él y fallaba. Corregido a `/conftest*.py`, igual
+>    que la línea `/test_*.py` de al lado. Si agregás un `conftest.py` nuevo,
+>    confirmá con `git ls-files` que quedó trackeado.
 
 **Advertencia sobre las señales:** hubo un intento previo de hacer esto que
 además de invalidar el cache borraba filas de `MatriculaSnapshot` y

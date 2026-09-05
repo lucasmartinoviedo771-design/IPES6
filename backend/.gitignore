@@ -40,8 +40,11 @@ dist/
 *.csv
 
 # Local tests and scripts (Only in DEV)
+# Con barra inicial: solo la raiz del backend. Sin ella tambien se ignoraban los
+# conftest.py legitimos dentro de los paquetes de tests, que si van al repo:
+# el CI clona y sin ellos las fixtures figuran como "not found".
 /test_*.py
-conftest*.py
+/conftest*.py
 Temporal/
 *.py.backup
 *.old
