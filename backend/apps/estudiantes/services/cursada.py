@@ -1,6 +1,5 @@
 from decimal import Decimal, InvalidOperation
 
-
 from core.models import (
     ActaExamenEstudiante,
     EquivalenciaDisposicionDetalle,
