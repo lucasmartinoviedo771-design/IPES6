@@ -111,6 +111,7 @@ exclude = [
     "node_modules",
     "venv",
     "migrations",
+    ".vulture_whitelist.py",
 ]
 
 [tool.ruff.lint]
