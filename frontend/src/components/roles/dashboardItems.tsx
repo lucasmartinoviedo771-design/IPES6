@@ -246,9 +246,9 @@ export const DASHBOARD_ITEMS = {
 		path: "/admin/resguardo-materias",
 	},
 	PREINSCRIPCIONES: {
-		title: "Preinscripciones",
+		title: "Gestión de preinscripciones",
 		subtitle:
-			"Listado completo y gestión de solicitudes de preinscripción recibidas.",
+			"Búsqueda, control de documentación y confirmación/formalización presencial.",
 		icon: <ChecklistIcon />,
 		path: "/preinscripciones",
 	},

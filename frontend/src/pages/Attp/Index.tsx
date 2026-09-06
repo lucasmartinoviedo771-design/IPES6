@@ -11,7 +11,7 @@ const sections: RoleDashboardSection[] = [
 		title: "Inscripciones (escritura)",
 		items: [
 			{
-				...DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION,
+				...DASHBOARD_ITEMS.PREINSCRIPCIONES,
 				title: "Inscripción a carreras",
 				subtitle:
 					"Formalizá y confirmá inscripciones de aspirantes a profesorados.",

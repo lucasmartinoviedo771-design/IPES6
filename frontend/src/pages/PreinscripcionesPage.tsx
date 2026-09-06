@@ -117,8 +117,10 @@ export default function PreinscripcionesPage() {
 			}),
 	});
 
-	// Unificación: formalizar en esta misma vista
-	const [codigoSel, setCodigoSel] = React.useState<string | null>(null);
+	// Unificación: formalizar en esta misma vista (soporta ?codigo=... desde URL)
+	const [codigoSel, setCodigoSel] = React.useState<string | null>(
+		() => searchParams.get("codigo") || null,
+	);
 		const [docs, setDocs] = React.useState<{ [k: string]: boolean }>({
 		dni: false,
 		titulo_secundario: false,
@@ -376,9 +378,10 @@ export default function PreinscripcionesPage() {
 											>
 												<Button
 													size="small"
+													variant="outlined"
 													onClick={() => setCodigoSel(p.codigo)}
 												>
-													Ver / Editar
+													Formalizar / Ver
 												</Button>
 												{ }
 												{(p as any).activa === false ? (

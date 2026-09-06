@@ -54,7 +54,6 @@ export default function BedelesIndex() {
 					...(canFormalize
 						? [
 								DASHBOARD_ITEMS.PREINSCRIPCIONES,
-								DASHBOARD_ITEMS.FORMALIZAR_INSCRIPCION,
 							]
 						: []),
 					...(canVerMesas ? [DASHBOARD_ITEMS.MESAS_EXAMEN] : []),

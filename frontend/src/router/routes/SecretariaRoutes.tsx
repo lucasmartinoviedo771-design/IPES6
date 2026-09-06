@@ -1,4 +1,4 @@
-import { Outlet, Route } from "react-router-dom";
+import { Navigate, Outlet, Route } from "react-router-dom";
 import ErrorBoundary from "@/debug/ErrorBoundary";
 import { ProtectedRoute } from "@/router/guards";
 import { lazyPage } from "@/utils/lazy";
@@ -273,7 +273,7 @@ export const buildSecretariaRoutes = () => (
 			<Route path="/asistencia/cargos" element={<CargosAsistenciaPage />} />
 		</Route>
 
-		{/* ── Inscripciones ── */}
+		{/* ── Inscripciones (unificado en /preinscripciones) ── */}
 		<Route
 			element={
 				<ProtectedRoute capability="gestionar_preinscripcion">
@@ -283,7 +283,7 @@ export const buildSecretariaRoutes = () => (
 		>
 			<Route
 				path="/secretaria/confirmar-inscripcion"
-				element={<ConfirmarInscripcionSecretaria />}
+				element={<Navigate to="/preinscripciones" replace />}
 			/>
 		</Route>
 
