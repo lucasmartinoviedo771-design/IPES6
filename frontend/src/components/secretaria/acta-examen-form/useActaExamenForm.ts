@@ -14,6 +14,7 @@ import {
 	guardarActaOral,
 	type MesaResumenDTO,
 	obtenerActa,
+	obtenerActaOral,
 } from "@/api/cargaNotas";
 import { fetchEstudianteAdminDetail } from "@/api/estudiantes";
 import type { OralActFormValues } from "@/components/secretaria/OralExamActaDialog";
@@ -530,8 +531,41 @@ export function useActaExamenForm({
 		}
 	};
 
-	const handleOpenOralActa = (estudiante: EstudianteState) => {
+	const handleOpenOralActa = async (estudiante: EstudianteState) => {
 		setOralDialogEstudiante(estudiante);
+
+		// Los borradores viven en memoria, así que al recargar la página el acta
+		// ya cargada aparecía en blanco, como si se hubiera perdido lo enviado al
+		// estudiante. Se recupera la que está guardada en el servidor.
+		const mesaId = mesaSeleccionada?.id;
+		const inscripcionId = estudiante.inscripcionId;
+		if (!mesaId || !inscripcionId) return;
+
+		try {
+			const acta = await obtenerActaOral(mesaId, inscripcionId);
+			if (!acta) return;
+			const toRows = (temas: { tema: string; score?: string | null }[]) =>
+				temas.map((t, i) => ({
+					id: `${i}-${t.tema}`,
+					tema: t.tema,
+					score: (t.score || "") as OralActFormValues["temasEstudiante"][number]["score"],
+				}));
+			setOralActDrafts((prev) => ({
+				...prev,
+				[estudiante.internoId]: {
+					actaNumero: acta.acta_numero || "",
+					folioNumero: acta.folio_numero || "",
+					fecha: acta.fecha || fecha,
+					curso: acta.curso || "",
+					notaFinal: acta.nota_final || "",
+					observaciones: acta.observaciones || "",
+					temasEstudiante: toRows(acta.temas_estudiante || []),
+					temasDocente: toRows(acta.temas_docente || []),
+				},
+			}));
+		} catch {
+			// 404 = todavía no hay acta oral cargada para este estudiante: se abre vacía.
+		}
 	};
 
 	const handleSaveOralActa = async (values: OralActFormValues) => {
