@@ -33,9 +33,7 @@ FECHA = date(2026, 12, 15)
 def materia():
     prof = Profesorado.objects.create(nombre="Profesorado de Prueba", duracion_anios=4)
     plan = PlanDeEstudio.objects.create(profesorado=prof, resolucion="RES-001/24", anio_inicio=2024)
-    return Materia.objects.create(
-        plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI"
-    )
+    return Materia.objects.create(plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI")
 
 
 @pytest.fixture
@@ -43,9 +41,7 @@ def otra_materia():
     """Misma materia por nombre, otro profesorado: es otra fila y otro materia_id."""
     prof = Profesorado.objects.create(nombre="Otro Profesorado", duracion_anios=4)
     plan = PlanDeEstudio.objects.create(profesorado=prof, resolucion="RES-002/24", anio_inicio=2024)
-    return Materia.objects.create(
-        plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI"
-    )
+    return Materia.objects.create(plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI")
 
 
 def _mesa(materia, modalidad="REG", fecha=FECHA):

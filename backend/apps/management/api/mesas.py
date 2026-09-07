@@ -163,9 +163,7 @@ def create_mesa(request, payload: MesaIn):
     # Dos mesas iguales el mismo día dejaban el acta colgada de cualquiera de
     # las dos. Se avisa acá para no exponer el error de la restricción de la base.
     modalidad = payload.modalidad.upper()
-    existente = MesaExamen.objects.filter(
-        materia=materia, fecha=payload.fecha, modalidad=modalidad
-    ).first()
+    existente = MesaExamen.objects.filter(materia=materia, fecha=payload.fecha, modalidad=modalidad).first()
     if existente:
         hora = existente.hora_desde.strftime("%H:%M") if existente.hora_desde else "sin hora"
         raise HttpError(
@@ -310,9 +308,7 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
     materia = semilla.materia
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
 
-    existente = MesaExamen.objects.filter(
-        materia=materia, fecha=payload.fecha, modalidad=semilla.modalidad
-    ).first()
+    existente = MesaExamen.objects.filter(materia=materia, fecha=payload.fecha, modalidad=semilla.modalidad).first()
     if existente:
         hora = existente.hora_desde.strftime("%H:%M") if existente.hora_desde else "sin hora"
         raise HttpError(

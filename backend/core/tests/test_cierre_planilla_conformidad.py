@@ -59,9 +59,7 @@ def secretaria():
 def mesa():
     prof = Profesorado.objects.create(nombre="Profesorado de Prueba", duracion_anios=4)
     plan = PlanDeEstudio.objects.create(profesorado=prof, resolucion="RES-001/24", anio_inicio=2024)
-    materia = Materia.objects.create(
-        plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI"
-    )
+    materia = Materia.objects.create(plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI")
     return MesaExamen.objects.create(materia=materia, tipo="FIN", fecha=date(2026, 9, 7))
 
 
