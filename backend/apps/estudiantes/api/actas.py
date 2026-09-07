@@ -983,16 +983,32 @@ def actualizar_docentes_acta(request, acta_id: int, payload: list[ActaDocenteLoc
     return ApiResponse(ok=True, message="Tribunal actualizado correctamente.")
 
 
+def _puede_descargar_acta(request, acta) -> bool:
+    """
+    El personal con 'ver_actas' descarga cualquier acta. El docente solo la de su
+    propia mesa: acaba de cargarla y necesita el PDF, pero no las actas ajenas.
+    """
+    from apps.estudiantes.api.helpers.user_utils import _user_can_manage_mesa_planilla
+
+    active_role = request.headers.get("X-Active-Role")
+    if can(request.user, "ver_actas", active_role):
+        return True
+    mesa = getattr(acta, "mesa", None)
+    return bool(mesa) and _user_can_manage_mesa_planilla(request, mesa)
+
+
 @router.get(
     "/actas/{acta_id}/pdf",
     auth=JWTAuth(),
 )
-@requires("ver_actas")
+@requires_any("ver_actas", "carga_finales")
 def descargar_acta_pdf(request, acta_id: int):
     """Genera y descarga el PDF del acta principal (alumnos del profesorado)."""
-    acta = ActaExamen.objects.filter(id=acta_id).first()
+    acta = ActaExamen.objects.filter(id=acta_id).select_related("mesa").first()
     if not acta:
         return HttpResponse("Acta no encontrada", status=404)
+    if not _puede_descargar_acta(request, acta):
+        return HttpResponse("No está autorizado a descargar esta acta.", status=403)
 
     pdf_bytes = generar_acta_examen_pdf(acta, es_comisionados=False)
 
@@ -1006,12 +1022,14 @@ def descargar_acta_pdf(request, acta_id: int):
     "/actas/{acta_id}/pdf-comisionados",
     auth=JWTAuth(),
 )
-@requires("ver_actas")
+@requires_any("ver_actas", "carga_finales")
 def descargar_acta_comisionados_pdf(request, acta_id: int):
     """Genera y descarga el PDF de alumnos comisionados de un acta."""
-    acta = ActaExamen.objects.filter(id=acta_id).first()
+    acta = ActaExamen.objects.filter(id=acta_id).select_related("mesa").first()
     if not acta:
         return HttpResponse("Acta no encontrada", status=404)
+    if not _puede_descargar_acta(request, acta):
+        return HttpResponse("No está autorizado a descargar esta acta.", status=403)
 
     pdf_bytes = generar_acta_examen_pdf(acta, es_comisionados=True)
 

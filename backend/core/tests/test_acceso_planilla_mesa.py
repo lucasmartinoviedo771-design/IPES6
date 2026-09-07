@@ -144,6 +144,56 @@ class TestAccesoAPlanillaDeMesa:
         assert not _user_can_manage_mesa_planilla(_FakeRequest(fantasma), mesa)
 
 
+class TestDescargaDelPdfDelActa:
+    """
+    Descargar el PDF exigia 'ver_actas', que el rol docente no tiene: al docente
+    que acababa de generar el acta le daba 403 y la UI mostraba "Ocurrio un error
+    inesperado". Ahora tambien alcanza con 'carga_finales', pero acotado a la
+    mesa propia para no abrir las actas del resto del instituto.
+    """
+
+    def _acta_de(self, mesa):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(mesa=mesa)
+
+    def test_el_titular_descarga_el_acta_de_su_mesa(self):
+        from apps.estudiantes.api.actas import _puede_descargar_acta
+
+        doc = _docente("30000030", "TITULAR")
+        user = _user("30000030", "docente")
+        mesa = MesaExamen(docente_presidente_id=doc.id)
+        assert _puede_descargar_acta(_FakeRequest(user), self._acta_de(mesa))
+
+    def test_el_docente_no_descarga_actas_de_otras_mesas(self):
+        from apps.estudiantes.api.actas import _puede_descargar_acta
+
+        titular = _docente("30000031", "TITULAR")
+        _docente("30000032", "AJENO")
+        ajeno = _user("30000032", "docente")
+        mesa = MesaExamen(docente_presidente_id=titular.id)
+        assert not _puede_descargar_acta(_FakeRequest(ajeno), self._acta_de(mesa))
+
+    def test_secretaria_descarga_cualquier_acta(self):
+        from apps.estudiantes.api.actas import _puede_descargar_acta
+
+        titular = _docente("30000033", "TITULAR")
+        secretaria = _user("30000034", "secretaria")
+        mesa = MesaExamen(docente_presidente_id=titular.id)
+        assert _puede_descargar_acta(_FakeRequest(secretaria), self._acta_de(mesa))
+
+    def test_acta_sin_mesa_solo_para_quien_ve_actas(self):
+        """Las actas historicas y de equivalencias no tienen mesa asociada."""
+        from apps.estudiantes.api.actas import _puede_descargar_acta
+
+        _docente("30000035", "SUELTO")
+        doc = _user("30000035", "docente")
+        assert not _puede_descargar_acta(_FakeRequest(doc), self._acta_de(None))
+
+        secretaria = _user("30000036", "secretaria")
+        assert _puede_descargar_acta(_FakeRequest(secretaria), self._acta_de(None))
+
+
 class TestResolucionDeDocente:
     def test_resuelve_por_dni(self):
         doc = _docente("30000020", "PORDNI")
