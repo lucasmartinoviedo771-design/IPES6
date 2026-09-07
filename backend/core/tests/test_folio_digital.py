@@ -14,6 +14,7 @@ import itertools
 from datetime import date
 
 import pytest
+from django.db.utils import IntegrityError
 
 from apps.estudiantes.api.actas_helpers import LIBRO_DIGITAL, generar_folio_digital
 from core.models import ActaExamen, Materia, PlanDeEstudio, Profesorado
@@ -33,9 +34,10 @@ def materia():
 _numero = itertools.count(1)
 
 
-def _acta(materia, libro, folio, codigo):
+def _acta(materia, libro, folio, codigo, clave_registral=None):
     # numero es unico por (profesorado, anio_academico), asi que se va incrementando.
     return ActaExamen.objects.create(
+        clave_registral=clave_registral,
         codigo=codigo,
         numero=next(_numero),
         anio_academico=2026,
@@ -112,3 +114,40 @@ class TestLibroDigital:
             folios.append(folio)
         assert folios == ["1", "2", "3", "4", "5"]
         assert len(set(folios)) == len(folios)
+
+
+class TestUnicidadRegistral:
+    """
+    La unicidad se aplica de ahora en adelante, no sobre el historico.
+
+    MySQL no soporta indices unicos condicionales (un UniqueConstraint con
+    condition se ignora en silencio), asi que no alcanza con declarar "unico
+    cuando libro=SIGI". Se usa clave_registral: UNIQUE en la base, con NULL en
+    las actas en papel —MySQL admite multiples NULL— y 'libro/folio' en las
+    digitales.
+    """
+
+    def test_la_base_rechaza_dos_actas_con_la_misma_clave(self, materia):
+        _acta(materia, LIBRO_DIGITAL, "1", "A-1", clave_registral="SIGI/1")
+        with pytest.raises(IntegrityError):
+            _acta(materia, LIBRO_DIGITAL, "1", "A-2", clave_registral="SIGI/1")
+
+    def test_el_historico_puede_repetir_libro_y_folio(self, materia):
+        """
+        Los folios en papel estan repetidos en los datos reales (1348 grupos), asi
+        que la restriccion no debe alcanzarlos: van con clave_registral en NULL.
+        """
+        _acta(materia, "1", "18", "A-h1")
+        _acta(materia, "1", "18", "A-h2")
+        _acta(materia, "1", "18", "A-h3")
+
+        assert ActaExamen.objects.filter(libro="1", folio="18").count() == 3
+        assert ActaExamen.objects.filter(clave_registral__isnull=True).count() == 3
+
+    def test_digitales_y_papel_conviven(self, materia):
+        _acta(materia, "2", "122", "A-h1")
+        _acta(materia, "2", "122", "A-h2")
+        digital = _acta(materia, LIBRO_DIGITAL, "1", "A-d1", clave_registral="SIGI/1")
+
+        assert digital.clave_registral == "SIGI/1"
+        assert ActaExamen.objects.exclude(clave_registral__isnull=True).count() == 1

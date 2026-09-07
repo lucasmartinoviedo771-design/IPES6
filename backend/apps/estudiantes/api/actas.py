@@ -490,6 +490,11 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             acta_libro = LIBRO_DIGITAL
             acta_folio = generar_folio_digital()
 
+        # Solo las actas digitales llevan clave registral: es UNIQUE en la base y el
+        # histórico en papel tiene folios repetidos, así que allí queda en NULL
+        # (MySQL admite múltiples NULL en un índice único).
+        clave_registral = f"{acta_libro}/{acta_folio}" if acta_libro == LIBRO_DIGITAL else None
+
         acta = ActaExamen.objects.create(
             codigo=codigo,
             numero=numero,
@@ -502,6 +507,7 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             fecha=acta_fecha,
             folio=acta_folio,
             libro=acta_libro,
+            clave_registral=clave_registral,
             observaciones=payload.observaciones or "",
             total_alumnos=len(payload.estudiantes),
             total_aprobados=categoria_counts["aprobado"],
@@ -775,6 +781,9 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         elif acta.libro != LIBRO_DIGITAL:
             acta.folio = ""
             acta.libro = ""
+        # La clave registral acompaña a libro/folio para que el UNIQUE siga siendo
+        # cierto tras la edición; las actas en papel se mantienen en NULL.
+        acta.clave_registral = f"{acta.libro}/{acta.folio}" if acta.libro == LIBRO_DIGITAL else None
         acta.observaciones = payload.observaciones or ""
         acta.total_alumnos = len(payload.estudiantes)
         acta.total_aprobados = categoria_counts["aprobado"]

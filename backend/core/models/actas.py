@@ -41,6 +41,18 @@ class ActaExamen(models.Model):
     fecha = models.DateField()
     folio = models.CharField(max_length=64, blank=True)
     libro = models.CharField(max_length=64, blank=True)
+    clave_registral = models.CharField(
+        max_length=160,
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+        help_text=(
+            "Identificación única 'libro/folio' de las actas numeradas digitalmente. "
+            "Queda en NULL para las actas históricas en papel, que tienen folios repetidos "
+            "y no pueden cumplir la unicidad."
+        ),
+    )
     observaciones = models.TextField(blank=True)
     total_alumnos = models.PositiveIntegerField(default=0)
     total_aprobados = models.PositiveIntegerField(default=0)
