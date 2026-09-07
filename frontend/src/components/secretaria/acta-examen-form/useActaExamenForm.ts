@@ -11,6 +11,7 @@ import {
 	buscarMesaPorCodigo,
 	crearActaExamen,
 	fetchActaMetadata,
+	guardarActaOral,
 	type MesaResumenDTO,
 	obtenerActa,
 } from "@/api/cargaNotas";
@@ -532,6 +533,41 @@ export function useActaExamenForm({
 			...prev,
 			[oralDialogEstudiante.internoId]: values,
 		}));
+
+		const mesaId = mesaSeleccionada?.id;
+		const inscripcionId = oralDialogEstudiante.inscripcionId;
+
+		// Sin mesa/inscripción reales (carga manual) el acta no se persiste: el
+		// diálogo genera el PDF en el cliente a partir de estos mismos valores.
+		if (!mesaId || !inscripcionId) return;
+
+		// Con mesa e inscripción, el acta DEBE guardarse antes de pedir el PDF:
+		// el backend lo arma desde el registro persistido y responde 404 si no existe.
+		const mapTemas = (temas: OralActFormValues["temasEstudiante"]) =>
+			temas
+				.filter((t) => t.tema.trim())
+				.map((t) => ({ tema: t.tema.trim(), score: t.score || null }));
+
+		try {
+			await guardarActaOral(mesaId, inscripcionId, {
+				acta_numero: values.actaNumero || null,
+				folio_numero: values.folioNumero || null,
+				fecha: values.fecha || null,
+				curso: values.curso || null,
+				nota_final: values.notaFinal || null,
+				observaciones: values.observaciones || null,
+				temas_estudiante: mapTemas(values.temasEstudiante),
+				temas_docente: mapTemas(values.temasDocente),
+			});
+		} catch (error: any) {
+			enqueueSnackbar(
+				error?.response?.data?.message ||
+					"No se pudo guardar el acta oral. Verificá que seas el docente titular de la mesa.",
+				{ variant: "error" },
+			);
+			// Propagar para que el diálogo no intente descargar un PDF inexistente.
+			throw error;
+		}
 	};
 
 	const handleDocenteInputChange = (index: number, rawValue: string) => {
