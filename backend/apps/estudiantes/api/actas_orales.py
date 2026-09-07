@@ -38,6 +38,37 @@ from apps.estudiantes.schemas import (
     ResponderConformidadPayload,
 )
 
+# Plazo que tiene CADA estudiante para prestar conformidad, contado desde que se
+# guarda su propia acta (notificado_en es por acta, no por mesa).
+PLAZO_CONFORMIDAD = timedelta(minutes=10)
+
+
+def vencer_actas_orales_expiradas(actas, ahora=None) -> int:
+    """
+    Cierra por timeout las actas orales PENDIENTE cuyo plazo ya venció.
+
+    El vencimiento es lazy: no hay proceso de fondo que lo aplique, así que se
+    resuelve cada vez que alguien consulta las pendientes o intenta cerrar la
+    planilla. Devuelve cuántas se cerraron.
+    """
+    ahora = ahora or timezone.now()
+    cerradas = 0
+    for acta in actas:
+        if acta.estado_conformidad != MesaActaOral.EstadoConformidad.PENDIENTE:
+            continue
+        if not acta.notificado_en:
+            # Fallback en caso excepcional: se arranca el plazo ahora.
+            acta.notificado_en = ahora
+            acta.save(update_fields=["notificado_en"])
+            continue
+        vencimiento = acta.notificado_en + PLAZO_CONFORMIDAD
+        if (vencimiento - ahora).total_seconds() <= 0:
+            acta.estado_conformidad = MesaActaOral.EstadoConformidad.TIMEOUT
+            acta.respondido_en = vencimiento
+            acta.save(update_fields=["estado_conformidad", "respondido_en", "updated_at"])
+            cerradas += 1
+    return cerradas
+
 
 @router.get(
     "/mesas/{mesa_id}/oral-actas/{inscripcion_id}",
@@ -188,7 +219,7 @@ def listar_actas_pendientes_conformidad(request):
         return []
 
     ahora = timezone.now()
-    diez_minutos = timedelta(minutes=10)
+    diez_minutos = PLAZO_CONFORMIDAD
 
     actas_pendientes = (
         MesaActaOral.objects.filter(

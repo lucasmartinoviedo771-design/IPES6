@@ -12,7 +12,7 @@ from weasyprint import HTML
 from apps.common.api_schemas import ApiResponse
 from apps.common.date_utils import format_date, format_datetime
 from core.auth_ninja import JWTAuth
-from core.models import InscripcionMesa, MesaExamen
+from core.models import InscripcionMesa, MesaActaOral, MesaExamen
 
 from ..schemas import (
     ConstanciaExamenItem,
@@ -20,6 +20,7 @@ from ..schemas import (
     MesaPlanillaOut,
     MesaPlanillaUpdateIn,
 )
+from .actas_orales import PLAZO_CONFORMIDAD, vencer_actas_orales_expiradas
 from .helpers import (
     _docente_full_name,
     _format_user_display,
@@ -242,6 +243,41 @@ def gestionar_mesa_planilla_cierre(request, mesa_id: int, payload: MesaPlanillaC
     if accion == "cerrar":
         if mesa.planilla_cerrada_en:
             return 400, ApiResponse(ok=False, message="La planilla ya está cerrada.")
+
+        # Cada estudiante tiene su propio plazo de 10 minutos para prestar
+        # conformidad, contado desde que se guardó SU acta. La planilla no puede
+        # cerrarse mientras alguno siga en plazo sin haber respondido.
+        #
+        # Antes se vencen las que ya expiraron: el cierre por timeout es lazy, y
+        # sin esto un estudiante que nunca abre la aplicación dejaría la planilla
+        # trabada para siempre.
+        actas_de_la_mesa = MesaActaOral.objects.filter(
+            mesa=mesa, estado_conformidad=MesaActaOral.EstadoConformidad.PENDIENTE
+        )
+        vencer_actas_orales_expiradas(actas_de_la_mesa)
+
+        en_plazo = list(
+            MesaActaOral.objects.filter(
+                mesa=mesa, estado_conformidad=MesaActaOral.EstadoConformidad.PENDIENTE
+            ).select_related("inscripcion__estudiante__persona")
+        )
+        if en_plazo:
+            ahora = timezone.now()
+            detalles = []
+            for acta in en_plazo:
+                persona = getattr(getattr(acta.inscripcion, "estudiante", None), "persona", None)
+                nombre = f"{persona.apellido}, {persona.nombre}" if persona else f"acta {acta.id}"
+                restantes = int((acta.notificado_en + PLAZO_CONFORMIDAD - ahora).total_seconds())
+                minutos = max(1, -(-restantes // 60))  # redondeo hacia arriba
+                detalles.append(f"{nombre} ({minutos} min)")
+            return 400, ApiResponse(
+                ok=False,
+                message=(
+                    "No se puede cerrar la planilla: hay actas orales esperando la conformidad "
+                    f"del estudiante. Falta que respondan o que venza su plazo: {'; '.join(detalles)}."
+                ),
+            )
+
         mesa.planilla_cerrada_en = timezone.now()
         mesa.planilla_cerrada_por = request.user if request.user.is_authenticated else None
         mesa.save(update_fields=["planilla_cerrada_en", "planilla_cerrada_por"])
