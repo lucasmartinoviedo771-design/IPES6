@@ -56,7 +56,13 @@ export const ActaOralConformidadModal: React.FC = () => {
 		queryKey: ["actas-orales", "pendientes-conformidad"],
 		queryFn: listarActasPendientesConformidad,
 		enabled: !!user && isEstudiante,
-		staleTime: 30_000,
+		// El estudiante tiene 10 minutos para responder y, vencidos, el acta se
+		// cierra sola por timeout. Sin consultar de forma periodica el aviso solo
+		// aparecia al montar la app o al volver el foco a la pestania: si el
+		// estudiante ya la tenia abierta y quieta, el plazo se le vencia sin que
+		// llegara a ver nada. Se consulta cada 30s para no perder mas que eso.
+		refetchInterval: 30_000,
+		staleTime: 15_000,
 		refetchOnWindowFocus: true,
 	});
 
