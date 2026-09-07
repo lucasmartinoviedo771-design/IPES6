@@ -50,7 +50,7 @@ from core.models import (
     MesaExamen,
     Profesorado,
 )
-from core.permissions import can, ensure_profesorado_access, requires
+from core.permissions import can, ensure_profesorado_access, requires, requires_any
 
 from .notas_utils import format_user_display
 
@@ -62,9 +62,15 @@ router = Router(tags=["actas"])
     response={200: ApiResponse},
     auth=JWTAuth(),
 )
-@requires("ver_actas")
+@requires_any("ver_actas", "carga_finales")
 def obtener_acta_metadata(request):
-    """Retorna metadatos auxiliares para la carga de actas (Carreras, Planes, Roles)."""
+    """
+    Retorna metadatos auxiliares para la carga de actas (Carreras, Planes, Roles).
+
+    Admite también 'carga_finales' porque el docente a cargo de una mesa necesita
+    este catálogo para cargar las notas: sin él el formulario no puede renderizarse.
+    No expone actas, y el acceso a cada acta/planilla se valida por separado.
+    """
     data = _acta_metadata(user=request.user)
     return ApiResponse(
         ok=True,

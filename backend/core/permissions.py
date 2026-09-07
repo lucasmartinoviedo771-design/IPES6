@@ -277,6 +277,27 @@ def requires(capability: str):
     return decorator
 
 
+def requires_any(*capabilities: str):
+    """
+    Decorador para endpoints que admiten más de una capability.
+    Autoriza si el usuario cumple AL MENOS UNA, respetando el rol activo.
+    Uso: @requires_any("ver_actas", "carga_finales")
+    """
+    from functools import wraps
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(request, *args, **kwargs):
+            active_role = request.headers.get("X-Active-Role")
+            if not any(can(request.user, cap, active_role) for cap in capabilities):
+                require(request.user, capabilities[0], active_role)
+            return func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def _ensure_authenticated(user: User | None) -> User:
     """
     Validación interna de estado de sesión.

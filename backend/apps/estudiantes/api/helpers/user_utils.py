@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import Q
 
 from core.models import (
     Docente,
@@ -58,18 +57,20 @@ def _ensure_estudiante_access(request, dni: str | None) -> None:
 
 
 def _resolve_docente_from_user(user) -> Docente | None:
+    """
+    Resuelve el Docente a partir del usuario autenticado usando SOLO el username (= DNI).
+
+    No se usa `User.email`: es un campo obsoleto que puede contener datos históricos
+    sucios (ver decisión P-1, Persona es la fuente de verdad de identidad). Resolver
+    identidad por ahí permitiría que un email mal cargado habilite a un docente sobre
+    la planilla de otro.
+    """
     if not user or not getattr(user, "is_authenticated", False):
         return None
-    lookup = Q()
     username = (getattr(user, "username", "") or "").strip()
-    email = (getattr(user, "email", "") or "").strip()
-    if username:
-        lookup |= Q(persona__dni__iexact=username)
-    if email:
-        lookup |= Q(persona__email__iexact=email)
-    if not lookup:
+    if not username:
         return None
-    return Docente.objects.filter(lookup).first()
+    return Docente.objects.filter(persona__dni__iexact=username).first()
 
 
 def _user_can_manage_mesa_planilla(request, mesa) -> bool:
@@ -79,12 +80,9 @@ def _user_can_manage_mesa_planilla(request, mesa) -> bool:
         docente = _resolve_docente_from_user(request.user)
         if not docente:
             return False
-        tribunal_ids = {
-            mesa.docente_presidente_id,
-            mesa.docente_vocal1_id,
-            mesa.docente_vocal2_id,
-        }
-        return docente.id in tribunal_ids
+        # Solo el docente titular (presidente) de la mesa gestiona la planilla.
+        # Los vocales integran el tribunal pero no cargan ni editan el acta.
+        return mesa.docente_presidente_id is not None and docente.id == mesa.docente_presidente_id
     return False
 
 

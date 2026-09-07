@@ -252,6 +252,12 @@ def delete_mesa(request, mesa_id: int):
     inscripciones_count = getattr(mesa, "inscripciones", None) and mesa.inscripciones.count() or 0
     materia_nombre = mesa.materia.nombre if mesa.materia else ""
 
+    # Las solicitudes apuntan a la mesa con SET_NULL: si no las devolvemos a
+    # PENDIENTE quedan en estado "Mesa Aprobada" sin mesa, y el unique_together
+    # (estudiante, materia, ventana) impide que el estudiante vuelva a solicitar.
+    solicitudes = SolicitudMesa.objects.filter(mesa_asignada=mesa)
+    solicitudes_liberadas = list(solicitudes.values_list("id", flat=True))
+
     log_action_from_request(
         request,
         accion=AuditLog.Accion.DELETE,
@@ -265,10 +271,13 @@ def delete_mesa(request, mesa_id: int):
             "fecha": str(mesa.fecha),
             "hora_desde": str(mesa.hora_desde) if mesa.hora_desde else "",
             "inscripciones_previas": inscripciones_count,
+            "solicitudes_liberadas": solicitudes_liberadas,
         },
     )
 
-    mesa.delete()
+    with transaction.atomic():
+        solicitudes.update(estado=SolicitudMesa.Estado.PENDIENTE, mesa_asignada=None)
+        mesa.delete()
     return 204, None
 
 
