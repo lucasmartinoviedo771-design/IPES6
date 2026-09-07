@@ -304,7 +304,8 @@ export type ActaCreatePayload = {
 	profesorado_id: number;
 	materia_id: number;
 	fecha: string;
-	folio: string;
+	/** Vacío = carga digital: el backend asigna libro SIGI y folio correlativo. */
+	folio?: string | null;
 	libro?: string | null;
 	observaciones?: string | null;
 	docentes: ActaDocentePayload[];

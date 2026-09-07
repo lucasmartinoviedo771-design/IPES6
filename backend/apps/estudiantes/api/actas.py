@@ -20,11 +20,13 @@ from apps.common.api_schemas import ApiResponse
 from apps.common.audit import log_action_from_request, snapshot
 from apps.common.date_utils import format_date, format_datetime
 from apps.estudiantes.api.actas_helpers import (
+    LIBRO_DIGITAL,
     _acta_metadata,
     _clasificar_resultado,
     _compute_acta_codigo,
     _next_acta_numero,
     _nota_label,
+    generar_folio_digital,
 )
 from apps.estudiantes.api.actas_schemas import (
     ActaCreateLocal,
@@ -477,6 +479,17 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
 
     usuario = getattr(request, "user", None)
     with transaction.atomic():
+        # Libro y folio se asignan solos cuando no vienen en el payload: el acta
+        # digital se numera al guardarse definitivamente con las notas. Si el
+        # payload los trae (carga histórica de actas en papel), se respetan.
+        acta_libro = payload.libro or ""
+        acta_folio = payload.folio or ""
+        if not acta_libro and not acta_folio:
+            # El bloqueo evita que dos cierres simultáneos tomen el mismo folio.
+            ActaExamen.objects.select_for_update().filter(libro=LIBRO_DIGITAL).values_list("id", flat=True).last()
+            acta_libro = LIBRO_DIGITAL
+            acta_folio = generar_folio_digital()
+
         acta = ActaExamen.objects.create(
             codigo=codigo,
             numero=numero,
@@ -487,8 +500,8 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             plan=plan,
             anio_cursada=materia.anio_cursada,
             fecha=acta_fecha,
-            folio=payload.folio,
-            libro=payload.libro or "",
+            folio=acta_folio,
+            libro=acta_libro,
             observaciones=payload.observaciones or "",
             total_alumnos=len(payload.estudiantes),
             total_aprobados=categoria_counts["aprobado"],
@@ -754,8 +767,14 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         acta.materia = nueva_materia
         acta.profesorado = nuevo_profesorado
         acta.fecha = payload.fecha
-        acta.folio = payload.folio
-        acta.libro = payload.libro or ""
+        # El folio digital ya asignado no se pierde si el formulario no lo envía:
+        # es la identificación registral del acta y solo cambia si se indica otro.
+        if payload.folio or payload.libro:
+            acta.folio = payload.folio or ""
+            acta.libro = payload.libro or ""
+        elif acta.libro != LIBRO_DIGITAL:
+            acta.folio = ""
+            acta.libro = ""
         acta.observaciones = payload.observaciones or ""
         acta.total_alumnos = len(payload.estudiantes)
         acta.total_aprobados = categoria_counts["aprobado"]

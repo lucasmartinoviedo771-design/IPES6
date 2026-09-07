@@ -173,7 +173,8 @@ export function EncabezadoActaSection({
 						fullWidth
 						value={folio}
 						onChange={(event) => setFolio(event.target.value)}
-						required
+						placeholder="Se asigna al guardar"
+						helperText="Dejalo vacío para que el sistema lo numere solo"
 					/>
 				</Grid>
 				<Grid item xs={12} md={6} lg={4}>
@@ -182,6 +183,8 @@ export function EncabezadoActaSection({
 						fullWidth
 						value={libro}
 						onChange={(event) => setLibro(event.target.value)}
+						placeholder="SIGI"
+						helperText="Solo para actas en papel (libro físico)"
 					/>
 				</Grid>
 				<Grid item xs={12}>

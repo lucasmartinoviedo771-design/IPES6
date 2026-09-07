@@ -670,7 +670,10 @@ export function useActaExamenForm({
 			});
 			return;
 		}
-		if (!folio.trim()) {
+		// Folio y libro vacíos significan carga digital: el backend le asigna el
+		// libro SIGI y el folio correlativo al guardar el acta definitiva. Solo se
+		// exige el folio si se está registrando un acta en papel (libro cargado).
+		if (libro.trim() && !folio.trim()) {
 			enqueueSnackbar("Ingrese el número de folio del acta.", {
 				variant: "warning",
 			});
@@ -713,7 +716,7 @@ export function useActaExamenForm({
 			profesorado_id: Number(profesoradoId),
 			materia_id: Number(materiaId),
 			fecha,
-			folio: folio.trim(),
+			folio: folio.trim() || undefined,
 			libro: libro.trim() || undefined,
 			observaciones: observaciones.trim() || undefined,
 			docentes: docentesPayload,

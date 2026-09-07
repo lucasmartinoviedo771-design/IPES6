@@ -22,6 +22,33 @@ from core.models import (
 )
 from core.permissions import allowed_profesorados
 
+# Libro que identifica a las actas generadas digitalmente por el sistema, para
+# distinguirlas de los libros físicos históricos ("1", "2", "II", "L2", ...).
+LIBRO_DIGITAL = "SIGI"
+
+
+def generar_folio_digital() -> str:
+    """
+    Devuelve el folio siguiente del libro digital: correlativo continuo, sin
+    reiniciar por año, empezando en 1.
+
+    Se toma el máximo folio numérico ya usado en LIBRO_DIGITAL y se le suma uno.
+    Los folios históricos no participan: viven en otros libros y contienen
+    valores no numéricos ("385/2026"), que acá se ignoran.
+
+    IMPORTANTE: debe llamarse dentro de una transacción y bajo select_for_update
+    sobre las actas del libro digital, para que dos cierres simultáneos no
+    obtengan el mismo número.
+    """
+    folios = ActaExamen.objects.filter(libro=LIBRO_DIGITAL).values_list("folio", flat=True)
+    maximo = 0
+    for folio in folios:
+        try:
+            maximo = max(maximo, int(str(folio).strip()))
+        except (TypeError, ValueError):
+            continue
+    return str(maximo + 1)
+
 
 def _nota_label(value: str) -> str:
     if not value:
