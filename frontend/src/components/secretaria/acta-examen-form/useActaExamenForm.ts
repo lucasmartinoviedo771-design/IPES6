@@ -262,13 +262,20 @@ export function useActaExamenForm({
 							examen_oral: e.examen_oral || "",
 							calificacion_definitiva: e.calificacion_definitiva,
 							observaciones: e.observaciones || "",
+							// El acta no guarda la inscripción, pero el acta oral se
+							// persiste contra mesa+inscripción. Sin esto, al reabrir una
+							// mesa que ya tiene acta el acta oral no se guardaba y el
+							// estudiante nunca recibía el aviso de conformidad.
+							inscripcionId: estudiantesPreseleccionados?.find(
+								(p) => p.dni === e.dni,
+							)?.inscripcionId,
 						})),
 					);
 				}
 				setIsInitialPopulated(true);
 			}
 		}
-	}, [editId, actaParaEditar, metadata, isInitialPopulated]);
+	}, [editId, actaParaEditar, metadata, isInitialPopulated, estudiantesPreseleccionados]);
 
 	// Auto-popular desde la mesa seleccionada en la planilla (modo integrado).
 	// Depende de metadata porque applyMesaSeleccionada necesita los IDs resueltos.
@@ -537,9 +544,22 @@ export function useActaExamenForm({
 		const mesaId = mesaSeleccionada?.id;
 		const inscripcionId = oralDialogEstudiante.inscripcionId;
 
-		// Sin mesa/inscripción reales (carga manual) el acta no se persiste: el
+		// Sin mesa (carga manual de un acta suelta) no hay contra qué persistir: el
 		// diálogo genera el PDF en el cliente a partir de estos mismos valores.
-		if (!mesaId || !inscripcionId) return;
+		if (!mesaId) return;
+
+		// Con mesa pero sin inscripción hay un problema de datos, no un modo de uso.
+		// Antes se salía en silencio: el PDF se descargaba, el acta no se guardaba y
+		// el estudiante nunca recibía el aviso, sin ninguna señal de que algo falló.
+		if (!inscripcionId) {
+			enqueueSnackbar(
+				"No se pudo vincular al estudiante con su inscripción a la mesa, " +
+					"así que el acta oral no quedó guardada ni se le envió para su conformidad. " +
+					"Volvé a abrir la planilla de la mesa e intentá de nuevo.",
+				{ variant: "error" },
+			);
+			return;
+		}
 
 		// Con mesa e inscripción, el acta DEBE guardarse antes de pedir el PDF:
 		// el backend lo arma desde el registro persistido y responde 404 si no existe.
