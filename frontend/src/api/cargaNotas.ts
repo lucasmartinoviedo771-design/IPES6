@@ -314,6 +314,8 @@ export type ActaCreatePayload = {
 	total_desaprobados?: number;
 	total_ausentes?: number;
 	strict?: boolean;
+	/** Mesa de la que proviene la planilla. Sin esto el backend tiene que adivinarla. */
+	mesa_id?: number | null;
 };
 
 export type ActaCreateResult = {

@@ -779,6 +779,10 @@ export function useActaExamenForm({
 			total_desaprobados: summary.desaprobados,
 			total_ausentes: summary.ausentes,
 			strict,
+			// Sin esto el backend busca la mesa por materia+fecha+modalidad, y cuando
+			// hay más de una mesa de la misma materia el mismo día (dos turnos)
+			// elegía cualquiera: el acta terminaba colgada de la mesa equivocada.
+			mesa_id: mesaSeleccionada?.id,
 		};
 
 		setPendingActaPayload(payload);

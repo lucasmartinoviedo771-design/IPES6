@@ -541,13 +541,22 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
 
         # Sincronización de Mesa de Examen (Presidencia, Vocales)
         if not mesa:
-            mesa = MesaExamen.objects.filter(
-                materia=materia,
-                fecha=acta_fecha,
-                modalidad=MesaExamen.Modalidad.LIBRE
-                if payload.tipo == ActaExamen.Tipo.LIBRE
-                else MesaExamen.Modalidad.REGULAR,
-            ).first()
+            # Fallback para cargas que no indican la mesa. Si hay dos mesas de la
+            # misma materia el mismo día (dos turnos), esto elige una de las dos:
+            # el orden explícito evita al menos que la elección varíe entre
+            # ejecuciones, porque MesaExamen no define ordering y sin order_by el
+            # resultado de .first() queda a criterio del motor.
+            mesa = (
+                MesaExamen.objects.filter(
+                    materia=materia,
+                    fecha=acta_fecha,
+                    modalidad=MesaExamen.Modalidad.LIBRE
+                    if payload.tipo == ActaExamen.Tipo.LIBRE
+                    else MesaExamen.Modalidad.REGULAR,
+                )
+                .order_by("hora_desde", "id")
+                .first()
+            )
             if not mesa:
                 mesa = MesaExamen.objects.create(
                     materia=materia,
