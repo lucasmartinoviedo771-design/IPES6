@@ -26,7 +26,9 @@ class ActaCreateLocal(Schema):
     profesorado_id: int
     materia_id: int
     fecha: str
-    folio: str
+    # Opcionales: vacíos significan carga digital y el backend asigna el libro
+    # SIGI con el folio correlativo. Solo la carga histórica en papel los indica.
+    folio: str | None = None
     libro: str | None = None
     observaciones: str | None = None
     docentes: list[ActaDocenteLocal] = Field(default_factory=list)

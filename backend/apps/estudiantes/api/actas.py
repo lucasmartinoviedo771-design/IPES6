@@ -612,8 +612,10 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
                         "fecha_resultado": acta_fecha,
                         "condicion": condicion,
                         "nota": nota_dec,
-                        "folio": payload.folio,
-                        "libro": payload.libro,
+                        # El folio realmente asignado, no el del payload: en la carga
+                        # digital viene vacío y lo genera el backend.
+                        "folio": acta_folio,
+                        "libro": acta_libro,
                         "observaciones": "Carga por Acta de Examen",
                         "cuenta_para_intentos": condicion != InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO,
                     },
@@ -629,8 +631,8 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
             entidad="ActaExamen",
             entidad_id=acta.id,  # type: ignore
             metadata={
-                "libro": payload.libro,
-                "folio": payload.folio,
+                "libro": acta_libro,
+                "folio": acta_folio,
                 "materia": materia.nombre,
                 "total_alumnos": len(payload.estudiantes),
             },
@@ -873,8 +875,10 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
                         "fecha_resultado": payload.fecha,
                         "condicion": condicion,
                         "nota": nota_dec,
-                        "folio": payload.folio,
-                        "libro": payload.libro,
+                        # Los del acta ya actualizada, que conserva el folio digital
+                        # cuando el formulario no lo envía.
+                        "folio": acta.folio,
+                        "libro": acta.libro,
                         "observaciones": "Carga por Acta de Examen",
                         "cuenta_para_intentos": condicion != InscripcionMesa.Condicion.AUSENTE_JUSTIFICADO,
                     },
