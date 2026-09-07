@@ -116,6 +116,22 @@ class MesaExamen(models.Model):
 
         return deactivated_count
 
+    class Meta:
+        constraints = [
+            # No puede haber dos mesas iguales el mismo día. La materia ya
+            # pertenece a un plan de un profesorado, así que materia_id alcanza
+            # para distinguir "Pedagogía de Primaria" de "Pedagogía de Inicial".
+            #
+            # La modalidad forma parte de la clave a propósito: una mesa regular
+            # y una libre de la misma materia el mismo día son legítimas y
+            # frecuentes (92 casos en los datos). Los llamados 1° y 2° siempre
+            # caen en fechas distintas, así que tampoco chocan.
+            models.UniqueConstraint(
+                fields=["materia", "fecha", "modalidad"],
+                name="mesa_unica_por_materia_fecha_modalidad",
+            ),
+        ]
+
     def __str__(self):
         return f"Mesa {self.get_tipo_display()} {self.materia.nombre} {self.fecha}"
 

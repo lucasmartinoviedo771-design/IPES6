@@ -160,6 +160,21 @@ def create_mesa(request, payload: MesaIn):
     if payload.modalidad and payload.modalidad.upper() == "LIB" and not materia.permite_mesa_libre:
         raise HttpError(422, "Esta materia no está habilitada para exámenes en condición libre.")
 
+    # Dos mesas iguales el mismo día dejaban el acta colgada de cualquiera de
+    # las dos. Se avisa acá para no exponer el error de la restricción de la base.
+    modalidad = payload.modalidad.upper()
+    existente = MesaExamen.objects.filter(
+        materia=materia, fecha=payload.fecha, modalidad=modalidad
+    ).first()
+    if existente:
+        hora = existente.hora_desde.strftime("%H:%M") if existente.hora_desde else "sin hora"
+        raise HttpError(
+            409,
+            f"Ya existe una mesa de {materia.nombre} en condición "
+            f"{existente.get_modalidad_display().lower()} para el {payload.fecha} "
+            f"({existente.codigo}, {hora}). Usá esa mesa o elegí otra fecha.",
+        )
+
     est_exclusivo = None
     if payload.tipo.upper() == "ESP" and payload.estudiante_exclusivo_dni:
         from core.models import Estudiante
@@ -294,6 +309,18 @@ def crear_mesa_desde_solicitud(request, payload: CrearMesaDesdeSolicitudIn):
     semilla = get_object_or_404(SolicitudMesa, id=payload.solicitud_id)
     materia = semilla.materia
     ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
+
+    existente = MesaExamen.objects.filter(
+        materia=materia, fecha=payload.fecha, modalidad=semilla.modalidad
+    ).first()
+    if existente:
+        hora = existente.hora_desde.strftime("%H:%M") if existente.hora_desde else "sin hora"
+        raise HttpError(
+            409,
+            f"Ya existe una mesa de {materia.nombre} en condición "
+            f"{existente.get_modalidad_display().lower()} para el {payload.fecha} "
+            f"({existente.codigo}, {hora}). Asigná las solicitudes a esa mesa o elegí otra fecha.",
+        )
 
     with transaction.atomic():
         # 2. Crear la Mesa de Examen
