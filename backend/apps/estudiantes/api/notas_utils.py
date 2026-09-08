@@ -10,8 +10,20 @@ from django.db.models import Q
 
 from core.models import Comision, Docente, Materia, Regularidad, RegularidadPlanillaLock
 
-# Formatos que se comportan bajo la lógica de Taller (Asistencia estricta: 80%, 65% con excepción)
+# Formatos que se comportan bajo la lógica de Taller para las SITUACIONES
+# académicas disponibles (aprueba en cursada, sin examen final).
 FORMATOS_TALLER = {"TAL", "PRA", "SEM", "LAB", "MOD"}
+
+# Formatos que exigen 80% de asistencia (65% con excepcionalidad), según el
+# Art. 24°.d del Régimen Académico: "Laboratorios, Talleres, Unidades
+# Curriculares Promocionales y Prácticas Docentes: 80% con el régimen de
+# excepcionalidad".
+#
+# El resto —"Seminarios, Asignaturas, Materias y Módulos"— exige 65% SIN régimen
+# de excepcionalidad. Es una lista aparte de FORMATOS_TALLER a propósito:
+# Seminario y Módulo comparten con Taller la forma de acreditar, pero no el piso
+# de asistencia, y tenerlos juntos hacía que se les exigiera 80%.
+FORMATOS_ASISTENCIA_ESTRICTA = {"TAL", "PRA", "LAB"}
 _VIRTUAL_COMISION_FACTOR = 10000
 
 # Diccionario maestro de situaciones permitidas por formato de cursada

@@ -38,7 +38,7 @@ from core.permissions import allowed_profesorados, can, ensure_profesorado_acces
 
 from .notas_utils import (
     ALIAS_TO_SITUACION,
-    FORMATOS_TALLER,
+    FORMATOS_ASISTENCIA_ESTRICTA,
     alias_desde_situacion,
     docente_from_user,
     docente_to_string,
@@ -633,7 +633,9 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                 Regularidad.Situacion.REGULAR,
             ]:
                 formato_up = (materia.formato or "").upper()
-                piso = (65 if est_payload.excepcion else 80) if formato_up in FORMATOS_TALLER else 65
+                # Art. 24°.d: 80% (65% con excepcionalidad) para laboratorios,
+                # talleres y prácticas; 65% sin excepcionalidad para el resto.
+                piso = (65 if est_payload.excepcion else 80) if formato_up in FORMATOS_ASISTENCIA_ESTRICTA else 65
 
                 if asistencia < piso:
                     raise HttpError(

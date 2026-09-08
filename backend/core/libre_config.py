@@ -40,7 +40,8 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
     "educacion especial": [
         ["Pedagogia"],
         ["Psicologia Educacional"],
-        ["Historia Argentina y Latinoamericana"],
+        # El Anexo la nombra sin "Social"; los planes de Especial la cargan con "Social".
+        ["Historia Argentina y Latinoamericana", "Historia Social Argentina y Latinoamericana"],
         ["Bases Neuropsicobiologicas del Desarrollo"],
         ["Filosofia de la Educacion"],
         ["Historia y Politica Educacional"],
@@ -49,10 +50,14 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
     "educacion primaria": [
         ["Practicas del Lenguaje"],
         ["Ciencias Naturales"],
+        # El Anexo lista "Introduccion a la Filosofia" para Primaria, pero ese
+        # espacio no existe en el plan 1935/14: la unica materia de filosofia es
+        # "Filosofia de la Educacion", que ya figura mas abajo. Queda pendiente de
+        # aclarar con Secretaria Academica si el Anexo se equivoco.
         ["Introduccion a la Filosofia"],
         ["Historia Social Argentina y Latinoamericana"],
         ["Pedagogia"],
-        ["Psicologia de la Educacion"],
+        ["Psicologia de la Educacion", "Psicologia Educacional"],
         ["Ciencias Sociales"],
         ["Historia y Politica de la Educacion", "Historia y Politica Educacional"],
         ["Filosofia de la Educacion"],
@@ -66,7 +71,7 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
         ["Historia Social Argentina y Latinoamericana"],
         ["Quimica General e Inorganica"],
         ["Quimica Organica"],
-        ["Ciencia de la Tierra"],
+        ["Ciencia de la Tierra", "Ciencias de la Tierra"],
         ["Psicologia de la Educacion", "Psicologia Educacional"],
         ["Biologia Celular y Molecular"],
         ["Historia y Politica Educacional", "Historia y Politica de la Educacion"],
@@ -114,11 +119,12 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
         ["Linguistica del Texto"],
         ["Gramatica II"],
         ["Literatura en Lengua Espanola I"],
-        ["Literatura en Lengua Extranjera I"],
+        # En el plan lleva subtitulo: "Literatura en Lengua Extranjera I: La Dramatica".
+        ["Literatura en Lengua Extranjera I", "Literatura en Lengua Extranjera I: La Dramatica"],
         ["Teoria Literaria"],
         ["Psicologia de la Educacion", "Psicologia Educacional"],
         ["Psicolinguistica"],
-        ["Historia y Politica de la Educacion Argentina"],
+        ["Historia y Politica de la Educacion Argentina", "Historia y Politica Educacional"],
         ["Filosofia de la Educacion"],
         ["Sociologia de la Educacion"],
         ["Historia de la Lengua Espanola"],
@@ -146,16 +152,23 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
         ["Ecologia y Biogeografia"],
         ["Filosofia de la Educacion"],
         ["Sociologia de la Educacion"],
-        ["Proceso de Construccion del Territorio"],
+        ["Proceso de Construccion del Territorio", "Proceso de Construccion del Territorio Argentino"],
         ["Geografia de las Redes y de la Circulacion"],
     ],
-    "certificacion docente para profesionales": [
+    # La clave se acorta a "certificacion docente" a proposito: el plan vigente
+    # figura como "Certificación Docente para la Educación Secundaria" y no
+    # coincidia con "...para Profesionales", que es el nombre del Anexo 2018 y
+    # corresponde a un profesorado sin materias cargadas. Por ese desajuste
+    # ningun estudiante de la carrera podia rendir libre.
+    #
+    # "Sujeto de la Educa. I" y "Sujeto de la Educacion II" del Anexo quedan
+    # fuera hasta confirmar si son las que el plan llama "Sujeto de la Educacion
+    # Secundaria I/II": son espacios especificos y la equivalencia no es obvia.
+    "certificacion docente": [
         ["Pedagogia"],
         ["Historia Social Argentina y Latinoamericana"],
         ["Psicologia Educacional", "Psicologia de la Educacion"],
         ["Historia y Politica Educacional", "Historia y Politica de la Educacion"],
-        ["Sujeto de la Educacion I", "Sujeto de la Educa I"],
-        ["Sujeto de la Educacion II"],
     ],
 }
 
