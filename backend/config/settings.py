@@ -102,7 +102,9 @@ INSTALLED_APPS = [
 ]
 
 # === Asistente Virtual con IA (Feature Flag) ==============================
-ENABLE_AI_ASSISTANT = env_bool("ENABLE_AI_ASSISTANT", default=True)
+# Apagado por defecto: se enciende explicitamente con ENABLE_AI_ASSISTANT=True en
+# el .env del entorno donde se quiera probar. Asi no se activa solo al desplegar.
+ENABLE_AI_ASSISTANT = env_bool("ENABLE_AI_ASSISTANT", default=False)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Modelo de Gemini. Se deja configurable para poder migrar sin tocar codigo
 # cuando Google da de baja una version (le paso a gemini-1.5-flash).
