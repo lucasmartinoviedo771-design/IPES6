@@ -164,14 +164,16 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
     # corresponde a un profesorado sin materias cargadas. Por ese desajuste
     # ningun estudiante de la carrera podia rendir libre.
     #
-    # "Sujeto de la Educa. I" y "Sujeto de la Educacion II" del Anexo quedan
-    # fuera hasta confirmar si son las que el plan llama "Sujeto de la Educacion
-    # Secundaria I/II": son espacios especificos y la equivalencia no es obvia.
+    # "Sujeto de la Educa. I" y "Sujeto de la Educacion II" del Anexo son las que
+    # el diseno curricular llama "Sujeto de la Educacion Secundaria I / II"
+    # (confirmado por la institucion): vale el nombre del plan.
     "certificacion docente": [
         ["Pedagogia"],
         ["Historia Social Argentina y Latinoamericana"],
         ["Psicologia Educacional", "Psicologia de la Educacion"],
         ["Historia y Politica Educacional", "Historia y Politica de la Educacion"],
+        ["Sujeto de la Educa I", "Sujeto de la Educacion I", "Sujeto de la Educacion Secundaria I"],
+        ["Sujeto de la Educacion II", "Sujeto de la Educacion Secundaria II"],
     ],
 }
 
