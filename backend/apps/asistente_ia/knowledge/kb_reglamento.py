@@ -63,6 +63,80 @@ _VACIAS = {
 }
 
 
+# Índice de vocabulario: traduce cómo pregunta un estudiante a cómo lo escribe
+# la norma. El reglamento dice "inasistencias" y el estudiante escribe "faltas";
+# dice "regular" 41 veces y "regularidad" solo 5. Sin esta traducción la búsqueda
+# no encuentra el artículo aunque esté bien indexado.
+#
+# Es un índice de términos, no de artículos: no fija "asistencia -> Art. 24", así
+# que sigue sirviendo si mañana cambia la numeración del reglamento.
+SINONIMOS = {
+    "falta": ["inasistencia", "asistencia"],
+    "faltas": ["inasistencias", "asistencia"],
+    "faltar": ["inasistencia"],
+    "ausencia": ["inasistencia", "ausente"],
+    "presentismo": ["asistencia"],
+    "regularidad": ["regular", "regularizado", "regularizacion"],
+    "regularizar": ["regular", "regularizado"],
+    "vencimiento": ["vigencia", "validez"],
+    "vence": ["vigencia", "validez"],
+    "caduca": ["vigencia", "validez"],
+    "promocionar": ["promocion", "promocional", "promocionar"],
+    "promociono": ["promocion", "promocional"],
+    "recursar": ["recursar", "cursada"],
+    "justificar": ["justificada", "justificacion", "justifique"],
+    "certificado": ["certificado", "constancia", "analitico"],
+    "analitico": ["analitico", "certificado"],
+    "correlativa": ["correlatividades", "correlativas"],
+    "correlativas": ["correlatividades"],
+    "nota": ["calificacion", "nota"],
+    "notas": ["calificaciones", "calificacion"],
+    "aprobar": ["aprobacion", "aprobado", "acreditacion"],
+    "desaprobar": ["desaprobado", "desaprobados"],
+    "rendir": ["examen", "mesa", "rendir"],
+    "final": ["examen final", "final", "mesa"],
+    "libre": ["libre", "libres"],
+    "equivalencia": ["equivalencia", "equivalencias"],
+    "residencia": ["residencia", "pedagogica"],
+    "titulo": ["titulo", "certificado"],
+    "inscribirme": ["inscripcion", "inscribirse"],
+    "anotarme": ["inscripcion", "inscribirse"],
+    "tramite": ["tramite", "solicitud"],
+    "plazo": ["plazo", "termino", "fecha"],
+}
+
+
+LARGO_RAIZ = 6
+
+
+def _raiz(palabra: str) -> str:
+    """
+    Raíz aproximada por truncamiento.
+
+    Evita mantener una entrada por cada forma verbal: "promociona",
+    "promocionar" y "promoción" comparten la raíz "promoc", y así encuentran el
+    artículo aunque el diccionario no las liste una por una. Se trunca a 6
+    caracteres porque raíces más cortas empiezan a confundir palabras distintas
+    ("comisión" con "comunidad").
+    """
+    return palabra[:LARGO_RAIZ] if len(palabra) > LARGO_RAIZ else palabra
+
+
+def _expandir(palabras: list[str]) -> list[str]:
+    """Suma los términos que usa la norma para lo que preguntó el estudiante."""
+    expandidas = list(palabras)
+    for p in palabras:
+        # Sinónimos por palabra exacta y por raíz, para cubrir las conjugaciones.
+        for clave in (p, _raiz(p)):
+            for sinonimo in SINONIMOS.get(clave, []):
+                expandidas.extend(sinonimo.split())
+        # Plural simple: "inasistencias" también debe encontrar "inasistencia".
+        if len(p) > 4 and p.endswith("s"):
+            expandidas.append(p[:-1])
+    # Sin duplicados, conservando el orden.
+    return list(dict.fromkeys(expandidas))
+
+
 def _sin_tildes(texto: str) -> str:
     """Minúsculas y sin acentos: 'Pedagógica' y 'pedagogica' deben coincidir."""
     texto = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode("ascii")
@@ -87,7 +161,7 @@ def buscar_en_reglamento(consulta: str) -> str:
     except Exception:
         pass
 
-    palabras_consulta = [w for w in re.findall(r"\b\w+\b", consulta_norm) if len(w) > 3 and w not in _VACIAS]
+    palabras_consulta = _expandir([w for w in re.findall(r"\b\w+\b", consulta_norm) if len(w) > 3 and w not in _VACIAS])
 
     # Ranking BM25, el estándar para buscar texto por relevancia. Resuelve dos
     # cosas que los intentos artesanales no lograban: pesa cada palabra por lo
@@ -96,11 +170,16 @@ def buscar_en_reglamento(consulta: str) -> str:
     # más texto donde acertar.
     K1, B = 1.5, 0.75
 
-    palabras_por_item = [re.findall(r"\b\w+\b", _sin_tildes(it.get("texto_completo", ""))) for it in todos_los_items]
+    # Se indexa por raíz para que "inasistencias" en el texto responda a
+    # "inasistencia" en la consulta, sin necesidad de listar cada variante.
+    palabras_por_item = [
+        [_raiz(w) for w in re.findall(r"\b\w+\b", _sin_tildes(it.get("texto_completo", "")))] for it in todos_los_items
+    ]
     largos = [len(p) for p in palabras_por_item]
     largo_promedio = (sum(largos) / len(largos)) if largos else 1.0
     total = max(len(todos_los_items), 1)
 
+    palabras_consulta = list(dict.fromkeys(_raiz(p) for p in palabras_consulta))
     frecuencias = [Counter(p) for p in palabras_por_item]
     en_cuantos = {p: sum(1 for f in frecuencias if p in f) for p in palabras_consulta}
 
