@@ -75,7 +75,10 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
         ["Psicologia de la Educacion", "Psicologia Educacional"],
         ["Biologia Celular y Molecular"],
         ["Historia y Politica Educacional", "Historia y Politica de la Educacion"],
-        ["Microbiologia y Micologia"],
+        # El Anexo la llama "Microbiologia y Micologia"; en el plan de Biologia
+        # figura como "Microbiologia" y es la misma materia (confirmado por la
+        # institucion). Vale el nombre del plan.
+        ["Microbiologia y Micologia", "Microbiologia"],
         ["Anatomia y Fisiologia"],
         ["Filosofia de la Educacion"],
         ["Ecologia"],
