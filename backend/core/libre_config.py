@@ -51,10 +51,10 @@ _RAW_ALLOWED: Mapping[str, Sequence[Sequence[str]]] = {
         ["Practicas del Lenguaje"],
         ["Ciencias Naturales"],
         # El Anexo lista "Introduccion a la Filosofia" para Primaria, pero ese
-        # espacio no existe en el plan 1935/14: la unica materia de filosofia es
-        # "Filosofia de la Educacion", que ya figura mas abajo. Queda pendiente de
-        # aclarar con Secretaria Academica si el Anexo se equivoco.
-        ["Introduccion a la Filosofia"],
+        # espacio NO existe en el plan 1935/14: es un error del Anexo, confirmado
+        # por la institucion. La materia de filosofia del plan es "Filosofia de la
+        # Educacion", que figura mas abajo y ya esta habilitada. No se incluye
+        # para no arrastrar una entrada muerta.
         ["Historia Social Argentina y Latinoamericana"],
         ["Pedagogia"],
         ["Psicologia de la Educacion", "Psicologia Educacional"],
