@@ -1,23 +1,38 @@
 """
-Estandariza nombres de materias de Formación General.
+Unifica la escritura de los nombres de materias.
 
-Los cambios de comisión buscan la materia equivalente POR NOMBRE EXACTO, así que
-un espacio escrito de dos formas distintas entre profesorados queda invisible: un
-estudiante de Primaria no puede pasarse a la comisión de Inicial de la misma
-materia porque, para el sistema, no es la misma.
+Una misma materia aparecía escrita de varias formas entre profesorados: tildes
+faltantes, mayúsculas dispares, una coma de más, un espacio antes de los dos
+puntos, un espacio doble. "EDI: Políticas de Inclusión en Educación" llegó a
+tener cuatro escrituras distintas.
 
-Este comando unifica esas escrituras. Todos los casos son diferencias de tilde,
-mayúscula, coma o espacio: ningún plan de estudios se distingue por eso. Los
-espacios de Formación Específica NO se tocan, porque ahí las diferencias de
-nombre sí pueden responder a planes distintos.
+Dos motivos para unificarlas:
+
+1. Cambios de comisión. Solo miran materias de Formación General, y ahí el
+   nombre es parte de cómo se reconoce el espacio equivalente entre carreras.
+   El caso que realmente bloqueaba era "Formación Ética y Ciudadana", que en
+   Primaria figuraba como Formación Específica: este comando la pasa a General.
+
+2. Consistencia de lo que se ve. Actas, analíticos y certificados muestran el
+   nombre tal cual está cargado.
+
+Conviene saberlo: la base usa collation utf8mb4_0900_ai_ci, que ignora tildes y
+mayúsculas al comparar. O sea que las búsquedas por nombre ya encontraban esas
+variantes; corregirlas mejora lo que se lee, no desbloquea funcionalidad. Los
+que sí cambian el comportamiento son los casos donde cambian las palabras
+("Historia y Política de la Educación" -> "Historia y Política Educacional") y
+el cambio de tipo de formación.
+
+Los nombres que difieren de verdad entre planes NO se tocan: ahí la diferencia
+puede responder al diseño curricular aprobado por resolución.
 
 Se identifica cada materia por NOMBRE + PROFESORADO, nunca por id: los ids
 difieren entre entornos y renombrarían la materia equivocada. Si un caso no
 aparece, o aparece más de una vez, se informa y no se toca nada.
 
 Uso:
-    manage.py estandarizar_materias_fgn --dry-run   # informa sin escribir
-    manage.py estandarizar_materias_fgn
+    manage.py estandarizar_nombres_materias --dry-run   # informa sin escribir
+    manage.py estandarizar_nombres_materias
 """
 
 from django.core.management.base import BaseCommand
@@ -59,6 +74,46 @@ CAMBIOS = [
     # En Primaria figuraba como específica; en Inicial y Especial, como general.
     # Al ser general entra en los cambios de comisión.
     ("Formación Ética Y Ciudadana", "Primaria", "Formación Ética y Ciudadana", "FGN"),
+    # === Correcciones ortográficas fuera de Formación General ====================
+    # No desbloquean cambios de comisión (esos solo miran Formación General), pero
+    # unifican lo que se ve en pantallas, actas y certificados.
+    # --- Didáctica Específica I (faltaba la tilde) ---
+    ("Didáctica Especifica I", "Secundaria en Lengua", "Didáctica Específica I", None),
+    ("Didáctica Especifica I", "Certificación", "Didáctica Específica I", None),
+    # --- EDI: Políticas de Inclusión (quedaba una sin tilde) ---
+    ("EDI: Politicas de Inclusión en Educación", "Inicial", "EDI: Políticas de Inclusión en Educación", None),
+    # --- Práctica I: espacio antes de los dos puntos y minúscula ---
+    (
+        "Práctica I : Instituciones Educativas y Comunidad",
+        "Especial",
+        "Práctica I: Instituciones Educativas y Comunidad",
+        None,
+    ),
+    (
+        "Práctica I: Instituciones educativas y Comunidad",
+        "Biología",
+        "Práctica I: Instituciones Educativas y Comunidad",
+        None,
+    ),
+    # --- Práctica II: Enseñanza y Currículum (faltaba la tilde; una sin espacio) ---
+    ("Práctica II: Enseñanza y Curriculum", "Geografía", "Práctica II: Enseñanza y Currículum", None),
+    ("Práctica II: Enseñanza y Curriculum", "Lengua y Literatura", "Práctica II: Enseñanza y Currículum", None),
+    ("Práctica II: Enseñanza y Curriculum", "Especial", "Práctica II: Enseñanza y Currículum", None),
+    ("Práctica II: Enseñanza y Curriculum", "Biología", "Práctica II: Enseñanza y Currículum", None),
+    ("Práctica II:Enseñanza y Curriculum", "Especial", "Práctica II: Enseñanza y Currículum", None),
+    # --- Problemática Contemporánea: espacio doble y tilde faltante ---
+    (
+        "Problemática Contemporánea de la Educación  Especial",
+        "Especial",
+        "Problemática Contemporánea de la Educación Especial",
+        None,
+    ),
+    (
+        "Problemática Contemporanea de la Educación Inicial",
+        "Inicial",
+        "Problemática Contemporánea de la Educación Inicial",
+        None,
+    ),
 ]
 
 
