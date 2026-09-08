@@ -117,7 +117,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 #
 #   Groq (gratis, 1000 pedidos/dia):
 #     IA_BASE_URL=https://api.groq.com/openai/v1
-#     IA_MODEL=llama-3.3-70b-versatile
+#     IA_MODEL=openai/gpt-oss-120b
 #   DeepSeek (~USD 3,6/mes con el uso previsto):
 #     IA_BASE_URL=https://api.deepseek.com/v1
 #     IA_MODEL=deepseek-chat
