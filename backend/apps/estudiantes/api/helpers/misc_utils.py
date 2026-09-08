@@ -244,9 +244,14 @@ def _evaluar_aprobacion(
 
         # Si es EDI, requerir CI aprobado
         if correlativas_ok and (getattr(materia, "is_edi", False) or _es_materia_edi(getattr(materia, "nombre", ""))):
-            from core.models import CursoIntroductorioRegistro, PreinscripcionChecklist
+            from core.models import CursoIntroductorioRegistro, EstudianteCarrera, PreinscripcionChecklist
 
             tiene_ci = bool(getattr(estudiante, "curso_introductorio_aprobado", False))
+            if not tiene_ci:
+                tiene_ci = EstudianteCarrera.objects.filter(
+                    estudiante=estudiante,
+                    curso_introductorio_aprobado=True,
+                ).exists()
             if not tiene_ci:
                 tiene_ci = CursoIntroductorioRegistro.objects.filter(
                     estudiante=estudiante,
@@ -362,9 +367,14 @@ def _calcular_resguardo_equivalencia(
     # REGLA EDI: Para aprobar o regularizar un EDI, el alumno debe tener el Curso Introductorio aprobado.
     # Si aún no tiene el CI aprobado, la nota se registra pero queda bajo resguardo.
     if getattr(materia, "is_edi", False) or _es_materia_edi(getattr(materia, "nombre", "")):
-        from core.models import CursoIntroductorioRegistro, PreinscripcionChecklist
+        from core.models import CursoIntroductorioRegistro, EstudianteCarrera, PreinscripcionChecklist
 
         tiene_ci = bool(getattr(estudiante, "curso_introductorio_aprobado", False))
+        if not tiene_ci:
+            tiene_ci = EstudianteCarrera.objects.filter(
+                estudiante=estudiante,
+                curso_introductorio_aprobado=True,
+            ).exists()
         if not tiene_ci:
             # Chequear en registros de cohorte del CI
             tiene_ci = CursoIntroductorioRegistro.objects.filter(

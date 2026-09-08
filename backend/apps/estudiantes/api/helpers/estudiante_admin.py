@@ -232,6 +232,22 @@ def _apply_estudiante_updates(
                 ec.save(update_fields=ec_fields)
                 _recalcular_estado_legajo_ec(ec)
 
+        # Sincronizar también a nivel del modelo Estudiante y TODAS sus carreras (el CI es institucional)
+        if payload.curso_introductorio_aprobado is not None:
+            aprobado_val = bool(payload.curso_introductorio_aprobado)
+            if hasattr(est, "curso_introductorio_aprobado"):
+                est.curso_introductorio_aprobado = aprobado_val
+                fields_to_update.add("curso_introductorio_aprobado")
+            # Propagar a todas las carreras del estudiante y a su checklist
+            EstudianteCarrera.objects.filter(estudiante=est).update(curso_introductorio_aprobado=aprobado_val)
+            PreinscripcionChecklist.objects.filter(preinscripcion__alumno=est).update(
+                curso_introductorio_aprobado=aprobado_val
+            )
+
+        if payload.libreta_entregada is not None and hasattr(est, "libreta_entregada"):
+            est.libreta_entregada = payload.libreta_entregada
+            fields_to_update.add("libreta_entregada")
+
     # Fields to store directly in models (Persona or Estudiante)
     PERSONA_KEYS = (
         "genero",
