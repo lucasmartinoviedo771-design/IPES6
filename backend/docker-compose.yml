@@ -47,7 +47,12 @@ services:
     restart: always
     env_file:
       - .env
-    command: /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120 --access-logfile /app/logs/gunicorn_access.log --error-logfile /app/logs/gunicorn_error.log --reload
+    # 10 workers: cada consulta al asistente bloquea uno mientras espera a Gemini.
+    # El tope ASISTENTE_MAX_CONCURRENTES (5) reserva los otros 5 para planillas,
+    # actas y el resto del sistema. En el tier gratuito de Gemini (10 peticiones
+    # por minuto) ese techo casi nunca se alcanza: el freno lo pone Google antes.
+    # Si el trabajo administrativo se resiente, bajar el tope.
+    command: /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 10 --timeout 120 --access-logfile /app/logs/gunicorn_access.log --error-logfile /app/logs/gunicorn_error.log --reload
     depends_on:
       db:
         condition: service_healthy

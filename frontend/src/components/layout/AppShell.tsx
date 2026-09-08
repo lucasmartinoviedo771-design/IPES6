@@ -10,6 +10,8 @@ import {
 	useMemo,
 	useRef,
 	useState,
+	lazy,
+	Suspense,
 } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -25,6 +27,10 @@ import { ImpersonationBanner } from "./app-shell/ImpersonationBanner";
 import { roleHomeMap } from "./app-shell/constants";
 import { UserGuideDialog } from "./app-shell/UserGuideDialog";
 import { useNavPermissions } from "./app-shell/useNavPermissions";
+
+const AsistenteChatWidget = lazy(
+	() => import("@/features/asistente-ia/components/ChatWidget"),
+);
 
 export default function AppShell({ children }: PropsWithChildren) {
 	const {
@@ -239,6 +245,11 @@ export default function AppShell({ children }: PropsWithChildren) {
 					</Box>
 				</ErrorBoundary>
 			</Box>
+			{import.meta.env.VITE_ENABLE_AI_ASSISTANT === "true" && (
+				<Suspense fallback={null}>
+					<AsistenteChatWidget />
+				</Suspense>
+			)}
 		</Box>
 	);
 }

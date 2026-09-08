@@ -101,6 +101,38 @@ INSTALLED_APPS = [
     "apps.metrics",
 ]
 
+# === Asistente Virtual con IA (Feature Flag) ==============================
+ENABLE_AI_ASSISTANT = env_bool("ENABLE_AI_ASSISTANT", default=True)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# Modelo de Gemini. Se deja configurable para poder migrar sin tocar codigo
+# cuando Google da de baja una version (le paso a gemini-1.5-flash).
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+# --- Proveedor de IA -------------------------------------------------------
+# "gemini"        -> API de Google, formato propio.
+# "openai_compat" -> cualquier proveedor con API estilo OpenAI. Cambiar de uno a
+#                    otro es cambiar estas tres variables, sin tocar codigo:
+#
+#   Groq (gratis, 1000 pedidos/dia):
+#     IA_BASE_URL=https://api.groq.com/openai/v1
+#     IA_MODEL=llama-3.3-70b-versatile
+#   DeepSeek (~USD 3,6/mes con el uso previsto):
+#     IA_BASE_URL=https://api.deepseek.com/v1
+#     IA_MODEL=deepseek-chat
+#   Qwen / Alibaba (~USD 1/mes):
+#     IA_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+#     IA_MODEL=qwen-flash
+IA_PROVIDER = os.getenv("IA_PROVIDER", "gemini")
+IA_BASE_URL = os.getenv("IA_BASE_URL", "")
+IA_MODEL = os.getenv("IA_MODEL", "")
+IA_API_KEY = os.getenv("IA_API_KEY", "")
+# Consultas al asistente atendidas simultaneamente en todo el instituto. Cada una
+# retiene un worker de gunicorn esperando a Gemini; el resto de los workers queda
+# reservado para el trabajo administrativo.
+ASISTENTE_MAX_CONCURRENTES = int(os.getenv("ASISTENTE_MAX_CONCURRENTES", "5"))
+if ENABLE_AI_ASSISTANT:
+    INSTALLED_APPS.append("apps.asistente_ia")
+
 # Profiling con silk (debe estar protegido siempre)
 ENABLE_PROFILING = env_bool("ENABLE_PROFILING", default=DEBUG)
 if ENABLE_PROFILING:

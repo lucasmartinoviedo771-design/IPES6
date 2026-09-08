@@ -129,3 +129,12 @@ if "api" not in locals():
 
     # Mantenimiento y Carga Inicial
     safe_add_router("/admin/primera-carga", primera_carga_router)
+
+    # Asistente Virtual con IA (Aislado tras Feature Flag)
+    if getattr(settings, "ENABLE_AI_ASSISTANT", False):
+        try:
+            from apps.asistente_ia.api import router as asistente_router
+
+            safe_add_router("/asistente", asistente_router)
+        except Exception as err:
+            logger.warning("No se pudo cargar el router del Asistente IA: %s", err)
