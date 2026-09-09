@@ -8,32 +8,186 @@ Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento A
 Rol: jefes
 Dónde: menú lateral Jefatura, Analytics, Mensajes, Reportes y Estudiante
 
-El rol Jefes está diseñado para los jefes de departamento y responsables de áreas académicas en el IPES "Paulo Freire", facilitando la articulación docente, el control del calendario y la supervisión departamental.
+El rol Jefes está diseñado para los jefes de departamento y responsables de áreas académicas en el IPES "Paulo Freire", facilitando la articulación pedagógica, la supervisión del cumplimiento del calendario institucional y el seguimiento de las cátedras.
 
 Qué podés hacer como Jefatura:
-1. Supervisar el estado de carga de actas de examen final y planillas de regularidad del departamento.
-2. Controlar los períodos y ventanas de fechas clave habilitadas en el calendario institucional.
+1. Supervisar el estado de carga de planillas de regularidad y actas de examen final de todas las materias del departamento.
+2. Auditar el cumplimiento en tiempo y forma de los cierres de actas por parte de los equipos docentes de cátedra.
 3. Monitorear los expedientes y dictámenes de equivalencias correspondientes a las materias de su área.
-4. Consultar legajos de estudiantes, trayectorias académicas y documentación presentada.
-5. Analizar los tableros de reportes y métricas de retención y aprobación del departamento.
-6. Enviar comunicaciones oficiales a los equipos docentes mediante el módulo de Mensajes.
+4. Consultar legajos de estudiantes, trayectorias académicas y documentación presentada (modo lectura/auditoría).
+5. Consultar y descargar en PDF los horarios oficiales de cursada para coordinar la distribución horaria y áulica.
+6. Controlar las ventanas de fechas habilitadas en el calendario institucional para verificar que coincidan con los acuerdos departamentales.
+7. Analizar los tableros analíticos de retención, rendimiento y desgranamiento de las carreras a su cargo.
+8. Enviar comunicaciones oficiales a los equipos docentes y estudiantes mediante el módulo de Mensajes.
 
 Qué NO podés hacer:
-El rol Jefatura no realiza carga directa de notas en planillas de otros docentes, no puede reabrir planillas cerradas (facultad de Secretaría) y no puede resetear contraseñas de usuarios.
+El rol Jefatura no realiza carga directa de notas en planillas de otros docentes, no puede reabrir planillas cerradas (facultad de Secretaría Académica), no puede editar planes de estudio ni correlativas, no puede modificar horarios de cátedra en el sistema y no tiene permisos para resetear contraseñas de estudiantes ni de profesores.
 
-Términos relacionados: jefatura, jefes, jefe de departamento, coordinacion departamental, supervision academica, permisos jefatura.
+Términos relacionados: jefatura, jefes, jefe de departamento, coordinacion departamental, supervision academica, permisos jefatura, que puede hacer jefatura, alcance jefes, funciones departamento.
 
-## Supervisión de actas, regularidades y fechas departamentales
+## Panel principal y navegación en Jefatura
 
 Rol: jefes
-Dónde: menú lateral → "Jefatura" → tarjetas "Actas y notas" y "Habilitar fechas"
+Dónde: menú lateral izquierdo → "Jefatura" (o URL `/jefatura`)
 
-Pasos para el seguimiento departamental:
-1. En el panel de Jefatura, hacé clic en "Actas y notas" para auditar el cumplimiento en tiempo y forma del cierre de planillas de cursada y de mesas finales por parte de los profesores del departamento.
-2. Hacé clic en "Habilitar / controlar fechas" para consultar los períodos vigentes de exámenes y cursadas, asegurando que las fechas acordadas en departamento coincidan con la ventana habilitada en el sistema.
-3. Ingresá a "Pedidos de equivalencias" para verificar los dictámenes pedagógicos emitidos por los docentes de cátedra antes de su elevación a Secretaría.
+Al ingresar al sistema con el rol Jefes, la pantalla principal te muestra el panel "Jefatura / Dirección", organizado en dos secciones operativas con accesos directos:
 
-Términos relacionados: seguimiento departamental, control de actas, supervisar regularidades, fechas departamentales, equivalencias jefatura.
+1. Sección "Supervisión académica":
+- Tarjeta "Gestionar estudiantes" (ícono de grupo de personas): acceso a `/secretaria/estudiantes` para búsqueda de legajos y consulta de trayectorias.
+- Tarjeta "Habilitar / controlar fechas" (ícono de calendario): acceso a `/secretaria/habilitar-fechas` para auditar los períodos vigentes de inscripción y exámenes.
+- Tarjeta "Pedidos de equivalencias" (ícono de birrete): acceso a `/secretaria/pedidos-equivalencias` para el seguimiento de solicitudes y dictámenes de homologación de materias.
+- Tarjeta "Actas y notas" (ícono de mazo/balanza): acceso a `/secretaria/carga-notas` para auditar el estado de carga y cierre de regularidades y finales.
+- Tarjeta "Horario de Cursada" (ícono de evento): acceso a `/estudiantes/horarios` para consultar y descargar la grilla horaria por carrera y año.
+
+2. Sección "Informes y comunicación":
+- Tarjeta "Reportes institucionales" (ícono de gráfico de barras): acceso a `/dashboard` para visualizar métricas de rendimiento y retención.
+- Tarjeta "Mensajes y avisos" (ícono de sobre de correo): acceso a `/mensajes` para redactar comunicados oficiales dirigidos a docentes o estudiantes.
+
+Para volver siempre a esta pantalla, hacé clic en "Jefatura" en la barra de navegación lateral izquierda.
+
+Términos relacionados: panel jefatura, dashboard jefatura, inicio jefes, como llego jefatura, accesos rapidos jefes, tarjetas jefatura, donde esta supervision academica.
+
+## Supervisión y auditoría de actas y regularidades docentes
+
+Rol: jefes
+Dónde: menú lateral → "Jefatura" → tarjeta "Actas y notas" (`/secretaria/carga-notas`)
+
+Como Jefe de Departamento, tenés la responsabilidad de supervisar que los equipos docentes completen y cierren las planillas en los plazos fijados por el calendario institucional.
+
+Cómo auditar el estado de las planillas:
+1. En el panel de Jefatura, hacé clic en la tarjeta "Actas y notas".
+2. En la parte superior vas a ver dos pestañas: "Regularidad" y "Finales".
+3. Utilizá los filtros desplegables para seleccionar: "Carrera", "Materia / Espacio Curricular", "Comisión" y "Ciclo Lectivo".
+4. En la pestaña "Regularidad":
+- Verás el listado de comisiones de tu departamento con su estado: "Abierta / En borrador" (color amarillo/naranja) o "Cerrada y confirmada" (color verde con fecha y hora de cierre).
+- Al ingresar a una planilla podés revisar las calificaciones cargadas por el docente (1° Parcial, 2° Parcial, Trabajos Prácticos, Asistencia y Condición Final: Regular, Promocionado o Libre).
+- Si la planilla figura en borrador pasadas las 48 horas del cierre de cursada, debés contactar al docente a cargo para recordarle el cierre formal.
+5. En la pestaña "Finales":
+- Podés consultar las actas de examen final de las mesas de tu área, verificando la conformación del tribunal examinador (Presidente y Vocales) y si el acta ya fue cerrada o se encuentra pendiente de carga.
+6. Qué hacer si un docente no puede cerrar o cometió un error: Jefatura no puede reabrir planillas ni modificar calificaciones. Debe instruir al docente para que solicite formalmente la reapertura a Secretaría Académica indicando causa y resolución respaldatoria.
+
+Términos relacionados: auditar notas, controlar planillas docentes, regularidades departamento, supervisar cierre de notas, actas de examen departamento, actas y notas jefes, estado borrador planilla.
+
+## Seguimiento del circuito de equivalencias departamentales
+
+Rol: jefes
+Dónde: menú lateral → "Jefatura" → tarjeta "Pedidos de equivalencias" (`/secretaria/pedidos-equivalencias`)
+
+Los estudiantes que provienen de otras instituciones o de otros profesorados del IPES solicitan homologación de materias. La Jefatura debe asegurar que los docentes de cátedra evalúen los programas y emitan su dictamen pedagógico a término.
+
+Cómo consultar y hacer seguimiento de los pedidos de equivalencia:
+1. En el panel de Jefatura, hacé clic en "Pedidos de equivalencias".
+2. Vas a visualizar la grilla con todas las solicitudes del período:
+- Columnas: "N° de Trámite", "Estudiante", "Profesorado", "Materia solicitada (IPES)", "Institución de origen" y "Estado".
+3. Filtros disponibles: podés filtrar por profesorado del departamento o por estado del trámite:
+- "Pendiente de documentación": Bedelía o Mesa de Entrada está verificando los programas legalizados.
+- "En revisión docente / dictamen": el expediente está asignado al equipo docente de la cátedra para su evaluación de contenidos mínimos y carga horaria.
+- "Con dictamen favorable / denegado": el profesor ya emitió la recomendación pedagógica.
+- "Disposición emitida": Secretaría y Títulos ya registraron la aprobación formal.
+4. Al hacer clic sobre una fila, podés ver el detalle del pedido, los programas comparados y las observaciones asentadas por el profesor evaluador.
+5. Si un expediente permanece más de 15 días en "En revisión docente", la Jefatura debe comunicarse con el profesor a cargo mediante el módulo de Mensajes para agilizar la entrega del dictamen antes de las fechas de inscripción a correlativas.
+
+Términos relacionados: equivalencias jefatura, pedidos equivalencias departamento, dictamen docente equivalencia, homologacion materias, seguimiento expedientes equivalencias, programas legalizados.
+
+## Control de ventanas de calendario y fechas límite
+
+Rol: jefes
+Dónde: menú lateral → "Jefatura" → tarjeta "Habilitar / controlar fechas" (`/secretaria/habilitar-fechas`)
+
+Para planificar mesas especiales, reuniones departamentales y entregas de planillas, Jefatura necesita conocer con exactitud qué períodos del sistema están habilitados.
+
+Cómo consultar el estado de las ventanas de calendario:
+1. En el panel de Jefatura, hacé clic en "Habilitar / controlar fechas".
+2. Vas a ver la grilla completa de ventanas configuradas para el ciclo lectivo:
+- "Tipo de Trámite": Inscripción a materias (`MATERIAS`), Inscripción a mesas finales (`MESAS_FINALES`), Solicitud de cambio de comisión (`COMISION`), Solicitud de analíticos (`ANALITICOS`).
+- "Período": Fecha y hora de apertura ("Desde") y fecha y hora de cierre ("Hasta").
+- "Año / Cuatrimestre": ciclo correspondiente.
+- "Estado": "Activo" (con etiqueta verde) o "Inactivo / Finalizado" (gris).
+3. Utilidad para Jefatura:
+- Permite responder consultas de los docentes sobre cuándo deben estar listas las listas de inscriptos.
+- Permite verificar si la fecha límite para que los estudiantes se anoten a los exámenes finales ya venció, a fin de que los tribunales cuenten con las actas definitivas con 48 horas de anticipación.
+- Recordatorio de permisos: El rol Jefes tiene acceso de consulta y auditoría a esta pantalla. Si se requiere una prórroga extraordinaria de fechas acordada en reunión de departamento, Jefatura debe elevar la solicitud formal a la Jefa de A.A.E.E. o a Secretaría Académica, quienes son los usuarios autorizados para editar las ventanas.
+
+Términos relacionados: calendario jefes, controlar fechas, periodos habilitados, cuando cierra inscripcion, ventana examen jefatura, auditar calendario academico.
+
+## Consulta de legajos y trayectorias de estudiantes
+
+Rol: jefes
+Dónde: menú lateral → "Estudiante" (o tarjeta "Gestionar estudiantes" en `/secretaria/estudiantes`)
+
+La Jefatura puede consultar el rendimiento general y el avance curricular de los estudiantes de las carreras del departamento para resolver solicitudes pedagógicas o situaciones de excepción.
+
+Cómo buscar y analizar un legajo estudiantil:
+1. Hacé clic en "Estudiante" en el menú lateral o en la tarjeta "Gestionar estudiantes".
+2. En la barra de búsqueda superior, ingresá el número de DNI o el apellido del estudiante y presioná la tecla Enter o hacé clic en la lupa.
+3. En los resultados, hacé clic sobre el nombre del estudiante para abrir su ficha completa.
+4. Qué información podés consultar:
+- Solapa "Datos personales": datos de contacto institucionales, carrera activa y cohorte de ingreso.
+- Solapa "Trayectoria académica" (o en `/estudiantes/trayectoria`): mapa curricular donde se visualizan los espacios curriculares aprobados en final, regularizados, cursadas libres y materias pendientes de acreditación.
+- Solapa "Documentación": estado de entrega de certificado de nivel secundario, certificado de aptitud psicofísica y condición ("Regular" o "Condicional").
+5. Límites del rol: La Jefatura tiene acceso en modo lectura pedagógica. No dispone de botones para editar datos del estudiante ni para resetear contraseñas. Para cualquier modificación de datos o blanqueo de clave, debés derivar al estudiante a Bedelía o ATTP.
+
+Términos relacionados: legajo estudiante jefatura, buscar alumno jefes, trayectoria academica departamento, ver notas estudiante, materias aprobadas alumno, seguimiento pedagogico.
+
+## Consulta y descarga de horarios de cursada departamentales
+
+Rol: jefes
+Dónde: menú lateral → "Jefatura" → tarjeta "Horario de Cursada" (`/estudiantes/horarios`)
+
+Jefatura necesita disponer en todo momento de los horarios vigentes para coordinar suplencias, uso de aulas, superposiciones de espacios curriculares y atención a los estudiantes.
+
+Pasos para consultar y descargar la grilla horaria:
+1. En el panel de Jefatura, hacé clic en la tarjeta "Horario de Cursada".
+2. Seleccioná en el menú desplegable el "Profesorado / Carrera" de tu departamento.
+3. Seleccioná el "Año de cursada" (1°, 2°, 3° o 4° año) y el "Turno" (Mañana, Tarde o Vespertino).
+4. En pantalla se desplegará la grilla horaria semanal organizada de lunes a viernes, mostrando para cada bloque:
+- Nombre del espacio curricular.
+- Nombre y apellido del docente titular o a cargo.
+- Aula física asignada.
+- Horario exacto de inicio y finalización de cada módulo.
+5. Para descargar o imprimir el documento oficial: hacé clic en el botón superior "Descargar PDF" (ícono de impresora o archivo PDF). El sistema generará el archivo con membrete institucional del IPES "Paulo Freire", listo para imprimir o compartir con el cuerpo docente.
+6. Aclaración: Jefatura tiene permiso de visualización y descarga (`ver_horarios`). Si se detecta un error de aula o de carga docente, la modificación técnica en el sistema debe ser solicitada a Secretaría Académica (`editar_horarios`).
+
+Términos relacionados: horarios de cursada, descargar horario pdf, grilla horaria jefatura, aulas asignadas, horario profesorado, distribucion horaria departamento.
+
+## Tableros analíticos, métricas de rendimiento y reportes
+
+Rol: jefes
+Dónde: menú lateral → "Reportes" o "Analytics" (`/dashboard`)
+
+El rol Jefes cuenta con acceso a métricas institucionales avanzadas para fundamentar decisiones curriculares, proyectos de mejora y balances de gestión departamental.
+
+Qué información encontrás en los reportes:
+1. En el menú lateral hacé clic en "Reportes" o "Analytics".
+2. Se abrirá el panel de tableros institucionales:
+- "Tasa de retención y permanencia": porcentaje de estudiantes que continúan activos cohorte por cohorte en cada carrera del departamento.
+- "Desgranamiento y deserción temprana": gráfico comparativo de alumnos inscriptos en 1° año versus los que completan el 2° año de la carrera.
+- "Rendimiento por espacio curricular": porcentaje de aprobación directa, alumnos que alcanzaron la regularidad y porcentaje de condición libre por materia.
+- "Asistencia y presentismo global": porcentaje promedio de asistencia de los estudiantes en los distintos turnos.
+3. Podés utilizar los selectores de ciclo lectivo y carrera para acotar el análisis al área específica de tu departamento.
+4. Los gráficos permiten identificar tempranamente cátedras con altas tasas de deserción o dificultades de regularización para acordar estrategias de acompañamiento tutorial.
+
+Términos relacionados: metricas jefatura, analytics departamento, retencion y desgranamiento, rendimiento materias, estadisticas academicas, informes jefes.
+
+## Envío de mensajes y comunicaciones departamentales
+
+Rol: jefes
+Dónde: menú lateral izquierdo → "Mensajes" (`/mensajes`)
+
+El sistema cuenta con un canal oficial de mensajería interna que asegura la trazabilidad de las comunicaciones institucionales sin depender de redes sociales o correos no verificados.
+
+Pasos para enviar un comunicado oficial:
+1. Hacé clic en "Mensajes" en la barra lateral izquierda.
+2. Vas a ingresar a la bandeja de entrada donde podés leer los mensajes recibidos organizados por fecha y remitente.
+3. Para redactar una comunicación: hacé clic en el botón azul superior "+ Nuevo Mensaje".
+4. En el campo "Destinatario": seleccioná el rol o buscá por nombre y apellido al docente o estudiante.
+5. En el campo "Asunto": redactá un título claro y formal (ej. *"Convocatoria a reunión de departamento - Miércoles 18 hs"* o *"Plazo de entrega de dictámenes de equivalencia"*).
+6. En el cuerpo del mensaje: escribí las instrucciones o pautas acordadas.
+7. Hacé clic en el botón azul "Enviar mensaje".
+8. En la esquina inferior derecha verás la notificación verde: *"Mensaje enviado con éxito"*. El mensaje quedará registrado en tu pestaña "Enviados" con fecha y hora exacta.
+
+Términos relacionados: mensajes jefatura, enviar mensaje departamento, comunicado oficial profesores, circular departamental, contactar docente, mensajeria jefes.
 
 ## Pendientes de verificación institucional
-- [VERIFICAR CON SECRETARÍA] Procedimiento protocolar para la solicitud de prórroga extraordinaria de carga de notas a pedido de jefatura.
+- [VERIFICAR CON SECRETARÍA] Procedimiento protocolar para la solicitud de prórroga extraordinaria de carga de notas a pedido formal de Jefatura de Departamento.
+- [VERIFICAR CON SECRETARÍA] Circuito formal de elevación de dictámenes de equivalencia desde la Jefatura hacia el Consejo Académico o Secretaría.

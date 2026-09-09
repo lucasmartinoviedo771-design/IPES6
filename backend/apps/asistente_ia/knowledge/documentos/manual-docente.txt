@@ -94,9 +94,10 @@ Una vez que la planilla queda en estado CERRADA, el sistema bloquea la edición 
 
 Errores frecuentes:
 - "Error al cerrar la planilla": Asegurate de que no haya quedado ningún alumno con el casillero de situación en blanco o con notas incompletas.
-- "La planilla ya está cerrada": Ya fue cerrada con anterioridad; solo Secretaría puede reabrirla.
+- "La planilla está cerrada y no admite modificaciones." / "Solo Secretaría puede reabrirla." (o "La planilla ya está cerrada"): Ya fue cerrada con anterioridad. Una vez cerrada, hay que pedirle formalmente a Secretaría Académica que la reabra para poder corregir.
+- "La ventana de entrega de planillas no está habilitada. Consultá a Secretaría.": La entrega y cierre de planillas de regularidad tiene fechas límite habilitadas en el calendario institucional; si la ventana está cerrada, no te permitirá asentar el cierre.
 
-Términos relacionados: cerrar planilla, cierre de planilla, como cierro una planilla, finalizar notas, cerrar cursada, confirmar regularidad, rectificar planilla cerrada, estado cerrada, reabrir cursada.
+Términos relacionados: cerrar planilla, cierre de planilla, como cierro una planilla, finalizar notas, cerrar cursada, confirmar regularidad, rectificar planilla cerrada, estado cerrada, reabrir cursada, La planilla esta cerrada y no admite modificaciones, Solo Secretaria puede reabrirla, La ventana de entrega de planillas no esta habilitada.
 
 ## Cargar las notas de una mesa de examen final (Paso a paso)
 
@@ -115,17 +116,19 @@ Pasos detallados para calificar un final:
      * "Desaprobado": el estudiante rindió pero no alcanzó la nota mínima de aprobación.
      * "Ausente": el estudiante estaba inscripto pero no se presentó a rendir (no lleva nota numérica).
      * "Ausente justificado": si presentó justificativo formal aceptado por el tribunal.
-   - Columna Nota: Si seleccionaste Aprobado o Desaprobado, escribí la nota numérica definitiva (número del 1 al 10). En caso de Ausente, este casillero queda vacío.
-   - Columnas Libro y Folio: Si la institución asienta el acta en libros matrices físicos, completá los números correspondientes.
+   - Columnas Libro y Folio (Numeración automática): Al guardar el acta definitiva con las notas, el sistema asigna solo el libro y el folio: el libro es **SIGI** (marca de carga digital, para distinguirla de los libros físicos históricos) y el folio es un número correlativo que no se repite. Dejá los campos "Libro" y "Número de folio" **vacíos** al generar el acta: si escribís algo, el sistema respeta ese valor y no lo numera solo. Los campos con contenido sólo se usan para cargar actas antiguas en papel.
    - Columna Observaciones: Podés escribir aclaraciones si la situación del examen lo amerita.
 7. Guardar calificaciones: Hacé clic en el botón "Guardar". Aparecerá una notificación verde confirmando que las notas fueron guardadas correctamente en la planilla.
 
 Errores frecuentes:
+- "Solo el Docente Presidente del tribunal de la mesa tiene autorización para cargar y guardar el acta oral.": Sólo el titular/presidente de mesa tiene habilitada la carga y guardado del acta oral. Los vocales integran el tribunal examinador pero no cargan el acta en el sistema.
+- "El acta oral ya se encuentra cerrada y asentada. No puede modificarse sin autorización expresa de Secretaría.": Una vez que el estudiante prestó conformidad electrónica o venció el plazo de 10 minutos, el acta oral queda firme y definitiva; no puede modificarse sin intervención y autorización expresa de Secretaría Académica.
+- "No está autorizado a descargar esta acta.": El docente sólo puede descargar el archivo PDF oficial de las actas de las mesas donde figura designado formalmente como titular/presidente de mesa.
 - "Solo los docentes del tribunal o el personal autorizado pueden acceder a esta planilla": No estás designado formalmente en el sistema como presidente ni vocal de esa mesa. Solicitá a Secretaría que verifique la conformación del tribunal en Mesas de examen.
 - "No tienes permitido cargar o modificar tus propias notas": Ocurre si sos alumno de esa misma carrera o materia. El sistema bloquea éticamente que un docente se califique a sí mismo.
-- "La planilla ya está cerrada y no se puede editar": La mesa ya fue cerrada. Solicitá la reapertura a Secretaría si existió un error material de carga.
+- "La planilla ya está cerrada y no se puede editar" / "La planilla está cerrada y no admite modificaciones.": La mesa ya fue cerrada. Solicitá la reapertura formal a Secretaría si existió un error material de carga.
 
-Términos relacionados: cargar nota, cargar notas, como cargo una nota, nota de final, calificar mesa final, examen final, acta de examen, tribunal examinador, presidente de mesa, vocales, aprobado, desaprobado, ausente.
+Términos relacionados: cargar nota, cargar notas, como cargo una nota, nota de final, calificar mesa final, examen final, acta de examen, tribunal examinador, presidente de mesa, vocales, Solo el Docente Presidente tiene autorizacion, libro SIGI, folio automatico, No esta autorizado a descargar esta acta, acta oral cerrada y asentada, aprobado, desaprobado, ausente.
 
 ## Cerrar la planilla de una mesa de examen final (Paso a paso)
 
@@ -209,6 +212,26 @@ Pasos para registrar tu presencia:
 
 Términos relacionados: asistencia docente, marcar asistencia, marcar presente, por que no puedo marcar mi asistencia, presentismo docente, reloj docente, horario de clase, ventana horaria, tolerancia, llegada tarde.
 
+## ¿Desde cuándo puedo marcar mi asistencia? (Ventana horaria)
+
+Rol: docente
+Dónde: menú Docentes → Mi Asistencia
+
+Podés marcar desde 10 minutos antes del horario de inicio de tu primera clase del turno, y hasta que termina la última.
+
+Si marcás dentro de los primeros 15 minutos posteriores al inicio, quedás registrado como Presente. Pasado ese cuarto de hora, el sistema te registra como Tarde.
+
+La ventana se calcula por turno completo, no por materia: si tenés varias horas seguidas con el mismo turno, marcás una sola vez y cubre todas.
+
+Si una clase no tiene hora de fin cargada, el sistema asume una duración de 3 horas desde el inicio.
+
+Errores frecuentes:
+- El botón de marcar aparece deshabilitado o gris: todavía faltan más de 10 minutos para el inicio de tu clase, o el turno ya terminó.
+- Figurás como "Tarde" habiendo llegado a horario: marcaste pasados los 15 minutos de tolerancia. Pedí la corrección a Bedelía.
+- "Esta clase no tiene habilitada la asistencia por PIN": esa comisión no tiene activado el método de PIN; tomá la asistencia de forma manual.
+
+Términos relacionados: asistencia, presentismo, marcar, fichar, presente, tarde, ausente, ventana, tolerancia, no puedo marcar, botón deshabilitado.
+
 ## Consultar mis horarios de clase y comisiones
 
 Rol: docente
@@ -239,5 +262,4 @@ Si un alumno te manifiesta que olvidó su clave, que su cuenta está bloqueada o
 Términos relacionados: como reseteo la contraseña de un estudiante, resetear contraseña, restablecer clave estudiante, alumno olvido contraseña, blanquear clave alumno, pass DNI, soporte estudiante.
 
 ## Pendientes de verificación institucional
-- [VERIFICAR CON SECRETARÍA] Cantidad exacta de minutos de tolerancia previa para marcar asistencia docente antes de que inicie la hora de clase.
 - [VERIFICAR CON SECRETARÍA] Protocolo de contingencia en soporte papel en caso de corte de energía o interrupción del sistema durante un examen final.

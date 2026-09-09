@@ -20,7 +20,9 @@ from apps.asistente_ia.services.gemini_service import (
     SYSTEM_INSTRUCTION,
     TOOL_DECLARATIONS,
     _anonimizar_para_ia,
+    _descripcion_del_rol,
     _ejecutar_herramienta_local,
+    herramientas_para,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,10 +31,17 @@ TIMEOUT_SEGUNDOS = 12
 MAX_TURNOS_HISTORIAL = 6
 
 
-def _tools_formato_openai() -> list[dict]:
-    """Traduce las declaraciones de herramientas del formato Gemini al de OpenAI."""
+def _tools_formato_openai(user=None) -> list[dict]:
+    """
+    Traduce las declaraciones de herramientas del formato Gemini al de OpenAI.
+
+    Se ofrecen solo las que aplican a quien consulta: las de legajo académico
+    devuelven "Solo disponible para estudiantes", así que dárselas a un docente
+    únicamente produce llamadas fallidas.
+    """
+    declaraciones = herramientas_para(user) if user is not None else TOOL_DECLARATIONS
     tools = []
-    for decl in TOOL_DECLARATIONS:
+    for decl in declaraciones:
         params = decl.get("parameters", {}) or {}
         propiedades = params.get("properties", {}) or {}
         tools.append(
@@ -95,7 +104,9 @@ def procesar_con_openai_compat(mensaje: str, historial: list, user) -> tuple[str
     base_url, modelo, api_key = _config()
     herramientas_usadas: list[str] = []
 
-    mensajes = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
+    # El rol de quien consulta va en el mensaje de sistema: sin eso el asistente
+    # trataba de "estudiante" a docentes y bedeles.
+    mensajes = [{"role": "system", "content": SYSTEM_INSTRUCTION + _descripcion_del_rol(user)}]
     for h in historial[-MAX_TURNOS_HISTORIAL:]:
         mensajes.append({"role": "user" if h.role == "user" else "assistant", "content": h.content})
     mensajes.append({"role": "user", "content": mensaje})
@@ -103,7 +114,8 @@ def procesar_con_openai_compat(mensaje: str, historial: list, user) -> tuple[str
     payload = {
         "model": modelo,
         "messages": mensajes,
-        "tools": _tools_formato_openai(),
+        # Solo las herramientas que aplican a esta persona.
+        "tools": _tools_formato_openai(user),
         "temperature": 0.2,
         "max_tokens": 800,
     }

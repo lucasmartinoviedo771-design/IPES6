@@ -1,55 +1,159 @@
 MANUAL DE USO DEL SISTEMA IPES6 — ROL: JEFA DE ASUNTOS ESTUDIANTILES (A.A.E.E.)
 Última actualización: 9 de septiembre de 2026
-Este documento describe los procedimientos del sistema para el rol jefa_aaee (Jefatura de Asuntos Estudiantiles).
+Este documento describe los procedimientos del sistema para el rol jefa_aaee (Jefatura del Área de Asuntos Estudiantiles).
 Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
 
-## Acceso al módulo y responsabilidades de la Jefa de A.A.E.E.
+## Acceso al módulo y alcance de la Jefa de A.A.E.E.
 
 Rol: jefa_aaee
 Dónde: menú lateral Jefatura, Analytics, Mensajes, Reportes y Estudiante
 
-El rol Jefa de A.A.E.E. (Área de Asuntos Estudiantiles) está destinado a la coordinación general de las políticas y servicios dirigidos a los estudiantes del IPES "Paulo Freire", supervisando los dispositivos de ingreso, permanencia y articulación con Bedelía y Tutorías.
+El rol Jefa de A.A.E.E. (Área de Asuntos Estudiantiles) está destinado a la conducción de las políticas institucionales orientadas al bienestar, permanencia, inclusión y egreso de los estudiantes en el IPES "Paulo Freire". Coordina y articula directamente con los equipos de Bedelía, Tutorías y Coordinación de Carreras.
 
 Qué podés hacer como Jefa de A.A.E.E.:
-1. Gestionar y autorizar las ventanas de habilitación de fechas para trámites estudiantiles (inscripción a materias, mesas de examen y solicitudes especiales).
-2. Asignar roles y funciones a los equipos de Bedelía, Tutorías y Coordinación en el sistema.
-3. Consultar legajos de estudiantes, trayectorias y estados de documentación.
-4. Monitorear los tableros analíticos de retención, desgranamiento y rendimiento académico institucional.
-5. Supervisar la estructura de carreras, planes de estudio y horarios de cursada.
-6. Enviar comunicados oficiales a los estudiantes y equipos docentes mediante Mensajes.
+1. Administrar, abrir, prorrogar y cerrar las ventanas de calendario para trámites estudiantiles (inscripción a materias, mesas de exámenes finales, cambios de comisión y pedidos de analíticos) con permisos plenos (`gestionar_ventanas`).
+2. Designar y asignar roles institucionales en el sistema al personal de apoyo estudiantil: `bedel`, `tutor` y `coordinador` según las necesidades operativas de cada carrera y turno.
+3. Consultar legajos de estudiantes, trayectorias curriculares completas y estado de documentación presentada.
+4. Monitorear los tableros analíticos de retención, tasa de permanencia y desgranamiento de cohortes para definir políticas de tutoría y acompañamiento.
+5. Consultar los planes de estudio vigentes y las grillas de horarios semanales de cursada.
+6. Enviar comunicados y avisos institucionales masivos o personalizados mediante el módulo de Mensajes.
 
 Qué NO podés hacer:
-El rol Jefa de A.A.E.E. no realiza carga de notas de exámenes ni cursadas, no reabre actas cerradas por docentes y no gestiona la carga de sueldos o personal docente (materias reservadas a Secretaría Académica).
+El rol Jefa de A.A.E.E. no realiza carga de notas en planillas de cursada ni actas de exámenes finales, no puede reabrir actas cerradas por docentes (facultad de Secretaría Académica), no puede dar altas de cargos docentes ni modificar la estructura curricular de los planes de estudio. Tampoco puede asignar roles jerárquicos o administrativos centrales como `admin`, `secretaria`, `titulos` o `docente` (reservados a Secretaría y Administrador).
 
-Términos relacionados: jefa aaee, asuntos estudiantiles, jefa asuntos estudiantiles, politicas estudiantiles, bienestar estudiantil, permisos jefa_aaee.
+Términos relacionados: jefa aaee, asuntos estudiantiles, jefa asuntos estudiantiles, politicas estudiantiles, bienestar estudiantil, permisos jefa_aaee, alcance jefa de asuntos estudiantiles.
 
-## Gestión de ventanas de habilitación de fechas
-
-Rol: jefa_aaee
-Dónde: menú Jefatura → tarjeta "Habilitar / controlar fechas" (`/secretaria/habilitar-fechas`)
-
-Pasos para programar períodos de trámites estudiantiles:
-1. En el panel de Jefatura, hacé clic en "Habilitar / controlar fechas".
-2. Vas a visualizar la grilla de ventanas de calendario del ciclo lectivo.
-3. Para abrir una nueva fecha de trámite estudiantil, hacé clic en "+ Nueva Ventana".
-4. Configurá el tipo de ventana (`MATERIAS`, `MESAS_FINALES`, `COMISION`, `ANALITICOS`), indicando fecha y hora de inicio (`Desde`), fecha y hora de cierre (`Hasta`), año lectivo y cuatrimestre.
-5. Asegurate de tildar la casilla "Activo" y hacé clic en "Guardar".
-6. Mientras la ventana esté activa, los estudiantes tendrán habilitados los botones correspondientes en sus portales.
-
-Términos relacionados: habilitar fechas, fechas clave estudiantes, abrir inscripcion, ventana asuntos estudiantiles, periodos tramites.
-
-## Asignación de roles a Bedeles, Tutores y Coordinadores
+## Panel de gestión y accesos de Jefatura de A.A.E.E.
 
 Rol: jefa_aaee
-Dónde: consola de administración → Asignar roles (`/secretaria/asignar-rol`)
+Dónde: menú lateral izquierdo → "Jefatura" (o URL `/jefatura`)
 
-Pasos para asignar funciones al equipo estudiantil:
-1. De acuerdo a la matriz de permisos institucionales, la Jefa de A.A.E.E. tiene potestad para designar usuarios en los roles de: `bedel`, `tutor` y `coordinador`.
-2. Buscá al usuario por su DNI o nombre de usuario.
-3. Marcá el rol a asignar y vinculá las carreras o turnos correspondientes.
-4. Hacé clic en "Guardar asignación" para confirmar los permisos en el sistema.
+Al iniciar sesión con el rol de Jefa de Asuntos Estudiantiles, la interfaz te sitúa en el panel central de gestión, donde encontrás las herramientas agrupadas en dos bloques de trabajo:
 
-Términos relacionados: asignar rol bedel, asignar tutor, asignar coordinador, permisos equipo estudiantil, gestion de roles aaee.
+1. Bloque "Supervisión académica":
+- Tarjeta "Habilitar / controlar fechas" (ícono de calendario): acceso directo a `/secretaria/habilitar-fechas` para la creación y activación de períodos de trámites estudiantiles.
+- Tarjeta "Gestionar estudiantes" (ícono de grupo de personas): acceso a `/secretaria/estudiantes` para la búsqueda de legajos individuales y seguimiento de trayectorias.
+- Tarjeta "Pedidos de equivalencias" (ícono de birrete): acceso a `/secretaria/pedidos-equivalencias` para el seguimiento del circuito de homologaciones de materias.
+- Tarjeta "Actas y notas" (ícono de mazo/balanza): acceso a `/secretaria/carga-notas` para auditoría y visualización de regularidades y actas de examen.
+- Tarjeta "Horario de Cursada" (ícono de evento): acceso a `/estudiantes/horarios` para consultar la distribución de turnos, comisiones y aulas.
+
+2. Bloque "Informes y comunicación":
+- Tarjeta "Reportes institucionales" (ícono de gráfico de barras): acceso a `/dashboard` para visualizar los tableros estadísticos de la población estudiantil.
+- Tarjeta "Mensajes y avisos" (ícono de sobre de correo): acceso a `/mensajes` para contactar a tutores, bedeles, coordinadores y estudiantes.
+
+Términos relacionados: inicio jefa aaee, panel asuntos estudiantiles, dashboard jefa_aaee, accesos jefa asuntos estudiantiles, donde esta habilitar fechas aaee.
+
+## Apertura, configuración y prórroga de ventanas de calendario
+
+Rol: jefa_aaee
+Dónde: menú lateral → "Jefatura" → tarjeta "Habilitar / controlar fechas" (`/secretaria/habilitar-fechas`)
+
+La Jefa de A.A.E.E. tiene asignada la potestad técnica y administrativa (`gestionar_ventanas`) para habilitar las fechas en que los estudiantes pueden realizar autogestión en el sistema.
+
+Cómo abrir un nuevo período de inscripción o trámite:
+1. En el panel de Jefatura, hacé clic en la tarjeta "Habilitar / controlar fechas".
+2. Vas a visualizar la grilla con todas las ventanas existentes, ordenadas por ciclo lectivo y tipo de trámite.
+3. En la esquina superior derecha, hacé clic en el botón azul **"+ Nueva Ventana"**.
+4. En el modal o formulario de configuración, completá los siguientes campos obligatorios:
+- **Tipo de ventana**: seleccioná del menú desplegable la opción que corresponda:
+  * `MATERIAS`: Inscripción de estudiantes a las cursadas del cuatrimestre o año.
+  * `MESAS_FINALES`: Inscripción a mesas de examen final (ordinarias o extraordinarias).
+  * `COMISION`: Solicitud formal de cambio de comisión o turno por motivos laborales/familiares.
+  * `ANALITICOS`: Habilitación para que los estudiantes pidan certificados analíticos desde su portal.
+- **Año lectivo**: ingresá el año en curso (ej. 2026).
+- **Cuatrimestre**: seleccioná `1` (primer cuatrimestre), `2` (segundo cuatrimestre) o `Anual`.
+- **Fecha y hora Desde**: hacé clic en el selector de fecha y hora para fijar el momento exacto en que se habilita la inscripción.
+- **Fecha y hora Hasta**: seleccioná el día y la hora límite de cierre.
+- **Casilla Activo**: asegurate de marcar el casillero para que quede tildado (en verde).
+5. Hacé clic en el botón verde **"Guardar Ventana"**.
+6. El sistema mostrará la notificación en verde: *"Ventana guardada exitosamente."* A partir de ese momento, los estudiantes verán activos los botones de inscripción en sus pantallas según el horario establecido.
+
+Cómo otorgar una prórroga extraordinaria de inscripción:
+1. Si por resolución institucional se decide extender el plazo de inscripción a materias o finales, buscá la ventana en la tabla.
+2. Hacé clic en el ícono de **Lápiz ("Editar")** al final de la fila.
+3. En el campo "Fecha y hora Hasta", modificá la fecha y hora ampliando el plazo.
+4. Hacé clic en "Guardar cambios". Inmediatamente el sistema reactivará el portal de autogestión de los estudiantes sin necesidad de reiniciar el servidor.
+
+Términos relacionados: habilitar fechas, abrir inscripcion materias, ventana de inscripcion, prorroga inscripcion estudiantes, extender fecha examen, habilitar cambio de comision, configurar calendario aaee.
+
+## Asignación de roles al equipo de Bedelía, Tutoría y Coordinación
+
+Rol: jefa_aaee
+Dónde: consola de administración / asignar rol (`/secretaria/asignar-rol`)
+
+La matriz de seguridad del IPES "Paulo Freire" faculta a la Jefa de A.A.E.E. a gestionar las designaciones de los roles operativos vinculados directamente a la atención y acompañamiento estudiantil: `bedel`, `tutor` y `coordinador`.
+
+Pasos para asignar un rol a un usuario:
+1. Dirigite a la pantalla de asignación de roles (`/secretaria/asignar-rol`).
+2. En la barra de búsqueda de usuario, ingresá el número de DNI o el nombre de usuario del agente que asumirá la función.
+3. En el desplegable "Rol a asignar", seleccioná uno de los tres roles permitidos:
+- **`bedel`**: personal responsable de la atención de mesa de entradas, toma de asistencia, actas y legajos de carreras específicas.
+- **`tutor`**: docente a cargo del seguimiento personalizado de estudiantes, resguardo de materias y trayectorias.
+- **`coordinador`**: coordinador pedagógico de la carrera para supervisión de cohortes y horarios.
+4. Asignación de profesorados y turno:
+- Si asignás el rol de `bedel` o `coordinador`, el sistema habilitará los selectores de "Profesorado / Carrera" y "Turno" (Mañana, Tarde, Vespertino). Marcá las carreras que tendrá a su cargo.
+- Si asignás el rol de `tutor`, el acceso abarca el acompañamiento institucional de los estudiantes de las carreras designadas.
+5. Hacé clic en el botón azul **"Guardar asignación"**.
+6. El sistema desplegará el mensaje de confirmación en verde: *"Rol asignado correctamente. El usuario ya dispone de los permisos en el sistema."*
+7. Nota de seguridad: Si necesitás dar de baja una asignación porque el agente finalizó su suplencia o función, hacé clic en el botón rojo "Revocar rol" junto a la asignación y confirmá la acción.
+
+Términos relacionados: asignar rol bedel, designar tutor, asignar coordinador, dar permisos bedelia, equipo estudiantil, gestion de roles aaee, permisos jefa de asuntos estudiantiles.
+
+## Supervisión de trayectorias estudiantiles y permanencia
+
+Rol: jefa_aaee
+Dónde: menú lateral → "Estudiante" (o `/secretaria/estudiantes` y `/estudiantes/trayectoria`)
+
+Para coordinar acciones de apoyo, becas y acompañamiento pedagógico con el equipo de tutores, la Jefa de A.A.E.E. puede revisar en detalle el avance de cada estudiante o cohorte.
+
+Pasos para consultar la trayectoria de un estudiante:
+1. En el menú lateral hacé clic en "Estudiante" o ingresá a `/estudiantes/trayectoria`.
+2. Buscá al estudiante ingresando su DNI o apellido en el buscador.
+3. Al abrir el legajo, podés revisar:
+- "Estado de matrícula": Regular o Condicional (verificando si adeuda documentación secundaria o certificado de aptitud psicofísica).
+- "Historial académico": listado de materias cursadas, indicando condición de regularidad, materias aprobadas en exámenes finales, cursadas libres y equivalencias otorgadas.
+- "Correlatividades y trabas académicas": materias que el estudiante tiene aprobadas pero que no puede acreditar por correlativas previas adeudadas (resguardo de materias).
+- "Asistencia": porcentaje acumulado en cada materia del cuatrimestre en curso.
+4. Esta información permite derivar casos complejos al equipo de Tutorías para diseñar planes de estudio asistidos y prevenir la deserción.
+
+Términos relacionados: trayectoria estudiante aaee, permanencia estudiantil, alumnos en riesgo, verificar legajo alumno, materias adeudadas estudiante, seguimiento trayectorias.
+
+## Análisis de métricas institucionales y reportes
+
+Rol: jefa_aaee
+Dónde: menú lateral → "Analytics" o "Reportes" (`/dashboard`)
+
+El sistema provee indicadores clave para la toma de decisiones sobre políticas de permanencia, bienestar y asignación de recursos.
+
+Qué métricas podés consultar:
+1. En el menú lateral hacé clic en "Analytics" o "Reportes".
+2. En el panel vas a encontrar:
+- **Tasa de retención por cohorte**: porcentaje de estudiantes que permanecen inscriptos y activos año tras año en cada una de las carreras.
+- **Índice de desgranamiento**: deserción producida entre el primer y segundo cuatrimestre de 1° año, y entre 1° y 2° año.
+- **Rendimiento en Curso Introductorio (CI)**: porcentaje de ingresantes que aprobaron el CI en primera instancia versus los que requieren instancias de apoyo.
+- **Distribución de matrícula por turno y carrera**: cantidad de estudiantes que cursan en turnos mañana, tarde y vespertino, permitiendo evaluar la demanda horaria.
+3. Podés filtrar los gráficos por ciclo lectivo y por profesorado para fundamentar informes de gestión y proyectos institucionales.
+
+Términos relacionados: metricas aaee, estadisticas estudiantes, retencion estudiantil, desgranamiento por carrera, informe asuntos estudiantiles, tableros analytics.
+
+## Mensajería institucional y comunicados a estudiantes
+
+Rol: jefa_aaee
+Dónde: menú lateral izquierdo → "Mensajes" (`/mensajes`)
+
+El Área de Asuntos Estudiantiles utiliza el sistema de mensajería para comunicaciones oficiales sobre becas, fechas de trámites, actividades institucionales y convocatorias.
+
+Pasos para enviar un mensaje institucional:
+1. Hacé clic en "Mensajes" en la barra lateral.
+2. Hacé clic en el botón azul "+ Nuevo Mensaje".
+3. En el campo "Destinatario", podés seleccionar a un estudiante, a un docente, al equipo de bedeles o tutores.
+4. Redactá un "Asunto" claro (ej. *"Convocatoria a Tutorías de Acompañamiento"* o *"Aviso importante: Prórroga de inscripción a materias"*).
+5. Escribí el contenido del comunicado en el cuerpo del mensaje.
+6. Hacé clic en "Enviar mensaje".
+7. El sistema registrará el envío y mostrará la alerta verde: *"Mensaje enviado con éxito"*.
+
+Términos relacionados: mensajes jefa aaee, avisos a estudiantes, comunicado oficial asuntos estudiantiles, circular bienestar estudiantil, enviar mensaje alumnos.
 
 ## Pendientes de verificación institucional
-- [VERIFICAR CON SECRETARÍA] Criterio de coordinación entre A.A.E.E. y Secretaría para la extensión extraordinaria de plazos de inscripción a cursadas.
+- [VERIFICAR CON SECRETARÍA] Criterio conjunto de prórrogas extraordinarias de calendario entre Asuntos Estudiantiles y Secretaría Académica.
+- [VERIFICAR CON SECRETARÍA] Protocolo de asignación y límite de estudiantes asignados por cada docente tutor institucional.

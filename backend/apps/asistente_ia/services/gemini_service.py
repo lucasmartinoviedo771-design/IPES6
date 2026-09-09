@@ -74,8 +74,69 @@ SYSTEM_INSTRUCTION = (
     "6. PRIVACIDAD: No recibís el nombre, el DNI ni ningún dato de contacto de la persona, "
     "porque no salen del instituto. Los datos académicos que te llegan ya corresponden a quien "
     "está consultando. Nunca los pidas ni los inventes: dirigite a la persona en segunda persona "
-    "('tenés', 'podés'), sin nombrarla."
+    "('tenés', 'podés'), sin nombrarla.\n"
+    "7. QUIÉN TE CONSULTA: Más abajo se te indica el rol de la persona. No todas son estudiantes: "
+    "también consultan docentes, bedeles, secretaría y otros roles. Nunca trates de 'estudiante' a "
+    "quien no lo es, ni le ofrezcas trámites que no le corresponden. Si es personal del instituto, "
+    "respondé sobre los procedimientos de SU rol según los manuales de uso.\n"
+    "8. DERIVACIÓN SEGÚN EL ROL: Derivá a Bedelía solo a estudiantes. Si quien consulta ES de "
+    "Bedelía o Secretaría, no le derives la consulta a sí mismo: indicá que el tema no está en la "
+    "documentación cargada y sugerí a quién corresponde escalarlo."
 )
+
+
+def _descripcion_del_rol(user) -> str:
+    """
+    Línea que se agrega al mensaje de sistema para que el asistente sepa con
+    quién habla.
+
+    Sin esto trataba a todos de "estudiante": un bedel preguntó por su horario y
+    recibió un "Estimado/a estudiante" con la consulta derivada a Bedelía, es
+    decir, a sí mismo.
+    """
+    from core.permissions import get_user_roles
+
+    roles = sorted(get_user_roles(user) or [])
+    es_estudiante = getattr(user, "estudiante", None) is not None
+
+    if not roles and es_estudiante:
+        roles = ["estudiante"]
+    if not roles:
+        return "\n\nQUIEN CONSULTA: no se pudo determinar el rol. Respondé solo con normativa general."
+
+    legibles = ", ".join(roles)
+    if es_estudiante:
+        return (
+            f"\n\nQUIEN CONSULTA: estudiante (roles: {legibles}). "
+            "Tenés disponibles las herramientas de datos académicos personales."
+        )
+    return (
+        f"\n\nQUIEN CONSULTA: personal del instituto (roles: {legibles}), NO es estudiante. "
+        "Las herramientas de datos académicos personales (calificaciones, regularidades, cursadas, "
+        "diagnósticos de inscripción) no aplican a esta persona: no las uses. "
+        "Respondé con los manuales de uso del sistema correspondientes a su rol y con la normativa."
+    )
+
+
+# Herramientas que consultan el legajo académico de quien pregunta: sin perfil de
+# estudiante devuelven "Solo disponible para estudiantes", así que ofrecérselas a
+# un docente solo produce respuestas fallidas.
+HERRAMIENTAS_SOLO_ESTUDIANTE = {
+    "diagnosticar_inscripcion_cursada",
+    "diagnosticar_inscripcion_mesa",
+    "consultar_mis_calificaciones",
+    "consultar_mis_regularidades",
+    "consultar_materias_cursando",
+    "derivar_consulta_a_bedel",
+}
+
+
+def herramientas_para(user) -> list[dict]:
+    """Declaraciones de herramientas que tienen sentido para quien consulta."""
+    if getattr(user, "estudiante", None) is not None:
+        return TOOL_DECLARATIONS
+    return [t for t in TOOL_DECLARATIONS if t["name"] not in HERRAMIENTAS_SOLO_ESTUDIANTE]
+
 
 TOOL_DECLARATIONS = [
     {

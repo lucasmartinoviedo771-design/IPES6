@@ -3,78 +3,92 @@ MANUAL DE USO DEL SISTEMA IPES6 — ROL: A.T.T.P.
 Este documento describe los procedimientos del sistema para el rol attp (Administrador de Tecnologías de la Información y la Comunicación).
 Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
 
-## Acceso al módulo y alcance del rol A.T.T.P.
+## Acceso al módulo y responsabilidades de A.T.T.P.
 
 Rol: attp
-Dónde: menú lateral A.T.T.P., Estudiante, Mensajes y Primera Carga
+Dónde: pantalla principal y menú lateral izquierdo
 
-El rol A.T.T.P. (Ayudante Técnico de Trabajos Prácticos / Soporte Tecnológico) cumple un rol clave en la administración técnica de accesos y la gestión de inscripciones en el IPES "Paulo Freire".
+El rol A.T.T.P. (Ayudante Técnico de Trabajos Prácticos / Soporte Tecnológico) cumple funciones indispensables de administración de accesos, soporte a usuarios y gestión de inscripciones en el IPES "Paulo Freire".
 
-Qué podés hacer como A.T.T.P.:
-1. Resetear contraseñas de estudiantes a la clave institucional por defecto (`pass` + DNI).
-2. Resetear contraseñas de docentes y personal mediante el widget de reseteo forzado (`pass12346789`).
-3. Formalizar y confirmar preinscripciones de aspirantes a las carreras.
-4. Gestionar inscripciones de estudiantes a espacios curriculares (E.C.) y comisiones.
-5. Gestionar solicitudes de cambio de comisión.
-6. Editar el calendario institucional.
-7. Consultar en modo solo lectura legajos de estudiantes, actas finales, notas y reportes.
-8. Enviar y responder mensajes institucionales.
+Cómo ingresar y navegar:
+1. Iniciá sesión en el sistema con tu DNI y contraseña de soporte.
+2. En la barra lateral izquierda vas a ver los accesos a: "A.T.T.P.", "Estudiante", "Mensajes" y "Primera Carga".
+   (Si estás en un celular, abrí el menú tocando el botón de las tres rayitas horizontales arriba a la izquierda).
+3. Al hacer clic en "A.T.T.P.", vas a ver tu panel de trabajo organizado en:
+   - Cabecera: Recuadro para "Reseteo forzado de contraseña de personal" (docentes y staff).
+   - Sección "Inscripciones (escritura)": Inscripción a carreras y a espacios curriculares.
+   - Sección "Horarios": Horario general de cursada en PDF.
+   - Sección "Estudiantes": Tarjeta "Resetear contraseña estudiante".
+   - Sección "Consulta y supervisión (solo lectura)": Gestión de estudiantes, Actas y notas, Reportes y Mensajes.
+
+Qué podés hacer con este rol:
+- Restablecer contraseñas de estudiantes fijándolas en la fórmula institucional `pass` + DNI.
+- Restablecer contraseñas de docentes y personal fijándolas en `pass12346789`.
+- Confirmar y formalizar preinscripciones presenciales de nuevos ingresantes.
+- Gestionar inscripciones de estudiantes a espacios curriculares y comisiones.
+- Autorizar o gestionar cambios de comisión.
+- Consultar en modo solo lectura legajos, actas de examen final, horarios y reportes.
+- Enviar avisos y mensajes institucionales.
 
 Qué NO podés hacer:
-El rol A.T.T.P. no puede reabrir planillas cerradas, no puede asignar roles administrativos a usuarios ni puede armar la grilla de horarios de cátedras (funciones exclusivas de Secretaría).
+El rol A.T.T.P. no puede reabrir planillas de examen cerradas, no puede asignar roles administrativos ni puede modificar la grilla semanal de horarios de cátedra (funciones exclusivas de Secretaría).
 
-Términos relacionados: attp, soporte tecnico, informatica, funciones attp, permisos attp, que puede hacer attp.
+Términos relacionados: attp, soporte tecnico, informatica, funciones attp, permisos attp, que puede hacer attp, acceso soporte.
 
-## Resetear contraseña de un estudiante (Paso a paso)
+## Resetear la contraseña de un estudiante (Paso a paso)
 
 Rol: attp
-Dónde: menú lateral → "A.T.T.P." → tarjeta "Resetear contraseña estudiante" (`/attp/resetear-password`)
+Dónde: menú lateral → "A.T.T.P." → sección "Estudiantes" → tarjeta "Resetear contraseña estudiante" (`/attp/resetear-password`)
 
-Pasos para restablecer el acceso a un alumno:
+Pasos para blanquear el acceso a un alumno:
 1. En la barra lateral izquierda hacé clic en "A.T.T.P.".
-2. En la sección "Estudiantes", hacé clic en la tarjeta "Resetear contraseña estudiante".
-3. En el casillero de búsqueda "Buscar por DNI o apellido", escribí el DNI del estudiante (sin puntos ni espacios) o su apellido.
-4. Al ingresar al menos 2 caracteres, el sistema listará los estudiantes coincidentes con su nombre, apellido y DNI.
-5. Hacé clic sobre el estudiante correspondiente para seleccionarlo.
-6. Se abrirá una ventana de confirmación con el nombre y DNI del alumno.
-7. Hacé clic en el botón azul "Resetear contraseña".
-8. El sistema emitirá una notificación verde de éxito: "Contraseña reseteada. El estudiante puede ingresar con: pass + DNI".
-9. La clave provisoria del estudiante queda fijada en la palabra `pass` seguida de su DNI (ejemplo: si el DNI es 38456123, su contraseña será `pass38456123`).
-10. Informale al alumno su contraseña provisoria para que pueda iniciar sesión y completar su perfil.
+2. En la sección "Estudiantes", hacé clic en la tarjeta "Resetear contraseña estudiante" (icono de candado con flecha de reinicio).
+3. En pantalla vas a ver un casillero de búsqueda con el texto "Buscar por DNI o apellido".
+4. Escribí el número de DNI del alumno (sin puntos) o las primeras letras de su apellido.
+5. El sistema mostrará una tabla con los resultados coincidentes (Nombre, Apellido, DNI y carrera).
+6. Hacé clic sobre la fila del estudiante correspondiente.
+7. Se abrirá una ventana emergente de confirmación indicando el nombre y DNI del alumno seleccionado.
+8. Hacé clic en el botón azul "Resetear contraseña".
+9. Resultado: El sistema emitirá un cartel verde de confirmación: "Contraseña reseteada. El estudiante puede ingresar con: pass + DNI".
+10. La clave provisoria del alumno queda fijada en la palabra `pass` seguida de su DNI completo (ejemplo: si el DNI es 37894561, la nueva clave es `pass37894561`).
+11. Informale al alumno su contraseña provisoria para que pueda ingresar desde su teléfono o computadora y actualizar sus datos en el perfil.
 
-Términos relacionados: como reseteo la contraseña de un estudiante, resetear contraseña estudiante, blanquear clave alumno, pass DNI, recuperar acceso estudiante, attp password.
+Términos relacionados: como reseteo la contraseña de un estudiante, resetear contraseña estudiante, blanquear clave alumno, pass DNI, recuperar clave estudiante, attp reset.
 
-## Resetear contraseña de un docente o personal (Paso a paso)
+## Resetear la contraseña de un docente o personal (Paso a paso)
 
 Rol: attp
 Dónde: menú lateral → "A.T.T.P." → recuadro superior "Reseteo forzado de contraseña de personal" (`ForcedResetWidget`)
 
-Pasos para restablecer el acceso a un docente:
+Pasos para restablecer el acceso a un profesor o colega:
 1. En la barra lateral izquierda hacé clic en "A.T.T.P.".
-2. En la parte superior de la pantalla principal verás el recuadro "Reseteo forzado de contraseña de personal".
-3. En el casillero "Usuario / DNI", ingresá el número de DNI del docente (sin puntos).
-4. El campo "Nueva contraseña (opcional)" podés dejarlo en blanco. Al dejarlo vacío, el sistema asignará de forma automática la clave institucional predeterminada: `pass12346789`.
+2. En la parte superior de la pantalla principal verás un recuadro destacado titulado "Reseteo forzado de contraseña de personal".
+3. En el casillero "Usuario / DNI", escribí el número de DNI del docente (sin puntos ni espacios).
+4. El campo "Nueva contraseña (opcional)" dejalo en blanco. Al dejarlo vacío, el sistema asigna automáticamente la clave institucional predeterminada: `pass12346789`.
 5. Hacé clic en el botón azul "Resetear contraseña".
-6. Aparecerá un mensaje verde confirmando que la contraseña del docente fue reseteada con éxito.
-7. El sistema marca automáticamente la cuenta con la obligación de cambiar la contraseña en su primer inicio de sesión (`must_change_password`).
-8. Informale al docente que su clave provisoria es `pass12346789` y que el sistema le exigirá definir una nueva clave personal al ingresar.
+6. Resultado: Aparecerá un mensaje verde de éxito confirmando: "Contraseña de [usuario] reseteada exitosamente".
+7. El sistema marca automáticamente la cuenta del docente con la propiedad `must_change_password`.
+8. Informale al docente que su contraseña provisoria es `pass12346789` y que, en cuanto inicie sesión, el sistema le exigirá definir una nueva clave personal segura.
 
-Términos relacionados: resetear contraseña docente, blanquear clave profesor, pass12346789, restablecer clave personal, attp reset docente, clave provisoria.
+Términos relacionados: resetear contraseña docente, blanquear clave profesor, pass12346789, restablecer clave personal, attp reset docente, clave provisoria docente.
 
 ## Formalizar la preinscripción de aspirantes a carreras
 
 Rol: attp
 Dónde: menú A.T.T.P. → sección "Inscripciones (escritura)" → tarjeta "Inscripción a carreras" (`/preinscripciones`)
 
-Pasos para confirmar el ingreso:
-1. Hacé clic en "Inscripción a carreras".
-2. Buscá al aspirante por su número de DNI en la lista de preinscriptos.
-3. Hacé clic en el aspirante para verificar la documentación física entregada.
-4. Marcá el estado de la documentación: "Regular" (si presentó todos los papeles) o "Condicional" (si adeuda certificado médico o constancia de secundario con prórroga).
-5. Hacé clic en "Confirmar / Formalizar Inscripción".
-6. El aspirante queda formalmente matriculado como Estudiante con usuario habilitado en el sistema.
+Pasos para registrar un nuevo alumno:
+1. En el panel de A.T.T.P., hacé clic en la tarjeta "Inscripción a carreras".
+2. En el buscador superior ingresá el número de DNI del aspirante.
+3. Hacé clic sobre el aspirante para abrir su ficha de legajo y control de documentación.
+4. Verificá los documentos físicos: DNI, partida de nacimiento, título secundario (o constancia de título en trámite sin materias previas) y apto psicofísico.
+5. Seleccioná el estado de la documentación:
+   - "Regular": Si presentó todos los requisitos completos.
+   - "Condicional": Si adeuda certificado de salud o constancia secundaria con prórroga reglamentaria.
+6. Hacé clic en el botón verde "Confirmar / Formalizar Inscripción".
+7. Resultado: El aspirante queda formalmente matriculado como Estudiante activo en la carrera, se le crea su usuario institucional y se puede descargar el comprobante en PDF con membrete del IPES.
 
-Términos relacionados: inscripcion a carreras, formalizar inscripcion, confirmar ingreso, preinscripciones attp, aspirantes, documentacion ingresante.
+Términos relacionados: inscripcion a carreras, formalizar inscripcion, confirmar ingreso, preinscripciones attp, aspirantes, comprobante ingreso.
 
 ## Pendientes de verificación institucional
-- [VERIFICAR CON SECRETARÍA] Protocolo de entrega y resguardo físico de planillas de asistencia en soporte papel gestionadas por A.T.T.P.
+- [VERIFICAR CON SECRETARÍA] Procedimiento de resguardo técnico ante caídas del servidor durante períodos masivos de inscripción.

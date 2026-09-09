@@ -88,7 +88,10 @@ Pasos para registrar una falta justificada:
 7. El estado de la clase cambiará inmediatamente a "Ausente Justificado" (en color verde o amarillo).
 8. Esta inasistencia justificada ya no computará negativamente para la pérdida de la regularidad en el porcentaje de asistencia de la materia.
 
-Términos relacionados: justificar falta, justificar inasistencia, inasistencia justificada, certificado medico, falta laboral, ausente justificado, presentismo alumno, faltas de estudiantes.
+Errores frecuentes y aclaración de permisos:
+- "Los docentes no pueden gestionar justificaciones.": La recepción y registro de certificados médicos y justificaciones de inasistencia es tarea exclusiva de Bedelía (o Secretaría). Los docentes registran presentismo en el aula, pero no tienen habilitado el botón para justificar inasistencias; el sistema les prohíbe esa acción y deben derivar al estudiante con el bedel de su carrera.
+
+Términos relacionados: justificar falta, justificar inasistencia, inasistencia justificada, certificado medico, falta laboral, ausente justificado, Los docentes no pueden gestionar justificaciones, presentismo alumno, faltas de estudiantes.
 
 ## Carga y rectificación de planillas de regularidad
 
@@ -103,9 +106,10 @@ Pasos para cargar o corregir regularidades de cursada:
 5. Hacé clic en "Guardar borrador" para resguardar los cambios parciales, o en "Cerrar planilla" si se trata del cierre final coordinado con la cátedra.
 
 Qué hacer si la planilla está cerrada:
-- Si la planilla figura en estado "CERRADA", el sistema no te permitirá editar las notas. Si se detectó un error material y la dirección autorizó la rectificación, solicitale a **Secretaría Académica** que abra la planilla utilizando su función de "Reabrir Planilla". Una vez reabierta, podrás aplicar la corrección y volver a cerrarla.
+- Cartel de error: "La planilla está cerrada. Reabrila desde Secretaría antes de sincronizar." (o "La planilla ya está cerrada").
+- Si la planilla figura en estado "CERRADA", el sistema bloquea la sincronización y la edición de notas. Si se detectó un error material y la dirección autorizó la rectificación, solicitale a **Secretaría Académica** que abra la planilla utilizando su función de "Reabrir Planilla". Una vez reabierta, podrás aplicar la corrección y volver a cerrarla.
 
-Términos relacionados: cargar notas cursada, como cargo una nota, regularidad, planilla de regularidad, cargar regularidades, promocion, libre, rectificar notas, comision cursada.
+Términos relacionados: cargar notas cursada, como cargo una nota, regularidad, planilla de regularidad, cargar regularidades, La planilla esta cerrada Reabrila desde Secretaria antes de sincronizar, promocion, libre, rectificar notas, comision cursada.
 
 ## Carga de notas en mesas finales y actas de examen
 
@@ -119,13 +123,16 @@ Pasos para asentar notas de examen final:
 4. Para cada estudiante evaluado por el tribunal docente:
    - En la columna "Condición", seleccioná: Aprobado, Desaprobado, Ausente o Ausente Justificado.
    - En la columna "Nota", escribí la calificación numérica definitiva (del 1 al 10).
-   - En las columnas "Libro" y "Folio", completá los números del acta física matriz según los libros de actas del instituto.
+   - Numeración automática de libro y folio: Al guardar el acta definitiva con las notas, el sistema asigna solo el libro y el folio: el libro es **SIGI** (marca de carga digital, para distinguirla de los libros físicos históricos) y el folio es un número correlativo que no se repite. Dejá los campos "Libro" y "Número de folio" **vacíos** al generar el acta: si escribís algo, el sistema respeta ese valor y no lo numera solo. Los campos con contenido sólo se usan para cargar actas antiguas en papel.
 5. Hacé clic en el botón azul "Guardar" para almacenar los cambios.
 6. Si la mesa concluyó y todas las calificaciones están asentadas, se puede proceder al cierre de la planilla para generar el acta definitiva.
 
-Términos relacionados: cargar notas de final, como cargo una nota, actas finales, notas examen final, acta de examen, calificar mesa, libro matriz, folio acta, cerrar mesa final.
+Errores frecuentes:
+- "El alumno no pertenece a esta carrera." / "El alumno no pertenece a este plan.": Sucede cuando intentás calificar o incorporar a un estudiante en una materia o acta que corresponde a otro profesorado o a un plan de estudios no coincidente (por ejemplo, en cambios de plan o estudiantes con doble titulación). Verificá el legajo del estudiante antes de asignarlo.
 
-## Confeccionar un acta manual o extraordinaria
+Términos relacionados: cargar notas de final, como cargo una nota, actas finales, notas examen final, acta de examen, calificar mesa, libro SIGI, folio automatico, El alumno no pertenece a esta carrera, El alumno no pertenece a este plan, cerrar mesa final.
+
+## Confeccionar un acta manual o extraordinaria y reglas de mesas
 
 Rol: bedel
 Dónde: menú Bedeles → Carga de notas → tarjeta "Acta manual / extraordinaria"
@@ -138,11 +145,16 @@ Pasos para generar un acta especial:
 3. Designación del tribunal: Buscá y seleccioná a los docentes que integraron la mesa examinadora (Presidente y Vocales).
 4. Carga de estudiantes evaluados:
    - Ingresá el número de DNI del estudiante y hacé clic en "Buscar / Agregar".
-   - Asigná la condición (Aprobado / Desaprobado), la nota numérica final obtenida, y los datos de Libro y Folio correspondientes.
+   - Asigná la condición (Aprobado / Desaprobado) y la nota numérica final obtenida.
+   - Libro y Folio: Dejalos vacíos para que el sistema asigne automáticamente libro **SIGI** y folio correlativo digital.
 5. Hacé clic en el botón verde "Guardar acta".
-6. El sistema registrará el acta formalmente y la calificación impactará de inmediato en la trayectoria académica del estudiante como materia aprobada.
+6. El sistema registrará el acta formalmente y la calificación impactará de inmediato en la trayectoria académica del estudiante.
 
-Términos relacionados: acta manual, acta extraordinaria, mesa especial, crear acta manual, generar acta examen, cargar acta especial, tribunal extraordinario.
+Regla del sistema: Una sola mesa por materia, fecha y modalidad:
+No se pueden crear dos mesas iguales el mismo día. Si intentás crear una mesa de una materia que ya tiene otra en esa fecha y con la misma condición (regular o libre), el sistema lo rechaza indicando cuál existe.
+Sí podés crear el mismo día una mesa **regular** y una **libre** de la misma materia: son condiciones distintas. Y los llamados 1° y 2° van en fechas distintas, así que tampoco chocan.
+
+Términos relacionados: acta manual, acta extraordinaria, mesa especial, crear acta manual, generar acta examen, una sola mesa por materia fecha y modalidad, rechazo mesa duplicada, libro SIGI, tribunal extraordinario.
 
 ## Gestionar cambios de comisión de estudiantes
 

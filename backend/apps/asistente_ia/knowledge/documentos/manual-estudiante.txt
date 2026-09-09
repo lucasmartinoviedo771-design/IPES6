@@ -58,19 +58,23 @@ Pasos para anotarte a cursar:
 6. Aparecerá un cartel verde confirmando la operación y el botón de la materia cambiará a color verde con la leyenda "Inscripto".
 
 ¿Por qué no puedo inscribirme a una materia? (Causas y soluciones):
-1. "Período no habilitado / Ventana cerrada":
+1. "No cumple correlatividades exigidas." (o "Correlatividades no cumplidas"):
+   - Causa: El sistema bloquea la inscripción porque adeudás materias previas que el plan de estudios exige tener regularizadas o aprobadas.
+   - Solución: Podés consultar el detalle exacto de las correlativas que te faltan en la misma pantalla de inscripción o ingresando a "Trayectoria del Estudiante". Si considerás que aprobaste la materia correlativa pero aún no te figura, consultá en Bedelía para verificar si el acta de examen ya fue cerrada y asentada.
+2. "El alumno debe encontrarse en estado 'Activo' en el profesorado correspondiente para poder inscribirse a materias.":
+   - Causa: Tu matrícula en esa carrera se encuentra inactiva o suspendida en el sistema (por no haber completado la reinscripción anual obligatoria o por adeudar documentación del legajo).
+   - Solución: Acercate a Bedelía para regularizar tu situación y reactivar tu estado antes de que venza el plazo de inscripción.
+3. "Período no habilitado / Ventana cerrada":
    - Causa: La fecha de inscripción aún no comenzó o ya finalizó según el calendario.
-   - Solución: Consultá las fechas oficiales publicadas por Secretaría.
-2. "Correlatividades no cumplidas":
-   - Causa: No tenés regularizadas o aprobadas las materias previas obligatorias que exige tu plan de estudios. Podés consultar qué materias te faltan ingresando a "Trayectoria del Estudiante".
-3. "Cupo completo en la comisión":
+   - Solución: Consultá las fechas oficiales publicadas por Secretaría o Asuntos Estudiantiles.
+4. "Cupo completo en la comisión":
    - Causa: La comisión seleccionada agotó sus vacantes disponibles.
    - Solución: Seleccioná otra comisión o turno que tenga cupos libres.
-4. "Documentación condicional adeudada":
+5. "Documentación condicional adeudada":
    - Causa: Adeudás la entrega del título secundario legalizado o certificado médico y venció la prórroga.
    - Solución: Acercate con urgencia a Bedelía para regularizar tu legajo y solicitar el desbloqueo.
 
-Términos relacionados: inscribirme a materias, inscripcion a cursada, como me anoto a una materia, elegir comision, turno de cursada, por que no puedo inscribirme, correlativas, vacantes, cupo lleno.
+Términos relacionados: inscribirme a materias, inscripcion a cursada, como me anoto a una materia, elegir comision, turno de cursada, por que no puedo inscribirme, No cumple correlatividades exigidas, correlativas, alumno debe encontrarse en estado activo, vacantes, cupo lleno.
 
 ## Inscripción a mesas de examen final (Paso a paso)
 
@@ -115,9 +119,11 @@ Pasos para confirmar tu nota:
 5. Tu calificación quedará formalmente aceptada y el tribunal docente podrá realizar el cierre definitivo de la planilla de la mesa.
 
 Qué pasa si se vencen los 10 minutos:
-Si te quedaste sin batería, perdiste conexión o te retiraste antes, no te preocupes: al cumplirse los 10 minutos el sistema vence el plazo de espera automáticamente y asienta la nota cargada por los docentes para que el acta no quede trabada.
+Si te quedaste sin batería, perdiste conexión o te retiraste antes, el sistema mostrará:
+"La ventana de 10 minutos ha expirado. El acta quedó notificada y sin objeción por tiempo cumplido."
+Esto significa que al vencer los 10 minutos reglamentarios, el sistema da el acta oral por notificada y consentida de pleno derecho, quedando la nota firme y asentada sin posibilidad de objeción posterior, permitiendo al tribunal docente realizar el cierre definitivo.
 
-Términos relacionados: acta oral, conformidad del estudiante, nota de final oral, calificacion oral, plazo diez minutos, aceptar nota, tribunal oral.
+Términos relacionados: acta oral, conformidad del estudiante, nota de final oral, calificacion oral, plazo diez minutos, La ventana de 10 minutos ha expirado, acta quedo notificada y sin objecion, aceptar nota, tribunal oral.
 
 ## Consultar mi trayectoria académica y notas
 
@@ -146,9 +152,14 @@ Pasos para controlar tu presentismo:
 2. Seleccioná la materia que estás cursando en el ciclo actual.
 3. Vas a ver el porcentaje de asistencia acumulado sobre el total de clases dictadas hasta la fecha.
 4. Debajo podés revisar el historial clase por clase con su estado: Presente, Tarde, Ausente o Ausente Justificado.
-5. Verificá periódicamente este porcentaje para asegurarte de no quedar por debajo del mínimo exigido por el Reglamento Académico (80% o 65% con justificativo) para no perder la condición de regular.
+5. Control de regularidad según el formato de la materia:
+El porcentaje mínimo de asistencia depende del formato de la unidad curricular (Art. 24°.d del Reglamento Académico):
+- **80%** en Talleres, Prácticas Docentes, Laboratorios y unidades promocionales. En estos casos, presentando justificativo oficial se concede hasta un 15% adicional de inasistencias, o sea que el piso baja al 65%.
+- **65%** en Seminarios, Asignaturas, Materias y Módulos. En estos casos **no hay régimen de excepcionalidad**: el 65% se exige siempre, con o sin justificativo.
 
-Términos relacionados: mis asistencias, porcentaje de asistencia, cuantas faltas tengo, faltas por materia, inasistencias, faltar, regularidad asistencia, ausencias.
+Si no alcanzás el porcentaje que corresponde a tu materia, perdés la condición de alumno regular en esa unidad curricular.
+
+Términos relacionados: mis asistencias, porcentaje de asistencia, porcentaje minimo asistencia, cuantas faltas tengo, faltas por materia, inasistencias, faltar, regularidad asistencia, ausencias, 80 por ciento, 65 por ciento, justificacion inasistencias.
 
 ## Descargar constancia de estudiante regular (Certificado en PDF)
 
@@ -195,7 +206,11 @@ Pasos para pedir pase de turno o grupo:
 6. Hacé clic en "Enviar solicitud".
 7. Podés consultar el estado de tu pedido (Pendiente, Aprobada o Rechazada) desde la misma pantalla. Cuando Bedelía la apruebe, tu inscripción y horario se actualizarán solos.
 
-Términos relacionados: cambio de comision, pase de turno, cambiarme de comision, superposicion horaria, turno de cursada, solicitud cambio comision.
+Errores frecuentes:
+- "El alumno debe ser estudiante regular para solicitar cambios de comisión.":
+  Para pedir un cambio de comisión o turno es condición previa y excluyente contar con la condición de estudiante regular en el ciclo actual. Si estás en condición libre o tu usuario figura inactivo en el sistema, no podés solicitar traslados de comisión; debés regularizar tu matrícula primero en Bedelía.
+
+Términos relacionados: cambio de comision, pase de turno, cambiarme de comision, superposicion horaria, turno de cursada, solicitud cambio comision, El alumno debe ser estudiante regular para solicitar cambios de comision, regularidad cambio de comision.
 
 ## Solicitar analítico y pedir equivalencias de materias
 

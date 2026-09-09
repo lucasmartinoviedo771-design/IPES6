@@ -6,50 +6,62 @@ Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento A
 ## Acceso al módulo y responsabilidades de Tutoría
 
 Rol: tutor
-Dónde: menú lateral Tutorías, Analytics, Mensajes, Reportes y Curso Intro
+Dónde: pantalla principal y menú lateral izquierdo
 
-El rol Tutor está diseñado para los equipos de acompañamiento a las trayectorias estudiantiles en el IPES "Paulo Freire", brindando orientación académica y contención ante dificultades en la cursada o correlatividades.
+El rol Tutor está diseñado para los equipos de acompañamiento integral a las trayectorias estudiantiles en el IPES "Paulo Freire", interviniendo ante dificultades académicas, riesgo de deserción y trabas de correlatividades.
 
-Qué podés hacer como tutor:
-1. Consultar legajos y datos de contacto de estudiantes para entrevistas y seguimiento.
-2. Auditar la trayectoria académica de estudiantes (materias cursadas, regulares, aprobadas y promedio).
-3. Monitorear a los estudiantes ingresantes con Curso Introductorio (CI) pendiente de aprobación.
-4. Consultar el panel de resguardo de materias bloqueadas por correlatividades para asesorar al alumno en su reinserción o recursado.
-5. Gestionar solicitudes de cambio de comisión por motivos justificados.
-6. Participar en la revisión y gestión de expedientes de equivalencias.
-7. Comunicarse activamente con los estudiantes mediante el módulo institucional de Mensajes.
+Cómo ingresar y navegar:
+1. Iniciá sesión con tu DNI y contraseña de tutor.
+2. En la barra lateral izquierda hacé clic en "Tutorías" (icono de personas/diversidad).
+   (En celulares, abrí el menú con las tres rayitas arriba a la izquierda).
+3. Vas a acceder al panel de Tutorías organizado en tres secciones:
+   - "Acompañamiento académico": Tarjetas de Consultar estudiantes, Trayectoria del estudiante, Estudiantes sin CI aprobado, Resguardo de materias, Analíticos y Mensajes a estudiantes.
+   - "Estructura y Cursadas": Tarjetas de Carreras y Horario de Cursada.
+   - "Circuito de equivalencias": Tarjeta de Gestión de equivalencias.
+
+Qué podés hacer con este rol:
+- Buscar y consultar legajos y fichas de contacto de estudiantes para coordinar entrevistas.
+- Auditar la trayectoria académica y detectar materias con regularidad próxima a vencer (plazo de 2 años reglamentarios).
+- Consultar el panel de "Resguardo de materias" para detectar materias bloqueadas por falta de correlativas previas aprobadas.
+- Monitorear el estado de ingresantes con Curso Introductorio (CI) pendiente.
+- Gestionar solicitudes de cambio de comisión justificadas por motivos de trabajo o salud.
+- Realizar el seguimiento de expedientes de equivalencias en trámite.
+- Enviar mensajes oficiales y convocatorias a los estudiantes mediante el módulo institucional.
 
 Qué NO podés hacer:
-El tutor NO tiene permisos de carga ni rectificación de calificaciones, NO puede formalizar preinscripciones, NO puede resetear contraseñas de estudiantes ni docentes, y NO puede cerrar ni reabrir planillas.
+El tutor no realiza carga de notas, no modifica regularidades, no abre ni cierra planillas de examen y no resetea contraseñas de usuarios (debe derivar a Bedelía o ATTP).
 
 Términos relacionados: tutor, tutoria, tutorias, acompanamiento pedagogico, trayectorias estudiantiles, seguimiento academico, permisos tutor.
 
-## Acompañamiento de trayectorias y detección de dificultades
+## Acompañamiento de trayectorias y detección de dificultades (Paso a paso)
 
 Rol: tutor
 Dónde: menú lateral → "Tutorías" → tarjetas "Consultar estudiantes" y "Trayectoria del estudiante"
 
-Pasos para diagnosticar el estado de un estudiante:
-1. En el panel de Tutorías, hacé clic en "Consultar estudiantes" para buscar por DNI o apellido. Podrás consultar su cohorte, carrera y datos de contacto.
-2. Ingresá a "Trayectoria del estudiante" para visualizar la malla curricular del alumno.
-3. Identificá:
-   - Materias regularizadas próximas a su fecha de vencimiento reglamentario (para alertar al estudiante de que debe inscribirse a rendir en los próximos llamados).
-   - Materias con correlativas trabadas que impiden el avance a años superiores.
-4. Utilizá el botón "Mensajes a estudiantes" para contactarlo institucionalmente y coordinar una entrevista de orientación académica.
+Pasos para el diagnóstico y seguimiento de un estudiante:
+1. En el panel de Tutorías, hacé clic en "Consultar estudiantes" (`/secretaria/estudiantes`).
+2. Escribí el DNI o apellido del alumno en el buscador para ver sus datos personales, cohorte y teléfono de contacto.
+3. Hacé clic en la tarjeta "Trayectoria del estudiante" (`/estudiantes/trayectoria`) e ingresá su DNI.
+4. El sistema mostrará la malla curricular del estudiante con los colores de estado:
+   - Identificá materias regularizadas cuya vigencia de 2 años esté próxima a caducar, para alertar al estudiante de que debe rendir el final en los turnos inmediatos.
+   - Detectá materias con correlativas no aprobadas que le impiden cursar materias del año siguiente.
+5. Acción tutorial: Hacé clic en la tarjeta "Mensajes a estudiantes" (`/mensajes`) para enviarle un mensaje institucional y citarlo a una entrevista de orientación pedagógica.
 
 Términos relacionados: trayectoria estudiantil, tutoria alumno, orientacion academica, materias adeudadas, vencimiento de regularidad, plan de cursada.
 
-## Resguardo de materias y correlatividades trabadas
+## Resguardo de materias y correlatividades trabadas (Paso a paso)
 
 Rol: tutor
 Dónde: menú Tutorías → tarjeta "Resguardo de materias" (`/admin/resguardo-materias`)
 
-Pasos para asesorar a estudiantes en situación de resguardo:
+Pasos para intervenir en situaciones de resguardo:
 1. En el panel de Tutorías, hacé clic en la tarjeta "Resguardo de materias".
-2. Vas a visualizar el listado de regularidades o exámenes finales que han quedado en estado de resguardo/bloqueo debido a que el estudiante rindió o cursó una materia sin tener acreditada previamente la correlativa obligatoria.
-3. Con este reporte, el tutor puede convocar al estudiante para elaborar un plan de regularización, priorizando la preparación de la mesa de examen correlativa adeudada para destrabar la materia resguardada.
+2. Vas a visualizar la lista de estudiantes que tienen notas de cursada o exámenes finales en estado de resguardo/bloqueo automático.
+3. Causa del bloqueo: El estudiante cursó o rindió una materia sin haber aprobado previamente la correlativa obligatoria establecida por el plan de estudios.
+4. Resultado en pantalla: Podrás ver el DNI del alumno, la materia bloqueada y cuál es la materia correlativa faltante que origina el bloqueo.
+5. Acción del tutor: Convocá al estudiante mediante el módulo de Mensajes y armá un cronograma de estudio personalizado enfocado en preparar y aprobar la materia correlativa adeudada en la próxima mesa final para levantar el resguardo y validar su avance.
 
-Términos relacionados: resguardo de materias, correlativas caidas, correlativas trabadas, materias bloqueadas, asesoramiento pedagogico tutoria.
+Términos relacionados: resguardo de materias, correlativas caidas, correlativas trabadas, materias bloqueadas, asesoramiento pedagogico tutoria, plan de estudio.
 
 ## Pendientes de verificación institucional
 - [VERIFICAR CON SECRETARÍA] Criterio institucional para el levantamiento de resguardo de materias ante cambios de plan de estudio.
