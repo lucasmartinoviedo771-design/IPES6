@@ -18,6 +18,10 @@ from apps.asistente_ia.tools.diagnostic_tools import (
     diagnosticar_inscripcion_cursada,
     diagnosticar_inscripcion_mesa,
 )
+from apps.asistente_ia.tools.docente_tools import (
+    consultar_mi_horario,
+    consultar_mis_mesas,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -219,6 +223,16 @@ TOOL_DECLARATIONS = [
         },
     },
     {
+        "name": "consultar_mi_horario",
+        "description": "Devuelve la grilla semanal de clases del DOCENTE autenticado: día, horario, materia, comisión y turno. Usar cuando un docente pregunta por su horario, sus clases o cuándo dicta.",
+        "parameters": {"type": "OBJECT", "properties": {}},
+    },
+    {
+        "name": "consultar_mis_mesas",
+        "description": "Devuelve las próximas mesas de examen donde el DOCENTE autenticado integra el tribunal, con su rol (presidente o vocal), fecha, hora y aula.",
+        "parameters": {"type": "OBJECT", "properties": {}},
+    },
+    {
         "name": "derivar_consulta_a_bedel",
         "description": "Deriva formalmente una consulta del estudiante al Bedel de su carrera mediante un mensaje interno institucional cuando no se encuentra reglamentada.",
         "parameters": {
@@ -253,6 +267,10 @@ def _ejecutar_herramienta_local(nombre: str, args: dict, user) -> dict:
             resultado = consultar_mis_regularidades(user)
         elif nombre == "consultar_materias_cursando":
             resultado = consultar_materias_cursando(user)
+        elif nombre == "consultar_mi_horario":
+            resultado = consultar_mi_horario(user)
+        elif nombre == "consultar_mis_mesas":
+            resultado = consultar_mis_mesas(user)
         elif nombre == "consultar_calendario_academico":
             resultado = consultar_calendario_academico(args.get("consulta", ""))
         elif nombre == "derivar_consulta_a_bedel":
