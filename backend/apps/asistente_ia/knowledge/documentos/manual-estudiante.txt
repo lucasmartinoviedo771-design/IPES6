@@ -1,0 +1,234 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: ESTUDIANTE
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol estudiante.
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al portal y navegación para estudiantes
+
+Rol: estudiante
+Dónde: pantalla principal y menú lateral
+
+El portal de estudiantes es tu ventanilla digital en el IPES "Paulo Freire" para gestionar tus cursadas, exámenes, asistencias y certificados.
+
+Cómo ingresar y moverte por la página:
+1. Abrí el navegador e ingresá con tu número de DNI (sin puntos) y tu contraseña.
+2. Si estás desde una computadora, vas a ver una barra lateral fija a la izquierda con los accesos principales.
+3. Si estás desde un celular, tocá el botón de las tres rayitas horizontales (arriba a la izquierda) para abrir o cerrar el menú.
+4. En la portada principal vas a encontrar las tarjetas organizadas en tres módulos:
+   - "Inscripciones y Asistencia": Dar el Presente, Trayectoria del Estudiante y Mis Asistencias.
+   - "Trámites": Inscripción a Materias, Horario de Cursada, Cambio de Comisión, Analíticos y Mesas de Examen.
+   - "Certificados": Constancia de Estudiante Regular y Constancia de examen.
+5. Avisos y fechas: En la parte superior verás las fechas activas de calendario (períodos abiertos de inscripción a materias o finales).
+
+Términos relacionados: estudiante, alumno, portal estudiante, ingresar, inicio de sesion, como entrar, navegar sistema, menu estudiante.
+
+## Dar el presente en clase con el código PIN (Paso a paso)
+
+Rol: estudiante
+Dónde: portada de Estudiantes → tarjeta "Dar el Presente" (o menú lateral)
+
+Pasos para registrar tu asistencia en el aula:
+1. Durante la clase presencial, el docente a cargo generará un código PIN numérico de 4 dígitos (por ejemplo: `5932`) y lo escribirá en el pizarrón o lo proyectará en pantalla.
+2. Abrí el sistema en tu celular y hacé clic en la tarjeta "Dar el Presente" (la que tiene el icono de un escudo con tilde).
+3. Vas a ver un casillero central que dice "Ingresá el PIN de asistencia".
+4. Escribí el código de 4 dígitos brindado por el profesor.
+5. Presioná el botón azul "Confirmar Presente".
+6. El sistema procesará el código y mostrará un cartel verde confirmando: "Presente registrado correctamente". Tu asistencia quedará computada al instante en la nómina de la clase.
+
+Qué hacer si no podés dar el presente:
+- "PIN incorrecto": Verificá no haber tipeado mal ningún número y volvé a intentar.
+- "Clase finalizada o PIN expirado": El docente cerró la toma de asistencia o terminó el tiempo de la clase. Avisale al profesor en el momento para que te registre el presente de forma manual en su pantalla.
+- "No estás inscripto en esta materia": Debés figurar formalmente inscripto en la comisión para que se compute tu asistencia. Si cursás como oyente o condicional, consultá en Bedelía.
+- Si no tenés datos móviles o te quedaste sin batería: Acercate al profesor en el aula para que registre tu presencia manualmente.
+
+Términos relacionados: dar presente, registrar asistencia, como doy el presente, PIN, codigo PIN, asistencia a clase, presentismo estudiante, falta, inasistencia, poner presente.
+
+## Inscripción a materias de cursada (Paso a paso)
+
+Rol: estudiante
+Dónde: menú Estudiantes → Trámites → tarjeta "Inscripción a Materias"
+
+Pasos para anotarte a cursar:
+1. En la portada de Estudiantes, ubicá el módulo "Trámites" y hacé clic en la tarjeta "Inscripción a Materias".
+   (Recordá que este trámite solo está disponible durante el período fijado en el calendario institucional).
+2. Vas a ver la lista de materias de tu plan de estudios organizadas por año de carrera (1° año, 2° año, etc.).
+3. En cada materia que tengas habilitada para cursar, vas a ver un botón azul que dice "Inscribirse". Hacé clic en él.
+4. Se abrirá una ventana emergente donde debés elegir la Comisión y el Turno en el que vas a cursar (mañana, tarde o vespertino).
+5. Hacé clic en el botón "Confirmar inscripción".
+6. Aparecerá un cartel verde confirmando la operación y el botón de la materia cambiará a color verde con la leyenda "Inscripto".
+
+¿Por qué no puedo inscribirme a una materia? (Causas y soluciones):
+1. "Período no habilitado / Ventana cerrada":
+   - Causa: La fecha de inscripción aún no comenzó o ya finalizó según el calendario.
+   - Solución: Consultá las fechas oficiales publicadas por Secretaría.
+2. "Correlatividades no cumplidas":
+   - Causa: No tenés regularizadas o aprobadas las materias previas obligatorias que exige tu plan de estudios. Podés consultar qué materias te faltan ingresando a "Trayectoria del Estudiante".
+3. "Cupo completo en la comisión":
+   - Causa: La comisión seleccionada agotó sus vacantes disponibles.
+   - Solución: Seleccioná otra comisión o turno que tenga cupos libres.
+4. "Documentación condicional adeudada":
+   - Causa: Adeudás la entrega del título secundario legalizado o certificado médico y venció la prórroga.
+   - Solución: Acercate con urgencia a Bedelía para regularizar tu legajo y solicitar el desbloqueo.
+
+Términos relacionados: inscribirme a materias, inscripcion a cursada, como me anoto a una materia, elegir comision, turno de cursada, por que no puedo inscribirme, correlativas, vacantes, cupo lleno.
+
+## Inscripción a mesas de examen final (Paso a paso)
+
+Rol: estudiante
+Dónde: menú Estudiantes → Trámites → tarjeta "Mesa de Examen"
+
+Pasos para anotarte a rendir un examen final:
+1. Ingresá a la sección "Mesa de Examen" dentro de los días habilitados por el calendario de exámenes (turnos ordinarios o mesas extraordinarias).
+2. Vas a ver el listado de espacios curriculares disponibles para rendir.
+3. Buscá la materia que querés rendir y seleccioná la condición en la que te presentás:
+   - "Regular": Si cursaste la materia, obtuviste la regularidad y se encuentra dentro de su período de vigencia reglamentaria.
+   - "Libre": Si no cursaste o perdiste la regularidad pero el plan de la materia admite examen libre.
+4. El sistema validará que tengas aprobadas las correlativas previas requeridas para rendir el final.
+5. Seleccioná la mesa disponible y hacé clic en el botón "Inscribirme a la mesa".
+6. Aparecerá la confirmación en verde y podrás descargar o imprimir tu comprobante de inscripción con los datos de fecha, hora, aula y tribunal.
+
+Cómo darte de baja de una mesa (Cancelar inscripción):
+Si decidís no presentarte a rendir, podés cancelar tu inscripción para no figurar ausente ni ocupar cupo:
+1. Ingresá a "Mesa de Examen" antes del plazo límite reglamentario (al menos 48 horas hábiles antes del examen).
+2. Ubicá la materia en la que estás inscripto y hacé clic en "Cancelar inscripción" o "Darme de baja".
+3. Confirmá la baja. El sistema liberará tu vacante.
+
+Errores frecuentes:
+- "La regularidad se encuentra vencida": Pasaron más de los turnos/años reglamentarios desde que regularizaste. Deberás recursar la materia o rendir en condición de libre.
+- "Faltan correlativas aprobadas": Para rendir un final es obligatorio tener aprobados los finales de sus correlativas previas.
+
+Términos relacionados: mesa de examen, examen final, como me anoto a final, rendir final, rendir regular, rendir libre, cancelar mesa, baja de mesa de examen, comprobante de examen, correlativas examen.
+
+## Prestar conformidad en actas orales de examen final
+
+Rol: estudiante
+Dónde: portal de Estudiantes al terminar un examen oral
+
+En qué consiste este procedimiento:
+Cuando rendís un examen final oral, el tribunal docente carga tu nota en el sistema y genera un acta oral electrónica. Por normativa institucional, disponés de un plazo de hasta 10 minutos para revisar tu calificación y dar tu conformidad electrónica.
+
+Pasos para confirmar tu nota:
+1. Al finalizar tu examen oral, abrí el sistema desde tu teléfono celular.
+2. En tu pantalla de inicio aparecerá una notificación destacada indicando la nota y calificación comunicada por el tribunal examinador.
+3. Revisá que los datos coincidan con lo informado verbalmente por los profesores.
+4. Hacé clic en el botón "Prestar conformidad".
+5. Tu calificación quedará formalmente aceptada y el tribunal docente podrá realizar el cierre definitivo de la planilla de la mesa.
+
+Qué pasa si se vencen los 10 minutos:
+Si te quedaste sin batería, perdiste conexión o te retiraste antes, no te preocupes: al cumplirse los 10 minutos el sistema vence el plazo de espera automáticamente y asienta la nota cargada por los docentes para que el acta no quede trabada.
+
+Términos relacionados: acta oral, conformidad del estudiante, nota de final oral, calificacion oral, plazo diez minutos, aceptar nota, tribunal oral.
+
+## Consultar mi trayectoria académica y notas
+
+Rol: estudiante
+Dónde: menú Estudiantes → tarjeta "Trayectoria del Estudiante"
+
+Pasos para ver tu avance:
+1. En la portada de Estudiantes hacé clic en "Trayectoria del Estudiante".
+2. Vas a visualizar la malla curricular completa de tu carrera, organizada año por año.
+3. Cada materia tiene una tarjeta o fila con su estado académico:
+   - "Aprobada" (en verde): Muestra la nota numérica definitiva, la fecha en que aprobaste y el número de acta o disposición.
+   - "Regular" (en azul): Indica que aprobaste la cursada, la fecha en que regularizaste y la fecha límite de vigencia de tu regularidad para rendir final.
+   - "Cursando": Materia en la que estás inscripto en el cuatrimestre en curso.
+   - "Pendiente": Espacio curricular que todavía no cursaste.
+4. En el encabezado superior podés consultar el porcentaje total de avance de tu carrera y tu promedio general de calificaciones.
+
+Términos relacionados: trayectoria academica, notas de materias, materias aprobadas, materias regulares, historia academica, promedio, avance de carrera, cuantas materias me faltan.
+
+## Consultar asistencias y porcentaje de faltas
+
+Rol: estudiante
+Dónde: menú Estudiantes → tarjeta "Mis Asistencias"
+
+Pasos para controlar tu presentismo:
+1. Hacé clic en "Mis Asistencias".
+2. Seleccioná la materia que estás cursando en el ciclo actual.
+3. Vas a ver el porcentaje de asistencia acumulado sobre el total de clases dictadas hasta la fecha.
+4. Debajo podés revisar el historial clase por clase con su estado: Presente, Tarde, Ausente o Ausente Justificado.
+5. Verificá periódicamente este porcentaje para asegurarte de no quedar por debajo del mínimo exigido por el Reglamento Académico (80% o 65% con justificativo) para no perder la condición de regular.
+
+Términos relacionados: mis asistencias, porcentaje de asistencia, cuantas faltas tengo, faltas por materia, inasistencias, faltar, regularidad asistencia, ausencias.
+
+## Descargar constancia de estudiante regular (Certificado en PDF)
+
+Rol: estudiante
+Dónde: menú Estudiantes → Certificados → "Constancia de Estudiante Regular"
+
+Pasos para obtener tu certificado oficial:
+1. En la sección "Certificados", hacé clic en la tarjeta "Constancia de Estudiante Regular".
+2. El sistema verificará de forma instantánea que estés matriculado y activo en el ciclo lectivo.
+3. Se abrirá una pantalla con la vista previa del documento oficial con membrete del IPES "Paulo Freire", conteniendo tus datos personales, DNI, carrera y código de validación digital institucional.
+4. Hacé clic en el botón azul "Descargar constancia".
+5. Se descargará a tu teléfono o computadora el archivo en formato PDF, listo para imprimir o enviar por correo para trámites de salario familiar, obra social o boleto estudiantil.
+
+Qué hacer si da error:
+- "No cumplís con la condición de estudiante regular": Acercate a Bedelía para constatar tu reinscripción anual al ciclo lectivo o verificar si tenés bloqueos por documentación adeudada en tu legajo.
+
+Términos relacionados: constancia de alumno regular, certificado alumno regular, descargar certificado, certificado de estudiante, PDF constancia, certificado de estudios, constancia para obra social.
+
+## Descargar constancia de examen rendido (Comprobante laboral)
+
+Rol: estudiante
+Dónde: menú Estudiantes → Certificados → "Constancia de examen"
+
+Pasos para justificar el día de examen en tu trabajo:
+1. Luego de haberte presentado a rendir en una mesa de examen final, ingresá a la sección "Constancia de examen".
+2. Vas a ver el listado de las mesas en las que figurás registrado como presente.
+3. Buscá la materia que acabás de rendir y hacé clic en el botón "Descargar constancia".
+4. Se generará un certificado oficial en PDF donde consta que te presentaste a rendir examen final en el día y horario indicado, con los datos de la materia y el tribunal docente.
+5. Imprimí el comprobante o envialo a tu empleador como justificativo laboral formal de acuerdo a la ley de contrato de trabajo.
+
+Términos relacionados: constancia de examen, certificado de examen, justificar dia de examen, comprobante laboral examen, rendi final, constancia de presentacion a examen.
+
+## Solicitar cambio de comisión
+
+Rol: estudiante
+Dónde: menú Estudiantes → Trámites → "Cambio de Comisión"
+
+Pasos para pedir pase de turno o grupo:
+1. Durante el período habilitado para cambios de comisión, ingresá a "Cambio de Comisión".
+2. Elegí la materia en la que estás inscripto actualmente.
+3. En el desplegable de destino, seleccioná la comisión y turno al que necesitás pasarte.
+4. En el cuadro de texto, explicá el motivo justificado de tu solicitud (por ejemplo: superposición con otra materia, cambio de horario laboral o cuidado familiar).
+5. Si contás con certificado de trabajo o constancia respaldatoria, adjuntá el archivo.
+6. Hacé clic en "Enviar solicitud".
+7. Podés consultar el estado de tu pedido (Pendiente, Aprobada o Rechazada) desde la misma pantalla. Cuando Bedelía la apruebe, tu inscripción y horario se actualizarán solos.
+
+Términos relacionados: cambio de comision, pase de turno, cambiarme de comision, superposicion horaria, turno de cursada, solicitud cambio comision.
+
+## Solicitar analítico y pedir equivalencias de materias
+
+Rol: estudiante
+Dónde: menú Estudiantes → Trámites → "Analíticos y Equivalencias"
+
+Pasos para solicitar certificado analítico:
+1. Hacé clic en "Solicitar Analítico".
+2. Seleccioná el motivo del pedido en el desplegable: Beca, Pase a otra institución, Trámite laboral o Control personal.
+3. Hacé clic en "Enviar pedido". Podrás hacer el seguimiento del estado del trámite en la misma pantalla hasta que Secretaría lo emita.
+
+Pasos para solicitar equivalencias de materias:
+1. Hacé clic en "Iniciar pedido de equivalencias".
+2. Completá los datos de la institución educativa terciaria o universitaria de procedencia.
+3. Indicá qué materias cursadas solicitás que se te convaliden por materias del plan del IPES.
+4. Presentá en Secretaría los programas de estudio legalizados y el certificado analítico de origen para que el equipo docente emita el dictamen pedagógico.
+
+Términos relacionados: pedir analitico, solicitar analitico, certificado analitico parcial, equivalencias, homologar materias, convalidar materias, tramites academicos.
+
+## Olvido o pérdida de contraseña (Cómo recuperar el acceso)
+
+Rol: estudiante
+Dónde: Bedelía de tu carrera, Secretaría Académica o equipo de A.T.T.P.
+
+Qué hacer si olvidaste tu clave o no podés entrar:
+1. El sistema del IPES "Paulo Freire" no cuenta con recuperación automática por correo electrónico para los estudiantes.
+2. Para recuperar tu acceso, debés comunicarte de forma presencial o a través de un compañero con el personal de **Bedelía**, **Secretaría Académica** o el equipo de **A.T.T.P.**.
+3. El personal autorizado buscará tu legajo y restablecerá tu contraseña al valor institucional predeterminado: la palabra `pass` seguida de tu número de DNI completo (sin puntos ni espacios).
+   Ejemplo: Si tu DNI es 40987654, tu clave provisoria será `pass40987654`.
+4. Una vez que ingreses con esa contraseña provisoria, te recomendamos ingresar a tu perfil y configurar una clave personal que recuerdes con facilidad.
+
+Términos relacionados: olvide mi contraseña, recuperar clave, como reseteo la contraseña de un estudiante, no puedo ingresar, blanquear clave alumno, pass DNI, restablecer contraseña estudiante.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Plazo reglamentario de anticipación en días hábiles para solicitar la baja de una mesa de examen final.
+- [VERIFICAR CON SECRETARÍA] Fecha límite anual del calendario para la recepción de solicitudes de equivalencias externas.

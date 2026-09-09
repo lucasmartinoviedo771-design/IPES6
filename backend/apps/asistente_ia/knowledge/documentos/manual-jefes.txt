@@ -1,0 +1,39 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: JEFATURA
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol jefes (Jefaturas de Departamento y Áreas Académicas).
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al módulo y responsabilidades de Jefatura
+
+Rol: jefes
+Dónde: menú lateral Jefatura, Analytics, Mensajes, Reportes y Estudiante
+
+El rol Jefes está diseñado para los jefes de departamento y responsables de áreas académicas en el IPES "Paulo Freire", facilitando la articulación docente, el control del calendario y la supervisión departamental.
+
+Qué podés hacer como Jefatura:
+1. Supervisar el estado de carga de actas de examen final y planillas de regularidad del departamento.
+2. Controlar los períodos y ventanas de fechas clave habilitadas en el calendario institucional.
+3. Monitorear los expedientes y dictámenes de equivalencias correspondientes a las materias de su área.
+4. Consultar legajos de estudiantes, trayectorias académicas y documentación presentada.
+5. Analizar los tableros de reportes y métricas de retención y aprobación del departamento.
+6. Enviar comunicaciones oficiales a los equipos docentes mediante el módulo de Mensajes.
+
+Qué NO podés hacer:
+El rol Jefatura no realiza carga directa de notas en planillas de otros docentes, no puede reabrir planillas cerradas (facultad de Secretaría) y no puede resetear contraseñas de usuarios.
+
+Términos relacionados: jefatura, jefes, jefe de departamento, coordinacion departamental, supervision academica, permisos jefatura.
+
+## Supervisión de actas, regularidades y fechas departamentales
+
+Rol: jefes
+Dónde: menú lateral → "Jefatura" → tarjetas "Actas y notas" y "Habilitar fechas"
+
+Pasos para el seguimiento departamental:
+1. En el panel de Jefatura, hacé clic en "Actas y notas" para auditar el cumplimiento en tiempo y forma del cierre de planillas de cursada y de mesas finales por parte de los profesores del departamento.
+2. Hacé clic en "Habilitar / controlar fechas" para consultar los períodos vigentes de exámenes y cursadas, asegurando que las fechas acordadas en departamento coincidan con la ventana habilitada en el sistema.
+3. Ingresá a "Pedidos de equivalencias" para verificar los dictámenes pedagógicos emitidos por los docentes de cátedra antes de su elevación a Secretaría.
+
+Términos relacionados: seguimiento departamental, control de actas, supervisar regularidades, fechas departamentales, equivalencias jefatura.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Procedimiento protocolar para la solicitud de prórroga extraordinaria de carga de notas a pedido de jefatura.

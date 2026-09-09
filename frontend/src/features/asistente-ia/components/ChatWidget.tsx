@@ -97,6 +97,16 @@ function renderMarkdownText(text: string) {
 	});
 }
 
+/**
+ * Evento para abrir el asistente desde fuera del widget.
+ *
+ * El botón de ayuda de la barra superior abría una guía de usuario que quedó
+ * obsoleta; ahora abre este chat. Se usa un evento en lugar de convertir el
+ * widget en un componente controlado para no tocar su lógica interna, que ya
+ * maneja la burbuja, el historial y el foco.
+ */
+export const EVENTO_ABRIR_ASISTENTE = "ipes:abrir-asistente";
+
 export default function ChatWidget() {
 	const [isOpen, setIsOpen] = useState(false);
 	const [hasClosedBubble, setHasClosedBubble] = useState(false);
@@ -120,6 +130,16 @@ export default function ChatWidget() {
 				if (sugs && sugs.length > 0) setSuggestions(sugs);
 			})
 			.catch(() => {});
+	}, []);
+
+	// Apertura desde el botón de ayuda de la barra superior.
+	useEffect(() => {
+		const abrir = () => {
+			setIsOpen(true);
+			setHasClosedBubble(false);
+		};
+		window.addEventListener(EVENTO_ABRIR_ASISTENTE, abrir);
+		return () => window.removeEventListener(EVENTO_ABRIR_ASISTENTE, abrir);
 	}, []);
 
 	// Scroll automático al último mensaje

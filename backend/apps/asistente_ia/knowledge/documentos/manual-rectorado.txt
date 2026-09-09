@@ -1,0 +1,56 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: RECTORADO
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol rectorado (Equipo de Dirección y Rectoría).
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al módulo y alcance de Rectorado
+
+Rol: rectorado
+Dónde: menú lateral Rectorado, Analytics, Estudiante, Mensajes y Asistencia
+
+El rol Rectorado está reservado para la conducción y el equipo directivo del IPES "Paulo Freire", ofreciendo una visión integral, estratégica y de gobierno sobre toda la vida académica e institucional.
+
+Naturaleza del rol:
+El perfil de Rectorado es de supervisión y solo lectura general sobre los registros académicos. No interviene en la carga operativa diaria de notas para resguardar la imparcialidad y la cadena de custodia de las actas matrices.
+
+Qué podés hacer como Rectorado:
+1. Supervisar el estado integral de la matrícula y la distribución de estudiantes por cohorte y profesorado.
+2. Auditar la totalidad de las actas de examen final y planillas de regularidad emitidas en la institución.
+3. Consultar los tableros analíticos y métricas de rendimiento, desgranamiento y egreso (Analytics / Dashboard).
+4. Monitorear los reportes de presentismo y asistencia docente e institucional.
+5. Consultar las grillas horarias semanales y la ocupación física de aulas.
+6. Emitir comunicados institucionales y responder consultas a través del módulo de Mensajes.
+
+Qué NO podés hacer:
+Rectorado no realiza carga de notas, no modifica regularidades, no abre ni cierra planillas de examen y no altera legajos. La edición administrativa corresponde a Secretaría y Bedelía.
+
+Términos relacionados: rectorado, rectoria, direccion, supervision institucional, metricas academicas, permisos rectorado, reportes directivos.
+
+## Supervisión de métricas y analítica institucional (Paso a paso)
+
+Rol: rectorado
+Dónde: menú lateral → "Analytics" o "Rectorado" → tarjeta "Reportes institucionales" (`/dashboard`)
+
+Pasos para consultar la información ejecutiva:
+1. En la barra lateral izquierda hacé clic en "Analytics" o en "Rectorado".
+2. Vas a acceder al panel de indicadores de gestión del instituto:
+   - "Matrícula total y activa": Cantidad de estudiantes matriculados desglosados por carrera, cohorte y turno.
+   - "Rendimiento académico": Tasas de aprobación en cursadas y mesas de examen final.
+   - "Retención y permanencia": Indicadores de continuidad interanual y detección temprana de deserción en los primeros años.
+3. Podés filtrar los gráficos y tablas por ciclo lectivo, profesorado o turno para preparar reuniones de equipo directivo o informes ante el Ministerio de Educación.
+
+Términos relacionados: metricas rectorado, analytics institucional, tasa de retencion, matricula activa, rendimiento academico, indicadores gestion.
+
+## Auditoría y consulta de actas de examen y legajos
+
+Rol: rectorado
+Dónde: menú Rectorado → tarjetas "Actas y notas" y "Gestionar estudiantes"
+
+Pasos para auditar registros:
+1. Para auditar exámenes: En el panel de Rectorado hacé clic en "Actas y notas". Podrás buscar cualquier mesa de examen por carrera, año o materia, y revisar el acta digital generada con el tribunal interviniente, las calificaciones y la fecha de cierre.
+2. Para consultar legajos: Hacé clic en "Gestionar estudiantes" para verificar la trayectoria académica, antecedentes y documentación presentada por cualquier alumno del instituto.
+
+Términos relacionados: auditar actas, consulta de actas rectorado, legajos de estudiantes, supervision actas finales, control academico.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Circuito de elevación de informes estadísticos anuales consolidados a la Dirección Provincial de Educación Superior.

@@ -5,6 +5,7 @@ import Toolbar from "@mui/material/Toolbar";
 import { useQuery } from "@tanstack/react-query";
 import {
 	type PropsWithChildren,
+	useCallback,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -25,12 +26,17 @@ import { AppSidebar } from "./app-shell/AppSidebar";
 import { AppTopBar } from "./app-shell/AppTopBar";
 import { ImpersonationBanner } from "./app-shell/ImpersonationBanner";
 import { roleHomeMap } from "./app-shell/constants";
-import { UserGuideDialog } from "./app-shell/UserGuideDialog";
 import { useNavPermissions } from "./app-shell/useNavPermissions";
 
 const AsistenteChatWidget = lazy(
 	() => import("@/features/asistente-ia/components/ChatWidget"),
 );
+
+// El asistente se carga en diferido, así que su constante no puede importarse
+// arriba sin arrastrar el módulo al bundle principal.
+const EVENTO_ABRIR_ASISTENTE = "ipes:abrir-asistente";
+
+const asistenteHabilitado = import.meta.env.VITE_ENABLE_AI_ASSISTANT === "true";
 
 export default function AppShell({ children }: PropsWithChildren) {
 	const {
@@ -50,7 +56,13 @@ export default function AppShell({ children }: PropsWithChildren) {
 			return true;
 		}
 	});
-	const [guideOpen, setGuideOpen] = useState(false);
+	// El botón de ayuda abría una guía de usuario que quedó obsoleta: leía
+	// archivos que no existen y devolvía "No se encontró un manual para el rol",
+	// a la vista de todos. Ahora abre el asistente, que responde lo mismo en
+	// lenguaje natural. Si el asistente está apagado, el botón no se muestra.
+	const abrirAsistente = useCallback(() => {
+		window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_ASISTENTE));
+	}, []);
 	const loc = useLocation();
 	const navigate = useNavigate();
 
@@ -164,11 +176,10 @@ export default function AppShell({ children }: PropsWithChildren) {
 				unreadMessages={unreadMessages}
 				badgeColor={badgeColor as "default" | "error" | "warning" | "primary"}
 				onToggleSidebar={() => setOpen((v) => !v)}
-				onGuideOpen={() => setGuideOpen(true)}
+				onGuideOpen={abrirAsistente}
 				onLogout={logout}
 			/>
 
-			<UserGuideDialog open={guideOpen} onClose={() => setGuideOpen(false)} />
 			<ActaOralConformidadModal />
 
 			<AppSidebar

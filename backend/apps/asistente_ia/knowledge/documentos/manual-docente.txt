@@ -1,0 +1,243 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: DOCENTE
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol docente.
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al sistema y navegación del docente
+
+Rol: docente
+Dónde: pantalla principal y menú lateral izquierdo
+
+El rol docente está destinado a los profesores que dictan espacios curriculares o forman parte de tribunales examinadores en el IPES "Paulo Freire".
+
+Cómo ingresar y navegar:
+1. Abrí el navegador web e ingresá al sistema con tu número de DNI (como usuario) y tu contraseña personal.
+2. Si estás desde una computadora, vas a ver una barra lateral fija a la izquierda con los accesos principales: "Docentes" y "Mensajes".
+3. Si estás desde un teléfono celular o tablet, el menú se despliega tocando el botón de las tres rayitas horizontales (menú hamburguesa) ubicado arriba a la izquierda.
+4. Al ingresar a la sección "Docentes" verás tu panel principal organizado en tres grupos de tarjetas:
+   - Actas y calificaciones: Acceso a "Actas finales" de examen.
+   - Horarios: Acceso a "Mi Horario" personal y "Horario de Cursada" general.
+   - Operativa diaria: Acceso a "Mi asistencia diaria" y "Mis espacios curriculares".
+
+Qué podés hacer con este rol:
+- Cargar notas de cursada y regularidades de tus comisiones asignadas.
+- Guardar borradores parciales y realizar el cierre definitivo de planillas.
+- Calificar exámenes finales donde integrás el tribunal y cerrar las actas.
+- Tomar asistencia en clase a tus estudiantes (manualmente o generando un PIN para el aula).
+- Marcar tu propio presentismo docente diario y revisar tu historial.
+- Consultar tus horarios semanales de clase y la nómina de estudiantes inscriptos.
+- Comunicarte con estudiantes y colegas mediante el módulo de Mensajes.
+
+Qué NO podés hacer:
+- El docente NO puede resetear contraseñas de estudiantes ni de colegas.
+- El docente NO puede reabrir una planilla que ya fue cerrada.
+- El docente NO puede modificar comisiones, planes ni correlatividades.
+
+Términos relacionados: docente, profesor, acceso docente, ingresar, iniciar sesion, menu docente, permisos docente, que puedo hacer, restablecer clave.
+
+## Cargar notas de cursada y regularidades (Paso a paso)
+
+Rol: docente (titular o a cargo de la comisión)
+Dónde: menú Docentes → "Mis espacios curriculares" (o "Mis planillas de regularidad")
+
+Tenés dos formas de acceder a la carga de notas de cursada:
+
+Forma 1 (Recomendada desde el panel principal):
+1. En el menú lateral hacé clic en "Docentes" y luego en la tarjeta "Mis espacios curriculares".
+2. Vas a ver la tabla con todas tus materias y comisiones asignadas del ciclo lectivo.
+3. En la fila de la materia que querés calificar, hacé clic en el botón verde "Cargar Regularidad" (ubicado a la derecha).
+4. Se abrirá la planilla interactiva de regularidad con la nómina de todos los estudiantes inscriptos.
+
+Forma 2 (Desde Mis planillas):
+1. En el menú Docentes, ingresá a "Mis planillas de regularidad".
+2. Hacé clic sobre la materia y comisión que deseás calificar para abrir el formulario completo.
+
+Cómo completar la planilla de cursada:
+1. Si se sumaron estudiantes nuevos recientemente, hacé clic en el botón "Sincronizar" arriba a la derecha para agregarlos a la lista.
+2. Columna Asistencia: Vas a ver el porcentaje de asistencia acumulado de cada alumno (calculado automáticamente si registraste clases en el módulo de asistencia). Si no tomaste asistencia en el sistema, podés escribir el porcentaje a mano (de 0 a 100).
+3. Columnas de evaluaciones: Ingresá las notas de exámenes parciales o trabajos prácticos según corresponda.
+4. Columna Situación final: En el desplegable de cada estudiante, seleccioná su condición final reglamentaria:
+   - "Regular": Cursada aprobada para rendir final (cumple nota y asistencia mínima).
+   - "Promociona": Materia aprobada directamente sin examen final (si el plan lo permite).
+   - "Libre por inasistencia": No alcanzó el porcentaje mínimo de asistencia reglamentaria.
+   - "Libre por notas": No alcanzó la calificación mínima de aprobación en los parciales.
+5. Guardar borrador: Hacé clic en el botón "Guardar borrador" abajo a la derecha. Aparecerá un cartel verde confirmando "Borrador guardado correctamente". Podés salir y continuar la carga en otro momento sin perder ningún dato.
+
+Errores frecuentes:
+- "No encontramos comisiones asignadas para este año": Secretaría Académica aún no te vinculó formalmente a la cátedra en el sistema. Comunicate con Secretaría para que carguen tu designación en Cátedra-Docente.
+- "No se pudo guardar el borrador": Verificá que los números ingresados no contengan letras ni símbolos extraños y que tengas conexión a internet.
+
+Términos relacionados: cargar nota, cargar notas, como cargo una nota, notas de cursada, regularidad, regular, planilla de cursada, cargar regularidad, calificacion, calificaciones, parciales, promocion, libre, borrador notas.
+
+## Cerrar la planilla de cursada y regularidad (Paso a paso)
+
+Rol: docente (a cargo de la comisión)
+Dónde: planilla de regularidad de la comisión
+
+El cierre de planilla es el acto formal por el cual las regularidades se vuelven definitivas e impactan en el historial académico de los estudiantes.
+
+Pasos para cerrar la cursada:
+1. Abrí la planilla de tu materia (desde "Mis espacios curriculares" → botón "Cargar Regularidad" o desde "Mis planillas de regularidad").
+2. Revisá fila por fila que TODOS los estudiantes inscriptos tengan:
+   - Su porcentaje de asistencia ingresado.
+   - Su condición final asignada en el desplegable (Regular, Promociona o Libre).
+3. Hacé clic en el botón destacado "Guardar y Cerrar Planilla" (o "Cerrar planilla").
+4. El sistema mostrará un cuadro de diálogo advirtiendo que la planilla pasará a estado definitivo. Hacé clic en "Confirmar cierre".
+5. Aparecerá una notificación verde confirmando que la planilla fue cerrada exitosamente. El estado cambiará a "CERRADA".
+6. A partir de este momento, las regularidades y promociones quedan formalmente asentadas en la trayectoria académica de los estudiantes.
+
+Qué pasa si te equivocaste después de cerrar:
+Una vez que la planilla queda en estado CERRADA, el sistema bloquea la edición para los docentes. Si necesitás corregir una nota o condición por error involuntario:
+1. No intentes modificarla desde tu usuario porque el sistema no lo permitirá.
+2. Comunicate con Secretaría Académica o Bedelía solicitando formalmente la reapertura de la planilla de cursada de tu materia.
+3. El personal de Secretaría levantará el bloqueo con su permiso especial ("Reabrir Planilla"), vos ingresarás a corregir el dato, guardarás el cambio y volverás a cerrar la planilla.
+
+Errores frecuentes:
+- "Error al cerrar la planilla": Asegurate de que no haya quedado ningún alumno con el casillero de situación en blanco o con notas incompletas.
+- "La planilla ya está cerrada": Ya fue cerrada con anterioridad; solo Secretaría puede reabrirla.
+
+Términos relacionados: cerrar planilla, cierre de planilla, como cierro una planilla, finalizar notas, cerrar cursada, confirmar regularidad, rectificar planilla cerrada, estado cerrada, reabrir cursada.
+
+## Cargar las notas de una mesa de examen final (Paso a paso)
+
+Rol: docente (integrante del tribunal evaluador: presidente, vocal 1 o vocal 2)
+Dónde: menú Docentes → tarjeta "Actas finales"
+
+Pasos detallados para calificar un final:
+1. En el menú lateral izquierdo hacé clic en "Docentes".
+2. En la primera sección ("Actas y calificaciones"), hacé clic sobre la tarjeta "Actas finales".
+3. Vas a ingresar a la pantalla de Carga de Notas. En los filtros superiores podés seleccionar Profesorado, Plan de estudio y Materia. El sistema te mostrará automáticamente las mesas de examen en las que vos integrás el tribunal.
+4. Hacé clic sobre la tarjeta o fila de la mesa de examen que vas a calificar. Se abrirá la planilla con la nómina de estudiantes inscriptos.
+5. Verificá los datos de cabecera: materia, fecha del examen, tipo de mesa (Regular o Libre), aula y los nombres de los docentes del tribunal.
+6. Calificar a cada estudiante:
+   - Columna Condición: Hacé clic en el desplegable y elegí una opción:
+     * "Aprobado": el estudiante aprobó el examen.
+     * "Desaprobado": el estudiante rindió pero no alcanzó la nota mínima de aprobación.
+     * "Ausente": el estudiante estaba inscripto pero no se presentó a rendir (no lleva nota numérica).
+     * "Ausente justificado": si presentó justificativo formal aceptado por el tribunal.
+   - Columna Nota: Si seleccionaste Aprobado o Desaprobado, escribí la nota numérica definitiva (número del 1 al 10). En caso de Ausente, este casillero queda vacío.
+   - Columnas Libro y Folio: Si la institución asienta el acta en libros matrices físicos, completá los números correspondientes.
+   - Columna Observaciones: Podés escribir aclaraciones si la situación del examen lo amerita.
+7. Guardar calificaciones: Hacé clic en el botón "Guardar". Aparecerá una notificación verde confirmando que las notas fueron guardadas correctamente en la planilla.
+
+Errores frecuentes:
+- "Solo los docentes del tribunal o el personal autorizado pueden acceder a esta planilla": No estás designado formalmente en el sistema como presidente ni vocal de esa mesa. Solicitá a Secretaría que verifique la conformación del tribunal en Mesas de examen.
+- "No tienes permitido cargar o modificar tus propias notas": Ocurre si sos alumno de esa misma carrera o materia. El sistema bloquea éticamente que un docente se califique a sí mismo.
+- "La planilla ya está cerrada y no se puede editar": La mesa ya fue cerrada. Solicitá la reapertura a Secretaría si existió un error material de carga.
+
+Términos relacionados: cargar nota, cargar notas, como cargo una nota, nota de final, calificar mesa final, examen final, acta de examen, tribunal examinador, presidente de mesa, vocales, aprobado, desaprobado, ausente.
+
+## Cerrar la planilla de una mesa de examen final (Paso a paso)
+
+Rol: docente (presidente o vocal del tribunal de examen)
+Dónde: menú Docentes → Actas finales → Planilla de la mesa
+
+Pasos para el cierre definitivo de la mesa:
+1. En la planilla de la mesa final, asegurate de que todas las notas hayan sido cargadas y guardadas haciendo clic en "Guardar".
+2. Verificá que ningún estudiante inscripto quede sin condición (todos deben figurar como Aprobado, Desaprobado, Ausente o Ausente Justificado).
+3. Hacé clic en el botón "Cerrar Planilla".
+4. El sistema solicitará confirmación. Confirmá el cierre.
+5. Si todo está en orden, la planilla se cerrará, el acta quedará sellada con fecha y hora, y las notas impactarán definitivamente en la trayectoria de los estudiantes.
+
+Qué hacer si aparece el cartel de espera de actas orales:
+- Cartel de error: "No se puede cerrar la planilla: hay actas orales esperando la conformidad del estudiante. Falta que respondan o que venza su plazo: [Nombre del estudiante] (X min)".
+- Por qué ocurre: En los exámenes orales, el sistema genera un acta oral electrónica. Por normativa institucional, cada estudiante dispone de un plazo de hasta 10 minutos desde que se cargó su nota para ingresar a su cuenta desde el celular y presionar "Prestar conformidad".
+- Cómo solucionarlo:
+  1. Pedile al estudiante que abra el sistema en su teléfono y haga clic en "Prestar conformidad".
+  2. Si el estudiante ya se retiró o no tiene internet, simplemente aguardá a que transcurran los 10 minutos indicados en el mensaje. Al cumplirse ese plazo, el sistema da por vencido el tiempo reglamentario de forma automática y te permitirá presionar "Cerrar Planilla" sin ningún inconveniente.
+
+Términos relacionados: cerrar planilla, cierre de planilla, como cierro una planilla, cerrar mesa, cerrar acta final, acta oral, conformidad del estudiante, plazo diez minutos, tribunal, finalizar examen.
+
+## Tomar asistencia a los estudiantes en el aula (Manual y con PIN)
+
+Rol: docente (a cargo de la cátedra)
+Dónde: menú Docentes → "Mis espacios curriculares" (o "Mi Horario") → Clase del día
+
+El sistema ofrece dos métodos sencillos para registrar la asistencia de tus alumnos:
+
+Cómo acceder a la toma de asistencia:
+1. En el menú lateral izquierdo ingresá a "Docentes" y hacé clic en "Mis espacios curriculares".
+2. En la lista de tus materias, ubicá la que estás dictando hoy y hacé clic en el botón azul "Tomar Asistencia".
+   (Si el sistema te avisa que no tenés clases programadas hoy para esa comisión, verificá que estés en el día correcto de cursada).
+
+Opción A — Registrar asistencia manualmente (Pasos):
+1. Vas a ver la nómina completa de estudiantes inscriptos en la materia.
+2. Al lado de cada estudiante tenés casilleros para marcar su estado: "Presente", "Tarde" o "Ausente".
+3. Marcá el estado correspondiente para cada alumno según el presente en el aula.
+4. Hacé clic en el botón "Guardar asistencia". Aparecerá un mensaje verde confirmando el guardado.
+
+Opción B — Generar PIN para que los alumnos den el presente solos (Pasos):
+1. Arriba de la lista de alumnos, hacé clic en el botón "Generar PIN de asistencia".
+2. El sistema generará y mostrará en pantalla un código numérico de 4 dígitos (por ejemplo: `4821`).
+3. Anotá el PIN en el pizarrón o proyectalo en pantalla para que lo vean los alumnos presentes.
+4. Los estudiantes deben ingresar a su cuenta del sistema desde sus teléfonos móviles, entrar a la sección "Dar el Presente" y escribir ese código de 4 dígitos.
+5. A medida que ingresan el código, sus nombres se marcarán automáticamente como "Presente" en tu pantalla.
+6. Al finalizar la clase, revisá si alguien quedó ausente por falta de batería o conectividad, marcalo a mano si corresponde y hacé clic en "Guardar asistencia".
+
+Errores frecuentes:
+- Un alumno dice que el PIN no le funciona: Verificá que no haya terminado la clase, que el alumno esté escribiendo los 4 números exactos y que figure formalmente inscripto en tu comisión. Si tiene problemas de señal, marcalo vos manualmente.
+
+Términos relacionados: tomar asistencia, asistencia alumnos, dar presente, generar PIN, codigo PIN, presentismo en clase, lista de estudiantes, inasistencias, faltas alumnos, ausente, presente, tarde.
+
+## Marcar mi propia asistencia docente (Presentismo diario)
+
+Rol: docente
+Dónde: menú Docentes → tarjeta "Mi asistencia diaria" (o tótem/kiosco físico en el hall del instituto)
+
+Pasos para registrar tu presencia:
+1. Al llegar al instituto, podés marcar desde tu celular conectado al sistema o desde la pantalla táctil del kiosco ubicado en el ingreso del edificio.
+2. Si estás desde tu dispositivo personal con tu sesión iniciada: en el menú "Docentes" hacé clic en la tarjeta "Mi asistencia diaria".
+3. Si estás frente a la pantalla del kiosco institucional: ingresá tu número de DNI de 8 dígitos en el teclado numérico.
+4. El sistema mostrará tus clases o cargos programados para el día de hoy, con el horario de inicio y fin.
+5. Hacé clic en el botón destacado "Marcar Presente" sobre la clase o cargo correspondiente.
+6. El sistema confirmará con un cartel verde indicando la hora y fecha exacta de tu marcación.
+
+¿Por qué no puedo marcar mi asistencia docente? (Causas y soluciones):
+1. "Todavia no podes marcar tu asistencia en este turno":
+   - Causa: Estás intentando marcar con demasiada anticipación. El sistema abre la ventana de marcación unos minutos antes del horario oficial de inicio del turno/clase (tolerancia previa).
+   - Solución: Aguardá a que llegue la franja horaria permitida para presionar el botón.
+2. "Carga diferida / llegada tarde":
+   - Causa: Marcaste después del umbral de tolerancia de inicio de clase.
+   - Solución: El sistema te permite marcar, pero el registro quedará guardado con la categoría "Tarde" o diferida para control administrativo.
+3. "No se encontraron clases para el día de hoy":
+   - Causa: No tenés clases cargadas para el día de la semana actual, o la clase fue cancelada administrativamente por Secretaría o Bedelía.
+4. "Sin horario asignado" (`puede_marcar: false`):
+   - Causa: Si tenés un cargo docente institucional que no tiene franjas horarias configuradas en el sistema, el botón no se habilitará.
+   - Solución: Solicitá a Secretaría Académica que configure tus bloques horarios semanales en "Gestión de Cargos".
+5. "No tenés permisos para consultar el horario de otro docente":
+   - Causa: En tu sesión personal estás intentando consultar o marcar con un DNI que no coincide con tu usuario de acceso.
+
+Términos relacionados: asistencia docente, marcar asistencia, marcar presente, por que no puedo marcar mi asistencia, presentismo docente, reloj docente, horario de clase, ventana horaria, tolerancia, llegada tarde.
+
+## Consultar mis horarios de clase y comisiones
+
+Rol: docente
+Dónde: menú Docentes → "Mi Horario" y "Mis espacios curriculares"
+
+Pasos:
+1. Para ver tu cronograma de la semana: En el menú lateral hacé clic en "Docentes" y seleccioná la tarjeta "Mi Horario".
+2. Vas a visualizar una grilla completa de lunes a viernes con los tres turnos (mañana, tarde, vespertino). Cada casillero indica la materia, comisión, horario de inicio/fin y el aula asignada.
+3. Para consultar la lista de estudiantes inscriptos: Hacé clic en la tarjeta "Mis espacios curriculares". En la tabla de materias hacé clic en el botón "Ver inscriptos" de la materia deseada. Podrás ver los nombres, DNI, legajo y correos electrónicos de los alumnos para comunicarte con ellos.
+4. Para consultar el horario general institucional en PDF: Hacé clic en la tarjeta "Horario de Cursada" y seleccioná el profesorado para descargarlo.
+
+Términos relacionados: mi horario, horario docente, cronograma de clases, aulas asignadas, mis materias, comisiones asignadas, lista de inscriptos, espacios curriculares.
+
+## Reseteo de contraseñas de estudiantes (Cómo proceder)
+
+Rol: docente
+Dónde: no aplica (función restringida)
+
+Aclaración fundamental:
+El rol docente **NO tiene permisos técnicos en el sistema para restablecer, cambiar o resetear contraseñas de estudiantes ni de otros docentes**.
+
+Qué responderle a un estudiante que no puede ingresar:
+Si un alumno te manifiesta que olvidó su clave, que su cuenta está bloqueada o que no puede entrar al sistema:
+1. Indicale que debe dirigirse de forma presencial a **Bedelía** de su carrera, a **Secretaría Académica**, o solicitar auxilio al equipo de **A.T.T.P.** (Soporte Técnico del instituto).
+2. El personal autorizado buscará al estudiante en el sistema y restablecerá su acceso fijando la contraseña institucional provisoria: la palabra `pass` seguida de su número de DNI sin puntos (por ejemplo: si su DNI es 42123456, su clave será `pass42123456`).
+3. Con esa clave provisoria el estudiante podrá iniciar sesión y luego cambiarla por una propia.
+
+Términos relacionados: como reseteo la contraseña de un estudiante, resetear contraseña, restablecer clave estudiante, alumno olvido contraseña, blanquear clave alumno, pass DNI, soporte estudiante.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Cantidad exacta de minutos de tolerancia previa para marcar asistencia docente antes de que inicie la hora de clase.
+- [VERIFICAR CON SECRETARÍA] Protocolo de contingencia en soporte papel en caso de corte de energía o interrupción del sistema durante un examen final.

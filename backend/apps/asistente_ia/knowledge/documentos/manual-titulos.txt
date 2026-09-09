@@ -1,0 +1,57 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: TÍTULOS
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol titulos (Departamento de Títulos y Certificaciones).
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al módulo y responsabilidades del Departamento de Títulos
+
+Rol: titulos
+Dónde: menú lateral Títulos y Mensajes
+
+El rol Títulos está destinado al personal encargado de la confección, control y certificación de certificados analíticos finales, diplomas y homologación de equivalencias en el IPES "Paulo Freire".
+
+Qué podés hacer en el sistema con el rol Títulos:
+1. Gestionar y emitir certificados analíticos oficiales (parciales y finales para egresados).
+2. Confeccionar el registro de equivalencias y asentar calificaciones y números de disposición ministerial/institucional.
+3. Auditar actas matrices de examen final y planillas de regularidad históricas para verificar la autenticidad de las materias acreditadas.
+4. Consultar la trayectoria completa y el estado de cumplimiento del plan de estudios de los egresados.
+5. Notificar a los estudiantes mediante Mensajes cuando sus certificados o analíticos se encuentren listos para retirar.
+
+Qué NO podés hacer:
+El rol Títulos NO tiene permisos para modificar notas de exámenes ni cursadas ordinarias, NO puede crear mesas de examen, NO puede resetear contraseñas de usuarios ni asignar roles (debe derivar a Secretaría).
+
+Términos relacionados: titulos, departamento de titulos, analiticos, certificado analitico oficial, egresados, homologacion, permisos titulos.
+
+## Emisión y control de Certificados Analíticos (Paso a paso)
+
+Rol: titulos
+Dónde: menú Títulos → tarjeta "Analíticos y certificados" (`/secretaria/analiticos`)
+
+Pasos para auditar y emitir un analítico:
+1. En la barra lateral hacé clic en "Títulos".
+2. En la sección "Documentación de Títulos", hacé clic en "Analíticos y certificados".
+3. Vas a ver la bandeja de solicitudes de analíticos ordenadas por fecha de pedido.
+4. Hacé clic en la solicitud para abrir el legajo del estudiante.
+5. Verificación de acreditaciones:
+   - Ingresá a la "Trayectoria del estudiante" para cotejar que el estudiante tenga el 100% de los espacios curriculares aprobados (para analítico final de egreso) o las materias informadas (para analítico parcial).
+   - Verificá en "Planillas de mesas finales" que cada materia aprobada cuente con su correspondiente acta de examen asentada con Libro y Folio.
+6. Actualizá el estado del trámite en el sistema a "Listo para firma / entrega".
+7. Tras la firma de las autoridades, marcá el documento como "Entregado" al momento en que el graduado retira la certificación oficial.
+
+Términos relacionados: analiticos, confeccionar analitico, analitico de egresado, certificado de materias, auditar actas, libro y folio analitico.
+
+## Registro de equivalencias y disposiciones de títulos
+
+Rol: titulos
+Dónde: menú Títulos → tarjeta "Registro de notas / disposiciones" (`/secretaria/pedidos-equivalencias?workflow=titulos`)
+
+Pasos para asentar la acreditación por equivalencia:
+1. Hacé clic en la tarjeta "Registro de notas / disposiciones".
+2. Vas a visualizar los expedientes de equivalencias que cuentan con dictamen pedagógico favorable y requieren su registro formal.
+3. Para cada materia homologada: completá el número de disposición institucional, la fecha de emisión y la calificación correspondiente (o la constancia de acreditación por equivalencia).
+4. Al confirmar el registro, el sistema genera la acreditación bajo el código `EQUIV`, dejándola lista para ser computada en el analítico de graduación del estudiante.
+
+Términos relacionados: registro de equivalencias, disposicion ministerial, disposicion titulos, homologacion analitico, equivalencia de materias.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Circuito formal de verificación de folios digitales con el archivo general de títulos de la provincia.

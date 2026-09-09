@@ -1,0 +1,55 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: JEFA DE ASUNTOS ESTUDIANTILES (A.A.E.E.)
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol jefa_aaee (Jefatura de Asuntos Estudiantiles).
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al módulo y responsabilidades de la Jefa de A.A.E.E.
+
+Rol: jefa_aaee
+Dónde: menú lateral Jefatura, Analytics, Mensajes, Reportes y Estudiante
+
+El rol Jefa de A.A.E.E. (Área de Asuntos Estudiantiles) está destinado a la coordinación general de las políticas y servicios dirigidos a los estudiantes del IPES "Paulo Freire", supervisando los dispositivos de ingreso, permanencia y articulación con Bedelía y Tutorías.
+
+Qué podés hacer como Jefa de A.A.E.E.:
+1. Gestionar y autorizar las ventanas de habilitación de fechas para trámites estudiantiles (inscripción a materias, mesas de examen y solicitudes especiales).
+2. Asignar roles y funciones a los equipos de Bedelía, Tutorías y Coordinación en el sistema.
+3. Consultar legajos de estudiantes, trayectorias y estados de documentación.
+4. Monitorear los tableros analíticos de retención, desgranamiento y rendimiento académico institucional.
+5. Supervisar la estructura de carreras, planes de estudio y horarios de cursada.
+6. Enviar comunicados oficiales a los estudiantes y equipos docentes mediante Mensajes.
+
+Qué NO podés hacer:
+El rol Jefa de A.A.E.E. no realiza carga de notas de exámenes ni cursadas, no reabre actas cerradas por docentes y no gestiona la carga de sueldos o personal docente (materias reservadas a Secretaría Académica).
+
+Términos relacionados: jefa aaee, asuntos estudiantiles, jefa asuntos estudiantiles, politicas estudiantiles, bienestar estudiantil, permisos jefa_aaee.
+
+## Gestión de ventanas de habilitación de fechas
+
+Rol: jefa_aaee
+Dónde: menú Jefatura → tarjeta "Habilitar / controlar fechas" (`/secretaria/habilitar-fechas`)
+
+Pasos para programar períodos de trámites estudiantiles:
+1. En el panel de Jefatura, hacé clic en "Habilitar / controlar fechas".
+2. Vas a visualizar la grilla de ventanas de calendario del ciclo lectivo.
+3. Para abrir una nueva fecha de trámite estudiantil, hacé clic en "+ Nueva Ventana".
+4. Configurá el tipo de ventana (`MATERIAS`, `MESAS_FINALES`, `COMISION`, `ANALITICOS`), indicando fecha y hora de inicio (`Desde`), fecha y hora de cierre (`Hasta`), año lectivo y cuatrimestre.
+5. Asegurate de tildar la casilla "Activo" y hacé clic en "Guardar".
+6. Mientras la ventana esté activa, los estudiantes tendrán habilitados los botones correspondientes en sus portales.
+
+Términos relacionados: habilitar fechas, fechas clave estudiantes, abrir inscripcion, ventana asuntos estudiantiles, periodos tramites.
+
+## Asignación de roles a Bedeles, Tutores y Coordinadores
+
+Rol: jefa_aaee
+Dónde: consola de administración → Asignar roles (`/secretaria/asignar-rol`)
+
+Pasos para asignar funciones al equipo estudiantil:
+1. De acuerdo a la matriz de permisos institucionales, la Jefa de A.A.E.E. tiene potestad para designar usuarios en los roles de: `bedel`, `tutor` y `coordinador`.
+2. Buscá al usuario por su DNI o nombre de usuario.
+3. Marcá el rol a asignar y vinculá las carreras o turnos correspondientes.
+4. Hacé clic en "Guardar asignación" para confirmar los permisos en el sistema.
+
+Términos relacionados: asignar rol bedel, asignar tutor, asignar coordinador, permisos equipo estudiantil, gestion de roles aaee.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Criterio de coordinación entre A.A.E.E. y Secretaría para la extensión extraordinaria de plazos de inscripción a cursadas.

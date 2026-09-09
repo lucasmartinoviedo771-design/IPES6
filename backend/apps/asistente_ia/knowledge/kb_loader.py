@@ -82,22 +82,38 @@ SOLAPE = 200
 # La parte "ículo" es opcional: el reglamento abrevia "Art." casi siempre.
 _PATRON_ARTICULO = re.compile(r"(?im)^\s*(art(?:[íi]culo)?s?\.?\s*N?[°ºo]?\s*(\d{1,3}))\s*[°º]?\s*[.:\-]")
 
+# Encabezados de los manuales de uso: "## Cargar notas", "### Errores frecuentes"
+# y también títulos en mayúsculas sostenidas, que es como suelen escribirse.
+_PATRON_ENCABEZADO = re.compile(r"(?m)^\s{0,3}(?:#{1,4}\s+(.+?)|([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9 ,.:()/-]{6,70}))\s*$")
+
 
 def _titulo_del_fragmento(texto: str, orden: int) -> str:
     """
-    Referencia legible del fragmento: el artículo o el rango que abarca.
+    Referencia legible del fragmento: el artículo, el título de sección, o el orden.
 
-    Un fragmento puede agrupar varios artículos cortos. Rotularlo solo con el
-    primero era engañoso: el fragmento que contiene los requisitos de Residencia
-    (Art. 19) aparecía como "Art. 18", y quien leía la cita creía que la
-    respuesta no correspondía.
+    En las normas se usa el número de artículo. Un fragmento puede agrupar varios
+    artículos cortos, y rotularlo solo con el primero era engañoso: el que
+    contiene los requisitos de Residencia (Art. 19) aparecía como "Art. 18".
+
+    En los manuales de uso no hay artículos sino encabezados ("## Cargar notas").
+    Sin esto la cita decía "manual-docente.txt (parte 4)", que no le dice nada a
+    quien la lee; con el encabezado dice de qué procedimiento se trata.
     """
     numeros = [m.group(2) for m in _PATRON_ARTICULO.finditer(texto)]
-    if not numeros:
-        return f"parte {orden}"
-    if len(numeros) == 1:
-        return f"Art. {numeros[0]}"
-    return f"Art. {numeros[0]} a {numeros[-1]}"
+    if numeros:
+        if len(numeros) == 1:
+            return f"Art. {numeros[0]}"
+        return f"Art. {numeros[0]} a {numeros[-1]}"
+
+    # El patrón tiene dos alternativas (markdown y mayúsculas): se toma la que casó.
+    encabezados = [(m.group(1) or m.group(2) or "").strip(" #*:").strip() for m in _PATRON_ENCABEZADO.finditer(texto)]
+    encabezados = [t for t in encabezados if 3 < len(t) <= 70]
+    if encabezados:
+        if len(encabezados) == 1:
+            return encabezados[0]
+        return f"{encabezados[0]} (y {len(encabezados) - 1} más)"
+
+    return f"parte {orden}"
 
 
 def _partir_por_tamanio(bloque: str) -> list[str]:

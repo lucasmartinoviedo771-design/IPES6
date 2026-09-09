@@ -24,6 +24,8 @@ import {
 import { hasAnyRole } from "@/utils/roles";
 import { collapsedDrawerWidth, drawerWidth, roleLabels } from "./constants";
 
+const asistenteHabilitado = import.meta.env.VITE_ENABLE_AI_ASSISTANT === "true";
+
 interface AppTopBarProps {
 	open: boolean;
 		user: any;
@@ -178,21 +180,25 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 				<Box
 					sx={{ display: "flex", alignItems: "center", gap: { xs: 1, sm: 2 } }}
 				>
-					<Tooltip title="Guía de Usuario">
-						<IconButton
-							size="small"
-							onClick={onGuideOpen}
-							sx={{
-								display: { xs: "none", sm: "inline-flex" },
-								borderRadius: 10,
-								border: "1px solid #e2e8f0",
-								backgroundColor: "#f8fafc",
-								color: "#0f172a",
-							}}
-						>
-							<HelpOutlineIcon fontSize="small" />
-						</IconButton>
-					</Tooltip>
+					{/* El botón abre el asistente. Si está apagado se oculta: antes
+					    mostraba una guía inexistente y el usuario recibía un error. */}
+					{asistenteHabilitado && (
+						<Tooltip title="Consultar al asistente">
+							<IconButton
+								size="small"
+								onClick={onGuideOpen}
+								sx={{
+									display: { xs: "none", sm: "inline-flex" },
+									borderRadius: 10,
+									border: "1px solid #e2e8f0",
+									backgroundColor: "#f8fafc",
+									color: "#0f172a",
+								}}
+							>
+								<HelpOutlineIcon fontSize="small" />
+							</IconButton>
+						</Tooltip>
+					)}
 
 					{canUseMessages && (
 						<Tooltip title="Mensajes">

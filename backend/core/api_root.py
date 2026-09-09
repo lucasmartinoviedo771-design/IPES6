@@ -33,7 +33,6 @@ from apps.docentes.api import router as docentes_router
 from apps.estudiantes.api import estudiantes_router as estudiantes_api_router
 from apps.estudiantes.api.planillas_cursada_api import router as planillas_cursada_router
 from apps.estudiantes.carga_notas_api import carga_notas_router
-from apps.guias.api import router as guias_router
 from apps.health_api import router as health_router
 from apps.management import management_router
 from apps.management.auth_api import router as auth_router
@@ -118,7 +117,6 @@ if "api" not in locals():
     safe_add_router("/asistencia/reportes", asistencia_reportes_router)
     safe_add_router("/asistencia/calendario", asistencia_calendario_router)
     safe_add_router("/asistencia", asistencia_cargos_router)
-    safe_add_router("/", guias_router)
 
     # Reportes y Dashboards
     from apps.metrics.analytics_api import router as analytics_router

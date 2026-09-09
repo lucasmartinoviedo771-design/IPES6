@@ -1,0 +1,72 @@
+MANUAL DE USO DEL SISTEMA IPES6 — ROL: COORDINADOR
+Última actualización: 9 de septiembre de 2026
+Este documento describe los procedimientos del sistema para el rol coordinador (Coordinación Académica de Carrera).
+Para normativa académica (plazos, porcentajes, condiciones) ver el Reglamento Académico Institucional.
+
+## Acceso al módulo y responsabilidades de Coordinación
+
+Rol: coordinador
+Dónde: menú lateral Coordinación, Analytics, Mensajes, Estudiante, Reportes y Curso Intro
+
+El rol Coordinador está diseñado para los coordinadores de profesorado del IPES "Paulo Freire", enfocándose en el seguimiento pedagógico de cohortes, el acompañamiento en el ingreso y la planificación académica de sus carreras.
+
+Alcance territorial:
+El coordinador tiene alcance limitado a las carreras que tiene formalmente asignadas en el sistema (`_LIMITED_ROLES`). Las búsquedas de trayectorias, inscriptos y métricas reflejan exclusivamente a sus profesorados.
+
+Qué podés hacer como coordinador:
+1. Consultar la trayectoria académica completa de los estudiantes de tu carrera (materias aprobadas, regulares, promedio y avance).
+2. Monitorear el estado del Curso Introductorio (CI) y detectar estudiantes que adeudan su aprobación para convocarlos.
+3. Consultar y seguir el estado de trámites de analíticos y certificaciones solicitados por estudiantes.
+4. Consultar horarios de cursada y descargar la grilla horaria en PDF.
+5. Analizar reportes institucionales, retención y métricas de rendimiento por cohorte.
+6. Enviar y responder mensajes institucionales a estudiantes y docentes.
+
+Qué NO podés hacer:
+El coordinador tiene un perfil de supervisión pedagógica y no de carga administrativa: NO puede editar estudiantes ni legajos, NO puede formalizar inscripciones, NO puede cargar ni modificar notas de cursada o exámenes, y NO puede resetear contraseñas (debe derivar a Bedelía o ATTP).
+
+Términos relacionados: coordinador, coordinacion, coordinacion academica, permisos coordinador, funciones coordinador, profesorado asignado.
+
+## Seguimiento de trayectorias y cohortes (Paso a paso)
+
+Rol: coordinador
+Dónde: menú Coordinación → tarjeta "Trayectoria del estudiante" (`/estudiantes/trayectoria`)
+
+Pasos para auditar el avance de un estudiante o cohorte:
+1. En la barra lateral izquierda hacé clic en "Coordinación".
+2. En la sección "Seguimiento de cohortes", hacé clic en la tarjeta "Trayectoria del estudiante".
+3. Buscá al estudiante por su DNI o apellido y nombre.
+4. El sistema desplegará la ficha académica completa con la malla de materias del plan de estudios:
+   - Materias aprobadas con su calificación definitiva, fecha y número de acta.
+   - Materias regularizadas con la fecha de cursada y vigencia de la regularidad.
+   - Espacios curriculares que se encuentra cursando en el cuatrimestre actual.
+   - Materias pendientes de cursar.
+5. Podrás constatar el porcentaje global de avance de la carrera y el promedio general del estudiante para orientarlo en su plan de cursadas.
+
+Términos relacionados: trayectoria del estudiante, seguimiento de cohorte, avance de carrera, materias aprobadas, materias regulares, historia academica, coordinador carrera.
+
+## Supervisión del Curso Introductorio (Estudiantes pendientes)
+
+Rol: coordinador
+Dónde: menú Coordinación → tarjeta "Estudiantes sin CI aprobado" (`/curso-introductorio?view=pendientes`)
+
+Pasos para detectar ingresantes sin curso de ingreso:
+1. En el panel de Coordinación, hacé clic en la tarjeta "Estudiantes sin CI aprobado".
+2. Vas a visualizar el listado filtrado de los estudiantes inscriptos a tu profesorado que aún no han cumplimentado o regularizado los módulos del Curso Introductorio (CI).
+3. Podés filtrar por cohorte y turno.
+4. Con esta información, la Coordinación puede convocar a los estudiantes a través del módulo de Mensajes o articular con Tutorías para implementar dispositivos de apoyo y asegurar la continuidad de sus estudios.
+
+Términos relacionados: curso introductorio, curso de ingreso, estudiantes sin CI, pendientes CI, articulacion ingreso, tutoria, desercion ingresantes.
+
+## Consultar horarios y reportes institucionales
+
+Rol: coordinador
+Dónde: menú Coordinación → sección "Herramientas de apoyo" (tarjetas "Horario de Cursada" y "Reportes institucionales")
+
+Pasos para consultar horarios y métricas:
+1. Horario de cursada: Hacé clic en "Horario de Cursada" (`/estudiantes/horarios`), seleccioná tu profesorado y descargá la distribución horaria semanal en PDF para coordinar la disponibilidad áulica y las actividades docentes.
+2. Reportes institucionales: Hacé clic en "Reportes institucionales" (`/dashboard`) para acceder a los tableros analíticos de tu carrera: cantidad de estudiantes activos por año, retención interanual y distribución de inscriptos por turno.
+
+Términos relacionados: horarios coordinador, grilla horaria PDF, reportes de carrera, metricas de cohorte, retencion estudiantil, estadisticas profesorado.
+
+## Pendientes de verificación institucional
+- [VERIFICAR CON SECRETARÍA] Criterio de equivalencia interna del Curso Introductorio para estudiantes con pase de otro profesorado del instituto.
