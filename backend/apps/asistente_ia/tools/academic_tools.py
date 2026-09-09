@@ -130,7 +130,8 @@ def consultar_mis_calificaciones(user) -> dict:
                         "fecha": im.mesa.fecha.strftime("%d/%m/%Y") if im.mesa.fecha else "-",
                         "nota": float(im.nota),
                         "condicion": im.condicion,
-                        "resultado": "Aprobado" if im.nota >= 4.0 else "Desaprobado",
+                        # Mismo criterio que las actas: se aprueba con 6.
+                        "resultado": "Aprobado" if float(im.nota) >= NOTA_APROBACION else "Desaprobado",
                         "libro": im.libro or "-",
                         "folio": im.folio or "-",
                     }
