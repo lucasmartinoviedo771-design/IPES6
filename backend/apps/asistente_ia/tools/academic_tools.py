@@ -11,6 +11,63 @@ from core.models import (
 
 logger = logging.getLogger(__name__)
 
+# Nota mínima de aprobación según el Régimen Académico (Art. 45°.j, Art. 53°).
+NOTA_APROBACION = 6
+
+# Códigos que representan una aprobación sin nota numérica.
+APROBACIONES_NO_NUMERICAS = {"APR", "EQUI", "APROBADO", "PROM", "PROMOCIONADO"}
+
+# Los códigos internos ("AI", "AJ") no significan nada para un estudiante, y
+# mostrarlos como si fueran la nota hacía leer "tu nota es AI". Se traducen.
+_ETIQUETAS = {
+    "AI": ("Ausente", "Ausente sin justificar", "Ausente (injustificado)"),
+    "AJ": ("Ausente", "Ausente con justificación", "Ausente (justificado)"),
+    "APR": ("Aprobado", "Aprobado", "Aprobado"),
+    "PROM": ("Promocionado", "Promocionado", "Aprobado por promoción"),
+    "EQUI": ("Equivalencia", "Otorgada por equivalencia", "Aprobado por equivalencia"),
+}
+
+
+def _es_aprobacion(numerica, codigo: str) -> bool:
+    """
+    Decide si el registro está aprobado.
+
+    La nota puede venir en `calificacion_numerica` o solo como texto en
+    `calificacion_definitiva` ("6", "10"). Mirando únicamente el campo numérico,
+    esas actas quedaban como desaprobadas aunque la nota fuera 10.
+    """
+    if numerica is not None:
+        try:
+            return float(numerica) >= NOTA_APROBACION
+        except (TypeError, ValueError):
+            pass
+    if codigo in APROBACIONES_NO_NUMERICAS:
+        return True
+    try:
+        return float(str(codigo).replace(",", ".")) >= NOTA_APROBACION
+    except (TypeError, ValueError):
+        return False
+
+
+def _nota_legible(valor, codigo: str):
+    """La nota tal como debe leerla el estudiante; los códigos se traducen."""
+    if codigo in _ETIQUETAS:
+        return _ETIQUETAS[codigo][0]
+    return valor
+
+
+def _condicion_legible(codigo: str) -> str:
+    if codigo in _ETIQUETAS:
+        return _ETIQUETAS[codigo][1]
+    return codigo or "-"
+
+
+def _resultado_legible(codigo: str) -> str:
+    """Ausente y desaprobado no son lo mismo: mezclarlos confunde al estudiante."""
+    if codigo in _ETIQUETAS:
+        return _ETIQUETAS[codigo][2]
+    return "Desaprobado"
+
 
 def consultar_mis_calificaciones(user) -> dict:
     """Devuelve las calificaciones registradas en actas oficiales y mesas del estudiante autenticado."""
@@ -33,17 +90,21 @@ def consultar_mis_calificaciones(user) -> dict:
         materia_nom = acta.materia.nombre if acta and acta.materia else "Materia"
         fecha_str = acta.fecha.strftime("%d/%m/%Y") if acta and acta.fecha else "-"
         nota_val = reg.calificacion_numerica if reg.calificacion_numerica is not None else reg.calificacion_definitiva
-        es_aprobado = (reg.calificacion_numerica is not None and reg.calificacion_numerica >= 4) or str(
-            reg.calificacion_definitiva
-        ).upper() in ["APR", "EQUI", "APROBADO", "PROM"]
+        codigo = str(reg.calificacion_definitiva or "").upper()
+
+        # El Régimen Académico aprueba con SEIS (Art. 45°.j y Art. 53°), no con
+        # cuatro. Con el umbral anterior el asistente informaba como aprobadas
+        # 1015 actas con nota 4 o 5, de 473 estudiantes. El resto del sistema ya
+        # usaba 6; solo esta herramienta estaba desalineada.
+        es_aprobado = _es_aprobacion(reg.calificacion_numerica, codigo)
 
         historial.append(
             {
                 "materia": materia_nom,
                 "fecha": fecha_str,
-                "nota": nota_val,
-                "condicion": reg.calificacion_definitiva,
-                "resultado": "Aprobado" if es_aprobado else "Desaprobado/Ausente",
+                "nota": _nota_legible(nota_val, codigo),
+                "condicion": _condicion_legible(codigo),
+                "resultado": "Aprobado" if es_aprobado else _resultado_legible(codigo),
                 "libro": acta.libro if acta else "-",
                 "folio": acta.folio if acta else "-",
             }
@@ -91,8 +152,14 @@ def consultar_mis_calificaciones(user) -> dict:
             historial.append(
                 {
                     "materia": m_nom,
-                    "fecha": f"Ciclo {p.anio_cursada}",
-                    "nota": float(p.nota_final) if p.nota_final is not None else "Acreditada",
+                    # Regularidad no tiene anio_cursada ni nota_final: el año vive
+                    # en la materia y la nota de cursada es nota_final_cursada.
+                    # Con los nombres viejos la consulta de calificaciones
+                    # reventaba y el asistente respondía el mensaje de contingencia.
+                    "fecha": p.fecha_cierre.strftime("%d/%m/%Y")
+                    if p.fecha_cierre
+                    else f"{p.materia.anio_cursada}º año",
+                    "nota": float(p.nota_final_cursada) if p.nota_final_cursada is not None else "Acreditada",
                     "condicion": p.situacion,
                     "resultado": "Aprobada por Promoción",
                     "libro": "-",
