@@ -1,6 +1,7 @@
 """Herramientas de diagnóstico de correlatividades y requisitos de inscripción para el Asistente IA."""
 
 import logging
+from collections import Counter
 from datetime import date
 
 from django.db.models import Q
@@ -40,22 +41,49 @@ def _resolver_materia(estudiante: Estudiante, termino: str) -> Materia | None:
         Materia.objects.filter(plan_de_estudio__profesorado_id__in=prof_ids) if prof_ids else Materia.objects.all()
     )
 
+    # Un estudiante puede estar inscripto en varias carreras y tener el mismo
+    # nombre de materia en todas ("Práctica IV" existe en Inicial, Primaria y
+    # Especial). Tomar la primera que devuelva la base es azar: puede
+    # diagnosticar las correlativas de una carrera que el estudiante no cursa.
+    # Se prioriza aquella donde efectivamente tiene actividad académica.
+    actividad = Counter(
+        Regularidad.objects.filter(estudiante=estudiante).values_list(
+            "materia__plan_de_estudio__profesorado_id", flat=True
+        )
+    )
+    actividad.update(
+        InscripcionMateriaEstudiante.objects.filter(estudiante=estudiante).values_list(
+            "materia__plan_de_estudio__profesorado_id", flat=True
+        )
+    )
+
+    def preferida(materias):
+        """De varias coincidencias, la de la carrera que el estudiante realmente cursa."""
+        lista = list(materias)
+        if not lista:
+            return None
+        return max(lista, key=lambda m: actividad.get(m.plan_de_estudio.profesorado_id, 0))
+
     # 1. Coincidencia directa icontains
-    mat_directa = candidatas_qs.filter(nombre__icontains=termino_str).first()
+    mat_directa = preferida(candidatas_qs.filter(nombre__icontains=termino_str).select_related("plan_de_estudio"))
     if mat_directa:
         return mat_directa
 
     # 2. Si la consulta es una frase, verificar si el nombre de alguna materia de la carrera está contenido en el texto
     termino_lower = termino_str.lower()
-    for m in candidatas_qs:
-        if len(m.nombre) >= 4 and m.nombre.lower() in termino_lower:
-            return m
+    contenidas = [
+        m
+        for m in candidatas_qs.select_related("plan_de_estudio")
+        if len(m.nombre) >= 4 and m.nombre.lower() in termino_lower
+    ]
+    if contenidas:
+        return preferida(contenidas)
 
     # 3. Búsqueda por palabras significativas (> 4 caracteres excluyendo stopwords)
     stopwords = {"inscribir", "inscribirme", "cursar", "rendir", "puedo", "materia", "final", "mesa"}
     palabras = [w for w in re.findall(r"\b[a-záéíóúñ]{4,}\b", termino_lower) if w not in stopwords]
     for p in palabras:
-        mat_p = candidatas_qs.filter(nombre__icontains=p).first()
+        mat_p = preferida(candidatas_qs.filter(nombre__icontains=p).select_related("plan_de_estudio"))
         if mat_p:
             return mat_p
 
@@ -91,6 +119,9 @@ def diagnosticar_inscripcion_cursada(user, materia_query: str) -> dict:
     if _esta_aprobada(estudiante, materia):
         return {
             "materia": materia.nombre,
+            # La carrera evita ambiguedad cuando el estudiante cursa varias y la
+            # materia existe con el mismo nombre en mas de un plan.
+            "carrera": materia.plan_de_estudio.profesorado.nombre if materia.plan_de_estudio else None,
             "id": materia.id,
             "anio_cursada": materia.anio_cursada,
             "puede_inscribirse": False,
@@ -110,6 +141,9 @@ def diagnosticar_inscripcion_cursada(user, materia_query: str) -> dict:
         comision = cursando_actual.comision
         return {
             "materia": materia.nombre,
+            # La carrera evita ambiguedad cuando el estudiante cursa varias y la
+            # materia existe con el mismo nombre en mas de un plan.
+            "carrera": materia.plan_de_estudio.profesorado.nombre if materia.plan_de_estudio else None,
             "id": materia.id,
             "puede_inscribirse": False,
             "estado_actual": "En Cursada",
@@ -181,6 +215,7 @@ def diagnosticar_inscripcion_cursada(user, materia_query: str) -> dict:
 
     return {
         "materia": materia.nombre,
+        "carrera": materia.plan_de_estudio.profesorado.nombre if materia.plan_de_estudio else None,
         "id": materia.id,
         "anio_cursada": materia.anio_cursada,
         "puede_inscribirse": puede,
