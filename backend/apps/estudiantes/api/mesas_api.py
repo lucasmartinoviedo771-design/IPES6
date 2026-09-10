@@ -763,6 +763,34 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
                 "message": f"Solo podés solicitar una (1) materia por llamado extraordinario. Ya tenés una solicitud para '{sol_prev.materia.nombre}'."
             }
 
+    # REGLA: No duplicar la solicitud de una materia que ya tiene un pedido vigente
+    # en otro llamado. Si se abre un segundo llamado extraordinario, un estudiante
+    # que ya solicitó (y tiene mesa armada o pendiente) esa materia no debe poder
+    # pedirla de nuevo: genera un registro fantasma que confunde ("Rechazada" o
+    # "Pendiente" al lado de la mesa real que sí va a rendir).
+    if not es_staff:
+        previas = (
+            SolicitudMesa.objects.filter(estudiante=est, materia=materia)
+            .exclude(estado=SolicitudMesa.Estado.RECHAZADA)
+            .exclude(ventana=ventana)
+            .select_related("mesa_asignada")
+        )
+        for prev in previas:
+            if prev.estado == SolicitudMesa.Estado.PENDIENTE:
+                return 400, {
+                    "message": f"Ya tenés una solicitud pendiente para '{materia.nombre}' de otro llamado. "
+                    f"Esperá a que se procese; no hace falta volver a solicitarla."
+                }
+            if prev.estado == SolicitudMesa.Estado.PROCESADA and prev.mesa_asignada and prev.mesa_asignada.activa:
+                m = prev.mesa_asignada
+                insc = InscripcionMesa.objects.filter(mesa=m, estudiante=est).first()
+                ya_rindio = insc and (insc.nota is not None or insc.condicion is not None)
+                if not ya_rindio:
+                    return 400, {
+                        "message": f"Ya tenés mesa asignada para '{materia.nombre}' el "
+                        f"{m.fecha.strftime('%d/%m/%Y')}. No hace falta volver a solicitarla."
+                    }
+
     sol = SolicitudMesa.objects.create(
         estudiante=est,
         materia=materia,

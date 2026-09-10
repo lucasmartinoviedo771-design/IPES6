@@ -486,6 +486,17 @@ def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = 
     with transaction.atomic():
         sol.estado = estado.upper()
         if mesa_id:
+            mesa = get_object_or_404(MesaExamen, id=mesa_id)
+            # Una solicitud solo se puede asignar a una mesa de su mismo llamado.
+            # Sin esto, un estudiante que se inscribió en un llamado puede terminar
+            # en una mesa de otro, generando registros duplicados (una solicitud
+            # por llamado, todas apuntando a la misma mesa).
+            if mesa.ventana_id is not None and sol.ventana_id is not None and mesa.ventana_id != sol.ventana_id:
+                raise HttpError(
+                    400,
+                    f"La mesa es de otro llamado (ventana {mesa.ventana_id}); la solicitud es del "
+                    f"llamado {sol.ventana_id}. Solo se puede asignar una solicitud a una mesa de su mismo llamado.",
+                )
             sol.mesa_asignada_id = mesa_id
             if sol.estado == "PRO":
                 from core.models import InscripcionMesa
