@@ -312,43 +312,44 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         if not mesa:
             return 404, ApiResponse(ok=False, message="Mesa de examen no encontrada.")
 
-    # Si es solo docente, verificar tribunal
+    # Si es solo docente, verificar tribunal y fecha
     if is_docente_only:
         try:
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
             if mesa:
-                # Validar tribunal de la mesa específica
-                tribunal_valido = docente_obj.id in [  # type: ignore
-                    mesa.docente_presidente_id,  # type: ignore
-                    mesa.docente_vocal1_id,  # type: ignore
-                    mesa.docente_vocal2_id,  # type: ignore
-                ]
-                if not tribunal_valido:
+                # Solo el presidente de la mesa puede cargar las notas
+                if docente_obj.id != mesa.docente_presidente_id:
                     return 403, ApiResponse(
-                        ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
+                        ok=False,
+                        message="Solo el docente presidente de la mesa puede generar el acta. Los vocales tienen acceso de solo lectura.",
                     )
-                # Validar fecha/cierre para docentes
+                # No se permite cargar antes del día de la mesa
+                if mesa.fecha > date.today():
+                    return 403, ApiResponse(
+                        ok=False,
+                        message=f"No se pueden cargar calificaciones antes de la fecha fijada para la mesa ({mesa.fecha.strftime('%d/%m/%Y')}).",
+                    )
+                # Validar cierre para mesas pasadas
                 if mesa.fecha < date.today() and mesa.planilla_cerrada_en is not None:
                     return 403, ApiResponse(
                         ok=False, message="No tiene permisos para modificar un acta de mesa pasada y cerrada."
                     )
             else:
-                # Validar tribunal para mesas en la fecha dada
-                tribunal_valido = (
-                    MesaExamen.objects.filter(
-                        materia_id=payload.materia_id,
-                        fecha=acta_fecha,
-                    )
-                    .filter(
-                        models.Q(docente_presidente=docente_obj)
-                        | models.Q(docente_vocal1=docente_obj)
-                        | models.Q(docente_vocal2=docente_obj)
-                    )
-                    .exists()
-                )
-                if not tribunal_valido:
+                # Validar tribunal para mesas en la fecha dada (solo presidente)
+                mesa_presidida = MesaExamen.objects.filter(
+                    materia_id=payload.materia_id,
+                    fecha=acta_fecha,
+                    docente_presidente=docente_obj,
+                ).first()
+                if not mesa_presidida:
                     return 403, ApiResponse(
-                        ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
+                        ok=False,
+                        message="Solo el docente presidente de la mesa puede generar el acta. Los vocales tienen acceso de solo lectura.",
+                    )
+                if acta_fecha > date.today():
+                    return 403, ApiResponse(
+                        ok=False,
+                        message=f"No se pueden cargar calificaciones antes de la fecha fijada para la mesa ({acta_fecha.strftime('%d/%m/%Y')}).",
                     )
         except Docente.DoesNotExist:
             return 403, ApiResponse(ok=False, message="No se encontró un perfil de docente asociado a su usuario.")
@@ -701,14 +702,15 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         try:
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
             if mesa:
-                tribunal_valido = docente_obj.id in [  # type: ignore
-                    mesa.docente_presidente_id,  # type: ignore
-                    mesa.docente_vocal1_id,  # type: ignore
-                    mesa.docente_vocal2_id,  # type: ignore
-                ]
-                if not tribunal_valido:
+                if docente_obj.id != mesa.docente_presidente_id:
                     return 403, ApiResponse(
-                        ok=False, message="Solo los docentes del tribunal de la mesa pueden modificar esta acta."
+                        ok=False,
+                        message="Solo el docente presidente de la mesa puede modificar esta acta. Los vocales tienen acceso de solo lectura.",
+                    )
+                if mesa.fecha > date.today():
+                    return 403, ApiResponse(
+                        ok=False,
+                        message=f"No se pueden modificar calificaciones antes de la fecha fijada para la mesa ({mesa.fecha.strftime('%d/%m/%Y')}).",
                     )
                 if mesa.fecha < date.today() and mesa.planilla_cerrada_en is not None:
                     return 403, ApiResponse(

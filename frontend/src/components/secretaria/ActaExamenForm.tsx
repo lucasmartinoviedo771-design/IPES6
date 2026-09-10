@@ -1,20 +1,10 @@
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PrintIcon from "@mui/icons-material/Print";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type React from "react";
-import {
-	descargarActaComisionadosPdf,
-	descargarActaPdf,
-} from "@/api/cargaNotas";
 import OralExamActaDialog from "@/components/secretaria/OralExamActaDialog";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import { BuscarMesaSection } from "./acta-examen-form/BuscarMesaSection";
@@ -34,6 +24,8 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 	editId,
 	mesaPreseleccionada,
 	estudiantesPreseleccionados,
+	readOnly = false,
+	readOnlyReason,
 }) => {
 	const f = useActaExamenForm({
 		strict,
@@ -82,6 +74,14 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 					{headerAction && <Box>{headerAction}</Box>}
 				</Stack>
 
+				{/* Alerta de solo lectura si aplica */}
+				{readOnly && (
+					<Alert severity="warning" sx={{ fontWeight: 500 }}>
+						{readOnlyReason ||
+							"Esta planilla se encuentra en modo solo lectura. No tiene permisos para modificarla o la fecha de la mesa aún no se ha cumplido."}
+					</Alert>
+				)}
+
 				{!mesaPreseleccionada && (
 					<BuscarMesaSection
 						mesaCodigo={f.mesaCodigo}
@@ -116,14 +116,14 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 					setLibro={f.setLibro}
 					observaciones={f.observaciones}
 					setObservaciones={f.setObservaciones}
-					readOnly={!!mesaPreseleccionada}
+					readOnly={!!mesaPreseleccionada || readOnly}
 				/>
 
 				<TribunalSection
 					docentes={f.docentes}
 					docenteOptions={f.docenteOptions}
 					onDocenteInputChange={f.handleDocenteInputChange}
-					readOnly={!!mesaPreseleccionada}
+					readOnly={!!mesaPreseleccionada || readOnly}
 				/>
 
 				<ResultadosTable
@@ -139,30 +139,32 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 					onDniChange={f.handleEstudianteDniChange}
 					onUpdateEstudiante={f.updateEstudiante}
 					onOpenOralActa={f.handleOpenOralActa}
-					readOnlyEstudiantes={!!mesaPreseleccionada}
+					readOnlyEstudiantes={!!mesaPreseleccionada || readOnly}
 				/>
 
-				<Stack direction="row" justifyContent="flex-end">
-					<Button
-						variant="contained"
-						size="large"
-						onClick={f.handleSubmit}
-						disabled={f.isSaving}
-						startIcon={
-							f.isSaving ? (
-								<CircularProgress size={18} color="inherit" />
-							) : undefined
-						}
-					>
-						{f.isSaving
-							? f.isEditing
-								? "Actualizando..."
-								: "Generando..."
-							: f.isEditing
-								? "Actualizar acta"
-								: "Generar acta"}
-					</Button>
-				</Stack>
+				{!readOnly && (
+					<Stack direction="row" justifyContent="flex-end">
+						<Button
+							variant="contained"
+							size="large"
+							onClick={f.handleSubmit}
+							disabled={f.isSaving}
+							startIcon={
+								f.isSaving ? (
+									<CircularProgress size={18} color="inherit" />
+								) : undefined
+							}
+						>
+							{f.isSaving
+								? f.isEditing
+									? "Actualizando..."
+									: "Generando..."
+								: f.isEditing
+									? "Actualizar acta"
+									: "Generar acta"}
+						</Button>
+					</Stack>
+				)}
 			</Stack>
 
 			{f.oralDialogEstudiante && (
@@ -195,57 +197,6 @@ const ActaExamenForm: React.FC<ActaExamenFormProps> = ({
 				contextText={f.confirmActaContext}
 				loading={f.isSaving}
 			/>
-
-			<Dialog
-				open={!!f.createdActa}
-				onClose={() => f.setCreatedActa(null)}
-				maxWidth="xs"
-				fullWidth
-			>
-				<DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-					<CheckCircleIcon color="success" />
-					Acta Generada
-				</DialogTitle>
-				<DialogContent>
-					<Typography variant="body1" gutterBottom>
-						El acta <b>{f.createdActa?.codigo}</b> ha sido generada
-						correctamente.
-					</Typography>
-					<Typography variant="body2" color="text.secondary">
-						¿Desea descargar los documentos PDF ahora?
-					</Typography>
-				</DialogContent>
-				<DialogActions sx={{ flexDirection: "column", gap: 1, p: 2 }}>
-					<Button
-						fullWidth
-						variant="contained"
-						startIcon={<PrintIcon />}
-						onClick={() =>
-							f.createdActa &&
-							descargarActaPdf(f.createdActa.id, f.createdActa.codigo)
-						}
-					>
-						Descargar Acta Principal
-					</Button>
-					<Button
-						fullWidth
-						variant="outlined"
-						startIcon={<PrintIcon />}
-						onClick={() =>
-							f.createdActa &&
-							descargarActaComisionadosPdf(
-								f.createdActa.id,
-								f.createdActa.codigo,
-							)
-						}
-					>
-						Descargar Comisionados
-					</Button>
-					<Button fullWidth onClick={() => f.setCreatedActa(null)}>
-						Cerrar
-					</Button>
-				</DialogActions>
-			</Dialog>
 		</>
 	);
 };

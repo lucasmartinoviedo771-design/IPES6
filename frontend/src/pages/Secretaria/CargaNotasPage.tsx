@@ -7,6 +7,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import dayjs from "dayjs";
 import { enqueueSnackbar } from "notistack";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -523,36 +524,71 @@ const CargaNotasPage: React.FC = () => {
 									finalLoadingPlanilla={finalLoadingPlanilla}
 									estadoPlanilla={finalFilters.estadoPlanilla}
 									onOpenFinalPlanilla={handleOpenFinalPlanilla}
+									isDocente={isDocente}
 								/>
 							</Stack>
 						</Paper>
 
-						{finalSelectedMesaId && (
-							<Stack gap={3}>
-								<Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
-									<ActaExamenForm
-										strict={!isDocente}
-										title={
-											isDocente
-												? "Carga de calificaciones de mesa"
-												: "Generar acta de examen"
-										}
-										subtitle={
-											isDocente
-												? "Complete las notas del examen final para los alumnos inscriptos."
-												: undefined
-										}
-										mesaPreseleccionada={selectedMesaResumen}
-										estudiantesPreseleccionados={finalRows.map((r) => ({
-											dni: r.dni,
-											apellido_nombre: r.apellidoNombre,
-											inscripcionId: r.inscripcionId,
-										}))}
-										editId={finalPlanilla?.acta_id || undefined}
-									/>
-								</Paper>
-							</Stack>
-						)}
+						{finalSelectedMesaId && (() => {
+							const esPresidente = selectedMesaResumen?.mi_rol === "Presidente";
+							const esVocal = selectedMesaResumen?.mi_rol === "Vocal 1" || selectedMesaResumen?.mi_rol === "Vocal 2";
+							const fechaMesa = selectedMesaResumen?.fecha ? dayjs(selectedMesaResumen.fecha).startOf("day") : null;
+							const hoy = dayjs().startOf("day");
+							const esFechaFutura = fechaMesa ? fechaMesa.isAfter(hoy) : false;
+
+							let isMesaReadOnly = Boolean(selectedMesaResumen?.esta_cerrada);
+							let readOnlyReason = "";
+
+							if (selectedMesaResumen?.esta_cerrada) {
+								isMesaReadOnly = true;
+								readOnlyReason = "Esta mesa de examen ya se encuentra cerrada administrativamente.";
+							} else if (isDocente) {
+								if (esVocal) {
+									isMesaReadOnly = true;
+									readOnlyReason = "Usted integra el tribunal como Vocal. El acta es de solo lectura y únicamente puede ser completada y firmada por el docente Presidente.";
+								} else if (esPresidente && esFechaFutura) {
+									isMesaReadOnly = true;
+									const fechaFormateada = selectedMesaResumen?.fecha
+										? selectedMesaResumen.fecha.split("-").reverse().join("/")
+										: "";
+									readOnlyReason = `Usted es Presidente de esta mesa. La carga y modificación de calificaciones se habilitará a partir del día fijado para el examen (${fechaFormateada}).`;
+								} else if (!esPresidente && selectedMesaResumen?.puede_editar === false) {
+									isMesaReadOnly = true;
+									readOnlyReason = "No tiene permisos para modificar calificaciones en esta mesa de examen.";
+								}
+							}
+
+							return (
+								<Stack gap={3}>
+									<Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+										<ActaExamenForm
+											strict={!isDocente}
+											title={
+												isDocente
+													? "Carga de calificaciones de mesa"
+													: "Generar acta de examen"
+											}
+											subtitle={
+												isDocente
+													? isMesaReadOnly
+														? "Visualización de calificaciones de la mesa de examen (solo lectura)."
+														: "Complete las notas del examen final para los alumnos inscriptos."
+													: undefined
+											}
+											mesaPreseleccionada={selectedMesaResumen}
+											estudiantesPreseleccionados={finalRows.map((r) => ({
+												dni: r.dni,
+												apellido_nombre: r.apellidoNombre,
+												inscripcionId: r.inscripcionId,
+											}))}
+											editId={finalPlanilla?.acta_id || undefined}
+											readOnly={isMesaReadOnly}
+											readOnlyReason={readOnlyReason}
+										/>
+									</Paper>
+								</Stack>
+							);
+						})()}
 					</Stack>
 				)}
 			</Stack>

@@ -31,4 +31,9 @@ export type ActaExamenFormProps = {
 	mesaPreseleccionada?: MesaResumenDTO | null;
 	/** Estudiantes inscriptos a pre-cargar en la tabla de resultados */
 	estudiantesPreseleccionados?: EstudiantePreseleccionado[];
+	/** Indica si el formulario debe operar en modo solo lectura */
+	readOnly?: boolean;
+	/** Mensaje o motivo de solo lectura para el usuario */
+	readOnlyReason?: string;
 };
+

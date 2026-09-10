@@ -131,6 +131,9 @@ export type MesaResumenDTO = {
 	cupo: number;
 	codigo?: string | null;
 	docentes?: MesaTribunalDocenteDTO[];
+	esta_cerrada?: boolean;
+	mi_rol?: string | null;
+	puede_editar?: boolean;
 };
 
 type MesaTribunalDocenteDTO = {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import date, datetime
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -27,6 +27,7 @@ from .helpers import (
     _resolve_estudiante,
     _user_can_manage_mesa_planilla,
     _user_can_override_planilla_lock,
+    _user_can_view_mesa_planilla,
 )
 from .router import estudiantes_router
 
@@ -58,7 +59,7 @@ def _mesa_planilla_condiciones() -> list[dict]:
 
 @estudiantes_router.get(
     "/mesas/{mesa_id}/planilla",
-    response={200: MesaPlanillaOut, 404: ApiResponse},
+    response={200: MesaPlanillaOut, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
 def obtener_mesa_planilla(request, mesa_id: int):
@@ -76,7 +77,9 @@ def obtener_mesa_planilla(request, mesa_id: int):
     )
     if not mesa:
         return 404, ApiResponse(ok=False, message="Mesa no encontrada.")
-    if not _user_can_manage_mesa_planilla(request, mesa):
+    # Lectura: cualquier integrante del tribunal (presidente o vocal) y el
+    # personal autorizado. La edición se controla aparte, en los endpoints POST.
+    if not _user_can_view_mesa_planilla(request, mesa):
         return 403, ApiResponse(
             ok=False,
             message="Solo los docentes del tribunal o el personal autorizado pueden acceder a esta planilla.",
@@ -125,6 +128,13 @@ def obtener_mesa_planilla(request, mesa_id: int):
 
     esta_cerrada = bool(mesa.planilla_cerrada_en)
     can_override = _user_can_override_planilla_lock(request.user)
+    # Editar exige: no cerrada (o poder forzar), poder gestionar (presidente /
+    # staff, no vocales) y que la fecha de la mesa ya haya llegado.
+    puede_editar = (
+        ((not esta_cerrada) or can_override)
+        and _user_can_manage_mesa_planilla(request, mesa)
+        and mesa.fecha <= date.today()
+    )
 
     return MesaPlanillaOut(
         mesa_id=mesa.id,
@@ -151,7 +161,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
         esta_cerrada=esta_cerrada,
         cerrada_en=mesa.planilla_cerrada_en.isoformat() if mesa.planilla_cerrada_en else None,
         cerrada_por=_format_user_display(mesa.planilla_cerrada_por),
-        puede_editar=(not esta_cerrada) or can_override,
+        puede_editar=puede_editar,
         puede_cerrar=not esta_cerrada,
         puede_reabrir=esta_cerrada and can_override,
         acta_id=mesa.actas_cargadas.values_list("id", flat=True).first(),
@@ -160,7 +170,7 @@ def obtener_mesa_planilla(request, mesa_id: int):
 
 @estudiantes_router.post(
     "/mesas/{mesa_id}/planilla",
-    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
 def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateIn):
@@ -225,7 +235,7 @@ def actualizar_mesa_planilla(request, mesa_id: int, payload: MesaPlanillaUpdateI
 
 @estudiantes_router.post(
     "/mesas/{mesa_id}/cierre",
-    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
 def gestionar_mesa_planilla_cierre(request, mesa_id: int, payload: MesaPlanillaCierreIn):

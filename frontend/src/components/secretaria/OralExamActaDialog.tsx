@@ -22,12 +22,7 @@ import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { descargarActaOralPdf, guardarActaOral } from "@/api/cargaNotas";
-import {
-	generarActaExamenOralPDF,
-	ORAL_SCORE_OPTIONS,
-	type OralTopicScore,
-} from "@/utils/actaOralPdf";
+import { ORAL_SCORE_OPTIONS, type OralTopicScore } from "@/utils/actaOralPdf";
 
 export type OralActFormTopic = {
 	id: string;
@@ -207,38 +202,10 @@ const OralExamActaDialog: React.FC<OralExamActaDialogProps> = ({
 		};
 		try {
 			await onSave(nextValues);
-			if (mesaId && inscripcionId) {
-				const safeName = estudianteNombre
-					.replace(/\s+/g, "_")
-					.replace(/[^\w_-]/g, "");
-				await descargarActaOralPdf(
-					mesaId,
-					inscripcionId,
-					`acta_oral_${safeName}.pdf`,
-				);
-			} else {
-				generarActaExamenOralPDF({
-					actaNumero: nextValues.actaNumero,
-					folioNumero: nextValues.folioNumero,
-					fecha: nextValues.fecha,
-					carrera: carrera ?? "",
-					unidadCurricular: unidadCurricular ?? "",
-					curso: nextValues.curso,
-					estudiante: `${estudianteNombre} - DNI ${estudianteDni}`,
-					tribunal: tribunal ?? {},
-					temasElegidosEstudiante: nextValues.temasEstudiante
-						.filter((i) => i.tema.trim())
-						.map((i) => ({ tema: i.tema.trim(), score: i.score || undefined })),
-					temasSugeridosDocente: nextValues.temasDocente
-						.filter((i) => i.tema.trim())
-						.map((i) => ({ tema: i.tema.trim(), score: i.score || undefined })),
-					notaFinal: nextValues.notaFinal,
-					observaciones: nextValues.observaciones,
-				});
-			}
+			// El acta oral queda guardada en el sistema para que Secretaría la descargue cuando corresponda.
 			onClose();
 		} catch {
-			// el error ya se notific� fuera
+			// el error ya se notificó fuera
 		} finally {
 			setSubmitting(false);
 		}

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
@@ -15,7 +15,7 @@ from ..router import management_router
 from ..schemas import CrearMesaDesdeSolicitudIn, MesaDocenteOut, MesaIn, MesaOut, SolicitudMesaOut
 
 
-def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
+def _serialize_mesa(mesa: MesaExamen, docente_actual=None, is_docente_only: bool = False) -> MesaOut:
     m = mesa.materia
     p = m.plan_de_estudio
     docentes = []
@@ -47,6 +47,27 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
             )
         )
 
+    mi_rol = None
+    if docente_actual:
+        if mesa.docente_presidente_id == docente_actual.id:
+            mi_rol = "Presidente"
+        elif mesa.docente_vocal1_id == docente_actual.id:
+            mi_rol = "Vocal 1"
+        elif mesa.docente_vocal2_id == docente_actual.id:
+            mi_rol = "Vocal 2"
+
+    hoy = date.today()
+    if is_docente_only:
+        # Para docentes: solo el presidente puede editar, y solo a partir del día de la mesa si no está cerrada
+        puede_editar = (
+            mi_rol == "Presidente"
+            and mesa.fecha <= hoy
+            and not bool(mesa.planilla_cerrada_en)
+        )
+    else:
+        # Administración / Secretaría
+        puede_editar = not bool(mesa.planilla_cerrada_en)
+
     est_exc = mesa.estudiante_exclusivo
     est_exc_persona = est_exc.persona if est_exc else None
     return MesaOut(
@@ -75,6 +96,8 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         estudiante_exclusivo_nombre=f"{est_exc_persona.apellido}, {est_exc_persona.nombre}"
         if est_exc_persona
         else None,
+        mi_rol=mi_rol,
+        puede_editar=puede_editar,
     )
 
 
@@ -147,8 +170,9 @@ def list_mesas(
     if tipo and not is_docente_only:
         qs = qs.filter(tipo=tipo.upper())
 
+    docente_actual = _resolve_docente_from_user(request.user) if is_docente_only else None
     qs = qs.order_by("fecha", "hora_desde")
-    return [_serialize_mesa(m) for m in qs]
+    return [_serialize_mesa(m, docente_actual=docente_actual, is_docente_only=is_docente_only) for m in qs]
 
 
 @management_router.post("/mesas", response=MesaOut, auth=JWTAuth())
