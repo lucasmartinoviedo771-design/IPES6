@@ -59,11 +59,7 @@ def _serialize_mesa(mesa: MesaExamen, docente_actual=None, is_docente_only: bool
     hoy = date.today()
     if is_docente_only:
         # Para docentes: solo el presidente puede editar, y solo a partir del día de la mesa si no está cerrada
-        puede_editar = (
-            mi_rol == "Presidente"
-            and mesa.fecha <= hoy
-            and not bool(mesa.planilla_cerrada_en)
-        )
+        puede_editar = mi_rol == "Presidente" and mesa.fecha <= hoy and not bool(mesa.planilla_cerrada_en)
     else:
         # Administración / Secretaría
         puede_editar = not bool(mesa.planilla_cerrada_en)
