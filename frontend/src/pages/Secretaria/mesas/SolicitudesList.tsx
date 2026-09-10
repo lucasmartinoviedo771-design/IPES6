@@ -65,10 +65,16 @@ export const SolicitudesList: React.FC = () => {
 				? [roleOverride.toLowerCase()]
 				: user?.roles?.map((r: string) => r.toLowerCase()) || [],
 		);
+		// Coincide con el permiso "editar_estructura" del backend
+		// ({admin, secretaria, bedel}): el que puede procesar solicitudes de mesa
+		// también tiene que poder ver todos los llamados y sus mesas, no solo el
+		// último. Sin bedel acá, el bedel quedaba pegado a la última ventana sin
+		// forma de cambiar el filtro.
 		return (
 			roles.has("admin") ||
 			roles.has("secretaria") ||
-			roles.has("administrador")
+			roles.has("administrador") ||
+			roles.has("bedel")
 		);
 	}, [roleOverride, user]);
 
@@ -228,8 +234,13 @@ export const SolicitudesList: React.FC = () => {
 		fetchVentanas({ tipo: "MESAS_EXTRA" })
 			.then((vList) => {
 				setVentanas(vList);
+				// Si hay un llamado activo, se abre enfocado en ese (es el que se
+				// está trabajando). Si no hay ninguno activo, se muestran TODOS los
+				// llamados en vez de caer al último: cuando hay dos llamados
+				// extraordinarios seguidos, el bedel necesita ver las solicitudes y
+				// mesas de ambos, no solo las del más reciente.
 				const activa = vList.find((v) => v.activo);
-				const defaultId = activa ? String(activa.id) : (vList.length > 0 ? String(vList[0].id) : "TODAS");
+				const defaultId = activa ? String(activa.id) : "TODAS";
 				setSelectedVentanaId(defaultId);
 				load(defaultId);
 			})
