@@ -27,20 +27,24 @@ from core.permissions import allowed_profesorados
 LIBRO_DIGITAL = "SIGI"
 
 
-def generar_folio_digital() -> str:
+def generar_folio_digital(profesorado_id: int) -> str:
     """
-    Devuelve el folio siguiente del libro digital: correlativo continuo, sin
-    reiniciar por año, empezando en 1.
+    Devuelve el folio siguiente del libro digital PARA ESE PROFESORADO:
+    correlativo propio de cada profesorado, sin reiniciar por año, empezando
+    en 1. Primaria y Inicial llevan cada uno su propia serie SIGI.
 
-    Se toma el máximo folio numérico ya usado en LIBRO_DIGITAL y se le suma uno.
-    Los folios históricos no participan: viven en otros libros y contienen
-    valores no numéricos ("385/2026"), que acá se ignoran.
+    Se toma el máximo folio numérico ya usado en LIBRO_DIGITAL para ese
+    profesorado y se le suma uno. Los folios históricos no participan: viven
+    en otros libros y contienen valores no numéricos ("385/2026"), que acá se
+    ignoran.
 
     IMPORTANTE: debe llamarse dentro de una transacción y bajo select_for_update
-    sobre las actas del libro digital, para que dos cierres simultáneos no
-    obtengan el mismo número.
+    sobre las actas digitales del profesorado, para que dos cierres simultáneos
+    no obtengan el mismo número.
     """
-    folios = ActaExamen.objects.filter(libro=LIBRO_DIGITAL).values_list("folio", flat=True)
+    folios = ActaExamen.objects.filter(libro=LIBRO_DIGITAL, profesorado_id=profesorado_id).values_list(
+        "folio", flat=True
+    )
     maximo = 0
     for folio in folios:
         try:
@@ -48,6 +52,15 @@ def generar_folio_digital() -> str:
         except (TypeError, ValueError):
             continue
     return str(maximo + 1)
+
+
+def clave_registral_digital(profesorado_id: int, folio: str) -> str:
+    """
+    Clave interna UNIQUE de un acta digital. Incluye el profesorado porque el
+    folio ahora es por profesorado: 'SIGI 1' de Primaria y 'SIGI 1' de Inicial
+    son actas distintas y ambas válidas. Formato: 'SIGI/<profesorado_id>/<folio>'.
+    """
+    return f"{LIBRO_DIGITAL}/{profesorado_id}/{folio}"
 
 
 def _nota_label(value: str) -> str:
