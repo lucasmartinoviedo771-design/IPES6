@@ -16,6 +16,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { obtenerResumenMensajes } from "@/api/mensajes";
 import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback";
 import ActaOralConformidadModal from "@/components/estudiantes/ActaOralConformidadModal";
+import MesasPendientesModal from "@/components/estudiantes/MesasPendientesModal";
 import BackButton from "@/components/ui/BackButton";
 import { useAuth } from "@/context/AuthContext";
 import { getDefaultHomeRoute, isOnlyEstudiante } from "@/utils/roles";
@@ -164,6 +165,7 @@ export default function AppShell({ children }: PropsWithChildren) {
 
 			<UserGuideDialog open={guideOpen} onClose={() => setGuideOpen(false)} />
 			<ActaOralConformidadModal />
+			<MesasPendientesModal />
 
 			<AppSidebar
 				open={open}
