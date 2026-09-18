@@ -144,7 +144,7 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
             from django.core import signing
 
             try:
-                data = signing.loads(token_query, max_age=86400 * 7, salt="preinscripcion_pdf_download")
+                data = signing.loads(token_query, max_age=86400, salt="preinscripcion_pdf_download")
                 if data.get("pre_id") == pre.id:
                     autorizado = True
             except Exception:

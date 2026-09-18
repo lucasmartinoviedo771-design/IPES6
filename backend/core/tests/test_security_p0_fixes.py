@@ -76,6 +76,7 @@ def test_f01_preinscripcion_no_sobrescribe_email_de_cuenta_existente():
     assert persona.apellido.upper() != "HACKER"
 
     # Los datos declarados por el formulario se preservan en datos_extra
+    assert pre.datos_extra.get("email_declarado_preinscripcion") == "atacante@malicioso.com"
     assert (
         pre.datos_extra.get("email") == "atacante@malicioso.com"
         or pre.datos_extra.get("estudiante", {}).get("email") == "atacante@malicioso.com"
@@ -122,15 +123,12 @@ def test_f01_preinscripcion_no_rellena_email_vacio_en_cuenta_existente():
     # El email de la cuenta existente DEBE seguir siendo None/vacío
     assert persona.email is None
     assert user.email == ""
-    # El email declarado queda únicamente en datos_extra para control de ventanilla
-    assert (
-        pre.datos_extra.get("email") == "takeover@malicioso.com"
-        or pre.datos_extra.get("estudiante", {}).get("email") == "takeover@malicioso.com"
-    )
+    # El email declarado queda explícitamente en datos_extra['email_declarado_preinscripcion']
+    assert pre.datos_extra.get("email_declarado_preinscripcion") == "takeover@malicioso.com"
 
 
 def test_f02_force_reset_password_jerarquia_y_comprobacion_positiva():
-    """Valida comprobación positiva: ATTP solo puede resetear docentes/estudiantes puros."""
+    """Valida comprobación positiva: ATTP solo puede resetear docentes/estudiantes puros y rechaza roles vacíos."""
     superuser = User.objects.create_superuser(username="admin_supremo", password="pwd")
     admin_group, _ = Group.objects.get_or_create(name="admin")
     attp_group, _ = Group.objects.get_or_create(name="attp")
@@ -159,7 +157,14 @@ def test_f02_force_reset_password_jerarquia_y_comprobacion_positiva():
     payload = ForceResetPasswordIn(username="bedel_user")
     status, res = force_reset_password(DummyRequest(attp_user), payload)
     assert status == 403
-    assert "gestión o staff" in res.get("message", "")
+    assert "estudiantes o docentes" in res.get("message", "")
+
+    # 4. ATTP intenta resetear a usuario sin ningún rol (conjunto vacío) -> 403
+    user_sin_roles = User.objects.create_user(username="usuario_sin_roles", password="pwd")
+    payload = ForceResetPasswordIn(username="usuario_sin_roles")
+    status, res = force_reset_password(DummyRequest(attp_user), payload)
+    assert status == 403
+    assert "estudiantes o docentes" in res.get("message", "")
 
 
 def test_f02_force_reset_solicita_email_oculta_secreto_y_fuerza_cambio():
@@ -312,3 +317,132 @@ def test_f05_weasyprint_bloquea_archivos_fuera_de_logos_y_sibling_dirs(tmp_path)
     ):
         with pytest.raises(ValueError, match="Acceso a recurso externo denegado"):
             safe_weasyprint_url_fetcher(sensitive_file)
+
+
+def test_f04_bloqueo_actualizacion_anonima_con_codigo_y_dni():
+    """Un atacante anónimo conociendo el código secuencial y DNI no debe poder actualizar una preinscripción ni recibir token."""
+    from ninja.errors import HttpError
+
+    carrera = Profesorado.objects.create(nombre="Profesorado de Inglés", duracion_anios=4)
+    persona = Persona.objects.create(
+        dni="55443322",
+        nombre="Carlos",
+        apellido="Lopez",
+        email="carlos.original@test.com",
+    )
+
+    # 1. Crear preinscripción legítima
+    payload_original = PreinscripcionIn(
+        carrera_id=carrera.id,
+        estudiante=EstudianteIn(
+            dni="55443322",
+            apellido="Lopez",
+            nombres="Carlos",
+            email="carlos.original@test.com",
+            fecha_nacimiento="1999-09-09",
+        ),
+    )
+    pre = PreinscripcionService.create_or_update_preinscripcion(payload_original)
+    codigo_secuencial = pre.codigo
+    assert codigo_secuencial.startswith("PRE-")
+
+    # 2. Atacante envía petición anónima usando el código secuencial y DNI de la víctima
+    payload_atacante = PreinscripcionIn(
+        carrera_id=carrera.id,
+        codigo=codigo_secuencial,
+        estudiante=EstudianteIn(
+            dni="55443322",
+            apellido="Lopez",
+            nombres="Carlos",
+            email="attacker@evil.com",
+            fecha_nacimiento="1999-09-09",
+        ),
+    )
+
+    # Debe ser rechazado con 403 Forbidden
+    with pytest.raises(HttpError) as exc_info:
+        PreinscripcionService.create_or_update_preinscripcion(payload_atacante, user=None)
+
+    assert exc_info.value.status_code == 403
+    assert "no son credenciales suficientes" in str(exc_info.value.message)
+
+
+def test_f04_token_expiracion_estricta_24h():
+    """El token de descarga de comprobante debe expirar estrictamente a las 24 horas (86400s)."""
+    import time
+    from unittest.mock import patch
+    from django.core import signing
+
+    carrera = Profesorado.objects.create(nombre="Profesorado Artes", duracion_anios=4)
+    Persona.objects.create(dni="33221100", nombre="Ana", apellido="Perez", email="ana@test.com")
+    pre = PreinscripcionService.create_or_update_preinscripcion(
+        PreinscripcionIn(
+            carrera_id=carrera.id,
+            estudiante=EstudianteIn(
+                dni="33221100",
+                apellido="Perez",
+                nombres="Ana",
+                email="ana@test.com",
+                fecha_nacimiento="1996-06-06",
+            ),
+        )
+    )
+
+    # Token emitido hace 48 horas (172800s en el pasado)
+    old_time = time.time() - 172800
+    with patch("time.time", return_value=old_time):
+        token_48h = signing.dumps({"pre_id": pre.id}, salt="preinscripcion_pdf_download")
+
+    # Intentar descargar con token de 48h -> debe devolver 403 Forbidden
+    req = DummyRequest(None, get_params={"token": token_48h})
+    resp = preinscripcion_pdf(req, preinscripcion_id=pre.id)
+    assert resp.status_code == 403
+
+    # Token fresco (emitido ahora) -> debe autorizar 200 OK
+    token_reciente = signing.dumps({"pre_id": pre.id}, salt="preinscripcion_pdf_download")
+    with patch("apps.preinscriptions.views_pdf.HTML") as mock_html:
+        mock_html.return_value.write_pdf.return_value = b"%PDF-dummy"
+        req_valido = DummyRequest(None, get_params={"token": token_reciente})
+        resp_valido = preinscripcion_pdf(req_valido, preinscripcion_id=pre.id)
+        assert resp_valido.status_code == 200
+
+
+def test_must_change_password_bloquea_acceso_servidor_api():
+    """Usuarios con must_change_password=True deben ser bloqueados por el servidor en endpoints operativos."""
+    from apps.common.errors import AppError
+    from core.auth_ninja import JWTAuth
+    from core.authentication.jwt_service import JWTService
+
+    user = User.objects.create_user(username="usuario_debe_cambiar", password="pwd")
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.must_change_password = True
+    profile.save(update_fields=["must_change_password"])
+
+    token = JWTService.create_access_token(user.id)
+
+    class MockRequest:
+        def __init__(self, path: str):
+            self.path = path
+            self.COOKIES = {}
+            self.headers = {"Authorization": f"Bearer {token}"}
+            self.user = None
+
+    auth = JWTAuth()
+
+    # 1. Petición a endpoint operativo -> bloqueado con 403
+    req_estudiantes = MockRequest(path="/api/estudiantes/")
+    with pytest.raises(AppError) as exc_info:
+        auth(req_estudiantes)
+    assert exc_info.value.status_code == 403
+    assert "cambiar su contraseña obligatoriamente" in str(exc_info.value.message)
+
+    # 2. Petición a endpoint de cambio de clave -> permitido
+    req_cambio = MockRequest(path="/api/auth/change-password/")
+    auth_user = auth(req_cambio)
+    assert auth_user == user
+
+    # 3. Petición a perfil -> permitido
+    req_perfil = MockRequest(path="/api/auth/profile/")
+    auth_user_perfil = auth(req_perfil)
+    assert auth_user_perfil == user
+

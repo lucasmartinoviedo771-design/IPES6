@@ -302,8 +302,34 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: int |
     if not verify_recaptcha(getattr(payload, "captcha_token", None), client_ip(request)):
         raise HttpError(400, "Error en validación de seguridad (CAPTCHA).")
 
-    preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload)
-    download_token = PreinscripcionService.generate_pdf_token(preinscripcion.id)
+    user = getattr(request, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        try:
+            user = JWTAuth()(request)
+        except Exception:
+            user = None
+
+    preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload, user=user)
+
+    # Seguridad (F04): Entrega protegida de download_token.
+    # Se emite únicamente si la solicitud fue creada en esta misma petición o si el
+    # solicitante acreditó fehacientemente ser el titular o personal con alcance.
+    is_created = getattr(preinscripcion, "_is_newly_created", False)
+    is_auth_titular_or_staff = bool(
+        user
+        and getattr(user, "is_authenticated", False)
+        and (
+            str(getattr(user, "username", "")) == str(preinscripcion.alumno.persona.dni)
+            or user == getattr(preinscripcion.alumno, "user", None)
+            or getattr(user, "is_staff", False)
+            or getattr(user, "is_superuser", False)
+        )
+    )
+
+    download_token = None
+    if is_created or is_auth_titular_or_staff:
+        download_token = PreinscripcionService.generate_pdf_token(preinscripcion.id)
+
     return ApiResponse(
         ok=True,
         message="Solicitud enviada correctamente.",

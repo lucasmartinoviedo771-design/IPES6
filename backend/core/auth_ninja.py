@@ -35,6 +35,9 @@ class JWTAuth(AuthBase):
         """
         # Prioridad 1: Sesión ya autenticada (ej: Panel de Admin de Django)
         if getattr(request, "user", None) and request.user.is_authenticated:
+            from core.permissions import check_must_change_password
+
+            check_must_change_password(request, request.user)
             return request.user
 
         # Prioridad 2: Cookie de acceso (HttpOnly)
@@ -62,6 +65,9 @@ class JWTAuth(AuthBase):
             user = User.objects.get(pk=user_id, is_active=True)
             request.user = user
             request.jwt_payload = payload
+            from core.permissions import check_must_change_password
+
+            check_must_change_password(request, user)
             return user
         except User.DoesNotExist:
             return None

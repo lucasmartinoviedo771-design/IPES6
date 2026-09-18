@@ -86,7 +86,7 @@ def map_genero(value: str | None) -> str | None:
 class PreinscripcionService:
     @staticmethod
     @transaction.atomic
-    def create_or_update_preinscripcion(payload: PreinscripcionIn) -> Preinscripcion:
+    def create_or_update_preinscripcion(payload: PreinscripcionIn, user=None) -> Preinscripcion:
         from apps.common.name_utils import normalizar_apellido, normalizar_nombres
 
         estudiante_data = payload.estudiante
@@ -108,6 +108,7 @@ class PreinscripcionService:
         # un formulario anónimo de preinscripción NO PUEDE alterar su correo de recuperación
         # ni su identidad verificada. Los datos nuevos declarados quedan en Preinscripcion.datos_extra.
         persona = Persona.objects.filter(dni=dni).first()
+        tiene_cuenta = False
         if persona:
             tiene_cuenta = (
                 hasattr(persona, "user_profile")
@@ -127,7 +128,7 @@ class PreinscripcionService:
                 # Cuenta existente: bajo ninguna circunstancia se sobrescribe ni se completa el email
                 # desde un formulario público anónimo, para evitar Account Takeover (F01).
                 # Tampoco se alteran nombre ni apellido ya verificados.
-                # Lo declarado por el postulante queda en datos_extra para control de ventanilla.
+                # Lo declarado por el postulante queda en datos_extra['email_declarado_preinscripcion'].
                 update_fields = []
                 if not persona.telefono and estudiante_data.telefono:
                     persona.telefono = estudiante_data.telefono
@@ -152,9 +153,9 @@ class PreinscripcionService:
         # 2. Estudiante
         estudiante = Estudiante.objects.filter(persona=persona).first()
         if not estudiante:
-            user, _ = User.objects.get_or_create(username=dni)
+            user_obj, _ = User.objects.get_or_create(username=dni)
             estudiante = Estudiante.objects.create(
-                user=user,
+                user=user_obj,
                 persona=persona,
             )
         else:
@@ -163,13 +164,40 @@ class PreinscripcionService:
         # 3. Preinscripción
         current_year = datetime.now().year
 
+        is_auth = bool(user and getattr(user, "is_authenticated", False))
+        is_titular = bool(is_auth and (str(getattr(user, "username", "")) == str(dni)))
+        is_staff = bool(
+            is_auth
+            and (
+                getattr(user, "is_superuser", False)
+                or getattr(user, "is_staff", False)
+                or user.groups.filter(name__in=["admin", "secretaria", "bedel", "coordinador"]).exists()
+            )
+        )
+
         if getattr(payload, "codigo", None):
             preinscripcion = Preinscripcion.objects.filter(codigo__iexact=payload.codigo).first()
             if not preinscripcion:
                 from ninja.errors import HttpError
 
                 raise HttpError(404, "Preinscripción no encontrada para el código provisto.")
-            if preinscripcion.estado == "Confirmada":
+
+            # Seguridad (F04): El código secuencial y el DNI NO constituyen credenciales de autorización.
+            # No se permite actualizar una preinscripción existente mediante peticiones anónimas.
+            is_titular_match = is_titular and (
+                str(getattr(user, "username", "")) == str(preinscripcion.alumno.persona.dni)
+                or user == getattr(preinscripcion.alumno, "user", None)
+            )
+            if not (is_titular_match or is_staff):
+                from ninja.errors import HttpError
+
+                raise HttpError(
+                    403,
+                    "No autorizado: el código de comprobante y DNI no son credenciales suficientes para modificar datos. "
+                    "Debe iniciar sesión como titular o solicitar asistencia en Bedelía.",
+                )
+
+            if preinscripcion.estado == "Confirmada" and not is_staff:
                 from ninja.errors import HttpError
 
                 raise HttpError(400, "La preinscripción ya ha sido confirmada y no puede ser modificada.")
@@ -185,16 +213,26 @@ class PreinscripcionService:
                 anio=current_year,
             ).first()
             if existing:
-                if existing.activa:
+                is_titular_match = is_titular and (
+                    str(getattr(user, "username", "")) == str(existing.alumno.persona.dni)
+                    or user == getattr(existing.alumno, "user", None)
+                )
+                if not (is_titular_match or is_staff):
                     from ninja.errors import HttpError
 
                     raise HttpError(
-                        400, "Ya existe una preinscripción activa para esta carrera en el ciclo lectivo actual."
+                        400,
+                        "Ya existe una preinscripción registrada para esta carrera en el ciclo lectivo actual. "
+                        "Para realizar modificaciones o consultar su estado, inicie sesión o contacte a Bedelía.",
                     )
-                else:
-                    preinscripcion = existing
-                    preinscripcion.activa = True
-                    created = False
+                if existing.estado == "Confirmada" and not is_staff:
+                    from ninja.errors import HttpError
+
+                    raise HttpError(400, "La preinscripción ya ha sido confirmada y no puede ser modificada.")
+
+                preinscripcion = existing
+                preinscripcion.activa = True
+                created = False
             else:
                 preinscripcion = Preinscripcion(
                     alumno=estudiante,
@@ -205,7 +243,12 @@ class PreinscripcionService:
 
         preinscripcion.estado = "Enviada"
         preinscripcion.foto_4x4_dataurl = payload.foto_4x4_dataurl
-        preinscripcion.datos_extra = convert_dates_to_iso(data_dict.copy())
+
+        extra_dict = convert_dates_to_iso(data_dict.copy())
+        if tiene_cuenta:
+            # Auditoría (F01): Registrar explícitamente el correo declarado por el postulante sin mutar la identidad
+            extra_dict["email_declarado_preinscripcion"] = estudiante_data.email
+        preinscripcion.datos_extra = extra_dict
         preinscripcion.cuil = estudiante_data.cuil
 
         if created or not preinscripcion.codigo:
@@ -213,6 +256,7 @@ class PreinscripcionService:
             preinscripcion.codigo = _generar_codigo(preinscripcion.id)
 
         preinscripcion.save()
+        preinscripcion._is_newly_created = created
         return preinscripcion
 
     @staticmethod

@@ -471,3 +471,52 @@ def ensure_profesorado_access(
         return
 
     raise AppError(403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos sobre este profesorado.")
+
+
+def check_must_change_password(request, user: User | None) -> None:
+    """
+    Seguridad: Impone el cambio obligatorio de contraseña en el servidor.
+    Si el usuario tiene 'must_change_password' activo (en UserProfile o Estudiante),
+    se le bloquea el acceso a todas las rutas protegidas del sistema excepto los
+    endpoints indispensables para consultar perfil y actualizar la credencial.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return
+
+    # Superusuarios sin flag explícito no son bloqueados
+    profile = getattr(user, "profile", None)
+    must_change = bool(profile and profile.must_change_password)
+
+    if not must_change:
+        estudiante = getattr(user, "estudiante", None) or getattr(user, "estudiante_perfil", None)
+        if not estudiante and getattr(user, "username", None):
+            try:
+                from core.models import Estudiante
+
+                estudiante = Estudiante.objects.filter(persona__dni=user.username).first()
+            except Exception:
+                estudiante = None
+        must_change = bool(estudiante and estudiante.must_change_password)
+
+    if not must_change:
+        return
+
+    # Lista blanca de endpoints indispensables para resolver la obligación o gestionar la sesión
+    path = getattr(request, "path", "") or ""
+    normalized_path = path.rstrip("/")
+
+    allowed_endpoints = {
+        "/api/auth/profile",
+        "/api/auth/change-password",
+        "/api/auth/logout",
+        "/api/auth/refresh",
+        "/api/auth/stop-impersonate",
+    }
+
+    if normalized_path and normalized_path not in allowed_endpoints:
+        raise AppError(
+            403,
+            AppErrorCode.PERMISSION_DENIED,
+            "Debe cambiar su contraseña obligatoriamente antes de poder acceder a otras funciones del sistema.",
+        )
+

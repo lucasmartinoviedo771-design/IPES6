@@ -189,11 +189,11 @@ def force_reset_password(request, payload: ForceResetPasswordIn):
         return 403, {"message": "No se puede restablecer la contraseña de un administrador."}
 
     # 3. Comprobación positiva de destinatarios: operadores no administradores (ej: attp, bedel)
-    # SOLO pueden resetear usuarios cuyo conjunto de roles sea exclusivamente docente y/o estudiante.
+    # SOLO pueden resetear usuarios cuyo conjunto de roles contenga al menos un rol y sea exclusivamente docente y/o estudiante.
     if not is_admin:
         roles_permitidos = {"estudiante", "docente"}
-        if not target_roles.issubset(roles_permitidos):
-            return 403, {"message": "No tenés autorización para restablecer contraseñas de cuentas de gestión o staff."}
+        if not target_roles or not target_roles.issubset(roles_permitidos):
+            return 403, {"message": "No tenés autorización para restablecer contraseñas de cuentas que no sean estudiantes o docentes."}
 
     from django.conf import settings
     from django.core.exceptions import ValidationError
