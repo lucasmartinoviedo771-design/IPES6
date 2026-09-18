@@ -76,40 +76,48 @@ class EstudianteService:
             .order_by("persona__apellido", "persona__nombre", "persona__dni")
         )
 
-        # 1. Base filter: Si hay restricciones de carrera, aplicarlas SIEMPRE
+        # 1. Base filter: todas las condiciones que apuntan a `carreras_detalle`
+        # (carrera permitida/elegida, estado académico, estado de legajo, año de
+        # ingreso por carrera) se combinan en UN SOLO .filter() con kwargs.
+        # Django resuelve varios .filter() encadenados sobre una relación
+        # multivaluada como JOINs independientes: cada uno puede matchear una
+        # fila relacionada distinta del mismo estudiante. Por ejemplo, un bedel
+        # de Primaria filtrando por legajo "Condicional" podía traer alumnos
+        # cuya carrera de Primaria estuviera COMPLETA, solo porque tenían OTRA
+        # carrera (a la que el bedel ni siquiera tiene acceso) con legajo
+        # incompleto. Un único filter(**kwargs) fuerza que todas las
+        # condiciones se cumplan en la MISMA fila de EstudianteCarrera.
+        carrera_filter_kwargs: dict = {}
+
         if allowed_carrera_ids is not None:
-            # Si el usuario eligió una carrera específica, debe estar dentro de sus permitidas
             if carrera_id:
                 if carrera_id not in allowed_carrera_ids:
                     return EstudianteAdminListResponse(total=0, items=[])
-                # Filtrar específicamente por esa carrera y opcionalmente por estado
-                if estado_academico:
-                    qs = qs.filter(
-                        carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico
-                    )
-                else:
-                    qs = qs.filter(carreras__id=carrera_id)
+                carrera_filter_kwargs["carreras_detalle__profesorado_id"] = carrera_id
             else:
-                # "Todas": Pero solo dentro de sus permitidas
-                if estado_academico:
-                    # Debe tener al menos una de SUS carreras en el estado buscado
-                    qs = qs.filter(
-                        carreras_detalle__profesorado_id__in=allowed_carrera_ids,
-                        carreras_detalle__estado_academico=estado_academico,
-                    )
-                else:
-                    qs = qs.filter(carreras__id__in=allowed_carrera_ids)
-        else:
-            # 2. Lógica para Admins sin restricciones (ven todo)
-            if carrera_id:
-                if estado_academico:
-                    qs = qs.filter(
-                        carreras_detalle__profesorado_id=carrera_id, carreras_detalle__estado_academico=estado_academico
-                    )
-                else:
-                    qs = qs.filter(carreras__id=carrera_id)
-            elif estado_academico:
-                qs = qs.filter(carreras_detalle__estado_academico=estado_academico)
+                carrera_filter_kwargs["carreras_detalle__profesorado_id__in"] = allowed_carrera_ids
+        elif carrera_id:
+            carrera_filter_kwargs["carreras_detalle__profesorado_id"] = carrera_id
+
+        if estado_academico:
+            carrera_filter_kwargs["carreras_detalle__estado_academico"] = estado_academico
+
+        if condicion_filter:
+            # estado_legajo en EstudianteCarrera es COM/INC/PEN y se mantiene
+            # actualizado por _recalcular_estado_legajo_ec cada vez que se edita
+            # el legajo.
+            carrera_filter_kwargs["carreras_detalle__estado_legajo"] = condicion_filter.upper()
+
+        if anio_ingreso and carrera_id:
+            # Si filtran por carrera + año, chequeamos el año específico de ingreso en esa carrera
+            carrera_filter_kwargs["carreras_detalle__anio_ingreso"] = anio_ingreso
+
+        if carrera_filter_kwargs:
+            qs = qs.filter(**carrera_filter_kwargs)
+
+        if anio_ingreso and not carrera_id:
+            # Si es genérico (sin carrera puntual), chequeamos el año de ingreso base del alumno
+            qs = qs.filter(anio_ingreso=anio_ingreso)
 
         # 3. Filtros generales
         if q:
@@ -121,21 +129,7 @@ class EstudianteService:
                 | Q(legajo__icontains=q_clean)
             )
 
-        if anio_ingreso:
-            if carrera_id:
-                # Si filtran por carrera + año, chequeamos el año específico de ingreso en esa carrera
-                qs = qs.filter(carreras_detalle__profesorado_id=carrera_id, carreras_detalle__anio_ingreso=anio_ingreso)
-            else:
-                # Si es genérico, chequeamos el año de ingreso base del alumno
-                qs = qs.filter(anio_ingreso=anio_ingreso)
-
         qs = qs.distinct()
-
-        if condicion_filter:
-            # estado_legajo en EstudianteCarrera es COM/INC/PEN y se mantiene
-            # actualizado por _recalcular_estado_legajo_ec cada vez que se edita
-            # el legajo. Filtrar por él en SQL elimina el Caso B (materializar todo).
-            qs = qs.filter(carreras_detalle__estado_legajo=condicion_filter.upper())
 
         total = qs.count()
         paginated = list(qs[offset : offset + limit] if limit else qs[offset:])
