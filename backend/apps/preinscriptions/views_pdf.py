@@ -61,34 +61,55 @@ from weasyprint import HTML
 
 def safe_weasyprint_url_fetcher(url, timeout=5, ssl_context=None):
     """
-    Control de seguridad (F05 - Anti-SSRF):
+    Control de seguridad (F05 - Anti-SSRF y Path Traversal):
     Permite únicamente esquemas 'data:' (ej: data:image/png;base64,...) y archivos
-    estáticos locales del proyecto. Bloquea cualquier petición HTTP/HTTPS a localhost,
-    redes internas o internet.
+    estáticos locales estrictamente acotados a logos institucionales y fotos de alumnos.
+    Bloquea peticiones HTTP/HTTPS a localhost, redes internas o internet,
+    y previene acceso a rutas hermanas o fuera del subdirectorio permitido usando is_relative_to.
     """
+    from pathlib import Path
+
     import weasyprint
 
-    if str(url).startswith("data:"):
+    url_str = str(url)
+    if url_str.startswith("data:"):
         return weasyprint.default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
 
-    if str(url).startswith("file://"):
-        file_path = str(url)[7:]
-        real_path = os.path.realpath(file_path)
-        allowed_dirs = [os.path.realpath(settings.BASE_DIR)]
+    if url_str.startswith("file://"):
+        file_path = url_str[7:]
+        try:
+            target = Path(file_path).resolve()
+        except Exception:
+            raise ValueError(f"Ruta de archivo inválida: {url}")
+
+        allowed_dirs: list[Path] = []
+        # Directorios específicos y acotados permitidos para recursos PDF:
+        # 1. Logos oficiales institucionales
+        logos_dir = (Path(settings.BASE_DIR) / "static" / "logos").resolve()
+        if logos_dir.exists():
+            allowed_dirs.append(logos_dir)
+        backend_logos_dir = (Path(settings.BASE_DIR) / "backend" / "static" / "logos").resolve()
+        if backend_logos_dir.exists():
+            allowed_dirs.append(backend_logos_dir)
+        # 2. Fotos de alumnos en media (subcarpeta fotos)
         if getattr(settings, "MEDIA_ROOT", None):
-            allowed_dirs.append(os.path.realpath(settings.MEDIA_ROOT))
-        if any(real_path.startswith(d) for d in allowed_dirs):
+            media_fotos = (Path(settings.MEDIA_ROOT) / "fotos").resolve()
+            if media_fotos.exists():
+                allowed_dirs.append(media_fotos)
+
+        is_allowed = any(target.is_relative_to(d) for d in allowed_dirs)
+        if is_allowed and target.is_file():
             return weasyprint.default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
 
     raise ValueError(f"Acceso a recurso externo denegado por seguridad: {url}")
 
 
 def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | None = None, **kwargs):
-    """Genera el PDF de la preinscripción con control de autorización y anti-SSRF."""
+    """Genera el PDF de la preinscripción con control de autorización estricto y anti-SSRF."""
     from django.http import HttpResponseForbidden
 
     from core.auth_ninja import JWTAuth
-    from core.permissions import get_user_roles
+    from core.permissions import ensure_profesorado_access, get_user_roles
 
     pid = preinscripcion_id or pk or kwargs.get("preinscripcion_id") or kwargs.get("pk")
     pre = get_object_or_404(Preinscripcion, pk=pid)
@@ -100,23 +121,26 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
 
     autorizado = False
     if user and user.is_authenticated:
-        roles = get_user_roles(user)
-        is_staff = user.is_superuser or bool(
-            roles & {"admin", "secretaria", "bedel", "coordinador", "attp", "jefa_aaee"}
-        )
         is_owner = (user.username == getattr(getattr(pre.alumno, "persona", None), "dni", None)) or (
             user.id == getattr(pre.alumno, "user_id", None)
         )
-        if is_staff or is_owner:
+        if is_owner or user.is_superuser:
             autorizado = True
+        else:
+            roles = get_user_roles(user)
+            is_staff = bool(roles & {"admin", "secretaria", "bedel", "coordinador", "attp", "jefa_aaee"})
+            if is_staff:
+                # Comprobar alcance por carrera para operadores de staff (F04)
+                try:
+                    ensure_profesorado_access(user, pre.carrera_id)
+                    autorizado = True
+                except Exception:
+                    autorizado = False
 
-    # 2. Descarga legítima con comprobante o token de preinscripción
+    # 2. Descarga con token firmado criptográficamente (F04: NO se admite código predecible)
     if not autorizado:
-        codigo_query = request.GET.get("codigo")
         token_query = request.GET.get("token")
-        if codigo_query and pre.codigo and codigo_query.strip().upper() == pre.codigo.strip().upper():
-            autorizado = True
-        elif token_query:
+        if token_query:
             from django.core import signing
 
             try:
@@ -127,7 +151,9 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
                 pass
 
     if not autorizado:
-        return HttpResponseForbidden("Acceso denegado: se requiere autorización para descargar este comprobante.")
+        return HttpResponseForbidden(
+            "Acceso denegado: se requiere usuario autenticado con permisos en la carrera o un token firmado válido para descargar este comprobante."
+        )
 
     # Mapeo de datos para la plantilla (usando el mismo esquema que el frontend)
     # Intentamos obtener datos del estudiante vinculado o de los datos_extra del formulario

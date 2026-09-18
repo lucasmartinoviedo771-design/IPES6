@@ -303,6 +303,7 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: int |
         raise HttpError(400, "Error en validación de seguridad (CAPTCHA).")
 
     preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload)
+    download_token = PreinscripcionService.generate_pdf_token(preinscripcion.id)
     return ApiResponse(
         ok=True,
         message="Solicitud enviada correctamente.",
@@ -310,6 +311,7 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: int |
             "id": preinscripcion.id,
             "codigo": preinscripcion.codigo,
             "estado": preinscripcion.estado,
+            "download_token": download_token,
         },
     )
 

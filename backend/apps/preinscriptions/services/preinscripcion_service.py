@@ -124,11 +124,11 @@ class PreinscripcionService:
                 persona.cuil = getattr(estudiante_data, "cuil", None) or persona.cuil
                 persona.save()
             else:
-                # Cuenta existente: no pisar el email registrado. Solo rellenar si estaba en blanco.
+                # Cuenta existente: bajo ninguna circunstancia se sobrescribe ni se completa el email
+                # desde un formulario público anónimo, para evitar Account Takeover (F01).
+                # Tampoco se alteran nombre ni apellido ya verificados.
+                # Lo declarado por el postulante queda en datos_extra para control de ventanilla.
                 update_fields = []
-                if not persona.email and estudiante_data.email:
-                    persona.email = estudiante_data.email
-                    update_fields.append("email")
                 if not persona.telefono and estudiante_data.telefono:
                     persona.telefono = estudiante_data.telefono
                     update_fields.append("telefono")
@@ -380,3 +380,10 @@ class PreinscripcionService:
         pre.carrera_id = carrera_id
         pre.save(update_fields=["carrera"])
         return pre, None
+
+    @staticmethod
+    def generate_pdf_token(preinscripcion_id: int) -> str:
+        """Genera un token firmado temporal y criptográficamente seguro para la descarga del comprobante PDF."""
+        from django.core import signing
+
+        return signing.dumps({"pre_id": preinscripcion_id}, salt="preinscripcion_pdf_download")

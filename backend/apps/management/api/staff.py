@@ -188,11 +188,12 @@ def force_reset_password(request, payload: ForceResetPasswordIn):
     if ("admin" in target_roles) and not is_admin:
         return 403, {"message": "No se puede restablecer la contraseña de un administrador."}
 
-    # 3. Operadores no administradores (ej: attp) solo pueden resetear docentes/estudiantes
+    # 3. Comprobación positiva de destinatarios: operadores no administradores (ej: attp, bedel)
+    # SOLO pueden resetear usuarios cuyo conjunto de roles sea exclusivamente docente y/o estudiante.
     if not is_admin:
-        roles_gestion_protegidos = {"secretaria", "rectorado", "jefa_aaee", "jefes"}
-        if target_roles & roles_gestion_protegidos:
-            return 403, {"message": "No tenés autorización para restablecer contraseñas de cuentas de gestión."}
+        roles_permitidos = {"estudiante", "docente"}
+        if not target_roles.issubset(roles_permitidos):
+            return 403, {"message": "No tenés autorización para restablecer contraseñas de cuentas de gestión o staff."}
 
     from django.conf import settings
     from django.core.exceptions import ValidationError
@@ -255,13 +256,14 @@ def force_reset_password(request, payload: ForceResetPasswordIn):
     user.is_active = True
     user.save()
 
+    # Toda asignación administrativa de contraseña exige cambio obligatorio en el próximo login
     profile, _ = UserProfile.objects.get_or_create(user=user)
-    profile.must_change_password = using_default
+    profile.must_change_password = True
     profile.save(update_fields=["must_change_password"])
 
     email_enviado = False
     try:
-        send_mail(
+        num_sent = send_mail(
             subject="IPES Paulo Freire - Contraseña de acceso restablecida",
             message=(
                 f"Hola {user.first_name or user.username},\n\n"
@@ -276,22 +278,24 @@ def force_reset_password(request, payload: ForceResetPasswordIn):
             recipient_list=[email_destino],
             fail_silently=True,
         )
-        email_enviado = True
+        email_enviado = bool(num_sent and num_sent > 0)
     except Exception:
-        pass
+        email_enviado = False
 
     if email_enviado:
-        msg = f"Contraseña de {user.username} reseteada exitosamente y enviada a su correo ({email_destino})."
+        msg = (
+            f"Contraseña de {user.username} reseteada exitosamente y enviada a su correo registrado ({email_destino})."
+        )
     else:
         msg = (
-            f"Contraseña de {user.username} reseteada exitosamente. Contraseña temporal generada: {new_pass}"
+            f"Contraseña de {user.username} reseteada exitosamente. No se pudo entregar por correo; contraseña temporal: {new_pass}"
             if using_default
             else f"Contraseña de {user.username} reseteada exitosamente."
         )
 
     return 200, {
         "message": msg,
-        "temp_password": new_pass if using_default else None,
+        "temp_password": new_pass if (using_default and not email_enviado) else None,
         "email_enviado": email_enviado,
         "email_destino": email_destino,
     }
