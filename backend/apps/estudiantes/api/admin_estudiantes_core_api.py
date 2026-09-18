@@ -21,7 +21,7 @@ from core.models import (
     Regularidad,
     ResidenciaCondicional,
 )
-from core.permissions import allowed_profesorados, ensure_profesorado_access, require
+from core.permissions import allowed_profesorados, ensure_profesorado_access, get_user_roles, require
 
 from ..schemas import (
     AutorizarRendirIn,
@@ -298,9 +298,15 @@ def admin_reset_estudiante_password(request, dni: str):
 def admin_autorizar_rendir(request, dni: str, payload: AutorizarRendirIn):
     """
     Activa o desactiva la autorización excepcional para rendir exámenes finales
-    con legajo incompleto. Solo Secretaría y Bedelía pueden usar este endpoint.
+    con legajo incompleto. Solo Secretaría puede usar este endpoint: es una
+    excepción que saltea validaciones normales, no es potestad de Bedelía.
     """
     require(request.user, "editar_estudiantes")
+    if not (get_user_roles(request.user) & {"admin", "secretaria"}):
+        from apps.common.constants import AppErrorCode
+        from apps.common.errors import raise_app_error
+
+        raise_app_error(403, AppErrorCode.PERMISSION_DENIED, "Solo Secretaría puede autorizar esta excepción.")
     est = get_object_or_404(Estudiante, persona__dni=dni)
 
     est.autorizado_rendir = payload.autorizado

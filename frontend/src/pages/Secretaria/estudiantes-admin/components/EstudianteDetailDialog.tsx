@@ -79,6 +79,7 @@ type Props = {
 	agregarCarreraIsPending?: boolean;
 	isReadOnly?: boolean;
 	isAdmin?: boolean;
+	canAutorizarExcepcion?: boolean;
 	isAttp?: boolean;
 	isRectorado?: boolean;
 	canResetPassword?: boolean;
@@ -112,6 +113,7 @@ export function EstudianteDetailDialog({
 	agregarCarreraIsPending,
 	isReadOnly = false,
 	isAdmin = true,
+	canAutorizarExcepcion = true,
 	isAttp = false,
 	isRectorado = false,
 	canResetPassword = false,
@@ -171,19 +173,21 @@ export function EstudianteDetailDialog({
 										iconPosition="start"
 										label="Legajo"
 									/>
-									<Tab
-										icon={
-											<Badge
-												color="warning"
-												variant="dot"
-												invisible={!autorizadoSwitch}
-											>
-												<VerifiedUserIcon />
-											</Badge>
-										}
-										iconPosition="start"
-										label="Autorización"
-									/>
+									{canAutorizarExcepcion && (
+										<Tab
+											icon={
+												<Badge
+													color="warning"
+													variant="dot"
+													invisible={!autorizadoSwitch}
+												>
+													<VerifiedUserIcon />
+												</Badge>
+											}
+											iconPosition="start"
+											label="Autorización"
+										/>
+									)}
 								</Tabs>
 							</Box>
 						)}
@@ -259,6 +263,7 @@ export function EstudianteDetailDialog({
 							agregarCarreraIsPending={agregarCarreraIsPending}
 							detailData={detailQuery.data}
 							isAdmin={isAdmin}
+							canAutorizarExcepcion={canAutorizarExcepcion}
 							isAttp={isAttp}
 							isRectorado={isRectorado}
 							carrerasDetalle={detailQuery.data?.carreras_detalle}

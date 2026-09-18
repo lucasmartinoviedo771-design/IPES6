@@ -12,7 +12,7 @@ import {
 import BackButton from "@/components/ui/BackButton";
 import FinalConfirmationDialog from "@/components/ui/FinalConfirmationDialog";
 import { useAuth } from "@/context/AuthContext";
-import { hasCapability } from "@/utils/roles";
+import { hasCapability, hasRole } from "@/utils/roles";
 import { AgregarEstudianteExternoPanel } from "./estudiantes-admin/components/AgregarEstudianteExternoPanel";
 import { EstudianteDetailDialog } from "./estudiantes-admin/components/EstudianteDetailDialog";
 import { EstudiantesFilterBar } from "./estudiantes-admin/components/EstudiantesFilterBar";
@@ -45,6 +45,9 @@ export default function EstudiantesAdminPage() {
 	const isRectorado = isReadOnly;
 	const isAttp = isReadOnly;
 	const canResetPassword = hasCapability(user, "resetear_password_estudiante");
+	// La autorización excepcional para rendir finales es potestad exclusiva de
+	// Secretaría: bedel puede editar el resto del legajo pero no esta pestaña.
+	const canAutorizarExcepcion = hasRole(user, "admin") || hasRole(user, "secretaria");
 
 	const [search, setSearch] = useState("");
 	const debouncedSearch = useDebouncedValue(search);
@@ -342,6 +345,7 @@ export default function EstudiantesAdminPage() {
 				}
 				isReadOnly={isReadOnly}
 				isAdmin={isAdminOrSec}
+				canAutorizarExcepcion={canAutorizarExcepcion}
 				isAttp={isAttp}
 				isRectorado={isRectorado}
 				canResetPassword={canResetPassword}
