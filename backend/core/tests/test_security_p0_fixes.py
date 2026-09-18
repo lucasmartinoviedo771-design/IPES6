@@ -446,3 +446,81 @@ def test_must_change_password_bloquea_acceso_servidor_api():
     auth_user_perfil = auth(req_perfil)
     assert auth_user_perfil == user
 
+
+@pytest.mark.parametrize("existing_identity", [False, True])
+def test_public_token_requires_new_identity(existing_identity):
+    from django.test import Client
+
+    carrera = Profesorado.objects.create(nombre="Token scope", duracion_anios=4)
+    if existing_identity:
+        persona = Persona.objects.create(
+            dni="90112233", nombre="Original", apellido="Original", email="private@example.invalid"
+        )
+        account = User.objects.create_user(username="90112233")
+        UserProfile.objects.create(user=account, persona=persona)
+    body = {
+        "carrera_id": carrera.id,
+        "estudiante": {
+            "dni": "90112233",
+            "nombres": "Declarado",
+            "apellido": "Declarado",
+            "email": "declared@example.invalid",
+            "fecha_nacimiento": "2000-01-01",
+        },
+    }
+    with patch("apps.preinscriptions.api.ventana_preinscripcion_activa", return_value=True):
+        response = Client().post("/api/preinscripciones", body, content_type="application/json")
+    assert response.status_code == 200
+    assert bool(response.json()["data"]["download_token"]) is (not existing_identity)
+
+
+@pytest.mark.parametrize(
+    "own_career,state,expected",
+    [(False, "Enviada", 403), (False, "Confirmada", 403), (True, "Confirmada", 400), (True, "Enviada", 200)],
+)
+def test_staff_application_scope_and_confirmed_state(own_career, state, expected):
+    from django.test import Client
+    from core.authentication.jwt_service import JWTService
+
+    carrera = Profesorado.objects.create(nombre="Original", duracion_anios=4)
+    other = Profesorado.objects.create(nombre="Other", duracion_anios=4)
+    payload = PreinscripcionIn(
+        carrera_id=carrera.id,
+        estudiante=EstudianteIn(
+            dni="90887766",
+            nombres="Original",
+            apellido="Original",
+            email="original@example.invalid",
+            fecha_nacimiento="2000-01-01",
+        ),
+    )
+    pre = PreinscripcionService.create_or_update_preinscripcion(payload)
+    pre.estado = state
+    pre.save()
+    operator = User.objects.create_user(username="scoped-bedel")
+    operator.groups.add(Group.objects.get_or_create(name="bedel")[0])
+    StaffAsignacion.objects.create(user=operator, rol="bedel", profesorado=carrera if own_career else other)
+    client = Client()
+    client.cookies["jwt_access_token"] = JWTService.create_access_token(operator.id)
+    body = {
+        "codigo": pre.codigo,
+        "carrera_id": carrera.id,
+        "estudiante": {
+            "dni": "90887766",
+            "nombres": "Original",
+            "apellido": "Original",
+            "email": "new@example.invalid",
+            "fecha_nacimiento": "2000-01-01",
+        },
+    }
+    with patch("apps.preinscriptions.api.ventana_preinscripcion_activa", return_value=True):
+        response = client.post(
+            "/api/preinscripciones", body, content_type="application/json", HTTP_X_ACTIVE_ROLE="admin"
+        )
+    assert response.status_code == expected, response.content
+    pre.refresh_from_db()
+    assert pre.estado == state
+    if expected == 200:
+        assert response.json()["data"]["download_token"]
+    else:
+        assert pre.datos_extra["estudiante"]["email"] == "original@example.invalid"

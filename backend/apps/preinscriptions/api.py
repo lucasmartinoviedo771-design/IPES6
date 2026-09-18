@@ -311,23 +311,9 @@ def crear_o_actualizar(request, payload: PreinscripcionIn, profesorado_id: int |
 
     preinscripcion = PreinscripcionService.create_or_update_preinscripcion(payload, user=user)
 
-    # Seguridad (F04): Entrega protegida de download_token.
-    # Se emite únicamente si la solicitud fue creada en esta misma petición o si el
-    # solicitante acreditó fehacientemente ser el titular o personal con alcance.
-    is_created = getattr(preinscripcion, "_is_newly_created", False)
-    is_auth_titular_or_staff = bool(
-        user
-        and getattr(user, "is_authenticated", False)
-        and (
-            str(getattr(user, "username", "")) == str(preinscripcion.alumno.persona.dni)
-            or user == getattr(preinscripcion.alumno, "user", None)
-            or getattr(user, "is_staff", False)
-            or getattr(user, "is_superuser", False)
-        )
-    )
-
+    # El servicio verifica identidad previa, titularidad y alcance de carrera.
     download_token = None
-    if is_created or is_auth_titular_or_staff:
+    if getattr(preinscripcion, "_can_issue_pdf_token", False):
         download_token = PreinscripcionService.generate_pdf_token(preinscripcion.id)
 
     return ApiResponse(

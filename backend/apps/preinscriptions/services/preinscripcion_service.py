@@ -9,7 +9,8 @@ from django.db import transaction
 from apps.common.date_utils import format_date
 from apps.preinscriptions.models_uploads import PreinscripcionArchivo
 from apps.preinscriptions.schemas import PreinscripcionIn
-from core.models import Estudiante, Persona, Preinscripcion, PreinscripcionChecklist
+from core.models import Estudiante, Persona, Preinscripcion, PreinscripcionChecklist, StaffAsignacion
+from core.permissions import get_user_roles
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,7 @@ class PreinscripcionService:
         # un formulario anónimo de preinscripción NO PUEDE alterar su correo de recuperación
         # ni su identidad verificada. Los datos nuevos declarados quedan en Preinscripcion.datos_extra.
         persona = Persona.objects.filter(dni=dni).first()
+        identity_existed = persona is not None or User.objects.filter(username=dni).exists()
         tiene_cuenta = False
         if persona:
             tiene_cuenta = (
@@ -165,15 +167,20 @@ class PreinscripcionService:
         current_year = datetime.now().year
 
         is_auth = bool(user and getattr(user, "is_authenticated", False))
-        is_titular = bool(is_auth and (str(getattr(user, "username", "")) == str(dni)))
-        is_staff = bool(
-            is_auth
-            and (
-                getattr(user, "is_superuser", False)
-                or getattr(user, "is_staff", False)
-                or user.groups.filter(name__in=["admin", "secretaria", "bedel", "coordinador"]).exists()
+        is_titular = bool(is_auth and (str(getattr(user, "username", "")) == str(dni) or user == estudiante.user))
+        roles = get_user_roles(user) if is_auth else set()
+        global_staff = bool(is_auth and (user.is_superuser or roles & {"admin", "secretaria"}))
+        scoped_staff = bool(roles & {"bedel", "coordinador"})
+
+        def staff_can_access(carrera_id):
+            return global_staff or bool(
+                scoped_staff
+                and StaffAsignacion.objects.filter(
+                    user=user, profesorado_id=carrera_id, rol__in=["bedel", "coordinador"]
+                ).exists()
             )
-        )
+
+        is_staff = staff_can_access(payload.carrera_id)
 
         if getattr(payload, "codigo", None):
             preinscripcion = Preinscripcion.objects.filter(codigo__iexact=payload.codigo).first()
@@ -184,10 +191,11 @@ class PreinscripcionService:
 
             # Seguridad (F04): El código secuencial y el DNI NO constituyen credenciales de autorización.
             # No se permite actualizar una preinscripción existente mediante peticiones anónimas.
-            is_titular_match = is_titular and (
+            is_titular_match = is_auth and (
                 str(getattr(user, "username", "")) == str(preinscripcion.alumno.persona.dni)
                 or user == getattr(preinscripcion.alumno, "user", None)
             )
+            is_staff = is_staff and staff_can_access(preinscripcion.carrera_id)
             if not (is_titular_match or is_staff):
                 from ninja.errors import HttpError
 
@@ -197,7 +205,7 @@ class PreinscripcionService:
                     "Debe iniciar sesión como titular o solicitar asistencia en Bedelía.",
                 )
 
-            if preinscripcion.estado == "Confirmada" and not is_staff:
+            if preinscripcion.estado == "Confirmada":
                 from ninja.errors import HttpError
 
                 raise HttpError(400, "La preinscripción ya ha sido confirmada y no puede ser modificada.")
@@ -213,7 +221,7 @@ class PreinscripcionService:
                 anio=current_year,
             ).first()
             if existing:
-                is_titular_match = is_titular and (
+                is_titular_match = is_auth and (
                     str(getattr(user, "username", "")) == str(existing.alumno.persona.dni)
                     or user == getattr(existing.alumno, "user", None)
                 )
@@ -225,7 +233,7 @@ class PreinscripcionService:
                         "Ya existe una preinscripción registrada para esta carrera en el ciclo lectivo actual. "
                         "Para realizar modificaciones o consultar su estado, inicie sesión o contacte a Bedelía.",
                     )
-                if existing.estado == "Confirmada" and not is_staff:
+                if existing.estado == "Confirmada":
                     from ninja.errors import HttpError
 
                     raise HttpError(400, "La preinscripción ya ha sido confirmada y no puede ser modificada.")
@@ -257,6 +265,7 @@ class PreinscripcionService:
 
         preinscripcion.save()
         preinscripcion._is_newly_created = created
+        preinscripcion._can_issue_pdf_token = (created and not identity_existed) or is_titular or is_staff
         return preinscripcion
 
     @staticmethod
