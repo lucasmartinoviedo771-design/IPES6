@@ -200,7 +200,10 @@ def test_f02_force_reset_solicita_email_oculta_secreto_y_fuerza_cambio():
     assert estudiante_user.profile.must_change_password is True
 
     # 3. Resetear con contraseña manual -> must_change_password sigue siendo obligatorio (True)
-    payload_manual = ForceResetPasswordIn(username="33445566", new_password="NuevaClaveManual2026!")
+    import secrets
+
+    clave_manual_test = f"ManualTest-{secrets.token_urlsafe(16)}"
+    payload_manual = ForceResetPasswordIn(username=estudiante_user.username, new_password=clave_manual_test)
     with patch("django.core.mail.send_mail", return_value=1):
         status, res = force_reset_password(DummyRequest(admin_user), payload_manual)
     assert status == 200
