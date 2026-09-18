@@ -396,7 +396,8 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
     ).all()
 
     if ventana_id == -1:
-        # Histórico completo solicitado explícitamente
+        # Histórico completo: todos los llamados, pero igual sin mesas cerradas
+        # (ver filtro común más abajo).
         pass
     elif ventana_id:
         qs = qs.filter(ventana_id=ventana_id)
@@ -410,6 +411,13 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
         ).first()
         if ventana_activa:
             qs = qs.filter(ventana_id=ventana_activa.id)
+
+    # Una mesa con planilla ya cerrada (nota, ausente o cierre del presidente)
+    # dejó de necesitar gestión: no debe acumularse en ningún filtro, ni
+    # siquiera en el histórico completo, para que esto siga siendo manejable
+    # con miles de mesas a través de los años. Solo se ve acá si sigue
+    # abierta (para detectar mesas que quedaron sin cerrar).
+    qs = qs.filter(Q(mesa_asignada__isnull=True) | Q(mesa_asignada__planilla_cerrada_en__isnull=True))
 
     if estado:
         qs = qs.filter(estado=estado.upper())
