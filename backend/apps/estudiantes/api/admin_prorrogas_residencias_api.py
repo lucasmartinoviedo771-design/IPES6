@@ -213,7 +213,17 @@ def admin_residencias_condicionales(
     if solo_pendientes:
         qs = qs.filter(resuelta=False, caida=False)
 
-    if carrera_id:
+    # Restricción por permisos: un bedel solo debe ver residencias
+    # condicionales de SU carrera, nunca las de otros profesorados. Antes
+    # esto solo se filtraba si el frontend mandaba carrera_id explícito, y
+    # el widget del dashboard de bedeles no lo manda — devolvía todo.
+    allowed_ids = allowed_profesorados(request.user)
+    if allowed_ids is not None:
+        if carrera_id and carrera_id not in allowed_ids:
+            qs = qs.none()
+        else:
+            qs = qs.filter(materia_residencia__plan_de_estudio__profesorado_id__in=allowed_ids)
+    elif carrera_id:
         qs = qs.filter(materia_residencia__plan_de_estudio__profesorado_id=carrera_id)
 
     resultado = []
