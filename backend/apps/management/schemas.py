@@ -64,6 +64,8 @@ class MesaOut(Schema):
     inscriptos_count: int = 0
     estudiante_exclusivo_dni: str | None = None
     estudiante_exclusivo_nombre: str | None = None
+    mi_rol: str | None = None
+    puede_editar: bool = True
 
 
 class SolicitudMesaOut(Schema):

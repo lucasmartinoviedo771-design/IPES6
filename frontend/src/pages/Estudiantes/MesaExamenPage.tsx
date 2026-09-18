@@ -61,6 +61,11 @@ const MESA_TIPO_LABEL: Record<string, string> = {
 	ESP: "Especial",
 };
 
+function formatDocenteNombreSinDni(nombre?: string | null): string {
+	if (!nombre || nombre === "None") return "-";
+	return nombre.replace(/\s*\(DNI:[^)]*\)/i, "").trim();
+}
+
 function calcularMotivoBloqueo(
 	mesa: MesaListadoItemDTO,
 	historial: {
@@ -110,8 +115,16 @@ const MesaExamenPage: React.FC = () => {
 	const isEstudiante = hasAnyRole(user, ["estudiante"]);
 	const initialDni =
 		dniParam || (isEstudiante && !canGestionar ? user?.dni || "" : "");
+	const tabParam = searchParams.get("tab");
+	const initialTab = tabParam !== null && !isNaN(Number(tabParam)) ? Number(tabParam) : 0;
 
-	const [activeTab, setActiveTab] = useState(0);
+	const [activeTab, setActiveTab] = useState(initialTab);
+
+	useEffect(() => {
+		if (tabParam !== null && !isNaN(Number(tabParam))) {
+			setActiveTab(Number(tabParam));
+		}
+	}, [tabParam]);
 	const [dni, setDni] = useState(initialDni);
 	const [dniBusqueda, setDniBusqueda] = useState(initialDni);
 		const [tipo, setTipo] = useState<"FIN" | "EXT" | "ESP" | "">("");
@@ -1484,14 +1497,25 @@ const MesaExamenPage: React.FC = () => {
 																			variant="caption"
 																			display="block"
 																		>
-																			Pres: {mi.tribunal.presidente || "-"}
+																			Pres: {formatDocenteNombreSinDni(mi.tribunal.presidente)}
 																		</Typography>
-																		<Typography
-																			variant="caption"
-																			display="block"
-																		>
-																			Voc: {mi.tribunal.vocal1 || "-"}
-																		</Typography>
+																		{mi.tribunal.vocal1 && mi.tribunal.vocal1 !== "None" && (
+																			<Typography
+																				variant="caption"
+																				display="block"
+																			>
+																				{mi.tribunal.vocal2 && mi.tribunal.vocal2 !== "None" ? "Voc 1" : "Voc"}:{" "}
+																				{formatDocenteNombreSinDni(mi.tribunal.vocal1)}
+																			</Typography>
+																		)}
+																		{mi.tribunal.vocal2 && mi.tribunal.vocal2 !== "None" && (
+																			<Typography
+																				variant="caption"
+																				display="block"
+																			>
+																				Voc 2: {formatDocenteNombreSinDni(mi.tribunal.vocal2)}
+																			</Typography>
+																		)}
 																	</Box>
 																)}
 																{mi.tipo === "EXT" ? (

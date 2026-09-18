@@ -272,6 +272,7 @@ export function ResultadosTable({
 								<TableCell>
 									<Autocomplete
 										options={notaOptions}
+										disabled={readOnlyEstudiantes}
 										getOptionLabel={(option) => option.label}
 										value={
 											notaOptions.find(
@@ -295,6 +296,7 @@ export function ResultadosTable({
 								<TableCell>
 									<Autocomplete
 										options={notaOptions}
+										disabled={readOnlyEstudiantes}
 										getOptionLabel={(option) => option.label}
 										value={
 											notaOptions.find(
@@ -318,6 +320,7 @@ export function ResultadosTable({
 								<TableCell>
 									<Autocomplete
 										options={notaOptions}
+										disabled={readOnlyEstudiantes}
 										getOptionLabel={(option) => option.label}
 										value={
 											notaOptions.find(
@@ -343,6 +346,7 @@ export function ResultadosTable({
 								<TableCell>
 									<TextField
 										size="small"
+										disabled={readOnlyEstudiantes}
 										value={estudiante.observaciones ?? ""}
 										onChange={(event) =>
 											onUpdateEstudiante(estudiante.internoId, {
@@ -357,7 +361,7 @@ export function ResultadosTable({
 										size="small"
 										onClick={() => onOpenOralActa(estudiante)}
 									>
-										Abrir
+										{readOnlyEstudiantes ? "Ver" : "Abrir"}
 									</Button>
 								</TableCell>
 								<TableCell align="center">

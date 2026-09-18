@@ -91,6 +91,18 @@ def _check_academic_eligibility(
         fecha_examen = mesa.fecha
         mesa_tipo = mesa.tipo
 
+    # Autorización excepcional de Secretaría para esta materia puntual:
+    # saltea la distinción libre/regular y la vigencia de regularidad, pero
+    # SOLO en Mesa Especial (tipo ESP) — no debe tocar el flujo ya
+    # implementado de mesas regulares/libres ordinarias. Las correlativas
+    # para rendir NO se saltean nunca, siguen exigiéndose siempre.
+    materia_autorizada = bool(
+        materia
+        and mesa_tipo == MesaExamen.Tipo.ESPECIAL
+        and getattr(est, "autorizado_rendir", False)
+        and est.materias_autorizadas.filter(id=materia.id).exists()
+    )
+
     # A. Materia ya superada (Común a ambas modalidades)
     aprobado_historial = False
     for acta_est in ActaExamenEstudiante.objects.filter(dni=est.dni, acta__materia=materia):
@@ -152,7 +164,7 @@ def _check_academic_eligibility(
     if modalidad == MesaExamen.Modalidad.REGULAR:
         if mesa_tipo is None or mesa_tipo in MESA_TIPOS_ORDINARIOS:
             # 1. Verificación de Regularidad
-            if not bypass_regularidad:
+            if not bypass_regularidad and not materia_autorizada:
                 reg = Regularidad.objects.filter(estudiante=est, materia=materia).order_by("-fecha_cierre").first()
                 if not reg or reg.situacion != Regularidad.Situacion.REGULAR:
                     # Si tiene aprobación válida por cualquier fuente → ya está superada
@@ -271,7 +283,7 @@ def _check_academic_eligibility(
 
     # --- MODALIDAD LIBRE ---
     elif modalidad == MesaExamen.Modalidad.LIBRE:
-        if not materia.permite_mesa_libre:
+        if not materia.permite_mesa_libre and not materia_autorizada:
             return False, "Esta materia no admite examen en condición LIBRE según el plan de estudio.", {}
 
         # Validar pertenencia activa a la carrera de la materia
@@ -323,7 +335,7 @@ def _check_academic_eligibility(
             .first()
         )
 
-        if reg and reg.situacion == Regularidad.Situacion.REGULAR:
+        if reg and reg.situacion == Regularidad.Situacion.REGULAR and not materia_autorizada:
             from apps.estudiantes.api.helpers import _calcular_vigencia_regularidad
 
             limite, intentos, max_intentos = _calcular_vigencia_regularidad(est, reg)
@@ -762,6 +774,34 @@ def solicitar_mesa(request, payload: SolicitudMesaIn):
             return 400, {
                 "message": f"Solo podés solicitar una (1) materia por llamado extraordinario. Ya tenés una solicitud para '{sol_prev.materia.nombre}'."
             }
+
+    # REGLA: No duplicar la solicitud de una materia que ya tiene un pedido vigente
+    # en otro llamado. Si se abre un segundo llamado extraordinario, un estudiante
+    # que ya solicitó (y tiene mesa armada o pendiente) esa materia no debe poder
+    # pedirla de nuevo: genera un registro fantasma que confunde ("Rechazada" o
+    # "Pendiente" al lado de la mesa real que sí va a rendir).
+    if not es_staff:
+        previas = (
+            SolicitudMesa.objects.filter(estudiante=est, materia=materia)
+            .exclude(estado=SolicitudMesa.Estado.RECHAZADA)
+            .exclude(ventana=ventana)
+            .select_related("mesa_asignada")
+        )
+        for prev in previas:
+            if prev.estado == SolicitudMesa.Estado.PENDIENTE:
+                return 400, {
+                    "message": f"Ya tenés una solicitud pendiente para '{materia.nombre}' de otro llamado. "
+                    f"Esperá a que se procese; no hace falta volver a solicitarla."
+                }
+            if prev.estado == SolicitudMesa.Estado.PROCESADA and prev.mesa_asignada and prev.mesa_asignada.activa:
+                m = prev.mesa_asignada
+                insc = InscripcionMesa.objects.filter(mesa=m, estudiante=est).first()
+                ya_rindio = insc and (insc.nota is not None or insc.condicion is not None)
+                if not ya_rindio:
+                    return 400, {
+                        "message": f"Ya tenés mesa asignada para '{materia.nombre}' el "
+                        f"{m.fecha.strftime('%d/%m/%Y')}. No hace falta volver a solicitarla."
+                    }
 
     sol = SolicitudMesa.objects.create(
         estudiante=est,

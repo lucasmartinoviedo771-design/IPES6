@@ -83,10 +83,6 @@ export function useActaExamenForm({
 		useState<ActaCreatePayload | null>(null);
 	const [isEditing] = useState(!!editId);
 	const [isInitialPopulated, setIsInitialPopulated] = useState(false);
-	const [createdActa, setCreatedActa] = useState<{
-		id: number;
-		codigo: string;
-	} | null>(null);
 
 	const { data: actaParaEditar } = useQuery({
 		queryKey: ["acta-edicion", editId],
@@ -361,10 +357,6 @@ export function useActaExamenForm({
 				variant: "success",
 			});
 
-			if (response.data) {
-				setCreatedActa(response.data);
-			}
-
 			setDocentes(createEmptyDocentes());
 			setEstudiantes([createEmptyEstudiante(1)]);
 			setFolio("");
@@ -578,13 +570,13 @@ export function useActaExamenForm({
 		const mesaId = mesaSeleccionada?.id;
 		const inscripcionId = oralDialogEstudiante.inscripcionId;
 
-		// Sin mesa (carga manual de un acta suelta) no hay contra qué persistir: el
-		// diálogo genera el PDF en el cliente a partir de estos mismos valores.
+		// Sin mesa (carga manual de un acta suelta) no hay contra qué persistir:
+		// el borrador queda solo en memoria del formulario.
 		if (!mesaId) return;
 
 		// Con mesa pero sin inscripción hay un problema de datos, no un modo de uso.
-		// Antes se salía en silencio: el PDF se descargaba, el acta no se guardaba y
-		// el estudiante nunca recibía el aviso, sin ninguna señal de que algo falló.
+		// Antes se salía en silencio: el acta no se guardaba y el estudiante nunca
+		// recibía el aviso, sin ninguna señal de que algo falló.
 		if (!inscripcionId) {
 			enqueueSnackbar(
 				"No se pudo vincular al estudiante con su inscripción a la mesa, " +
@@ -595,8 +587,8 @@ export function useActaExamenForm({
 			return;
 		}
 
-		// Con mesa e inscripción, el acta DEBE guardarse antes de pedir el PDF:
-		// el backend lo arma desde el registro persistido y responde 404 si no existe.
+		// Con mesa e inscripción, el acta oral se persiste en el sistema. La
+		// impresión del PDF la hace Secretaría después, desde su propio flujo.
 		const mapTemas = (temas: OralActFormValues["temasEstudiante"]) =>
 			temas
 				.filter((t) => t.tema.trim())
@@ -619,7 +611,6 @@ export function useActaExamenForm({
 					"No se pudo guardar el acta oral. Verificá que seas el docente titular de la mesa.",
 				{ variant: "error" },
 			);
-			// Propagar para que el diálogo no intente descargar un PDF inexistente.
 			throw error;
 		}
 	};
@@ -867,7 +858,5 @@ export function useActaExamenForm({
 		isEditing,
 		isSaving,
 		tribunalInfo,
-		createdActa,
-		setCreatedActa,
 	};
 }

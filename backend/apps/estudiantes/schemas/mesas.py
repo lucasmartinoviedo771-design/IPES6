@@ -120,10 +120,13 @@ class MesaPlanillaOut(Schema):
     tipo: str
     modalidad: str
     fecha: str
+    fecha_iso: str | None = None
     hora_desde: str | None = None
     hora_hasta: str | None = None
     mesa_codigo: str | None = None
     numero_mesa: int | None = None
+    aula: str | None = None
+    cupo: int | None = None
     tribunal_presidente: str | None = None
     tribunal_vocal1: str | None = None
     tribunal_vocal2: str | None = None

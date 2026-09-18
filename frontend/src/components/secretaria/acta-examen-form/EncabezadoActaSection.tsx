@@ -175,6 +175,7 @@ export function EncabezadoActaSection({
 						onChange={(event) => setFolio(event.target.value)}
 						placeholder="Se asigna al guardar"
 						helperText="Dejalo vacío para que el sistema lo numere solo"
+						disabled={readOnly}
 					/>
 				</Grid>
 				<Grid item xs={12} md={6} lg={4}>
@@ -185,6 +186,7 @@ export function EncabezadoActaSection({
 						onChange={(event) => setLibro(event.target.value)}
 						placeholder="SIGI"
 						helperText="Solo para actas en papel (libro físico)"
+						disabled={readOnly}
 					/>
 				</Grid>
 				<Grid item xs={12}>
@@ -195,6 +197,7 @@ export function EncabezadoActaSection({
 						minRows={2}
 						value={observaciones}
 						onChange={(event) => setObservaciones(event.target.value)}
+						disabled={readOnly}
 					/>
 				</Grid>
 			</Grid>

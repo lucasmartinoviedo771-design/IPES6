@@ -26,6 +26,7 @@ from apps.estudiantes.api.actas_helpers import (
     _compute_acta_codigo,
     _next_acta_numero,
     _nota_label,
+    clave_registral_digital,
     generar_folio_digital,
 )
 from apps.estudiantes.api.actas_schemas import (
@@ -312,43 +313,44 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         if not mesa:
             return 404, ApiResponse(ok=False, message="Mesa de examen no encontrada.")
 
-    # Si es solo docente, verificar tribunal
+    # Si es solo docente, verificar tribunal y fecha
     if is_docente_only:
         try:
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
             if mesa:
-                # Validar tribunal de la mesa específica
-                tribunal_valido = docente_obj.id in [  # type: ignore
-                    mesa.docente_presidente_id,  # type: ignore
-                    mesa.docente_vocal1_id,  # type: ignore
-                    mesa.docente_vocal2_id,  # type: ignore
-                ]
-                if not tribunal_valido:
+                # Solo el presidente de la mesa puede cargar las notas
+                if docente_obj.id != mesa.docente_presidente_id:
                     return 403, ApiResponse(
-                        ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
+                        ok=False,
+                        message="Solo el docente presidente de la mesa puede generar el acta. Los vocales tienen acceso de solo lectura.",
                     )
-                # Validar fecha/cierre para docentes
+                # No se permite cargar antes del día de la mesa
+                if mesa.fecha > date.today():
+                    return 403, ApiResponse(
+                        ok=False,
+                        message=f"No se pueden cargar calificaciones antes de la fecha fijada para la mesa ({mesa.fecha.strftime('%d/%m/%Y')}).",
+                    )
+                # Validar cierre para mesas pasadas
                 if mesa.fecha < date.today() and mesa.planilla_cerrada_en is not None:
                     return 403, ApiResponse(
                         ok=False, message="No tiene permisos para modificar un acta de mesa pasada y cerrada."
                     )
             else:
-                # Validar tribunal para mesas en la fecha dada
-                tribunal_valido = (
-                    MesaExamen.objects.filter(
-                        materia_id=payload.materia_id,
-                        fecha=acta_fecha,
-                    )
-                    .filter(
-                        models.Q(docente_presidente=docente_obj)
-                        | models.Q(docente_vocal1=docente_obj)
-                        | models.Q(docente_vocal2=docente_obj)
-                    )
-                    .exists()
-                )
-                if not tribunal_valido:
+                # Validar tribunal para mesas en la fecha dada (solo presidente)
+                mesa_presidida = MesaExamen.objects.filter(
+                    materia_id=payload.materia_id,
+                    fecha=acta_fecha,
+                    docente_presidente=docente_obj,
+                ).first()
+                if not mesa_presidida:
                     return 403, ApiResponse(
-                        ok=False, message="Solo los docentes del tribunal de la mesa pueden crear esta acta."
+                        ok=False,
+                        message="Solo el docente presidente de la mesa puede generar el acta. Los vocales tienen acceso de solo lectura.",
+                    )
+                if acta_fecha > date.today():
+                    return 403, ApiResponse(
+                        ok=False,
+                        message=f"No se pueden cargar calificaciones antes de la fecha fijada para la mesa ({acta_fecha.strftime('%d/%m/%Y')}).",
                     )
         except Docente.DoesNotExist:
             return 403, ApiResponse(ok=False, message="No se encontró un perfil de docente asociado a su usuario.")
@@ -485,15 +487,18 @@ def crear_acta_examen(request, payload: ActaCreateLocal = Body(...)):
         acta_libro = payload.libro or ""
         acta_folio = payload.folio or ""
         if not acta_libro and not acta_folio:
-            # El bloqueo evita que dos cierres simultáneos tomen el mismo folio.
-            ActaExamen.objects.select_for_update().filter(libro=LIBRO_DIGITAL).values_list("id", flat=True).last()
+            # El bloqueo (por profesorado, que es como se numera el folio ahora)
+            # evita que dos cierres simultáneos tomen el mismo folio.
+            ActaExamen.objects.select_for_update().filter(
+                libro=LIBRO_DIGITAL, profesorado_id=profesorado.id
+            ).values_list("id", flat=True).last()
             acta_libro = LIBRO_DIGITAL
-            acta_folio = generar_folio_digital()
+            acta_folio = generar_folio_digital(profesorado.id)
 
         # Solo las actas digitales llevan clave registral: es UNIQUE en la base y el
         # histórico en papel tiene folios repetidos, así que allí queda en NULL
         # (MySQL admite múltiples NULL en un índice único).
-        clave_registral = f"{acta_libro}/{acta_folio}" if acta_libro == LIBRO_DIGITAL else None
+        clave_registral = clave_registral_digital(profesorado.id, acta_folio) if acta_libro == LIBRO_DIGITAL else None
 
         acta = ActaExamen.objects.create(
             codigo=codigo,
@@ -701,14 +706,15 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
         try:
             docente_obj = Docente.objects.get(persona__user_profile__user=request.user)
             if mesa:
-                tribunal_valido = docente_obj.id in [  # type: ignore
-                    mesa.docente_presidente_id,  # type: ignore
-                    mesa.docente_vocal1_id,  # type: ignore
-                    mesa.docente_vocal2_id,  # type: ignore
-                ]
-                if not tribunal_valido:
+                if docente_obj.id != mesa.docente_presidente_id:
                     return 403, ApiResponse(
-                        ok=False, message="Solo los docentes del tribunal de la mesa pueden modificar esta acta."
+                        ok=False,
+                        message="Solo el docente presidente de la mesa puede modificar esta acta. Los vocales tienen acceso de solo lectura.",
+                    )
+                if mesa.fecha > date.today():
+                    return 403, ApiResponse(
+                        ok=False,
+                        message=f"No se pueden modificar calificaciones antes de la fecha fijada para la mesa ({mesa.fecha.strftime('%d/%m/%Y')}).",
                     )
                 if mesa.fecha < date.today() and mesa.planilla_cerrada_en is not None:
                     return 403, ApiResponse(
@@ -794,7 +800,9 @@ def actualizar_acta_examen(request, acta_id: int, payload: ActaCreateLocal = Bod
             acta.libro = ""
         # La clave registral acompaña a libro/folio para que el UNIQUE siga siendo
         # cierto tras la edición; las actas en papel se mantienen en NULL.
-        acta.clave_registral = f"{acta.libro}/{acta.folio}" if acta.libro == LIBRO_DIGITAL else None
+        acta.clave_registral = (
+            clave_registral_digital(acta.profesorado_id, acta.folio) if acta.libro == LIBRO_DIGITAL else None
+        )
         acta.observaciones = payload.observaciones or ""
         acta.total_alumnos = len(payload.estudiantes)
         acta.total_aprobados = categoria_counts["aprobado"]

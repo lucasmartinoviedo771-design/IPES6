@@ -65,11 +65,27 @@ export const SolicitudesList: React.FC = () => {
 				? [roleOverride.toLowerCase()]
 				: user?.roles?.map((r: string) => r.toLowerCase()) || [],
 		);
+		// Coincide con el permiso "editar_estructura" del backend
+		// ({admin, secretaria, bedel}): el que puede procesar solicitudes de mesa
+		// también tiene que poder ver todos los llamados y sus mesas, no solo el
+		// último. Sin bedel acá, el bedel quedaba pegado a la última ventana sin
+		// forma de cambiar el filtro.
 		return (
 			roles.has("admin") ||
 			roles.has("secretaria") ||
-			roles.has("administrador")
+			roles.has("administrador") ||
+			roles.has("bedel")
 		);
+	}, [roleOverride, user]);
+	const canEditMesa = useMemo(() => {
+		const roles = new Set(
+			roleOverride
+				? [roleOverride.toLowerCase()]
+				: user?.roles?.map((r: string) => r.toLowerCase()) || [],
+		);
+		// A diferencia de canEdit, acá el bedel queda afuera: no debe poder
+		// modificar fecha/tribunal de una mesa ya aprobada, solo admin/secretaría.
+		return roles.has("admin") || roles.has("secretaria") || roles.has("administrador");
 	}, [roleOverride, user]);
 
 	const [solicitudes, setSolicitudes] = useState<SolicitudMesaAdminDTO[]>([]);
@@ -99,13 +115,13 @@ export const SolicitudesList: React.FC = () => {
 			try {
 				const planilla = await obtenerMesaPlanilla(s.mesa_asignada_id);
 				setEditMesaData({
-					fecha: planilla.fecha ? planilla.fecha.substring(0, 10) : (s.fecha_solicitud ? s.fecha_solicitud.substring(0, 10) : ""),
+					fecha: planilla.fecha_iso || (s.fecha_solicitud ? s.fecha_solicitud.substring(0, 10) : ""),
 					hora_desde: planilla.hora_desde || "",
 					docente_presidente_id: "",
 					docente_vocal1_id: "",
 					docente_vocal2_id: "",
-					aula: "",
-					cupo: 40,
+					aula: planilla.aula || "",
+					cupo: planilla.cupo ?? 40,
 					numero_mesa: planilla.numero_mesa ? String(planilla.numero_mesa) : "",
 				});
 
@@ -186,6 +202,7 @@ export const SolicitudesList: React.FC = () => {
 			setOpenEditMesaDialog(false);
 			setSelectedSolicitud(null);
 			await load();
+			alert("Mesa actualizada correctamente.");
 		} catch (e: any) {
 			alert(e.response?.data?.message || "Error al actualizar la mesa");
 		}
@@ -228,8 +245,13 @@ export const SolicitudesList: React.FC = () => {
 		fetchVentanas({ tipo: "MESAS_EXTRA" })
 			.then((vList) => {
 				setVentanas(vList);
+				// Si hay un llamado activo, se abre enfocado en ese (es el que se
+				// está trabajando). Si no hay ninguno activo, se muestran TODOS los
+				// llamados en vez de caer al último: cuando hay dos llamados
+				// extraordinarios seguidos, el bedel necesita ver las solicitudes y
+				// mesas de ambos, no solo las del más reciente.
 				const activa = vList.find((v) => v.activo);
-				const defaultId = activa ? String(activa.id) : (vList.length > 0 ? String(vList[0].id) : "TODAS");
+				const defaultId = activa ? String(activa.id) : "TODAS";
 				setSelectedVentanaId(defaultId);
 				load(defaultId);
 			})
@@ -992,7 +1014,7 @@ export const SolicitudesList: React.FC = () => {
 										>
 											{s.estado === "PRO" && s.mesa_asignada_id && (
 												<>
-													{canEdit && (
+													{canEditMesa && (
 														<Tooltip title="Editar Mesa">
 															<IconButton
 																size="small"

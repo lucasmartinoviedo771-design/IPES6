@@ -69,6 +69,7 @@ type Props = {
 	agregarCarreraIsPending?: boolean;
 		detailData?: any;
 	isAdmin?: boolean;
+	canAutorizarExcepcion?: boolean;
 	isAttp?: boolean;
 	isRectorado?: boolean;
 	carrerasDetalle?: CarreraStatus[];
@@ -97,6 +98,7 @@ export function EstudianteDetailForm({
 	agregarCarreraIsPending,
 	detailData,
 	isAdmin = true,
+	canAutorizarExcepcion = true,
 	isAttp = false,
 	isRectorado = false,
 	carrerasDetalle,
@@ -1009,7 +1011,7 @@ export function EstudianteDetailForm({
 					)}
 
 					{/* TAB 3: AUTORIZACION ESPECIAL */}
-					{activeTab === 3 && isAdmin && (
+					{activeTab === 3 && isAdmin && canAutorizarExcepcion && (
 						<fieldset
 							disabled={isAttp}
 							style={{ border: "none", margin: 0, padding: 0 }}

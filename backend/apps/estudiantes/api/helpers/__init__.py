@@ -42,6 +42,7 @@ from apps.estudiantes.api.helpers.user_utils import (
     _resolve_estudiante,
     _user_can_manage_mesa_planilla,
     _user_can_override_planilla_lock,
+    _user_can_view_mesa_planilla,
 )
 
 __all__ = [
@@ -52,6 +53,7 @@ __all__ = [
     "_ensure_estudiante_access",
     "_resolve_docente_from_user",
     "_user_can_manage_mesa_planilla",
+    "_user_can_view_mesa_planilla",
     "_user_can_override_planilla_lock",
     # estudiante_admin
     "DOCUMENTACION_FIELDS",

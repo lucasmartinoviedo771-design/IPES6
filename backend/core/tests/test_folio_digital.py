@@ -1,10 +1,11 @@
 """
 Numeracion automatica de libro y folio en las actas digitales.
 
-Regla institucional: a partir de ahora, el acta que se guarda definitivamente
-con las notas se numera sola. El libro es SIGI —marca de que es carga digital,
-frente a los libros fisicos historicos ("1", "2", "II", "L2")— y el folio es un
-correlativo continuo que no reinicia por anio.
+Regla institucional: el acta que se guarda definitivamente con las notas se
+numera sola. El libro es SIGI —marca de carga digital, frente a los libros
+fisicos historicos ("1", "2", "II", "L2")— y el folio es un correlativo PROPIO
+DE CADA PROFESORADO que no reinicia por anio: Primaria lleva su serie SIGI 1,
+2, 3... e Inicial la suya, independiente.
 
 La carga historica de actas en papel sigue pudiendo indicar su propio libro y
 folio: solo se autogenera cuando el payload no los trae.
@@ -16,7 +17,11 @@ from datetime import date
 import pytest
 from django.db.utils import IntegrityError
 
-from apps.estudiantes.api.actas_helpers import LIBRO_DIGITAL, generar_folio_digital
+from apps.estudiantes.api.actas_helpers import (
+    LIBRO_DIGITAL,
+    clave_registral_digital,
+    generar_folio_digital,
+)
 from core.models import ActaExamen, Materia, PlanDeEstudio, Profesorado
 
 pytestmark = pytest.mark.django_db
@@ -27,6 +32,14 @@ def materia():
     prof = Profesorado.objects.create(nombre="Profesorado de Prueba", duracion_anios=4)
     plan = PlanDeEstudio.objects.create(profesorado=prof, resolucion="RES-001/24", anio_inicio=2024)
     return Materia.objects.create(plan_de_estudio=plan, nombre="Pedagogia", anio_cursada=1, formato="ASI")
+
+
+@pytest.fixture
+def otra_materia():
+    """Otro profesorado, para verificar que las series SIGI son independientes."""
+    prof = Profesorado.objects.create(nombre="Profesorado de Educacion Inicial", duracion_anios=4)
+    plan = PlanDeEstudio.objects.create(profesorado=prof, resolucion="RES-002/24", anio_inicio=2024)
+    return Materia.objects.create(plan_de_estudio=plan, nombre="Didactica", anio_cursada=1, formato="ASI")
 
 
 _numero = itertools.count(1)
@@ -51,41 +64,64 @@ def _acta(materia, libro, folio, codigo, clave_registral=None):
 
 
 class TestGeneracionDeFolio:
-    def test_arranca_en_uno(self):
-        assert generar_folio_digital() == "1"
+    def test_arranca_en_uno(self, materia):
+        prof_id = materia.plan_de_estudio.profesorado_id
+        assert generar_folio_digital(prof_id) == "1"
 
     def test_es_correlativo(self, materia):
+        prof_id = materia.plan_de_estudio.profesorado_id
         _acta(materia, LIBRO_DIGITAL, "1", "A-1")
-        assert generar_folio_digital() == "2"
+        assert generar_folio_digital(prof_id) == "2"
         _acta(materia, LIBRO_DIGITAL, "2", "A-2")
-        assert generar_folio_digital() == "3"
+        assert generar_folio_digital(prof_id) == "3"
+
+    def test_cada_profesorado_lleva_su_propia_serie(self, materia, otra_materia):
+        """SIGI 1 de Primaria y SIGI 1 de Inicial son actas distintas y validas."""
+        prof_a = materia.plan_de_estudio.profesorado_id
+        prof_b = otra_materia.plan_de_estudio.profesorado_id
+
+        _acta(materia, LIBRO_DIGITAL, "1", "A-a1")
+        _acta(materia, LIBRO_DIGITAL, "2", "A-a2")
+        _acta(materia, LIBRO_DIGITAL, "3", "A-a3")
+
+        # El profesorado A va por el 4; el B todavia arranca en 1.
+        assert generar_folio_digital(prof_a) == "4"
+        assert generar_folio_digital(prof_b) == "1"
+
+        _acta(otra_materia, LIBRO_DIGITAL, "1", "A-b1")
+        assert generar_folio_digital(prof_b) == "2"
+        assert generar_folio_digital(prof_a) == "4"  # A no se movio
 
     def test_ignora_los_libros_historicos(self, materia):
         """Los folios en papel no deben mover el correlativo digital."""
+        prof_id = materia.plan_de_estudio.profesorado_id
         _acta(materia, "1", "500", "A-h1")
         _acta(materia, "II", "800", "A-h2")
         _acta(materia, "L2", "70", "A-h3")
-        assert generar_folio_digital() == "1"
+        assert generar_folio_digital(prof_id) == "1"
 
     def test_ignora_folios_no_numericos(self, materia):
         """Las equivalencias usan folios tipo '385/2026' y no deben romper el conteo."""
+        prof_id = materia.plan_de_estudio.profesorado_id
         _acta(materia, LIBRO_DIGITAL, "385/2026", "A-e1")
         _acta(materia, LIBRO_DIGITAL, "7", "A-e2")
-        assert generar_folio_digital() == "8"
+        assert generar_folio_digital(prof_id) == "8"
 
     def test_continua_desde_el_maximo_no_desde_la_cantidad(self, materia):
         """Si se borro un acta intermedia, el correlativo no debe retroceder ni repetir."""
+        prof_id = materia.plan_de_estudio.profesorado_id
         _acta(materia, LIBRO_DIGITAL, "1", "A-1")
         _acta(materia, LIBRO_DIGITAL, "9", "A-9")
-        assert generar_folio_digital() == "10"
+        assert generar_folio_digital(prof_id) == "10"
 
     def test_no_reinicia_por_anio(self, materia):
-        """El correlativo es continuo: un acta de otro anio no vuelve a 1."""
+        """El correlativo del profesorado es continuo: un acta de otro anio no vuelve a 1."""
+        prof_id = materia.plan_de_estudio.profesorado_id
         acta = _acta(materia, LIBRO_DIGITAL, "40", "A-40")
         acta.fecha = date(2027, 3, 1)
         acta.anio_academico = 2027
         acta.save()
-        assert generar_folio_digital() == "41"
+        assert generar_folio_digital(prof_id) == "41"
 
 
 class TestLibroDigital:
@@ -93,21 +129,19 @@ class TestLibroDigital:
         assert LIBRO_DIGITAL == "SIGI"
 
     def test_no_colisiona_con_los_libros_historicos(self, materia):
-        """
-        SIGI no se usa en el historico, por eso libro+folio identifica sin
-        ambiguedad a un acta digital aunque el papel tenga folios repetidos.
-        """
+        prof_id = materia.plan_de_estudio.profesorado_id
         _acta(materia, "1", "5", "A-h1")
         _acta(materia, "1", "5", "A-h2")  # duplicado historico real, permitido
-        digital = _acta(materia, LIBRO_DIGITAL, generar_folio_digital(), "A-d1")
+        digital = _acta(materia, LIBRO_DIGITAL, generar_folio_digital(prof_id), "A-d1")
 
         assert digital.libro == LIBRO_DIGITAL
-        assert ActaExamen.objects.filter(libro=LIBRO_DIGITAL, folio=digital.folio).count() == 1
+        assert ActaExamen.objects.filter(libro=LIBRO_DIGITAL, folio=digital.folio, profesorado_id=prof_id).count() == 1
 
     def test_cada_acta_digital_recibe_un_folio_distinto(self, materia):
+        prof_id = materia.plan_de_estudio.profesorado_id
         folios = []
         for i in range(5):
-            folio = generar_folio_digital()
+            folio = generar_folio_digital(prof_id)
             _acta(materia, LIBRO_DIGITAL, folio, f"A-{i}")
             folios.append(folio)
         assert folios == ["1", "2", "3", "4", "5"]
@@ -118,23 +152,31 @@ class TestUnicidadRegistral:
     """
     La unicidad se aplica de ahora en adelante, no sobre el historico.
 
-    MySQL no soporta indices unicos condicionales (un UniqueConstraint con
-    condition se ignora en silencio), asi que no alcanza con declarar "unico
-    cuando libro=SIGI". Se usa clave_registral: UNIQUE en la base, con NULL en
-    las actas en papel —MySQL admite multiples NULL— y 'libro/folio' en las
-    digitales.
+    clave_registral es UNIQUE en la base, con NULL en las actas en papel —MySQL
+    admite multiples NULL— y 'SIGI/<profesorado_id>/<folio>' en las digitales.
+    Al incluir el profesorado, 'SIGI 1' de Primaria y 'SIGI 1' de Inicial no
+    chocan.
     """
 
-    def test_la_base_rechaza_dos_actas_con_la_misma_clave(self, materia):
-        _acta(materia, LIBRO_DIGITAL, "1", "A-1", clave_registral="SIGI/1")
+    def test_la_base_rechaza_dos_actas_del_mismo_profesorado_con_igual_clave(self, materia):
+        prof_id = materia.plan_de_estudio.profesorado_id
+        clave = clave_registral_digital(prof_id, "1")
+        _acta(materia, LIBRO_DIGITAL, "1", "A-1", clave_registral=clave)
         with pytest.raises(IntegrityError):
-            _acta(materia, LIBRO_DIGITAL, "1", "A-2", clave_registral="SIGI/1")
+            _acta(materia, LIBRO_DIGITAL, "1", "A-2", clave_registral=clave)
+
+    def test_dos_profesorados_pueden_tener_sigi_folio_1(self, materia, otra_materia):
+        prof_a = materia.plan_de_estudio.profesorado_id
+        prof_b = otra_materia.plan_de_estudio.profesorado_id
+
+        a1 = _acta(materia, LIBRO_DIGITAL, "1", "A-a1", clave_registral=clave_registral_digital(prof_a, "1"))
+        b1 = _acta(otra_materia, LIBRO_DIGITAL, "1", "A-b1", clave_registral=clave_registral_digital(prof_b, "1"))
+
+        assert a1.libro == b1.libro == LIBRO_DIGITAL
+        assert a1.folio == b1.folio == "1"
+        assert a1.clave_registral != b1.clave_registral
 
     def test_el_historico_puede_repetir_libro_y_folio(self, materia):
-        """
-        Los folios en papel estan repetidos en los datos reales (1348 grupos), asi
-        que la restriccion no debe alcanzarlos: van con clave_registral en NULL.
-        """
         _acta(materia, "1", "18", "A-h1")
         _acta(materia, "1", "18", "A-h2")
         _acta(materia, "1", "18", "A-h3")
@@ -143,9 +185,16 @@ class TestUnicidadRegistral:
         assert ActaExamen.objects.filter(clave_registral__isnull=True).count() == 3
 
     def test_digitales_y_papel_conviven(self, materia):
+        prof_id = materia.plan_de_estudio.profesorado_id
         _acta(materia, "2", "122", "A-h1")
         _acta(materia, "2", "122", "A-h2")
-        digital = _acta(materia, LIBRO_DIGITAL, "1", "A-d1", clave_registral="SIGI/1")
+        digital = _acta(
+            materia,
+            LIBRO_DIGITAL,
+            "1",
+            "A-d1",
+            clave_registral=clave_registral_digital(prof_id, "1"),
+        )
 
-        assert digital.clave_registral == "SIGI/1"
+        assert digital.clave_registral == f"SIGI/{prof_id}/1"
         assert ActaExamen.objects.exclude(clave_registral__isnull=True).count() == 1

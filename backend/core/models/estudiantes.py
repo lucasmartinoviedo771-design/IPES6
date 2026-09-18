@@ -44,7 +44,7 @@ class Estudiante(models.Model):
         default=False,
         help_text=(
             "Autorización excepcional para rendir exámenes finales con legajo incompleto. "
-            "Solo puede ser activado por Secretaría o Bedelía."
+            "Solo puede ser activado por Secretaría."
         ),
     )
     autorizado_rendir_observacion = models.TextField(

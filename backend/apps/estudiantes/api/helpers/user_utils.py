@@ -86,5 +86,26 @@ def _user_can_manage_mesa_planilla(request, mesa) -> bool:
     return False
 
 
+def _user_can_view_mesa_planilla(request, mesa) -> bool:
+    """
+    Acceso de lectura a la planilla: el personal autorizado y CUALQUIER
+    integrante del tribunal (presidente o vocales). Los vocales no cargan ni
+    editan (eso lo controla _user_can_manage_mesa_planilla), pero sí pueden
+    ver la planilla en modo solo lectura.
+    """
+    if can(request.user, "editar_estudiantes"):
+        return True
+    if "docente" in get_user_roles(request.user):
+        docente = _resolve_docente_from_user(request.user)
+        if not docente:
+            return False
+        return docente.id in (
+            mesa.docente_presidente_id,
+            mesa.docente_vocal1_id,
+            mesa.docente_vocal2_id,
+        )
+    return False
+
+
 def _user_can_override_planilla_lock(user) -> bool:
     return can(user, "gestionar_staff")

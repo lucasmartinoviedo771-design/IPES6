@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
@@ -15,7 +15,7 @@ from ..router import management_router
 from ..schemas import CrearMesaDesdeSolicitudIn, MesaDocenteOut, MesaIn, MesaOut, SolicitudMesaOut
 
 
-def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
+def _serialize_mesa(mesa: MesaExamen, docente_actual=None, is_docente_only: bool = False) -> MesaOut:
     m = mesa.materia
     p = m.plan_de_estudio
     docentes = []
@@ -47,6 +47,23 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
             )
         )
 
+    mi_rol = None
+    if docente_actual:
+        if mesa.docente_presidente_id == docente_actual.id:
+            mi_rol = "Presidente"
+        elif mesa.docente_vocal1_id == docente_actual.id:
+            mi_rol = "Vocal 1"
+        elif mesa.docente_vocal2_id == docente_actual.id:
+            mi_rol = "Vocal 2"
+
+    hoy = date.today()
+    if is_docente_only:
+        # Para docentes: solo el presidente puede editar, y solo a partir del día de la mesa si no está cerrada
+        puede_editar = mi_rol == "Presidente" and mesa.fecha <= hoy and not bool(mesa.planilla_cerrada_en)
+    else:
+        # Administración / Secretaría
+        puede_editar = not bool(mesa.planilla_cerrada_en)
+
     est_exc = mesa.estudiante_exclusivo
     est_exc_persona = est_exc.persona if est_exc else None
     return MesaOut(
@@ -75,6 +92,8 @@ def _serialize_mesa(mesa: MesaExamen) -> MesaOut:
         estudiante_exclusivo_nombre=f"{est_exc_persona.apellido}, {est_exc_persona.nombre}"
         if est_exc_persona
         else None,
+        mi_rol=mi_rol,
+        puede_editar=puede_editar,
     )
 
 
@@ -147,8 +166,9 @@ def list_mesas(
     if tipo and not is_docente_only:
         qs = qs.filter(tipo=tipo.upper())
 
+    docente_actual = _resolve_docente_from_user(request.user) if is_docente_only else None
     qs = qs.order_by("fecha", "hora_desde")
-    return [_serialize_mesa(m) for m in qs]
+    return [_serialize_mesa(m, docente_actual=docente_actual, is_docente_only=is_docente_only) for m in qs]
 
 
 @management_router.post("/mesas", response=MesaOut, auth=JWTAuth())
@@ -376,7 +396,8 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
     ).all()
 
     if ventana_id == -1:
-        # Histórico completo solicitado explícitamente
+        # Histórico completo: todos los llamados, pero igual sin mesas cerradas
+        # (ver filtro común más abajo).
         pass
     elif ventana_id:
         qs = qs.filter(ventana_id=ventana_id)
@@ -390,6 +411,13 @@ def list_solicitudes(request, ventana_id: int | None = None, estado: str | None 
         ).first()
         if ventana_activa:
             qs = qs.filter(ventana_id=ventana_activa.id)
+
+    # Una mesa con planilla ya cerrada (nota, ausente o cierre del presidente)
+    # dejó de necesitar gestión: no debe acumularse en ningún filtro, ni
+    # siquiera en el histórico completo, para que esto siga siendo manejable
+    # con miles de mesas a través de los años. Solo se ve acá si sigue
+    # abierta (para detectar mesas que quedaron sin cerrar).
+    qs = qs.filter(Q(mesa_asignada__isnull=True) | Q(mesa_asignada__planilla_cerrada_en__isnull=True))
 
     if estado:
         qs = qs.filter(estado=estado.upper())
@@ -486,6 +514,17 @@ def procesar_solicitud(request, sol_id: int, estado: str, mesa_id: int | None = 
     with transaction.atomic():
         sol.estado = estado.upper()
         if mesa_id:
+            mesa = get_object_or_404(MesaExamen, id=mesa_id)
+            # Una solicitud solo se puede asignar a una mesa de su mismo llamado.
+            # Sin esto, un estudiante que se inscribió en un llamado puede terminar
+            # en una mesa de otro, generando registros duplicados (una solicitud
+            # por llamado, todas apuntando a la misma mesa).
+            if mesa.ventana_id is not None and sol.ventana_id is not None and mesa.ventana_id != sol.ventana_id:
+                raise HttpError(
+                    400,
+                    f"La mesa es de otro llamado (ventana {mesa.ventana_id}); la solicitud es del "
+                    f"llamado {sol.ventana_id}. Solo se puede asignar una solicitud a una mesa de su mismo llamado.",
+                )
             sol.mesa_asignada_id = mesa_id
             if sol.estado == "PRO":
                 from core.models import InscripcionMesa
