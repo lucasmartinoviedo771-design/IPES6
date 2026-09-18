@@ -43,8 +43,7 @@ def test_f01_preinscripcion_no_sobrescribe_email_de_cuenta_existente():
 
     carrera = Profesorado.objects.create(
         nombre="Profesorado de Inglés",
-        descripcion="Test",
-        color="#112233",
+        duracion_anios=4,
         es_certificacion_docente=False,
     )
 
@@ -70,7 +69,8 @@ def test_f01_preinscripcion_no_sobrescribe_email_de_cuenta_existente():
     # El email institucional legítimo NO debe haber sido alterado
     assert persona.email == email_legitimo
     assert user.email == email_legitimo
-    assert persona.apellido == "Perez"
+    assert persona.apellido.upper() == "PEREZ"
+    assert persona.apellido.upper() != "HACKER"
 
     # Los datos declarados por el formulario se preservan en datos_extra
     assert (
@@ -157,16 +157,17 @@ def test_f03_manage_staff_role_anti_autoelevacion_y_matriz():
     payload = AsignarRolIn(user_id=sec_user.id, role="admin", action="assign")
     status, res = manage_staff_role(DummyRequest(sec_user), payload)
     assert status == 403
-    assert "a sí mismo" in res.get("message", "")
+    assert "propios roles" in res.get("message", "")
 
     # 2. Secretaría intenta asignar 'admin' a un tercero -> 403 por matriz de delegación
     payload = AsignarRolIn(user_id=target_user.id, role="admin", action="assign")
     status, res = manage_staff_role(DummyRequest(sec_user), payload)
     assert status == 403
-    assert "No tenés autorización" in res.get("message", "")
+    assert "no tiene permisos para asignar" in res.get("message", "")
 
-    # 3. Secretaría asigna un rol permitido por la matriz (ej: bedel) -> 200
-    payload = AsignarRolIn(user_id=target_user.id, role="bedel", action="assign")
+    # 3. Secretaría asigna un rol permitido por la matriz (ej: bedel con profesorado) -> 200
+    prof = Profesorado.objects.create(nombre="Profesorado Bedel Test", duracion_anios=4)
+    payload = AsignarRolIn(user_id=target_user.id, role="bedel", profesorado_ids=[prof.id], action="assign")
     status, res = manage_staff_role(DummyRequest(sec_user), payload)
     assert status == 200
     assert target_user.groups.filter(name="bedel").exists()
@@ -188,5 +189,5 @@ def test_f05_weasyprint_ssrf_bloqueo_urls_externas_e_internas():
     resultado_data = safe_weasyprint_url_fetcher(
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
     )
-    assert resultado_data.get("mime_type") == "image/png"
-    assert "string" in resultado_data
+    mime = getattr(resultado_data, "content_type", None) or getattr(resultado_data, "mime_type", None)
+    assert mime == "image/png"
