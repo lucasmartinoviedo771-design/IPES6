@@ -423,6 +423,10 @@ def preview_pdf(request, payload: PreinscripcionIn):
     if not os.path.exists(logo_left_path):
         logo_left_path = os.path.join(settings.BASE_DIR, "backend/static/logos/escudo_ministerio_tdf.png")
         logo_right_path = os.path.join(settings.BASE_DIR, "backend/static/logos/logo_ipes.jpg")
+    photo_raw = raw.get("foto_4x4_dataurl") or raw.get("foto_dataUrl")
+    photo_url = None
+    if photo_raw and isinstance(photo_raw, str) and photo_raw.startswith("data:image/"):
+        photo_url = photo_raw
 
     context = {
         "v": v,
@@ -430,11 +434,13 @@ def preview_pdf(request, payload: PreinscripcionIn):
         "checklist_items": checklist_items,
         "logo_left_path": logo_left_path,
         "logo_right_path": logo_right_path,
-        "photo_url": raw.get("foto_4x4_dataurl") or raw.get("foto_dataUrl"),
+        "photo_url": photo_url,
     }
 
+    from .views_pdf import safe_weasyprint_url_fetcher
+
     html = render_to_string("core/preinscripcion_premium.html", context)
-    pdf_content = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    pdf_content = HTML(string=html, url_fetcher=safe_weasyprint_url_fetcher).write_pdf()
 
     response = HttpResponse(pdf_content, content_type="application/pdf")
     response["Content-Disposition"] = 'inline; filename="Vista_Previa_Preinscripcion.pdf"'

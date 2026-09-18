@@ -104,19 +104,50 @@ class PreinscripcionService:
         data_dict["nombres"] = estudiante_data.nombres
 
         # 1. Persona — solo datos básicos de identidad y contacto
-        # Los campos adicionales (nacimiento, emergencia, etc.) se copian al CONFIRMAR
-        persona, _ = Persona.objects.update_or_create(
-            dni=dni,
-            defaults={
-                "nombre": estudiante_data.nombres,
-                "apellido": estudiante_data.apellido,
-                "email": estudiante_data.email,
-                "telefono": estudiante_data.telefono,
-                "domicilio": estudiante_data.domicilio,
-                "fecha_nacimiento": estudiante_data.fecha_nacimiento,
-                "cuil": getattr(estudiante_data, "cuil", None),
-            },
-        )
+        # Seguridad (F01): Si la persona ya existe en el instituto y posee cuenta de usuario,
+        # un formulario anónimo de preinscripción NO PUEDE alterar su correo de recuperación
+        # ni su identidad verificada. Los datos nuevos declarados quedan en Preinscripcion.datos_extra.
+        persona = Persona.objects.filter(dni=dni).first()
+        if persona:
+            tiene_cuenta = (
+                hasattr(persona, "user_profile")
+                or hasattr(persona, "estudiante_perfil")
+                or User.objects.filter(username=dni).exists()
+            )
+            if not tiene_cuenta:
+                persona.nombre = estudiante_data.nombres
+                persona.apellido = estudiante_data.apellido
+                persona.email = estudiante_data.email
+                persona.telefono = estudiante_data.telefono
+                persona.domicilio = estudiante_data.domicilio
+                persona.fecha_nacimiento = estudiante_data.fecha_nacimiento
+                persona.cuil = getattr(estudiante_data, "cuil", None) or persona.cuil
+                persona.save()
+            else:
+                # Cuenta existente: no pisar el email registrado. Solo rellenar si estaba en blanco.
+                update_fields = []
+                if not persona.email and estudiante_data.email:
+                    persona.email = estudiante_data.email
+                    update_fields.append("email")
+                if not persona.telefono and estudiante_data.telefono:
+                    persona.telefono = estudiante_data.telefono
+                    update_fields.append("telefono")
+                if not persona.domicilio and estudiante_data.domicilio:
+                    persona.domicilio = estudiante_data.domicilio
+                    update_fields.append("domicilio")
+                if update_fields:
+                    persona.save(update_fields=update_fields)
+        else:
+            persona = Persona.objects.create(
+                dni=dni,
+                nombre=estudiante_data.nombres,
+                apellido=estudiante_data.apellido,
+                email=estudiante_data.email,
+                telefono=estudiante_data.telefono,
+                domicilio=estudiante_data.domicilio,
+                fecha_nacimiento=estudiante_data.fecha_nacimiento,
+                cuil=getattr(estudiante_data, "cuil", None),
+            )
 
         # 2. Estudiante
         estudiante = Estudiante.objects.filter(persona=persona).first()

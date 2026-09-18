@@ -124,3 +124,4 @@ class ForceResetPasswordIn(Schema):
 
     username: str
     new_password: str | None = None
+    email: str | None = None

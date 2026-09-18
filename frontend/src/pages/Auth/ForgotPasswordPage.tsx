@@ -114,10 +114,22 @@ export default function ForgotPasswordPage() {
 										variant="body2"
 										sx={{ color: "rgba(255,255,255,0.75)" }}
 									>
-										Ingresá tu DNI o usuario. Si tenés un email cargado en el
-										sistema, te mandamos un link para definir una contraseña
-										nueva.
+										Ingresá tu DNI o usuario. Si tenés un correo registrado en el
+										sistema, te enviaremos un enlace seguro para definir una nueva contraseña.
 									</Typography>
+									<Alert
+										severity="info"
+										sx={{
+											backgroundColor: "rgba(2, 136, 209, 0.15)",
+											color: "#b3e5fc",
+											border: "1px solid rgba(2, 136, 209, 0.3)",
+											fontSize: "0.82rem",
+											py: 0.5,
+											"& .MuiAlert-icon": { color: "#4fc3f7" },
+										}}
+									>
+										¿No tenés un correo registrado en el sistema? Comunicate o acercate a la <strong>Bedelía de tu carrera</strong> para registrar tu correo y habilitar tu cuenta.
+									</Alert>
 									<TextField
 										label="DNI o usuario"
 										value={login}

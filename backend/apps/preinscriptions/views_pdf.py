@@ -59,10 +59,75 @@ from django.conf import settings
 from weasyprint import HTML
 
 
+def safe_weasyprint_url_fetcher(url, timeout=5, ssl_context=None):
+    """
+    Control de seguridad (F05 - Anti-SSRF):
+    Permite únicamente esquemas 'data:' (ej: data:image/png;base64,...) y archivos
+    estáticos locales del proyecto. Bloquea cualquier petición HTTP/HTTPS a localhost,
+    redes internas o internet.
+    """
+    import weasyprint
+
+    if str(url).startswith("data:"):
+        return weasyprint.default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
+
+    if str(url).startswith("file://"):
+        file_path = str(url)[7:]
+        real_path = os.path.realpath(file_path)
+        allowed_dirs = [os.path.realpath(settings.BASE_DIR)]
+        if getattr(settings, "MEDIA_ROOT", None):
+            allowed_dirs.append(os.path.realpath(settings.MEDIA_ROOT))
+        if any(real_path.startswith(d) for d in allowed_dirs):
+            return weasyprint.default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
+
+    raise ValueError(f"Acceso a recurso externo denegado por seguridad: {url}")
+
+
 def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | None = None, **kwargs):
-    """Genera el PDF de la preinscripción usando WeasyPrint y la plantilla premium."""
+    """Genera el PDF de la preinscripción con control de autorización y anti-SSRF."""
+    from django.http import HttpResponseForbidden
+
+    from core.auth_ninja import JWTAuth
+    from core.permissions import get_user_roles
+
     pid = preinscripcion_id or pk or kwargs.get("preinscripcion_id") or kwargs.get("pk")
     pre = get_object_or_404(Preinscripcion, pk=pid)
+
+    # 1. Control de autorización (F04)
+    user = getattr(request, "user", None)
+    if not (user and user.is_authenticated):
+        user = JWTAuth()(request)
+
+    autorizado = False
+    if user and user.is_authenticated:
+        roles = get_user_roles(user)
+        is_staff = user.is_superuser or bool(
+            roles & {"admin", "secretaria", "bedel", "coordinador", "attp", "jefa_aaee"}
+        )
+        is_owner = (user.username == getattr(getattr(pre.alumno, "persona", None), "dni", None)) or (
+            user.id == getattr(pre.alumno, "user_id", None)
+        )
+        if is_staff or is_owner:
+            autorizado = True
+
+    # 2. Descarga legítima con comprobante o token de preinscripción
+    if not autorizado:
+        codigo_query = request.GET.get("codigo")
+        token_query = request.GET.get("token")
+        if codigo_query and pre.codigo and codigo_query.strip().upper() == pre.codigo.strip().upper():
+            autorizado = True
+        elif token_query:
+            from django.core import signing
+
+            try:
+                data = signing.loads(token_query, max_age=86400 * 7, salt="preinscripcion_pdf_download")
+                if data.get("pre_id") == pre.id:
+                    autorizado = True
+            except Exception:
+                pass
+
+    if not autorizado:
+        return HttpResponseForbidden("Acceso denegado: se requiere autorización para descargar este comprobante.")
 
     # Mapeo de datos para la plantilla (usando el mismo esquema que el frontend)
     # Intentamos obtener datos del estudiante vinculado o de los datos_extra del formulario
@@ -142,16 +207,16 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
             {"label": "Fotocopia legalizada DNI", "checked": cl.dni_legalizado if cl else False},
             {"label": "Copia legalizada Analítico", "checked": cl.analitico_legalizado if cl else False},
             {"label": "2 fotos carnet 4x4", "checked": cl.fotos_4x4 if cl else False},
-            {"label": "Título Secundario", "checked": cl.titulo_secundario_legalizado if cl else False},
-            {"label": "Certificado Alumno Regular", "checked": cl.certificado_alumno_regular_sec if cl else False},
-            {"label": "Certificado Título en Trámite", "checked": cl.certificado_titulo_en_tramite if cl else False},
+            {"label": "Título Secundario", "checked": cl.titulo_secundario if cl else False},
+            {"label": "Certificado Alumno Regular", "checked": cl.certificado_alumno_regular if cl else False},
+            {"label": "Certificado Título en Trámite", "checked": cl.titulo_en_tramite if cl else False},
             {"label": "Certificado Buena Salud", "checked": cl.certificado_salud if cl else False},
             {"label": "3 Folios Oficio", "checked": cl.folios_oficio if cl else False},
         ]
 
     # Rutas para recursos estáticos (Encabezado Universal)
     logo_left_path = os.path.join(settings.BASE_DIR, "static/logos/escudo_ministerio_tdf.png")
-    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")  # O logo_ipes11.png si se prefiere
+    logo_right_path = os.path.join(settings.BASE_DIR, "static/logos/logo_ipes.jpg")
 
     # Si la ruta base no funciona (Docker etc), intentamos alternativa
     if not os.path.exists(logo_left_path):
@@ -169,8 +234,8 @@ def preinscripcion_pdf(request, preinscripcion_id: int | None = None, pk: int | 
 
     html = render_to_string("core/preinscripcion_premium.html", context)
 
-    # Generación del PDF con WeasyPrint
-    pdf_content = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    # Generación del PDF con WeasyPrint usando url_fetcher seguro (Anti-SSRF)
+    pdf_content = HTML(string=html, url_fetcher=safe_weasyprint_url_fetcher).write_pdf()
 
     response = HttpResponse(pdf_content, content_type="application/pdf")
     filename = f"Preinscripcion_{v['apellido']}_{v['dni']}.pdf".replace(" ", "_")

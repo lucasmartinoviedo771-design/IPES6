@@ -18,6 +18,8 @@ import {
 export const ForcedResetWidget: React.FC = () => {
 	const [dni, setDni] = useState("");
 	const [password, setPassword] = useState("");
+	const [email, setEmail] = useState("");
+	const [requiresEmail, setRequiresEmail] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState<string | null>(null);
@@ -27,6 +29,10 @@ export const ForcedResetWidget: React.FC = () => {
 			setError("Ingrese un DNI");
 			return;
 		}
+		if (requiresEmail && !email.trim()) {
+			setError("Ingrese el correo electrónico para enviarle las credenciales.");
+			return;
+		}
 		setLoading(true);
 		setError(null);
 		setSuccess(null);
@@ -34,15 +40,21 @@ export const ForcedResetWidget: React.FC = () => {
 			const res = await axios.post("staff/force-password-reset", {
 				username: dni.trim(),
 				new_password: password.trim() || null,
+				email: email.trim() || null,
 			});
 			setSuccess(res.data.message);
 			setDni("");
 			setPassword("");
+			setEmail("");
+			setRequiresEmail(false);
 		} catch (err: unknown) {
 			const e = err as {
-				response?: { data?: { message?: string } };
+				response?: { data?: { message?: string; requires_email?: boolean } };
 				message?: string;
 			};
+			if (e?.response?.data?.requires_email) {
+				setRequiresEmail(true);
+			}
 			setError(e?.response?.data?.message || e?.message || "Error al resetear");
 		} finally {
 			setLoading(false);
@@ -80,30 +92,49 @@ export const ForcedResetWidget: React.FC = () => {
 						Reseteo de Acceso Rápido
 					</Typography>
 					<Typography variant="caption" color="text.secondary">
-						Habilitación inmediata por DNI
+						Habilitación y entrega de clave temporal por correo
 					</Typography>
 				</Box>
 			</Stack>
 
 			<Stack spacing={2}>
-				<Box sx={{ display: "flex", gap: 1.5 }}>
+				<Box sx={{ display: "flex", gap: 1.5, flexDirection: { xs: "column", sm: "row" } }}>
 					<TextField
 						size="small"
 						label="DNI"
 						placeholder="Sin puntos"
 						fullWidth
 						value={dni}
-						onChange={(e) => setDni(e.target.value)}
+						onChange={(e) => {
+							setDni(e.target.value);
+							setRequiresEmail(false);
+							setError(null);
+						}}
 					/>
 					<TextField
 						size="small"
 						label="Clave (opcional)"
-						placeholder="pass12346789"
+						placeholder="Temporal aleatoria"
 						fullWidth
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 					/>
 				</Box>
+
+				{requiresEmail && (
+					<TextField
+						size="small"
+						label="Correo Electrónico (Requerido)"
+						placeholder="usuario@ejemplo.com"
+						type="email"
+						fullWidth
+						required
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						helperText="Este usuario no tiene correo registrado. Se guardará en la base de datos y se le enviarán las credenciales."
+						error={Boolean(error && !email.trim())}
+					/>
+				)}
 
 				<Button
 					variant="contained"
@@ -124,11 +155,11 @@ export const ForcedResetWidget: React.FC = () => {
 						py: 1,
 					}}
 				>
-					{loading ? "Procesando..." : "Resetear Acceso"}
+					{loading ? "Procesando..." : requiresEmail ? "Guardar Correo y Resetear" : "Resetear Acceso"}
 				</Button>
 
 				{error && (
-					<Alert severity="error" sx={{ py: 0 }}>
+					<Alert severity={requiresEmail ? "warning" : "error"} sx={{ py: 0 }}>
 						{error}
 					</Alert>
 				)}
