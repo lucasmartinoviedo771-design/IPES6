@@ -82,8 +82,20 @@ def base_security_setup():
     plan_b = PlanDeEstudio.objects.create(profesorado=carrera_b, resolucion="RES-PRI-2020", anio_inicio=2020, vigente=True)
 
     # Materias
-    mat_a = Materia.objects.create(plan_de_estudio=plan_a, nombre="Gramática I", anio_cursada=1, formato="MATERIA", regimen="ANUAL")
-    mat_b = Materia.objects.create(plan_de_estudio=plan_b, nombre="Pedagogía", anio_cursada=1, formato="MATERIA", regimen="ANUAL")
+    mat_a = Materia.objects.create(
+        plan_de_estudio=plan_a,
+        nombre="Gramática I",
+        anio_cursada=1,
+        formato=Materia.FormatoMateria.ASIGNATURA,
+        regimen=Materia.TipoCursada.ANUAL,
+    )
+    mat_b = Materia.objects.create(
+        plan_de_estudio=plan_b,
+        nombre="Pedagogía",
+        anio_cursada=1,
+        formato=Materia.FormatoMateria.ASIGNATURA,
+        regimen=Materia.TipoCursada.ANUAL,
+    )
 
     # Turno
     turno = Turno.objects.create(nombre="Vespertino")
