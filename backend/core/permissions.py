@@ -376,6 +376,14 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
             else:
                 session_role = ar
 
+    groups = get_user_roles(user)
+
+    # Seguridad (F06): El encabezado de rol enviado por el cliente (X-Active-Role)
+    # NUNCA puede ampliar privilegios hacia roles que el usuario no posea en el servidor.
+    if session_role and session_role not in groups:
+        session_role = None
+        session_prof_id = None
+
     # 2. Determinar active_role y active_prof_id final a usar
     active_role = None
     active_prof_id = None
@@ -405,7 +413,9 @@ def allowed_profesorados(user: User | None, role_filter: Iterable[str] | None = 
                 active_role = ar
             role_filter = [active_role]
 
-    groups = get_user_roles(user)
+    if active_role and active_role not in groups:
+        active_role = None
+
     if active_role:
         if active_role in _UNRESTRICTED_ROLES or active_role == "docente":
             return None
