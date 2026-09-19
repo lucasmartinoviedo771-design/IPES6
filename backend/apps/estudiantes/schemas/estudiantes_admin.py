@@ -250,6 +250,49 @@ class EstudianteAdminUpdateIn(Schema):
     carreras_update: list[CarreraUpdateIn] | None = None
 
 
+class PerfilEstudianteUpdateIn(Schema):
+    """Schema estricto para que el estudiante complete o actualice su perfil propio (autoservicio).
+    Excluye campos administrativos, académicos, de estado de legajo, o de seguridad."""
+
+    telefono: str | None = None
+    domicilio: str | None = None
+    fecha_nacimiento: str | None = None
+    lugar_nacimiento: str | None = None
+    genero: str | None = None
+    # Datos personales adicionales
+    nacionalidad: str | None = None
+    estado_civil: str | None = None
+    localidad_nac: str | None = None
+    provincia_nac: str | None = None
+    pais_nac: str | None = None
+    # Emergencia
+    emergencia_telefono: str | None = None
+    emergencia_parentesco: str | None = None
+    # Secundario
+    sec_titulo: str | None = None
+    sec_establecimiento: str | None = None
+    sec_fecha_egreso: str | None = None
+    sec_localidad: str | None = None
+    sec_provincia: str | None = None
+    sec_pais: str | None = None
+    # Superiores
+    sup1_titulo: str | None = None
+    sup1_establecimiento: str | None = None
+    sup1_fecha_egreso: str | None = None
+    sup1_localidad: str | None = None
+    sup1_provincia: str | None = None
+    sup1_pais: str | None = None
+    # Accesibilidad y salud
+    cud_informado: bool | None = None
+    condicion_salud_informada: bool | None = None
+    condicion_salud_detalle: str | None = None
+    # Laborales
+    trabaja: bool | None = None
+    empleador: str | None = None
+    horario_trabajo: str | None = None
+    domicilio_trabajo: str | None = None
+
+
 class AutorizarRendirIn(Schema):
     autorizado: bool
     observacion: str | None = None

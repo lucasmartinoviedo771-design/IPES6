@@ -40,12 +40,25 @@ def check_preins_access(request, pid: int):
         return preins
 
     # 2. Estudiantes: Solo a las suyas
-    if request.user.groups.filter(name__in=["estudiante", "estudiantes"]).exists():
-        if preins.alumno.user_id == request.user.id:
+    is_estudiante = request.user.groups.filter(name__in=["estudiante", "estudiantes"]).exists()
+    is_owner = (preins.alumno_id and preins.alumno.user_id == request.user.id) or (
+        preins.alumno_id
+        and getattr(preins.alumno, "persona", None)
+        and getattr(preins.alumno.persona, "dni", "") == getattr(request.user, "username", "")
+    )
+    if is_estudiante or is_owner:
+        if is_owner:
             return preins
         raise HttpError(403, "No tiene permiso para acceder a esta preinscripción.")
 
-    # 3. Staff (Bedeles/Coordinadores): Según sus profesorados asignados
+    # 3. Staff administrativo autorizado (Bedeles, Coordinadores, Secretaría, Admin)
+    from core.permissions import get_user_roles
+
+    user_roles = get_user_roles(request.user)
+    staff_allowed_roles = {"admin", "secretaria", "bedel", "coordinador", "jefa_aaee", "bedel_secretaria"}
+    if not (user_roles & staff_allowed_roles):
+        raise HttpError(403, "No tiene permisos administrativos para acceder a esta documentación.")
+
     allowed = allowed_profesorados(request.user)
     if allowed is None or preins.carrera_id in allowed:
         return preins

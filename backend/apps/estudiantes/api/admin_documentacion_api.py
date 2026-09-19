@@ -60,7 +60,7 @@ def admin_list_estudiantes_documentacion(
     offset: int = 0,
 ):
     try:
-        require(request.user, "ver_estudiantes")
+        require(request.user, "ver_documentacion")
         total, items = _get_estudiantes_documentacion_raw(
             request,
             q=q,
@@ -256,7 +256,7 @@ def admin_export_estudiantes_documentacion_excel(
     fecha_hasta: str | None = None,
 ):
     """Genera exportación Excel de la nómina de documentación para auditoría interna."""
-    require(request.user, "ver_estudiantes")
+    require(request.user, "ver_documentacion")
     _total, items = _get_estudiantes_documentacion_raw(
         request,
         q=q,
@@ -338,7 +338,7 @@ def admin_export_estudiantes_documentacion_pdf(
     fecha_hasta: str | None = None,
 ):
     """Genera exportación en PDF de la nómina de documentación para impresión rápida."""
-    require(request.user, "ver_estudiantes")
+    require(request.user, "ver_documentacion")
     _total, items = _get_estudiantes_documentacion_raw(
         request,
         q=q,

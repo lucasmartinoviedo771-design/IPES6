@@ -22,11 +22,97 @@ router = Router(tags=["carga_notas"])
 
 def _get_inscripcion_mesa_or_404(mesa_id: int, inscripcion_id: int) -> InscripcionMesa:
     inscripcion = (
-        InscripcionMesa.objects.select_related("mesa", "estudiante").filter(id=inscripcion_id, mesa_id=mesa_id).first()
+        InscripcionMesa.objects.select_related(
+            "mesa__materia__plan_de_estudio__profesorado",
+            "estudiante__persona",
+            "estudiante__user",
+        )
+        .filter(id=inscripcion_id, mesa_id=mesa_id)
+        .first()
     )
     if not inscripcion:
         raise HttpError(404, "La inscripcion indicada no pertenece a la mesa seleccionada.")
     return inscripcion
+
+
+def _check_acta_oral_access(user, inscripcion, allow_estudiante: bool = True) -> bool:
+    """Valida si el usuario tiene permiso para acceder a los datos del acta oral."""
+    if not user or not user.is_authenticated:
+        return False
+
+    from core.permissions import allowed_profesorados, get_user_roles
+    from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+
+    roles = get_user_roles(user)
+
+    # 1. Estudiante titular
+    if allow_estudiante:
+        est = getattr(inscripcion, "estudiante", None)
+        est_dni = getattr(getattr(est, "persona", None), "dni", "") or getattr(est, "dni", "")
+        if est_dni and est_dni == getattr(user, "username", ""):
+            return True
+        if est and getattr(est, "user_id", None) == user.id:
+            return True
+
+    # Si es estudiante y no es el titular, denegado
+    if "estudiante" in roles or "estudiantes" in roles:
+        return False
+
+    # 2. Superusuario, Administrador o Secretaría (acceso institucional total)
+    if user.is_superuser or (roles & {"admin", "secretaria"}):
+        return True
+
+    mesa = inscripcion.mesa
+    carrera_id = None
+    if mesa and mesa.materia and mesa.materia.plan_de_estudio:
+        carrera_id = mesa.materia.plan_de_estudio.profesorado_id
+
+    # 3. Tribunal docente (Presidente o Vocales de la mesa)
+    if "docente" in roles:
+        doc = _resolve_docente_from_user(user)
+        if doc and mesa and doc.id in (mesa.docente_presidente_id, mesa.docente_vocal1_id, mesa.docente_vocal2_id):
+            return True
+
+    # 4. Staff con alcance de carrera (Bedeles, Coordinadores)
+    if roles & {"bedel", "coordinador", "jefa_aaee", "bedel_secretaria"}:
+        allowed = allowed_profesorados(user)
+        if allowed is None or (carrera_id and carrera_id in allowed):
+            return True
+
+    return False
+
+
+def _check_mesa_actas_access(user, mesa) -> bool:
+    """Valida si el usuario puede listar las actas de una mesa."""
+    if not user or not user.is_authenticated:
+        return False
+
+    from core.permissions import allowed_profesorados, get_user_roles
+    from apps.estudiantes.api.helpers.user_utils import _resolve_docente_from_user
+
+    roles = get_user_roles(user)
+    # Estudiantes no pueden ver la lista general de actas de la mesa
+    if "estudiante" in roles or "estudiantes" in roles:
+        return False
+
+    if user.is_superuser or (roles & {"admin", "secretaria"}):
+        return True
+
+    carrera_id = None
+    if mesa and mesa.materia and mesa.materia.plan_de_estudio:
+        carrera_id = mesa.materia.plan_de_estudio.profesorado_id
+
+    if "docente" in roles:
+        doc = _resolve_docente_from_user(user)
+        if doc and mesa and doc.id in (mesa.docente_presidente_id, mesa.docente_vocal1_id, mesa.docente_vocal2_id):
+            return True
+
+    if roles & {"bedel", "coordinador", "jefa_aaee", "bedel_secretaria"}:
+        allowed = allowed_profesorados(user)
+        if allowed is None or (carrera_id and carrera_id in allowed):
+            return True
+
+    return False
 
 
 from datetime import timedelta
@@ -80,6 +166,9 @@ def obtener_acta_oral(request, mesa_id: int, inscripcion_id: int):
         inscripcion = _get_inscripcion_mesa_or_404(mesa_id, inscripcion_id)
     except HttpError as exc:
         return exc.status_code, ApiResponse(ok=False, message=str(exc))
+
+    if not _check_acta_oral_access(request.user, inscripcion, allow_estudiante=True):
+        return 403, ApiResponse(ok=False, message="No tienes permisos para consultar esta acta oral.")
 
     acta: MesaActaOral | None = getattr(inscripcion, "acta_oral", None)
     if not acta:
@@ -348,9 +437,12 @@ def responder_conformidad_acta_oral(request, acta_id: int, payload: ResponderCon
     auth=JWTAuth(),
 )
 def listar_actas_orales(request, mesa_id: int):
-    mesa = MesaExamen.objects.filter(id=mesa_id).first()
+    mesa = MesaExamen.objects.select_related("materia__plan_de_estudio__profesorado").filter(id=mesa_id).first()
     if not mesa:
         return 404, ApiResponse(ok=False, message="Mesa no encontrada.")
+
+    if not _check_mesa_actas_access(request.user, mesa):
+        return 403, ApiResponse(ok=False, message="No tienes permisos para listar las actas de esta mesa.")
 
     actas = (
         MesaActaOral.objects.filter(mesa_id=mesa_id)
@@ -395,6 +487,9 @@ def descargar_acta_oral_pdf(request, mesa_id: int, inscripcion_id: int):
         inscripcion = _get_inscripcion_mesa_or_404(mesa_id, inscripcion_id)
     except HttpError as exc:
         return exc.status_code, ApiResponse(ok=False, message=str(exc))
+
+    if not _check_acta_oral_access(request.user, inscripcion, allow_estudiante=True):
+        return HttpResponse("No tienes permisos para descargar esta acta oral.", status=403)
 
     acta: MesaActaOral | None = getattr(inscripcion, "acta_oral", None)
     if not acta:
@@ -445,5 +540,8 @@ def descargar_acta_oral_pdf(request, mesa_id: int, inscripcion_id: int):
     response = HttpResponse(content_type="application/pdf")
     safe_name = est_nombre.replace(" ", "_").replace(",", "")
     response["Content-Disposition"] = f'attachment; filename="acta_oral_{safe_name}.pdf"'
-    HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
+
+    from apps.preinscriptions.views_pdf import safe_weasyprint_url_fetcher
+
+    HTML(string=html_string, url_fetcher=safe_weasyprint_url_fetcher, base_url=request.build_absolute_uri()).write_pdf(response)
     return response

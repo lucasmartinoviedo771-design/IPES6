@@ -9,7 +9,7 @@ from ninja.files import UploadedFile
 from apps.common.api_schemas import ApiResponse
 from apps.preinscriptions.upload_utils import is_allowed, sanitize_image
 
-from ..schemas import EstudianteAdminDetail, EstudianteAdminUpdateIn
+from ..schemas import EstudianteAdminDetail, EstudianteAdminUpdateIn, PerfilEstudianteUpdateIn
 from .helpers import _apply_estudiante_updates, _build_admin_detail, _resolve_estudiante
 from .router import estudiantes_router as router
 
@@ -29,24 +29,52 @@ def estudiante_get_perfil_completar(request):
     "/perfil/completar",
     response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
 )
-def estudiante_update_perfil_completar(request, payload: EstudianteAdminUpdateIn):
+def estudiante_update_perfil_completar(request, payload: PerfilEstudianteUpdateIn):
     est = _resolve_estudiante(request)
     if not est:
         return 404, ApiResponse(ok=False, message="No se encontro el estudiante asociado a la cuenta")
 
-    # Evitamos que el estudiante modifique datos sensibles/administrativos
-    payload.dni = None
-    payload.anio_ingreso = None
-    payload.cuil = None
-    payload.observaciones = None
-    payload.rol_extra = None
-    payload.documentacion = None
-    payload.curso_introductorio_aprobado = None
-    payload.libreta_entregada = None
+    # Mapeo estricto de campos de autoservicio para asegurar que campos administrativos
+    # (dni, cuil, nombre, apellido, email, activo, estado_legajo, must_change_password,
+    # carreras_update, documentacion, curso_introductorio_aprobado, libreta_entregada, etc.)
+    # nunca puedan ser alterados por el estudiante.
+    admin_payload = EstudianteAdminUpdateIn(
+        telefono=payload.telefono,
+        domicilio=payload.domicilio,
+        fecha_nacimiento=payload.fecha_nacimiento,
+        lugar_nacimiento=payload.lugar_nacimiento,
+        genero=payload.genero,
+        nacionalidad=payload.nacionalidad,
+        estado_civil=payload.estado_civil,
+        localidad_nac=payload.localidad_nac,
+        provincia_nac=payload.provincia_nac,
+        pais_nac=payload.pais_nac,
+        emergencia_telefono=payload.emergencia_telefono,
+        emergencia_parentesco=payload.emergencia_parentesco,
+        sec_titulo=payload.sec_titulo,
+        sec_establecimiento=payload.sec_establecimiento,
+        sec_fecha_egreso=payload.sec_fecha_egreso,
+        sec_localidad=payload.sec_localidad,
+        sec_provincia=payload.sec_provincia,
+        sec_pais=payload.sec_pais,
+        sup1_titulo=payload.sup1_titulo,
+        sup1_establecimiento=payload.sup1_establecimiento,
+        sup1_fecha_egreso=payload.sup1_fecha_egreso,
+        sup1_localidad=payload.sup1_localidad,
+        sup1_provincia=payload.sup1_provincia,
+        sup1_pais=payload.sup1_pais,
+        cud_informado=payload.cud_informado,
+        condicion_salud_informada=payload.condicion_salud_informada,
+        condicion_salud_detalle=payload.condicion_salud_detalle,
+        trabaja=payload.trabaja,
+        empleador=payload.empleador,
+        horario_trabajo=payload.horario_trabajo,
+        domicilio_trabajo=payload.domicilio_trabajo,
+    )
 
     updated, error = _apply_estudiante_updates(
         est,
-        payload,
+        admin_payload,
         allow_estado_legajo=False,
         allow_force_password=False,
         mark_profile_complete=True,

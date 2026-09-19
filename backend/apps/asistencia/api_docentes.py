@@ -407,6 +407,18 @@ def marcar_docente_presente(request: HttpRequest, clase_id: int, payload: Docent
     if not docente or docente.dni != payload.dni:
         raise HttpError(400, "El DNI no corresponde al docente asignado a la clase.")
 
+    # Seguridad (F11): Solo el propio docente, o un operador con asistencia_docentes_editar, o un dispositivo con X-Kiosk-Key
+    has_kiosk_key = False
+    kiosk_key = request.headers.get("X-Kiosk-Key")
+    if kiosk_key and settings.KIOSK_API_KEY and hmac.compare_digest(kiosk_key, settings.KIOSK_API_KEY):
+        has_kiosk_key = True
+
+    staff_override = can(request.user, "asistencia_docentes_editar")
+    is_own_docente = getattr(request.user, "username", "") == docente.dni
+
+    if not is_own_docente and not staff_override and not has_kiosk_key:
+        raise HttpError(403, "No tenés autorización para marcar la asistencia de este docente.")
+
     asistencia, _ = AsistenciaDocente.objects.get_or_create(
         clase=clase,
         docente=docente,
@@ -537,6 +549,18 @@ def kiosk_marcar_bulk(request, payload: KioskBulkMarcarIn):
     Registra asistencia (masivamente) para las clases y cargos enviados en el payload.
     Pensado para el Kiosco, cuando el docente ingresa su DNI y se marcan múltiples ítems a la vez.
     """
+    # Seguridad (F11): El endpoint de marcación Kiosco solo puede ser invocado por:
+    # 1. Un dispositivo físico autorizado con encabezado X-Kiosk-Key válido, O
+    # 2. Un usuario autenticado con rol administrativo o kiosk (capacidad asistencia_docentes_editar)
+    has_kiosk_key = False
+    kiosk_key = request.headers.get("X-Kiosk-Key")
+    if kiosk_key and settings.KIOSK_API_KEY and hmac.compare_digest(kiosk_key, settings.KIOSK_API_KEY):
+        has_kiosk_key = True
+
+    is_kiosk_or_admin = can(request.user, "asistencia_docentes_editar")
+    if not has_kiosk_key and not is_kiosk_or_admin:
+        raise HttpError(403, "No tiene permisos para operar la marcación de asistencia en modo Kiosco.")
+
     docente = get_object_or_404(Docente, persona__dni=payload.dni)
     user = getattr(request, "user", None)
     registrado_por = user if (user and user.is_authenticated) else None

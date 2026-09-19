@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from django.contrib.auth.models import AnonymousUser
 
+from apps.common.constants import AppErrorCode
+from apps.common.errors import AppError
 from core.models import (
     Docente,
     Estudiante,
@@ -24,19 +26,19 @@ def _docente_full_name(docente: Docente | None) -> str | None:
 def _format_user_display(user) -> str | None:
     if not user or not getattr(user, "is_authenticated", False):
         return None
-    full_name = (user.get_full_name() or "").strip()
-    if full_name:
-        return full_name
-    username = getattr(user, "username", None)
-    if username:
-        return username
-    return None
+    username = getattr(user, "username", "") or ""
+    first_name = (getattr(user, "first_name", "") or "").strip()
+    last_name = (getattr(user, "last_name", "") or "").strip()
+    if first_name or last_name:
+        full_name = f"{first_name} {last_name}".strip()
+        return f"{username} ({full_name})"
+    return username
 
 
 def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
     if dni:
         return Estudiante.objects.filter(persona__dni=dni).first()
-    if isinstance(request.user, AnonymousUser):
+    if not request.user.is_authenticated:
         return None
     # Un usuario puede tener a la vez un rol de gestión (bedel, secretaria, etc.)
     # y una ficha de Estudiante propia (ej. cursa una certificación docente).
@@ -51,9 +53,44 @@ def _resolve_estudiante(request, dni: str | None = None) -> Estudiante | None:
 def _ensure_estudiante_access(request, dni: str | None) -> None:
     if not dni:
         return
-    solicitante = getattr(request.user, "estudiante", None)
-    if solicitante and solicitante.dni != dni:
-        require(request.user, "ver_estudiantes")
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        raise AppError(401, AppErrorCode.UNAUTHENTICATED, "Autenticación requerida.")
+
+    user_dni = getattr(user, "username", "")
+    solicitante = getattr(user, "estudiante", None)
+
+    # 1. Si el usuario consulta su propio DNI:
+    if (solicitante and solicitante.dni == dni) or user_dni == dni:
+        return
+
+    # Si es estudiante intentando consultar el legajo/historial de otro alumno:
+    if solicitante or user.groups.filter(name__in=["estudiante", "estudiantes"]).exists():
+        raise AppError(
+            403,
+            AppErrorCode.PERMISSION_DENIED,
+            "No tienes permisos para consultar la información académica de otro estudiante.",
+        )
+
+    # 2. Si es personal administrativo / staff:
+    require(user, "ver_estudiantes")
+
+    # Si tiene alcance acotado por profesorados (Bedel, Coordinador):
+    from core.permissions import allowed_profesorados
+
+    allowed_ids = allowed_profesorados(user)
+    if allowed_ids is not None:
+        from core.models import Estudiante
+
+        est = Estudiante.objects.filter(persona__dni=dni).first()
+        if est:
+            est_carreras = set(est.carreras.values_list("id", flat=True))
+            if not allowed_ids.intersection(est_carreras):
+                raise AppError(
+                    403,
+                    AppErrorCode.PERMISSION_DENIED,
+                    "No tiene permisos sobre la carrera de este estudiante.",
+                )
 
 
 def _resolve_docente_from_user(user) -> Docente | None:

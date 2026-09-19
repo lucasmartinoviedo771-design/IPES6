@@ -58,6 +58,7 @@ from apps.estudiantes.schemas.estudiantes_admin import (
     EstudianteAdminListItem,
     EstudianteAdminListResponse,
     EstudianteAdminUpdateIn,
+    PerfilEstudianteUpdateIn,
     EstudianteDocumentacionBulkUpdateIn,
     EstudianteDocumentacionBulkUpdateItem,
     EstudianteDocumentacionListItem,
@@ -246,6 +247,7 @@ __all__ = [
     "EstudianteDocumentacionBulkUpdateIn",
     "EstudianteAdminDetail",
     "EstudianteAdminUpdateIn",
+    "PerfilEstudianteUpdateIn",
     # trayectoria
     "EventoTipo",
     "TrayectoriaEvento",
