@@ -3,12 +3,13 @@ from typing import List, Optional
 
 from django.db import transaction
 from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
 from apps.common.api_schemas import ApiResponse
 from core.auth_ninja import JWTAuth
-from core.models import Comision, Estudiante, InscripcionMateriaEstudiante, Materia, Turno
-from core.permissions import requires
+from core.models import Comision, Estudiante, InscripcionMateriaEstudiante, Materia, PlanDeEstudio, Turno
+from core.permissions import ensure_profesorado_access, requires
 
 router = Router(tags=["gestion_comisiones"])
 
@@ -53,8 +54,11 @@ class MoverEstudiantesIn(Schema):
 @router.get("/materia/{materia_id}/anio/{anio_lectivo}", response=list[ComisionGestionDTO], auth=JWTAuth())
 @requires("editar_estructura")
 def listar_comisiones_gestion(request, materia_id: int, anio_lectivo: int):
+    materia = get_object_or_404(Materia.objects.select_related("plan_de_estudio"), id=materia_id)
+    ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
+
     comisiones = (
-        Comision.objects.filter(materia_id=materia_id, anio_lectivo=anio_lectivo)
+        Comision.objects.filter(materia=materia, anio_lectivo=anio_lectivo)
         .annotate(
             cantidad_inscriptos=Count(
                 "inscripciones", filter=Q(inscripciones__estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA)
@@ -79,17 +83,15 @@ def listar_comisiones_gestion(request, materia_id: int, anio_lectivo: int):
 @router.post("/crear", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
 @requires("editar_estructura")
 def crear_comision(request, payload: CrearComisionIn):
+    materia = get_object_or_404(Materia.objects.select_related("plan_de_estudio"), id=payload.materia_id)
+    ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
+
     if Comision.objects.filter(
-        materia_id=payload.materia_id, anio_lectivo=payload.anio_lectivo, codigo=payload.codigo
+        materia=materia, anio_lectivo=payload.anio_lectivo, codigo=payload.codigo
     ).exists():
         return 400, ApiResponse(
             ok=False, message=f"Ya existe una comisión con el código {payload.codigo} para este año."
         )
-
-    try:
-        materia = Materia.objects.get(id=payload.materia_id)
-    except Materia.DoesNotExist:
-        return 400, ApiResponse(ok=False, message="Materia no encontrada.")
 
     # Si no se especifica turno, intentar copiar de otra comision existente o default
     turno = None
@@ -99,7 +101,7 @@ def crear_comision(request, payload: CrearComisionIn):
     if not turno:
         # Intentar buscar el turno de la comision 'A' o la primera que encuentre
         otra_comision = Comision.objects.filter(
-            materia_id=payload.materia_id, anio_lectivo=payload.anio_lectivo
+            materia=materia, anio_lectivo=payload.anio_lectivo
         ).first()
         if otra_comision:
             turno = otra_comision.turno
@@ -128,6 +130,9 @@ def crear_comision(request, payload: CrearComisionIn):
 @router.post("/crear-masiva", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
 @requires("editar_estructura")
 def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
+    plan = get_object_or_404(PlanDeEstudio, id=payload.plan_id)
+    ensure_profesorado_access(request.user, plan.profesorado_id)
+
     materias = Materia.objects.filter(plan_id=payload.plan_id, anio_cursada=payload.anio_cursada)
 
     if not materias.exists():
@@ -173,10 +178,19 @@ def crear_comision_masiva(request, payload: CrearComisionMasivaIn):
 @router.post("/distribuir", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
 @requires("editar_estructura")
 def distribuir_estudiantes(request, payload: DistribuirEstudiantesIn):
+    com_origen = get_object_or_404(
+        Comision.objects.select_related("materia__plan_de_estudio"), id=payload.comision_origen_id
+    )
+    com_destino = get_object_or_404(
+        Comision.objects.select_related("materia__plan_de_estudio"), id=payload.comision_destino_id
+    )
+    ensure_profesorado_access(request.user, com_origen.materia.plan_de_estudio.profesorado_id)
+    ensure_profesorado_access(request.user, com_destino.materia.plan_de_estudio.profesorado_id)
+
     with transaction.atomic():
         inscripciones = list(
             InscripcionMateriaEstudiante.objects.filter(
-                comision_id=payload.comision_origen_id, estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
+                comision=com_origen, estado=InscripcionMateriaEstudiante.Estado.CONFIRMADA
             )
         )
 
@@ -191,8 +205,8 @@ def distribuir_estudiantes(request, payload: DistribuirEstudiantesIn):
         estudiantes_a_mover = random.sample(inscripciones, cantidad_a_mover)
 
         for inscripcion in estudiantes_a_mover:
-            inscripcion.comision_id = payload.comision_destino_id
-            inscripcion.save()
+            inscripcion.comision = com_destino
+            inscripcion.save(update_fields=["comision"])
 
     return ApiResponse(ok=True, message=f"Se movieron {cantidad_a_mover} estudiantes a la nueva comisión.")
 
@@ -200,8 +214,21 @@ def distribuir_estudiantes(request, payload: DistribuirEstudiantesIn):
 @router.post("/mover", response={200: ApiResponse, 400: ApiResponse}, auth=JWTAuth())
 @requires("editar_estructura")
 def mover_estudiantes(request, payload: MoverEstudiantesIn):
+    com_destino = get_object_or_404(
+        Comision.objects.select_related("materia__plan_de_estudio"), id=payload.comision_destino_id
+    )
+    ensure_profesorado_access(request.user, com_destino.materia.plan_de_estudio.profesorado_id)
+
+    inscripciones = list(
+        InscripcionMateriaEstudiante.objects.filter(id__in=payload.inscripcion_ids).select_related(
+            "materia__plan_de_estudio"
+        )
+    )
+    for insc in inscripciones:
+        ensure_profesorado_access(request.user, insc.materia.plan_de_estudio.profesorado_id)
+
     updated = InscripcionMateriaEstudiante.objects.filter(id__in=payload.inscripcion_ids).update(
-        comision_id=payload.comision_destino_id
+        comision=com_destino
     )
 
     return ApiResponse(ok=True, message=f"Se movieron {updated} estudiantes.")

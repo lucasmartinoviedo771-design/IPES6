@@ -142,23 +142,38 @@ def admin_list_anios_ingreso(request, carrera_id: int | None = None):
     return EstudianteService.get_unique_admission_years(effective_allowed_ids)
 
 
+def _check_student_career_scope(user, estudiante: Estudiante) -> None:
+    """Valida si el operador tiene asignada al menos una de las carreras del estudiante."""
+    allowed_ids = allowed_profesorados(user)
+    if allowed_ids is not None:
+        est_carreras = set(estudiante.carreras.values_list("id", flat=True))
+        if not allowed_ids.intersection(est_carreras):
+            from apps.common.constants import AppErrorCode
+            from apps.common.errors import raise_app_error
+
+            raise_app_error(
+                403, AppErrorCode.PERMISSION_DENIED, "No tiene permisos para operar sobre este legajo."
+            )
+
+
 @router.get(
     "/admin/estudiantes/{dni}",
-    response={200: EstudianteAdminDetail, 404: ApiResponse},
+    response={200: EstudianteAdminDetail, 403: ApiResponse, 404: ApiResponse},
 )
 def admin_get_estudiante(request, dni: str):
     """Obtiene el detalle completo del legajo de un estudiante."""
     require(request.user, "ver_estudiantes")
-    allowed_ids = allowed_profesorados(request.user)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
-    return _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
+    _check_student_career_scope(request.user, est)
+    allowed_ids = allowed_profesorados(request.user)
+    return 200, _build_admin_detail(est, allowed_carrera_ids=allowed_ids)
 
 
 @router.put(
     "/admin/estudiantes/{dni}",
-    response={200: EstudianteAdminDetail, 400: ApiResponse, 404: ApiResponse},
+    response={200: EstudianteAdminDetail, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
 )
 def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn):
     """
@@ -169,6 +184,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
     est = Estudiante.objects.select_related("user").prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
+    _check_student_career_scope(request.user, est)
 
     # Capturar estado previo para auditoría
     before = snapshot(est)
@@ -201,7 +217,7 @@ def admin_update_estudiante(request, dni: str, payload: EstudianteAdminUpdateIn)
 
 @router.delete(
     "/admin/estudiantes/{dni}",
-    response={200: ApiResponse, 400: ApiResponse, 404: ApiResponse},
+    response={200: ApiResponse, 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
 )
 def admin_delete_estudiante(request, dni: str):
     """
@@ -211,9 +227,10 @@ def admin_delete_estudiante(request, dni: str):
     Se verifica: Inscripciones a materias, mesas, regularidades y actas históricas.
     """
     require(request.user, "editar_estudiantes")
-    est = Estudiante.objects.filter(persona__dni=dni).first()
+    est = Estudiante.objects.prefetch_related("carreras").filter(persona__dni=dni).first()
     if not est:
         return 404, ApiResponse(ok=False, message="Estudiante no encontrado")
+    _check_student_career_scope(request.user, est)
 
     reasons = []
     # 1. Verificación de Cursadas
@@ -347,7 +364,8 @@ def _prorroga_to_out(p: ProrrogaTituloSecundario) -> dict:
 def admin_list_prorrogas_titulo(request, dni: str):
     """Lista todas las prórrogas del título secundario de un estudiante."""
     require(request.user, "editar_estudiantes")
-    est = get_object_or_404(Estudiante, persona__dni=dni)
+    est = get_object_or_404(Estudiante.objects.prefetch_related("carreras"), persona__dni=dni)
+    _check_student_career_scope(request.user, est)
     prorrogas = ProrrogaTituloSecundario.objects.filter(estudiante=est)
     return 200, [ProrrogaTituloOut(**_prorroga_to_out(p)) for p in prorrogas]
 
@@ -359,7 +377,8 @@ def admin_list_prorrogas_titulo(request, dni: str):
 def admin_create_prorroga_titulo(request, dni: str, payload: ProrrogaTituloIn):
     """Crea una prórroga del título secundario para el estudiante."""
     require(request.user, "gestionar_staff")
-    est = get_object_or_404(Estudiante, persona__dni=dni)
+    est = get_object_or_404(Estudiante.objects.prefetch_related("carreras"), persona__dni=dni)
+    _check_student_career_scope(request.user, est)
     from django.utils.dateparse import parse_date
 
     fecha_otorgada = parse_date(payload.fecha_otorgada)
@@ -387,7 +406,11 @@ def admin_create_prorroga_titulo(request, dni: str, payload: ProrrogaTituloIn):
 def admin_update_prorroga_titulo(request, prorroga_id: int, payload: ProrrogaTituloIn):
     """Actualiza una prórroga existente."""
     require(request.user, "gestionar_staff")
-    p = get_object_or_404(ProrrogaTituloSecundario, id=prorroga_id)
+    p = get_object_or_404(
+        ProrrogaTituloSecundario.objects.select_related("estudiante").prefetch_related("estudiante__carreras"),
+        id=prorroga_id,
+    )
+    _check_student_career_scope(request.user, p.estudiante)
     from django.utils.dateparse import parse_date
 
     fecha_otorgada = parse_date(payload.fecha_otorgada)
@@ -412,7 +435,11 @@ def admin_update_prorroga_titulo(request, prorroga_id: int, payload: ProrrogaTit
 def admin_delete_prorroga_titulo(request, prorroga_id: int):
     """Elimina una prórroga."""
     require(request.user, "gestionar_staff")
-    p = get_object_or_404(ProrrogaTituloSecundario, id=prorroga_id)
+    p = get_object_or_404(
+        ProrrogaTituloSecundario.objects.select_related("estudiante").prefetch_related("estudiante__carreras"),
+        id=prorroga_id,
+    )
+    _check_student_career_scope(request.user, p.estudiante)
     p.delete()
     return 200, ApiResponse(ok=True, message="Prórroga eliminada.")
 

@@ -318,6 +318,8 @@ def listar_comisiones(
     if not plan:
         return CargaNotasLookup(materias=[], comisiones=[])
 
+    ensure_profesorado_access(request.user, plan.profesorado_id)
+
     roles = normalized_user_roles(request.user)
     is_privileged = can(request.user, "editar_estructura")
     docente_profile = docente_from_user(request.user) if "docente" in roles and not is_privileged else None
@@ -415,7 +417,13 @@ def obtener_planilla_regularidad(request, comision_id: int):
 
     if comision_id >= 0:
         comision = (
-            Comision.objects.select_related("materia__plan_de_estudio__profesorado", "turno", "docente")
+            Comision.objects.select_related(
+                "materia__plan_de_estudio__profesorado",
+                "turno",
+                "docente__persona",
+                "suplente__persona",
+                "suplente_2__persona",
+            )
             .filter(id=comision_id)
             .first()
         )
@@ -423,6 +431,30 @@ def obtener_planilla_regularidad(request, comision_id: int):
             return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
 
         materia = comision.materia
+        profesorado_id = materia.plan_de_estudio.profesorado_id
+
+        if can_override_lock:
+            ensure_profesorado_access(request.user, profesorado_id)
+        else:
+            user_dni = getattr(request.user, "username", "")
+            docente_profile = docente_from_user(request.user)
+            docente_dnis = {
+                d.persona.dni
+                for d in [comision.docente, comision.suplente, comision.suplente_2]
+                if d and getattr(d, "persona", None)
+            }
+            docente_ids = {
+                d.id
+                for d in [comision.docente, comision.suplente, comision.suplente_2]
+                if d
+            }
+            is_assigned = (
+                (user_dni and user_dni in docente_dnis)
+                or (docente_profile and docente_profile.id in docente_ids)
+            )
+            if not is_assigned:
+                return 403, ApiResponse(ok=False, message="Permiso denegado para esta cátedra.")
+
         situaciones = situaciones_para_formato(materia.formato)
         inscripciones = list(
             InscripcionMateriaEstudiante.objects.filter(comision_id=comision.id, anio=comision.anio_lectivo)
@@ -471,6 +503,11 @@ def obtener_planilla_regularidad(request, comision_id: int):
     materia = Materia.objects.select_related("plan_de_estudio__profesorado").filter(id=materia_id).first()
     if not materia:
         return 404, ApiResponse(ok=False, message="Materia virtual no encontrada.")
+
+    if not can_override_lock:
+        return 403, ApiResponse(ok=False, message="Permiso denegado para comisiones virtuales.")
+
+    ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
 
     inscripciones = list(
         InscripcionMateriaEstudiante.objects.filter(
@@ -531,20 +568,49 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
 
     # 1. Resolución de ámbito y validación de Lock
     if is_virtual:
+        if not can_override_lock:
+            return 403, ApiResponse(ok=False, message="Permiso denegado para comisiones virtuales.")
         materia_id, anio_virtual = split_virtual_comision_id(payload.comision_id)
-        materia = Materia.objects.filter(id=materia_id).first()
+        materia = Materia.objects.select_related("plan_de_estudio").filter(id=materia_id).first()
         if not materia:
             return 404, ApiResponse(ok=False, message="Materia no encontrada.")
+        ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
         lock = regularidad_lock_for_scope(materia=materia, anio_virtual=anio_virtual if anio_virtual is not None else 0)
     else:
-        comision = Comision.objects.select_related("materia", "docente").filter(id=payload.comision_id).first()
+        comision = (
+            Comision.objects.select_related(
+                "materia__plan_de_estudio",
+                "docente__persona",
+                "suplente__persona",
+                "suplente_2__persona",
+            )
+            .filter(id=payload.comision_id)
+            .first()
+        )
         if not comision:
             return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
         materia = comision.materia
         lock = regularidad_lock_for_scope(comision=comision)
-        # Auditoría de acceso docente
-        if not can_override_lock:
-            if not comision.docente or comision.docente.dni != getattr(request.user, "username", ""):
+        if can_override_lock:
+            ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
+        else:
+            user_dni = getattr(request.user, "username", "")
+            docente_profile = docente_from_user(request.user)
+            docente_dnis = {
+                d.persona.dni
+                for d in [comision.docente, comision.suplente, comision.suplente_2]
+                if d and getattr(d, "persona", None)
+            }
+            docente_ids = {
+                d.id
+                for d in [comision.docente, comision.suplente, comision.suplente_2]
+                if d
+            }
+            is_assigned = (
+                (user_dni and user_dni in docente_dnis)
+                or (docente_profile and docente_profile.id in docente_ids)
+            )
+            if not is_assigned:
                 return 403, ApiResponse(ok=False, message="Permiso denegado para esta cátedra.")
 
     if lock and not can_override_lock:
@@ -566,9 +632,41 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                 if (materia.regimen or "").upper() in ["ANU", "ANUAL"]
                 else ("1C" if (materia.regimen or "").upper() in ["1C", "PCU", "1° CUATRIMESTRE"] else "2C")
             )
-            plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato, dictado=dictado_val).first()
+            slug_map = {
+                "ASI": "asignatura",
+                "MOD": "modulo",
+                "TAL": "taller",
+            }
+            formato_slug = slug_map.get(materia.formato, (materia.formato or "").lower())
+            from django.db.models import Q as DQ
+
+            plantilla = RegularidadPlantilla.objects.filter(
+                DQ(formato__slug=formato_slug) | DQ(formato__nombre__iexact=materia.formato),
+                dictado=dictado_val,
+            ).first()
             if not plantilla:
-                plantilla = RegularidadPlantilla.objects.filter(formato=materia.formato).first()
+                plantilla = RegularidadPlantilla.objects.filter(
+                    DQ(formato__slug=formato_slug) | DQ(formato__nombre__iexact=materia.formato)
+                ).first()
+
+            from core.models import RegularidadFormato
+
+            formato_obj = getattr(plantilla, "formato", None)
+            if not formato_obj:
+                formato_obj = RegularidadFormato.objects.filter(
+                    DQ(slug=formato_slug) | DQ(nombre__iexact=materia.formato)
+                ).first()
+            if not formato_obj:
+                formato_obj, _ = RegularidadFormato.objects.get_or_create(
+                    slug=formato_slug or "general",
+                    defaults={"nombre": materia.formato or "General"},
+                )
+            if not plantilla:
+                plantilla, _ = RegularidadPlantilla.objects.get_or_create(
+                    formato=formato_obj,
+                    dictado=dictado_val,
+                    defaults={"nombre": f"Plantilla {dictado_val}"},
+                )
 
             codigo_planilla = f"PRP-COM{comision.id}"
             planilla, created = PlanillaRegularidad.objects.update_or_create(
@@ -580,7 +678,7 @@ def guardar_planilla_regularidad(request, payload: RegularidadCargaIn = Body(...
                     "profesorado": materia.plan_de_estudio.profesorado,
                     "materia": materia,
                     "plantilla": plantilla,
-                    "formato": materia.formato,
+                    "formato": formato_obj,
                     "dictado": dictado_val,
                     "fecha": fecha_base,
                     "estado": PlanillaRegularidad.Estado.FINAL,
@@ -725,21 +823,54 @@ def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(..
     comision = None
     materia = None
     anio_virtual = 0
+    can_override = user_has_privileged_planilla_access(request.user)
 
     if is_virtual:
         mid, anio_virtual = split_virtual_comision_id(payload.comision_id)
-        materia = Materia.objects.filter(id=mid).first()
+        materia = Materia.objects.select_related("plan_de_estudio").filter(id=mid).first()
         if not materia:
             return 404, ApiResponse(ok=False, message="Materia no encontrada.")
+        if not can_override:
+            return 403, ApiResponse(ok=False, message="Permiso denegado para comisiones virtuales.")
+        ensure_profesorado_access(request.user, materia.plan_de_estudio.profesorado_id)
         lock = regularidad_lock_for_scope(materia=materia, anio_virtual=anio_virtual or 0)
     else:
-        comision = Comision.objects.filter(id=payload.comision_id).first()
+        comision = (
+            Comision.objects.select_related(
+                "materia__plan_de_estudio",
+                "docente__persona",
+                "suplente__persona",
+                "suplente_2__persona",
+            )
+            .filter(id=payload.comision_id)
+            .first()
+        )
         if not comision:
             return 404, ApiResponse(ok=False, message="Comisión no encontrada.")
+        if can_override:
+            ensure_profesorado_access(request.user, comision.materia.plan_de_estudio.profesorado_id)
+        else:
+            user_dni = getattr(request.user, "username", "")
+            docente_profile = docente_from_user(request.user)
+            docente_dnis = {
+                d.persona.dni
+                for d in [comision.docente, comision.suplente, comision.suplente_2]
+                if d and getattr(d, "persona", None)
+            }
+            docente_ids = {
+                d.id
+                for d in [comision.docente, comision.suplente, comision.suplente_2]
+                if d
+            }
+            is_assigned = (
+                (user_dni and user_dni in docente_dnis)
+                or (docente_profile and docente_profile.id in docente_ids)
+            )
+            if not is_assigned:
+                return 403, ApiResponse(ok=False, message="Permiso denegado para esta cátedra.")
         lock = regularidad_lock_for_scope(comision=comision)
 
     accion = payload.accion.lower()
-    can_override = user_has_privileged_planilla_access(request.user)
 
     if accion == "cerrar":
         if not lock:
@@ -779,7 +910,7 @@ def gestionar_regularidad_cierre(request, payload: RegularidadCierreIn = Body(..
 
 @router.get(
     "/regularidades/materias/{materia_id}/docentes-defecto",
-    response={200: list[dict], 403: ApiResponse, 404: ApiResponse},
+    response={200: list[dict], 400: ApiResponse, 403: ApiResponse, 404: ApiResponse},
     auth=JWTAuth(),
 )
 @requires("carga_regularidades")
@@ -787,6 +918,13 @@ def obtener_docentes_defecto_endpoint(request, materia_id: int, profesorado_id: 
     from datetime import date
 
     from core.models import Comision, StaffAsignacion
+
+    ensure_profesorado_access(request.user, profesorado_id)
+    materia = Materia.objects.select_related("plan_de_estudio").filter(id=materia_id).first()
+    if not materia:
+        return 404, ApiResponse(ok=False, message="Materia no encontrada.")
+    if materia.plan_de_estudio.profesorado_id != profesorado_id:
+        return 400, ApiResponse(ok=False, message="La materia no pertenece al profesorado indicado.")
 
     if not anio:
         anio = date.today().year
